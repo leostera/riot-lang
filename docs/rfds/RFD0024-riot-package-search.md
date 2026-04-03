@@ -9,7 +9,7 @@
 ## Summary
 [summary]: #summary
 
-Riot package search is now part of `services/registry`.
+Riot package search is now part of `services/api.pkgs.ml`.
 It is exposed at:
 
 ```text
@@ -46,7 +46,7 @@ That authority stays in the registry's publish and index data.
 ### Service boundary
 
 Search is no longer a separate worker.
-It is a read path inside `services/registry`.
+It is a read path inside `services/api.pkgs.ml`.
 
 That means:
 

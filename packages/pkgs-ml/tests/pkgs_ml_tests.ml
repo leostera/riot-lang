@@ -75,8 +75,8 @@ let test_sparse_index_cached_reads = fun _ctx ->
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
     |> Result.expect ~msg:"expected sparse index config to parse"
   in
@@ -110,8 +110,8 @@ let sparse_index_config_json = {|{
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
 
 let sparse_index_kernel_json = {|{
@@ -178,7 +178,7 @@ let sparse_index_config_json_stale = {|{
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
   "index_base_url": "https://stale.example/v1/index",
-  "artifact_base_url": "https://stale.example/v1/artifacts"
+  "artifact_base_url": "https://stale.example"
 }|}
 
 let sparse_index_search_kernel_json = {|{
@@ -234,7 +234,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
         let fetch, requests =
           make_fetch_recorder
             (fun uri ->
-              if String.equal (Net.Uri.to_string uri) "https://api.pkgs.ml/v1/index/config.json" then
+              if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
                 Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
               else
                 Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
@@ -255,8 +255,8 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
                 let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   String.equal config.kind "sparse"
-                  && String.equal cached.index_base_url "https://api.pkgs.ml/v1/index"
-                  && requested = [ "https://api.pkgs.ml/v1/index/config.json" ]
+                  && String.equal cached.index_base_url "https://cdn.pkgs.ml/index/v1"
+                  && requested = [ "https://cdn.pkgs.ml/index/v1/config.json" ]
                 then
                   Ok ()
                 else
@@ -279,11 +279,11 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
           make_fetch_recorder
             (fun uri ->
               match Net.Uri.to_string uri with
-              | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
+              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_config_json
               }
-              | "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" -> Ok {
+              | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_kernel_json
               }
@@ -312,8 +312,8 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
                   && String.equal cached.name "kernel"
                   && requested
                   = [
-                    "https://api.pkgs.ml/v1/index/config.json";
-                    "https://api.pkgs.ml/v1/index/ke/rn/kernel.json";
+                    "https://cdn.pkgs.ml/index/v1/config.json";
+                    "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json";
                   ]
                 then
                   Ok ()
@@ -337,11 +337,11 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
           make_fetch_recorder
             (fun uri ->
               match Net.Uri.to_string uri with
-              | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
+              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_config_json
               }
-              | "https://api.pkgs.ml/v1/index/mi/ss/missing.json" -> Ok {
+              | "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 404;
                 body = ""
               }
@@ -364,8 +364,8 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
                 if
                   requested
                   = [
-                    "https://api.pkgs.ml/v1/index/config.json";
-                    "https://api.pkgs.ml/v1/index/mi/ss/missing.json";
+                    "https://cdn.pkgs.ml/index/v1/config.json";
+                    "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json";
                   ]
                 then
                   Ok ()
@@ -391,7 +391,7 @@ let test_filesystem_registry_reuses_fresh_cached_config_without_fetch = fun _ctx
         in
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_config registry with
-        | Ok (Some config) when String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
+        | Ok (Some config) when String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
         && !requests = [] -> Ok ()
         | Ok (Some _) -> Error "expected fresh cached config to be reused without fetch"
         | Ok None -> Error "expected cached config to be available"
@@ -414,16 +414,16 @@ let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
         let fetch, requests =
           make_fetch_recorder
             (fun uri ->
-              if String.equal (Net.Uri.to_string uri) "https://api.pkgs.ml/v1/index/config.json" then
+              if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
                 Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
               else
                 Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
         in
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_config registry with
-        | Ok (Some config) when String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
+        | Ok (Some config) when String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
         && List.map (fun request -> request.url) (List.rev !requests)
-        = [ "https://api.pkgs.ml/v1/index/config.json" ] -> Ok ()
+        = [ "https://cdn.pkgs.ml/index/v1/config.json" ] -> Ok ()
         | Ok (Some _) -> Error "expected stale cached config to be refreshed from the registry"
         | Ok None -> Error "expected refreshed config to be available"
         | Error err -> Error err)
@@ -459,7 +459,7 @@ let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx 
           make_fetch_recorder
             (fun uri ->
               match Net.Uri.to_string uri with
-              | "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" -> Ok {
+              | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = fresh_kernel_json
               }
@@ -469,7 +469,7 @@ let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx 
         match Pkgs_ml.Registry.read_package_document registry ~package_name:"kernel" with
         | Ok (Some document) when String.equal document.latest "0.0.3"
         && List.map (fun request -> request.url) (List.rev !requests)
-        = [ "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" ] -> Ok ()
+        = [ "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" ] -> Ok ()
         | Ok (Some _) -> Error "expected stale cached package document to be refreshed from the registry"
         | Ok None -> Error "expected refreshed package document to be available"
         | Error err -> Error err)
@@ -851,15 +851,15 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                   make_fetch_recorder
                     (fun uri ->
                       match Net.Uri.to_string uri with
-                      | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
+                      | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = sparse_index_config_json
                       }
-                      | "https://api.pkgs.ml/v1/index/3/s/std.json" -> Ok {
+                      | "https://cdn.pkgs.ml/index/v1/3/s/std.json" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = sparse_index_std_release_json
                       }
-                      | "https://api.pkgs.ml/v1/artifacts/sources/std/0.1.0/deadbeef.tar.gz" -> Ok {
+                      | "https://cdn.pkgs.ml/sources/std/0.1.0/deadbeef.tar.gz" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = archive_body
                       }
@@ -900,9 +900,9 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                           && String.equal source "let answer = 42\n"
                           && requested
                           = [
-                            "https://api.pkgs.ml/v1/index/config.json";
-                            "https://api.pkgs.ml/v1/index/3/s/std.json";
-                            "https://api.pkgs.ml/v1/artifacts/sources/std/0.1.0/deadbeef.tar.gz";
+                            "https://cdn.pkgs.ml/index/v1/config.json";
+                            "https://cdn.pkgs.ml/index/v1/3/s/std.json";
+                            "https://cdn.pkgs.ml/sources/std/0.1.0/deadbeef.tar.gz";
                           ]
                         then
                           Ok ()
@@ -932,11 +932,11 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
   "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
   "manifest": {
     "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
-    "url": "https://api.pkgs.ml/v1/artifacts/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
+    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
   },
   "source_archive": {
     "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
-    "url": "https://api.pkgs.ml/v1/artifacts/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
+    "url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
   },
   "claim": {
     "key": "claims/minttea.json",

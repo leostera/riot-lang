@@ -139,6 +139,22 @@ export interface RegistryEventRecord {
   created_at: string;
 }
 
+export interface IndexReadRecord {
+  read_id: string;
+  document_key: string;
+  package_name?: string;
+  read_at: string;
+}
+
+export interface PackageDownloadRecord {
+  download_id: string;
+  package_name: string;
+  package_version: string;
+  artifact_sha256: string;
+  source_archive_key: string;
+  downloaded_at: string;
+}
+
 export interface RegistryEventsDocument {
   limit?: number;
   after?: string;

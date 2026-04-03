@@ -43,11 +43,15 @@ export function cdnObjectUrl(config: RegistryConfig, key: string): string {
 }
 
 export function artifactRouteBaseUrl(config: RegistryConfig): string {
-  return `${config.indexBaseUrl}/v1/artifacts`;
+  return config.cdnBaseUrl;
 }
 
 export function artifactProxyUrl(config: RegistryConfig, key: string): string {
   return `${artifactRouteBaseUrl(config)}/${key}`;
+}
+
+export function riotLatestMetadataKey(): string {
+  return "riot/latest.json";
 }
 
 export function indexConfigKey(config: IndexConfig): string {
@@ -77,7 +81,7 @@ export function packageIndexKey(config: IndexConfig, packageName: string): strin
 }
 
 export function packageIndexRoutePath(config: IndexConfig, packageName: string): string {
-  return packageIndexShardPath(config.indexRoutePath, packageName);
+  return packageIndexShardPath(config.indexBasePath, packageName);
 }
 
 export function packageIndexUrl(config: IndexConfig, packageName: string): string {
@@ -89,7 +93,7 @@ export function buildIndexConfigDocument(config: IndexConfig): IndexConfigDocume
     schema_version: 1,
     kind: "sparse",
     package_path_strategy: "cargo-lowercase-v1",
-    index_base_url: `${config.indexBaseUrl}/${config.indexRoutePath}`,
+    index_base_url: `${config.indexBaseUrl}/${config.indexBasePath}`,
     artifact_base_url: artifactRouteBaseUrl(config),
   };
 }

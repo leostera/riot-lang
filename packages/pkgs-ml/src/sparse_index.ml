@@ -247,7 +247,7 @@ let ensure_dir_url = fun url ->
     url ^ "/"
 
 let bootstrap_config_url = fun ~registry_name ->
-  let url = "https://api." ^ registry_name ^ "/v1/index/config.json" in
+  let url = "https://cdn." ^ registry_name ^ "/index/v1/config.json" in
   match Net.Uri.of_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build sparse index config url '" ^ url ^ "'")
@@ -352,8 +352,8 @@ module Tests = struct
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
     in
     match config_of_string source with
@@ -362,8 +362,8 @@ module Tests = struct
           config.schema_version = 1
           && String.equal config.kind "sparse"
           && String.equal config.package_path_strategy "cargo-lowercase-v1"
-          && String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
-          && String.equal config.artifact_base_url "https://api.pkgs.ml/v1/artifacts"
+          && String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
+          && String.equal config.artifact_base_url "https://cdn.pkgs.ml"
         then
           Ok ()
         else

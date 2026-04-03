@@ -12,12 +12,13 @@
 Riot's sparse package index is a Cargo-style sharded JSON index rooted at:
 
 ```text
-https://api.pkgs.ml/v1/index/
+https://cdn.pkgs.ml/index/v1/
 ```
 
-It is implemented inside `services/registry`, not as a separate worker.
-That is intentional: publish blocks until the index has been updated, so a
-successful publish is immediately installable.
+The sparse index is written by `services/api.pkgs.ml` and served publicly by
+the `services/cdn.pkgs.ml` worker at `cdn.pkgs.ml`.
+That split is intentional: publish blocks until the index has been updated, and
+reads still happen through the CDN hostname clients expect.
 
 The index only contains explicitly published packages with unique public names.
 Direct source dependencies do not appear in the index unless an author later
@@ -111,13 +112,12 @@ Each release entry includes:
 
 - version
 - published timestamp
-- canonical source locator
-- repo URL
-- repo subdirectory
-- resolved SHA
+- artifact SHA-256
 - description
 - license
 - homepage
+- repository
+- optional provenance metadata
 - repository
 - root module
 - categories

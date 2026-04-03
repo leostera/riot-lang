@@ -136,6 +136,42 @@ export const registryEvents = sqliteTable(
   }),
 );
 
+export const indexReads = sqliteTable(
+  "index_reads",
+  {
+    readId: text("read_id").primaryKey(),
+    documentKey: text("document_key").notNull(),
+    packageName: text("package_name"),
+    readAt: text("read_at").notNull(),
+  },
+  (table) => ({
+    documentIdx: index("idx_index_reads_document").on(table.documentKey, table.readAt),
+    packageIdx: index("idx_index_reads_package").on(table.packageName, table.readAt),
+    readAtIdx: index("idx_index_reads_read_at").on(table.readAt),
+  }),
+);
+
+export const packageDownloads = sqliteTable(
+  "package_downloads",
+  {
+    downloadId: text("download_id").primaryKey(),
+    packageName: text("package_name").notNull(),
+    packageVersion: text("package_version").notNull(),
+    artifactSha256: text("artifact_sha256").notNull(),
+    sourceArchiveKey: text("source_archive_key").notNull(),
+    downloadedAt: text("downloaded_at").notNull(),
+  },
+  (table) => ({
+    packageIdx: index("idx_package_downloads_package").on(
+      table.packageName,
+      table.packageVersion,
+      table.downloadedAt,
+    ),
+    artifactIdx: index("idx_package_downloads_artifact").on(table.artifactSha256),
+    downloadedAtIdx: index("idx_package_downloads_downloaded_at").on(table.downloadedAt),
+  }),
+);
+
 export const packages = sqliteTable("packages", {
   packageName: text("package_name").primaryKey(),
   normalizedName: text("normalized_name").notNull(),

@@ -12,7 +12,8 @@ type metadata_source =
 
 let out = eprintln
 
-let default_cdn_base_url = "https://cdn.pkgs.ml"
+let default_archive_base_url = "https://cdn.pkgs.ml"
+let default_metadata_base_url = "https://cdn.pkgs.ml"
 
 let default_issues_url = "https://github.com/leostera/riot/issues"
 
@@ -225,7 +226,10 @@ let resolve_metadata_source = fun ?version () ->
       | Error err -> Error ("invalid RIOT_UPGRADE_METADATA_PATH: " ^ path_error_message err)
     )
   | None ->
-      let base_url = Env.var Env.String ~name:"RIOT_UPGRADE_BASE_URL" |> Option.unwrap_or ~default:default_cdn_base_url in
+      let base_url =
+        Env.var Env.String ~name:"RIOT_UPGRADE_METADATA_BASE_URL"
+        |> Option.unwrap_or ~default:default_metadata_base_url
+      in
       Ok (Metadata_remote (metadata_url ?version ~base_url ()))
 
 let load_metadata = fun source ->
@@ -275,7 +279,10 @@ let resolve_archive_source = fun ?version ~target () ->
       | Error err -> Error ("invalid RIOT_UPGRADE_ARCHIVE_PATH: " ^ path_error_message err)
     )
   | None ->
-      let base_url = Env.var Env.String ~name:"RIOT_UPGRADE_BASE_URL" |> Option.unwrap_or ~default:default_cdn_base_url in
+      let base_url =
+        Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_BASE_URL"
+        |> Option.unwrap_or ~default:default_archive_base_url
+      in
       Ok (Remote (archive_url ?version ~target ~base_url ()))
 
 let ensure_install_dir = fun () ->

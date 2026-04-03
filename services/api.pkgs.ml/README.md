@@ -35,7 +35,7 @@ The control-plane database is Cloudflare D1 (`riot-registry`).
   ```
 
 ## Exported backups (Cloudflare Workflows)
-`services/registry` includes a `D1BackupWorkflow` that exports D1 to R2 using
+`services/api.pkgs.ml` includes a `D1BackupWorkflow` that exports D1 to R2 using
 Cloudflare’s D1 REST export API and stores `*.sql` snapshots in
 `ML_PKGS_BACKUPS` (Cloudflare R2 bucket `ml-pkgs-backups`) at:
 `{prefix}/{accountId}/{databaseId}/{YYYY-MM-DD}/{timestamp}-*.sql`.
@@ -58,7 +58,7 @@ Wrangler reads `.env` during local development, and the Worker expects at least:
 
 ```dotenv
 CDN_BASE_URL=https://cdn.pkgs.ml
-INDEX_BASE_URL=https://api.pkgs.ml
+INDEX_BASE_URL=https://cdn.pkgs.ml
 INDEX_BASE_PATH=index/v1
 ROOT_AUTH_TOKEN=
 GITHUB_OAUTH_CLIENT_ID=
@@ -71,9 +71,6 @@ PKGS_WEB_BASE_URL=https://pkgs.ml
 
 - `GET /` returns service metadata.
 - `POST /v1/publish` accepts a `tar.gz` package artifact body and publishes it.
-- `GET /v1/index/config.json` returns the sparse index bootstrap document.
-- `GET /v1/index/<sharded-package-document>.json` returns sparse package documents.
-- `GET /v1/artifacts/<artifact-key>` proxies immutable package source artifacts from R2.
 - `GET /v1/auth/github/start?return_to=<url>` starts GitHub OAuth login.
 - `GET /v1/auth/github/callback?code=<code>&state=<state>` completes GitHub OAuth, creates a user session, and redirects back to `pkgs.ml`.
 - `POST /v1/auth/logout` clears the session cookie.
@@ -89,7 +86,7 @@ Package publish is artifact-native:
 - the registry derives package metadata from `riot.toml` at archive root
 - the registry stores immutable manifests and source artifacts in R2
 - the registry synchronously updates the sparse index and search rows
-- the sparse index and artifact downloads are served through `api.pkgs.ml`
+- the sparse index and artifact downloads are served through `cdn.pkgs.ml`
 
 Legacy compatibility aliases under `registry.pkgs.ml` and `/api/v1`/`/package/.../-/...` remain available during the transition.
 
@@ -97,7 +94,7 @@ The Worker stores registry control-plane metadata in D1:
 auth, sessions, API tokens, package claims, published releases, registry
 events, search, and derived web views. Runtime D1 access is implemented with
 `drizzle-orm`, while schema changes are managed only through Wrangler D1 SQL
-migrations in `services/registry/migrations/`.
+migrations in `services/api.pkgs.ml/migrations/`.
 
 ## Live smoke tests
 
@@ -107,7 +104,7 @@ deployed Worker:
 ```dotenv
 REGISTRY_E2E_BASE_URL=https://api.pkgs.ml
 REGISTRY_E2E_ROOT_AUTH_TOKEN=
-REGISTRY_ARTIFACT_E2E_BASE_URL=https://api.pkgs.ml/v1/artifacts
+REGISTRY_ARTIFACT_E2E_BASE_URL=https://cdn.pkgs.ml
 REGISTRY_E2E_SESSION_COOKIE=pkgs_session=...
 REGISTRY_E2E_GITHUB_LOGIN=leostera
 REGISTRY_INDEX_E2E_BASE_PATH=index/v1

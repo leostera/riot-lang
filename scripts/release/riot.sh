@@ -75,6 +75,7 @@ TARGET="$1"
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist/riot}"
 CDN_BASE_URL="https://cdn.pkgs.ml"
 PUBLIC_BASE_URL="${CDN_BASE_URL}/riot"
+METADATA_BASE_URL="https://cdn.pkgs.ml"
 BUCKET="ml-pkgs-cdn"
 ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-}"
 OBJECT_ACL="${RIOT_CDN_OBJECT_ACL:-}"
@@ -158,7 +159,7 @@ fetch_previous_version() {
     return 0
   fi
 
-  local latest_url="${PUBLIC_BASE_URL%/}/latest.json"
+  local latest_url="${METADATA_BASE_URL%/}/riot/latest.json"
   local payload
   if ! payload="$(download_text "$latest_url" 2>/dev/null)"; then
     return 1
@@ -382,7 +383,7 @@ if [ "$PUBLISH_LATEST" != "0" ]; then
   upload_object "$LATEST_TARBALL.sha256" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_TARBALL").sha256")"
   upload_object "$LATEST_METADATA" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_METADATA")")" --content-type "application/json"
   echo "  alias: ${PUBLIC_BASE_URL%/}/$(basename "$LATEST_TARBALL")"
-  echo "  latest: ${PUBLIC_BASE_URL%/}/$(basename "$LATEST_METADATA")"
+  echo "  latest: ${METADATA_BASE_URL%/}/riot/$(basename "$LATEST_METADATA")"
 fi
 
 if [ "$UPLOAD_INSTALL_SCRIPT" != "0" ]; then

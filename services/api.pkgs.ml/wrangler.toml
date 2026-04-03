@@ -5,7 +5,7 @@ workers_dev = false
 
 [vars]
 CDN_BASE_URL = "https://cdn.pkgs.ml"
-INDEX_BASE_URL = "https://api.pkgs.ml"
+INDEX_BASE_URL = "https://cdn.pkgs.ml"
 INDEX_BASE_PATH = "index/v1"
 INDEX_ROUTE_PATH = "v1/index"
 VIEWS_BASE_PATH = "views/v1"

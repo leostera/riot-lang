@@ -5,8 +5,8 @@ compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
 
 [vars]
-PUBLIC_INDEX_BASE_URL = "https://api.pkgs.ml"
-PUBLIC_INDEX_BASE_PATH = "v1/index"
+PUBLIC_INDEX_BASE_URL = "https://cdn.pkgs.ml"
+PUBLIC_INDEX_BASE_PATH = "index/v1"
 
 [[routes]]
 pattern = "pkgs.ml"

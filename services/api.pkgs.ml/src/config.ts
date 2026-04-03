@@ -3,7 +3,7 @@ import type { Env, RegistryConfig } from "./types.ts";
 export function getConfig(env: Env): RegistryConfig {
   return {
     cdnBaseUrl: trimTrailingSlash(env.CDN_BASE_URL ?? "https://cdn.pkgs.ml"),
-    indexBaseUrl: trimTrailingSlash(env.INDEX_BASE_URL ?? "https://api.pkgs.ml"),
+    indexBaseUrl: trimTrailingSlash(env.INDEX_BASE_URL ?? "https://cdn.pkgs.ml"),
     indexBasePath: trimSlashes(env.INDEX_BASE_PATH ?? "index/v1"),
     indexRoutePath: trimSlashes(env.INDEX_ROUTE_PATH ?? "v1/index"),
     viewsBasePath: trimSlashes(env.VIEWS_BASE_PATH ?? "views/v1"),

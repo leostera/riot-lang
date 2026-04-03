@@ -1,0 +1,20 @@
+{
+  "name": "riot-cdn",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "bun test tests/main.test.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "@types/bun": "latest",
+    "typescript": "^5",
+    "wrangler": "latest"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  }
+}

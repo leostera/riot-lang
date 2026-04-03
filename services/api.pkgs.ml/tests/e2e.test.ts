@@ -11,10 +11,10 @@ const githubLogin = process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
 const liveAuthenticatedTest =
   sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
-const indexBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_BASE_URL) ?? baseUrl;
-const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "v1/index";
+const indexBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_BASE_URL) ?? cdnBaseUrl;
+const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
 const artifactBaseUrl =
-  trimTrailingSlash(process.env.REGISTRY_ARTIFACT_E2E_BASE_URL) ?? `${baseUrl}/v1/artifacts`;
+  trimTrailingSlash(process.env.REGISTRY_ARTIFACT_E2E_BASE_URL) ?? cdnBaseUrl;
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -25,9 +25,6 @@ describe("riot package registry live e2e", () => {
     expect(payload.service).toBe("riot-package-registry");
     expect(payload.routes).toEqual({
       publish_artifact: "/v1/publish",
-      index_config: "/v1/index/config.json",
-      index_package: "/v1/index/<sharded-package-document>.json",
-      artifact_download: "/v1/artifacts/<artifact-key>",
       views_package_overview: "/v1/views/packages/<package-name>/overview",
       views_package_relations: "/v1/views/packages/<package-name>/relations",
       views_recent_packages: "/v1/views/recent/packages",
@@ -42,6 +39,13 @@ describe("riot package registry live e2e", () => {
       search: "/v1/search?q=<query>",
       events: "/v1/events?limit=<count>&after=<event-id>",
       package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
+    });
+    expect(payload.cdn_routes).toEqual({
+      index_config: "/index/v1/config.json",
+      index_package: "/index/v1/<sharded-package-document>.json",
+      artifact_download: "/<artifact-key>",
+      riot_latest_metadata: "/riot/latest.json",
+      riot_release_metadata: "/riot/riot-<version>.json",
     });
     expect(payload.cdn_base_url).toBe(cdnBaseUrl);
     expect(payload.index_base_url).toBe(`${indexBaseUrl}/${indexBasePath}`);

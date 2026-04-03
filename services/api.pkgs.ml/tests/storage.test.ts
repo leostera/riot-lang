@@ -7,7 +7,7 @@ describe("registry storage", () => {
   test("package documents use cargo-style sharding", () => {
     const config: IndexConfig = {
       cdnBaseUrl: "https://cdn.pkgs.ml",
-      indexBaseUrl: "https://api.pkgs.ml",
+      indexBaseUrl: "https://cdn.pkgs.ml",
       indexBasePath: "index/v1",
       indexRoutePath: "v1/index",
       viewsBasePath: "views/v1",

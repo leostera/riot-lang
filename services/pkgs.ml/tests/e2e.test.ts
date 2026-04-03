@@ -14,8 +14,8 @@ const searchApiBaseUrl =
 const indexBaseUrl =
   trimTrailingSlash(process.env.PKGS_E2E_INDEX_BASE_URL) ??
   trimTrailingSlash(process.env.PUBLIC_INDEX_BASE_URL) ??
-  publicRegistryBaseUrl;
-const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "v1/index";
+  "https://cdn.pkgs.ml";
+const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "index/v1";
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const sessionCookie = process.env.PKGS_E2E_SESSION_COOKIE ?? process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
 const githubLogin = process.env.PKGS_E2E_GITHUB_LOGIN ?? process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;

@@ -9,7 +9,7 @@
 ## Summary
 [summary]: #summary
 
-Riot's package registry lives in `services/registry` and is deployed at
+Riot's package registry lives in `services/api.pkgs.ml` and is deployed at
 `https://api.pkgs.ml`.
 
 It is the single control-plane service for:
@@ -72,8 +72,8 @@ This asks the registry to:
 After a successful publish, the package is immediately available through:
 
 - `GET /v1/search`
-- the sparse index under `api.pkgs.ml/v1/index/...`
-- artifact downloads under `api.pkgs.ml/v1/artifacts/...`
+- the sparse index under `cdn.pkgs.ml/index/v1/...`
+- artifact downloads under `cdn.pkgs.ml/...`
 - `pkgs.ml`
 
 ### Named installs
@@ -84,8 +84,8 @@ This does not go through GitHub.
 It should eventually use:
 
 1. `GET /v1/search` only for discovery UX, if needed
-2. the sparse index config at `api.pkgs.ml/v1/index/config.json`
-3. the package shard document at `api.pkgs.ml/v1/index/...`
+2. the sparse index config at `cdn.pkgs.ml/index/v1/config.json`
+3. the package shard document at `cdn.pkgs.ml/index/v1/...`
 4. the immutable artifact URL referenced by the chosen release
 
 ## Authentication model
@@ -117,7 +117,7 @@ Tokens are currently scoped to:
 The implemented publish rules are:
 
 1. package names are globally unique
-2. a package name may only be claimed by one canonical source lineage
+2. a package name may only be claimed by one account owner
 3. versions must be valid semver
 4. versions are immutable
 
@@ -159,9 +159,6 @@ The main registry endpoints are:
 
 - `GET /`
 - `POST /v1/publish`
-- `GET /v1/index/config.json`
-- `GET /v1/index/<sharded-package-document>.json`
-- `GET /v1/artifacts/<artifact-key>`
 - `GET /v1/search?q=<query>`
 - `GET /v1/events?limit=<count>&after=<event-id>`
 - `GET /v1/packages/<package-name>/events?version=<version>&limit=<count>`
@@ -172,9 +169,8 @@ The main registry endpoints are:
 - `GET /v1/views/categories`
 - `GET /v1/views/owners/<github-login>/packages`
 
-Legacy aliases under `registry.pkgs.ml`, `/api/v1`, and `/package/.../-/...`
-still exist during the transition, but the intended stable API is
-`api.pkgs.ml/v1/...`.
+The stable API surface is `api.pkgs.ml/v1/...` for control-plane routes, while
+the sparse index and immutable artifacts are served from `cdn.pkgs.ml`.
 
 ## Storage model
 

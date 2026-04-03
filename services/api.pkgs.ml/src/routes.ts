@@ -33,6 +33,7 @@ import {
   buildIndexConfigDocument,
   cdnObjectUrl,
   indexConfigKey,
+  riotLatestMetadataKey,
 } from "./storage.ts";
 import type {
   ApiTokenRecord,
@@ -81,9 +82,6 @@ async function routeRequest(
       service: "riot-package-registry",
       routes: {
         publish_artifact: "/v1/publish",
-        index_config: "/v1/index/config.json",
-        index_package: "/v1/index/<sharded-package-document>.json",
-        artifact_download: "/v1/artifacts/<artifact-key>",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -99,11 +97,20 @@ async function routeRequest(
         events: "/v1/events?limit=<count>&after=<event-id>",
         package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
+      cdn_routes: {
+        index_config: "/index/v1/config.json",
+        index_package: "/index/v1/<sharded-package-document>.json",
+        artifact_download: "/<artifact-key>",
+        riot_latest_metadata: "/riot/latest.json",
+        riot_release_metadata: "/riot/riot-<version>.json",
+      },
       legacy_routes: {
         publish_artifact: "/api/v1/publish",
         index_config: "/api/v1/index/config.json",
         index_package: "/api/v1/index/<sharded-package-document>.json",
         artifact_download: "/api/v1/artifacts/<artifact-key>",
+        riot_latest_metadata: "/api/v1/riot/latest.json",
+        riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -120,7 +127,7 @@ async function routeRequest(
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
-      index_base_url: `${getConfig(env).indexBaseUrl}/${getConfig(env).indexRoutePath}`,
+      index_base_url: `${getConfig(env).indexBaseUrl}/${getConfig(env).indexBasePath}`,
     });
   }
 
@@ -139,6 +146,23 @@ async function routeRequest(
       return methodNotAllowed(["GET", "HEAD"]);
     }
     return await handleArtifactObject(request, env, artifactStorageKey);
+  }
+
+  if (matchesPath(path, "v1/riot/latest.json", "api/v1/riot/latest.json")) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return methodNotAllowed(["GET", "HEAD"]);
+    }
+
+    return await handleRiotLatestMetadata(request, env);
+  }
+
+  const riotReleaseMetadataKey = resolveRiotReleaseMetadataStorageKey(path);
+  if (riotReleaseMetadataKey !== null) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return methodNotAllowed(["GET", "HEAD"]);
+    }
+
+    return await handleRiotReleaseMetadata(request, env, riotReleaseMetadataKey);
   }
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
@@ -412,7 +436,7 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
       service: "riot-package-registry",
       route: "/v1/search?q=<query>",
       source: {
-        package_index_base_url: `${config.indexBaseUrl}/${config.indexRoutePath}`,
+        package_index_base_url: `${config.indexBaseUrl}/${config.indexBasePath}`,
         updated_during_publish: true,
       },
     });
@@ -576,6 +600,39 @@ async function handleArtifactObject(
   });
 }
 
+async function handleRiotLatestMetadata(request: Request, env: Env): Promise<Response> {
+  return await handleRiotReleaseMetadata(request, env, riotLatestMetadataKey());
+}
+
+async function handleRiotReleaseMetadata(
+  request: Request,
+  env: Env,
+  storageKey: string,
+): Promise<Response> {
+  const object = await env.ML_PKGS_CDN.get(storageKey);
+  if (object === null) {
+    throw new HttpError(404, "artifact_not_found", "Release metadata was not found.");
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "no-store");
+  headers.set("etag", object.httpEtag);
+  headers.set("content-length", String(object.size));
+
+  if (request.method === "HEAD") {
+    return new Response(null, {
+      status: 200,
+      headers,
+    });
+  }
+
+  return new Response(object.body, {
+    status: 200,
+    headers,
+  });
+}
+
 async function handleCreateToken(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
   const payload = await readBodyObject(request);
@@ -715,6 +772,28 @@ function resolveArtifactStorageKey(path: string): string | null {
   }
 
   return null;
+}
+
+function resolveRiotReleaseMetadataStorageKey(path: string): string | null {
+  const normalizedPath = trimSlashes(path);
+  const prefixes = ["v1/riot", "api/v1/riot"];
+
+  for (const prefix of prefixes) {
+    if (normalizedPath === `${prefix}/latest.json`) {
+      return riotLatestMetadataKey();
+    }
+
+    const match = normalizedPath.match(new RegExp(`^${escapeRegExp(prefix)}/(riot-[^/]+\\.json)$`));
+    if (match !== null) {
+      return `riot/${match[1]}`;
+    }
+  }
+
+  return null;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function sanitizePackageIndexDocument(document: PackageIndexDocument): PackageIndexDocument | null {

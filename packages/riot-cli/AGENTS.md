@@ -30,7 +30,7 @@
 24. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
 25. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.
 26. `add` / `rm` / `update` should consume the same shared `Riot_model.Event` PM stream that builds use. Do not duplicate JSON or human rendering logic for package-management-only wrapper events in the command modules.
-27. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
+27. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON from `cdn.pkgs.ml/riot/latest.json` and `cdn.pkgs.ml/riot/riot-<version>.json`. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
 28. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
 29. `riot lsp` must stay a thin delegate into `riot-lsp`, and it must keep stdout protocol-only. Do not run the normal stdout logger/runtime bootstrap for that command.
 

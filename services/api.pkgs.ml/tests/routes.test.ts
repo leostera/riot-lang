@@ -23,9 +23,6 @@ describe("riot package registry routes", () => {
       service: "riot-package-registry",
       routes: {
         publish_artifact: "/v1/publish",
-        index_config: "/v1/index/config.json",
-        index_package: "/v1/index/<sharded-package-document>.json",
-        artifact_download: "/v1/artifacts/<artifact-key>",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -41,11 +38,20 @@ describe("riot package registry routes", () => {
         events: "/v1/events?limit=<count>&after=<event-id>",
         package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
+      cdn_routes: {
+        index_config: "/index/v1/config.json",
+        index_package: "/index/v1/<sharded-package-document>.json",
+        artifact_download: "/<artifact-key>",
+        riot_latest_metadata: "/riot/latest.json",
+        riot_release_metadata: "/riot/riot-<version>.json",
+      },
       legacy_routes: {
         publish_artifact: "/api/v1/publish",
         index_config: "/api/v1/index/config.json",
         index_package: "/api/v1/index/<sharded-package-document>.json",
         artifact_download: "/api/v1/artifacts/<artifact-key>",
+        riot_latest_metadata: "/api/v1/riot/latest.json",
+        riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -62,7 +68,7 @@ describe("riot package registry routes", () => {
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
-      index_base_url: "https://api.pkgs.ml/v1/index",
+      index_base_url: "https://cdn.pkgs.ml/index/v1",
     });
   });
 
@@ -106,8 +112,8 @@ describe("riot package registry routes", () => {
       schema_version: 1,
       kind: "sparse",
       package_path_strategy: "cargo-lowercase-v1",
-      index_base_url: "https://api.pkgs.ml/v1/index",
-      artifact_base_url: "https://api.pkgs.ml/v1/artifacts",
+      index_base_url: "https://cdn.pkgs.ml/index/v1",
+      artifact_base_url: "https://cdn.pkgs.ml",
     });
   });
 
@@ -140,6 +146,54 @@ describe("riot package registry routes", () => {
     const archiveBytes = new Uint8Array(await response.arrayBuffer());
     expect(await readArchiveFileFromTarGz(archiveBytes, "riot.toml")).toContain('name = "kernel"');
     expect(await readArchiveFileFromTarGz(archiveBytes, "src/kernel.ml")).toBe('let hello = "world"\n');
+  });
+
+  test("riot release metadata routes proxy stored latest and versioned release metadata", async () => {
+    const { env, bucket } = makeEnv();
+
+    const latestMetadata = {
+      release_id: "v9.9.9",
+      build_sha: "deadbeefcafe",
+      notes_url: "https://example.test/notes",
+      compare_url: "https://example.test/compare",
+      issues_url: "https://example.test/issues",
+    };
+    const versionedMetadata = {
+      release_id: "v9.9.8",
+      build_sha: "feedface1234",
+      notes_url: null,
+      compare_url: null,
+      issues_url: null,
+    };
+
+    await bucket.put("riot/latest.json", JSON.stringify(latestMetadata, null, 2), {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+      },
+    });
+    await bucket.put("riot/riot-v9.9.8.json", JSON.stringify(versionedMetadata, null, 2), {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+      },
+    });
+
+    const latestResponse = await handleRequest(
+      new Request("https://registry.test/v1/riot/latest.json"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(latestResponse.status).toBe(200);
+    expect(latestResponse.headers.get("cache-control")).toBe("no-store");
+    expect(await readJson(latestResponse)).toEqual(latestMetadata);
+
+    const versionedResponse = await handleRequest(
+      new Request("https://registry.test/v1/riot/riot-v9.9.8.json"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(versionedResponse.status).toBe(200);
+    expect(versionedResponse.headers.get("cache-control")).toBe("no-store");
+    expect(await readJson(versionedResponse)).toEqual(versionedMetadata);
   });
 
   test("index package route serves the latest package document with etag revalidation", async () => {
