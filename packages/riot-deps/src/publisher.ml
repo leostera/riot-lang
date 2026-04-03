@@ -156,6 +156,23 @@ let path_error_message = function
   | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
 
+let walker_kind_to_string = function
+  | Fs.Walker.File -> "regular file"
+  | Fs.Walker.Directory -> "directory"
+  | Fs.Walker.Symlink -> "symlink"
+  | Fs.Walker.Other -> "unsupported entry"
+
+let publisher_error_of_walker_error = fun ~package_root (err: Fs.Walker.error) ->
+  let error = IO.error_message err.cause in
+  match err.path with
+  | Some path -> (
+      if Path.is_directory path then
+        DirectoryReadFailed { path; error }
+      else
+        MetadataReadFailed { path; error }
+    )
+  | None -> DirectoryReadFailed { path = package_root; error }
+
 let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
   match package.publish.version with
   | None -> Error (MissingPublishVersion { package = package.name })
@@ -256,45 +273,39 @@ let published_version_exists = fun ~registry ~package_name ~version ->
       )
 
 let collect_relative_files = fun ~package_root ->
-  let rec walk_dir acc dir =
-    match Fs.read_dir dir with
-    | Error err -> Error (DirectoryReadFailed { path = dir; error = IO.error_message err })
-    | Ok iter ->
-        let entries = Std.Iter.MutIterator.to_list iter in
-        let rec walk_entries acc = function
-          | [] -> Ok acc
-          | entry :: rest ->
-              if should_skip_entry entry then
-                walk_entries acc rest
-              else
-                let full_path = Path.join dir entry in
-                match Fs.symlink_metadata full_path with
-                | Error err ->
-                    Error (MetadataReadFailed { path = full_path; error = IO.error_message err })
-                | Ok meta when Fs.Metadata.is_symlink meta ->
-                    Error (SymlinkNotAllowed { path = full_path })
-                | Ok meta when Fs.Metadata.is_dir meta -> (
-                    match walk_dir acc full_path with
-                    | Ok acc -> walk_entries acc rest
-                    | Error _ as err -> err
-                  )
-                | Ok meta when Fs.Metadata.is_file meta -> (
-                    match Path.strip_prefix full_path ~prefix:package_root with
-                    | Ok relative -> walk_entries (relative :: acc) rest
-                    | Error err -> Error (MetadataReadFailed {
-                      path = full_path;
-                      error = path_error_message err
-                    })
-                  )
-                | Ok meta ->
-                    Error (UnsupportedEntry {
-                      path = full_path;
-                      kind = file_kind_to_string (Fs.Metadata.file_type meta)
-                    })
-        in
-        walk_entries acc entries
+  let walker =
+    match Fs.Walker.create ~roots:[ package_root ] ~sort:true () with
+    | Ok walker -> walker
+    | Error _ -> panic "publisher walker configuration should be valid"
   in
-  walk_dir [] package_root
+  let iter =
+    walker
+    |> Fs.Walker.filter_entry ~f:(fun (entry: Fs.Walker.entry) -> not (should_skip_entry entry.path))
+    |> Fs.Walker.into_iter
+  in
+  let rec loop acc iter =
+    match Iter.Iterator.next iter with
+    | None, _ -> Ok (List.rev acc)
+    | Some (Error err), _ -> Error (publisher_error_of_walker_error ~package_root err)
+    | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
+        match entry.kind with
+        | Directory -> loop acc iter'
+        | File -> (
+            match Path.strip_prefix entry.path ~prefix:package_root with
+            | Ok relative -> loop (relative :: acc) iter'
+            | Error err -> Error (MetadataReadFailed {
+              path = entry.path;
+              error = path_error_message err
+            })
+          )
+        | Symlink -> Error (SymlinkNotAllowed { path = entry.path })
+        | Other -> Error (UnsupportedEntry {
+            path = entry.path;
+            kind = walker_kind_to_string entry.kind
+          })
+      )
+  in
+  loop [] iter
 
 let publish_artifact_path = fun ~target_dir_root ~(package:Riot_model.Package.t) ~version ->
   Path.(target_dir_root

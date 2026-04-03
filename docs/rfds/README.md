@@ -22,6 +22,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0032` - Workspace Operational Config and Build Cache GC
 - `RFD0033` - Remote Source Install and Run
 - `RFD0034` - Syn Syntactic Dependency Extraction
+- `RFD0035` - New Test, Bench, and Example Target Layout
 
 ## Rejected
 

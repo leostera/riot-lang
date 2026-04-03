@@ -233,6 +233,8 @@ let is_file = fun path -> exists path && not (is_directory path)
 
 let equal = fun p1 p2 -> normalize p1 = normalize p2
 
+let compare = fun p1 p2 -> String.compare (normalize p1) (normalize p2)
+
 let strip_prefix = fun path ~prefix ->
   let path_components = components path in
   let prefix_components = components prefix in

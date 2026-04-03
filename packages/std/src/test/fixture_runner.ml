@@ -19,39 +19,14 @@ let is_snapshot_artifact = fun path ->
   String.ends_with ~suffix:".expected" basename || String.ends_with ~suffix:".expected.new" basename
 
 let discover_fixture_paths = fun root ->
-  let rec visit path =
-    match Fs.is_dir path with
-    | Error err ->
-        Error err
-    | Ok false ->
-        if is_snapshot_artifact path then
-          Ok []
-        else
-          Ok [ path ]
-    | Ok true -> (
-        match Fs.read_dir path with
-        | Error err -> Error err
-        | Ok entries ->
-            let children = Iter.MutIterator.to_list entries in
-            let rec loop acc = function
-              | [] -> Ok acc
-              | child :: rest -> (
-                  let child_path = Path.join path child in
-                  match visit child_path with
-                  | Error err -> Error err
-                  | Ok discovered -> loop (List.rev_append discovered acc) rest
-                )
-            in
-            loop [] children
-      )
-  in
-  match visit root with
+  match Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false () with
   | Error err -> Error err
   | Ok found ->
       Ok (
-        found |> List.sort
-          (fun left right ->
-            String.compare (Path.to_string left) (Path.to_string right))
+        found
+        |> List.filter_map (fun (entry: Fs.Walker.entry) -> 
+        if not (is_snapshot_artifact entry.path) then (Some entry.path) else None )
+        |> List.sort Path.compare
       )
 
 let relpath = fun ~root path ->

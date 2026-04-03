@@ -11,7 +11,6 @@ type state = {
   scanner: t;
   owner: Pid.t option;
   seen: string HashSet.t;
-  mutable pending: Path.t list;
 }
 
 let create_many = fun ~roots ?(exclude_patterns = [ "."; "_build"; "target" ]) ?(should_ignore = fun _ ->
@@ -37,75 +36,59 @@ let should_exclude = fun scanner path ->
     (fun pattern -> String.starts_with ~prefix:pattern dir_name || String.equal pattern dir_name)
     scanner.exclude_patterns
 
-let sorted_directory_entries = fun dir ->
-  match Fs.read_dir dir with
-  | Error _ -> []
-  | Ok entries ->
-      entries |> Iter.MutIterator.to_list |> List.map (fun entry -> Path.(dir / entry)) |> List.sort
-        (fun left right ->
-          String.compare (Path.to_string left) (Path.to_string right))
-
-let compare_paths = fun left right ->
-  String.compare (Path.to_string left) (Path.to_string right)
-
 let init_state = fun ?owner scanner ->
-  { scanner; owner; seen = HashSet.create (); pending = List.sort compare_paths scanner.roots }
+  { scanner; owner; seen = HashSet.create () }
 
-let rec next_discovered_file = fun state ->
-  match state.pending with
-  | [] -> None
-  | path :: rest ->
-      state.pending <- rest;
-      let path_string = Path.to_string path in
-      if HashSet.contains state.seen path_string then
-        next_discovered_file state
-      else
-        (
-          let _ = HashSet.insert state.seen path_string in
-          match Fs.is_dir path with
-          | Ok true ->
-              if
-                should_exclude state.scanner path
-                || is_non_source_test_path path
-                || state.scanner.should_ignore path
-              then
-                next_discovered_file state
-              else (
-                state.pending <- sorted_directory_entries path @ state.pending;
-                next_discovered_file state
-              )
-          | Ok false
-          | Error _ ->
-              if
-                is_ocaml_source path
-                && not (is_non_source_test_path path)
-                && not (state.scanner.should_ignore path)
-              then
-                Some path
-              else
-                next_discovered_file state
-        )
+let handle_entry = fun state (entry: Std.Fs.Walker.entry) on_file ->
+  let path: Path.t = entry.path in
+  let path_string = Path.to_string path in
+  if HashSet.contains state.seen path_string then
+    Std.Fs.Walker.Skip_subtree
+  else (
+    let _ = HashSet.insert state.seen path_string in
+    match entry.kind with
+    | Directory ->
+        if
+          should_exclude state.scanner path
+          || is_non_source_test_path path
+          || state.scanner.should_ignore path
+        then
+          Std.Fs.Walker.Skip_subtree
+        else
+          Std.Fs.Walker.Continue
+    | File ->
+        if
+          is_ocaml_source path
+          && not (is_non_source_test_path path)
+          && not (state.scanner.should_ignore path)
+        then
+          on_file path;
+        Std.Fs.Walker.Continue
+    | Symlink
+    | Other -> Std.Fs.Walker.Continue)
 
 let scan = fun scanner ->
   let state = init_state scanner in
-  let rec collect acc =
-    match next_discovered_file state with
-    | Some file -> collect (file :: acc)
-    | None -> List.rev acc
+  let files = ref [] in
+  let _ =
+    Std.Fs.Walker.walk
+      ~roots:scanner.roots
+      ~sort:true
+      ~f:(fun entry -> handle_entry state entry (fun path -> files := path :: !files))
+      ()
   in
-  collect []
-
-let rec scanner_loop = fun state ->
-  match next_discovered_file state with
-  | Some file ->
-      let owner = Option.expect ~msg:"streaming file scanner requires an owner" state.owner in
-      send owner (Messages.ScannerDiscovered file);
-      scanner_loop state
-  | None ->
-      let owner = Option.expect ~msg:"streaming file scanner requires an owner" state.owner in
-      send owner Messages.ScannerComplete;
-      Ok ()
+  List.rev !files
 
 let start = fun ~owner scanner ->
   let state = init_state ~owner scanner in
-  spawn (fun () -> scanner_loop state)
+  spawn (fun () ->
+    let _ =
+      Std.Fs.Walker.walk
+        ~roots:scanner.roots
+        ~sort:true
+        ~f:(fun entry ->
+          handle_entry state entry (fun path -> send owner (Messages.ScannerDiscovered path)))
+        ()
+    in
+    send owner Messages.ScannerComplete;
+    Ok ())

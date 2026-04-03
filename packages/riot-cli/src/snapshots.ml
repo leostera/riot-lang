@@ -78,41 +78,42 @@ let matches_query = fun ?query snapshot ->
   || String.contains (Path.to_string snapshot.approved) query
 
 let discover_pending_snapshots = fun ~workspace_root ?query () ->
-  let rec visit path =
-    match Fs.is_dir path with
-    | Error err ->
-        Error err
-    | Ok true ->
-        if should_skip_dir path then
-          Ok []
-        else
-          (
-            match Fs.read_dir path with
-            | Error err -> Error err
-            | Ok entries ->
-                let children = Iter.MutIterator.to_list entries in
-                let rec loop acc = function
-                  | [] -> Ok acc
-                  | child :: rest -> (
-                      let child_path = Path.join path child in
-                      match visit child_path with
-                      | Error err -> Error err
-                      | Ok found -> loop (List.rev_append found acc) rest
-                    )
-                in
-                loop [] children
-          )
-    | Ok false ->
-        if is_pending_snapshot path then
-          Ok [ { approved = ensure_trailing_new_removed path; pending = path } ]
-        else
-          Ok []
+  let walker =
+    match Fs.Walker.create ~roots:[ workspace_root ] ~sort:true () with
+    | Ok walker ->
+        Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
+          match entry.kind with
+          | Directory -> not (should_skip_dir entry.path)
+          | File -> is_pending_snapshot entry.path
+          | Symlink
+          | Other -> false)
+    | Error _ ->
+        panic "snapshots walker configuration should be valid"
   in
-  match visit workspace_root with
+  let iter = Fs.Walker.into_iter walker in
+  let rec collect acc iter =
+    match Iter.Iterator.next iter with
+    | None, _ -> Ok (List.rev acc)
+    | Some (Error (err: Fs.Walker.error)), _ -> Error err.cause
+    | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+        begin
+          match entry.kind with
+          | File ->
+              let snapshot = { approved = ensure_trailing_new_removed entry.path; pending = entry.path } in
+              collect (snapshot :: acc) iter'
+          | Directory
+          | Symlink
+          | Other ->
+              collect acc iter'
+        end
+  in
+  match collect [] iter with
   | Error err -> Error err
   | Ok snapshots ->
       Ok (
-        snapshots |> List.filter (matches_query ?query) |> List.sort
+        snapshots
+        |> List.filter (matches_query ?query)
+        |> List.sort
           (fun left right ->
             String.compare (Path.to_string left.pending) (Path.to_string right.pending))
       )

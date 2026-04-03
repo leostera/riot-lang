@@ -993,49 +993,61 @@ let parse_foreign_dependency:
           let env = get_env () in
           (* Scan for foreign dependency source files *)
           let scan_foreign_inputs foreign_path =
-            let rec scan_recursive ~from_dir ~rel_path ~exclude_dirs =
-              match Fs.read_dir from_dir with
-              | Error _ -> []
-              | Ok iter ->
-                  let entries = Std.Iter.MutIterator.to_list iter in
-                  List.concat_map
-                    (fun entry ->
-                      let abs_path = Path.(from_dir / entry) in
-                      let rel_path_full = Path.(rel_path / entry) in
-                      let entry_name = Path.basename abs_path in
-                      (* Skip hidden files and build artifact directories *)
-                      let should_skip =
-                        String.starts_with ~prefix:"." entry_name || List.mem entry_name exclude_dirs in
-                      if should_skip then
-                        []
-                      else
-                        match Fs.is_dir abs_path with
-                        | Ok true ->
-                            scan_recursive ~from_dir:abs_path ~rel_path:rel_path_full ~exclude_dirs
-                        | Ok false ->
-                            (* Only include source files and build configs *)
-                            let should_include =
-                              String.ends_with ~suffix:".rs" entry_name
-                              || String.ends_with ~suffix:".c" entry_name
-                              || String.ends_with ~suffix:".h" entry_name
-                              || String.ends_with ~suffix:".cpp" entry_name
-                              || String.ends_with ~suffix:".hpp" entry_name
-                              || entry_name = "Cargo.toml"
-                              || entry_name = "Cargo.lock"
-                              || entry_name = "build.rs"
-                              || entry_name = "CMakeLists.txt"
-                              || entry_name = "Makefile"
-                            in
-                            if should_include then
-                              [ rel_path_full ]
-                            else
-                              []
-                        | Error _ ->
-                            [])
-                    entries
+            let walker =
+              match Fs.Walker.create ~roots:[ foreign_path ] ~sort:true ~follow_symlinks:true () with
+              | Ok walker -> walker
+              | Error _ -> panic "foreign dependency walker configuration should be valid"
             in
-            let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules" ] in
-            scan_recursive ~from_dir:foreign_path ~rel_path:(Path.v ".") ~exclude_dirs
+            let walker =
+              Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
+                if Int.equal entry.depth 0 then
+                  true
+                else
+                  match Path.strip_prefix entry.path ~prefix:foreign_path with
+                  | Error _ -> false
+                  | Ok rel_path ->
+                      let entry_name = Path.basename rel_path in
+                      let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules" ] in
+                      let should_skip =
+                        String.starts_with ~prefix:"." entry_name || List.mem entry_name exclude_dirs
+                      in
+                      if should_skip then
+                        false
+                      else
+                        match entry.kind with
+                        | Directory -> true
+                        | File ->
+                            String.ends_with ~suffix:".rs" entry_name
+                            || String.ends_with ~suffix:".c" entry_name
+                            || String.ends_with ~suffix:".h" entry_name
+                            || String.ends_with ~suffix:".cpp" entry_name
+                            || String.ends_with ~suffix:".hpp" entry_name
+                            || entry_name = "Cargo.toml"
+                            || entry_name = "Cargo.lock"
+                            || entry_name = "build.rs"
+                            || entry_name = "CMakeLists.txt"
+                            || entry_name = "Makefile"
+                        | Symlink
+                        | Other -> false)
+            in
+            let iter = Fs.Walker.into_iter walker in
+            let rec loop acc iter =
+              match Iter.Iterator.next iter with
+              | None, _ -> List.rev acc
+              | Some (Error _), iter' -> loop acc iter'
+              | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
+                  match entry.kind with
+                  | File -> (
+                      match Path.strip_prefix entry.path ~prefix:foreign_path with
+                      | Ok rel_path -> loop (rel_path :: acc) iter'
+                      | Error _ -> loop acc iter'
+                    )
+                  | Directory
+                  | Symlink
+                  | Other -> loop acc iter'
+                )
+            in
+            loop [] iter
           in
           let inputs = scan_foreign_inputs dep_path in
           Log.debug
@@ -1236,6 +1248,46 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
   { profile_overrides; target_overrides }
 
 let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
+  let collect_relative_files = fun ~root ~keep_file ~skip_dir ->
+    let walker =
+      match Fs.Walker.create ~roots:[ root ] ~sort:true ~follow_symlinks:true () with
+      | Ok walker -> walker
+      | Error _ -> panic "package walker configuration should be valid"
+    in
+    let walker =
+      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
+        if Int.equal entry.depth 0 then
+          true
+        else
+          match Path.strip_prefix entry.path ~prefix:package_path with
+          | Error _ -> false
+          | Ok rel_path -> (
+              match entry.kind with
+              | Directory -> not (skip_dir rel_path)
+              | File -> keep_file rel_path
+              | Symlink
+              | Other -> false
+            ))
+    in
+    let iter = Fs.Walker.into_iter walker in
+    let rec loop acc iter =
+      match Iter.Iterator.next iter with
+      | None, _ -> List.rev acc
+      | Some (Error _), iter' -> loop acc iter'
+      | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
+          match entry.kind with
+          | File -> (
+              match Path.strip_prefix entry.path ~prefix:package_path with
+              | Ok rel_path -> loop (rel_path :: acc) iter'
+              | Error _ -> loop acc iter'
+            )
+          | Directory
+          | Symlink
+          | Other -> loop acc iter'
+        )
+    in
+    loop [] iter
+  in
   let ocaml_source_suffix path_str =
     String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str in
   let collect_provider_tree rel_path =
@@ -1244,29 +1296,10 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
     let basename = Path.basename rel_path in
     if String.equal basename "riot_fix_rules.ml" && String.equal parent_basename "riot_fix_rules" then
       let provider_dir = Path.(package_path / provider_parent) in
-      let rec scan_dir_recursive ~from_dir ~rel_path =
-        match Fs.read_dir from_dir with
-        | Error _ -> []
-        | Ok iter ->
-            let entries = Std.Iter.MutIterator.to_list iter in
-            List.concat_map
-              (fun filename ->
-                let abs_path = Path.(from_dir / filename) in
-                let rel_path_full = Path.(rel_path / filename) in
-                match Fs.is_dir abs_path with
-                | Ok true ->
-                    scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
-                | Ok false ->
-                    let rel_str = Path.to_string rel_path_full in
-                    if ocaml_source_suffix rel_str then
-                      [ rel_path_full ]
-                    else
-                      []
-                | Error _ ->
-                    [])
-              entries
-      in
-      scan_dir_recursive ~from_dir:provider_dir ~rel_path:provider_parent
+      collect_relative_files
+        ~root:provider_dir
+        ~skip_dir:(fun _ -> false)
+        ~keep_file:(fun rel_path -> ocaml_source_suffix (Path.to_string rel_path))
     else
       [ rel_path ]
   in
@@ -1287,46 +1320,57 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
     || String.starts_with ~prefix:"tests/generated/" path_str
     || String.starts_with ~prefix:"tests/diagnostics/" path_str
   in
-  let rec scan_dir_recursive ~from_dir ~rel_path =
-    match Fs.read_dir from_dir with
-    | Error _ -> []
-    | Ok iter ->
-        let entries = Std.Iter.MutIterator.to_list iter in
-        List.concat_map
-          (fun filename ->
-            let abs_path = Path.(from_dir / filename) in
-            let rel_path_full = Path.(rel_path / filename) in
-            if should_skip_source_entry filename then
-              []
-            else
-              match Fs.is_dir abs_path with
-              | Ok true -> scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
-              | Ok false ->
-                  if
-                    List.mem (Path.to_string rel_path_full) excluded_relpath_strings
-                    || should_skip_test_support_path rel_path_full
-                  then
-                    []
-                  else
-                    [ rel_path_full ]
-              | Error _ -> [])
-          entries
+  let collect_relative_files = fun root ->
+    let walker =
+      match Fs.Walker.create ~roots:[ root ] ~sort:true ~follow_symlinks:true () with
+      | Ok walker -> walker
+      | Error _ -> panic "package walker configuration should be valid"
+    in
+    let walker =
+      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
+        if Int.equal entry.depth 0 then
+          true
+        else
+          match Path.strip_prefix entry.path ~prefix:package_path with
+          | Error _ -> false
+          | Ok rel_path -> (
+              match entry.kind with
+              | Directory ->
+                  not
+                    (should_skip_source_entry rel_path || should_skip_test_support_path rel_path)
+              | File ->
+                  not
+                    (should_skip_source_entry rel_path
+                    || should_skip_test_support_path rel_path
+                    || List.mem (Path.to_string rel_path) excluded_relpath_strings)
+              | Symlink
+              | Other -> false
+            ))
+    in
+    let iter = Fs.Walker.into_iter walker in
+    let rec loop acc iter =
+      match Iter.Iterator.next iter with
+      | None, _ -> List.rev acc
+      | Some (Error _), iter' -> loop acc iter'
+      | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
+          match entry.kind with
+          | File -> (
+              match Path.strip_prefix entry.path ~prefix:package_path with
+              | Ok rel_path -> loop (rel_path :: acc) iter'
+              | Error _ -> loop acc iter'
+            )
+          | Directory
+          | Symlink
+          | Other -> loop acc iter'
+        )
+    in
+    loop [] iter
   in
-  let src_files = scan_dir_recursive
-    ~from_dir:Path.(package_path / Path.v "src")
-    ~rel_path:(Path.v "src") in
-  let test_files = scan_dir_recursive
-    ~from_dir:Path.(package_path / Path.v "tests")
-    ~rel_path:(Path.v "tests") in
-  let native_files = scan_dir_recursive
-    ~from_dir:Path.(package_path / Path.v "native")
-    ~rel_path:(Path.v "native") in
-  let example_files = scan_dir_recursive
-    ~from_dir:Path.(package_path / Path.v "examples")
-    ~rel_path:(Path.v "examples") in
-  let bench_files = scan_dir_recursive
-    ~from_dir:Path.(package_path / Path.v "bench")
-    ~rel_path:(Path.v "bench") in
+  let src_files = collect_relative_files Path.(package_path / Path.v "src") in
+  let test_files = collect_relative_files Path.(package_path / Path.v "tests") in
+  let native_files = collect_relative_files Path.(package_path / Path.v "native") in
+  let example_files = collect_relative_files Path.(package_path / Path.v "examples") in
+  let bench_files = collect_relative_files Path.(package_path / Path.v "bench") in
   {
     src = src_files;
     tests = test_files;

@@ -328,6 +328,11 @@ val is_file: t -> bool
     (Path.normalize p1) (Path.normalize p3)) ``` *)
 val equal: t -> t -> bool
 
+(** Orders two paths using their normalized representation.
+
+    This keeps ordering consistent with semantic path equality. *)
+val compare: t -> t -> int
+
 (** Removes a prefix from a path if it matches.
 
     Returns the remaining path after removing the prefix.

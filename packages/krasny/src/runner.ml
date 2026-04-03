@@ -59,40 +59,49 @@ let should_skip_directory = fun path ->
 let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
-let rec walk_dir = fun dir ->
-  match Fs.read_dir dir with
-  | Error _ -> []
-  | Ok entries ->
-      entries |> MutIterator.to_list |> List.concat_map
-        (fun entry ->
-          let entry_path = Path.(dir / entry) in
-          match Fs.is_dir entry_path with
-          | Ok true ->
-              if should_skip_directory entry_path then
-                []
-              else
-                walk_dir entry_path
-          | Ok false
-          | Error _ ->
-              if is_ocaml_source entry_path then
-                [ entry_path ]
-              else
-                [])
+let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.entry) on_file ->
+  let path = entry.path in
+  let path_string = Path.to_string path in
+  if HashSet.contains seen path_string then
+    Fs.Walker.Skip_subtree
+  else (
+    let _ = HashSet.insert seen path_string in
+    match entry.kind with
+    | Directory ->
+        if should_skip_directory path || should_ignore path then
+          Fs.Walker.Skip_subtree
+        else
+          Fs.Walker.Continue
+    | File ->
+        if is_ocaml_source path && not (should_ignore path) then
+          on_file path;
+        Fs.Walker.Continue
+    | Symlink
+    | Other -> Fs.Walker.Continue)
+
+let make_walker = fun ~roots ~should_ignore ->
+  match Fs.Walker.create ~roots ~sort:true () with
+  | Ok walker ->
+      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
+        let path = entry.path in
+        not (should_skip_directory path || should_ignore path))
+  | Error _ ->
+      panic "krasny walker configuration should be valid"
 
 let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
-  roots |> List.concat_map
-    (fun root ->
-      if should_ignore root then
-        []
-      else
-        match Fs.is_dir root with
-        | Ok true -> walk_dir root
-        | Ok false
-        | Error _ ->
-            if is_ocaml_source root then
-              [ root ]
-            else
-              []) |> List.filter (fun path -> not (should_ignore path)) |> List.sort_uniq compare_paths
+  let seen = HashSet.create () in
+  let files = ref [] in
+  let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
+  let rec loop iter =
+    match Iterator.next iter with
+    | None, _ -> ()
+    | Some (Error _), iter' -> loop iter'
+    | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+        let _ = walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files) in
+        loop iter'
+  in
+  loop iter;
+  !files |> List.sort_uniq compare_paths
 
 let is_trivia_kind = function
   | Syn.SyntaxKind.WHITESPACE -> true
@@ -306,52 +315,7 @@ type scanner_state = {
   scanner_ref: unit Ref.t;
   should_ignore: Path.t -> bool;
   seen: string HashSet.t;
-  mutable pending: Path.t list;
 }
-
-let sorted_directory_entries = fun dir ->
-  match Fs.read_dir dir with
-  | Error _ -> []
-  | Ok entries -> entries
-  |> MutIterator.to_list
-  |> List.map (fun entry -> Path.(dir / entry))
-  |> List.sort compare_paths
-
-let rec next_discovered_file = fun state ->
-  match state.pending with
-  | [] -> None
-  | path :: rest ->
-      state.pending <- rest;
-      let path_string = Path.to_string path in
-      if HashSet.contains state.seen path_string then
-        next_discovered_file state
-      else
-        (
-          let _ = HashSet.insert state.seen path_string in
-          match Fs.is_dir path with
-          | Ok true ->
-              if should_skip_directory path || state.should_ignore path then
-                next_discovered_file state
-              else (
-                state.pending <- sorted_directory_entries path @ state.pending;
-                next_discovered_file state
-              )
-          | Ok false
-          | Error _ ->
-              if is_ocaml_source path && not (state.should_ignore path) then
-                Some path
-              else
-                next_discovered_file state
-        )
-
-let rec scanner_loop = fun state ->
-  match next_discovered_file state with
-  | Some file ->
-      send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file });
-      scanner_loop state
-  | None ->
-      send state.owner (ScannerComplete state.scanner_ref);
-      Ok ()
 
 let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
   let seen = HashSet.create () in
@@ -360,10 +324,25 @@ let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
     scanner_ref;
     should_ignore;
     seen;
-    pending = List.sort compare_paths roots;
   }
   in
-  spawn (fun () -> scanner_loop state)
+  spawn (fun () ->
+    let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
+    let rec loop iter =
+      match Iterator.next iter with
+      | None, _ ->
+          send state.owner (ScannerComplete state.scanner_ref);
+          Ok ()
+      | Some (Error _), iter' ->
+          loop iter'
+      | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+          let _ =
+            walk_action ~should_ignore:state.should_ignore ~seen:state.seen entry
+              (fun file -> send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file }))
+          in
+          loop iter'
+    in
+    loop iter)
 
 type dispatch_state = {
   owner: Pid.t;
