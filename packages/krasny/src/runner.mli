@@ -16,6 +16,7 @@ type file_result = {
   status: file_status;
   needs_formatting: bool;
   error: string option;
+  diagnostics: Syn.Diagnostic.t list option;
   duration: Time.Duration.t;
 }
 type summary = {

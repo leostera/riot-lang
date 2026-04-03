@@ -15,6 +15,12 @@ let make_capture_writer = fun () ->
   let chunks = ref [] in
   ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.rev |> String.concat "")
 
+let parse_jsonl = fun output ->
+  output
+  |> String.split_on_char '\n'
+  |> List.filter (fun line -> not (String.equal line ""))
+  |> List.map (fun line -> Data.Json.of_string line |> Result.expect ~msg:"parse json line")
+
 let test_fmt_accepts_multiple_paths = fun _ctx ->
   match parse_fmt [ "fmt"; "packages/blink/src/connection.ml"; "packages/syn/src/parser.ml" ] with
   | Error err -> Error ("expected fmt args to parse: " ^ err)
@@ -152,6 +158,39 @@ let test_fmt_check_prints_syn_diagnostics_for_syntax_errors = fun _ctx ->
               Ok ()
         ))
 
+let test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors = fun _ctx ->
+  with_tempdir "riot_fmt_json_syntax_error"
+    (fun tmpdir ->
+      let broken = Path.(tmpdir / Path.v "broken.ml") in
+      let source = "let x =\n" in
+      Fs.write source broken |> Result.expect ~msg:"write broken";
+      let matches = parse_fmt [ "fmt"; "--json"; Path.to_string broken ] |> Result.expect ~msg:"parse fmt json args" in
+      let stdout, stdout_contents = make_capture_writer () in
+      let stderr, stderr_contents = make_capture_writer () in
+      let parsed = Syn.parse ~filename:broken source in
+      if List.is_empty parsed.diagnostics then
+        Error "expected broken source to produce syn diagnostics"
+      else
+        (
+          match Riot_fmt.run ~stdout ~stderr matches with
+          | Ok () -> Error "expected syntax error fmt --json to fail"
+          | Error _ ->
+              let file_event =
+                stdout_contents ()
+                |> parse_jsonl
+                |> List.find_opt
+                  (fun json ->
+                    match Data.Json.get_field "type" json with
+                    | Some (Data.Json.String "file") -> true
+                    | _ -> false)
+                |> Option.expect ~msg:"file event missing"
+              in
+              let expected = Some (Data.Json.Array (List.map Syn.Diagnostic.to_json parsed.diagnostics)) in
+              Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" file_event);
+              Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+              Ok ()
+        ))
+
 let test_fmt_explain_prints_syn_explanation = fun _ctx ->
   let matches = parse_fmt [ "fmt"; "--explain"; "E0001" ] |> Result.expect ~msg:"parse fmt explain args" in
   let stdout, stdout_contents = make_capture_writer () in
@@ -187,6 +226,7 @@ let tests =
     case "fmt: check reports files needing formatting" test_fmt_check_reports_files_that_need_formatting;
     case "fmt: syntax errors render syn diagnostics" test_fmt_prints_syn_diagnostics_for_syntax_errors;
     case "fmt: check syntax errors render syn diagnostics" test_fmt_check_prints_syn_diagnostics_for_syntax_errors;
+    case "fmt: json syntax errors include structured syn diagnostics" test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors;
     case "fmt: explain prints syn explanation" test_fmt_explain_prints_syn_explanation;
     case "fmt: explain rejects unknown error id" test_fmt_explain_rejects_unknown_error_id;
   ]

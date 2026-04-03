@@ -32,6 +32,12 @@ let file_result_to_json = fun ~root (result: Runner.file_result) ->
         | Some error -> String error
         | None -> Null
       );
+      (
+        "diagnostics",
+        match result.diagnostics with
+        | Some diagnostics -> Array (List.map Syn.Diagnostic.to_json diagnostics)
+        | None -> Null
+      );
     ]
 
 let summary_to_json = fun (summary: Runner.summary) ->

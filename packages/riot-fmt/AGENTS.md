@@ -12,7 +12,7 @@
 5. Human formatter failures caused by `syn` parse errors should render the direct `Syn.DiagnosticReporter` output, not a flattened `Parse error ...` summary line.
 6. Keep `--verify` as a safety preflight over krasny's syntax-hash roundtrip logic. It should report files that would reformat safely separately from files that are unsafe to format.
 7. Keep no-flag `riot fmt` as the in-place rewrite path, and keep it quiet on success. With explicit positional paths, format only those files/directories; without them, keep the existing workspace-scan behavior.
-8. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events.
+8. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events. Failed file events should carry structured diagnostics when the formatter failure came from `syn` parse diagnostics.
 9. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
 10. Keep `riot fmt --explain <id>` as a thin in-process pass-through to `Syn.Error.explain`; do not shell out to the `syn` binary.
 

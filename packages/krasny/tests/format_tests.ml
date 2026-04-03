@@ -1265,6 +1265,34 @@ module M = struct end
           let open Data.Json in
             Test.assert_equal ~expected:(Some (String "formatted")) ~actual:(get_field "status" json);
             Ok ()));
+  Test.case "json file events include structured diagnostics for parse failures"
+    (fun _ctx ->
+      with_tempdir "krasny_runner_json_diagnostics"
+        (fun tmpdir ->
+          let broken = Path.(tmpdir / Path.v "broken.ml") in
+          let source = "let x =\n" in
+          Fs.write source broken |> Result.expect ~msg:"write broken";
+          let result = Krasny.Runner.run_format [ broken ] in
+          Test.assert_equal ~expected:1 ~actual:result.summary.failed_files;
+          let file_result =
+            result.files
+            |> List.find_opt
+              (fun file_result ->
+                String.equal (Path.to_string file_result.Krasny.Runner.file) (Path.to_string broken))
+            |> Option.expect ~msg:"broken result missing"
+          in
+          match file_result.Krasny.Runner.diagnostics with
+          | Some diagnostics ->
+              if List.is_empty diagnostics then
+                Error "expected broken source to carry diagnostics"
+              else
+                let json = capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
+                |> Data.Json.of_string
+                |> Result.expect ~msg:"parse event json" in
+                let expected = Some (Data.Json.Array (List.map Syn.Diagnostic.to_json diagnostics)) in
+                Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" json);
+                Ok ()
+          | None -> Error "expected broken source to carry diagnostics"));
   Test.case "streaming runner skips ignored files"
     (fun _ctx ->
       with_tempdir "krasny_runner_ignore"
