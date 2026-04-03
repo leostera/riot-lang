@@ -1597,6 +1597,27 @@ let render x y z =
           let scope = Riot_fix.Config.load_scope ~cwd:tmpdir |> Option.expect ~msg:"expected workspace scope" in
           Test.assert_true (Riot_fix.Config.should_ignore_file (Some scope) ignored);
           Ok ()));
+  Test.case "package ignore wildcard patterns exclude nested test fixtures"
+    (fun _ctx ->
+      with_tempdir "riot_fix_ignore_glob"
+        (fun tmpdir ->
+          let workspace_toml = Path.(tmpdir / Path.v "riot.toml") in
+          let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "app") in
+          let src_dir = Path.(package_dir / Path.v "src") in
+          let tests_dir = Path.(package_dir / Path.v "tests") in
+          let ignored = Path.(tests_dir / Path.v "0001_fixture.ml") in
+          let kept = Path.(tests_dir / Path.v "1001_fixture.ml") in
+          Fs.create_dir_all src_dir |> Result.expect ~msg:"mkdir src";
+          Fs.create_dir_all tests_dir |> Result.expect ~msg:"mkdir tests";
+          write_file workspace_toml "[workspace]\nmembers = [\"packages/app\"]\n";
+          write_file Path.(package_dir / Path.v "riot.toml") "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[riot.fix]\nignore = [\"tests/000*.ml\"]\n\n[lib]\npath = \"src/app.ml\"\n";
+          write_file Path.(src_dir / Path.v "app.ml") "let app = ()\n";
+          write_file ignored "let ignored_fixture = ()\n";
+          write_file kept "let kept_fixture = ()\n";
+          let scope = Riot_fix.Config.load_scope ~cwd:tmpdir |> Option.expect ~msg:"expected workspace scope" in
+          Test.assert_true (Riot_fix.Config.should_ignore_file (Some scope) ignored);
+          Test.assert_false (Riot_fix.Config.should_ignore_file (Some scope) kept);
+          Ok ()));
   Test.case "config shorthand enables and disables rules"
     (fun _ctx ->
       with_tempdir "riot_fix_rules"

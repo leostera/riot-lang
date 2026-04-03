@@ -133,27 +133,48 @@ let ignore_patterns scope =
   | None -> []
   | Some scope -> scope.workspace_config.ignore_patterns
 
-let rec glob_match = fun pattern text ->
-  if String.equal pattern "" then
-    String.equal text ""
-  else if String.get pattern 0 = '*' then
-    let rest = String.sub pattern 1 (String.length pattern - 1) in
-    String.equal rest ""
-    || glob_match rest text
-    || (String.length text > 0 && glob_match pattern (String.sub text 1 (String.length text - 1)))
-  else
-    String.length text > 0
-    && String.get pattern 0 = String.get text 0
-    && glob_match
-      (String.sub pattern 1 (String.length pattern - 1))
-      (String.sub text 1 (String.length text - 1))
+let glob_match = fun pattern text ->
+  let pattern_len = String.length pattern in
+  let text_len = String.length text in
+  let previous = ref (Array.make (text_len + 1) false) in
+  (!previous).(0) <- true;
+  for pattern_idx = 1 to pattern_len do
+    let current = Array.make (text_len + 1) false in
+    if String.get pattern (pattern_idx - 1) = '*' then (
+      current.(0) <- (!previous).(0);
+      for text_idx = 1 to text_len do
+        current.(text_idx) <- (!previous).(text_idx) || current.(text_idx - 1)
+      done
+    ) else (
+      for text_idx = 1 to text_len do
+        current.(text_idx) <-
+          (!previous).(text_idx - 1)
+          && String.get pattern (pattern_idx - 1) = String.get text (text_idx - 1)
+      done;
+    );
+    previous := current
+  done;
+  (!previous).(text_len)
+
+let glob_match_anywhere = fun pattern text ->
+  let text_len = String.length text in
+  let matched = ref false in
+  let text_idx = ref 0 in
+  while !text_idx <= text_len && not !matched do
+    matched := glob_match pattern (String.sub text !text_idx (text_len - !text_idx));
+    text_idx := !text_idx + 1
+  done;
+  !matched
 
 let matches_pattern = fun pattern candidate ->
+  let basename = Path.basename (Path.v candidate) in
   if String.contains pattern "*" then
     glob_match pattern candidate
+    || glob_match pattern basename
+    || glob_match_anywhere pattern candidate
   else
     String.equal pattern candidate
-    || String.equal pattern (Path.basename (Path.v candidate))
+    || String.equal pattern basename
     || String.contains candidate pattern
 
 let find_package_scope = fun scope file ->
