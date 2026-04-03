@@ -28,6 +28,7 @@ export interface ReleaseMetadata {
 }
 
 const defaultInstallUrl = "https://get.riot.ml";
+const defaultLatestMetadataUrl = "https://cdn.pkgs.ml/riot/latest.json";
 
 export const isOcamlUri = (uri: vscode.Uri): boolean => {
 	return uri.scheme === "file" && (uri.fsPath.endsWith(".ml") || uri.fsPath.endsWith(".mli"));
@@ -59,6 +60,9 @@ export const managedRiotBinaryPath = (context: vscode.ExtensionContext): string 
 
 export const managedReleaseMetadataPath = (context: vscode.ExtensionContext): string =>
 	path.join(riotHomePath(context), "release.json");
+
+export const latestReleaseMetadataUrl = (): string =>
+	getConfig().get<string>("latestMetadataUrl") || defaultLatestMetadataUrl;
 
 const exists = async (filePath: string): Promise<boolean> => {
 	try {
@@ -210,6 +214,90 @@ const readInstalledReleaseMetadata = async (
 	} catch {
 		return undefined;
 	}
+};
+
+export const parseVersionString = (version: string): ReleaseMetadata | undefined => {
+	const trimmed = version.trim();
+	const match = /^riot\s+(.+?)\s+\(build\s+([^)]+)\)$/.exec(trimmed);
+	if (!match) {
+		return undefined;
+	}
+
+	return {
+		release_id: match[1].trim(),
+		build_sha: match[2].trim(),
+	};
+};
+
+export const sameReleaseIdentity = (
+	left: Pick<ReleaseMetadata, "release_id" | "build_sha">,
+	right: Pick<ReleaseMetadata, "release_id" | "build_sha">,
+): boolean => left.release_id === right.release_id && left.build_sha === right.build_sha;
+
+export const latestReleaseMetadata = async (): Promise<ReleaseMetadata> => {
+	const response = await fetch(latestReleaseMetadataUrl(), {
+		headers: {
+			accept: "application/json, text/plain, */*",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch Riot release metadata from ${latestReleaseMetadataUrl()}`);
+	}
+
+	return await response.json() as ReleaseMetadata;
+};
+
+export const currentReleaseMetadata = async (
+	context: vscode.ExtensionContext,
+): Promise<ReleaseMetadata | undefined> => {
+	const installed = await readInstalledReleaseMetadata(context);
+	if (installed) {
+		return installed;
+	}
+
+	try {
+		const resolved = await resolveRiotCommand(context);
+		const version = await runCommand(resolved, ["--version"]);
+		if (version.code !== 0) {
+			return undefined;
+		}
+
+		return parseVersionString(version.stdout);
+	} catch {
+		return undefined;
+	}
+};
+
+export interface ResolvedRiotVersion {
+	command: string;
+	version: string;
+}
+
+export const resolvedRiotVersion = async (
+	context: vscode.ExtensionContext,
+): Promise<ResolvedRiotVersion | undefined> => {
+	try {
+		const command = await resolveRiotCommand(context);
+		const result = await runCommand(command, ["--version"]);
+		if (result.code !== 0) {
+			return undefined;
+		}
+
+		return {
+			command,
+			version: result.stdout.trim(),
+		};
+	} catch {
+		return undefined;
+	}
+};
+
+export const isManagedRiotCommand = async (
+	context: vscode.ExtensionContext,
+	command: string,
+): Promise<boolean> => {
+	return path.normalize(command) === path.normalize(managedRiotBinaryPath(context));
 };
 
 const readInstallerScript = async (): Promise<string> => {

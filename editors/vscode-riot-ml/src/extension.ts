@@ -1,7 +1,15 @@
 import * as vscode from "vscode";
 import { RiotDiagnostics } from "./diagnostics";
 import { RiotFormattingProvider, registerFormatOnSave } from "./format";
-import { ensureRiotAvailable, installManagedRiot } from "./riot";
+import {
+	currentReleaseMetadata,
+	ensureRiotAvailable,
+	installManagedRiot,
+	isManagedRiotCommand,
+	latestReleaseMetadata,
+	resolvedRiotVersion,
+	sameReleaseIdentity,
+} from "./riot";
 import { RiotTaskProvider, runWorkspaceTask } from "./tasks";
 
 const ocamlDocumentSelector: vscode.DocumentSelector = [
@@ -21,11 +29,73 @@ const activeOcamlDocument = (): vscode.TextDocument | undefined => {
 	return document;
 };
 
+const startupStatus = async (
+	context: vscode.ExtensionContext,
+	output: vscode.OutputChannel,
+): Promise<void> => {
+	const resolved = await resolvedRiotVersion(context);
+	if (!resolved) {
+		output.appendLine("Riot: not found in extension-managed storage or PATH.");
+		return;
+	}
+
+	output.appendLine(`Riot command: ${resolved.command}`);
+	output.appendLine(`Riot version: ${resolved.version}`);
+
+	try {
+		const latest = await latestReleaseMetadata();
+		const current = await currentReleaseMetadata(context);
+		if (!current) {
+			output.appendLine(
+				`Latest published Riot: ${latest.release_id} (${latest.build_sha}). Installed Riot version could not be parsed for upgrade checks.`,
+			);
+			return;
+		}
+
+		if (sameReleaseIdentity(current, latest)) {
+			output.appendLine(`Riot is up to date: ${latest.release_id} (${latest.build_sha}).`);
+			return;
+		}
+
+		output.appendLine(
+			`Riot upgrade available: ${latest.release_id} (${latest.build_sha}) is newer than ${current.release_id} (${current.build_sha}).`,
+		);
+		if (await isManagedRiotCommand(context, resolved.command)) {
+			void vscode.window
+				.showInformationMessage(
+					`Riot ${latest.release_id} is available. You're on ${current.release_id}.`,
+					"Install Riot",
+				)
+				.then(async (selection) => {
+					if (selection === "Install Riot") {
+						const metadata = await vscode.window.withProgress(
+							{
+								location: vscode.ProgressLocation.Notification,
+								title: "Installing Riot",
+							},
+							async () => installManagedRiot(context),
+						);
+
+						output.appendLine(`Installed Riot ${metadata.release_id} (${metadata.build_sha}).`);
+						void vscode.window.showInformationMessage(
+							`Installed Riot ${metadata.release_id} (${metadata.build_sha}).`,
+						);
+					}
+				});
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		output.appendLine(`Failed to check for Riot upgrades: ${message}`);
+	}
+};
+
 export function activate(context: vscode.ExtensionContext) {
 	const diagnostics = new RiotDiagnostics(context);
 	const formatter = new RiotFormattingProvider(context, diagnostics);
+	const output = vscode.window.createOutputChannel("Riot ML");
 
 	context.subscriptions.push(
+		output,
 		...diagnostics.register(),
 		vscode.languages.registerDocumentFormattingEditProvider(ocamlDocumentSelector, formatter),
 		registerFormatOnSave(formatter),
@@ -65,6 +135,8 @@ export function activate(context: vscode.ExtensionContext) {
 			await diagnostics.refresh(document);
 		}),
 	);
+
+	void startupStatus(context, output);
 }
 
 export function deactivate() {}

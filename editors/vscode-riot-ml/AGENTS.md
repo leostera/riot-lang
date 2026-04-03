@@ -10,7 +10,8 @@
 4. Root detection should follow the nearest `riot.toml`; do not hardcode repo-local assumptions.
 5. Install managed Riot into extension-owned storage; do not mutate the user's shell configuration from the extension.
 6. Save hooks must avoid save loops and should only touch file-backed `*.ml` and `*.mli` documents.
-7. Keep the MVP focused on install, format, build/test commands, and diagnostics. Leave LSP features to `riot lsp`.
+7. Startup checks may log the resolved Riot binary/version and compare it to the latest published Riot, but they must stay lightweight and avoid prompting repeatedly for unmanaged PATH installs.
+8. Keep the MVP focused on install, format, build/test commands, and diagnostics. Leave LSP features to `riot lsp`.
 
 ## Validate
 

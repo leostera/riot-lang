@@ -94,6 +94,11 @@
           "default": "https://get.riot.ml",
           "markdownDescription": "Installer URL used by `Riot: Install Riot`."
         },
+        "riot.latestMetadataUrl": {
+          "type": "string",
+          "default": "https://cdn.pkgs.ml/riot/latest.json",
+          "markdownDescription": "Release metadata URL used for startup version and upgrade checks."
+        },
         "riot.formatOnSave": {
           "type": "boolean",
           "default": true,

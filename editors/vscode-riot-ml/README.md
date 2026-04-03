@@ -9,6 +9,8 @@ reimplementing formatter or linter logic in TypeScript.
 
 - `Riot: Install Riot` installs a managed Riot binary for the extension by
   fetching `https://get.riot.ml`
+- logs the resolved Riot binary and version on startup, then checks whether a
+  newer published Riot is available
 - contributes bundled language support for `*.ml` and `*.mli`
 - formats `*.ml` and `*.mli` files through `riot fmt`
 - surfaces parser diagnostics from `riot fmt --check --json` while you edit
@@ -27,6 +29,7 @@ This extension contributes the following settings:
 
 - `riot.path`: explicit Riot executable path
 - `riot.installUrl`: installer URL used by `Riot: Install Riot`
+- `riot.latestMetadataUrl`: release metadata URL used for startup upgrade checks
 - `riot.formatOnSave`: format `*.ml` and `*.mli` on save
 - `riot.diagnostics.enabled`: enable Riot diagnostics
 - `riot.diagnostics.runFix`: include `riot fix --json` diagnostics
