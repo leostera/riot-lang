@@ -1,16 +1,42 @@
 # Now
 
-* explore implementing ./docs/rfds/RFD0026-riot-package-management.md 
+* `riot upgrade` to update the current riot with a new version of riot (basically reruns the install script)
 
 * create leostera/create-riot-app
-
-* implement ./docs/rfds/RFD0025-snapshot-testing-for-riot.md 
-* get rid of python test runners!
 
 * implement ./docs/rfds/RFD0008-macro.md
 * include `syn` parsing stage in the riot build pipeline to get better syntax errors faster
 
+* look into `typ`
+
+* `riot run <url>` downloads the url as a git repo or tarball, unpacks in the global cache, builds and runs the `main` binary if one is present, otherwise it supports `<url>@<bin>` to specify the binary name
+    `riot install <url>` does the same but promotes the binary to ~/.riot/bin/
+
+* explore rewriting ocamldep over syn
+
 # Next
+
+* behavior outside a workspace:
+
+* `riot update` should print
+    ; riot update
+    No package.json, so nothing to update
+
+* `riot add hello` should initialize an empty workspace (no packages, just riot.toml and riot.lock):
+
+    ; riot add hello
+
+    installed hello@0.6.2 with binaries:
+     - hello
+
+    44 packages installed [1217.00ms]
+    ;
+
+* `riot rm hello` 
+
+    ; riot rm hello
+    No package.json, so nothing to remove
+
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
@@ -19,10 +45,6 @@
 * enforce binaries have a `val main : ~args:string list -> result` function
 
 * --release flag should also be usable in riot test and riot run
-
-* `riot upgrade` to update the current riot with a new version of riot (basically reruns the install script)
-
-* `riot run <url>`
 
 * implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 

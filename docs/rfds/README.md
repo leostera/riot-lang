@@ -22,6 +22,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0029` - Std Archive and Compression Support
 - `RFD0030` - Typ Incremental Library-First Typechecker
 - `RFD0032` - Workspace Operational Config and Build Cache GC
+- `RFD0033` - `riot run` for Remote Sources
 
 ## Accepted
 
