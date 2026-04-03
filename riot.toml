@@ -45,7 +45,6 @@ members = [
   "packages/riot-lsp",
   "packages/riot-store",
   "packages/riot-toolchain",
-  "services/registry",
 ]
 
 [dependencies]

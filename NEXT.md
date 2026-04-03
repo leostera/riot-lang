@@ -6,6 +6,8 @@
 
 * look into `typ`
 
+* riot lsp
+
 # Planned
 
 * treat every .ml file in ./tests as a test, ./examples as a binary, ./bench as a bench
@@ -18,10 +20,8 @@
 
 * Public stats panel for pkgs.ml with stats for pkgs, downloads, users, etc 
 
-
 # Next
 
-* riot lsp
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
@@ -77,6 +77,17 @@ Called from Kernel__Collections__Hashmap.get in file "/Users/leostera/Developer/
 
 ;
 
+* riot toolchain install has shitty output
+
+```
+Installing OCaml 5.5.0-riot.2 toolchains...
+
+  ✓ aarch64-apple-darwin (host) - already installed
+  ✓ aarch64-unknown-linux-gnu - already installed
+  📥 aarch64-unknown-linux-musl - downloading...
+📥 Downloading OCaml 5.5.0-riot.2 for aarch64-unknown-linux-musl (cross-compilation from aarch64-apple-darwin to aarch64-unknown-linux-musl)...
+```
+
 * minttea test cases that let you specify inputs and assert outputs in _turns_
 
 * Std.BigInt
@@ -128,3 +139,5 @@ Port.open({:spawn, "..."}, opts)
 * Borow from Elixir.Enum group_by
 
 * Admin panel for pkgs.ml -- admins are listed via env vars at deploy time?
+
+* Introduce versioning by Riot version -- 2026.03 -- this internally uses different compiler versions
