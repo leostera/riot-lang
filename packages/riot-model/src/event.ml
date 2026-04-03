@@ -173,6 +173,7 @@ type kind =
       dependency: string
     }
   | PackageVersionLocked of { package: string; version: string }
+  | PackageVersionsUnchanged of { packages: int }
   | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
@@ -278,6 +279,7 @@ let name = function
   | SourceDependencyMaterializationFinished _ -> "riot.pm.source_dependency.materialization.finished"
   | DependencyManifestUpdated _ -> "riot.pm.manifest.updated"
   | PackageVersionLocked _ -> "riot.pm.package.locked"
+  | PackageVersionsUnchanged _ -> "riot.pm.package.unchanged"
   | PackageVersionUpdated _ -> "riot.pm.package.updated"
   | PackageManifestFetchStarted _ -> "riot.pm.package_manifest.fetch.started"
   | PackageManifestFetchFinished _ -> "riot.pm.package_manifest.fetch.finished"
@@ -475,6 +477,8 @@ let display = function
       verb ^ " " ^ dependency ^ " (" ^ section ^ ") in " ^ path
   | PackageVersionLocked { package; version } ->
       "Locked " ^ package ^ " (" ^ version ^ ")"
+  | PackageVersionsUnchanged { packages } ->
+      "Dependencies are already up to date (" ^ Int.to_string packages ^ " locked packages unchanged)"
   | PackageVersionUpdated { package; from_version; to_version } ->
       "Updated " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
   | PackageManifestFetchStarted { package; version } ->
@@ -904,6 +908,8 @@ let kind_to_json = function
         ("package", Json.String package);
         ("version", Json.String version);
       ]
+  | PackageVersionsUnchanged { packages } ->
+      Json.Object [ ("packages", Json.Int packages) ]
   | PackageVersionUpdated { package; from_version; to_version } ->
       Json.Object [
         ("package", Json.String package);
@@ -1792,6 +1798,15 @@ let kind_from_json = fun json ->
                 )
               | _ -> Error "Invalid PackageVersionLocked data"
             )
+          | "riot.pm.package.unchanged" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match List.assoc_opt "packages" data_fields with
+                  | Some (Json.Int packages) -> Ok (PackageVersionsUnchanged { packages })
+                  | _ -> Error "Invalid PackageVersionsUnchanged data"
+                )
+              | _ -> Error "Invalid PackageVersionsUnchanged data"
+            )
           | "riot.pm.package.updated" -> (
               match data with
               | Json.Object data_fields -> (
@@ -2134,5 +2149,19 @@ module Tests = struct
         else
           Error "expected package locked event to round-trip"
     | Ok _ -> Error "expected PackageVersionLocked after round-trip"
+    | Error err -> Error err [@test]
+
+  let test_package_versions_unchanged_event_json_roundtrip (): (unit, string) result =
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info
+      (PackageVersionsUnchanged { packages = 3 }) in
+    match from_json (to_json event) with
+    | Ok { kind=PackageVersionsUnchanged { packages }; _ } ->
+        if Int.equal packages 3 then
+          Ok ()
+        else
+          Error "expected package versions unchanged event to round-trip"
+    | Ok _ -> Error "expected PackageVersionsUnchanged after round-trip"
     | Error err -> Error err [@test]
 end [@test]

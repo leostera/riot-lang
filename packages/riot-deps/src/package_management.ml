@@ -633,16 +633,23 @@ let emit_updated_packages = fun ~(emit:event_sink) ~(previous:Riot_model.Lockfil
   current: Riot_model.Lockfile.t
 ) ->
   let previous_versions = lock_package_version_map previous in
-  List.iter
-    (fun (pkg: Riot_model.Lockfile.package) ->
+  List.fold_left
+    (fun updates (pkg: Riot_model.Lockfile.package) ->
       match pkg.id.registry, pkg.id.version with
       | Some registry, Some to_version -> (
           match List.assoc_opt (registry ^ ":" ^ pkg.id.name) previous_versions with
-          | Some from_version when not (String.equal from_version to_version) -> emit
-            (Riot_model.Event.PackageVersionUpdated { package = pkg.id.name; from_version; to_version })
-          | _ -> ()
+          | Some from_version when not (String.equal from_version to_version) ->
+              emit
+                (Riot_model.Event.PackageVersionUpdated {
+                  package = pkg.id.name;
+                  from_version;
+                  to_version
+                });
+              updates + 1
+          | _ -> updates
         )
-      | _ -> ())
+      | _ -> updates)
+    0
     current.packages
 
 let update_manifest = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~dependencies ~operation ~dependency ->
@@ -727,5 +734,10 @@ let update = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) () ->
     | Error _ -> None
   in
   let* lockfile = refresh_lock ~emit ~mode:Dep_solver.Unlock ~registry ~workspace in
-  Option.iter (fun previous -> emit_updated_packages ~emit ~previous lockfile) previous_lock;
+  Option.iter
+    (fun previous ->
+      let updates = emit_updated_packages ~emit ~previous lockfile in
+      if Int.equal updates 0 then
+        emit (Riot_model.Event.PackageVersionsUnchanged { packages = List.length lockfile.packages }))
+    previous_lock;
   Ok ()

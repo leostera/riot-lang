@@ -140,6 +140,8 @@ let format_pm_event = fun ~seen_registry_updates kind ->
         ^ path)
   | Riot_model.Event.PackageVersionLocked { package; version } ->
       Some ("    \027[1;32mLocked\027[0m " ^ package ^ " (" ^ version ^ ")")
+  | Riot_model.Event.PackageVersionsUnchanged _ ->
+      Some "    Dependencies are already up to date"
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
       Some
         ("    \027[1;32mUpdated\027[0m "
