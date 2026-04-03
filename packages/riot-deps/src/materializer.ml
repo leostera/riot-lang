@@ -54,18 +54,18 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
                   Needs_download
               )
 
-let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Riot_model.Lockfile.package) ->
+let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg: Riot_model.Lockfile.package) () ->
   let package = pkg.id.name in
   match pkg.id.version with
   | None -> Error (Error.MaterializationFailed {
     error = "registry lock package '" ^ package ^ "' is missing an exact version"
   })
   | Some version -> (
-      let path = Pkgs_ml.Registry_cache.package_src_dir
+      let root = Pkgs_ml.Registry_cache.package_src_dir
         (Pkgs_ml.Registry.cache registry)
         ~package_name:package
-        ~version
-      |> Path.to_string in
+        ~version in
+      let path = Path.to_string root in
       let* state = materialization_state ~registry ~pkg in
       match state with
       | Already_materialized ->
@@ -76,7 +76,7 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Riot_model.L
               path;
               reason = "package source tree already exists in the registry cache"
             });
-          Ok ()
+          Ok root
       | Needs_materialization_from_cache
       | Needs_download ->
           let started = Time.Instant.now () in
@@ -92,7 +92,7 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Riot_model.L
                   path;
                   duration_ms = duration_ms_since started
                 });
-              Ok ()
+              Ok root
           | Ok `Already_present ->
               emit
                 (Riot_model.Event.PackageDownloadSkipped {
@@ -101,7 +101,7 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Riot_model.L
                   path;
                   reason = "package source tree already exists in the registry cache"
                 });
-              Ok ()
+              Ok root
           | Error err ->
               let error = Error.MaterializationFailed { error = err } in
               emit (Riot_model.Event.PackageMaterializationFailed { package; version; path; error });
@@ -116,9 +116,9 @@ let ensure_packages = fun ?(emit = no_emit) ~registry ~(lockfile:Riot_model.Lock
         | Riot_model.Lockfile.Workspace
         | Riot_model.Lockfile.Path _
         | Riot_model.Lockfile.Source _ -> loop rest
-        | Riot_model.Lockfile.Registry _ -> (
-            match ensure_registry_package ~emit ~registry pkg with
-            | Ok () -> loop rest
+      | Riot_model.Lockfile.Registry _ -> (
+            match ensure_registry_package ~emit ~registry ~pkg () with
+            | Ok _ -> loop rest
             | Error _ as err -> err
           )
       )

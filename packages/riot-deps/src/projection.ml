@@ -34,7 +34,7 @@ let find_workspace_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_
     (fun (package: Riot_model.Package.t) -> workspace_package_id_of_package package = package_id)
     packages
 
-let materialized_root_of_lock_package = fun ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
+let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match lock_package.root with
@@ -71,10 +71,12 @@ let materialized_root_of_lock_package = fun ~registry ~workspace_root ~(lock_pac
               ^ "'"
             })
           else
-            Ok (Pkgs_ml.Registry_cache.package_src_dir
-              (Pkgs_ml.Registry.cache registry)
-              ~package_name:lock_package.id.name
-              ~version)
+            Materializer.ensure_registry_package
+              ~emit:materialize_emit
+              ~registry
+              ~pkg:lock_package
+              ()
+            |> Result.map_error (fun err -> Error.ProjectionFailed { error = Error.message err })
     )
 
 let manifest_path_of_root = fun root -> Path.(root / Path.v "riot.toml")
@@ -91,10 +93,14 @@ let load_manifest_toml = fun ~manifest_path ->
       })
     )
 
-let load_external_package = fun ~emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
+let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   let version_opt = lock_package.id.version in
   let package_name = lock_package.id.name in
-  match materialized_root_of_lock_package ~registry ~workspace_root ~lock_package with
+  match materialized_root_of_lock_package
+    ~materialize_emit
+    ~registry
+    ~workspace_root
+    ~lock_package with
   | Error _ as err -> err
   | Ok package_root ->
       let started = Time.Instant.now () in
@@ -143,7 +149,7 @@ let load_external_package = fun ~emit ~registry ~workspace_root ~(lock_package:R
               emit_failed err;
               err)
 
-let load_package_for_lock_package = fun ~emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lock_package:Riot_model.Lockfile.package) ->
+let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
@@ -154,40 +160,46 @@ let load_package_for_lock_package = fun ~emit ~registry ~workspace_root ~(packag
     )
   | Riot_model.Lockfile.Path _
   | Riot_model.Lockfile.Source _
-  | Riot_model.Lockfile.Registry _ -> load_external_package ~emit ~registry ~workspace_root ~lock_package
+  | Riot_model.Lockfile.Registry _ ->
+      load_external_package ~emit ~materialize_emit ~registry ~workspace_root ~lock_package
 
 let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
   List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.runtime_resolved
   @ List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.build_resolved
   @ List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.dev_resolved
 
-let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
+let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
   match pending with
   | [] -> Ok (List.rev acc)
   | package_id :: rest ->
       let key = package_id_key package_id in
       if List.mem key seen then
-        resolve_package_graph ~emit ~registry ~workspace_root ~packages ~lockfile seen acc rest
+        resolve_package_graph
+          ~emit
+          ~materialize_emit
+          ~registry
+          ~workspace_root
+          ~packages
+          ~lockfile
+          seen
+          acc
+          rest
       else
         match find_lock_package_by_id ~package_id ~lockfile with
         | None -> Error (Error.ProjectionFailed {
           error = "lockfile is missing package '" ^ package_id.name ^ "'"
         })
         | Some lock_package -> (
-            match load_package_for_lock_package ~emit ~registry ~workspace_root ~packages ~lock_package with
+            match load_package_for_lock_package
+              ~emit
+              ~materialize_emit
+              ~registry
+              ~workspace_root
+              ~packages
+              ~lock_package with
             | Error _ as err -> err
             | Ok package -> (
-                let materialized_root =
-                  match lock_package.provenance with
-                  | Riot_model.Lockfile.Workspace -> package.path
-                  | Riot_model.Lockfile.Path _
-                  | Riot_model.Lockfile.Source _
-                  | Riot_model.Lockfile.Registry _ -> materialized_root_of_lock_package
-                    ~registry
-                    ~workspace_root
-                    ~lock_package
-                  |> Result.expect ~msg:"expected lock package root to be derivable"
-                in
+                let materialized_root = package.path in
                 let manifest_path = manifest_path_of_root materialized_root in
                 match Riot_model.Package.resolve ~package ~lock_package ~manifest_path ~materialized_root with
                 | Error err -> Error (Error.ProjectionFailed { error = err })
@@ -202,6 +214,7 @@ let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:R
                     let dependency_ids = resolve_dependency_ids resolved in
                     resolve_package_graph
                       ~emit
+                      ~materialize_emit
                       ~registry
                       ~workspace_root
                       ~packages
@@ -212,6 +225,22 @@ let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:R
               )
           )
 
-let resolve_packages = fun ?(emit = no_emit) ~registry ~workspace_root ~packages ~lockfile () ->
+let resolve_packages = fun
+  ?(emit = no_emit)
+  ?(materialize_emit = no_emit)
+  ~registry
+  ~workspace_root
+  ~packages
+  ~lockfile
+  () ->
   let root_ids = List.map workspace_package_id_of_package packages in
-  resolve_package_graph ~emit ~registry ~workspace_root ~packages ~lockfile [] [] root_ids
+  resolve_package_graph
+    ~emit
+    ~materialize_emit
+    ~registry
+    ~workspace_root
+    ~packages
+    ~lockfile
+    []
+    []
+    root_ids

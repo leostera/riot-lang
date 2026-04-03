@@ -906,11 +906,12 @@ materialized roots on disk.
 
 The builder already consumes `Riot_model.Package.resolved`.
 
-The remaining design question is where lazy repair of missing external package
-materialization should live.
+The remaining design question is how far down the build pipeline lazy repair of
+missing external package materialization should live.
 
-Today, `riot-deps` eagerly ensures materialized external package roots before
-projection and build.
+Today, `riot-deps` repairs missing registry package roots lazily during
+projection, right before it loads the external package manifest and converts the
+lockfile node into `Riot_model.Package.resolved`.
 
 The design described here is still attractive: the planner could emit a
 download/materialization action for any non-workspace package whose cache root
@@ -924,8 +925,9 @@ That means the planner can produce actions such as:
 The download action is responsible for ensuring the resolved package exists at
 its expected cache path before normal build actions consume it.
 
-This means a build can repair a missing cache entry lazily without forcing the
-planner to rediscover dependency resolution from scratch.
+That would push the repair one layer later than the current implementation and
+would let normal build actions depend on explicit download/materialization
+actions instead of the projection layer repairing cache entries opportunistically.
 
 ### Events
 

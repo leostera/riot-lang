@@ -1975,7 +1975,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
           else
             Error "expected ensure_lock to reuse a fresh existing lock without rewriting it")
 
-let test_ensure_lock_materializes_registry_packages_before_projection = fun _ctx ->
+let test_ensure_lock_materializes_registry_packages_during_projection = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_materializes"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
@@ -2034,9 +2034,9 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun _ctx
           then
             Ok ()
           else
-            Error "expected ensure_lock to materialize external package manifests before projection")
+            Error "expected ensure_lock to lazily materialize external package manifests during projection")
 
-let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages = fun _ctx ->
+let test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_materializes_existing"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
@@ -2479,8 +2479,8 @@ let tests =
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
-    case "ensure lock: materializes registry packages before projection" test_ensure_lock_materializes_registry_packages_before_projection;
-    case "ensure lock: reuses existing lock and materializes missing registry packages" test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages;
+    case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;
+    case "ensure lock: reuses existing lock and repairs missing registry packages" test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages;
     case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;

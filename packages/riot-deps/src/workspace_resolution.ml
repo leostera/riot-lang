@@ -131,37 +131,32 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
               emit (Riot_model.Event.DependencyResolutionFailed { error = err });
               Error err
           | Ok () -> (
-              match Materializer.ensure_packages ~emit ~registry ~lockfile () with
+              let projection_emit =
+                if used_existing_lock then
+                  no_emit
+                else
+                  emit
+              in
+              match Projection.resolve_packages
+                ~emit:projection_emit
+                ~materialize_emit:emit
+                ~registry
+                ~workspace_root
+                ~packages
+                ~lockfile
+                () with
               | Error err ->
                   emit (Riot_model.Event.DependencyResolutionFailed { error = err });
                   Error err
-              | Ok () -> (
-                  let projection_emit =
-                    if used_existing_lock then
-                      no_emit
-                    else
-                      emit
-                  in
-                  match Projection.resolve_packages
-                    ~emit:projection_emit
-                    ~registry
-                    ~workspace_root
-                    ~packages
-                    ~lockfile
-                    () with
-                  | Error err ->
-                      emit (Riot_model.Event.DependencyResolutionFailed { error = err });
-                      Error err
-                  | Ok resolved ->
-                      if not used_existing_lock then
-                        emit
-                          (Riot_model.Event.DependencyResolutionFinished {
-                            duration_ms = duration_ms_since solve_started;
-                            resolved_packages = List.length resolved;
-                            resolved_edges = resolved_edge_count lockfile
-                          });
-                      Ok (lockfile, resolved)
-                )
+              | Ok resolved ->
+                  if not used_existing_lock then
+                    emit
+                      (Riot_model.Event.DependencyResolutionFinished {
+                        duration_ms = duration_ms_since solve_started;
+                        resolved_packages = List.length resolved;
+                        resolved_edges = resolved_edge_count lockfile
+                      });
+                  Ok (lockfile, resolved)
             )
 
 let ensure_workspace = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(workspace:Riot_model.Workspace.t) () ->
