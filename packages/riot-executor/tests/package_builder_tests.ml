@@ -20,29 +20,11 @@ let test_collect_source_files = fun _ctx ->
         let _ = Fs.write "int main() {}" c_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "readme" txt_file |> Result.expect ~msg:"Write failed" in
         let package =
-          Riot_model.Package.{
-            name = "test";
-            path = tmpdir;
-            relative_path = Path.v ".";
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            foreign_dependencies = [];
-            binaries = [];
-            library = None;
-            sources =
-              {
-                src = [];
-                native = [];
-                tests = [];
-                examples = [];
-                bench = [];
-              };
-            compiler = { profile_overrides = []; target_overrides = [] };
-            commands = [];
-            fix_providers = [];
-            publish = { version = None; description = None; license = None; is_public = None };
-          }
+          Riot_model.Package.make
+            ~name:"test"
+            ~path:tmpdir
+            ~relative_path:(Path.v ".")
+            ()
         in
         let files = Riot_executor.Package_builder.collect_source_files package in
         let has_ml =
@@ -79,29 +61,11 @@ let test_collect_source_files = fun _ctx ->
 
 let test_build_result_status_variants = fun _ctx ->
   let package =
-    Riot_model.Package.{
-      name = "test";
-      path = Path.v ".";
-      relative_path = Path.v ".";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries = [];
-      library = None;
-      sources =
-        {
-          src = [];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+    Riot_model.Package.make
+      ~name:"test"
+      ~path:(Path.v ".")
+      ~relative_path:(Path.v ".")
+      ()
   in
   let artifact =
     Riot_store.Artifact.{
@@ -164,29 +128,20 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
         let _ = Fs.write "let answer = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"write source failed" in
         let package =
-          Riot_model.Package.{
-            name = "pkg";
-            path = package_dir;
-            relative_path = Path.v "pkg";
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            foreign_dependencies = [];
-            binaries = [];
-            library = Some { path = Path.v "src/lib.ml" };
-            sources =
+          Riot_model.Package.make
+            ~name:"pkg"
+            ~path:package_dir
+            ~relative_path:(Path.v "pkg")
+            ~library:{ path = Path.v "src/lib.ml" }
+            ~sources:
               {
                 src = [ Path.v "src/lib.ml" ];
                 native = [];
                 tests = [];
                 examples = [];
                 bench = [];
-              };
-            compiler = { profile_overrides = []; target_overrides = [] };
-            commands = [];
-            fix_providers = [];
-            publish = { version = None; description = None; license = None; is_public = None };
-          }
+              }
+            ()
         in
         let workspace =
           Riot_model.Workspace.{

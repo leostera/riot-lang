@@ -13,29 +13,12 @@ let make_warning = fun path ->
 
 let make_package = fun ~root ~name ->
   let path = Path.(root / Path.v "packages" / Path.v name) in
-  Riot_model.Package.{
-    name;
-    path;
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some { path = Path.v "src/lib.ml" };
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Riot_model.Package.make
+    ~name
+    ~path
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
 
 let test_rewrite_ocamlc_result_rewrites_workspace_paths = fun _ctx ->
   match

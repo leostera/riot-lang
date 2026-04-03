@@ -3,29 +3,11 @@ module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
 let make_package = fun name ->
-  Riot_model.Package.{
-    name;
-    path = Path.v ".";
-    relative_path = Path.v ".";
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Riot_model.Package.make
+    ~name
+    ~path:(Path.v ".")
+    ~relative_path:(Path.v ".")
+    ()
 
 let test_transitive_closure_dependency_first_order = fun _ctx ->
   let dep_c =
@@ -85,19 +67,19 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         |> Result.expect ~msg:"expected foo.ml write to succeed" in
         let _ = Fs.write "val y : Foo.t\n" Path.(src_dir / Path.v "bar.mli") |> Result.expect ~msg:"expected bar.mli write to succeed" in
         let package =
-          Riot_model.Package.{
-            (make_package "pkg")
-            with path = package_root;
-            relative_path = Path.v "pkg";
-            sources =
+          Riot_model.Package.make
+            ~name:"pkg"
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
+            ~sources:
               {
-                src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli"; ];
+                src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli" ];
                 native = [];
                 tests = [];
                 examples = [];
                 bench = [];
-              };
-          }
+              }
+            ()
         in
         let workspace =
           Riot_model.Workspace.{

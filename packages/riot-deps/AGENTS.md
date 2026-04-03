@@ -21,6 +21,7 @@
 15. Feed pubgrub typed `Std.Version` requirements, not reparsed requirement strings. Prefix requirements like `"0"` and `"0.2"` need to survive all the way into solver ranges.
 16. When a registry package exists but no release matches the requested requirement, report that explicitly and include the available versions. Do not collapse that case into a generic “package not found”.
 17. `search` belongs here too. Reuse the registry client, return structured package results, and keep query parsing/rendering in `riot-cli`.
+18. `add`/`remove`/`update` progress should flow through `Riot_model.Event.kind`. Do not maintain a second package-management-only event vocabulary in `riot-deps` when the shared event surface can express the same lifecycle.
 
 ## Validate
 

@@ -96,6 +96,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageMetadataFetchStarted _
   | Riot_model.Event.PackageMetadataFetchFinished _
   | Riot_model.Event.PackageMetadataFetchFailed _
+  | Riot_model.Event.SourceDependencyMaterializationFinished _
   | Riot_model.Event.LockfileReadStarted _
   | Riot_model.Event.LockfileReadFinished _
   | Riot_model.Event.LockfileReadFailed _
@@ -113,6 +114,39 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageMaterializationFinished _
   | Riot_model.Event.PackageMaterializationFailed _ ->
       None
+  | Riot_model.Event.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
+      Some (
+        "    \027[1;34mCloning\027[0m "
+        ^ (
+            match ref_ with
+            | Some ref_ -> source_locator ^ "#" ^ ref_
+            | None -> source_locator
+          )
+      )
+  | Riot_model.Event.DependencyManifestUpdated { path; section; operation; dependency } ->
+      let verb =
+        match operation with
+        | `Add -> "Added"
+        | `Remove -> "Removed"
+      in
+      Some
+        ("    \027[1;32m"
+        ^ verb
+        ^ "\027[0m "
+        ^ dependency
+        ^ " ("
+        ^ section
+        ^ ") in "
+        ^ path)
+  | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
+      Some
+        ("    \027[1;32mUpdated\027[0m "
+        ^ package
+        ^ " ("
+        ^ from_version
+        ^ " -> "
+        ^ to_version
+        ^ ")")
   | kind ->
       Some (Riot_model.Event.display kind)
 

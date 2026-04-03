@@ -17,6 +17,9 @@
 11. Lockfile dependency entries should stay flat and exact for registry packages: render `name`, `version`, and `sha256` directly in the dependency table instead of nesting a second `package = { ... }` object.
 12. `Lockfile.t` carries a required `dependency_hash` derived from the raw `[dependencies]`, `[build-dependencies]`, and `[dev-dependencies]` sections of workspace manifests. Treat it as the staleness contract for `riot.lock`, not as optional metadata.
 13. Member package manifest decode failures are workspace load errors, not silent drops. `Workspace_manager.scan` should preserve those failures in `load_error list` so CLI commands can fail honestly instead of pretending the member disappeared.
+14. `Package.t` is a private record. Read fields freely, but construct synthetic packages through `Package.synthetic` and keep new package creation logic inside `Package`.
+15. Keep `Package` values canonicalized at construction time. Hash-relevant lists such as dependencies, binaries, source buckets, fix providers, and override tables should be sorted or deduped when a `Package.t` is created or scope-adjusted, not re-sorted inside `Package.hash`.
+16. Package-management progress belongs on the shared `Event.kind` surface. When `riot add` / `riot rm` / `riot update` need new lifecycle reporting, add structured PM events here instead of inventing a parallel event type in `riot-deps` or `riot-cli`.
 
 ## Validate
 

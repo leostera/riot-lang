@@ -28,6 +28,7 @@
 22. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
 23. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
 24. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.
+25. `add` / `rm` / `update` should consume the same shared `Riot_model.Event` PM stream that builds use. Do not duplicate JSON or human rendering logic for package-management-only wrapper events in the command modules.
 
 ## Validate
 

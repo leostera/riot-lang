@@ -21,29 +21,12 @@ let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed
 
 let make_package = fun ~root ~name ->
   let path = Path.(root / Path.v "packages" / Path.v name) in
-  Riot_model.Package.{
-    name;
-    path;
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some { path = Path.v "src/lib.ml" };
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Riot_model.Package.make
+    ~name
+    ~path
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
 
 let make_node = fun ~package ~srcs ->
   let graph = Riot_planner.Action_graph.create () in

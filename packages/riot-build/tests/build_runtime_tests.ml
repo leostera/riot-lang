@@ -19,29 +19,20 @@ let make_broken_workspace = fun tmpdir ->
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package =
-    Riot_model.Package.{
-      name = "demo";
-      path = pkg_dir;
-      relative_path = Path.v "demo";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries = [];
-      library = Some { path = Path.v "src/lib.ml" };
-      sources =
+    Riot_model.Package.make
+      ~name:"demo"
+      ~path:pkg_dir
+      ~relative_path:(Path.v "demo")
+      ~library:{ path = Path.v "src/lib.ml" }
+      ~sources:
         {
           src = [ Path.v "src/lib.ml" ];
           native = [];
           tests = [];
           examples = [];
           bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+        }
+      ()
   in
   Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
 
@@ -56,29 +47,20 @@ let make_valid_workspace = fun tmpdir ->
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package =
-    Riot_model.Package.{
-      name = "demo";
-      path = pkg_dir;
-      relative_path = Path.v "demo";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries = [];
-      library = Some { path = Path.v "src/lib.ml" };
-      sources =
+    Riot_model.Package.make
+      ~name:"demo"
+      ~path:pkg_dir
+      ~relative_path:(Path.v "demo")
+      ~library:{ path = Path.v "src/lib.ml" }
+      ~sources:
         {
           src = [ Path.v "src/lib.ml" ];
           native = [];
           tests = [];
           examples = [];
           bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+        }
+      ()
   in
   Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
 

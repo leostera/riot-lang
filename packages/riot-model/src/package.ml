@@ -120,6 +120,157 @@ let default_publish_metadata = {
   is_public = None
 }
 
+let empty_sources = {
+  src = [];
+  native = [];
+  tests = [];
+  examples = [];
+  bench = [];
+}
+
+let compare_path = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
+
+let compare_option compare_value left right =
+  match left, right with
+  | None, None -> 0
+  | None, Some _ -> -1
+  | Some _, None -> 1
+  | Some left, Some right -> compare_value left right
+
+let compare_dependency_source = fun left right ->
+  let by_workspace = Bool.compare left.workspace right.workspace in
+  if not (Int.equal by_workspace 0) then
+    by_workspace
+  else
+    let by_builtin = Bool.compare left.builtin right.builtin in
+    if not (Int.equal by_builtin 0) then
+      by_builtin
+    else
+      let by_path = compare_option compare_path left.path right.path in
+      if not (Int.equal by_path 0) then
+        by_path
+      else
+        let by_source_locator =
+          compare_option String.compare left.source_locator right.source_locator
+        in
+        if not (Int.equal by_source_locator 0) then
+          by_source_locator
+        else
+          let by_ref = compare_option String.compare left.ref_ right.ref_ in
+          if not (Int.equal by_ref 0) then
+            by_ref
+          else
+            compare_option
+              (fun left right ->
+                String.compare
+                  (Version.requirement_to_string left)
+                  (Version.requirement_to_string right))
+              left.version
+              right.version
+
+let compare_dependency = fun (left: dependency) (right: dependency) ->
+  let by_name = String.compare left.name right.name in
+  if not (Int.equal by_name 0) then
+    by_name
+  else
+    compare_dependency_source left.source right.source
+
+let compare_binary = fun (left: binary) (right: binary) ->
+  let by_name = String.compare left.name right.name in
+  if not (Int.equal by_name 0) then
+    by_name
+  else
+    compare_path left.path right.path
+
+let compare_fix_provider = fun (left: Fix_provider.t) (right: Fix_provider.t) ->
+  let by_name = String.compare left.name right.name in
+  if not (Int.equal by_name 0) then
+    by_name
+  else
+    compare_path left.source_path right.source_path
+
+let compare_profile_override = fun (left_name, _) (right_name, _) -> String.compare left_name right_name
+
+let compare_target_override = fun (left_name, _) (right_name, _) -> String.compare left_name right_name
+
+let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_dependency) ->
+  let by_name = String.compare left.name right.name in
+  if not (Int.equal by_name 0) then
+    by_name
+  else
+    compare_path left.path right.path
+
+let canonicalize_path_list = fun paths -> List.sort_uniq compare_path paths
+
+let canonicalize_sources = fun sources ->
+  {
+    src = canonicalize_path_list sources.src;
+    native = canonicalize_path_list sources.native;
+    tests = canonicalize_path_list sources.tests;
+    examples = canonicalize_path_list sources.examples;
+    bench = canonicalize_path_list sources.bench;
+  }
+
+let canonicalize_foreign_dependency = fun (foreign: foreign_dependency) ->
+  {
+    foreign with
+    inputs = canonicalize_path_list foreign.inputs;
+    outputs = canonicalize_path_list foreign.outputs;
+  }
+
+let canonicalize = fun (pkg: t) ->
+  {
+    pkg with
+    dependencies = List.sort compare_dependency pkg.dependencies;
+    dev_dependencies = List.sort compare_dependency pkg.dev_dependencies;
+    build_dependencies = List.sort compare_dependency pkg.build_dependencies;
+    foreign_dependencies =
+      pkg.foreign_dependencies
+      |> List.map canonicalize_foreign_dependency
+      |> List.sort compare_foreign_dependency;
+    binaries = List.sort compare_binary pkg.binaries;
+    sources = canonicalize_sources pkg.sources;
+    compiler =
+      {
+        profile_overrides = List.sort compare_profile_override pkg.compiler.profile_overrides;
+        target_overrides = List.sort compare_target_override pkg.compiler.target_overrides;
+      };
+    fix_providers = List.sort compare_fix_provider pkg.fix_providers;
+  }
+
+let make = fun ~name ~path ~relative_path
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  ?(foreign_dependencies = [])
+  ?(binaries = [])
+  ?library
+  ?(sources = empty_sources)
+  ?(compiler = { profile_overrides = []; target_overrides = [] })
+  ?(commands = [])
+  ?(fix_providers = [])
+  ?(publish = default_publish_metadata)
+  () ->
+  canonicalize {
+    name;
+    path;
+    relative_path;
+    dependencies;
+    dev_dependencies;
+    build_dependencies;
+    foreign_dependencies;
+    binaries;
+    library;
+    sources;
+    compiler;
+    commands;
+    fix_providers;
+    publish;
+  }
+
+let synthetic = fun ~name ~path ~relative_path ->
+  make ~name ~path ~relative_path ()
+
 let equal = fun a b -> a.name = b.name && a.path = b.path
 
 let key_of_string = fun value -> Key value
@@ -197,7 +348,7 @@ let sources_for_scope = fun scope (pkg: t) ->
 let for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal ->
-      {
+      canonicalize {
         pkg
         with dev_dependencies = [];
         build_dependencies = [];
@@ -206,7 +357,7 @@ let for_scope = fun scope (pkg: t) ->
         sources = sources_for_scope Normal pkg;
       }
   | Dev ->
-      {
+      canonicalize {
         pkg
         with build_dependencies = [];
         library = None;
@@ -215,7 +366,7 @@ let for_scope = fun scope (pkg: t) ->
         sources = sources_for_scope Dev pkg;
       }
   | Build ->
-      {
+      canonicalize {
         pkg
         with dependencies = [];
         dev_dependencies = [];
@@ -1341,7 +1492,7 @@ let from_toml:
                           ~package_path:path
                         | _ -> []
                       in
-                      Ok {
+                      Ok (canonicalize {
                         name;
                         path;
                         relative_path;
@@ -1356,7 +1507,7 @@ let from_toml:
                         commands;
                         fix_providers;
                         publish;
-                      }
+                      })
     )
   | _ -> Error "TOML is not a table"
 
@@ -1565,7 +1716,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
                               match publish with
                               | Error _ as err -> err
                               | Ok publish ->
-                                  Ok {
+                                  Ok (canonicalize {
                                     name;
                                     path;
                                     relative_path;
@@ -1587,7 +1738,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
                                     commands = [];
                                     fix_providers = [];
                                     publish;
-                                  }
+                                  })
                         )
                     )
                 )
@@ -1711,29 +1862,28 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
   in
   H.write state pkg.name;
   (* Dependencies metadata *)
-  let sorted_deps =
-    List.sort
-      (fun (a: dependency) (b: dependency) ->
-        String.compare a.name b.name)
-      (build_graph_dependencies pkg)
+  let hash_dependency = fun (dep: dependency) ->
+    H.write state dep.name;
+    H.write_bool state dep.source.workspace;
+    H.write_bool state dep.source.builtin;
+    hash_path_option dep.source.path;
+    hash_string_option dep.source.source_locator;
+    hash_string_option dep.source.ref_;
+    (
+      match dep.source.version with
+      | Some version ->
+          H.write_bool state true;
+          hash_requirement version
+      | None ->
+          H.write_bool state false
+    )
   in
   List.iter
-    (fun (dep: dependency) ->
-      H.write state dep.name;
-      H.write_bool state dep.source.workspace;
-      H.write_bool state dep.source.builtin;
-      hash_path_option dep.source.path;
-      hash_string_option dep.source.source_locator;
-      hash_string_option dep.source.ref_;
-      (
-        match dep.source.version with
-        | Some version ->
-            H.write_bool state true;
-            hash_requirement version
-        | None ->
-            H.write_bool state false
-      ))
-    sorted_deps;
+    hash_dependency
+    pkg.dependencies;
+  List.iter
+    hash_dependency
+    pkg.dev_dependencies;
   (
     match pkg.publish.version with
     | Some version ->
@@ -1763,29 +1913,17 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
     | None -> H.write_bool state false
   );
   (* Binaries metadata *)
-  let sorted_bins =
-    List.sort
-      (fun (a: binary) (b: binary) ->
-        String.compare a.name b.name)
-      pkg.binaries
-  in
   List.iter
     (fun (bin: binary) ->
       H.write state bin.name;
       H.write state (Path.to_string bin.path))
-    sorted_bins;
-  let sorted_providers =
-    List.sort
-      (fun (a: Fix_provider.t) (b: Fix_provider.t) ->
-        String.compare a.name b.name)
-      pkg.fix_providers
-  in
+    pkg.binaries;
   List.iter
     (fun (provider: Fix_provider.t) ->
       H.write state provider.name;
       H.write state (Path.to_string provider.source_path);
       H.write_list H.write state provider.rules)
-    sorted_providers;
+    pkg.fix_providers;
   (* Library metadata *)
   (
     match pkg.library with
@@ -1806,23 +1944,11 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
     hash_string_list_override override.cc_flags;
     hash_string_list_override override.ocamlc_flags;
   in
-  let sorted_profile_overrides =
-    List.sort
-      (fun ((a, _)) ((b, _)) ->
-        String.compare a b)
-      pkg.compiler.profile_overrides
-  in
   List.iter
     (fun ((profile_name, override): string * profile_override) ->
       H.write state profile_name;
       hash_override override)
-    sorted_profile_overrides;
-  let sorted_target_overrides =
-    List.sort
-      (fun ((a, _)) ((b, _)) ->
-        String.compare a b)
-      pkg.compiler.target_overrides
-  in
+    pkg.compiler.profile_overrides;
   List.iter
     (fun ((platform_name, target): string * target_override) ->
       H.write state platform_name;
@@ -1833,33 +1959,12 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
             hash_override override
         | None -> H.write_bool state false
       );)
-    sorted_target_overrides;
+    pkg.compiler.target_overrides;
   (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)
-  let explicit_bin_files =
-    List.filter_map
-      (fun (bin: binary) ->
-        let path_str = Path.to_string bin.path in
-        (* Only include if it's a .ml file and not already in sources *)
-        if String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str then
-          Some bin.path
-        else
-          None)
-      pkg.binaries
-  in
-  let all_source_files = pkg.sources.src
-  @ pkg.sources.native
-  @ pkg.sources.tests
-  @ pkg.sources.examples
-  @ pkg.sources.bench
-  @ explicit_bin_files in
-  let sorted_files =
-    List.sort_uniq
-      (fun a b ->
-        String.compare (Path.to_string a) (Path.to_string b))
-      all_source_files
-  in
-  List.iter
-    (fun file_path ->
+  let seen_source_files = HashSet.with_capacity 32 in
+  let hash_source_file = fun file_path ->
+    let path_str = Path.to_string file_path in
+    if HashSet.insert seen_source_files path_str then
       let abs_path =
         if Path.is_absolute file_path then
           file_path
@@ -1873,27 +1978,26 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
           H.write state content
       | Error _ ->
           (* File read error - include path only *)
-          H.write state path_str)
-    sorted_files;
-  (* Foreign dependency sources *)
-  let sorted_foreign_deps =
-    List.sort
-      (fun (a: foreign_dependency) (b: foreign_dependency) ->
-        String.compare a.name b.name)
-      pkg.foreign_dependencies
+          H.write state path_str
   in
+  List.iter hash_source_file pkg.sources.src;
+  List.iter hash_source_file pkg.sources.native;
+  List.iter hash_source_file pkg.sources.tests;
+  List.iter hash_source_file pkg.sources.examples;
+  List.iter hash_source_file pkg.sources.bench;
+  List.iter
+    (fun (bin: binary) ->
+      let path_str = Path.to_string bin.path in
+      if String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str then
+        hash_source_file bin.path)
+    pkg.binaries;
+  (* Foreign dependency sources *)
   List.iter
     (fun (fdep: foreign_dependency) ->
       H.write state fdep.name;
       H.write state (Path.to_string fdep.path);
       List.iter (H.write state) fdep.build_cmd;
       (* Hash all input files *)
-      let sorted_inputs =
-        List.sort
-          (fun a b ->
-            String.compare (Path.to_string a) (Path.to_string b))
-          fdep.inputs
-      in
       List.iter
         (fun input_path ->
           let abs_path = Path.(fdep.path / input_path) in
@@ -1902,8 +2006,8 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
               H.write state (Path.to_string input_path);
               H.write state content
           | Error _ -> H.write state (Path.to_string input_path))
-        sorted_inputs)
-    sorted_foreign_deps
+        fdep.inputs)
+    pkg.foreign_dependencies
 
 let hash = fun state pkg ->
   hash_with (module Crypto.Sha256) state pkg

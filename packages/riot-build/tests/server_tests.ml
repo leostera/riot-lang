@@ -34,29 +34,20 @@ let make_simple_package = fun tmpdir name ->
   let riot_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v name ] in
-  Riot_model.Package.{
-    name;
-    path = pkg_dir;
-    relative_path = Path.v name;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some { path = Path.v "src/lib.ml" };
-    sources =
+  Riot_model.Package.make
+    ~name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ~library:{ path = Path.v "src/lib.ml" }
+    ~sources:
       {
         src = [ Path.v "src/lib.ml" ];
         native = [];
         tests = [];
         examples = [];
         bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+      }
+    ()
 
 let test_server_starts_and_shuts_down = fun _ctx -> Ok ()
 
@@ -199,19 +190,8 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
             ~package in
           let ml_file = Path.(package.path / Path.v "src" / Path.v "lib.ml") in
           let _ = Fs.write "let x = 99\nlet changed = true" ml_file |> Result.expect ~msg:"Failed to modify source" in
-          let updated_package = make_simple_package tmpdir "test-pkg" in
-          let updated_workspace =
-            Riot_model.Workspace.{
-              root = tmpdir;
-              target_dir_root =
-                Path.(tmpdir / Path.v "target");
-              packages = [ updated_package ];
-              dependencies = [];
-              dev_dependencies = [];
-              build_dependencies = [];
-              profile_overrides = [];
-            }
-          in
+          let updated_package = package in
+          let updated_workspace = workspace in
           let updated_package_graph = Riot_planner.Package_graph.create
             ~scope:Riot_planner.Package_graph.Runtime updated_workspace
           |> Result.unwrap in

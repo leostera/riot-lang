@@ -564,36 +564,10 @@ let from_json = fun json ->
                                 | Some (String p) -> Path.v p
                                 | _ -> package_path
                               in
-                              let package =
-                                Package.{
-                                  name = pkg_name;
-                                  path = package_path;
-                                  relative_path = package_relative_path;
-                                  dependencies = [];
-                                  dev_dependencies = [];
-                                  build_dependencies = [];
-                                  foreign_dependencies = [];
-                                  binaries = [];
-                                  library = None;
-                                  sources =
-                                    {
-                                      src = [];
-                                      native = [];
-                                      tests = [];
-                                      examples = [];
-                                      bench = [];
-                                    };
-                                  compiler = { profile_overrides = []; target_overrides = [] };
-                                  commands = [];
-                                  fix_providers = [];
-                                  publish = {
-                                    version = None;
-                                    description = None;
-                                    license = None;
-                                    is_public = None
-                                  };
-                                }
-                              in
+                              let package = Package.synthetic
+                                ~name:pkg_name
+                                ~path:package_path
+                                ~relative_path:package_relative_path in
                               let toolchain = Riot_toolchain.init
                                 ~config:Riot_model.Toolchain_config.default
                               |> Result.expect ~msg:"Failed to initialize toolchain" in

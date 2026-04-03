@@ -22,29 +22,11 @@ let test_workspace_completed_is_silent = fun _ctx ->
 let test_build_failed_prefixes_package_name = fun _ctx ->
   let displayed_packages = HashSet.create () in
   let package =
-    Riot_model.Package.{
-      name = "syn";
-      path = Path.v ".";
-      relative_path = Path.v ".";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries = [];
-      library = None;
-      sources =
-        {
-          src = [];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+    Riot_model.Package.make
+      ~name:"syn"
+      ~path:(Path.v ".")
+      ~relative_path:(Path.v ".")
+      ()
   in
   let event = Riot_executor.Telemetry_events.BuildFailed {
     session_id = Riot_model.Session_id.make ();
@@ -61,29 +43,11 @@ let test_build_failed_prefixes_package_name = fun _ctx ->
 let test_package_ocamlc_warnings_prefix_package_name = fun _ctx ->
   let displayed_packages = HashSet.create () in
   let package =
-    Riot_model.Package.{
-      name = "riot-eval";
-      path = Path.v ".";
-      relative_path = Path.v ".";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries = [];
-      library = None;
-      sources =
-        {
-          src = [];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+    Riot_model.Package.make
+      ~name:"riot-eval"
+      ~path:(Path.v ".")
+      ~relative_path:(Path.v ".")
+      ()
   in
   let event = Riot_executor.Telemetry_events.PackageOcamlcWarnings {
     session_id = Riot_model.Session_id.make ();

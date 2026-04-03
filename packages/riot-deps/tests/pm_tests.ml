@@ -28,22 +28,16 @@ let make_package = fun ?(dependencies = []) ?(build_dependencies = []) ?(dev_dep
       license = Some "Apache-2.0";
       is_public = Some true
     } in
-  Riot_model.Package.{
-    name;
-    path;
-    relative_path = path;
-    dependencies;
-    dev_dependencies;
-    build_dependencies;
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources = make_sources ();
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish;
-  }
+  Riot_model.Package.make
+    ~name
+    ~path
+    ~relative_path:path
+    ~dependencies
+    ~dev_dependencies
+    ~build_dependencies
+    ~sources:(make_sources ())
+    ~publish
+    ()
 
 let make_registry_cache = fun () ->
   Pkgs_ml.Registry_cache.create ~riot_home:(Path.v "/Users/example/.riot") ~registry_name:"pkgs.ml" ()
@@ -98,7 +92,23 @@ let with_tempdir = fun prefix fn ->
 
 let workspace_package = fun ~workspace_root (pkg: Riot_model.Package.t) ->
   match Path.strip_prefix pkg.path ~prefix:workspace_root with
-  | Ok relative_path -> { pkg with relative_path }
+  | Ok relative_path ->
+      Riot_model.Package.make
+        ~name:pkg.name
+        ~path:pkg.path
+        ~relative_path
+        ~dependencies:pkg.dependencies
+        ~dev_dependencies:pkg.dev_dependencies
+        ~build_dependencies:pkg.build_dependencies
+        ~foreign_dependencies:pkg.foreign_dependencies
+        ~binaries:pkg.binaries
+        ?library:pkg.library
+        ~sources:pkg.sources
+        ~compiler:pkg.compiler
+        ~commands:pkg.commands
+        ~fix_providers:pkg.fix_providers
+        ~publish:pkg.publish
+        ()
   | Error _ -> pkg
 
 let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
@@ -2107,7 +2117,24 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun _ctx ->
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
         () in
-      let app_pkg = { app_pkg with relative_path = Path.v "packages/app" } in
+      let app_pkg =
+        Riot_model.Package.make
+          ~name:app_pkg.name
+          ~path:app_pkg.path
+          ~relative_path:(Path.v "packages/app")
+          ~dependencies:app_pkg.dependencies
+          ~dev_dependencies:app_pkg.dev_dependencies
+          ~build_dependencies:app_pkg.build_dependencies
+          ~foreign_dependencies:app_pkg.foreign_dependencies
+          ~binaries:app_pkg.binaries
+          ?library:app_pkg.library
+          ~sources:app_pkg.sources
+          ~compiler:app_pkg.compiler
+          ~commands:app_pkg.commands
+          ~fix_providers:app_pkg.fix_providers
+          ~publish:app_pkg.publish
+          ()
+      in
       let workspace = Riot_model.Workspace.make ~root:workspace_root ~packages:[ app_pkg ] () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document

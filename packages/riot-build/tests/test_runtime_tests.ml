@@ -3,29 +3,12 @@ module Test = Std.Test
 
 let make_workspace = fun binaries ->
   let package =
-    Riot_model.Package.{
-      name = "demo";
-      path = Path.v "/workspace/packages/demo";
-      relative_path = Path.v "packages/demo";
-      dependencies = [];
-      dev_dependencies = [];
-      build_dependencies = [];
-      foreign_dependencies = [];
-      binaries;
-      library = None;
-      sources =
-        {
-          src = [];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        };
-      compiler = { profile_overrides = []; target_overrides = [] };
-      commands = [];
-      fix_providers = [];
-      publish = { version = None; description = None; license = None; is_public = None };
-    }
+    Riot_model.Package.make
+      ~name:"demo"
+      ~path:(Path.v "/workspace/packages/demo")
+      ~relative_path:(Path.v "packages/demo")
+      ~binaries
+      ()
   in
   Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
 

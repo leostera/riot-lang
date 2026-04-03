@@ -134,6 +134,24 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
+  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | SourceDependencyMaterializationFinished of {
+      source_locator: string;
+      ref_: string option;
+      package: string;
+      version: string option
+    }
+  | DependencyManifestUpdated of {
+      path: string;
+      section: string;
+      operation: 
+        [
+          | `Add
+          | `Remove
+        ];
+      dependency: string
+    }
+  | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
   | PackageManifestFetchFailed of { package: string; version: string option; error: Pm_error.t }

@@ -65,7 +65,7 @@ type foreign_dependency = {
   outputs: Path.t list;
   env: (string * string) list;
 }
-type t = {
+type t = private {
   name: string;
   path: Path.t;
   relative_path: Path.t;
@@ -121,6 +121,30 @@ val from_toml:
 val to_json: t -> Std.Data.Json.t
 
 val from_json: Std.Data.Json.t -> (t, string) result
+
+val make:
+  name:string ->
+  path:Path.t ->
+  relative_path:Path.t ->
+  ?dependencies:dependency list ->
+  ?dev_dependencies:dependency list ->
+  ?build_dependencies:dependency list ->
+  ?foreign_dependencies:foreign_dependency list ->
+  ?binaries:binary list ->
+  ?library:library ->
+  ?sources:sources ->
+  ?compiler:compiler_config ->
+  ?commands:Package_command.t list ->
+  ?fix_providers:Fix_provider.t list ->
+  ?publish:publish_metadata ->
+  unit ->
+  t
+
+val synthetic:
+  name:string ->
+  path:Path.t ->
+  relative_path:Path.t ->
+  t
 
 val key_of_string: string -> key
 

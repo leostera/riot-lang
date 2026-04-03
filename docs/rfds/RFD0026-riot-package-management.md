@@ -630,6 +630,30 @@ This split keeps package-management policy and network/materialization logic in
 `riot-deps`, reusable registry mechanics in `pkgs-ml`, and the durable shared
 data model in `riot-model`.
 
+### Current implementation status
+
+As of April 3, 2026, most of this RFD is implemented.
+
+Implemented:
+
+- package-name-first dependency identity in `riot.toml`
+- manifest parsing for registry, source, path, and builtin dependencies
+- `riot add`, `riot rm`, and `riot update`
+- mandatory `riot.lock` reads, writes, refresh, and unlock behavior
+- lockfile provenance for workspace, path, source, and registry packages
+- PubGrub-backed solving in `riot-deps`
+- source dependency materialization through the local Git cache
+- projection of resolved packages into `Riot_model.Package.resolved`
+- workspace publish ordering and publishability validation
+- shared lockfile/resolution/materialization events in `riot-model`
+
+Still missing or intentionally different from this document:
+
+- builds currently materialize external packages eagerly in `riot-deps`
+  before projection, instead of planner-emitted `DownloadPackage` actions
+- some text below still describes the original phase-1 plan and is preserved
+  here as history; the live implementation is further along than that plan
+
 ### Phase-1 ownership and responsibilities
 
 For the first rollout, `riot-deps` should own four concrete responsibilities:
@@ -637,7 +661,7 @@ For the first rollout, `riot-deps` should own four concrete responsibilities:
 1. build dependency universes by traversing and connecting manifest
    dependencies
 2. fetch all manifests needed for packages in those universes
-3. run a naive solver per universe to establish exact package versions
+3. run the solver to establish exact package versions
 4. present the final resolved package graph in `riot-model` terms for the
    builder
 
@@ -649,9 +673,9 @@ In other words, the operational flow should look like:
    plus resolved package data
 4. pass the resolved package data into the builder/planner
 
-For phase 1 there should be no separate solver backend abstraction. A concrete
-naive solver is enough. When PubGrub lands later, it should replace the solver
-internals rather than forcing an early abstraction layer now.
+The original phase-1 plan expected a naive solver first and PubGrub later. The
+current implementation has already crossed that boundary: `riot-deps` now uses
+`packages/pubgrub` directly for version choice and incompatibility reporting.
 
 ### Global registry cache
 
@@ -761,7 +785,7 @@ Phase 1 should work like this:
    - `jsonrpc`
    - `kernel`
 3. `riot-deps` fetches their manifests
-4. the naive solver picks exact versions
+4. the solver picks exact versions
 5. their downloaded archives are cached at paths like:
    - `~/.riot/registry/pkgs.ml/archive/std/<version>.tar`
    - `~/.riot/registry/pkgs.ml/archive/jsonrpc/<version>.tar`
@@ -848,21 +872,18 @@ The intended behavioral split is:
 - `riot update`
   - unlock and intentionally reopen the graph
 
-Even in phase 1, this policy distinction matters, even if the actual solver is
-still naive.
+This policy distinction matters regardless of solver implementation.
 
 ### Phase-1 solver
 
-Phase 1 should use a deliberately naive solver so the operational system can be
-built first.
+The original phase-1 proposal was to use a deliberately naive solver first and
+replace it later.
 
-The phase-1 solver should:
+That is no longer current. Riot now uses PubGrub for solving, version choice,
+and conflict reporting.
 
-- ignore version constraints entirely
-- always pick the latest available version of each package
-
-This is intentionally temporary. PubGrub will replace this logic later, but the
-rest of the package-management pipeline should already be real:
+What remains true from the original plan is that the rest of the package
+management pipeline is already real:
 
 - manifest parsing
 - graph construction
@@ -871,21 +892,27 @@ rest of the package-management pipeline should already be real:
 - materialization
 - build integration
 
-It should still be a real solver pass in the operational sense:
+The solver pass is operationally real:
 
 - it traverses the universes
 - it fetches the manifests
 - it picks exact versions
 - it produces a lockfile
 
-The only intentionally fake part is the selection policy.
-
 ### Builder integration
 
 For the builder, resolved external packages are effectively packages with
 materialized roots on disk.
 
-The builder should therefore consume `Riot_model.Package.resolved` and emit a
+The builder already consumes `Riot_model.Package.resolved`.
+
+The remaining design question is where lazy repair of missing external package
+materialization should live.
+
+Today, `riot-deps` eagerly ensures materialized external package roots before
+projection and build.
+
+The design described here is still attractive: the planner could emit a
 download/materialization action for any non-workspace package whose cache root
 is missing.
 
@@ -907,6 +934,10 @@ materialization are visible in both CLI and server flows.
 
 These events should be part of the shared `riot-model` event surface so both
 CLI and server/session flows can report them consistently.
+
+This is implemented for lockfile, resolution, metadata fetch, source
+dependency materialization, manifest-edit reporting, package-version update
+reporting, and materialization lifecycle events.
 
 Phase 1 should add explicit package-management event kinds such as:
 

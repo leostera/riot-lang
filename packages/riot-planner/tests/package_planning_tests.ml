@@ -22,29 +22,11 @@ let make_test_workspace = fun tmpdir packages ->
 let make_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
   let _ = Fs.create_dir_all pkg_dir in
-  Riot_model.Package.{
-    name;
-    path = pkg_dir;
-    relative_path = Path.v name;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Riot_model.Package.make
+    ~name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ()
 
 let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~package ~workspace ~profile ~build_ctx () ->
   let module H = Std.Crypto.Sha256 in
@@ -252,18 +234,21 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_bundle_stale_version_test"
       (fun tmpdir ->
-        let package = {
-          (make_package tmpdir "pkg")
-          with library = Some { path = Path.v "src/pkg.ml" };
-          sources =
-            {
-              src = [ Path.v "src/pkg.ml" ];
-              native = [];
-              tests = [];
-              examples = [];
-              bench = [];
-            };
-        }
+        let package =
+          Riot_model.Package.make
+            ~name:"pkg"
+            ~path:Path.(tmpdir / Path.v "pkg")
+            ~relative_path:(Path.v "pkg")
+            ~library:{ path = Path.v "src/pkg.ml" }
+            ~sources:
+              {
+                src = [ Path.v "src/pkg.ml" ];
+                native = [];
+                tests = [];
+                examples = [];
+                bench = [];
+              }
+            ()
         in
         let src_dir = Path.(package.path / Path.v "src") in
         let source = Path.(src_dir / Path.v "pkg.ml") in

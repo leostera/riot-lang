@@ -131,8 +131,15 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
       })
     )
 
-let run_suite_binary_capture = fun ~extra_args binary_path ->
-  let cmd = Command.make binary_path ~args:(("run-tests" :: extra_args)) in
+let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
+  let cmd = Command.make
+    binary_path
+    ~env:
+      [
+        ("RIOT_PACKAGE_NAME", suite.package_name);
+        ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
+      ]
+    ~args:(("run-tests" :: extra_args)) in
   Command.output cmd
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
@@ -185,7 +192,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);
-                  match run_suite_binary_capture ~extra_args binary_path with
+                  match run_suite_binary_capture ~workspace_root:request.workspace.root ~suite ~extra_args binary_path with
                   | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
                     suite;
                     reason

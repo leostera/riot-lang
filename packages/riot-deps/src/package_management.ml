@@ -2,6 +2,9 @@ open Std
 
 let ( let* ) = Result.and_then
 
+let duration_ms_since = fun started ->
+  Time.Instant.duration_since ~earlier:started (Time.Instant.now ()) |> Time.Duration.to_millis
+
 type dependency_scope =
   | Runtime
   | Build
@@ -23,23 +26,7 @@ type search_request = {
   limit: int;
 }
 
-type event =
-  | RegistryPackageLookupStarted of { package: string }
-  | RegistryPackageLookupFinished of { package: string; latest_version: string }
-  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
-  | SourceDependencyMaterializationFinished of {
-      source_locator: string;
-      ref_: string option;
-      package: string;
-      version: string option
-    }
-  | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation: 
-        [
-          `Add
-          | `Remove
-        ]; dependency: string }
-  | Pm of Riot_model.Event.kind
+type event_sink = Riot_model.Event.kind -> unit
 
 type add_request = {
   selection: manifest_selection;
@@ -106,7 +93,7 @@ type parsed_dependency =
   | Path of path_dependency
   | Source of source_dependency
 
-let no_emit = fun _ -> ()
+let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
 
@@ -266,7 +253,7 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
       (fun err -> PathDependencyLoadFailed { dependency = raw; path = package_root; error = err }) in
     Ok (Path { name = package.name; path = dep_path })
 
-let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
+let load_source_dependency = fun ~(emit:event_sink) ~raw ->
   let* spec = Git_dependency.parse_spec raw
   |> Result.map_error
     (fun error -> DependencySpecInvalid { dependency = raw; error = Git_dependency.message error }) in
@@ -275,7 +262,7 @@ let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
     (fun error -> DependencySpecInvalid { dependency = raw; error = Git_dependency.message error })
   |> Result.map (fun _ -> ()) in
   emit
-    (SourceDependencyMaterializationStarted {
+    (Riot_model.Event.SourceDependencyMaterializationStarted {
       source_locator = spec.source_locator;
       ref_ = spec.ref_
     });
@@ -331,7 +318,7 @@ let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
         error
       }) in
   emit
-    (SourceDependencyMaterializationFinished {
+    (Riot_model.Event.SourceDependencyMaterializationFinished {
       source_locator = spec.source_locator;
       ref_ = spec.ref_;
       package = package.name;
@@ -503,20 +490,49 @@ let search = fun ?registry ~(request:search_request) () ->
       }) in
   Ok (List.map suggested_package_of_search_result results)
 
-let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry_dependency) ->
-  emit (RegistryPackageLookupStarted { package = parsed.name });
+let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_dependency) ->
+  let registry_name = Pkgs_ml.Registry.name registry in
+  let started = Time.Instant.now () in
+  emit (Riot_model.Event.PackageMetadataFetchStarted { registry = registry_name; package = parsed.name });
   let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name
   |> Result.map_error
-    (fun error -> RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
+    (fun error ->
+      emit
+        (Riot_model.Event.PackageMetadataFetchFailed {
+          registry = registry_name;
+          package = parsed.name;
+          error = Riot_model.Pm_error.PackageMetadataReadFailed {
+            package = parsed.name;
+            registry = registry_name;
+            error
+          }
+        });
+      RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
   match document with
-  | None -> Error (RegistryPackageNotFound {
-    package = parsed.name;
-    registry = registry_name;
-    suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
-  })
+  | None ->
+      emit
+        (Riot_model.Event.PackageMetadataFetchFailed {
+          registry = registry_name;
+          package = parsed.name;
+          error = Riot_model.Pm_error.PackageNotFound {
+            package = parsed.name;
+            registry = registry_name;
+            required_by = None
+          }
+        });
+      Error (RegistryPackageNotFound {
+        package = parsed.name;
+        registry = registry_name;
+        suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
+      })
   | Some document ->
       emit
-        (RegistryPackageLookupFinished { package = document.name; latest_version = document.latest });
+        (Riot_model.Event.PackageMetadataFetchFinished {
+          registry = registry_name;
+          package = document.name;
+          version = Some document.latest;
+          duration_ms = duration_ms_since started
+        });
       let requirement = Option.unwrap_or ~default:Std.Version.any parsed.requirement in
       if dependency_exists ~package_name:parsed.name document requirement then
         Ok parsed
@@ -599,8 +615,8 @@ let reload_workspace = fun ~(workspace_root:Path.t) ->
       let errors = List.map Riot_model.Workspace_manager.load_error_to_string load_errors in
       Error (WorkspaceReloadHadErrors { workspace_root; errors })
 
-let refresh_lock = fun ~(emit:event -> unit) ~mode ~registry ~(workspace:Riot_model.Workspace.t) ->
-  Workspace_resolution.ensure_lock ~emit:(fun event -> emit (Pm event)) ~mode ~registry ~workspace ()
+let refresh_lock = fun ~(emit:event_sink) ~mode ~registry ~(workspace:Riot_model.Workspace.t) ->
+  Workspace_resolution.ensure_lock ~emit ~mode ~registry ~workspace ()
   |> Result.map fst
   |> Result.map_error (fun error -> LockRefreshFailed error)
 
@@ -613,7 +629,7 @@ let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->
     []
     lockfile.packages
 
-let emit_updated_packages = fun ~(emit:event -> unit) ~(previous:Riot_model.Lockfile.t) (
+let emit_updated_packages = fun ~(emit:event_sink) ~(previous:Riot_model.Lockfile.t) (
   current: Riot_model.Lockfile.t
 ) ->
   let previous_versions = lock_package_version_map previous in
@@ -623,13 +639,13 @@ let emit_updated_packages = fun ~(emit:event -> unit) ~(previous:Riot_model.Lock
       | Some registry, Some to_version -> (
           match List.assoc_opt (registry ^ ":" ^ pkg.id.name) previous_versions with
           | Some from_version when not (String.equal from_version to_version) -> emit
-            (PackageUpdated { package = pkg.id.name; from_version; to_version })
+            (Riot_model.Event.PackageVersionUpdated { package = pkg.id.name; from_version; to_version })
           | _ -> ()
         )
       | _ -> ())
     current.packages
 
-let update_manifest = fun ~(emit:event -> unit) ~(target:target_manifest) ~scope ~dependencies ~operation ~dependency ->
+let update_manifest = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~dependencies ~operation ~dependency ->
   Manifest_edit.update_dependency_section
     ~manifest_path:target.path
     ~section:(scope_to_section scope)
@@ -638,8 +654,8 @@ let update_manifest = fun ~(emit:event -> unit) ~(target:target_manifest) ~scope
   |> Result.map
     (fun () ->
       emit
-        (ManifestUpdated {
-          path = target.path;
+        (Riot_model.Event.DependencyManifestUpdated {
+          path = Path.to_string target.path;
           section = Manifest_edit.section_name (scope_to_section scope);
           operation;
           dependency

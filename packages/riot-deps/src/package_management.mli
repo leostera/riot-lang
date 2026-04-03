@@ -17,23 +17,7 @@ type search_request = {
   query: string;
   limit: int;
 }
-type event =
-  | RegistryPackageLookupStarted of { package: string }
-  | RegistryPackageLookupFinished of { package: string; latest_version: string }
-  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
-  | SourceDependencyMaterializationFinished of {
-      source_locator: string;
-      ref_: string option;
-      package: string;
-      version: string option
-    }
-  | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation: 
-        [
-          `Add
-          | `Remove
-        ]; dependency: string }
-  | Pm of Riot_model.Event.kind
+type event_sink = Riot_model.Event.kind -> unit
 type add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
@@ -73,7 +57,7 @@ type error =
 val error_message: error -> string
 
 val add:
-  ?on_event:(event -> unit) ->
+  ?on_event:event_sink ->
   workspace:Riot_model.Workspace.t ->
   cwd:Path.t ->
   request:add_request ->
@@ -81,7 +65,7 @@ val add:
   (unit, error) result
 
 val remove:
-  ?on_event:(event -> unit) ->
+  ?on_event:event_sink ->
   workspace:Riot_model.Workspace.t ->
   cwd:Path.t ->
   request:remove_request ->
@@ -91,4 +75,4 @@ val remove:
 val search:
   ?registry:Pkgs_ml.Registry.t -> request:search_request -> unit -> (suggested_package list, error) result
 
-val update: ?on_event:(event -> unit) -> workspace:Riot_model.Workspace.t -> unit -> (unit, error) result
+val update: ?on_event:event_sink -> workspace:Riot_model.Workspace.t -> unit -> (unit, error) result

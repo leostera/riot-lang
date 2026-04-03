@@ -221,34 +221,11 @@ and handle_get_package_info = fun state client_pid package_name ->
             Protocol.ServerResponse (
               Protocol.PackageInfo {
                 package =
-                  {
-                    name = package_name;
-                    path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty path";
-                    relative_path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path";
-                    dependencies = [];
-                    dev_dependencies = [];
-                    build_dependencies = [];
-                    foreign_dependencies = [];
-                    binaries = [];
-                    library = None;
-                    sources =
-                      {
-                        src = [];
-                        native = [];
-                        tests = [];
-                        examples = [];
-                        bench = [];
-                      };
-                    compiler = { profile_overrides = []; target_overrides = [] };
-                    commands = [];
-                    fix_providers = [];
-                    publish = {
-                      version = None;
-                      description = None;
-                      license = None;
-                      is_public = None
-                    };
-                  };
+                  Package.synthetic
+                    ~name:package_name
+                    ~path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty path")
+                    ~relative_path:
+                      (Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path");
                 sources = [];
                 dependencies = [];
               }

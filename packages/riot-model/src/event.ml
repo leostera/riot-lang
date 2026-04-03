@@ -155,6 +155,24 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
+  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | SourceDependencyMaterializationFinished of {
+      source_locator: string;
+      ref_: string option;
+      package: string;
+      version: string option
+    }
+  | DependencyManifestUpdated of {
+      path: string;
+      section: string;
+      operation: 
+        [
+          | `Add
+          | `Remove
+        ];
+      dependency: string
+    }
+  | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
   | PackageManifestFetchFailed of { package: string; version: string option; error: Pm_error.t }
@@ -255,6 +273,10 @@ let name = function
   | PackageMetadataFetchStarted _ -> "riot.pm.package_metadata.fetch.started"
   | PackageMetadataFetchFinished _ -> "riot.pm.package_metadata.fetch.finished"
   | PackageMetadataFetchFailed _ -> "riot.pm.package_metadata.fetch.failed"
+  | SourceDependencyMaterializationStarted _ -> "riot.pm.source_dependency.materialization.started"
+  | SourceDependencyMaterializationFinished _ -> "riot.pm.source_dependency.materialization.finished"
+  | DependencyManifestUpdated _ -> "riot.pm.manifest.updated"
+  | PackageVersionUpdated _ -> "riot.pm.package.updated"
   | PackageManifestFetchStarted _ -> "riot.pm.package_manifest.fetch.started"
   | PackageManifestFetchFinished _ -> "riot.pm.package_manifest.fetch.finished"
   | PackageManifestFetchFailed _ -> "riot.pm.package_manifest.fetch.failed"
@@ -432,6 +454,25 @@ let display = function
       ^ registry
       ^ ": "
       ^ Pm_error.message error
+  | SourceDependencyMaterializationStarted { source_locator; ref_ } -> (
+      match ref_ with
+      | Some ref_ -> "Materializing source dependency " ^ source_locator ^ "#" ^ ref_
+      | None -> "Materializing source dependency " ^ source_locator
+    )
+  | SourceDependencyMaterializationFinished { source_locator=_; ref_=_; package; version } -> (
+      match version with
+      | Some version -> "Discovered source dependency " ^ package ^ "@" ^ version
+      | None -> "Discovered source dependency " ^ package
+    )
+  | DependencyManifestUpdated { path; section; operation; dependency } ->
+      let verb =
+        match operation with
+        | `Add -> "Added"
+        | `Remove -> "Removed"
+      in
+      verb ^ " " ^ dependency ^ " (" ^ section ^ ") in " ^ path
+  | PackageVersionUpdated { package; from_version; to_version } ->
+      "Updated " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
   | PackageManifestFetchStarted { package; version } ->
       "Fetching manifest for " ^ package ^ "@" ^ version
   | PackageManifestFetchFinished { package; version; duration_ms } ->
@@ -597,6 +638,15 @@ let json_of_resolution_mode = function
 let resolution_mode_of_json = function
   | Json.String "refresh" -> Some `Refresh
   | Json.String "unlock" -> Some `Unlock
+  | _ -> None
+
+let json_of_manifest_operation = function
+  | `Add -> Json.String "add"
+  | `Remove -> Json.String "remove"
+
+let manifest_operation_of_json = function
+  | Json.String "add" -> Some `Add
+  | Json.String "remove" -> Some `Remove
   | _ -> None
 
 (** Convert kind to JSON *)
@@ -825,6 +875,31 @@ let kind_to_json = function
         ("registry", Json.String registry);
         ("package", Json.String package);
         ("error", Pm_error.to_json error);
+      ]
+  | SourceDependencyMaterializationStarted { source_locator; ref_ } ->
+      Json.Object [
+        ("source_locator", Json.String source_locator);
+        ("ref", json_of_string_option ref_);
+      ]
+  | SourceDependencyMaterializationFinished { source_locator; ref_; package; version } ->
+      Json.Object [
+        ("source_locator", Json.String source_locator);
+        ("ref", json_of_string_option ref_);
+        ("package", Json.String package);
+        ("version", json_of_string_option version);
+      ]
+  | DependencyManifestUpdated { path; section; operation; dependency } ->
+      Json.Object [
+        ("path", Json.String path);
+        ("section", Json.String section);
+        ("operation", json_of_manifest_operation operation);
+        ("dependency", Json.String dependency);
+      ]
+  | PackageVersionUpdated { package; from_version; to_version } ->
+      Json.Object [
+        ("package", Json.String package);
+        ("from_version", Json.String from_version);
+        ("to_version", Json.String to_version);
       ]
   | PackageManifestFetchStarted { package; version } ->
       Json.Object [ ("package", Json.String package); ("version", Json.String version) ]
@@ -1635,6 +1710,83 @@ let kind_from_json = fun json ->
                 )
               | _ -> Error "Invalid PackageMetadataFetchFailed data"
             )
+          | "riot.pm.source_dependency.materialization.started" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match List.assoc_opt "source_locator" data_fields with
+                  | Some (Json.String source_locator) ->
+                      let ref_ =
+                        match List.assoc_opt "ref" data_fields with
+                        | Some json -> string_option_of_json json
+                        | None -> None
+                      in
+                      Ok (SourceDependencyMaterializationStarted { source_locator; ref_ })
+                  | _ -> Error "Invalid SourceDependencyMaterializationStarted data"
+                )
+              | _ -> Error "Invalid SourceDependencyMaterializationStarted data"
+            )
+          | "riot.pm.source_dependency.materialization.finished" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match List.assoc_opt "source_locator" data_fields, List.assoc_opt "package" data_fields with
+                  | Some (Json.String source_locator), Some (Json.String package) ->
+                      let ref_ =
+                        match List.assoc_opt "ref" data_fields with
+                        | Some json -> string_option_of_json json
+                        | None -> None
+                      in
+                      let version =
+                        match List.assoc_opt "version" data_fields with
+                        | Some json -> string_option_of_json json
+                        | None -> None
+                      in
+                      Ok (SourceDependencyMaterializationFinished {
+                        source_locator;
+                        ref_;
+                        package;
+                        version;
+                      })
+                  | _ -> Error "Invalid SourceDependencyMaterializationFinished data"
+                )
+              | _ -> Error "Invalid SourceDependencyMaterializationFinished data"
+            )
+          | "riot.pm.manifest.updated" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match
+                    List.assoc_opt "path" data_fields,
+                    List.assoc_opt "section" data_fields,
+                    List.assoc_opt "operation" data_fields,
+                    List.assoc_opt "dependency" data_fields
+                  with
+                  | Some (Json.String path), Some (Json.String section), Some operation_json, Some (Json.String dependency) -> (
+                      match manifest_operation_of_json operation_json with
+                      | Some operation -> Ok (DependencyManifestUpdated {
+                        path;
+                        section;
+                        operation;
+                        dependency;
+                      })
+                      | None -> Error "Invalid DependencyManifestUpdated data"
+                    )
+                  | _ -> Error "Invalid DependencyManifestUpdated data"
+                )
+              | _ -> Error "Invalid DependencyManifestUpdated data"
+            )
+          | "riot.pm.package.updated" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match
+                    List.assoc_opt "package" data_fields,
+                    List.assoc_opt "from_version" data_fields,
+                    List.assoc_opt "to_version" data_fields
+                  with
+                  | Some (Json.String package), Some (Json.String from_version), Some (Json.String to_version) ->
+                      Ok (PackageVersionUpdated { package; from_version; to_version })
+                  | _ -> Error "Invalid PackageVersionUpdated data"
+                )
+              | _ -> Error "Invalid PackageVersionUpdated data"
+            )
           | "riot.pm.package_manifest.fetch.started" -> (
               match data with
               | Json.Object data_fields -> (
@@ -1926,5 +2078,28 @@ module Tests = struct
         else
           Error "expected package resolved event to round-trip"
     | Ok _ -> Error "expected PackageResolvedForBuild after round-trip"
+    | Error err -> Error err [@test]
+
+  let test_manifest_update_event_json_roundtrip (): (unit, string) result =
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info
+      (DependencyManifestUpdated {
+        path = "/tmp/workspace/riot.toml";
+        section = "dependencies";
+        operation = `Add;
+        dependency = "std";
+      }) in
+    match from_json (to_json event) with
+    | Ok { kind=DependencyManifestUpdated { path; section; operation=`Add; dependency }; _ } ->
+        if
+          String.equal path "/tmp/workspace/riot.toml"
+          && String.equal section "dependencies"
+          && String.equal dependency "std"
+        then
+          Ok ()
+        else
+          Error "expected dependency manifest update event to round-trip"
+    | Ok _ -> Error "expected DependencyManifestUpdated after round-trip"
     | Error err -> Error err [@test]
 end [@test]

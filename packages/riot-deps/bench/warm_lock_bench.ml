@@ -27,34 +27,18 @@ let dependency_source = fun requirement ->
   }
 
 let make_package = fun ~name ~path ~relative_path ~dependencies ->
-  Riot_model.Package.{
-    name;
-    path;
-    relative_path;
-    dependencies;
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = {
+  Riot_model.Package.make
+    ~name
+    ~path
+    ~relative_path
+    ~dependencies
+    ~publish:{
       version = Some (Std.Version.make ~major:0 ~minor:0 ~patch:1 ());
       description = Some ("Package " ^ name);
       license = Some "Apache-2.0";
       is_public = Some true
-    };
-  }
+    }
+    ()
 
 let write_file = fun path contents ->
   let parent =

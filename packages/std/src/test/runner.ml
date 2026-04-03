@@ -27,34 +27,46 @@ let join_path_segments = fun segments ->
   | _ -> String.concat "/" segments
 
 let derive_package_name = fun binary_path ->
-  match binary_path with
-  | None -> None
-  | Some path ->
-      let segments = Path.components path |> List.map Path.to_string in
-      match find_segment_index segments "out" with
-      | Some idx when List.length segments > idx + 1 -> Some (List.nth segments (idx + 1))
-      | _ -> None
+  match Env.var Env.String ~name:"RIOT_PACKAGE_NAME" with
+  | Some package_name -> Some package_name
+  | None -> (
+      match binary_path with
+      | None -> None
+      | Some path ->
+          let segments = Path.components path |> List.map Path.to_string in
+          match find_segment_index segments "out" with
+          | Some idx when List.length segments > idx + 1 -> Some (List.nth segments (idx + 1))
+          | _ -> None
+    )
 
 let derive_workspace_root = fun ~current_dir ~binary_path ->
-  match binary_path with
-  | None -> current_dir
-  | Some path -> (
-      let segments = Path.components path |> List.map Path.to_string in
-      match find_segment_index segments "_build" with
-      | Some 0 ->
-          current_dir
-      | Some idx -> (
-          match take idx segments with
-          | []
-          | [ "." ] -> current_dir
-          | prefix -> (
-              match Path.of_string (join_path_segments prefix) with
-              | Ok root -> Some root
-              | Error _ -> current_dir
+  match Env.var Env.String ~name:"RIOT_WORKSPACE_ROOT" with
+  | Some root -> (
+      match Path.of_string root with
+      | Ok root -> Some root
+      | Error _ -> current_dir
+    )
+  | None -> (
+      match binary_path with
+      | None -> current_dir
+      | Some path -> (
+          let segments = Path.components path |> List.map Path.to_string in
+          match find_segment_index segments "_build" with
+          | Some 0 ->
+              current_dir
+          | Some idx -> (
+              match take idx segments with
+              | []
+              | [ "." ] -> current_dir
+              | prefix -> (
+                  match Path.of_string (join_path_segments prefix) with
+                  | Ok root -> Some root
+                  | Error _ -> current_dir
+                )
             )
+          | None ->
+              current_dir
         )
-      | None ->
-          current_dir
     )
 
 type mode =

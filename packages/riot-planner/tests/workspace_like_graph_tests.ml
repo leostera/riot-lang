@@ -19,29 +19,15 @@ let dependency = fun name ->
   }
 
 let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
-  Package.{
-    name;
-    path = Path.v ("packages/" ^ name);
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = List.map dependency dependencies;
-    dev_dependencies = List.map dependency dev_dependencies;
-    build_dependencies = List.map dependency build_dependencies;
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some { path = Path.v "src/lib.ml" };
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Package.make
+    ~name
+    ~path:(Path.v ("packages/" ^ name))
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~dependencies:(List.map dependency dependencies)
+    ~dev_dependencies:(List.map dependency dev_dependencies)
+    ~build_dependencies:(List.map dependency build_dependencies)
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
 
 let make_workspace = fun packages ->
   Workspace.{

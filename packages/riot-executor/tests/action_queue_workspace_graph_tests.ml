@@ -6,29 +6,12 @@ let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
 
 let make_test_package = fun name ->
-  Riot_model.Package.{
-    name;
-    path = Path.v ("packages/" ^ name);
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some { path = Path.v "src/lib.ml" };
-    sources =
-      {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
-    compiler = { profile_overrides = []; target_overrides = [] };
-    commands = [];
-    fix_providers = [];
-    publish = { version = None; description = None; license = None; is_public = None };
-  }
+  Riot_model.Package.make
+    ~name
+    ~path:(Path.v ("packages/" ^ name))
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
 
 let make_action_node = fun ?(deps = []) ?(outs = []) ?(actions = []) package_name ->
   let graph = Riot_planner.Action_graph.create () in

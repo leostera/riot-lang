@@ -37,23 +37,6 @@ type search_request = Package_management.search_request = {
   query: string;
   limit: int;
 }
-type package_event = Package_management.event =
-  | RegistryPackageLookupStarted of { package: string }
-  | RegistryPackageLookupFinished of { package: string; latest_version: string }
-  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
-  | SourceDependencyMaterializationFinished of {
-      source_locator: string;
-      ref_: string option;
-      package: string;
-      version: string option
-    }
-  | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation: 
-        [
-          `Add
-          | `Remove
-        ]; dependency: string }
-  | Pm of Riot_model.Event.kind
 type add_request = Package_management.add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
@@ -112,7 +95,7 @@ val ensure_workspace:
   (Riot_model.Workspace.t, Error.t) result
 
 val add:
-  ?on_event:(package_event -> unit) ->
+  ?on_event:event_sink ->
   workspace:Riot_model.Workspace.t ->
   cwd:Path.t ->
   request:add_request ->
@@ -126,7 +109,7 @@ val search:
   (suggested_package list, package_error) result
 
 val remove:
-  ?on_event:(package_event -> unit) ->
+  ?on_event:event_sink ->
   workspace:Riot_model.Workspace.t ->
   cwd:Path.t ->
   request:remove_request ->
@@ -134,7 +117,7 @@ val remove:
   (unit, package_error) result
 
 val update:
-  ?on_event:(package_event -> unit) ->
+  ?on_event:event_sink ->
   workspace:Riot_model.Workspace.t ->
   unit ->
   (unit, package_error) result
