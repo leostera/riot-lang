@@ -21,6 +21,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0030` - Typ Incremental Library-First Typechecker
 - `RFD0032` - Workspace Operational Config and Build Cache GC
 - `RFD0033` - Remote Source Install and Run
+- `RFD0034` - Syn Syntactic Dependency Extraction
 
 ## Rejected
 
