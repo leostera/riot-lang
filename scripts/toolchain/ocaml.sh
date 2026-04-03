@@ -67,6 +67,10 @@ Linux native GNU host targets are built via Docker Buildx:
   x86_64-unknown-linux-gnu
   aarch64-unknown-linux-gnu
 
+Targets whose build host is one of those Linux GNU toolchains also build via
+Docker when invoked from non-Linux hosts. For example:
+  x86_64-unknown-linux-gnu-x-x86_64-w64-mingw32
+
 Native Linux builds keep a per-target working tree cache under:
   .docker/volumes/ocaml/<target>/worktree
 
@@ -127,8 +131,48 @@ is_linux_host_target() {
   esac
 }
 
+host_target_for_cross_target() {
+  local target="$1"
+
+  case "$target" in
+    *-x-*)
+      printf '%s\n' "${target%%-x-*}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+docker_host_target_for_target() {
+  local target="$1"
+  local host_target
+
+  if is_linux_host_target "$target"; then
+    printf '%s\n' "$target"
+    return 0
+  fi
+
+  host_target="$(host_target_for_cross_target "$target" 2>/dev/null)" || return 1
+  if is_linux_host_target "$host_target"; then
+    printf '%s\n' "$host_target"
+    return 0
+  fi
+
+  return 1
+}
+
+is_docker_target() {
+  docker_host_target_for_target "$1" >/dev/null 2>&1
+}
+
 docker_platform_for_target() {
-  case "$1" in
+  local docker_host_target
+
+  docker_host_target="$(docker_host_target_for_target "$1" 2>/dev/null)" || \
+    die "unsupported Docker Linux host target: $1"
+
+  case "$docker_host_target" in
     x86_64-unknown-linux-gnu)
       printf '%s\n' "linux/amd64"
       ;;
@@ -136,7 +180,32 @@ docker_platform_for_target() {
       printf '%s\n' "linux/arm64"
       ;;
     *)
-      die "unsupported Docker Linux host target: $1"
+      die "unsupported Docker Linux host target: $docker_host_target"
+      ;;
+  esac
+}
+
+ensure_ocaml_nested_submodule() {
+  local submodule_name="$1"
+  local marker_path="$2"
+  local submodule_dir="$VENDORED_OCAML_DIR/$submodule_name"
+
+  if [ -e "$submodule_dir/$marker_path" ]; then
+    return 0
+  fi
+
+  echo "Initializing vendor/ocaml submodule $submodule_name"
+  run_cmd git -C "$VENDORED_OCAML_DIR" submodule update --init "$submodule_name"
+
+  if [ "$DRY_RUN" = "0" ] && [ ! -e "$submodule_dir/$marker_path" ]; then
+    die "failed to initialize vendor/ocaml submodule $submodule_name"
+  fi
+}
+
+ensure_required_submodules_for_target() {
+  case "$1" in
+    *-w64-mingw32)
+      ensure_ocaml_nested_submodule "flexdll" "Makefile"
       ;;
   esac
 }
@@ -284,6 +353,8 @@ build_linux_host_target() {
   local platform
   local image_tag
   local worktree_dir
+  local tarball_path
+  local checksum_path
 
   platform="$(docker_platform_for_target "$target")"
   image_tag="riot-ocaml-toolchain:${target}"
@@ -291,6 +362,7 @@ build_linux_host_target() {
 
   command -v docker >/dev/null 2>&1 || die "docker is required for Linux host targets"
   docker buildx version >/dev/null 2>&1 || die "docker buildx is required for Linux host targets"
+  ensure_required_submodules_for_target "$target"
 
   if [ "$CLEAN_BUILD" != "0" ]; then
     run_cmd rm -rf "$worktree_dir"
@@ -316,15 +388,47 @@ build_linux_host_target() {
     "$image_tag" \
     "$target" \
     "$CLEAN_BUILD"
+
+  if [ "$DRY_RUN" != "0" ]; then
+    echo "dry-run: artifact path will be determined after packaging"
+    return 0
+  fi
+
+  tarball_path="$(find_built_tarball "$output_dir")"
+  [ -n "$tarball_path" ] || die "docker build did not produce a tarball for $target matching suffix $(toolchain_suffix_name)"
+  checksum_path="$tarball_path.sha256"
+  write_sha256_file "$tarball_path" "$checksum_path"
 }
 
 sync_ocaml_source_tree() {
   local source_dir="$1"
   local worktree_dir="$2"
+  local files_to_copy
+  local files_to_remove
 
   mkdir -p "$worktree_dir"
+
+  files_to_copy="$(mktemp)"
+  files_to_remove="$(mktemp)"
+
   git -C "$source_dir" ls-files -z --cached --others --exclude-standard | \
-    rsync -a --from0 --files-from=- "$source_dir"/ "$worktree_dir"/
+    while IFS= read -r -d '' path; do
+      [ -e "$source_dir/$path" ] || continue
+      printf '%s\0' "$path"
+    done > "$files_to_copy"
+
+  if [ -s "$files_to_copy" ]; then
+    rsync -a --from0 --files-from="$files_to_copy" "$source_dir"/ "$worktree_dir"/
+  fi
+
+  git -C "$source_dir" ls-files -z --deleted > "$files_to_remove"
+  if [ -s "$files_to_remove" ]; then
+    while IFS= read -r -d '' path; do
+      rm -rf "$worktree_dir/$path"
+    done < "$files_to_remove"
+  fi
+
+  rm -f "$files_to_copy" "$files_to_remove"
 }
 
 reset_stale_local_worktree_if_needed() {
@@ -353,19 +457,6 @@ mark_local_worktree_layout_version() {
   local worktree_dir="$1"
 
   printf '%s\n' "$WORKTREE_LAYOUT_VERSION" > "$worktree_dir/.riot-worktree-layout-version"
-}
-
-host_target_for_cross_target() {
-  local target="$1"
-
-  case "$target" in
-    *-x-*)
-      printf '%s\n' "${target%%-x-*}"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 linux_sysroot_overlay_target() {
@@ -462,6 +553,7 @@ build_local_target() {
     reset_stale_local_worktree_if_needed "$worktree_dir"
   fi
 
+  ensure_required_submodules_for_target "$target"
   run_cmd mkdir -p "$output_dir"
   remove_built_tarballs_for_suffix "$output_dir"
 
@@ -552,13 +644,21 @@ publish_target() {
 ensure_artifact_exists() {
   local target="$1"
   local output_dir="$2"
+  local tarball_path
+  local checksum_path
 
-  if [ -n "$(find_built_tarball "$output_dir")" ]; then
+  tarball_path="$(find_built_tarball "$output_dir")"
+  if [ -n "$tarball_path" ]; then
+    checksum_path="$tarball_path.sha256"
+    if [ ! -f "$checksum_path" ]; then
+      echo "Checksum missing for $(basename "$tarball_path"); regenerating"
+      write_sha256_file "$tarball_path" "$checksum_path"
+    fi
     return 0
   fi
 
   echo "No packaged artifact found for suffix $(toolchain_suffix_name); building $target first"
-  if is_linux_host_target "$target"; then
+  if is_docker_target "$target"; then
     build_linux_host_target "$target" "$output_dir"
   else
     build_local_target "$target" "$output_dir"
@@ -625,7 +725,7 @@ done
 
 load_env_file "$ENV_FILE"
 
-RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.1}}}}}"
+RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.2}}}}}"
 
 if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ -z "$CLI_TOOLCHAIN_SUFFIX" ]; then
   if [ "${#TARGETS[@]}" -gt 1 ]; then
@@ -665,7 +765,7 @@ for target in "${TARGETS[@]}"; do
   echo
 
   if [ "$MODE" = "build" ] || [ "$MODE" = "release" ]; then
-    if is_linux_host_target "$target"; then
+    if is_docker_target "$target"; then
       build_linux_host_target "$target" "$target_output_dir"
     else
       build_local_target "$target" "$target_output_dir"

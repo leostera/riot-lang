@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     file \
+    g++-mingw-w64-x86-64 \
+    gcc-mingw-w64-x86-64 \
     gawk \
     git \
     libpcre2-dev \
@@ -20,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     rsync \
     uuid-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/ocaml-toolchain-run.sh /usr/local/bin/ocaml-toolchain-run

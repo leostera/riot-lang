@@ -10,6 +10,71 @@ OUTPUT_DIR="/out"
 WORKTREE_LAYOUT_VERSION="2"
 VERSION_FILE="$WORK_DIR/.riot-worktree-layout-version"
 
+toolchain_suffix_name() {
+  local suffix="${RIOT_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-}}"
+  suffix="${suffix#-}"
+  printf '%s\n' "$suffix"
+}
+
+find_built_tarball() {
+  local output_dir="$1"
+  local suffix
+  local pattern
+
+  suffix="$(toolchain_suffix_name)"
+  if [ -n "$suffix" ]; then
+    pattern="ocaml-*-${suffix}-*.tar.gz"
+  else
+    pattern="ocaml-*.tar.gz"
+  fi
+
+  find "$output_dir" -maxdepth 1 -type f -name "$pattern" | head -n 1
+}
+
+host_target_for_cross_target() {
+  local target="$1"
+
+  case "$target" in
+    *-x-*)
+      printf '%s\n' "${target%%-x-*}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+sync_ocaml_source_tree() {
+  local source_dir="$1"
+  local worktree_dir="$2"
+  local files_to_copy
+  local files_to_remove
+
+  mkdir -p "$worktree_dir"
+
+  files_to_copy="$(mktemp)"
+  files_to_remove="$(mktemp)"
+
+  git -C "$source_dir" ls-files -z --cached --others --exclude-standard | \
+    while IFS= read -r -d '' path; do
+      [ -e "$source_dir/$path" ] || continue
+      printf '%s\0' "$path"
+    done > "$files_to_copy"
+
+  if [ -s "$files_to_copy" ]; then
+    rsync -a --from0 --files-from="$files_to_copy" "$source_dir"/ "$worktree_dir"/
+  fi
+
+  git -C "$source_dir" ls-files -z --deleted > "$files_to_remove"
+  if [ -s "$files_to_remove" ]; then
+    while IFS= read -r -d '' path; do
+      rm -rf "$worktree_dir/$path"
+    done < "$files_to_remove"
+  fi
+
+  rm -f "$files_to_copy" "$files_to_remove"
+}
+
 linux_sdk_arch_dir() {
   case "$1" in
     x86_64-unknown-linux-gnu)
@@ -83,17 +148,29 @@ mkdir -p "$WORK_DIR"
 # Sync tracked and untracked source files into the cached worktree without
 # copying ignored build outputs. That keeps the Linux cache incremental while
 # avoiding Mach-O and other host-specific artefacts from the source checkout.
-git -C "$SOURCE_DIR" ls-files -z --cached --others --exclude-standard | \
-  rsync -a --from0 --files-from=- "$SOURCE_DIR"/ "$WORK_DIR"/
+sync_ocaml_source_tree "$SOURCE_DIR" "$WORK_DIR"
 
 printf '%s\n' "$WORKTREE_LAYOUT_VERSION" > "$VERSION_FILE"
 
 cd "$WORK_DIR"
+bootstrapped_host=0
+host_target="$(host_target_for_cross_target "$TARGET" 2>/dev/null || true)"
+if [ -n "$host_target" ] && [ ! -d "$WORK_DIR/cross/$host_target" ]; then
+  echo "Bootstrapping host toolchain for $TARGET inside Docker worktree"
+  bash ./cross/build.sh "$host_target"
+  bootstrapped_host=1
+fi
+
+if [ "$bootstrapped_host" != "0" ]; then
+  echo "Resetting source tree after host bootstrap for $TARGET"
+  make distclean
+fi
+
 bash ./cross/build.sh "$TARGET"
 install_linux_sdk_overlay "$TARGET" "$WORK_DIR/cross/$TARGET"
 bash ./cross/package.sh "$TARGET" "$OUTPUT_DIR"
 
-tarball="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name 'ocaml-*.tar.gz' | head -n 1)"
+tarball="$(find_built_tarball "$OUTPUT_DIR")"
 [ -n "$tarball" ] || die "package step did not produce a tarball for $TARGET"
 
 (cd "$OUTPUT_DIR" && sha256sum "$(basename "$tarball")" > "$(basename "$tarball").sha256")
