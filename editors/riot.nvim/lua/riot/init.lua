@@ -2,6 +2,7 @@ local M = {}
 
 local defaults = {
   notify = true,
+  enable_lsp = true,
   riot_cmd = { "riot" },
 }
 
@@ -70,6 +71,13 @@ local function workspace_root(path)
   end
 
   return vim.fs.dirname(root_files[1])
+end
+
+local function riot_lsp_command()
+  local command = vim.deepcopy(state.config.riot_cmd)
+  table.insert(command, "lsp")
+  table.insert(command, "stdio")
+  return command
 end
 
 local function nearest_manifest(path)
@@ -153,6 +161,133 @@ end
 
 local function clear_diagnostics(bufnr)
   vim.diagnostic.reset(diagnostics_namespace, bufnr)
+end
+
+local function riot_lsp_clients(bufnr)
+  return vim.lsp.get_clients({ bufnr = bufnr, name = "riot-lsp" })
+end
+
+local function riot_lsp_active(bufnr)
+  return #riot_lsp_clients(bufnr) > 0
+end
+
+local function start_riot_lsp(bufnr)
+  if not state.config.enable_lsp then
+    return false
+  end
+
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    return false
+  end
+
+  if not supported_file(path) then
+    return false
+  end
+
+  local root = workspace_root(path)
+  if type(root) ~= "string" or root == "" then
+    return false
+  end
+
+  if riot_lsp_active(bufnr) then
+    clear_diagnostics(bufnr)
+    return true
+  end
+
+  local started = false
+  vim.api.nvim_buf_call(bufnr, function()
+    local client_id = vim.lsp.start({
+      name = "riot-lsp",
+      cmd = riot_lsp_command(),
+      root_dir = root,
+      single_file_support = true,
+      on_attach = function(_, attached_bufnr)
+        if vim.api.nvim_buf_is_valid(attached_bufnr) then
+          clear_diagnostics(attached_bufnr)
+        end
+      end,
+    })
+
+    started = client_id ~= nil
+  end)
+
+  if started then
+    clear_diagnostics(bufnr)
+  end
+
+  return started or riot_lsp_active(bufnr)
+end
+
+local function format_with_riot_lsp(bufnr)
+  if not riot_lsp_active(bufnr) then
+    return false
+  end
+
+  vim.lsp.buf.format({
+    bufnr = bufnr,
+    async = false,
+    filter = function(client)
+      return client.name == "riot-lsp"
+    end,
+  })
+
+  return true
+end
+
+local function diagnostics_under_cursor(bufnr)
+  local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+  return vim.diagnostic.get(bufnr, { lnum = line })
+end
+
+local function diagnostic_contains_cursor(diagnostic, line, col)
+  local start_line = diagnostic.lnum
+  local end_line = diagnostic.end_lnum or diagnostic.lnum
+  local start_col = diagnostic.col or 0
+  local end_col = diagnostic.end_col or start_col
+
+  if line < start_line or line > end_line then
+    return false
+  end
+
+  if start_line == end_line then
+    if end_col <= start_col then
+      return col == start_col
+    end
+
+    return col >= start_col and col <= end_col
+  end
+
+  if line == start_line then
+    return col >= start_col
+  end
+
+  if line == end_line then
+    return col <= end_col
+  end
+
+  return true
+end
+
+local function riot_lsp_diagnostics_under_cursor(bufnr)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1
+  local col = cursor[2]
+  local items = {}
+
+  for _, client in ipairs(riot_lsp_clients(bufnr)) do
+    local push_namespace = vim.lsp.diagnostic.get_namespace(client.id, false)
+    local pull_namespace = vim.lsp.diagnostic.get_namespace(client.id, true)
+
+    vim.list_extend(items, vim.diagnostic.get(bufnr, { namespace = push_namespace, lnum = line }))
+    vim.list_extend(items, vim.diagnostic.get(bufnr, { namespace = pull_namespace, lnum = line }))
+  end
+
+  return vim.tbl_filter(function(diagnostic)
+    return diagnostic.user_data
+      and diagnostic.user_data.lsp
+      and diagnostic_contains_cursor(diagnostic, line, col)
+  end, items)
 end
 
 local function set_diagnostics(bufnr, items)
@@ -641,7 +776,7 @@ local function run_fix(bufnr, opts)
   return { ok = true, skipped = false, items = items }
 end
 
-local function run_save_pipeline(bufnr, opts)
+local function run_cli_save_pipeline(bufnr, opts)
   local fmt = run_fmt(bufnr, opts)
 
   if fmt.skipped then
@@ -662,24 +797,91 @@ local function run_save_pipeline(bufnr, opts)
   return fix.ok
 end
 
+local function run_lsp_save_pipeline(bufnr)
+  if not start_riot_lsp(bufnr) then
+    return false
+  end
+
+  return format_with_riot_lsp(bufnr)
+end
+
 local function configure_format_on_save()
+  vim.api.nvim_create_autocmd("BufWritePre", {
+    group = vim.api.nvim_create_augroup("riot.nvim.format_pre", { clear = true }),
+    pattern = { "*.ml", "*.mli" },
+    desc = "Format OCaml files with riot lsp before save",
+    callback = function(args)
+      vim.b[args.buf].riot_lsp_formatted = run_lsp_save_pipeline(args.buf)
+    end,
+  })
+
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = vim.api.nvim_create_augroup("riot.nvim.format", { clear = true }),
     pattern = { "*.ml", "*.mli" },
-    desc = "Format OCaml files with riot fmt after save",
+    desc = "Refresh riot diagnostics with the CLI fallback after save",
     callback = function(args)
-      run_save_pipeline(args.buf, { silent = true })
+      if vim.b[args.buf].riot_lsp_formatted then
+        vim.b[args.buf].riot_lsp_formatted = nil
+        return
+      end
+
+      run_cli_save_pipeline(args.buf, { silent = true })
+    end,
+  })
+end
+
+local function configure_lsp_autostart()
+  vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
+    group = vim.api.nvim_create_augroup("riot.nvim.lsp", { clear = true }),
+    pattern = { "*.ml", "*.mli" },
+    desc = "Start riot-lsp for OCaml files",
+    callback = function(args)
+      start_riot_lsp(args.buf)
     end,
   })
 end
 
 function M.setup(opts)
   state.config = merge_config(opts)
+  configure_lsp_autostart()
   configure_format_on_save()
 end
 
 function M.format_current_buffer()
-  return run_save_pipeline(vim.api.nvim_get_current_buf())
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if start_riot_lsp(bufnr) and format_with_riot_lsp(bufnr) then
+    return true
+  end
+
+  return run_cli_save_pipeline(bufnr)
+end
+
+function M.fix_current_diagnostic()
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if not start_riot_lsp(bufnr) then
+    notify("riot-lsp is not attached for this buffer", vim.log.levels.WARN)
+    return false
+  end
+
+  local diagnostics = riot_lsp_diagnostics_under_cursor(bufnr)
+  if #diagnostics == 0 then
+    notify("no riot-lsp diagnostic under the cursor", vim.log.levels.WARN)
+    return false
+  end
+
+  vim.lsp.buf.code_action({
+    apply = true,
+    context = {
+      diagnostics = vim.tbl_map(function(diagnostic)
+        return diagnostic.user_data.lsp
+      end, diagnostics),
+      only = { "quickfix" },
+    },
+  })
+
+  return true
 end
 
 function M.current_package(bufnr)

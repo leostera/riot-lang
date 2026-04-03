@@ -1,7 +1,7 @@
 local source = debug.getinfo(1, "S").source
 local this_file = source:sub(1, 1) == "@" and source:sub(2) or source
 local repo_root = vim.fs.dirname(this_file)
-local plugin_root = repo_root .. "/editors/nvim/riot.nvim"
+local plugin_root = repo_root .. "/editors/riot.nvim"
 
 if vim.fn.isdirectory(plugin_root) ~= 1 then
   return
@@ -10,8 +10,6 @@ end
 vim.opt.runtimepath:prepend(plugin_root)
 vim.cmd.runtime({ "plugin/riot.lua", bang = true })
 
-
-
 local ok, riot = pcall(require, "riot")
 if not ok then
   return
@@ -19,13 +17,11 @@ end
 
 vim.o.updatetime = 50
 
-local riot_ns = riot.diagnostics_namespace
-
 vim.api.nvim_create_autocmd("CursorHold", {
   callback = function()
+    local bufnr = vim.api.nvim_get_current_buf()
     local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-    local diags = vim.diagnostic.get(0, {
-      namespace = riot_ns,
+    local diags = vim.diagnostic.get(bufnr, {
       lnum = line,
     })
 
@@ -33,8 +29,7 @@ vim.api.nvim_create_autocmd("CursorHold", {
       return
     end
 
-    vim.diagnostic.open_float({
-      namespace = riot_ns,
+    vim.diagnostic.open_float(bufnr, {
       scope = "cursor",
       focusable = false,
       close_events = {

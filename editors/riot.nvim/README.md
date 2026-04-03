@@ -3,25 +3,27 @@
 Neovim integration for Riot.
 
 This first slice is intentionally small: it formats the current OCaml file and
-refreshes Riot diagnostics by running `riot fmt --json <current-file>` and
-`riot fix --json <current-file>` on every save.
+keeps Riot diagnostics live by speaking to `riot lsp stdio` when available.
+The legacy CLI path remains a fallback for buffers that cannot attach to the
+server yet.
 
 ## Status
 
 Current features:
 
-- `:RiotFmt` formats the current file on disk with `riot fmt`
-- mandatory format-on-save for `*.ml` and `*.mli`
-- save-time parser diagnostics through `vim.diagnostic` when formatting fails
-- save-time lint diagnostics through `vim.diagnostic` from `riot fix --json`
-- save-time status notifications when `riot fix` is waiting on the build lock or building the generated fix runner
+- `:RiotFmt` formats the current buffer, preferring `riot lsp stdio` and falling back to `riot fmt`
+- `:RiotFix` applies Riot quick fixes for the diagnostic under the cursor
+- automatic `riot lsp stdio` startup for `*.ml` and `*.mli`
+- save-time formatting through the LSP server when attached, with CLI fallback
+- live parser and lint diagnostics through `vim.diagnostic` from `riot-lsp`
+- save-time status notifications when the legacy CLI fallback is waiting on the build lock or building the generated fix runner
 
 Planned next:
 
 - `:RiotBuild`
 - `:RiotTest`
 - package add/remove helpers
-- LSP bootstrap once `riot lsp` is real
+- richer LSP commands and code actions once the server exposes them
 
 ## Install
 
@@ -30,17 +32,20 @@ looks like:
 
 ```lua
 {
-  dir = "~/Developer/github.com/leostera/riot/editors/nvim/riot.nvim",
+  dir = "~/Developer/github.com/leostera/riot/editors/riot.nvim",
 }
 ```
 
 No setup is required for the default behavior. Loading the plugin is enough to
 enable format-on-save.
 
+You do not need `nvim-lspconfig` just to use `riot-lsp` with this plugin.
+`riot.nvim` starts `riot lsp stdio` directly.
+
 ## Repo-local Autoload
 
 This repo also ships a root-level [.nvim.lua](/Users/leostera/Developer/github.com/leostera/riot/.nvim.lua)
-that adds `editors/nvim/riot.nvim` to `runtimepath` and loads the plugin
+that adds `editors/riot.nvim` to `runtimepath` and loads the plugin
 automatically.
 
 To use that path, enable Neovim project-local config in your personal config:
@@ -73,25 +78,27 @@ Options:
 
 - `riot_cmd` overrides the Riot executable, for example `{ "/path/to/riot" }`
 - `notify` controls whether failures are shown with `vim.notify`
+- `enable_lsp` disables the automatic `riot lsp stdio` client bootstrap when set to `false`
 
 ## Commands
 
 - `:RiotFmt` formats the current file
+- `:RiotFix` applies quick fixes for the current diagnostic when `riot-lsp` is attached
 
 ## Notes
 
 - The plugin formats file-backed buffers only.
-- Format-on-save always runs after the file write and then reloads the buffer if the
-  formatter changed the file on disk.
-- When `riot fmt --json` reports parser diagnostics, `riot.nvim` publishes them
-  to Neovim diagnostics instead of only showing a notification.
-- After formatting succeeds, `riot.nvim` also runs `riot fix --json` for the
-  saved file and publishes any lint warnings or errors through the same Riot
-  diagnostics namespace.
-- While `riot fix --json` is running, `riot.nvim` also surfaces a few coarse
-  progress notifications such as waiting on the build lock or building the
-  generated fix runner.
-- Manual `:RiotFmt` refuses to format a modified buffer; save first so the
-  formatter sees the current contents. It also refreshes Riot diagnostics for
-  the saved file.
+- Format-on-save uses the LSP formatter before the write when `riot-lsp` is
+  attached, and falls back to the post-write CLI pipeline otherwise.
+- When `riot lsp stdio` is available, `riot.nvim` attaches to it automatically
+  and lets the server publish parser and lint diagnostics directly.
+- The plugin uses the LSP formatter when attached and falls back to the legacy
+  `riot fmt --json` / `riot fix --json` pipeline when the server is not
+  available yet.
+- While the legacy `riot fix --json` fallback is running, `riot.nvim` also
+  surfaces a few coarse progress notifications such as waiting on the build
+  lock or building the generated fix runner.
+- Manual `:RiotFmt` formats modified buffers through the LSP client when it is
+  attached; otherwise it falls back to the saved-file CLI pipeline and refreshes
+  Riot diagnostics for the saved file.
 - Neovim `0.10+` is assumed for `vim.system` and `vim.fs`.

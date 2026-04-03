@@ -15,4 +15,4 @@
 
 ## Validate
 
-`nvim --headless -n -u NONE -i NONE +"set runtimepath+=./editors/nvim/riot.nvim" +"runtime plugin/riot.lua" +"lua assert(vim.fn.exists(':RiotFmt') == 2)" +qall!`
+`nvim --headless -n -u NONE -i NONE +"set runtimepath+=./editors/riot.nvim" +"runtime plugin/riot.lua" +"lua assert(vim.fn.exists(':RiotFmt') == 2)" +qall!`

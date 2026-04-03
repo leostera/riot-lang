@@ -16,4 +16,10 @@ end, {
   desc = "Show the Riot package for the current file",
 })
 
+vim.api.nvim_create_user_command("RiotFix", function()
+  require("riot").fix_current_diagnostic()
+end, {
+  desc = "Apply Riot quick fixes for the diagnostic under the cursor",
+})
+
 require("riot").setup()
