@@ -7,6 +7,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <string.h>
 
 typedef struct {
   DIR *dir;
@@ -85,20 +86,26 @@ CAMLprim value kernel_fs_read_dir_read_entry(value v_dir) {
     caml_raise_end_of_file();
   }
 
-  errno = 0;
-  struct dirent *entry = readdir(dir->dir);
-  if (entry == NULL) {
-    if (errno != 0) {
-      caml_uerror("readdir", Nothing);
+  while (1) {
+    errno = 0;
+    struct dirent *entry = readdir(dir->dir);
+    if (entry == NULL) {
+      if (errno != 0) {
+        caml_uerror("readdir", Nothing);
+      }
+      caml_raise_end_of_file();
     }
-    caml_raise_end_of_file();
-  }
 
-  v_name = caml_copy_string(entry->d_name);
-  v_entry = caml_alloc_tuple(2);
-  Store_field(v_entry, 0, v_name);
-  Store_field(v_entry, 1, kernel_fs_read_dir_kind(entry->d_type));
-  CAMLreturn(v_entry);
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+      continue;
+    }
+
+    v_name = caml_copy_string(entry->d_name);
+    v_entry = caml_alloc_tuple(2);
+    Store_field(v_entry, 0, v_name);
+    Store_field(v_entry, 1, kernel_fs_read_dir_kind(entry->d_type));
+    CAMLreturn(v_entry);
+  }
 }
 
 CAMLprim value kernel_fs_read_dir_close(value v_dir) {

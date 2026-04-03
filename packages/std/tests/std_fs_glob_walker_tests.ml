@@ -37,7 +37,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
           let seen = ref [] in
           Fs.Walker.walk ~roots:[ root ] ~sort:true
             ~f:(fun entry ->
-              let path: Path.t = Fs.Walker.(entry.path) in
+              let path = Fs.Walker.FileItem.path entry in
               seen := Path.to_string path :: !seen;
               if String.equal (Path.basename path) "skip" then
                 Fs.Walker.Skip_subtree
@@ -64,16 +64,16 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
             |> Result.expect ~msg:"create walker"
             |> Fs.Walker.filter_entry
               ~f:(fun entry ->
-                let path: Path.t = Fs.Walker.(entry.path) in
+                let path = Fs.Walker.FileItem.path entry in
                 not (String.equal (Path.basename path) "skip"))
             |> Fs.Walker.into_iter
           in
           let rec collect iter acc =
             match Iter.Iterator.next iter with
             | None, _ -> List.rev acc
-            | Some (Ok (entry: Fs.Walker.entry)), iter' -> collect
+            | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> collect
               iter'
-              (Path.to_string Fs.Walker.(entry.path) :: acc)
+              (Fs.Walker.FileItem.path_string entry :: acc)
             | Some (Error _err), iter' -> collect iter' acc
           in
           let seen = collect iter [] in
@@ -97,7 +97,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
             |> List.filter_map
               (
                 function
-                | Ok (entry: Fs.Walker.entry) -> Some (Path.to_string entry.path)
+                | Ok (entry: Fs.Walker.FileItem.t) -> Some (Fs.Walker.FileItem.path_string entry)
                 | Error _ -> None
               )
           in
@@ -116,7 +116,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
           Fs.write "let x = 1\n" nested_file |> Result.expect ~msg:"write nested";
           let entries = Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false ()
           |> Result.expect ~msg:"to_list"
-          |> List.map (fun (entry: Fs.Walker.entry) -> Path.to_string entry.path) in
+          |> List.map Fs.Walker.FileItem.path_string in
           Test.assert_equal ~expected:[ Path.to_string nested_file ] ~actual:entries;
           Ok ())); ]
 

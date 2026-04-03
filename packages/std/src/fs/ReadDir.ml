@@ -8,13 +8,18 @@ type entry_kind =
   | Symlink
   | Other
 
+type raw_entry = {
+  name: string;
+  kind: entry_kind;
+}
+
 type entry = {
   path: Path.t;
   kind: entry_kind;
 }
 
 type t = {
-  path: Path.t;
+  path_string: string;
   handle: Kernel.Fs.ReadDir.t;
   mutable closed: bool;
 }
@@ -34,11 +39,12 @@ let entry_kind_of_kernel = function
   | Kernel.Fs.ReadDir.Fifo
   | Kernel.Fs.ReadDir.Socket -> Other
 
-let create = fun path ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.ReadDir.open_ path_str with
+let create_string = fun path_string ->
+  match Kernel.Fs.ReadDir.open_ path_string with
   | Error e -> Error e
-  | Ok handle -> Ok { path; handle; closed = false }
+  | Ok handle -> Ok { path_string; handle; closed = false }
+
+let create = fun path -> create_string (Path.to_string path)
 
 let close = fun t ->
   if not t.closed then
@@ -53,7 +59,7 @@ let close = fun t ->
   else
     Ok ()
 
-let rec next_entry = fun t ->
+let next_raw_entry = fun t ->
   if t.closed then
     None
   else
@@ -63,17 +69,20 @@ let rec next_entry = fun t ->
         | Ok e -> e
         | Error _ -> raise End_of_file
       in
-      if entry.name = "." || entry.name = ".." then
-        next_entry t
-        (* Skip . and .. *)
-      else
-        match Path.of_string entry.name with
-        | Ok path -> Some { path; kind = entry_kind_of_kernel entry.kind }
-        | Error _ -> next_entry t
+      Some { name = entry.name; kind = entry_kind_of_kernel entry.kind }
     with
     | End_of_file ->
-        close t |> Result.expect ~msg:(("Could not close ReadDir.t for " ^ Path.to_string t.path));
+        close t |> Result.expect ~msg:(("Could not close ReadDir.t for " ^ t.path_string));
         None
+
+let rec next_entry = fun t ->
+  match next_raw_entry t with
+  | Some entry -> (
+      match Path.of_string entry.name with
+      | Ok path -> Some { path; kind = entry.kind }
+      | Error _ -> next_entry t
+    )
+  | None -> None
 
 let next = fun t ->
   match next_entry t with
@@ -88,9 +97,8 @@ let size = fun _t -> 0
 
 let clone = fun t ->
   (* Can't really clone a directory handle, so we create a new one *)
-  let path_str = Path.to_string t.path in
-  match Kernel.Fs.ReadDir.open_ path_str with
-  | Ok handle -> { path = t.path; handle; closed = false }
+  match Kernel.Fs.ReadDir.open_ t.path_string with
+  | Ok handle -> { path_string = t.path_string; handle; closed = false }
   | Error _ -> t
 
 (* Fall back to the original if we can't create a new one *)

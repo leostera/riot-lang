@@ -24,9 +24,10 @@ let discover_fixture_paths = fun root ->
   | Ok found ->
       Ok (
         found |> List.filter_map
-          (fun (entry: Fs.Walker.entry) ->
-            if not (is_snapshot_artifact entry.path) then
-              (Some entry.path)
+          (fun (entry: Fs.Walker.FileItem.t) ->
+            let path = Fs.Walker.FileItem.path entry in
+            if not (is_snapshot_artifact path) then
+              (Some path)
             else
               None) |> List.sort Path.compare
       )

@@ -60,15 +60,15 @@ let should_skip_directory = fun path ->
 let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
-let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.entry) on_file ->
-  let path = entry.path in
+let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.FileItem.t) on_file ->
+  let path = Fs.Walker.FileItem.path entry in
   let path_string = Path.to_string path in
   if HashSet.contains seen path_string then
     Fs.Walker.Skip_subtree
   else
     (
       let _ = HashSet.insert seen path_string in
-      match entry.kind with
+      match Fs.Walker.FileItem.kind entry with
       | Directory ->
           if should_skip_directory path || should_ignore path then
             Fs.Walker.Skip_subtree
@@ -86,8 +86,8 @@ let make_walker = fun ~roots ~should_ignore ->
   match Fs.Walker.create ~roots () with
   | Ok walker ->
       Fs.Walker.filter_entry walker
-        ~f:(fun (entry: Fs.Walker.entry) ->
-          let path = entry.path in
+        ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+          let path = Fs.Walker.FileItem.path entry in
           not (should_skip_directory path || should_ignore path))
   | Error _ -> panic "krasny walker configuration should be valid"
 
@@ -101,7 +101,7 @@ let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
         ()
     | Some (Error _), iter' ->
         loop iter'
-    | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+    | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' ->
         let _ =
           walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files)
         in
@@ -347,7 +347,7 @@ let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
             Ok ()
         | Some (Error _), iter' ->
             loop iter'
-        | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+        | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' ->
             let _ =
               walk_action
                 ~should_ignore:state.should_ignore

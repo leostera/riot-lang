@@ -1000,11 +1000,12 @@ let parse_foreign_dependency:
             in
             let walker =
               Fs.Walker.filter_entry walker
-                ~f:(fun (entry: Fs.Walker.entry) ->
-                  if Int.equal entry.depth 0 then
+                ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+                  let path = Fs.Walker.FileItem.path entry in
+                  if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
                     true
                   else
-                    match Path.strip_prefix entry.path ~prefix:foreign_path with
+                    match Path.strip_prefix path ~prefix:foreign_path with
                     | Error _ -> false
                     | Ok rel_path ->
                         let entry_name = Path.basename rel_path in
@@ -1014,7 +1015,7 @@ let parse_foreign_dependency:
                         if should_skip then
                           false
                         else
-                          match entry.kind with
+                          match Fs.Walker.FileItem.kind entry with
                           | Directory -> true
                           | File -> String.ends_with ~suffix:".rs" entry_name
                           || String.ends_with ~suffix:".c" entry_name
@@ -1036,10 +1037,11 @@ let parse_foreign_dependency:
                   List.rev acc
               | Some (Error _), iter' ->
                   loop acc iter'
-              | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
-                  match entry.kind with
+              | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
+                  let path = Fs.Walker.FileItem.path entry in
+                  match Fs.Walker.FileItem.kind entry with
                   | File -> (
-                      match Path.strip_prefix entry.path ~prefix:foreign_path with
+                      match Path.strip_prefix path ~prefix:foreign_path with
                       | Ok rel_path -> loop (rel_path :: acc) iter'
                       | Error _ -> loop acc iter'
                     )
@@ -1257,14 +1259,15 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
     in
     let walker =
       Fs.Walker.filter_entry walker
-        ~f:(fun (entry: Fs.Walker.entry) ->
-          if Int.equal entry.depth 0 then
+        ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+          let path = Fs.Walker.FileItem.path entry in
+          if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
             true
           else
-            match Path.strip_prefix entry.path ~prefix:package_path with
+            match Path.strip_prefix path ~prefix:package_path with
             | Error _ -> false
             | Ok rel_path -> (
-                match entry.kind with
+                match Fs.Walker.FileItem.kind entry with
                 | Directory -> not (skip_dir rel_path)
                 | File -> keep_file rel_path
                 | Symlink
@@ -1278,10 +1281,11 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
           List.rev acc
       | Some (Error _), iter' ->
           loop acc iter'
-      | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
-          match entry.kind with
+      | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
+          let path = Fs.Walker.FileItem.path entry in
+          match Fs.Walker.FileItem.kind entry with
           | File -> (
-              match Path.strip_prefix entry.path ~prefix:package_path with
+              match Path.strip_prefix path ~prefix:package_path with
               | Ok rel_path -> loop (rel_path :: acc) iter'
               | Error _ -> loop acc iter'
             )
@@ -1332,14 +1336,15 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
     in
     let walker =
       Fs.Walker.filter_entry walker
-        ~f:(fun (entry: Fs.Walker.entry) ->
-          if Int.equal entry.depth 0 then
+        ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+          let path = Fs.Walker.FileItem.path entry in
+          if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
             true
           else
-            match Path.strip_prefix entry.path ~prefix:package_path with
+            match Path.strip_prefix path ~prefix:package_path with
             | Error _ -> false
             | Ok rel_path -> (
-                match entry.kind with
+                match Fs.Walker.FileItem.kind entry with
                 | Directory -> not
                   (should_skip_source_entry rel_path || should_skip_test_support_path rel_path)
                 | File -> not
@@ -1357,10 +1362,11 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
           List.rev acc
       | Some (Error _), iter' ->
           loop acc iter'
-      | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
-          match entry.kind with
+      | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
+          let path = Fs.Walker.FileItem.path entry in
+          match Fs.Walker.FileItem.kind entry with
           | File -> (
-              match Path.strip_prefix entry.path ~prefix:package_path with
+              match Path.strip_prefix path ~prefix:package_path with
               | Ok rel_path -> loop (rel_path :: acc) iter'
               | Error _ -> loop acc iter'
             )

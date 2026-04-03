@@ -25,19 +25,36 @@ type entry_kind =
   | Directory
   | Symlink
   | Other
+
 (** A yielded filesystem entry.
 
-    - `path` is the full path to the discovered entry
-    - `depth` is relative to the configured roots:
+    `FileItem` is intentionally opaque so the walker can evolve its internal
+    path representation without leaking those details to callers. Use the
+    accessors below instead of destructuring entries directly. *)
+module FileItem : sig
+  (** One discovered filesystem entry. *)
+  type t
+
+  (** The full discovered path. *)
+  val path: t -> Path.t
+
+  (** The full discovered path as a string. *)
+  val path_string: t -> string
+
+  (** The basename returned by the directory walk for this entry. *)
+  val name: t -> string
+
+  (** Depth relative to the configured roots.
+
       - root entries are emitted at depth `0`
       - direct children of a root are depth `1`
-      - and so on
-    - `kind` is the entry classification used by pruning/filtering helpers *)
-type entry = {
-  path: Path.t;
-  depth: int;
-  kind: entry_kind;
-}
+      - and so on *)
+  val depth: t -> int
+
+  (** Cheap walker-level entry classification. *)
+  val kind: t -> entry_kind
+end
+
 (** Structured traversal error.
 
     Errors are yielded inline by the iterator so callers can choose whether to
@@ -56,7 +73,7 @@ type error = {
     The iterator never raises traversal errors. Instead:
     - `Ok entry` yields a filesystem entry
     - `Error error` yields a structured error for the current path *)
-type file_item = (entry, error) result
+type file_item = (FileItem.t, error) result
 (** Validation errors for walker construction. *)
 type create_error =
   | MinDepthCannotBeMoreThanMaxDepth of { min_depth: int; max_depth: int }
@@ -136,7 +153,7 @@ val into_iter: t -> file_item Iterator.t
 
     Filters compose: applying [`filter_entry`] multiple times keeps only entries
     accepted by all predicates. *)
-val filter_entry: t -> f:(entry -> bool) -> t
+val filter_entry: t -> f:(FileItem.t -> bool) -> t
 
 (** Convenience wrapper over [`create`] + [`into_iter`] + repeated [`next`].
 
@@ -156,7 +173,7 @@ val walk:
   roots:Path.t list ->
   ?sort:bool ->
   ?follow_symlinks:bool ->
-  f:(entry -> step) ->
+  f:(FileItem.t -> step) ->
   unit ->
   (unit, Common.error) Result.t
 
@@ -177,4 +194,4 @@ val to_list:
   ?follow_symlinks:bool ->
   ?include_directories:bool ->
   unit ->
-  (entry list, Common.error) Result.t
+  (FileItem.t list, Common.error) Result.t

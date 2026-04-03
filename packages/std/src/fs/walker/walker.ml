@@ -8,11 +8,80 @@ type entry_kind =
   | Symlink
   | Other
 
+type path_repr =
+  | Full_path of string
+  | Joined_path of {
+      dir_path: string;
+      name: string;
+    }
+
 type entry = {
-  path: Path.t;
+  path_repr: path_repr;
+  name: string;
   depth: int;
   kind: entry_kind;
+  mutable path_string_cache: string option;
+  mutable path_cache: Path.t option;
 }
+
+let join_path_string = fun dir_path name ->
+  if String.equal dir_path "" then
+    name
+  else if dir_path.[String.length dir_path - 1] = '/' then
+    dir_path ^ name
+  else
+    dir_path ^ "/" ^ name
+
+let basename_string = fun path ->
+  if String.equal path "" then
+    ""
+  else if String.equal path "/" then
+    "/"
+  else
+    let parts = String.split_on_char '/' path in
+    match List.rev parts with
+    | [] -> ""
+    | last :: _ ->
+        if String.equal last "" then
+          "/"
+        else
+          last
+
+let path_string_of_entry = fun item ->
+  match item.path_string_cache with
+  | Some path_string -> path_string
+  | None ->
+      let path_string =
+        match item.path_repr with
+        | Full_path path_string -> path_string
+        | Joined_path { dir_path; name } -> join_path_string dir_path name
+      in
+      item.path_string_cache <- Some path_string;
+      path_string
+
+module FileItem = struct
+  type t = entry
+
+  let path = fun item ->
+    match item.path_cache with
+    | Some path -> path
+    | None ->
+        let path_string = path_string_of_entry item in
+        let path =
+          Path.of_string path_string
+          |> Result.expect ~msg:(("Invalid walker path " ^ path_string))
+        in
+        item.path_cache <- Some path;
+        path
+
+  let path_string = path_string_of_entry
+
+  let name = fun item -> item.name
+
+  let depth = fun item -> item.depth
+
+  let kind = fun item -> item.kind
+end
 
 type error = {
   path: Path.t option;
@@ -20,7 +89,7 @@ type error = {
   cause: Common.error;
 }
 
-type file_item = (entry, error) result
+type file_item = (FileItem.t, error) result
 
 type create_error =
   | MinDepthCannotBeMoreThanMaxDepth of { min_depth: int; max_depth: int }
@@ -43,7 +112,7 @@ type t = {
 }
 
 type dir_list =
-  | Opened of { depth: int; dir_path: Path.t; handle: ReadDir.t }
+  | Opened of { depth: int; dir_path: string; handle: ReadDir.t }
   | Closed of { entries: file_item Vector.t; mutable index: int }
 
 type iterator_state = {
@@ -99,36 +168,82 @@ let entry_kind_of_metadata = fun metadata ->
   | `Fifo
   | `Socket -> Other
 
-let metadata_for_path = fun ~follow_symlinks path ->
-  let path_str = Path.to_string path in
+let metadata_for_path_string = fun ~follow_symlinks path_string ->
   if follow_symlinks then
-    Kernel.Fs.File.stat path_str |> Common.convert_kernel_result
+    Kernel.Fs.File.stat path_string |> Common.convert_kernel_result
   else
-    Kernel.Fs.File.lstat path_str |> Common.convert_kernel_result
+    Kernel.Fs.File.lstat path_string |> Common.convert_kernel_result
 
 let make_error = fun ?path ~depth cause -> { path; depth; cause }
 
-let entry_for_path = fun opts ~depth path ->
-  match metadata_for_path ~follow_symlinks:opts.follow_symlinks path with
-  | Ok metadata -> Ok { path; depth; kind = entry_kind_of_metadata metadata }
+let path_option_of_string = fun path_string ->
+  match Path.of_string path_string with
+  | Ok path -> Some path
+  | Error _ -> None
+
+let full_path_entry = fun ~depth ~kind path_string ->
+  let path_cache =
+    match Path.of_string path_string with
+    | Ok path -> Some path
+    | Error _ -> None
+  in
+  {
+    path_repr = Full_path path_string;
+    name = basename_string path_string;
+    depth;
+    kind;
+    path_string_cache = Some path_string;
+    path_cache;
+  }
+
+let joined_entry = fun ~depth ~kind ~dir_path ~name ->
+  {
+    path_repr = Joined_path { dir_path; name };
+    name;
+    depth;
+    kind;
+    path_string_cache = None;
+    path_cache = None;
+  }
+
+let entry_for_path_string = fun opts ~depth path_string ->
+  match metadata_for_path_string ~follow_symlinks:opts.follow_symlinks path_string with
+  | Ok metadata -> Ok (full_path_entry ~depth ~kind:(entry_kind_of_metadata metadata) path_string)
+  | Error cause -> Error (make_error ?path:(path_option_of_string path_string) ~depth cause)
+
+let root_entry_for_path = fun opts ~depth path ->
+  let path_string = Path.to_string path in
+  match metadata_for_path_string ~follow_symlinks:opts.follow_symlinks path_string with
+  | Ok metadata ->
+      Ok {
+        path_repr = Full_path path_string;
+        name = Path.basename path;
+        depth;
+        kind = entry_kind_of_metadata metadata;
+        path_string_cache = Some path_string;
+        path_cache = Some path;
+      }
   | Error cause -> Error (make_error ~path ~depth cause)
 
-let hinted_entry_for_path = fun opts ~depth path kind ->
+let hinted_entry_for_name = fun opts ~depth ~dir_path ~name kind ->
   match kind with
-  | ReadDir.Regular -> Ok { path; depth; kind = File }
-  | ReadDir.Directory -> Ok { path; depth; kind = Directory }
+  | ReadDir.Regular -> Ok (joined_entry ~depth ~kind:File ~dir_path ~name)
+  | ReadDir.Directory -> Ok (joined_entry ~depth ~kind:Directory ~dir_path ~name)
   | ReadDir.Symlink ->
+      let path_string = join_path_string dir_path name in
       if opts.follow_symlinks then
-        entry_for_path opts ~depth path
+        entry_for_path_string opts ~depth path_string
       else
-        Ok { path; depth; kind = Symlink }
-  | ReadDir.Other -> Ok { path; depth; kind = Other }
-  | ReadDir.Unknown -> entry_for_path opts ~depth path
+        Ok (joined_entry ~depth ~kind:Symlink ~dir_path ~name)
+  | ReadDir.Other -> Ok (joined_entry ~depth ~kind:Other ~dir_path ~name)
+  | ReadDir.Unknown ->
+      let path_string = join_path_string dir_path name in
+      entry_for_path_string opts ~depth path_string
 
 let compare_item_path = fun left right ->
   match (left, right) with
   | Ok (left: entry), Ok (right: entry) ->
-      String.compare (Path.to_string left.path) (Path.to_string right.path)
+      String.compare (FileItem.path_string left) (FileItem.path_string right)
   | Error (left: error), Error (right: error) ->
       let left = Option.map Path.to_string left.path |> Option.unwrap_or ~default:"" in
       let right = Option.map Path.to_string right.path |> Option.unwrap_or ~default:"" in
@@ -139,11 +254,10 @@ let compare_item_path = fun left right ->
       1
 
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
-  match ReadDir.next_entry handle with
+  match ReadDir.next_raw_entry handle with
   | None -> None
   | Some relative ->
-      let path = Path.join dir_path relative.path in
-      Some (hinted_entry_for_path opts ~depth:((depth + 1)) path relative.kind)
+      Some (hinted_entry_for_name opts ~depth:((depth + 1)) ~dir_path ~name:relative.name relative.kind)
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with
@@ -182,8 +296,8 @@ let sort_dir_list = fun dir_list ->
 
 let skippable = fun opts depth -> depth < opts.min_depth || depth > opts.max_depth
 
-let maybe_directory_target = fun path ->
-  match metadata_for_path ~follow_symlinks:true path with
+let maybe_directory_target = fun path_string ->
+  match metadata_for_path_string ~follow_symlinks:true path_string with
   | Ok metadata -> Metadata.is_dir metadata
   | Error _ -> false
 
@@ -198,10 +312,11 @@ let push = fun state (dent: entry) ->
         (close_dir_list state.opts dir_list)
       | None -> ()
   );
-  match ReadDir.create dent.path with
-  | Error cause -> Error (make_error ~path:dent.path ~depth:dent.depth cause)
+  let dir_path = FileItem.path_string dent in
+  match ReadDir.create_string dir_path with
+  | Error cause -> Error (make_error ?path:(path_option_of_string dir_path) ~depth:dent.depth cause)
   | Ok handle ->
-      let dir_list = Opened { depth = dent.depth; dir_path = dent.path; handle } in
+      let dir_list = Opened { depth = dent.depth; dir_path; handle } in
       let dir_list =
         if state.opts.sort then
           dir_list |> close_dir_list state.opts |> sort_dir_list
@@ -244,7 +359,7 @@ let handle_entry = fun state (dent: entry) ->
       && state.opts.follow_root_links
       && (
         match dent.kind with
-        | Symlink -> maybe_directory_target dent.path
+        | Symlink -> maybe_directory_target (FileItem.path_string dent)
         | _ -> false
       )
     in
@@ -267,7 +382,7 @@ let handle_entry = fun state (dent: entry) ->
       Some (Ok dent)
 
 let root_item = fun state root ->
-  match entry_for_path { state.opts with follow_symlinks = false } ~depth:0 root with
+  match root_entry_for_path { state.opts with follow_symlinks = false } ~depth:0 root with
   | Error err -> Some (Error err)
   | Ok (dent: entry) -> handle_entry state dent
 
@@ -352,7 +467,7 @@ let walk ~roots ?(sort = true) ?follow_symlinks ~f () =
                 loop ()
             | Skip_subtree ->
                 let should_skip =
-                  match dent.kind with
+                  match FileItem.kind dent with
                   | Directory -> true
                   | _ -> false
                 in
@@ -376,7 +491,7 @@ let to_list ~roots ?(sort = true) ?follow_symlinks ?(include_directories = true)
             Error err.cause
         | Some (Ok dent), iter' ->
             (
-              match dent.kind with
+              match FileItem.kind dent with
               | Directory when not include_directories -> ()
               | _ -> items := dent :: !items
             );

@@ -82,10 +82,11 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
     match Fs.Walker.create ~roots:[ workspace_root ] ~sort:true () with
     | Ok walker ->
         Fs.Walker.filter_entry walker
-          ~f:(fun (entry: Fs.Walker.entry) ->
-            match entry.kind with
-            | Directory -> not (should_skip_dir entry.path)
-            | File -> is_pending_snapshot entry.path
+          ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+            let path = Fs.Walker.FileItem.path entry in
+            match Fs.Walker.FileItem.kind entry with
+            | Directory -> not (should_skip_dir path)
+            | File -> is_pending_snapshot path
             | Symlink
             | Other -> false)
     | Error _ -> panic "snapshots walker configuration should be valid"
@@ -97,12 +98,13 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
         Ok (List.rev acc)
     | Some (Error (err: Fs.Walker.error)), _ ->
         Error err.cause
-    | Some (Ok (entry: Fs.Walker.entry)), iter' -> begin
-        match entry.kind with
+    | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> begin
+        let path = Fs.Walker.FileItem.path entry in
+        match Fs.Walker.FileItem.kind entry with
         | File ->
             let snapshot = {
-              approved = ensure_trailing_new_removed entry.path;
-              pending = entry.path
+              approved = ensure_trailing_new_removed path;
+              pending = path
             } in
             collect (snapshot :: acc) iter'
         | Directory

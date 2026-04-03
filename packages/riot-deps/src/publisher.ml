@@ -279,7 +279,8 @@ let collect_relative_files = fun ~package_root ->
     | Error _ -> panic "publisher walker configuration should be valid"
   in
   let iter = walker
-  |> Fs.Walker.filter_entry ~f:(fun (entry: Fs.Walker.entry) -> not (should_skip_entry entry.path))
+  |> Fs.Walker.filter_entry ~f:(fun (entry: Fs.Walker.FileItem.t) ->
+    not (should_skip_entry (Fs.Walker.FileItem.path entry)))
   |> Fs.Walker.into_iter in
   let rec loop acc iter =
     match Iter.Iterator.next iter with
@@ -287,22 +288,27 @@ let collect_relative_files = fun ~package_root ->
         Ok (List.rev acc)
     | Some (Error err), _ ->
         Error (publisher_error_of_walker_error ~package_root err)
-    | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
-        match entry.kind with
+    | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
+        let path = Fs.Walker.FileItem.path entry in
+        match Fs.Walker.FileItem.kind entry with
         | Directory ->
             loop acc iter'
         | File -> (
-            match Path.strip_prefix entry.path ~prefix:package_root with
+            match Path.strip_prefix path ~prefix:package_root with
             | Ok relative -> loop (relative :: acc) iter'
             | Error err -> Error (MetadataReadFailed {
-              path = entry.path;
+              path;
               error = path_error_message err
             })
           )
         | Symlink ->
-            Error (SymlinkNotAllowed { path = entry.path })
+            Error (SymlinkNotAllowed { path })
         | Other ->
-            Error (UnsupportedEntry { path = entry.path; kind = walker_kind_to_string entry.kind })
+            Error
+              (UnsupportedEntry {
+                 path;
+                 kind = walker_kind_to_string (Fs.Walker.FileItem.kind entry)
+               })
       )
   in
   loop [] iter
