@@ -309,7 +309,12 @@ _riot() {
                 '--verify[Verify formatting would preserve syntax hashes]' \
                 '--json[Emit machine-readable JSONL events]'
             ;;
-        clean|install|login|logout|new|doc|lsp|version)
+        lsp)
+            if [[ $CURRENT -eq 3 ]]; then
+                compadd stdio
+            fi
+            ;;
+        clean|install|login|logout|new|doc|version)
             # These commands have their own completion logic
             # Can be extended later
             ;;

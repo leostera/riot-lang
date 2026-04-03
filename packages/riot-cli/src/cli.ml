@@ -27,7 +27,7 @@ let build_cli = fun () ->
         Upgrade.command;
         Update_cmd.command;
         command "doc" |> about "Generate documentation";
-        command "lsp" |> about "Start OCaml LSP server";
+        Lsp_cmd.command;
         command "version" |> about "Show riot version";
       ]
       in
@@ -198,7 +198,19 @@ let is_lsp_invocation = fun args ->
   | _program :: rest -> loop rest
   | [] -> false
 
+let normalize_args = fun args ->
+  let rec loop prefix rest =
+    match rest with
+    | [] -> List.rev prefix
+    | "lsp" :: [] ->
+        List.rev_append prefix [ "lsp"; "stdio" ]
+    | current :: tail ->
+        loop (current :: prefix) tail
+  in
+  loop [] args
+
 let run = fun ~args ->
+  let args = normalize_args args in
   let workspace_scan_cache = ref None in
   let get_workspace_scan () =
     match !workspace_scan_cache with
@@ -401,8 +413,8 @@ let run = fun ~args ->
               Toolchain_cmd.run toolchain_matches
           | Some ("upgrade", upgrade_matches) ->
               Upgrade.run upgrade_matches
-          | Some ("lsp", _) ->
-              Riot_lsp.run ()
+          | Some ("lsp", lsp_matches) ->
+              Lsp_cmd.run lsp_matches
           | Some ("version", _) ->
               println (Version_info.version_string ());
               Ok ()
