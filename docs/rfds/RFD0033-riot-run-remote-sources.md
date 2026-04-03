@@ -11,11 +11,13 @@
 
 This RFD extends `riot install` and `riot run` so they can work directly from
 remote source packages, without first creating a local workspace or editing a
-manifest.
+manifest. It also extends `riot install` so a non-URL, non-local target can be
+resolved from the package registry and installed as a package binary.
 
 Examples:
 
 ```sh
+riot install suri
 riot install leostera/create-riot-app
 riot install https://github.com/leostera/create-riot-app@create-riot-app
 riot run leostera/create-riot-app
@@ -26,9 +28,13 @@ riot run https://example.com/releases/tool.tar.gz@main -- --help
 
 These commands should:
 
-1. interpret the argument as a remote source locator
-2. download or materialize it into Riot's global cache
-3. build it in an isolated cached project root
+1. resolve the target:
+   - for `riot install`, local binary first, then remote source, then registry
+     package
+   - for `riot run`, local binary first, then remote source
+2. for remote or registry installs, download or materialize sources into
+   Riot's global cache
+3. build them in an isolated cached project root
 4. select the binary:
    - explicit `@<bin>`
    - otherwise `main`
@@ -60,6 +66,7 @@ Riot already has a strong source-dependency and materialization story:
 - GitHub and source locators are first-class dependency inputs
 - materialized sources live in a shared global cache
 - the builder can compile packages from those materialized roots
+- registry packages already resolve to exact package identities and versions
 
 But today there are still awkward gaps in the user experience:
 
@@ -95,6 +102,7 @@ This feature is especially useful for:
 - bootstrap tools and project generators
 - CLIs published as Riot packages but discovered via source URLs
 - installing a tool from GitHub without cloning it manually
+- installing a tool from the registry without first adding it to a workspace
 - trying a package from GitHub before deciding to add it as a dependency
 - running a source-addressed tool pinned to a branch, ref, or tarball URL
 
@@ -118,6 +126,23 @@ Riot should:
 
 If the package defines a binary named `main`, that binary is the default
 install target.
+
+`riot install` should also support a package-name fallback:
+
+```sh
+riot install suri
+```
+
+If `suri` is not a local binary target and is not recognized as a remote source
+specifier, Riot should:
+
+1. search the registry for package `suri`
+2. resolve it to an exact package version
+3. materialize and build that package
+4. install its selected binary into `~/.riot/bin`
+
+This should feel like "install this package's CLI from the registry" rather
+than "modify my current workspace to depend on it."
 
 ### Basic run
 
@@ -151,6 +176,22 @@ riot install leostera/create-riot-app -- --help
 riot run leostera/create-riot-app -- --help
 riot run https://example.com/releases/tool.tar.gz@main -- --verbose
 ```
+
+### How targets are resolved
+
+`riot install` should resolve its first argument in this order:
+
+1. local install target
+2. remote source target
+3. registry package name
+
+`riot run` should resolve its first argument in this order:
+
+1. local run target
+2. remote source target
+
+This keeps `riot install foo` ergonomic while avoiding ambiguity for `riot run`
+where executing an arbitrary registry package by name would be more surprising.
 
 ### What counts as a remote source target?
 
@@ -213,8 +254,8 @@ The proposed forms are:
 ```text
 riot install <remote-spec>
 riot install <remote-spec>@<binary>
-riot install <remote-spec> -- <args...>
-riot install <remote-spec>@<binary> -- <args...>
+riot install <package-name>
+riot install <package-name>@<binary>
 riot run <remote-spec>
 riot run <remote-spec>@<binary>
 riot run <remote-spec> -- <args...>
@@ -252,9 +293,57 @@ means:
 - source locator: `https://github.com/owner/repo#main`
 - binary: `tool`
 
+Where `<package-name>` is a registry package identifier such as:
+
+```text
+suri
+```
+
+resolved through Riot's package registry machinery.
+
+### Install target resolution
+
+`riot install <x>` should resolve `x` in this order:
+
+1. if `x` names a local installable target in the current workspace, use the
+   current local install flow
+2. else if `x` parses as a remote source spec, use the remote-source flow from
+   this RFD
+3. else treat `x` as a registry package name and resolve/install it from the
+   registry
+
+That means:
+
+```text
+riot install riot
+```
+
+continues to prefer the local package/binary when invoked inside the Riot repo,
+while:
+
+```text
+riot install suri
+```
+
+can fall through to the registry package flow when no local target matches.
+
+### Registry-backed install flow
+
+Registry-backed install should reuse the same detached build model as remote
+source install after resolution succeeds:
+
+1. resolve the package name to an exact package version
+2. materialize that exact package into Riot's global source cache
+3. build it in the detached global build root
+4. install the selected binary into `~/.riot/bin`
+
+This keeps source-addressed and registry-addressed installs on one build path
+after target resolution.
+
 ### Source materialization
 
-Remote install/run should reuse Riot's existing source-materialization
+Remote install/run and registry-backed install should reuse Riot's existing
+source-materialization
 infrastructure instead of creating a separate downloader.
 
 #### Git / GitHub locators
@@ -403,11 +492,13 @@ The point is to keep remote execution predictable.
 ### Interaction with current `riot install` and `riot run`
 
 Current local behavior should remain unchanged unless the first argument is
-clearly a remote source spec.
+clearly a remote source spec, or in the case of `riot install`, unless it falls
+through to registry package lookup.
 
 That means:
 
 - `riot install riot` remains the normal local behavior
+- `riot install suri` can fall through to the registry package behavior
 - `riot run my-binary` remains the normal local behavior
 - `riot install leostera/create-riot-app` enters remote-source mode
 - `riot run leostera/create-riot-app` enters remote-source mode
@@ -434,6 +525,9 @@ The intended execution flow is:
 
 This should reuse existing build/runtime code where possible rather than
 introducing a private second build loop.
+
+For registry-backed install, the same flow applies after the initial package
+name resolution step.
 
 ### Relationship between install and run
 
@@ -484,6 +578,7 @@ The difference is only where the package comes from:
 
 - local workspace package
 - remote source package
+- registry package
 
 Keeping this on the existing commands is more discoverable than inventing
 separate verbs whose only job is "like install/run, but from a URL."
@@ -529,8 +624,9 @@ Because that is a different product shape.
 `riot run std` should not suddenly mean "fetch a registry package and execute
 it" when it may also mean "run a local binary named std."
 
-Likewise, `riot install std` should not suddenly mean "install a registry
-package binary" when it may also mean "install a local package binary."
+By contrast, `riot install std` can reasonably fall through to "install the
+registry package binary" once local install targets and remote source parsing
+have both failed.
 
 This RFD is intentionally source-addressed:
 
@@ -538,8 +634,12 @@ This RFD is intentionally source-addressed:
 - GitHub shorthand
 - direct tarball locators
 
-Registry-driven remote execution can be considered later if the UX is still
-worth it.
+with one deliberate extension:
+
+- `riot install <package-name>` as a registry install fallback
+
+Registry-driven remote execution for `riot run` can be considered later if the
+UX is still worth it.
 
 ## Prior art
 [prior-art]: #prior-art
@@ -549,6 +649,9 @@ worth it.
     tools and examples.
 - `cargo install --git`
   - Cargo shows the usefulness of source-addressed CLI acquisition.
+- `cargo install ripgrep`
+  - Cargo also shows that registry-backed install by package name is a natural
+    complement to source-addressed install.
 - `npx`
   - `npx` demonstrates the value of "execute without setting up a project
     first," even though its package and trust model differ from Riot's.
@@ -559,6 +662,7 @@ Riot would intentionally combine:
 - Riot's existing source materialization cache
 - detached build caching
 - durable install behavior
+- registry-backed install by package name
 - explicit binary selection rules
 
 ## Unresolved questions
@@ -568,6 +672,8 @@ Riot would intentionally combine:
   slice only support Git/GitHub locators?
 - Should the first implementation ship only `riot install <remote-spec>` and
   defer `riot run <remote-spec>` to a follow-up, even if the RFD defines both?
+- Should registry-backed install ship in the same first rollout as remote
+  install, or should it follow immediately after?
 - Should Riot support an explicit `--bin` flag alongside `@<bin>` for cases
   where shell quoting or URL syntax becomes awkward?
 - Should remote run expose a `--refresh` flag to force refetching mutable refs
