@@ -43,8 +43,10 @@ val create:
 (** Traverse the plan with pre-descent pruning.
 
     When [concurrency > 1], traversal may visit sibling subtrees in parallel.
-    Callback order is therefore not deterministic. The callback itself is still
-    serialized internally so [Skip_subtree] and [Stop] remain well-defined. *)
+    Callback order is therefore not deterministic. The callback [f] may run
+    concurrently on multiple domains and must therefore be thread-safe and
+    free of order-sensitive side effects. [Skip_subtree] applies only to the
+    current directory branch, while [Stop] stops traversal globally. *)
 val walk:
   t ->
   f:(Fs.Walker.FileItem.t -> Fs.Walker.step) ->

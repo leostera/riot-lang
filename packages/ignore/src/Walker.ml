@@ -381,7 +381,6 @@ type shared = {
   queue: task Queue.t;
   queue_lock: Mutex.t;
   queue_cond: Condition.t;
-  callback_lock: Mutex.t;
   stop: bool Atomic.t;
   pending: int Atomic.t;
   mutable error: error option;
@@ -430,14 +429,12 @@ let rec take_task shared =
   task
 
 let apply_callback shared entry f =
-  Mutex.lock shared.callback_lock;
   let step =
     if Atomic.get shared.stop then
       Fs.Walker.Stop
     else
       f entry
   in
-  Mutex.unlock shared.callback_lock;
   step
 
 let process_directory_task config shared task f =
@@ -531,7 +528,6 @@ let parallel_walk config ~f =
     queue = Queue.create ();
     queue_lock = Mutex.create ();
     queue_cond = Condition.create ();
-    callback_lock = Mutex.create ();
     stop = Atomic.make false;
     pending = Atomic.make 0;
     error = None;
