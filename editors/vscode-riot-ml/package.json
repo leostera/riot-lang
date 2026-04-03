@@ -112,7 +112,7 @@
         "riot.diagnostics.runFix": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Also run `riot fix --json` when collecting diagnostics."
+          "markdownDescription": "Include `riot-fix` lint diagnostics when Riot diagnostics are available."
         }
       }
     }
@@ -148,5 +148,8 @@
     "typescript": "^5.9.3",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }

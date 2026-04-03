@@ -63,7 +63,6 @@ export class RiotFormattingProvider implements vscode.DocumentFormattingEditProv
 }
 
 export const registerFormatOnSave = (
-	_provider: RiotFormattingProvider,
 ): vscode.Disposable =>
 	vscode.workspace.onWillSaveTextDocument((event) => {
 		const document = event.document;

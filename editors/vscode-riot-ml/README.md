@@ -2,8 +2,12 @@
 
 VS Code integration for Riot.
 
-This first slice stays intentionally thin and shells out to Riot instead of
-reimplementing formatter or linter logic in TypeScript.
+This extension stays intentionally thin and delegates editor behavior to Riot
+itself.
+
+When Riot is available, the extension prefers `riot lsp stdio` for editor
+formatting and diagnostics. If that is unavailable, it falls back to the older
+CLI-based formatter and diagnostics path.
 
 ## Features
 
@@ -12,9 +16,10 @@ reimplementing formatter or linter logic in TypeScript.
 - shows startup notifications for the resolved Riot version and whether a newer
   published Riot is available
 - contributes bundled language support for `*.ml` and `*.mli`
-- formats `*.ml` and `*.mli` files through `riot fmt`
-- surfaces parser diagnostics from `riot fmt --check --json` while you edit
-- surfaces lint diagnostics from `riot fix --check --json` on open and save
+- formats `*.ml` and `*.mli` files through `riot lsp stdio` when available
+- surfaces parser and lint diagnostics through `riot lsp stdio` when available
+- falls back to `riot fmt` / `riot fix` CLI integration when the LSP server is
+  unavailable
 - adds `Riot: Build Workspace` and `Riot: Test Workspace` commands
 - contributes VS Code tasks for `riot build` and `riot test`
 
@@ -32,7 +37,7 @@ This extension contributes the following settings:
 - `riot.latestMetadataUrl`: release metadata URL used for startup upgrade checks
 - `riot.formatOnSave`: format `*.ml` and `*.mli` on save
 - `riot.diagnostics.enabled`: enable Riot diagnostics
-- `riot.diagnostics.runFix`: include `riot fix --json` diagnostics
+- `riot.diagnostics.runFix`: include `riot-fix` lint diagnostics
 
 ## Development
 
@@ -45,5 +50,5 @@ bun run watch
 
 ## Known Issues
 
-- build and test integration currently shells out through VS Code tasks rather
-  than `riot lsp`
+- build and test integration still shells out through VS Code tasks instead of
+  the LSP

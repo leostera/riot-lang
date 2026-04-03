@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { RiotDiagnostics } from "./diagnostics";
-import { RiotFormattingProvider, registerFormatOnSave } from "./format";
+import { RiotEditorFeatures, ocamlDocumentSelector } from "./editor_features";
+import { registerFormatOnSave } from "./format";
 import {
 	currentReleaseMetadata,
 	ensureRiotAvailable,
@@ -11,10 +11,6 @@ import {
 	sameReleaseIdentity,
 } from "./riot";
 import { RiotTaskProvider, runWorkspaceTask } from "./tasks";
-
-const ocamlDocumentSelector: vscode.DocumentSelector = [
-	{ scheme: "file", language: "riot-ocaml" },
-];
 
 const activeOcamlDocument = (): vscode.TextDocument | undefined => {
 	const document = vscode.window.activeTextEditor?.document;
@@ -31,6 +27,7 @@ const activeOcamlDocument = (): vscode.TextDocument | undefined => {
 
 const startupStatus = async (
 	context: vscode.ExtensionContext,
+	editorFeatures: RiotEditorFeatures,
 ): Promise<void> => {
 	const resolved = await resolvedRiotVersion(context);
 	if (!resolved) {
@@ -65,6 +62,7 @@ const startupStatus = async (
 				},
 				async () => installManagedRiot(context),
 			);
+			await editorFeatures.restart();
 
 			const wasManaged = await isManagedRiotCommand(context, resolved.command);
 			const installedMessage = wasManaged
@@ -79,13 +77,12 @@ const startupStatus = async (
 };
 
 export function activate(context: vscode.ExtensionContext) {
-	const diagnostics = new RiotDiagnostics(context);
-	const formatter = new RiotFormattingProvider(context, diagnostics);
+	const editorFeatures = new RiotEditorFeatures(context);
+	void editorFeatures.start();
 
 	context.subscriptions.push(
-		...diagnostics.register(),
-		vscode.languages.registerDocumentFormattingEditProvider(ocamlDocumentSelector, formatter),
-		registerFormatOnSave(formatter),
+		editorFeatures,
+		registerFormatOnSave(),
 		vscode.tasks.registerTaskProvider("riot", new RiotTaskProvider(context)),
 		vscode.commands.registerCommand("riot.install", async () => {
 			const metadata = await vscode.window.withProgress(
@@ -95,6 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				async () => installManagedRiot(context),
 			);
+			await editorFeatures.restart();
 
 			void vscode.window.showInformationMessage(
 				`Installed Riot ${metadata.release_id} (${metadata.build_sha}).`,
@@ -119,11 +117,18 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			await diagnostics.refresh(document);
+			await editorFeatures.refreshDiagnostics(document);
+		}),
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration("riot.path")) {
+				void editorFeatures.restart();
+			}
 		}),
 	);
 
-	void startupStatus(context);
+	void startupStatus(context, editorFeatures);
 }
 
-export function deactivate() {}
+export function deactivate() {
+	return undefined;
+}
