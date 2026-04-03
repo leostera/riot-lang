@@ -189,7 +189,7 @@ let maybe_directory_target = fun path ->
 
 let push = fun state (dent: entry) ->
   let open_handle_budget = Vector.len state.stack_list - state.oldest_opened in
-  let () =
+  (
     if open_handle_budget = state.opts.max_open then
       match Vector.get state.stack_list state.oldest_opened with
       | Some dir_list -> Vector.set
@@ -197,7 +197,7 @@ let push = fun state (dent: entry) ->
         state.oldest_opened
         (close_dir_list state.opts dir_list)
       | None -> ()
-  in
+  );
   match ReadDir.create dent.path with
   | Error cause -> Error (make_error ~path:dent.path ~depth:dent.depth cause)
   | Ok handle ->

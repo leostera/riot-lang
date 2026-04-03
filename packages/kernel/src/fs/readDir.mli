@@ -10,12 +10,10 @@ type entry_kind =
   | Character
   | Fifo
   | Socket
-
 type entry = {
   name: string;
   kind: entry_kind;
 }
-
 type t
 val open_: string -> (t, IO.error) result
 

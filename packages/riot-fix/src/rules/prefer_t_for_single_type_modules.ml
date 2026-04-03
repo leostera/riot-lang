@@ -22,8 +22,7 @@ let single_type_decl_token = fun (decl: Syn.Cst.TypeDeclaration.t) ->
   match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
   | Some _ -> (
       match Syn.Cst.TypeDeclaration.next_and_declaration decl with
-      | None ->
-          Some (Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token)
+      | None -> Some (Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token)
       | Some _ -> None
     )
   | _ -> None

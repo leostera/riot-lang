@@ -30,7 +30,6 @@ type t
 type state = t
 (** Open a directory for reading. *)
 type item = Path.t
-
 (** Lightweight kind hint derived from the directory entry itself.
 
     This avoids a metadata syscall on the common path. `Unknown` means the
@@ -41,13 +40,11 @@ type entry_kind =
   | Directory
   | Symlink
   | Other
-
 (** One relative directory entry returned by [next_entry]. *)
 type entry = {
   path: Path.t;
   kind: entry_kind;
 }
-
 val create: Path.t -> (t, error) result
 
 (** Get next entry from directory, skipping . and .., along with its cheap

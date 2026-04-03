@@ -7,16 +7,13 @@
 
     Higher-level policy such as glob parsing or ignore semantics belongs in
     `std` or above. *)
-
 (** A compiled regular expression. *)
 type t
-
 (** A compile-time regex error. *)
 type compile_error = {
   message: string;
   offset: int option;
 }
-
 (** The first match span returned by {!find}.
 
     Offsets are zero-based byte offsets into the haystack, with `stop`

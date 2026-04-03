@@ -1,5 +1,4 @@
 (** Thin regular-expression bindings over the kernel's PCRE2 FFI. *)
-
 type compile_error = {
   message: string;
   offset: int option;

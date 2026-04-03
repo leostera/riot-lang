@@ -5320,10 +5320,7 @@ let make_lowerer =
     in
     Doc.join
       blank_line
-      (
-        render_module_signature_header ~include_keyword_leading_trivia:false decl
-        :: render_rest [] decl
-      )
+      (render_module_signature_header ~include_keyword_leading_trivia:false decl :: render_rest [] decl)
   and render_module_signature_header ~include_keyword_leading_trivia (
     decl: Syn.Cst.ModuleSignature.t
   ) =
@@ -5384,10 +5381,7 @@ let make_lowerer =
     in
     Doc.join
       blank_line
-      (
-        render_module_structure_header ~include_keyword_leading_trivia:false decl
-        :: render_rest [] decl
-      )
+      (render_module_structure_header ~include_keyword_leading_trivia:false decl :: render_rest [] decl)
   and render_module_structure_header ~include_keyword_leading_trivia (
     decl: Syn.Cst.ModuleStructure.t
   ) =

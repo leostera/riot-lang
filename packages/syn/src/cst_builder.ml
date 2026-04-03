@@ -1202,10 +1202,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
     | _ -> None
   in
   let member_decls =
-    match restore_member_nodes
-      []
-      member_syntax_nodes
-      (type_declaration_group_members decl) with
+    match restore_member_nodes [] member_syntax_nodes (type_declaration_group_members decl) with
     | Some member_decls -> member_decls
     | None -> type_declaration_group_members decl
     |> List.map (fun (decl: Cst.TypeDeclaration.t) -> { decl with next_and_declaration = None })
@@ -1245,8 +1242,7 @@ let map_last_type_declaration_in_group = fun decl f ->
   let rec loop declaration =
     match Cst.TypeDeclaration.next_and_declaration declaration with
     | None -> f declaration
-    | Some next ->
-        { declaration with next_and_declaration = Some (loop next) }
+    | Some next -> { declaration with next_and_declaration = Some (loop next) }
   in
   loop decl
 
@@ -8108,8 +8104,7 @@ let rec flatten_type_declaration_group = fun (decl: Cst.TypeDeclaration.t) ->
   | None ->
       let next_and_declaration = Cst.TypeDeclaration.next_and_declaration decl in
       let decl = { decl with next_and_declaration = None } in
-      decl
-      :: (
+      decl :: (
         match next_and_declaration with
         | Some next -> flatten_type_declaration_group next
         | None -> []

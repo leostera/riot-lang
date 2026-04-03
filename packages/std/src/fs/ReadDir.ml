@@ -68,8 +68,7 @@ let rec next_entry = fun t ->
         (* Skip . and .. *)
       else
         match Path.of_string entry.name with
-        | Ok path ->
-            Some { path; kind = entry_kind_of_kernel entry.kind }
+        | Ok path -> Some { path; kind = entry_kind_of_kernel entry.kind }
         | Error _ -> next_entry t
     with
     | End_of_file ->

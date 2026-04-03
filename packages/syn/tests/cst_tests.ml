@@ -598,34 +598,35 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
       | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
-          match
-            Syn.Cst.TypeDeclaration.type_definition decl,
-            Syn.Cst.TypeDeclaration.next_and_declaration decl
-          with
+          match Syn.Cst.TypeDeclaration.type_definition decl, Syn.Cst.TypeDeclaration.next_and_declaration
+            decl with
           | Syn.Cst.TypeDefinition.Variant { constructors=[ head_constr ]; _ }, Some alias_decl -> (
               match Syn.Cst.TypeDeclaration.next_and_declaration alias_decl with
-              | Some variant_decl when Option.is_none (Syn.Cst.TypeDeclaration.next_and_declaration variant_decl) ->
-              Test.assert_equal ~expected:"A" ~actual:(Syn.Cst.VariantConstructor.name head_constr);
-              (
-                match Syn.Cst.TypeDeclaration.type_definition alias_decl with
-                | Syn.Cst.TypeDefinition.Alias {
-                  manifest=Syn.Cst.CoreType.Constr { constructor_path; _ };
-                  _
-                } -> Test.assert_equal
-                  ~expected:[ "Outer"; "Inner"; "t" ]
-                  ~actual:((Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text))
-                | _ -> raise
-                  (Failure "expected grouped alias declaration to keep the qualified type path")
-              );
-              (
-                match Syn.Cst.TypeDeclaration.type_definition variant_decl with
-                | Syn.Cst.TypeDefinition.Variant { constructors=[ variant_constr ]; _ } ->
-                    Test.assert_equal
-                      ~expected:"B"
-                      ~actual:(Syn.Cst.VariantConstructor.name variant_constr);
-                    Ok ()
-                | _ -> Error "expected trailing grouped declaration to stay a bare variant"
-              )
+              | Some variant_decl when Option.is_none
+                (Syn.Cst.TypeDeclaration.next_and_declaration variant_decl) ->
+                  Test.assert_equal
+                    ~expected:"A"
+                    ~actual:(Syn.Cst.VariantConstructor.name head_constr);
+                  (
+                    match Syn.Cst.TypeDeclaration.type_definition alias_decl with
+                    | Syn.Cst.TypeDefinition.Alias {
+                      manifest=Syn.Cst.CoreType.Constr { constructor_path; _ };
+                      _
+                    } -> Test.assert_equal
+                      ~expected:[ "Outer"; "Inner"; "t" ]
+                      ~actual:((Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text))
+                    | _ -> raise
+                      (Failure "expected grouped alias declaration to keep the qualified type path")
+                  );
+                  (
+                    match Syn.Cst.TypeDeclaration.type_definition variant_decl with
+                    | Syn.Cst.TypeDefinition.Variant { constructors=[ variant_constr ]; _ } ->
+                        Test.assert_equal
+                          ~expected:"B"
+                          ~actual:(Syn.Cst.VariantConstructor.name variant_constr);
+                        Ok ()
+                    | _ -> Error "expected trailing grouped declaration to stay a bare variant"
+                  )
               | _ -> Error "expected grouped type declaration with alias and trailing variant"
             )
           | _ -> Error "expected grouped type declaration with alias and trailing variant"
@@ -642,7 +643,8 @@ let tests = [
       match signature_items cst with
       | Syn.Cst.SignatureItem.TypeDeclaration decl :: _ -> (
           match Syn.Cst.TypeDeclaration.next_and_declaration decl with
-          | Some packed_decl when Option.is_none (Syn.Cst.TypeDeclaration.next_and_declaration packed_decl) -> (
+          | Some packed_decl when Option.is_none
+            (Syn.Cst.TypeDeclaration.next_and_declaration packed_decl) -> (
               match Syn.Cst.TypeDeclaration.type_definition packed_decl with
               | Syn.Cst.TypeDefinition.Variant { constructors=[ packed_constr ]; _ } ->
                   Test.assert_equal
