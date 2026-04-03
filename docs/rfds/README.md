@@ -17,16 +17,10 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0012` - Simplify Riot Around Action-Level Caching
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
 - `RFD0019` - Riot Fix Syntax-Directed Rewrites
-- `RFD0020` - Krasny Pretty Printer
 - `RFD0028` - Local Artifact Publishing
-- `RFD0029` - Std Archive and Compression Support
 - `RFD0030` - Typ Incremental Library-First Typechecker
 - `RFD0032` - Workspace Operational Config and Build Cache GC
-- `RFD0033` - `riot run` for Remote Sources
-
-## Accepted
-
-- `RFD0015` - Syn Faithful CST
+- `RFD0033` - Remote Source Install and Run
 
 ## Rejected
 
@@ -45,8 +39,10 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0009` - Riot Toolchain System Snapshot
 - `RFD0013` - Riot Fix Package-Provided Rules
 - `RFD0014` - Riot Dependency Classes
+- `RFD0015` - Syn Faithful CST
 - `RFD0016` - Riot Foreign Dependency Model Snapshot
 - `RFD0017` - OCaml Cross-Compilation Snapshot
+- `RFD0020` - Krasny Pretty Printer
 - `RFD0021` - Docker Stack Snapshot
 - `RFD0022` - Riot Package Registry
 - `RFD0023` - Riot Package Index
@@ -54,6 +50,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0025` - Snapshot Testing for Riot
 - `RFD0026` - Riot Package Management
 - `RFD0027` - Toolchain Manifest Contract
+- `RFD0029` - Std Archive and Compression Support
 
 ## Notes
 
