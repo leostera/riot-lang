@@ -6,6 +6,8 @@
 
 * look into `typ`
 
+* riot.nvim !!!!
+
 # Planned
 
 * treat every .ml file in ./tests as a test, ./examples as a binary, ./bench as a bench
@@ -17,8 +19,6 @@
 * implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
 # Next
-
-* riot.nvim !!!!
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
