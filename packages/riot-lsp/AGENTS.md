@@ -10,6 +10,7 @@
 4. Keep session state explicit and testable. Prefer pure state transitions over hiding behavior in ad hoc I/O loops.
 5. Treat request parsing failures as request-scoped failures. One bad request must not poison the rest of the session.
 6. Keep request/response behavior covered by snapshot fixtures.
+7. If you need server logging, keep it file-only and out of the JSON-RPC transport.
 
 ## Validate
 

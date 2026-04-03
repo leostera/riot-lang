@@ -836,6 +836,22 @@ let tests = [
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-function-shorthand" ] ~actual:codes;
       Ok ());
+  Test.case "no-function-shorthand exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render = function | x -> x + 1\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_function_shorthand.make () ] () in
+      let result = Riot_fix.Pipeline.run pipeline source in
+      let fix =
+        result.diagnostics
+        |> List.filter_map Riot_fix.Diagnostic.fix
+        |> List.hd
+      in
+      let rewritten =
+        Riot_fix.Fix.apply_fix ~source fix
+        |> Result.expect ~msg:"expected no-function-shorthand fix to apply"
+      in
+      Test.assert_equal ~expected:"let render = fun value -> match value with | x -> x + 1\n" ~actual:rewritten;
+      Ok ());
   Test.case "no-function-shorthand keeps fun expressions clean"
     (fun _ctx ->
       let source = "let render = fun x -> x + 1\n" in

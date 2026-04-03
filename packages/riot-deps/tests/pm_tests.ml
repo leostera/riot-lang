@@ -389,11 +389,11 @@ public = true
   "package_version": "0.1.0",
   "manifest": {
     "key": "packages/demo/0.1.0/deadbeef.manifest.json",
-    "url": "https://api.pkgs.ml/v1/artifacts/packages/demo/0.1.0/deadbeef.manifest.json"
+    "url": "https://cdn.pkgs.ml/packages/demo/0.1.0/deadbeef.manifest.json"
   },
   "source_archive": {
     "key": "sources/demo/0.1.0/deadbeef.tar.gz",
-    "url": "https://api.pkgs.ml/v1/artifacts/sources/demo/0.1.0/deadbeef.tar.gz"
+    "url": "https://cdn.pkgs.ml/sources/demo/0.1.0/deadbeef.tar.gz"
   },
   "claim": {
     "key": "claims/demo.json",
@@ -697,11 +697,11 @@ public = true
   "package_version": "0.1.0",
   "manifest": {
     "key": "packages/demo/0.1.0/deadbeef.manifest.json",
-    "url": "https://api.pkgs.ml/v1/artifacts/packages/demo/0.1.0/deadbeef.manifest.json"
+    "url": "https://cdn.pkgs.ml/packages/demo/0.1.0/deadbeef.manifest.json"
   },
   "source_archive": {
     "key": "sources/demo/0.1.0/deadbeef.tar.gz",
-    "url": "https://api.pkgs.ml/v1/artifacts/sources/demo/0.1.0/deadbeef.tar.gz"
+    "url": "https://cdn.pkgs.ml/sources/demo/0.1.0/deadbeef.tar.gz"
   },
   "claim": {
     "key": "claims/demo.json",

@@ -1,0 +1,171 @@
+{
+  "outbound": [
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "capabilities": {
+          "positionEncoding": "utf-16",
+          "textDocumentSync": {
+            "openClose": true,
+            "change": 1
+          },
+          "documentFormattingProvider": true,
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.fixAll"
+            ],
+            "resolveProvider": false
+          }
+        },
+        "serverInfo": {
+          "name": "riot-lsp"
+        }
+      }
+    },
+    {
+      "params": {
+        "diagnostics": [
+          {
+            "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 12
+              },
+              "end": {
+                "line": 0,
+                "character": 34
+              }
+            },
+            "severity": 2,
+            "code": "no-function-shorthand",
+            "source": "riot-fix",
+            "data": {
+              "severity": "warning",
+              "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+              "span": {
+                "start": 12,
+                "end": 34
+              },
+              "rule_id": "no-function-shorthand",
+              "suggestion": "Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`",
+              "fix": {
+                "title": "Rewrite function shorthand as an explicit parameter match",
+                "operations": [
+                  {
+                    "kind": "replace",
+                    "target": {
+                      "kind": "token",
+                      "span": {
+                        "start": 13,
+                        "end": 21
+                      }
+                    },
+                    "replacement": {
+                      "kind": "text",
+                      "text": "fun value -> match value with"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      },
+      "jsonrpc": "2.0",
+      "method": "textDocument/publishDiagnostics"
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": [
+        {
+          "title": "Rewrite function shorthand as an explicit parameter match",
+          "kind": "quickfix",
+          "diagnostics": [
+            {
+              "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 12
+                },
+                "end": {
+                  "line": 0,
+                  "character": 34
+                }
+              },
+              "severity": 2,
+              "code": "no-function-shorthand",
+              "source": "riot-fix",
+              "data": {
+                "severity": "warning",
+                "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+                "span": {
+                  "start": 12,
+                  "end": 34
+                },
+                "rule_id": "no-function-shorthand",
+                "suggestion": "Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`",
+                "fix": {
+                  "title": "Rewrite function shorthand as an explicit parameter match",
+                  "operations": [
+                    {
+                      "kind": "replace",
+                      "target": {
+                        "kind": "token",
+                        "span": {
+                          "start": 13,
+                          "end": 21
+                        }
+                      },
+                      "replacement": {
+                        "kind": "text",
+                        "text": "fun value -> match value with"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "isPreferred": true,
+          "edit": {
+            "changes": {
+              "file:///workspace/app.ml": [
+                {
+                  "range": {
+                    "start": {
+                      "line": 0,
+                      "character": 13
+                    },
+                    "end": {
+                      "line": 0,
+                      "character": 21
+                    }
+                  },
+                  "newText": "fun value -> match value with"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "exitCode": null,
+  "state": {
+    "initialized": true,
+    "shutdownRequested": false,
+    "documents": [
+      {
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      }
+    ]
+  }
+}

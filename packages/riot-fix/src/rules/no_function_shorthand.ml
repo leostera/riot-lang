@@ -17,12 +17,29 @@ This rule nudges named functions toward the clearer form while still leaving `fu
 available for places where the shorthand is genuinely a better fit.
 |}
 
+let make_fix = fun (expr: Syn.Cst.function_expression) ->
+  Fix.make
+    ~title:"Rewrite function shorthand as an explicit parameter match"
+    ~operations:
+      [
+        Fix.replace_token_with_text
+          ~target:(Syn.Cst.Token.syntax_token expr.keyword_token)
+          ~text:"fun value -> match value with";
+      ]
+
 let make_diagnostic = fun binding ->
+  let value = Syn.Cst.LetBinding.value binding in
+  let fix =
+    match value with
+    | Syn.Cst.Expression.Function expr -> Some (make_fix expr)
+    | _ -> None
+  in
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetBinding.value_syntax_node binding))
     ~suggestion:"Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`"
+    ?fix
     ()
 
 let diagnostic_for_binding = fun binding ->

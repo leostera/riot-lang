@@ -31,7 +31,7 @@ let home_dir = Sys.getenv "HOME"
 let get_host_triple = fun () -> "unknown-unknown-unknown"
 
 (** Get the default OCaml version *)
-let ocaml_version = "5.5.0-riot.1"
+let ocaml_version = "5.5.0-riot.2"
 
 (** Get the toolchain directory for a given version and target *)
 let get_toolchain_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () ->

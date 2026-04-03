@@ -27,7 +27,9 @@ let make = fun ~severity ~kind ~span ?suggestion ?fix () ->
     fix;
   }
 
-let kind = fun diag -> diag.kind
+let kind = fun value ->
+  match value with
+  | diag -> diag.kind
 
 let severity = fun diag -> diag.severity
 
