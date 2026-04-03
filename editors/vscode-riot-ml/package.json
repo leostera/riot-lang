@@ -12,10 +12,32 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onLanguage:riot-ocaml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "riot-ocaml",
+        "aliases": [
+          "Riot OCaml",
+          "OCaml"
+        ],
+        "extensions": [
+          ".ml",
+          ".mli"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "riot-ocaml",
+        "scopeName": "source.ocaml.riot",
+        "path": "./syntaxes/riot-ocaml.tmLanguage.json"
+      }
+    ],
     "commands": [
       {
         "command": "riot.install",

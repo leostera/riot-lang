@@ -9,9 +9,10 @@ reimplementing formatter or linter logic in TypeScript.
 
 - `Riot: Install Riot` installs a managed Riot binary for the extension by
   fetching `https://get.riot.ml`
+- contributes bundled language support for `*.ml` and `*.mli`
 - formats `*.ml` and `*.mli` files through `riot fmt`
-- surfaces parser diagnostics from `riot fmt --json`
-- surfaces lint diagnostics from `riot fix --json`
+- surfaces parser diagnostics from `riot fmt --check --json` while you edit
+- surfaces lint diagnostics from `riot fix --check --json` on open and save
 - adds `Riot: Build Workspace` and `Riot: Test Workspace` commands
 - contributes VS Code tasks for `riot build` and `riot test`
 
@@ -41,6 +42,5 @@ bun run watch
 
 ## Known Issues
 
-- diagnostics currently refresh on open and save, not continuously as you type
 - build and test integration currently shells out through VS Code tasks rather
   than `riot lsp`

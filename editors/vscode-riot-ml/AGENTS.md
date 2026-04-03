@@ -6,7 +6,7 @@
 
 1. Keep the extension thin. Formatting, diagnostics, build, test, and install behavior belong in Riot itself.
 2. Prefer shelling out to stable Riot CLI surfaces over reimplementing Riot logic in TypeScript.
-3. Prefer machine-readable Riot output such as `riot fmt --json` and `riot fix --json` over parsing human text.
+3. Prefer machine-readable Riot output such as `riot fmt --check --json` and `riot fix --check --json` over parsing human text.
 4. Root detection should follow the nearest `riot.toml`; do not hardcode repo-local assumptions.
 5. Install managed Riot into extension-owned storage; do not mutate the user's shell configuration from the extension.
 6. Save hooks must avoid save loops and should only touch file-backed `*.ml` and `*.mli` documents.

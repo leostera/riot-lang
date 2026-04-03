@@ -5,8 +5,7 @@ import { ensureRiotAvailable, installManagedRiot } from "./riot";
 import { RiotTaskProvider, runWorkspaceTask } from "./tasks";
 
 const ocamlDocumentSelector: vscode.DocumentSelector = [
-	{ scheme: "file", pattern: "**/*.ml" },
-	{ scheme: "file", pattern: "**/*.mli" },
+	{ scheme: "file", language: "riot-ocaml" },
 ];
 
 const activeOcamlDocument = (): vscode.TextDocument | undefined => {

@@ -175,6 +175,7 @@ const findFixFileResult = (
 
 export class RiotDiagnostics {
 	private readonly collection: vscode.DiagnosticCollection;
+	private readonly refreshTimers = new Map<string, NodeJS.Timeout>();
 
 	constructor(private readonly context: vscode.ExtensionContext) {
 		this.collection = vscode.languages.createDiagnosticCollection("riot");
@@ -185,24 +186,59 @@ export class RiotDiagnostics {
 
 		subscriptions.push(
 			vscode.workspace.onDidOpenTextDocument((document) => {
-				void this.refresh(document);
+				void this.refresh(document, { includeFix: true });
+			}),
+			vscode.window.onDidChangeActiveTextEditor((editor) => {
+				if (editor) {
+					void this.refresh(editor.document, { includeFix: false });
+				}
+			}),
+			vscode.workspace.onDidChangeTextDocument((event) => {
+				this.scheduleRefresh(event.document);
 			}),
 			vscode.workspace.onDidSaveTextDocument((document) => {
-				void this.refresh(document);
+				void this.refresh(document, { includeFix: true });
 			}),
 			vscode.workspace.onDidCloseTextDocument((document) => {
+				this.clearTimer(document.uri);
 				this.collection.delete(document.uri);
 			}),
 		);
 
 		for (const document of vscode.workspace.textDocuments) {
-			void this.refresh(document);
+			void this.refresh(document, { includeFix: false });
 		}
 
 		return subscriptions;
 	}
 
-	async refresh(document: vscode.TextDocument): Promise<void> {
+	private clearTimer(uri: vscode.Uri): void {
+		const key = uri.toString();
+		const timer = this.refreshTimers.get(key);
+		if (timer) {
+			clearTimeout(timer);
+			this.refreshTimers.delete(key);
+		}
+	}
+
+	private scheduleRefresh(document: vscode.TextDocument): void {
+		if (!isOcamlUri(document.uri)) {
+			return;
+		}
+
+		this.clearTimer(document.uri);
+		const key = document.uri.toString();
+		const timer = setTimeout(() => {
+			this.refreshTimers.delete(key);
+			void this.refresh(document, { includeFix: false });
+		}, 250);
+		this.refreshTimers.set(key, timer);
+	}
+
+	async refresh(
+		document: vscode.TextDocument,
+		options: { includeFix: boolean } = { includeFix: true },
+	): Promise<void> {
 		if (!isOcamlUri(document.uri)) {
 			return;
 		}
@@ -220,15 +256,15 @@ export class RiotDiagnostics {
 		const cwd = root?.fsPath;
 		const diagnostics: vscode.Diagnostic[] = [];
 
-		const fmtResult = await runRiot(this.context, ["fmt", "--json", document.uri.fsPath], { cwd });
+		const fmtResult = await runRiot(this.context, ["fmt", "--check", "--json", document.uri.fsPath], { cwd });
 		const fmtEvents = parseJsonLines(fmtResult.stdout);
 		const fmtFile = findFmtFileEvent(fmtEvents, document, cwd);
 		if (fmtFile) {
 			diagnostics.push(...synItems(document, asArray(fmtFile.diagnostics)));
 		}
 
-		if (vscode.workspace.getConfiguration("riot").get<boolean>("diagnostics.runFix", true)) {
-			const fixResult = await runRiot(this.context, ["fix", "--json", document.uri.fsPath], { cwd });
+		if (options.includeFix && vscode.workspace.getConfiguration("riot").get<boolean>("diagnostics.runFix", true)) {
+			const fixResult = await runRiot(this.context, ["fix", "--check", "--json", document.uri.fsPath], { cwd });
 			const fixEvents = parseJsonLines(fixResult.stdout);
 			const fixFile = findFixFileResult(fixEvents, document);
 			if (fixFile) {
