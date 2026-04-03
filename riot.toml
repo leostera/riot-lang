@@ -7,6 +7,7 @@ members = [
   "packages/gooey",
   "packages/hello-foreign",
   "packages/http",
+  "packages/ignore",
   "packages/jsonrpc",
   "packages/kernel",
   "packages/krasny",

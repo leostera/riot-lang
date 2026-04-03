@@ -167,23 +167,30 @@ let optimize = fun glob ->
   loop [] glob
 
 let no_separator = Regex.char_class ~negated:true [ Regex.Single '/' ]
+let non_empty_segment = Regex.one_or_more no_separator
+let recursive_prefix =
+  Regex.zero_or_more (Regex.seq [ non_empty_segment; Regex.literal "/" ])
 
 let body_to_regex = fun glob ->
-  let items =
-    glob
-    |> optimize
-    |> List.map
-      (
-        function
-        | Literal value -> Regex.literal value
-        | Separator -> Regex.literal "/"
-        | Wildcard -> Regex.zero_or_more no_separator
-        | Recursive_wildcard -> Regex.zero_or_more Regex.any_char
-        | Single_wildcard -> no_separator
-        | Char_class { negated; items } -> Regex.char_class ~negated items
-      )
+  let rec lower acc =
+    function
+    | [] -> Regex.seq (List.rev acc)
+    | Recursive_wildcard :: Separator :: rest ->
+        lower (recursive_prefix :: acc) rest
+    | Literal value :: rest ->
+        lower (Regex.literal value :: acc) rest
+    | Separator :: rest ->
+        lower (Regex.literal "/" :: acc) rest
+    | Wildcard :: rest ->
+        lower (Regex.zero_or_more no_separator :: acc) rest
+    | Recursive_wildcard :: rest ->
+        lower (Regex.zero_or_more Regex.any_char :: acc) rest
+    | Single_wildcard :: rest ->
+        lower (no_separator :: acc) rest
+    | Char_class { negated; items } :: rest ->
+        lower (Regex.char_class ~negated items :: acc) rest
   in
-  Regex.seq items
+  glob |> optimize |> lower []
 
 let to_regex_set = fun globs ->
   match List.map body_to_regex globs with

@@ -67,6 +67,17 @@ let tests = [ Test.case "std regex DSL compiles and matches"
         (Glob.matches glob ~str:"../a/b/woo" |> Result.unwrap_or ~default:false);
       Test.assert_false
         (Glob.matches glob ~str:"./a/b" |> Result.unwrap_or ~default:false);
+      Ok ()); Test.case "glob doublestar slash matches zero or more directories"
+    (fun _ctx ->
+      let glob = Glob.create [ "**/vendor" ] |> Result.expect ~msg:"create glob" in
+      Test.assert_true
+        (Glob.matches glob ~str:"vendor" |> Result.unwrap_or ~default:false);
+      Test.assert_true
+        (Glob.matches glob ~str:"src/vendor" |> Result.unwrap_or ~default:false);
+      Test.assert_true
+        (Glob.matches glob ~str:"a/b/vendor" |> Result.unwrap_or ~default:false);
+      Test.assert_false
+        (Glob.matches glob ~str:"vendored" |> Result.unwrap_or ~default:false);
       Ok ()); ]
 
 let main = fun ~args -> Test.Cli.main ~name:"std_glob_regex_tests" ~tests ~args

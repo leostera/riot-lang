@@ -1,0 +1,16 @@
+[package]
+name = "ignore"
+version = "0.0.1"
+description = "Ignore-aware recursive filesystem walking"
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/Ignore.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+
+[[bin]]
+name = "ignore_tests"
+path = "tests/ignore_tests.ml"
