@@ -17,7 +17,7 @@
     ## Notes
 
     - Automatically filters out `.` and `..` entries
-    - Returns absolute paths (relative to the opened directory)
+    - Returns relative entry paths
     - Must call [close] to release resources
 
     See [Fs.read_dir] for a simpler API that returns all entries at once. *)
@@ -30,7 +30,29 @@ type t
 type state = t
 (** Open a directory for reading. *)
 type item = Path.t
+
+(** Lightweight kind hint derived from the directory entry itself.
+
+    This avoids a metadata syscall on the common path. `Unknown` means the
+    platform could not classify the entry cheaply. *)
+type entry_kind =
+  | Unknown
+  | Regular
+  | Directory
+  | Symlink
+  | Other
+
+(** One relative directory entry returned by [next_entry]. *)
+type entry = {
+  path: Path.t;
+  kind: entry_kind;
+}
+
 val create: Path.t -> (t, error) result
+
+(** Get next entry from directory, skipping . and .., along with its cheap
+    kind hint. *)
+val next_entry: t -> entry option
 
 (** Get next entry from directory, skipping . and .. *)
 val next: t -> Path.t option

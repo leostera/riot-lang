@@ -20,6 +20,7 @@ type file_result = {
   status: file_status;
   needs_formatting: bool;
   error: string option;
+  diagnostics: Syn.Diagnostic.t list option;
   duration: Time.Duration.t;
 }
 
@@ -82,7 +83,7 @@ let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.entry) on_file ->
     )
 
 let make_walker = fun ~roots ~should_ignore ->
-  match Fs.Walker.create ~roots ~sort:true () with
+  match Fs.Walker.create ~roots () with
   | Ok walker ->
       Fs.Walker.filter_entry walker
         ~f:(fun (entry: Fs.Walker.entry) ->
@@ -253,6 +254,7 @@ let finalize = fun file start ~status ~needs_formatting ~error ->
     status;
     needs_formatting;
     error;
+    diagnostics = None;
     duration = Time.Instant.elapsed start;
   }
 
@@ -305,12 +307,21 @@ let format_file = fun ~mode file ->
                 )
           in
           result
-      | Error err -> finalize
-        file
-        start
-        ~status:Failed
-        ~needs_formatting:false
-        ~error:(Some (Format_core.format_error_to_string err))
+      | Error err ->
+          let diagnostics =
+            match err with
+            | Format_core.Cannot_build_cst (Syn.Parse_diagnostics diagnostics) -> Some diagnostics
+            | _ -> None
+          in
+          {
+            (finalize
+              file
+              start
+              ~status:Failed
+              ~needs_formatting:false
+              ~error:(Some (Format_core.format_error_to_string err)))
+            with diagnostics
+          }
 
 let check_file = fun file -> format_file ~mode:Check file
 

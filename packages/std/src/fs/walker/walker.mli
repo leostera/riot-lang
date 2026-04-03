@@ -3,7 +3,6 @@ open Iter
 
 (** Recursive filesystem walking with an iterator-first API modeled after
     `walkdir`.
-
     The fast path keeps directory handles open and streams entries lazily.
     Directory contents are only buffered eagerly when sorting is enabled or
     when the open-directory budget is exceeded.
@@ -17,9 +16,10 @@ open Iter
     iterator surface. *)
 (** Lightweight classification for yielded entries.
 
-    This is derived from filesystem metadata gathered for each entry. `Other`
-    covers non-regular filesystem nodes such as block devices, fifos, sockets,
-    and character devices. *)
+    This is derived from the directory entry kind on the common path, with a
+    metadata fallback only when the platform reports an unknown kind or when
+    symlink-following requires it. `Other` covers non-regular filesystem nodes
+    such as block devices, fifos, sockets, and character devices. *)
 type entry_kind =
   | File
   | Directory

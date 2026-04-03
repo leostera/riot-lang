@@ -17,6 +17,7 @@
 11. Keep snapshot approval routing explicit in shared test helpers. Use fixture-provided `snapshot_path` when a suite already has a package-specific approved filename convention, render JSON snapshots through `Std.Data.Json.to_string_pretty` so approved files stay reviewable, and treat `.expected.new` files as visible review artifacts rather than ignored scratch output.
 12. Keep `Std.Crypto.Hasher.Intf` string-first. Callers that need to mix existing digests into a hash state should use `write_hash` rather than passing mutable raw bytes through the public API.
 13. Keep recursive filesystem walking in `Std.Fs.Walker`, with an iterator-first surface built around `Iterator.t`. Package-level ignore policy belongs in higher layers, not in `std`.
+14. Keep `Std.Fs.Walker` on the cheap `ReadDir` path on the common case. Use directory-entry kind hints first and fall back to metadata only for unknown kinds or symlink-following semantics.
 
 ## Validate
 

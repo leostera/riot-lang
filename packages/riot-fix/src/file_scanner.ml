@@ -74,7 +74,6 @@ let scan = fun scanner ->
   let _ =
     Std.Fs.Walker.walk
       ~roots:scanner.roots
-      ~sort:true
       ~f:(fun entry -> handle_entry state entry (fun path -> files := path :: !files))
       ()
   in
@@ -87,7 +86,6 @@ let start = fun ~owner scanner ->
       let _ =
         Std.Fs.Walker.walk
           ~roots:scanner.roots
-          ~sort:true
           ~f:(fun entry ->
             handle_entry state entry (fun path -> send owner (Messages.ScannerDiscovered path)))
           ()

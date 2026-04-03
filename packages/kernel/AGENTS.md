@@ -12,6 +12,7 @@
 6. Archive and compression primitives must stay incremental and mechanical. Do not add monolithic C helpers that read, write, compress, or extract whole files or archives in one blocking call.
 7. Keep crypto FFI entrypoints mechanically aligned across algorithms. If one digest gets a segmented/iovec variant, add the same shape for the sibling digests rather than leaving SHA-only special cases behind.
 8. Keep `Kernel.Regex` thin and mechanical over PCRE2. Compile errors should stay explicit, and higher-level matching policy such as glob semantics belongs above `kernel`.
+9. Keep `Kernel.Fs.ReadDir` mechanical. It should expose cheap directory-entry kind hints from `readdir` and leave metadata fallback policy to `std`.
 
 ## Validate
 

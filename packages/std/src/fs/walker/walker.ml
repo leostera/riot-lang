@@ -61,7 +61,7 @@ let create_error_message = function
   ^ string_of_int max_depth
   ^ ")"
 
-let create = fun ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = max_int) ?(contents_first = false) () ->
+let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = max_int) ?(contents_first = false) () =
   let max_open =
     if max_open <= 0 then
       1
@@ -113,6 +113,18 @@ let entry_for_path = fun opts ~depth path ->
   | Ok metadata -> Ok { path; depth; kind = entry_kind_of_metadata metadata }
   | Error cause -> Error (make_error ~path ~depth cause)
 
+let hinted_entry_for_path = fun opts ~depth path kind ->
+  match kind with
+  | ReadDir.Regular -> Ok { path; depth; kind = File }
+  | ReadDir.Directory -> Ok { path; depth; kind = Directory }
+  | ReadDir.Symlink ->
+      if opts.follow_symlinks then
+        entry_for_path opts ~depth path
+      else
+        Ok { path; depth; kind = Symlink }
+  | ReadDir.Other -> Ok { path; depth; kind = Other }
+  | ReadDir.Unknown -> entry_for_path opts ~depth path
+
 let compare_item_path = fun left right ->
   match (left, right) with
   | Ok (left: entry), Ok (right: entry) ->
@@ -127,9 +139,11 @@ let compare_item_path = fun left right ->
       1
 
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
-  match ReadDir.next handle with
+  match ReadDir.next_entry handle with
   | None -> None
-  | Some relative -> Some (entry_for_path opts ~depth:((depth + 1)) Path.(dir_path / relative))
+  | Some relative ->
+      let path = Path.join dir_path relative.path in
+      Some (hinted_entry_for_path opts ~depth:((depth + 1)) path relative.kind)
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with
@@ -319,7 +333,7 @@ let into_iter = fun opts ->
   end in
   Iterator.make (module Base) (make_state opts)
 
-let walk = fun ~roots ?(sort = true) ?follow_symlinks ~f () ->
+let walk ~roots ?(sort = true) ?follow_symlinks ~f () =
   match create ~roots ~sort ?follow_symlinks () with
   | Error err -> Error (IO.Unknown_error (create_error_message err))
   | Ok walker ->
@@ -337,15 +351,18 @@ let walk = fun ~roots ?(sort = true) ?follow_symlinks ~f () ->
             | Continue ->
                 loop ()
             | Skip_subtree ->
-                if match dent.kind with
+                let should_skip =
+                  match dent.kind with
                   | Directory -> true
-                  | _ -> false then
+                  | _ -> false
+                in
+                if should_skip then
                   skip_current_dir state;
                 loop ()
       in
       loop ()
 
-let to_list = fun ~roots ?(sort = true) ?follow_symlinks ?(include_directories = true) () ->
+let to_list ~roots ?(sort = true) ?follow_symlinks ?(include_directories = true) () =
   match create ~roots ~sort ?follow_symlinks () with
   | Error err -> Error (IO.Unknown_error (create_error_message err))
   | Ok walker ->
@@ -358,11 +375,11 @@ let to_list = fun ~roots ?(sort = true) ?follow_symlinks ?(include_directories =
         | Some (Error err), _ ->
             Error err.cause
         | Some (Ok dent), iter' ->
-            begin
+            (
               match dent.kind with
               | Directory when not include_directories -> ()
               | _ -> items := dent :: !items
-            end;
+            );
             loop iter'
       in
       loop iter
