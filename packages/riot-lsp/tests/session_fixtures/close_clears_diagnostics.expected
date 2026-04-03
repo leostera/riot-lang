@@ -11,7 +11,13 @@
             "change": 1
           },
           "documentFormattingProvider": true,
-          "codeActionProvider": false
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.fixAll"
+            ],
+            "resolveProvider": false
+          }
         },
         "serverInfo": {
           "name": "riot-lsp"

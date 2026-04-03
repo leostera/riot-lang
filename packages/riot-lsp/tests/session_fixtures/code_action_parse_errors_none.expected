@@ -66,6 +66,11 @@
       },
       "jsonrpc": "2.0",
       "method": "textDocument/publishDiagnostics"
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": null
     }
   ],
   "exitCode": null,
