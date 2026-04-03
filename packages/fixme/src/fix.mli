@@ -25,6 +25,10 @@ type fix = {
   title: string;
   operations: operation list;
 }
+type text_edit = {
+  span: Syn.Ceibo.Span.t;
+  new_text: string;
+}
 val source_of_node: Syn.Cst.syntax_node -> replacement
 
 val source_of_token: Syn.Cst.syntax_token -> replacement
@@ -56,6 +60,10 @@ val title: fix -> string
 val operations: fix -> operation list
 
 val apply_operation: source:string -> operation -> (string, string) result
+
+val lower_fix: source:string -> fix -> (text_edit list, string) result
+
+val lower_fixes: source:string -> fix list -> (text_edit list, string) result
 
 val apply_fix: source:string -> fix -> (string, string) result
 

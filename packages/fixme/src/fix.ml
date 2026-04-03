@@ -174,28 +174,12 @@ let apply_operation = fun ~source operation ->
           Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
     )
 
-let validate_fix = fun ~source fix ->
-  match fix.operations |> List.map (lower_operation ~source) |> Result.all with
-  | Error _ as err -> err
-  | Ok edits -> validate_edits ~source (List.concat edits) |> Result.map (fun _ -> ())
-
-let apply_fix = fun ~source fix ->
+let lower_fix = fun ~source fix ->
   match List.map (lower_operation ~source) fix.operations |> Result.all with
   | Error _ as err -> err
-  | Ok edits -> (
-      match validate_edits ~source (List.concat edits) with
-      | Error _ as err -> err
-      | Ok edits ->
-          let edits_desc =
-            List.sort
-              (fun a b ->
-                Int.compare b.span.start a.span.start)
-              edits
-          in
-          Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
-    )
+  | Ok edits -> validate_edits ~source (List.concat edits)
 
-let apply_fixes = fun ~source fixes ->
+let lower_fixes = fun ~source fixes ->
   let lowered =
     fixes
     |> List.map
@@ -205,15 +189,31 @@ let apply_fixes = fun ~source fixes ->
   in
   match Result.all lowered with
   | Error _ as err -> err
-  | Ok edits -> (
-      match validate_edits ~source (List.concat edits) with
-      | Error _ as err -> err
-      | Ok edits ->
-          let edits_desc =
-            List.sort
-              (fun a b ->
-                Int.compare b.span.start a.span.start)
-              edits
-          in
-          Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
-    )
+  | Ok edits -> validate_edits ~source (List.concat edits)
+
+let validate_fix = fun ~source fix ->
+  lower_fix ~source fix |> Result.map (fun _ -> ())
+
+let apply_fix = fun ~source fix ->
+  match lower_fix ~source fix with
+  | Error _ as err -> err
+  | Ok edits ->
+      let edits_desc =
+        List.sort
+          (fun a b ->
+            Int.compare b.span.start a.span.start)
+          edits
+      in
+      Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
+
+let apply_fixes = fun ~source fixes ->
+  match lower_fixes ~source fixes with
+  | Error _ as err -> err
+  | Ok edits ->
+      let edits_desc =
+        List.sort
+          (fun a b ->
+            Int.compare b.span.start a.span.start)
+          edits
+      in
+      Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)

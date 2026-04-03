@@ -21,6 +21,11 @@ type fix = Fixme.Fix.fix = {
   operations: operation list;
 }
 
+type text_edit = Fixme.Fix.text_edit = {
+  span: Syn.Ceibo.Span.t;
+  new_text: string;
+}
+
 let source_of_node = Fixme.Fix.source_of_node
 
 let source_of_token = Fixme.Fix.source_of_token
@@ -52,6 +57,10 @@ let title = Fixme.Fix.title
 let operations = Fixme.Fix.operations
 
 let apply_operation = Fixme.Fix.apply_operation
+
+let lower_fix = Fixme.Fix.lower_fix
+
+let lower_fixes = Fixme.Fix.lower_fixes
 
 let apply_fix = Fixme.Fix.apply_fix
 
