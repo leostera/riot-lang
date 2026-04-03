@@ -1,7 +1,5 @@
 # Now
 
-* `riot upgrade` to update the current riot with a new version of riot (basically reruns the install script)
-
 * create leostera/create-riot-app
 
 * implement ./docs/rfds/RFD0008-macro.md
@@ -15,28 +13,6 @@
 * explore rewriting ocamldep over syn
 
 # Next
-
-* behavior outside a workspace:
-
-* `riot update` should print
-    ; riot update
-    No package.json, so nothing to update
-
-* `riot add hello` should initialize an empty workspace (no packages, just riot.toml and riot.lock):
-
-    ; riot add hello
-
-    installed hello@0.6.2 with binaries:
-     - hello
-
-    44 packages installed [1217.00ms]
-    ;
-
-* `riot rm hello` 
-
-    ; riot rm hello
-    No package.json, so nothing to remove
-
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 

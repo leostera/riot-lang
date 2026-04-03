@@ -64,7 +64,13 @@ let metadata_of_json = function
       let* notes_url = optional_string_field fields "notes_url" in
       let* compare_url = optional_string_field fields "compare_url" in
       let* issues_url = optional_string_field fields "issues_url" in
-      Ok { release_id; build_sha; notes_url; compare_url; issues_url }
+      Ok {
+        release_id;
+        build_sha;
+        notes_url;
+        compare_url;
+        issues_url;
+      }
   | _ -> Error "release metadata must be a JSON object"
 
 let of_json_string = fun content ->
@@ -78,7 +84,7 @@ let of_version_string = fun version ->
   let prefix_len = String.length prefix in
   let marker_len = String.length build_marker in
   let suffix_len = String.length suffix in
-  let find_marker = fun haystack needle ->
+  let find_marker haystack needle =
     let haystack_len = String.length haystack in
     let needle_len = String.length needle in
     let rec loop index =
@@ -101,10 +107,7 @@ let of_version_string = fun version ->
     match find_marker payload build_marker with
     | None -> None
     | Some marker_pos ->
-        let release_id =
-          String.sub payload 0 marker_pos
-          |> String.trim
-        in
+        let release_id = String.sub payload 0 marker_pos |> String.trim in
         let build_section_len = String.length payload - marker_pos in
         let build_section = String.sub payload marker_pos build_section_len in
         if not (String.starts_with ~prefix:build_marker build_section) then
@@ -132,8 +135,7 @@ let write_path = fun ~path t ->
   Fs.write content path |> Result.map_error IO.error_message
 
 let same_identity = fun left right ->
-  String.equal left.release_id right.release_id
-  && String.equal left.build_sha right.build_sha
+  String.equal left.release_id right.release_id && String.equal left.build_sha right.build_sha
 
 let read_installed = fun () ->
   match metadata_path () with

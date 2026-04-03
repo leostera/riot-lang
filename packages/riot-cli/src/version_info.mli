@@ -7,7 +7,6 @@ type t = {
   compare_url: string option;
   issues_url: string option;
 }
-
 val metadata_path: unit -> (Path.t, string) result
 
 val of_path: Path.t -> (t, string) result

@@ -29,30 +29,29 @@ let make_metadata = fun ~release_id ~build_sha ?notes_url ?compare_url ?issues_u
   }
 
 let metadata_json_string = fun (metadata: Riot_cli.Version_info.t) ->
-  Data.Json.(
-    Object [
-      ("release_id", String metadata.release_id);
-      ("build_sha", String metadata.build_sha);
-      (
-        "notes_url",
-        match metadata.notes_url with
-        | Some value -> String value
-        | None -> Null
-      );
-      (
-        "compare_url",
-        match metadata.compare_url with
-        | Some value -> String value
-        | None -> Null
-      );
-      (
-        "issues_url",
-        match metadata.issues_url with
-        | Some value -> String value
-        | None -> Null
-      );
-    ]
-    |> Data.Json.to_string_pretty)
+  Data.Json.(Object [
+    ("release_id", String metadata.release_id);
+    ("build_sha", String metadata.build_sha);
+    (
+      "notes_url",
+      match metadata.notes_url with
+      | Some value -> String value
+      | None -> Null
+    );
+    (
+      "compare_url",
+      match metadata.compare_url with
+      | Some value -> String value
+      | None -> Null
+    );
+    (
+      "issues_url",
+      match metadata.issues_url with
+      | Some value -> String value
+      | None -> Null
+    );
+  ]
+  |> Data.Json.to_string_pretty)
 
 let copy_executable_file = fun ~src ~dst ->
   let* () = Fs.create_dir_all (Path.dirname dst) |> Result.map_error IO.error_message in
@@ -87,7 +86,7 @@ let zero_pad_left = fun width value ->
 let bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = zero_pad_left digits_width (octal_string value) in
-  bytes_set_string dst ~offset ~width:(width - 1) trimmed;
+  bytes_set_string dst ~offset ~width:((width - 1)) trimmed;
   IO.Bytes.set dst (offset + width - 1) '\000'
 
 let compute_checksum = fun header ->
@@ -181,13 +180,11 @@ let test_upgrade_installs_downloaded_archive = fun _ctx ->
       let installed = Path.(home_dir / Path.v ".riot" / Path.v "bin" / Path.v "riot") in
       let riot_binary_path = Path.v "/Users/leostera/.riot/bin/riot" in
       let old_binary_path = Path.v "/bin/sh" in
-      let metadata =
-        make_metadata
-          ~release_id:"v9.9.9"
-          ~build_sha:"deadbeefcafe"
-          ~issues_url:"https://github.com/leostera/riot/issues"
-          ()
-      in
+      let metadata = make_metadata
+        ~release_id:"v9.9.9"
+        ~build_sha:"deadbeefcafe"
+        ~issues_url:"https://github.com/leostera/riot/issues"
+        () in
       let* next_binary = Fs.read riot_binary_path |> Result.map_error IO.error_message in
       let* () = copy_executable_file ~src:old_binary_path ~dst:installed in
       let* () = write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary:next_binary in
@@ -205,12 +202,10 @@ let test_upgrade_installs_downloaded_archive = fun _ctx ->
                       Test.assert_equal ~expected:next_binary ~actual;
                       match Riot_cli.Version_info.read_installed () with
                       | Some actual_metadata when actual_metadata = metadata -> Ok ()
-                      | Some actual_metadata ->
-                          Error
-                            ("unexpected installed metadata: expected "
-                            ^ metadata_json_string metadata
-                            ^ " but got "
-                            ^ metadata_json_string actual_metadata)
+                      | Some actual_metadata -> Error ("unexpected installed metadata: expected "
+                      ^ metadata_json_string metadata
+                      ^ " but got "
+                      ^ metadata_json_string actual_metadata)
                       | None -> Error "expected installed metadata to be written"
                 ))))
 
@@ -221,13 +216,11 @@ let test_upgrade_skips_when_binary_is_unchanged = fun _ctx ->
       let home_dir = Path.(tempdir / Path.v "home") in
       let installed = Path.(home_dir / Path.v ".riot" / Path.v "bin" / Path.v "riot") in
       let riot_binary_path = Path.v "/Users/leostera/.riot/bin/riot" in
-      let metadata =
-        make_metadata
-          ~release_id:"v1.2.3"
-          ~build_sha:"feedface1234"
-          ~issues_url:"https://github.com/leostera/riot/issues"
-          ()
-      in
+      let metadata = make_metadata
+        ~release_id:"v1.2.3"
+        ~build_sha:"feedface1234"
+        ~issues_url:"https://github.com/leostera/riot/issues"
+        () in
       let* binary = Fs.read riot_binary_path |> Result.map_error IO.error_message in
       let* () = copy_executable_file ~src:riot_binary_path ~dst:installed in
       let* () = write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary in
@@ -246,25 +239,21 @@ let test_upgrade_skips_when_binary_is_unchanged = fun _ctx ->
       Test.assert_equal ~expected:before ~actual:after;
       match installed_metadata with
       | Some actual_metadata when actual_metadata = metadata -> Ok ()
-      | Some actual_metadata ->
-          Error
-            ("unexpected installed metadata: expected "
-            ^ metadata_json_string metadata
-            ^ " but got "
-            ^ metadata_json_string actual_metadata)
+      | Some actual_metadata -> Error ("unexpected installed metadata: expected "
+      ^ metadata_json_string metadata
+      ^ " but got "
+      ^ metadata_json_string actual_metadata)
       | None -> Error "expected installed metadata to be written")
 
 let test_version_string_uses_installed_metadata = fun _ctx ->
   with_tempdir_result "upgrade-version"
     (fun tempdir ->
       let home_dir = Path.(tempdir / Path.v "home") in
-      let metadata =
-        make_metadata
-          ~release_id:"v3.2.1"
-          ~build_sha:"cafebabe1234"
-          ~issues_url:"https://github.com/leostera/riot/issues"
-          ()
-      in
+      let metadata = make_metadata
+        ~release_id:"v3.2.1"
+        ~build_sha:"cafebabe1234"
+        ~issues_url:"https://github.com/leostera/riot/issues"
+        () in
       with_env ~name:"HOME" ~value:(Path.to_string home_dir)
         (fun () ->
           let* () = Riot_cli.Version_info.write_installed metadata in
@@ -274,20 +263,13 @@ let test_version_string_uses_installed_metadata = fun _ctx ->
           Ok ()))
 
 let test_version_string_roundtrips_into_metadata = fun _ctx ->
-  let expected =
-    make_metadata
-      ~release_id:"v7.8.9"
-      ~build_sha:"beaded123456"
-      ()
-  in
+  let expected = make_metadata ~release_id:"v7.8.9" ~build_sha:"beaded123456" () in
   match Riot_cli.Version_info.of_version_string "riot v7.8.9 (build beaded123456)" with
   | Some actual when actual = expected -> Ok ()
-  | Some actual ->
-      Error
-        ("unexpected parsed version metadata: expected "
-        ^ metadata_json_string expected
-        ^ " but got "
-        ^ metadata_json_string actual)
+  | Some actual -> Error ("unexpected parsed version metadata: expected "
+  ^ metadata_json_string expected
+  ^ " but got "
+  ^ metadata_json_string actual)
   | None -> Error "expected version string to parse into release metadata"
 
 let tests =
