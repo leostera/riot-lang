@@ -35,6 +35,19 @@ module FileItem : sig
   (** One discovered filesystem entry. *)
   type t
 
+  (** Create a walker file item from already-discovered path parts.
+
+      This is intended for higher-level walkers layered on top of
+      [Std.Fs.ReadDir] that still want to reuse the shared [FileItem] surface.
+      The full path remains lazy until callers request it through [path] or
+      [path_string]. *)
+  val make:
+    path_string:string ->
+    name:string ->
+    depth:int ->
+    kind:entry_kind ->
+    t
+
   (** The full discovered path. *)
   val path: t -> Path.t
 

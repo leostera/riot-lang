@@ -62,6 +62,16 @@ let path_string_of_entry = fun item ->
 module FileItem = struct
   type t = entry
 
+  let make = fun ~path_string ~name ~depth ~kind ->
+    {
+      path_repr = Full_path path_string;
+      name;
+      depth;
+      kind;
+      path_string_cache = Some path_string;
+      path_cache = None;
+    }
+
   let path = fun item ->
     match item.path_cache with
     | Some path -> path

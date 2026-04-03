@@ -17,6 +17,7 @@ type t
 (** Create a recursive walk plan with ignore-aware pruning.
 
     Defaults:
+    - `concurrency = System.available_parallelism`
     - `sort = false`
     - `follow_symlinks = false`
     - `hidden = true`
@@ -27,6 +28,7 @@ type t
     - `overrides = []` *)
 val create:
   roots:Path.t list ->
+  ?concurrency:int ->
   ?sort:bool ->
   ?follow_symlinks:bool ->
   ?hidden:bool ->
@@ -38,7 +40,11 @@ val create:
   unit ->
   (t, Glob.glob_error) Result.t
 
-(** Traverse the plan with pre-descent pruning. *)
+(** Traverse the plan with pre-descent pruning.
+
+    When [concurrency > 1], traversal may visit sibling subtrees in parallel.
+    Callback order is therefore not deterministic. The callback itself is still
+    serialized internally so [Skip_subtree] and [Stop] remain well-defined. *)
 val walk:
   t ->
   f:(Fs.Walker.FileItem.t -> Fs.Walker.step) ->
