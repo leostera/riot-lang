@@ -27,13 +27,9 @@ let traverse = fun ~visit_node ~visit_token tree ->
       match elem with
       | Node n ->
           let acc = visit_node n acc in
-          let children = SyntaxNode.children n in
-          let result = ref acc in
-          for i = 0 to Array.length children - 1 do
+          SyntaxNode.fold_children n acc (fun acc child ->
             yield ();
-            result := go children.(i) !result
-          done;
-          !result
+            go child acc)
       | Token t -> visit_token t acc
     in
     go (Node tree) []
@@ -75,16 +71,13 @@ let find_tokens = fun predicate tree ->
 
 let first_non_trivia_child = fun node ->
   let open Syn.Ceibo.Red in
-    let children = SyntaxNode.children node in
-    let rec find i =
-      if i >= Array.length children then
-        None
-      else
-        match children.(i) with
-        | Token t when is_trivia (SyntaxToken.kind t) -> find (i + 1)
-        | elem -> Some elem
-    in
-    find 0
+    SyntaxNode.children node
+    |> List.find_opt
+      (
+        function
+        | Token t when is_trivia (SyntaxToken.kind t) -> false
+        | _ -> true
+      )
 
 (* First non-trivia token *)
 
@@ -106,13 +99,9 @@ let fold = fun visitor init tree ->
       match elem with
       | Node n ->
           let acc = visitor.visit_node n acc in
-          let children = SyntaxNode.children n in
-          let result = ref acc in
-          for i = 0 to Array.length children - 1 do
+          SyntaxNode.fold_children n acc (fun acc child ->
             yield ();
-            result := go children.(i) !result
-          done;
-          !result
+            go child acc)
       | Token t -> visitor.visit_token t acc
     in
     go (Node tree) init

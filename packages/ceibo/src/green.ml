@@ -17,7 +17,7 @@ type ('kind, 'text) token = {
 type ('kind, 'text) node = {
   kind: 'kind;
   width: int;
-  children: ('kind, 'text) element array;
+  children: ('kind, 'text) element list;
 }
 
 and ('kind, 'text) element =
@@ -44,7 +44,7 @@ let rec element_width = fun element ->
   | Node node -> node.width
 
 let compute_width = fun children ->
-  Array.fold_left (fun acc elem -> acc + element_width elem) 0 children
+  List.fold_left (fun acc elem -> acc + element_width elem) 0 children
 
 let make_node = fun ~kind ~children -> { kind; children; width = compute_width children }
 
@@ -71,25 +71,29 @@ let is_node = fun element ->
   | Node _ -> true
 
 let replace_child = fun node ~index ~child ->
-  let new_children = Array.copy node.children in
-  new_children.(index) <- child;
-  make_node ~kind:node.kind ~children:new_children
+  let rec loop i = function
+    | [] -> []
+    | _ :: rest when i = index -> child :: rest
+    | current :: rest -> current :: loop (i + 1) rest
+  in
+  make_node ~kind:node.kind ~children:(loop 0 node.children)
 
 let append_child = fun node ~child ->
-  let new_children = Array.append node.children [|child|] in
-  make_node ~kind:node.kind ~children:new_children
+  make_node ~kind:node.kind ~children:(node.children @ [ child ])
 
-let child_count = fun node -> Array.length node.children
+let child_count = fun node -> List.length node.children
 
 let child = fun node index ->
-  if index >= 0 && index < Array.length node.children then
-    Some node.children.(index)
-  else
-    None
+  let rec loop i = function
+    | [] -> None
+    | current :: _ when i = index -> Some current
+    | _ :: rest -> loop (i + 1) rest
+  in
+  if index < 0 then None else loop 0 node.children
 
 let children = fun node -> node.children
 
-let make_node_list = fun ~kind elements -> make_node ~kind ~children:(Array.of_list elements)
+let make_node_list = fun ~kind elements -> make_node ~kind ~children:elements
 
 let trivia_to_json = fun ~kind_to_json ~text_to_json (trivia: ('kind, 'text) trivia) ->
   Data.Json.Object [
@@ -117,6 +121,6 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("width", Data.Json.Int node.width);
     (
       "children",
-      Data.Json.Array (Array.to_list (Array.map (to_json ~kind_to_json ~text_to_json) node.children))
+      Data.Json.Array (List.map (to_json ~kind_to_json ~text_to_json) node.children)
     )
   ]

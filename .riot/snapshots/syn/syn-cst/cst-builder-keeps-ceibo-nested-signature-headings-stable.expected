@@ -180,14 +180,14 @@
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 8971,
+                "end": 8964,
                 "start": 3254
               }
             },
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 8971,
+                "end": 8964,
                 "start": 3254
               }
             },
@@ -217,7 +217,7 @@
         "syntax_node": {
           "kind": "MODULE_DECL",
           "span": {
-            "end": 8971,
+            "end": 8964,
             "start": 2520
           }
         }
@@ -229,16 +229,16 @@
         "docstring_token": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 9761,
-            "start": 8973
+            "end": 9754,
+            "start": 8966
           },
           "text": "(** # Red Layer\n\n    Position-aware views over green trees with parent links. Red nodes are\n    fabricated lazily and garbage collected when done.\n\n    ## Design Principles\n\n    - **Lazy fabrication**: Red nodes created on-demand during traversal\n    - **Parent links**: Each red node knows its parent (except root)\n    - **Absolute positions**: Offset from start of source computed from green\n      widths\n    - **Ephemeral**: Red nodes are GC'd when no longer referenced\n\n    ## When to Use Red\n\n    Use red nodes when you need:\n    - Absolute source positions for tokens/nodes\n    - Parent/sibling navigation\n    - Tree traversal with position information\n\n    Don't use red for:\n    - Building trees (use Green or Builder instead)\n    - Long-term storage (just keep the green tree) *)"
         },
         "syntax_node": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 9761,
-            "start": 8973
+            "end": 9754,
+            "start": 8966
           }
         }
       },
@@ -252,15 +252,15 @@
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 15292,
-                "start": 9774
+                "end": 15505,
+                "start": 9767
               }
             },
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 15292,
-                "start": 9774
+                "end": 15505,
+                "start": 9767
               }
             },
             "tag": "signature"
@@ -271,16 +271,16 @@
         "keyword_token": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 9769,
-            "start": 9763
+            "end": 9762,
+            "start": 9756
           },
           "text": "module"
         },
         "module_name": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 9773,
-            "start": 9770
+            "end": 9766,
+            "start": 9763
           },
           "text": "Red"
         },
@@ -289,8 +289,8 @@
         "syntax_node": {
           "kind": "MODULE_DECL",
           "span": {
-            "end": 15292,
-            "start": 8971
+            "end": 15505,
+            "start": 8964
           }
         }
       },
@@ -301,16 +301,16 @@
         "docstring_token": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 16185,
-            "start": 15294
+            "end": 16398,
+            "start": 15507
           },
           "text": "(** # Builder\n\n    Convenient API for constructing green trees.\n\n    The builder provides two styles:\n\n    1. **Stack-based**: Use `create`, `start_node`, `token`,\n    `token_with_leading_trivia`, `finish_node`, `build`\n    2. **Direct**: Use `make_token`, `make_token_with_leading_trivia`, and\n    `make_node` helper functions\n\n    ## Stack-Based Example\n\n    ```ocaml let green = Builder.create () |> Builder.start_node ~kind:BIN_EXPR\n    |> Builder.token ~kind:INT ~text:\"1\" ~width:1 |> Builder.token ~kind:PLUS\n    ~text:\"+\" ~width:1 |> Builder.token ~kind:INT ~text:\"2\" ~width:1 |>\n    Builder.finish_node |> Builder.build ROOT ```\n\n    ## Direct Example\n\n    ```ocaml let green = Builder.make_node ~kind:BIN_EXPR\n    [ Builder.make_token ~kind:INT ~text:\"1\" ~width:1; Builder.make_token\n     ~kind:PLUS ~text:\"+\" ~width:1; Builder.make_token ~kind:INT ~text:\"2\"\n     ~width:1; ] ``` *)"
         },
         "syntax_node": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 16185,
-            "start": 15294
+            "end": 16398,
+            "start": 15507
           }
         }
       },
@@ -324,15 +324,15 @@
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 18211,
-                "start": 16202
+                "end": 18424,
+                "start": 16415
               }
             },
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 18211,
-                "start": 16202
+                "end": 18424,
+                "start": 16415
               }
             },
             "tag": "signature"
@@ -343,16 +343,16 @@
         "keyword_token": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 16193,
-            "start": 16187
+            "end": 16406,
+            "start": 16400
           },
           "text": "module"
         },
         "module_name": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 16201,
-            "start": 16194
+            "end": 16414,
+            "start": 16407
           },
           "text": "Builder"
         },
@@ -361,8 +361,8 @@
         "syntax_node": {
           "kind": "MODULE_DECL",
           "span": {
-            "end": 18211,
-            "start": 15292
+            "end": 18424,
+            "start": 15505
           }
         }
       },
@@ -373,7 +373,7 @@
   "syntax_node": {
     "kind": "SOURCE_FILE",
     "span": {
-      "end": 18211,
+      "end": 18424,
       "start": 0
     }
   }

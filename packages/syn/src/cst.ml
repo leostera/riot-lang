@@ -2246,7 +2246,7 @@ module TypeVariable = struct
   let name_token = fun type_variable -> type_variable.name_token
 
   let text = fun type_variable ->
-    Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> Array.to_list |> List.filter_map
+    Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> List.filter_map
       (
         function
         | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text

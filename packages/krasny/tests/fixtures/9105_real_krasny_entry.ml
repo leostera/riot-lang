@@ -47,7 +47,7 @@ let syntax_hash (result : Syn.Parser.parse_result) =
         IO.Buffer.add_string buffer
           (Syn.SyntaxKind.to_string (Syn.Ceibo.Green.kind element));
         IO.Buffer.add_string buffer "[";
-        Array.iter write_element (Syn.Ceibo.Green.children node);
+        List.iter write_element (Syn.Ceibo.Green.children node);
         IO.Buffer.add_string buffer "])"
   in
   write_element (Syn.Ceibo.Green.Node result.tree);

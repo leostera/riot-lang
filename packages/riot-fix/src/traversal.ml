@@ -18,7 +18,7 @@ type binding_site = {
 
 let direct_non_trivia_nodes = fun node ->
   let open Syn.Ceibo.Red in
-    SyntaxNode.children node |> Array.to_list |> List.filter_map
+    SyntaxNode.children node |> List.filter_map
       (
         function
         | Node child when not (is_trivia (SyntaxNode.kind child)) -> Some child

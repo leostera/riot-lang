@@ -29,7 +29,7 @@ let finish_node = fun builder ->
   match builder.stack with
   | [] -> builder
   | frame :: rest ->
-      let children = Array.of_list (List.rev builder.current) in
+      let children = List.rev builder.current in
       let node = Green.make_node ~kind:frame.kind ~children in
       { stack = rest; current = Green.Node node :: frame.children }
 
@@ -37,7 +37,7 @@ let build = fun builder default_kind ->
   match builder.current with
   | [ Green.Node n ] -> n
   | _ ->
-      let children = Array.of_list (List.rev builder.current) in
+      let children = List.rev builder.current in
       Green.make_node ~kind:default_kind ~children
 
 let make_token = fun ~kind ~text ~width ->

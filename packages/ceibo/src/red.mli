@@ -2,15 +2,19 @@
 open Std
 
 (** A syntax node with position information *)
-(** A syntax token with position information *)
 type ('kind, 'text) syntax_node
-(** A syntax element is either a node or token *)
+
+(** A syntax token with position information *)
 type ('kind, 'text) syntax_token
+
 type ('kind, 'text) syntax_trivia
-(** Create a standalone red token at the given span *)
+
+(** A syntax element is either a node or token *)
 type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
   | Token of ('kind, 'text) syntax_token
+
+(** Create a standalone red token at the given span *)
 val new_token: ('kind, 'text) Green.token -> Span.t -> ('kind, 'text) syntax_token
 
 module SyntaxNode: sig
@@ -29,6 +33,13 @@ module SyntaxNode: sig
   (** Get the number of children *)
   val child_count: ('kind, 'text) syntax_node -> int
 
+  (** Fold over direct non-trivia children in source order. *)
+  val fold_children:
+    ('kind, 'text) syntax_node ->
+    'acc ->
+    ('acc -> ('kind, 'text) syntax_element -> 'acc) ->
+    'acc
+
   (** Get a child by index *)
   val child: ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
 
@@ -36,9 +47,9 @@ module SyntaxNode: sig
 
       Trivia is attached to tokens and can be accessed through
       `SyntaxToken.leading_trivia`. *)
-  val children: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
+  val children: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
-  (** Get all non-trivia children as a list. *)
+  (** Alias for `children`. *)
   val children_list: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
   (** Get only the direct non-trivia token children *)

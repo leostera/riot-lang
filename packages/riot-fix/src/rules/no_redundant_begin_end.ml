@@ -17,7 +17,7 @@ actually doing.
 |}
 
 let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> List.find_map
     (
       function
       | Syn.Ceibo.Red.Token token ->

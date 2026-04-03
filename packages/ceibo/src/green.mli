@@ -22,7 +22,7 @@ type ('kind, 'text) token = {
 type ('kind, 'text) node = {
   kind: 'kind;
   width: int;
-  children: ('kind, 'text) element array;
+  children: ('kind, 'text) element list;
 }
 
 (** An element is either a token or a node *)
@@ -40,7 +40,7 @@ val make_token:
   ('kind, 'text) token
 
 (** Create a node with the given kind and children. Width is computed automatically. *)
-val make_node: kind:'kind -> children:('kind, 'text) element array -> ('kind, 'text) node
+val make_node: kind:'kind -> children:('kind, 'text) element list -> ('kind, 'text) node
 
 (** Create a node from a list of elements *)
 val make_node_list: kind:'kind -> ('kind, 'text) element list -> ('kind, 'text) node
@@ -86,7 +86,7 @@ val child_count: ('kind, 'text) node -> int
 val child: ('kind, 'text) node -> int -> ('kind, 'text) element option
 
 (** Get all non-trivia children of a node. *)
-val children: ('kind, 'text) node -> ('kind, 'text) element array
+val children: ('kind, 'text) node -> ('kind, 'text) element list
 
 (** Convert an element to JSON *)
 val to_json:

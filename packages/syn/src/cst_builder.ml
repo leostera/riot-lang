@@ -149,10 +149,10 @@ let synthetic_syntax_node_wrapping_token = fun docstring_syntax_token ->
   let wrapped_token = Ceibo.Green.Token (Ceibo.Red.SyntaxToken.green docstring_syntax_token) in
   let wrapped_node = Ceibo.Green.make_node
     ~kind:(Ceibo.Red.SyntaxToken.kind docstring_syntax_token)
-    ~children:[|wrapped_token|] in
+    ~children:[ wrapped_token ] in
   let root = Ceibo.Green.make_node
     ~kind:Syntax_kind.SOURCE_FILE
-    ~children:[|Ceibo.Green.Token prefix_token; Ceibo.Green.Node wrapped_node|] in
+    ~children:[ Ceibo.Green.Token prefix_token; Ceibo.Green.Node wrapped_node ] in
   match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 1 with
   | Some (Ceibo.Red.Node node) -> node
   | _ -> panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
@@ -835,13 +835,13 @@ and type_definition_owned_trivia_spans = function
   | Cst.TypeDefinition.PolyVariant _ -> []
 
 let type_declaration_owned_trivia_spans =
-  let rec collect acc decl =
-    let acc = List.rev_append
-      (type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl))
-      acc in
+  let rec collect groups_rev decl =
+    let groups_rev =
+      type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
+      :: groups_rev in
     match Cst.TypeDeclaration.next_and_declaration decl with
-    | Some next -> collect acc next
-    | None -> List.rev acc
+    | Some next -> collect groups_rev next
+    | None -> List.concat (List.rev groups_rev)
   in
   fun decl -> collect [] decl
 
@@ -2789,7 +2789,6 @@ let let_expression_parts = fun ~is_recursive_binding node ->
 let is_binding_operator_expression_node = fun node ->
   let non_trivia_children =
     Ceibo.Red.SyntaxNode.children node
-    |> Array.to_list
     |> List.filter
       (
         function
@@ -3014,22 +3013,22 @@ let separator_tokens_between_record_fields = fun ~closing_token (
         String.equal (Cst.Token.text token) semicolon_text)
   in
   let closing_span = Cst.Token.span closing_token in
-  let rec loop acc = function
+  let rec loop groups_rev = function
     | [] ->
-        List.rev acc
+        List.concat (List.rev groups_rev)
     | [ (field: Cst.record_expression_field) ] ->
         let field_span = span_of_syntax_node_nontrivia_bounds field.Cst.syntax_node in
         let trailing = separator_tokens_between_offsets
           ~after_offset:field_span.end_
           ~before_offset:closing_span.start in
-        List.rev_append trailing acc |> List.rev
+        List.concat (List.rev (trailing :: groups_rev))
     | (field: Cst.record_expression_field) :: (((next_field: Cst.record_expression_field) :: _) as rest) ->
         let field_span = span_of_syntax_node_nontrivia_bounds field.Cst.syntax_node in
         let next_span = span_of_syntax_node_nontrivia_bounds next_field.Cst.syntax_node in
         let separators = separator_tokens_between_offsets
           ~after_offset:field_span.end_
           ~before_offset:next_span.start in
-        loop (List.rev_append separators acc) rest
+        loop (separators :: groups_rev) rest
   in
   loop [] fields
 
@@ -4132,7 +4131,6 @@ let rec pattern_from_node = fun node ->
             loop rest saw_tilde pending_label awaiting_payload acc
     in
     Ceibo.Red.SyntaxNode.children node
-    |> Array.to_list
     |> fun children -> loop children false None false []
   in
   let node, attributes = peel_outer_pattern_attributes node in

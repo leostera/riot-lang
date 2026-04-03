@@ -125,7 +125,7 @@ module Green: sig
 
       Each node has:
       - A kind (what type of node)
-      - Children (array of non-trivia tokens/nodes)
+      - Children (list of non-trivia tokens/nodes)
       - Width (total byte length of all children, cached) *)
   type ('kind, 'text) token = {
     kind: 'kind;
@@ -136,7 +136,7 @@ module Green: sig
   type ('kind, 'text) node = {
     kind: 'kind;
     width: int;
-    children: ('kind, 'text) element array;
+    children: ('kind, 'text) element list;
   }
 
   (** Element can be either a token or a node.
@@ -172,16 +172,16 @@ module Green: sig
     width:int ->
     ('kind, 'text) token
 
-  (** `make_node ~kind ~children` creates a new node from an array of children.
+  (** `make_node ~kind ~children` creates a new node from an list of children.
 
       The width is automatically computed as the sum of all children widths.
 
       Example: `make_node ~kind:BIN_EXPR ~children:[|tok1; tok2; tok3|]` *)
-  val make_node: kind:'kind -> children:('kind, 'text) element array -> ('kind, 'text) node
+  val make_node: kind:'kind -> children:('kind, 'text) element list -> ('kind, 'text) node
 
   (** `make_node_list ~kind elements` creates a node from a list.
 
-      Convenience wrapper around `make_node` that converts a list to an array.
+      Convenience wrapper around `make_node` that converts a list to an list.
 
       Example: `make_node_list ~kind:TUPLE_EXPR [elem1; elem2; elem3]` *)
   val make_node_list: kind:'kind -> ('kind, 'text) element list -> ('kind, 'text) node
@@ -240,8 +240,8 @@ module Green: sig
   *)
   val child: ('kind, 'text) node -> int -> ('kind, 'text) element option
 
-  (** `children node` returns all children as an array. *)
-  val children: ('kind, 'text) node -> ('kind, 'text) element array
+  (** `children node` returns all children as an list. *)
+  val children: ('kind, 'text) node -> ('kind, 'text) element list
 
   (** ## Serialization *)
   val to_json: kind_to_json:('kind -> Data.Json.t) ->
@@ -322,6 +322,13 @@ module Red: sig
     (** `child_count node` returns the number of children. *)
     val child_count: ('kind, 'text) syntax_node -> int
 
+    (** `fold_children node init f` folds direct non-trivia children in source order. *)
+    val fold_children:
+      ('kind, 'text) syntax_node ->
+      'acc ->
+      ('acc -> ('kind, 'text) syntax_element -> 'acc) ->
+      'acc
+
     (** `child node i` returns the child at index `i` (lazy fabrication). *)
     val child: ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
 
@@ -329,9 +336,9 @@ module Red: sig
 
         Trivia remains attached to tokens and does not appear as a standalone
         child element. *)
-    val children: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element array
+    val children: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
-    (** `children_list node` returns all non-trivia children as a list. *)
+    (** `children_list node` is an alias for `children node`. *)
     val children_list: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
     (** `direct_tokens node` returns only the direct non-trivia token children. *)

@@ -164,7 +164,7 @@ let green_nontrivia_token_texts = fun element ->
             | None -> acc
           )
       )
-    | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) -> Array.fold_left
+    | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) -> List.fold_left
       loop
       acc
       (Ceibo.Green.children node)
@@ -526,8 +526,7 @@ let syntax_kind_of_token_kind = function
 
 (** Convert list of tokens to green elements *)
 let make_node = fun kind children ->
-  let children_array = Array.of_list children in
-  Ceibo.Green.make_node ~kind ~children:children_array
+  Ceibo.Green.make_node ~kind ~children
 
 (** Make an ERROR node with diagnostic *)
 let green_trivia_of_token_trivia = fun parser (trivia: Token.trivia) ->

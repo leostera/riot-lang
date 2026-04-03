@@ -23,7 +23,7 @@ let rec subtree_contains_kind = fun (node: Syn.Cst.syntax_node) target_kind ->
   if Syn.Ceibo.Red.SyntaxNode.kind node = target_kind then
     true
   else
-    Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.exists
+    Syn.Ceibo.Red.SyntaxNode.children node |> List.exists
       (
         function
         | Syn.Ceibo.Red.Node child -> subtree_contains_kind child target_kind

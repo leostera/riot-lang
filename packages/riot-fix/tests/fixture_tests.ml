@@ -139,7 +139,6 @@ Replace direct `Pervasives` references with `Std`.
         let diagnostic_for_open_stmt node =
           let non_trivia_children =
             SyntaxNode.children node
-            |> Array.to_list
             |> List.filter
               (
                 function

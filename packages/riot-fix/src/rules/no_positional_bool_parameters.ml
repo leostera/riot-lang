@@ -23,7 +23,7 @@ definition where the author already knows what the boolean means.
 |}
 
 let rec direct_non_trivia_nodes = fun (node: Syn.Cst.syntax_node) ->
-  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
+  Syn.Ceibo.Red.SyntaxNode.children node |> List.filter_map
     (
       function
       | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
@@ -68,7 +68,6 @@ let rec is_bool_type_node = fun (node: Syn.Cst.syntax_node) ->
   | Syn.SyntaxKind.TYPE_CONSTR ->
       let token_texts: string list =
         Syn.Ceibo.Red.SyntaxNode.children node
-        |> Array.to_list
         |> List.filter_map
           (
             function

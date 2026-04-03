@@ -152,7 +152,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
       | _ -> false
   and redundant_paren_child node =
     let has_comment_like =
-      Array.exists
+      List.exists
         (
           function
           | Syn.Ceibo.Green.Token token ->
@@ -167,7 +167,6 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     else
       let meaningful_children =
         Syn.Ceibo.Green.children node
-        |> Array.to_list
         |> List.filter
           (
             function
@@ -212,7 +211,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer "N(";
     IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string node_kind);
     IO.Buffer.add_string buffer "[";
-    Array.iter (write_child ~parent_kind:(Some node_kind)) (Syn.Ceibo.Green.children node);
+    List.iter (write_child ~parent_kind:(Some node_kind)) (Syn.Ceibo.Green.children node);
     IO.Buffer.add_string buffer "])"
   and write_element = function
     | Syn.Ceibo.Green.Token token ->
