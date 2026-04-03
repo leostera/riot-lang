@@ -96,7 +96,7 @@
         },
         "riot.latestMetadataUrl": {
           "type": "string",
-          "default": "https://cdn.pkgs.ml/riot/latest.json",
+          "default": "https://api.pkgs.ml/v1/riot/latest.json",
           "markdownDescription": "Release metadata URL used for startup version and upgrade checks."
         },
         "riot.formatOnSave": {

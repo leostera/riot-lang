@@ -28,7 +28,7 @@ export interface ReleaseMetadata {
 }
 
 const defaultInstallUrl = "https://get.riot.ml";
-const defaultLatestMetadataUrl = "https://cdn.pkgs.ml/riot/latest.json";
+const defaultLatestMetadataUrl = "https://api.pkgs.ml/v1/riot/latest.json";
 
 export const isOcamlUri = (uri: vscode.Uri): boolean => {
 	return uri.scheme === "file" && (uri.fsPath.endsWith(".ml") || uri.fsPath.endsWith(".mli"));
