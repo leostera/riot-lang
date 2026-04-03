@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     file \
     gawk \
     git \
+    libpcre2-dev \
     libssl-dev \
     libzstd-dev \
     m4 \

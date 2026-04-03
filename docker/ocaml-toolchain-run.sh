@@ -10,6 +10,57 @@ OUTPUT_DIR="/out"
 WORKTREE_LAYOUT_VERSION="2"
 VERSION_FILE="$WORK_DIR/.riot-worktree-layout-version"
 
+linux_sdk_arch_dir() {
+  case "$1" in
+    x86_64-unknown-linux-gnu)
+      printf '%s\n' "x86_64-linux-gnu"
+      ;;
+    aarch64-unknown-linux-gnu)
+      printf '%s\n' "aarch64-linux-gnu"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+install_linux_sdk_overlay() {
+  local target="$1"
+  local target_dir="$2"
+  local lib_dir
+  local sysroot_dir
+
+  lib_dir="$(linux_sdk_arch_dir "$target")" || return 0
+  sysroot_dir="$target_dir/sysroot"
+
+  echo "Installing Linux SDK overlay for $target into $sysroot_dir"
+
+  rm -rf "$sysroot_dir"
+  mkdir -p "$sysroot_dir/usr/include" "$sysroot_dir/usr/lib"
+
+  cp -a /usr/include/uuid "$sysroot_dir/usr/include/"
+  cp -a /usr/include/openssl "$sysroot_dir/usr/include/"
+  cp -a /usr/include/pcre2.h "$sysroot_dir/usr/include/"
+  [ ! -f /usr/include/pcre2posix.h ] || cp -a /usr/include/pcre2posix.h "$sysroot_dir/usr/include/"
+  cp -a /usr/include/zlib.h "$sysroot_dir/usr/include/"
+  cp -a /usr/include/zconf.h "$sysroot_dir/usr/include/"
+  [ ! -d "/usr/include/$lib_dir/openssl" ] || cp -a "/usr/include/$lib_dir/openssl/." "$sysroot_dir/usr/include/openssl/"
+
+  (
+    shopt -s nullglob
+    for pattern in libuuid.so* libuuid.a libssl.so* libssl.a libcrypto.so* libcrypto.a libpcre2-8.so* libpcre2-8.a libz.so* libz.a; do
+      for file in /usr/lib/"$lib_dir"/$pattern /lib/"$lib_dir"/$pattern; do
+        [ -e "$file" ] || continue
+        cp -a "$file" "$sysroot_dir/usr/lib/"
+      done
+    done
+  )
+
+  if [ "$target" = "x86_64-unknown-linux-gnu" ]; then
+    (cd "$sysroot_dir/usr" && ln -sf lib lib64)
+  fi
+}
+
 die() {
   echo "error: $*" >&2
   exit 1
@@ -39,6 +90,7 @@ printf '%s\n' "$WORKTREE_LAYOUT_VERSION" > "$VERSION_FILE"
 
 cd "$WORK_DIR"
 bash ./cross/build.sh "$TARGET"
+install_linux_sdk_overlay "$TARGET" "$WORK_DIR/cross/$TARGET"
 bash ./cross/package.sh "$TARGET" "$OUTPUT_DIR"
 
 tarball="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name 'ocaml-*.tar.gz' | head -n 1)"

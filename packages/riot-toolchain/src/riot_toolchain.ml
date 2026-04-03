@@ -187,6 +187,18 @@ let sysroot_candidates = fun ~toolchain_path ~target ->
     Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
   ]
 
+let bundled_sysroot_marker_paths = fun sysroot ->
+  [
+    Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
+    Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
+    Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "pcre2.h");
+    Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "zlib.h");
+    Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libuuid.a");
+    Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
+    Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
+    Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libpcre2-8.a");
+  ]
+
 let explicit_sysroot_override = fun () ->
   let present name =
     match Env.var Env.String ~name with
@@ -212,10 +224,9 @@ let missing_cross_components = fun ~toolchain_path ~target ->
           [ "cross-compiler" ]
       in
       let sysroot_missing =
-        if List.exists dir_exists sysroot_candidates then
-          []
-        else
-          [ "sysroot" ]
+        match first_existing sysroot_candidates with
+        | Some sysroot when List.for_all path_exists (bundled_sysroot_marker_paths sysroot) -> []
+        | _ -> [ "sysroot" ]
       in
       compiler_missing @ sysroot_missing
 
@@ -447,15 +458,7 @@ let hash = fun t ->
         if not (String.equal t.target (get_host_triple ())) then
           (
             match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
-            | Some sysroot -> write_legacy_path_fingerprint
-              [
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "zlib.h");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libuuid.a");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
-              ]
+            | Some sysroot -> write_legacy_path_fingerprint (bundled_sysroot_marker_paths sysroot)
             | None -> ()
           )
     | Version _

@@ -56,12 +56,15 @@ docker exec "$CONTAINER" apt-get install -y -qq \
   linux-libc-dev \
   uuid-dev \
   libssl-dev \
+  libpcre2-dev \
   zlib1g-dev
 
 # Extract headers
 echo "Extracting headers..."
 docker cp "$CONTAINER:/usr/include/uuid" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/openssl" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/pcre2.h" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/pcre2posix.h" "$SYSROOT_DIR/usr/include/" 2>/dev/null || true
 docker cp "$CONTAINER:/usr/include/zlib.h" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/zconf.h" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/${LIB_DIR}/openssl/." "$SYSROOT_DIR/usr/include/openssl/" 2>/dev/null || true
@@ -73,7 +76,7 @@ docker exec "$CONTAINER" bash -lc "
   shopt -s nullglob
   rm -rf /tmp/riot-sdk-libs
   mkdir -p /tmp/riot-sdk-libs
-  for pattern in libuuid.so* libuuid.a libssl.so* libssl.a libcrypto.so* libcrypto.a libz.so* libz.a; do
+  for pattern in libuuid.so* libuuid.a libssl.so* libssl.a libcrypto.so* libcrypto.a libpcre2-8.so* libpcre2-8.a libz.so* libz.a; do
     for file in /usr/lib/${LIB_DIR}/\$pattern /lib/${LIB_DIR}/\$pattern; do
       [ -e \"\$file\" ] || continue
       cp -a \"\$file\" /tmp/riot-sdk-libs/
