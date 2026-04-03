@@ -52,14 +52,16 @@ members = [
 ignore = [ 
   "fixtures",
   "diagnostics",
-  "expected"
+  "expected",
+  ".worktrees",
 ]
 
 [riot.fix]
 ignore = [ 
   "fixtures",
   "diagnostics",
-  "expected"
+  "expected",
+  ".worktrees",
 ]
 rules = [
   "no-stdlib", 

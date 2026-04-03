@@ -18,6 +18,8 @@
 
 * enforce binaries have a `val main : ~args:string list -> result` function
 
+* --release flag should also be usable in riot test and riot run
+
 * `riot upgrade` to update the current riot with a new version of riot (basically reruns the install script)
 
 * `riot run <url>`
@@ -76,4 +78,52 @@ Called from Kernel__Collections__Hashmap.get in file "/Users/leostera/Developer/
 
 * minttea test cases that let you specify inputs and assert outputs in _turns_
 
-* how to make riot clean fast?
+* how to make `riot clean` fast?
+
+* Std.BigInt
+* Std.Rational
+* Std.Decimal -- arbitrary precision arithmetic
+* Std.Bitwise 
+* Std.Collections.Tuple
+* Std.Collections.Bag -- like set, but with duplicates
+* Money package
+* Std.Collections.Trees - RB, AVL, ...
+* Std.Time.Date
+
+* Fs.ls vs Fs.into_iter path
+
+* Std.Net.Udp.*
+* Std.Net.Ftp
+
+* Consider dropping Std.Data.Csv/Xml/Sexp
+* Consider `crypto` package with bcrypt, argon, blake, etc
+
+* Std.Task.Supervisor
+* Std.Random.(one_of, choose n, take n, between(min,max)) and random primitives (bool, string, char, int, etc)
+
+* Std.Port for long-running external programs to communicate
+let cmd = Command.make "echo 'what'" in
+let (status, stdout, stderr) = Command.output cmd in
+let status = Command.status cmd in
+let handle = Command.spawn cmd in
+
+let* { status; _ } = Command.(make "echo .." |> output) in
+
+let python_server () = 
+  Command.make 
+    ~stdin:`inherit
+    "python server.py"
+in
+
+let pid = 
+Port.spawn ~cmd:python_server in
+Port.spawn_executable
+Port.fd
+Port.spawn_driver
+
+Port.open({:spawn, "..."}, opts)
+
+
+* Std.Command.run "..." = (make "..." |> output)
+
+* Borow from Elixir.Enum group_by

@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "c70b8e12a89da2bd"
+dependency_hash = "b13364fa17bf2fd6"
 
 [[packages]]
 name = "blink"
@@ -54,9 +54,9 @@ dev_dependencies = []
 name = "http"
 root = "packages/http"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }, { name = "propane", package = { name = "propane" } }]
+dependencies = [{ name = "std", package = { name = "std" } }]
 build_dependencies = []
-dev_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 
 [[packages]]
 name = "jsonrpc"
