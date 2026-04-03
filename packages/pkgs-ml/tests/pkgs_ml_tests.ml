@@ -932,7 +932,7 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
   "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
   "manifest": {
     "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
-    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
+    "url": "https://api.pkgs.ml/v1/artifacts/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
   },
   "source_archive": {
     "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",

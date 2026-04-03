@@ -288,7 +288,7 @@ async function handleArtifactPublish(
     artifact_sha256: publishResult.artifactSha256,
     manifest: {
       key: publishResult.manifestKey,
-      url: cdnObjectUrl(getConfig(env), publishResult.manifestKey),
+      url: artifactProxyUrl(getConfig(env), publishResult.manifestKey),
       cdn_url: cdnObjectUrl(getConfig(env), publishResult.manifestKey),
     },
     source_archive: {
