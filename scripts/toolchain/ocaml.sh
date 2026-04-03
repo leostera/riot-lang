@@ -17,7 +17,9 @@ OUTPUT_ROOT="$REPO_ROOT/dist/toolchains/ocaml"
 CLEAN_BUILD=0
 DRY_RUN=0
 TARGETS=()
-RIOT_TOOLCHAIN_SUFFIX="${RIOT_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.1}}"
+CLI_TOOLCHAIN_SUFFIX=""
+INITIAL_RIOT_TOOLCHAIN_SUFFIX="${RIOT_TOOLCHAIN_SUFFIX:-}"
+INITIAL_OCAML_TOOLCHAIN_SUFFIX="${OCAML_TOOLCHAIN_SUFFIX:-}"
 
 load_env_file() {
   local env_file="$1"
@@ -38,20 +40,27 @@ load_env_file() {
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/toolchain/ocaml.sh <build|publish|release> [options] <target...>
+Usage:
+  ./scripts/toolchain/ocaml.sh build [options] <target...>
+  ./scripts/toolchain/ocaml.sh publish [options] <suffix> <target...>
+  ./scripts/toolchain/ocaml.sh release [options] <suffix> <target...>
 
 Build or publish prebuilt OCaml toolchains from the vendored OCaml source tree.
 
 Options:
   --output-dir PATH   Root output directory. Defaults to dist/toolchains/ocaml
+  --suffix VALUE      Release suffix to append to the OCaml version (for example riot.2)
   --clean             Request a clean local rebuild before packaging
   --dry-run           Print commands without executing them
   --help, -h          Show this help
 
 Examples:
   ./scripts/toolchain/ocaml.sh build x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh publish x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh release x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh build all
+  ./scripts/toolchain/ocaml.sh publish riot.2 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh publish riot.2 all
+  ./scripts/toolchain/ocaml.sh publish --clean riot.2 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh release riot.2 x86_64-unknown-linux-gnu
   ./scripts/toolchain/ocaml.sh build aarch64-apple-darwin-x-x86_64-unknown-linux-gnu
 
 Linux native GNU host targets are built via Docker Buildx:
@@ -81,6 +90,30 @@ run_cmd() {
   if [ "$DRY_RUN" = "0" ]; then
     "$@"
   fi
+}
+
+supported_targets() {
+  find "$TARGETS_DIR" -maxdepth 1 -type f -name '*.sh' -print | \
+    sed 's#.*/##' | sed 's/\.sh$//' | sort
+}
+
+expand_target_aliases() {
+  local expanded=()
+  local target
+  local candidate
+
+  for target in "$@"; do
+    if [ "$target" = "all" ]; then
+      while IFS= read -r candidate; do
+        [ -n "$candidate" ] || continue
+        expanded+=("$candidate")
+      done < <(supported_targets)
+    else
+      expanded+=("$target")
+    fi
+  done
+
+  TARGETS=("${expanded[@]}")
 }
 
 is_linux_host_target() {
@@ -172,6 +205,44 @@ upload_object() {
   run_cmd aws "${upload_args[@]}"
 }
 
+toolchain_suffix_name() {
+  local suffix="${RIOT_TOOLCHAIN_SUFFIX:-}"
+  suffix="${suffix#-}"
+  printf '%s\n' "$suffix"
+}
+
+find_built_tarball() {
+  local output_dir="$1"
+  local suffix
+  local pattern
+
+  [ -d "$output_dir" ] || return 0
+
+  suffix="$(toolchain_suffix_name)"
+  if [ -n "$suffix" ]; then
+    pattern="ocaml-*-${suffix}-*.tar.gz"
+  else
+    pattern="ocaml-*.tar.gz"
+  fi
+
+  find "$output_dir" -maxdepth 1 -type f -name "$pattern" | head -n 1
+}
+
+remove_built_tarballs_for_suffix() {
+  local output_dir="$1"
+  local suffix
+  local pattern
+
+  suffix="$(toolchain_suffix_name)"
+  if [ -n "$suffix" ]; then
+    pattern="ocaml-*-${suffix}-*.tar.gz"
+  else
+    pattern="ocaml-*.tar.gz"
+  fi
+
+  run_cmd find "$output_dir" -maxdepth 1 -type f \( -name "$pattern" -o -name "$pattern.sha256" \) -delete
+}
+
 write_sha256_file() {
   local artifact_path="$1"
   local checksum_path="$2"
@@ -226,8 +297,8 @@ build_linux_host_target() {
   fi
 
   run_cmd mkdir -p "$worktree_dir"
-  run_cmd rm -rf "$output_dir"
   run_cmd mkdir -p "$output_dir"
+  remove_built_tarballs_for_suffix "$output_dir"
   run_cmd docker buildx build \
     --platform "$platform" \
     --load \
@@ -361,7 +432,7 @@ restore_built_host_toolchain() {
   local host_output_dir="$OUTPUT_ROOT/$host_target"
   local host_tarball
 
-  host_tarball="$(find "$host_output_dir" -maxdepth 1 -type f -name 'ocaml-*.tar.gz' | head -n 1)"
+  host_tarball="$(find_built_tarball "$host_output_dir")"
   if [ -z "$host_tarball" ]; then
     return 1
   fi
@@ -392,7 +463,7 @@ build_local_target() {
   fi
 
   run_cmd mkdir -p "$output_dir"
-  run_cmd rm -f "$output_dir"/ocaml-*.tar.gz "$output_dir"/ocaml-*.tar.gz.sha256
+  remove_built_tarballs_for_suffix "$output_dir"
 
   if [ "$DRY_RUN" != "0" ]; then
     printf '+ sync vendored source into %q\n' "$worktree_dir"
@@ -465,8 +536,8 @@ publish_target() {
   local tarball_path
   local checksum_path
 
-  tarball_path="$(find "$output_dir" -maxdepth 1 -type f -name 'ocaml-*.tar.gz' | head -n 1)"
-  [ -n "$tarball_path" ] || die "no tarball found to publish for $target in $output_dir"
+  tarball_path="$(find_built_tarball "$output_dir")"
+  [ -n "$tarball_path" ] || die "no tarball found to publish for $target in $output_dir matching suffix $(toolchain_suffix_name)"
 
   checksum_path="$tarball_path.sha256"
   [ -f "$checksum_path" ] || die "checksum file missing for $tarball_path"
@@ -476,6 +547,22 @@ publish_target() {
 
   upload_object "$checksum_path" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$checksum_path")")"
   echo "  checksum: ${PUBLIC_BASE_URL%/}/$(basename "$checksum_path")"
+}
+
+ensure_artifact_exists() {
+  local target="$1"
+  local output_dir="$2"
+
+  if [ -n "$(find_built_tarball "$output_dir")" ]; then
+    return 0
+  fi
+
+  echo "No packaged artifact found for suffix $(toolchain_suffix_name); building $target first"
+  if is_linux_host_target "$target"; then
+    build_linux_host_target "$target" "$output_dir"
+  else
+    build_local_target "$target" "$output_dir"
+  fi
 }
 
 [ $# -gt 0 ] || {
@@ -504,6 +591,11 @@ while [ $# -gt 0 ]; do
       [ $# -gt 0 ] || die "--output-dir requires a path"
       OUTPUT_ROOT="$1"
       ;;
+    --suffix)
+      shift
+      [ $# -gt 0 ] || die "--suffix requires a value"
+      CLI_TOOLCHAIN_SUFFIX="$1"
+      ;;
     --clean)
       CLEAN_BUILD=1
       ;;
@@ -518,7 +610,11 @@ while [ $# -gt 0 ]; do
       die "unknown option: $1"
       ;;
     *)
-      TARGETS+=("$1")
+      if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ ${#TARGETS[@]} -eq 0 ] && [ -z "$CLI_TOOLCHAIN_SUFFIX" ] && [ ! -f "$TARGETS_DIR/$1.sh" ]; then
+        CLI_TOOLCHAIN_SUFFIX="$1"
+      else
+        TARGETS+=("$1")
+      fi
       ;;
   esac
   shift
@@ -528,6 +624,21 @@ done
 [ "${#TARGETS[@]}" -gt 0 ] || die "at least one target is required"
 
 load_env_file "$ENV_FILE"
+
+RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.1}}}}}"
+
+if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ -z "$CLI_TOOLCHAIN_SUFFIX" ]; then
+  if [ "${#TARGETS[@]}" -gt 1 ]; then
+    if [ ! -f "$TARGETS_DIR/${TARGETS[0]}.sh" ]; then
+      CLI_TOOLCHAIN_SUFFIX="${TARGETS[0]}"
+      TARGETS=("${TARGETS[@]:1}")
+      RIOT_TOOLCHAIN_SUFFIX="$CLI_TOOLCHAIN_SUFFIX"
+    fi
+  fi
+fi
+
+expand_target_aliases "${TARGETS[@]}"
+[ "${#TARGETS[@]}" -gt 0 ] || die "at least one target is required"
 
 if [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; then
   ensure_publish_env
@@ -541,11 +652,13 @@ for target in "${TARGETS[@]}"; do
   [ -f "$TARGETS_DIR/$target.sh" ] || die "unknown target: $target"
 
   target_output_dir="$OUTPUT_ROOT/$target"
+  artifact_present_before_publish="$(find_built_tarball "$target_output_dir" || true)"
 
   echo "======================================"
   echo " OCaml Toolchain Pipeline"
   echo "======================================"
   echo " Mode: $MODE"
+  echo " Suffix: $RIOT_TOOLCHAIN_SUFFIX"
   echo " Target: $target"
   echo " Output: $target_output_dir"
   echo "======================================"
@@ -560,13 +673,12 @@ for target in "${TARGETS[@]}"; do
   fi
 
   if [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; then
-    if [ "$MODE" = "release" ] && [ "$DRY_RUN" != "0" ]; then
-      echo "dry-run: publish step skipped until artifacts exist"
-      echo
-      continue
+    ensure_artifact_exists "$target" "$target_output_dir"
+    if [ "$DRY_RUN" != "0" ] && [ -z "$artifact_present_before_publish" ]; then
+      echo "dry-run: publish step skipped until artifact exists"
+    else
+      publish_target "$target" "$target_output_dir"
     fi
-
-    publish_target "$target" "$target_output_dir"
   fi
 
   echo
