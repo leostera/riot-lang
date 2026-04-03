@@ -152,10 +152,18 @@ const findFmtFileEvent = (
 const findFixFileResult = (
 	events: JsonObject[],
 	document: vscode.TextDocument,
+	cwd?: string,
 ): JsonObject | undefined => {
 	const target = normalizeFilePath(document.uri.fsPath);
 
 	for (const event of events) {
+		if (asString(event.type) === "file") {
+			const file = asString(event.file);
+			if (file && normalizeFilePath(file, cwd) === target) {
+				return event;
+			}
+		}
+
 		const files = asArray(event.files);
 		for (const file of files) {
 			const object = asObject(file);
@@ -164,7 +172,7 @@ const findFixFileResult = (
 			}
 
 			const filePath = asString(object.file);
-			if (filePath && normalizeFilePath(filePath) === target) {
+			if (filePath && normalizeFilePath(filePath, cwd) === target) {
 				return object;
 			}
 		}
@@ -266,7 +274,7 @@ export class RiotDiagnostics {
 		if (options.includeFix && vscode.workspace.getConfiguration("riot").get<boolean>("diagnostics.runFix", true)) {
 			const fixResult = await runRiot(this.context, ["fix", "--check", "--json", document.uri.fsPath], { cwd });
 			const fixEvents = parseJsonLines(fixResult.stdout);
-			const fixFile = findFixFileResult(fixEvents, document);
+			const fixFile = findFixFileResult(fixEvents, document, cwd);
 			if (fixFile) {
 				diagnostics.push(...synItems(document, asArray(fixFile.parse_diagnostics)));
 				diagnostics.push(...fixItems(document, asArray(fixFile.diagnostics)));
