@@ -14,7 +14,7 @@
 - [done] Move derived package web views out of R2 JSON docs and into D1-backed materialized view documents.
 - [done] Expose package/homepage/owner/category/recent view documents from `api.pkgs.ml/v1/views/...`.
 - [done] Update `services/pkgs.ml` to fetch lightweight views from `api.pkgs.ml` instead of `cdn.pkgs.ml`.
-- [done] Keep `cdn.pkgs.ml` as the delivery surface for sparse index JSON and heavy immutable blobs only.
+- [done] Serve sparse index JSON and package artifacts through `api.pkgs.ml`, while keeping `cdn.pkgs.ml` as the origin for immutable blobs and other non-package downloads.
 - [done] Update unit and e2e tests for the new DB-backed control plane.
 
 ## Follow-up

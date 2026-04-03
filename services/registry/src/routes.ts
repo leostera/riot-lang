@@ -14,7 +14,6 @@ import {
 import { getConfig } from "./config.ts";
 import { HttpError } from "./errors.ts";
 import { json, methodNotAllowed } from "./http.ts";
-import { writeRequestLog } from "./request-log.ts";
 import {
   listRegistryEvents,
   listPackageRegistryEvents,
@@ -29,6 +28,7 @@ import {
 import { searchPackages } from "./search-db.ts";
 import {
   artifactManifestKey,
+  artifactProxyUrl,
   artifactSourceArchiveKey,
   buildIndexConfigDocument,
   cdnObjectUrl,
@@ -41,71 +41,49 @@ import type {
   IndexedPackageRelease,
   PackageIndexDocument,
   PublishedPackageRelease,
-  RequestLogEntry,
 } from "./types.ts";
 
 export async function handleRequest(
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  _ctx: ExecutionContext,
 ): Promise<Response> {
-  const url = new URL(request.url);
-  const logEntry: RequestLogEntry = {
-    request_id: crypto.randomUUID(),
-    request_timestamp: new Date().toISOString(),
-    method: request.method,
-    path: url.pathname,
-    route: "unknown",
-    status: 500,
-    success: false,
-    user_agent: request.headers.get("user-agent"),
-  };
-
   try {
-    const response = await routeRequest(request, env, logEntry);
-    logEntry.status = response.status;
-    logEntry.success = response.ok;
-    return response;
+    return await routeRequest(request, env);
   } catch (error) {
     const httpError = normalizeError(error);
-    logEntry.status = httpError.status;
-    logEntry.error_category = httpError.error;
-    logEntry.error_message = httpError.message;
+    const requestId = crypto.randomUUID();
 
     return json(
       {
         error: httpError.error,
         message: httpError.message,
-        request_id: logEntry.request_id,
+        request_id: requestId,
       },
       { status: httpError.status },
     );
-  } finally {
-    ctx.waitUntil(writeRequestLog(env, logEntry));
   }
 }
 
 async function routeRequest(
   request: Request,
   env: Env,
-  logEntry: RequestLogEntry,
 ): Promise<Response> {
   const url = new URL(request.url);
   const path = trimSlashes(url.pathname);
 
   if (path === "") {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "root";
     return json({
       service: "riot-package-registry",
       routes: {
         publish_artifact: "/v1/publish",
         index_config: "/v1/index/config.json",
         index_package: "/v1/index/<sharded-package-document>.json",
+        artifact_download: "/v1/artifacts/<artifact-key>",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -125,6 +103,7 @@ async function routeRequest(
         publish_artifact: "/api/v1/publish",
         index_config: "/api/v1/index/config.json",
         index_package: "/api/v1/index/<sharded-package-document>.json",
+        artifact_download: "/api/v1/artifacts/<artifact-key>",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -148,21 +127,25 @@ async function routeRequest(
   const indexStorageKey = resolveIndexStorageKey(path, getConfig(env));
   if (indexStorageKey !== null) {
     if (request.method !== "GET" && request.method !== "HEAD") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET", "HEAD"]);
     }
 
-    logEntry.route = "api.index";
     return await handleIndexDocument(request, env, indexStorageKey);
+  }
+
+  const artifactStorageKey = resolveArtifactStorageKey(path);
+  if (artifactStorageKey !== null) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return methodNotAllowed(["GET", "HEAD"]);
+    }
+    return await handleArtifactObject(request, env, artifactStorageKey);
   }
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "auth.github.start";
     const authorizationUrl = await createGitHubAuthorizationUrl(
       env,
       url,
@@ -173,11 +156,9 @@ async function routeRequest(
 
   if (matchesPath(path, "v1/auth/github/callback", "auth/github/callback")) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "auth.github.callback";
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     if (code === null || state === null) {
@@ -196,88 +177,71 @@ async function routeRequest(
 
   if (matchesPath(path, "v1/auth/logout", "auth/logout")) {
     if (request.method !== "POST") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["POST"]);
     }
 
-    logEntry.route = "auth.logout";
     return await handleLogout(request, env, url);
   }
 
   if (matchesPath(path, "v1/me", "api/v1/me")) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "api.me";
     return await handleCurrentSession(request, env);
   }
 
   if (matchesPath(path, "v1/search", "api/v1/search")) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "api.search";
     return await handleSearch(env, url);
   }
 
   if (matchesPath(path, "v1/events", "api/v1/events")) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "api.events";
     return await handleEvents(env, url);
   }
 
   const packageEventsRoute = parsePackageEventsRoute(path);
   if (packageEventsRoute !== null) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = "api.package_events";
     return await handlePackageEvents(env, url, packageEventsRoute.packageName);
   }
 
   const viewRoute = parseViewRoute(path);
   if (viewRoute !== null) {
     if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["GET"]);
     }
 
-    logEntry.route = `api.views.${viewRoute.kind}`;
     return await handleViewDocument(env, viewRoute);
   }
 
   if (matchesPath(path, "v1/me/tokens", "api/v1/me/tokens")) {
     if (request.method === "GET") {
-      logEntry.route = "api.me.tokens";
       return await handleListTokens(request, env);
     }
 
     if (request.method === "POST") {
-      logEntry.route = "api.me.tokens.create";
       return await handleCreateToken(request, env);
     }
 
-    logEntry.route = "method_not_allowed";
     return methodNotAllowed(["GET", "POST"]);
   }
 
   if (path.startsWith("v1/me/tokens/") || path.startsWith("api/v1/me/tokens/")) {
     if (request.method !== "DELETE") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["DELETE"]);
     }
 
-    logEntry.route = "api.me.tokens.delete";
     const tokenId = decodeURIComponent(
       path.startsWith("v1/me/tokens/")
         ? path.slice("v1/me/tokens/".length)
@@ -288,12 +252,10 @@ async function routeRequest(
 
   if (matchesPath(path, "v1/publish", "api/v1/publish")) {
     if (request.method !== "POST") {
-      logEntry.route = "method_not_allowed";
       return methodNotAllowed(["POST"]);
     }
 
-    logEntry.route = "publish.artifact";
-    return await handleArtifactPublish(request, env, logEntry);
+    return await handleArtifactPublish(request, env);
   }
 
   throw new HttpError(404, "not_found", "Route does not exist.");
@@ -302,7 +264,6 @@ async function routeRequest(
 async function handleArtifactPublish(
   request: Request,
   env: Env,
-  logEntry: RequestLogEntry,
 ): Promise<Response> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/gzip") && !contentType.includes("application/x-gzip")) {
@@ -320,7 +281,6 @@ async function handleArtifactPublish(
   }
 
   const publishResult = await publishArtifactThroughCoordinator(env, archiveBytes, actor);
-  logEntry.artifact_sha256 = publishResult.artifactSha256;
 
   return json({
     package_name: publishResult.packageName,
@@ -328,11 +288,13 @@ async function handleArtifactPublish(
     artifact_sha256: publishResult.artifactSha256,
     manifest: {
       key: publishResult.manifestKey,
+      url: cdnObjectUrl(getConfig(env), publishResult.manifestKey),
       cdn_url: cdnObjectUrl(getConfig(env), publishResult.manifestKey),
     },
     source_archive: {
       key: publishResult.sourceKey,
-      cdn_url: cdnObjectUrl(getConfig(env), publishResult.sourceKey),
+      url: artifactProxyUrl(getConfig(env), publishResult.sourceKey),
+      cdn_url: artifactProxyUrl(getConfig(env), publishResult.sourceKey),
     },
     claim: {
       key: publishResult.claimKey,
@@ -585,6 +547,35 @@ async function handleIndexDocument(
   return await respondWithIndexJson(request, document);
 }
 
+async function handleArtifactObject(
+  request: Request,
+  env: Env,
+  storageKey: string,
+): Promise<Response> {
+  const object = await env.ML_PKGS_CDN.get(storageKey);
+  if (object === null) {
+    throw new HttpError(404, "artifact_not_found", "Artifact was not found.");
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "no-store");
+  headers.set("etag", object.httpEtag);
+  headers.set("content-length", String(object.size));
+
+  if (request.method === "HEAD") {
+    return new Response(null, {
+      status: 200,
+      headers,
+    });
+  }
+
+  return new Response(object.body, {
+    status: 200,
+    headers,
+  });
+}
+
 async function handleCreateToken(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
   const payload = await readBodyObject(request);
@@ -712,6 +703,20 @@ function resolveIndexStorageKey(path: string, config: ReturnType<typeof getConfi
   return null;
 }
 
+function resolveArtifactStorageKey(path: string): string | null {
+  const normalizedPath = trimSlashes(path);
+  const prefixes = ["v1/artifacts", "api/v1/artifacts"];
+
+  for (const prefix of prefixes) {
+    if (normalizedPath.startsWith(`${prefix}/`)) {
+      const storageKey = normalizedPath.slice(prefix.length + 1);
+      return storageKey.length === 0 ? null : storageKey;
+    }
+  }
+
+  return null;
+}
+
 function sanitizePackageIndexDocument(document: PackageIndexDocument): PackageIndexDocument | null {
   const releases = document.releases.filter((release) => isServableIndexedRelease(document.name, release));
   if (releases.length === 0) {
@@ -756,14 +761,14 @@ async function respondWithIndexJson(request: Request, body: unknown): Promise<Re
       status: 304,
       headers: {
         etag,
-        "cache-control": "public, max-age=0, must-revalidate",
+        "cache-control": "no-store",
       },
     });
   }
 
   const headers = new Headers({
     "content-type": "application/json; charset=utf-8",
-    "cache-control": "public, max-age=0, must-revalidate",
+    "cache-control": "no-store",
     etag,
   });
 

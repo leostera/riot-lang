@@ -150,6 +150,25 @@ let manifest_error = fun target manifest_path ->
   ^ ". Reinstall this toolchain from a republished archive that includes manifest.json "
   ^ "(the release artifact must include a stable toolchain_fingerprint)."
 
+let trim_trailing_slash = fun value ->
+  if String.length value > 0 && value.[String.length value - 1] = '/' then
+    String.sub value 0 (String.length value - 1)
+  else
+    value
+
+let ocaml_download_base_url = fun () ->
+  match Env.var Env.String ~name:"RIOT_OCAML_CDN_URL" with
+  | Some value when not (String.equal value "") -> trim_trailing_slash value
+  | _ -> (
+      match Env.var Env.String ~name:"OCAML_CDN_PUBLIC_BASE_URL" with
+      | Some value when not (String.equal value "") -> trim_trailing_slash value
+      | _ -> (
+          match Env.var Env.String ~name:"RIOT_CDN_PUBLIC_BASE_URL" with
+          | Some value when not (String.equal value "") -> trim_trailing_slash value ^ "/ocaml"
+          | _ -> "https://cdn.pkgs.ml/ocaml"
+        )
+    )
+
 let ensure_manifest_present = fun toolchain_path target source ->
   match source with
   | Path _ -> Ok ()
@@ -239,15 +258,16 @@ let reset_toolchain_install = fun path ->
 
 let download_and_install_toolchain = fun version ~host ~target ->
   let toolchain_path = get_toolchain_path_for_target version target in
+  let base_url = ocaml_download_base_url () in
   (* Determine URL pattern based on host vs cross-compilation *)
   let (binary_url, tar_filename, description) =
     if host = target then
-      let url = "https://cdn.pkgs.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
+      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
       let filename = "ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
       (url, filename, "native")
     else
       (* Cross-compilation toolchain *)
-      let url = "https://cdn.pkgs.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
+      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
       let filename = "ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
       (url, filename, "cross-compilation from " ^ host ^ " to " ^ target)
   in

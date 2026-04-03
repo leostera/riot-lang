@@ -28,7 +28,7 @@ export interface IndexedPackageRelease {
   canonical_locator: string;
   repo_url: string;
   subdir: string;
-  sha: string;
+  artifact_sha256: string;
   description?: string;
   license?: string;
   homepage?: string;
@@ -110,7 +110,7 @@ export interface PackageOverviewDocument {
   subdir: string;
   source_key: string;
   manifest_key: string;
-  sha: string;
+  artifact_sha256: string;
   owner_github_login: string;
   owner_github_avatar_url?: string;
   release_count: number;

@@ -112,27 +112,6 @@ export const publishedReleases = sqliteTable(
   }),
 );
 
-export const requestLogs = sqliteTable(
-  "request_logs",
-  {
-    requestId: text("request_id").primaryKey(),
-    requestTimestamp: text("request_timestamp").notNull(),
-    method: text("method").notNull(),
-    path: text("path").notNull(),
-    route: text("route").notNull(),
-    packageLocator: text("package_locator"),
-    artifactSha256: text("artifact_sha256"),
-    status: integer("status").notNull(),
-    success: integer("success", { mode: "boolean" }).notNull(),
-    errorCategory: text("error_category"),
-    errorMessage: text("error_message"),
-    userAgent: text("user_agent"),
-  },
-  (table) => ({
-    requestTimestampIdx: index("idx_request_logs_timestamp").on(table.requestTimestamp),
-  }),
-);
-
 export const registryEvents = sqliteTable(
   "registry_events",
   {

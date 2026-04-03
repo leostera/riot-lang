@@ -353,7 +353,7 @@ module Tests = struct
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
   "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://cdn.pkgs.ml"
+  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
 }|}
     in
     match config_of_string source with
@@ -363,7 +363,7 @@ module Tests = struct
           && String.equal config.kind "sparse"
           && String.equal config.package_path_strategy "cargo-lowercase-v1"
           && String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
-          && String.equal config.artifact_base_url "https://cdn.pkgs.ml"
+          && String.equal config.artifact_base_url "https://api.pkgs.ml/v1/artifacts"
         then
           Ok ()
         else
@@ -383,14 +383,14 @@ module Tests = struct
       "canonical_locator": "github.com/leostera/riot-new/packages/kernel",
       "repo_url": "https://github.com/leostera/riot-new",
       "subdir": "packages/kernel",
-      "sha": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      "artifact_sha256": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
       "description": "Actor runtime kernel primitives for Riot",
       "license": "Apache-2.0",
       "homepage": "https://riot.ml",
       "repository": "https://github.com/leostera/riot-new",
       "root_module": "Kernel",
-      "manifest_key": "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
-      "source_key": "sources/github.com/leostera/riot-new/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      "manifest_key": "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      "source_key": "sources/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       "dependencies": [
         {
           "name": "std",
@@ -410,7 +410,7 @@ module Tests = struct
               && String.equal document.name "kernel"
               && String.equal document.latest "0.0.1"
               && String.equal release.version "0.0.1"
-              && String.equal release.manifest_key "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
+              && String.equal release.manifest_key "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
               && List.length release.dependencies = 1
               && String.equal (List.hd release.dependencies).name "std"
             then

@@ -11,6 +11,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
 - `packages/actors/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
+- `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
 - `packages/blink/AGENTS.md`: streaming HTTP client built on actors
 - `packages/suri/AGENTS.md`: web framework, middleware, routing, liveview, server integration

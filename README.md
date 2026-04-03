@@ -56,7 +56,7 @@ thing up and running!
 To get a feel for Riot quickly:
 
 ```sh
-curl -sSL https://cdn.pkgs.ml/riot/install.sh | sh
+curl -sSL https://get.riot.ml | sh
 riot --help
 ```
 

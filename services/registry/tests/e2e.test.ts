@@ -13,6 +13,8 @@ const liveAuthenticatedTest =
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_BASE_URL) ?? baseUrl;
 const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "v1/index";
+const artifactBaseUrl =
+  trimTrailingSlash(process.env.REGISTRY_ARTIFACT_E2E_BASE_URL) ?? `${baseUrl}/v1/artifacts`;
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -25,6 +27,7 @@ describe("riot package registry live e2e", () => {
       publish_artifact: "/v1/publish",
       index_config: "/v1/index/config.json",
       index_package: "/v1/index/<sharded-package-document>.json",
+      artifact_download: "/v1/artifacts/<artifact-key>",
       views_package_overview: "/v1/views/packages/<package-name>/overview",
       views_package_relations: "/v1/views/packages/<package-name>/relations",
       views_recent_packages: "/v1/views/recent/packages",
@@ -187,18 +190,19 @@ describe("riot package registry live e2e", () => {
       `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
     );
 
-    const manifestResponse = await fetch(publication.manifest.cdn_url);
+    const manifestResponse = await fetch(publication.manifest.url);
     expect(manifestResponse.status).toBe(200);
     const manifest = (await manifestResponse.json()) as Record<string, unknown>;
     expect(manifest.package_name).toBe(expectedManifest.name);
     expect(manifest.package_version).toBe(expectedManifest.version);
     expect(manifest.artifact_sha256).toBe(publication.artifact_sha256);
 
-    const sourceResponse = await fetch(publication.source_archive.cdn_url);
+    const sourceResponse = await fetch(publication.source_archive.url);
     expect(sourceResponse.status).toBe(200);
+    expect(sourceResponse.headers.get("cache-control")).toBe("no-store");
 
     const config = await pollJson<IndexConfigPayload>(
-      `${indexBaseUrl}/${indexBasePath}/config.json`,
+      withCacheBust(`${indexBaseUrl}/${indexBasePath}/config.json`),
       (value) => value !== null && value.kind === "sparse",
     );
     expect(config).toEqual({
@@ -206,11 +210,11 @@ describe("riot package registry live e2e", () => {
       kind: "sparse",
       package_path_strategy: "cargo-lowercase-v1",
       index_base_url: `${indexBaseUrl}/${indexBasePath}`,
-      artifact_base_url: cdnBaseUrl,
+      artifact_base_url: artifactBaseUrl,
     });
 
     const packageDocument = await pollJson<PackageIndexDocumentPayload>(
-      `${indexBaseUrl}/${packageIndexKey(expectedManifest.name)}`,
+      withCacheBust(`${indexBaseUrl}/${packageIndexKey(expectedManifest.name)}`),
       (value) =>
         value !== null &&
         value.name === expectedManifest.name &&
@@ -531,10 +535,12 @@ interface PublishPayload {
   artifact_sha256: string;
   manifest: {
     key: string;
+    url: string;
     cdn_url: string;
   };
   source_archive: {
     key: string;
+    url: string;
     cdn_url: string;
   };
   claim: {
@@ -604,6 +610,11 @@ interface RegistryEventPayload {
 
 interface RegistryEventsPayload {
   events: RegistryEventPayload[];
+}
+
+function withCacheBust(url: string): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}cb=${Date.now()}`;
 }
 
 function authenticatedHeaders(): Record<string, string> {

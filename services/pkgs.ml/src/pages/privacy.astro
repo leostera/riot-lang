@@ -24,6 +24,15 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
         </CardHeader>
         <CardContent className="grid gap-6 py-4 text-base leading-7 text-muted-foreground">
           <section class="grid gap-2">
+            <h2 class="text-base font-semibold text-foreground">Data minimization</h2>
+            <p>
+              pkgs.ml is designed to keep as little personal data as possible. We do not keep
+              generic per-request logs, and we do not intentionally store raw IP addresses in the
+              registry database.
+            </p>
+          </section>
+
+          <section class="grid gap-2">
             <h2 class="text-base font-semibold text-foreground">GitHub login</h2>
             <p>
               When you sign in with GitHub, pkgs.ml stores your GitHub login, GitHub user id,
@@ -60,10 +69,32 @@ import SiteLayout from "@/layouts/SiteLayout.astro";
           </section>
 
           <section class="grid gap-2">
-            <h2 class="text-base font-semibold text-foreground">Operational logs</h2>
+            <h2 class="text-base font-semibold text-foreground">Operational and product events</h2>
             <p>
-              The API records request metadata such as timestamp, route, response status, and
-              user-agent for operational debugging, security monitoring, and service reliability.
+              The registry records specific events that are needed to operate the service, such as
+              package publication, indexing, token creation, and other package-registry lifecycle
+              actions. These event records are tied to the action itself rather than acting as a
+              generic log of every request.
+            </p>
+          </section>
+
+          <section class="grid gap-2">
+            <h2 class="text-base font-semibold text-foreground">Downloads and analytics</h2>
+            <p>
+              pkgs.ml may record package downloads, index reads, search queries, and page views in
+              purpose-built analytics tables so the ecosystem can expose aggregate statistics. These
+              metrics are intended to be anonymous and aggregated. We do not want or need raw IP
+              address tracking for package-registry analytics.
+            </p>
+          </section>
+
+          <section class="grid gap-2">
+            <h2 class="text-base font-semibold text-foreground">What we do not store by default</h2>
+            <p>
+              We do not treat generic request logging as a product feature. The default direction of
+              the service is to avoid storing raw request histories, raw IP addresses, or unrelated
+              browsing metadata unless a future feature requires a narrowly scoped and documented
+              exception.
             </p>
           </section>
 

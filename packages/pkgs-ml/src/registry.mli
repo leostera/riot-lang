@@ -8,7 +8,7 @@ type fetch_response = {
 type fetch
 type published_artifact_location = {
   key: string;
-  cdn_url: string;
+  url: string;
 }
 type published_record = {
   key: string;

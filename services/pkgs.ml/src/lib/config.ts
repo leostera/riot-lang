@@ -1,6 +1,5 @@
 export interface WebConfig {
   searchApiBaseUrl: string;
-  cdnBaseUrl: string;
   indexBaseUrl: string;
   indexBasePath: string;
   registryBaseUrl: string;
@@ -13,7 +12,6 @@ export function getConfig(): WebConfig {
   return {
     searchApiBaseUrl:
       import.meta.env.PUBLIC_SEARCH_API_BASE_URL?.trim() || `${registryBaseUrl}/v1/search`,
-    cdnBaseUrl: import.meta.env.PUBLIC_CDN_BASE_URL?.trim() || "https://cdn.pkgs.ml",
     indexBaseUrl: import.meta.env.PUBLIC_INDEX_BASE_URL?.trim() || registryBaseUrl,
     indexBasePath: import.meta.env.PUBLIC_INDEX_BASE_PATH?.trim() || "v1/index",
     registryBaseUrl,

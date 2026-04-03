@@ -12,7 +12,7 @@
 Riot's sparse package index is a Cargo-style sharded JSON index rooted at:
 
 ```text
-https://cdn.pkgs.ml/index/v1/
+https://api.pkgs.ml/v1/index/
 ```
 
 It is implemented inside `services/registry`, not as a separate worker.
@@ -150,7 +150,7 @@ Because this work happens inline with publish, the user-visible behavior is:
 
 ## Root config
 
-The root config document at `index/v1/config.json` tells clients:
+The root config document at `v1/index/config.json` tells clients:
 
 - index kind
 - shard strategy
@@ -170,7 +170,7 @@ The index is the main contract for named installs.
 2. compute the shard path for the package name
 3. fetch the package document
 4. select a compatible version locally
-5. fetch the immutable source tarball referenced by the chosen release
+5. fetch the immutable package artifact referenced by the chosen release
 
 The index deliberately does not choose versions for the client.
 That belongs in Riot's package-management layer.

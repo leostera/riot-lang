@@ -1102,6 +1102,8 @@ module Float = Float
     **See also:** {!Path} for path manipulation, {!Fs.File} for streaming *)
 module Fs = Fs
 
+module Glob = Glob
+
 (** **When to use:** Graph data structures and visualization
     
     Use Graph for dependency graphs, build systems, workflow diagrams.
@@ -1235,6 +1237,7 @@ module Random = Random
     
     Use Ref for ensuring type safety across module boundaries. *)
 module Ref = Ref
+module Regex = Regex
 module Result = Result
 
 (** **When to use:** Explicit error handling

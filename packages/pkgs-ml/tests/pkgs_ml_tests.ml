@@ -49,8 +49,8 @@ let test_sparse_index_document_parsing = fun _ctx ->
       "repo_url": "https://github.com/leostera/riot-new",
       "subdir": "packages/kernel",
       "artifact_sha256": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
-      "manifest_key": "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
-      "source_key": "sources/github.com/leostera/riot-new/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      "manifest_key": "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      "source_key": "sources/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       "dependencies": [{ "name": "std", "path": "../std" }]
     }
   ]
@@ -76,7 +76,7 @@ let test_sparse_index_cached_reads = fun _ctx ->
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
   "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://cdn.pkgs.ml"
+  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
 }|}
     |> Result.expect ~msg:"expected sparse index config to parse"
   in
@@ -111,7 +111,7 @@ let sparse_index_config_json = {|{
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
   "index_base_url": "https://api.pkgs.ml/v1/index",
-  "artifact_base_url": "https://cdn.pkgs.ml"
+  "artifact_base_url": "https://api.pkgs.ml/v1/artifacts"
 }|}
 
 let sparse_index_kernel_json = {|{
@@ -135,8 +135,8 @@ let sparse_index_std_release_json = {|{
       "repo_url": "https://github.com/leostera/riot",
       "subdir": "packages/std",
       "artifact_sha256": "deadbeef",
-      "manifest_key": "packages/std/0.1.0.manifest.json",
-      "source_key": "sources/std/0.1.0.tar",
+      "manifest_key": "packages/std/0.1.0/deadbeef.manifest.json",
+      "source_key": "sources/std/0.1.0/deadbeef.tar.gz",
       "dependencies": []
     }
   ]
@@ -178,7 +178,7 @@ let sparse_index_config_json_stale = {|{
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
   "index_base_url": "https://stale.example/v1/index",
-  "artifact_base_url": "https://cdn.pkgs.ml"
+  "artifact_base_url": "https://stale.example/v1/artifacts"
 }|}
 
 let sparse_index_search_kernel_json = {|{
@@ -859,7 +859,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                         Pkgs_ml.Registry.status_code = 200;
                         body = sparse_index_std_release_json
                       }
-                      | "https://cdn.pkgs.ml/sources/std/0.1.0.tar" -> Ok {
+                      | "https://api.pkgs.ml/v1/artifacts/sources/std/0.1.0/deadbeef.tar.gz" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = archive_body
                       }
@@ -902,7 +902,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                           = [
                             "https://api.pkgs.ml/v1/index/config.json";
                             "https://api.pkgs.ml/v1/index/3/s/std.json";
-                            "https://cdn.pkgs.ml/sources/std/0.1.0.tar";
+                            "https://api.pkgs.ml/v1/artifacts/sources/std/0.1.0/deadbeef.tar.gz";
                           ]
                         then
                           Ok ()
@@ -932,11 +932,11 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
   "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
   "manifest": {
     "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
-    "cdn_url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
+    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
   },
   "source_archive": {
     "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
-    "cdn_url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
+    "url": "https://api.pkgs.ml/v1/artifacts/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
   },
   "claim": {
     "key": "claims/minttea.json",

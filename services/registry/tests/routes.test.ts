@@ -5,15 +5,14 @@ import { handleRequest } from "../src/routes.ts";
 import {
   applyMetadataMigrations,
   listPackageRegistryEvents,
-  listRequestLogs,
   readPackageClaim,
   readPublishedRelease,
 } from "../src/metadata-db.ts";
 import { FakeExecutionContext, makeEnv, makeTarGz } from "./helpers.ts";
 
 describe("riot package registry routes", () => {
-  test("root route returns service metadata and logs the request", async () => {
-    const { env, db } = makeEnv();
+  test("root route returns service metadata", async () => {
+    const { env } = makeEnv();
     const ctx = new FakeExecutionContext();
 
     const response = await handleRequest(new Request("https://registry.test/"), env, ctx);
@@ -26,6 +25,7 @@ describe("riot package registry routes", () => {
         publish_artifact: "/v1/publish",
         index_config: "/v1/index/config.json",
         index_package: "/v1/index/<sharded-package-document>.json",
+        artifact_download: "/v1/artifacts/<artifact-key>",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -45,6 +45,7 @@ describe("riot package registry routes", () => {
         publish_artifact: "/api/v1/publish",
         index_config: "/api/v1/index/config.json",
         index_package: "/api/v1/index/<sharded-package-document>.json",
+        artifact_download: "/api/v1/artifacts/<artifact-key>",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -63,12 +64,6 @@ describe("riot package registry routes", () => {
       cdn_base_url: "https://cdn.pkgs.ml",
       index_base_url: "https://api.pkgs.ml/v1/index",
     });
-
-    await applyMetadataMigrations(db as unknown as D1Database);
-    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0]!;
-    expect(logEntry.route).toBe("root");
-    expect(logEntry.success).toBe(true);
-    expect(logEntry.status).toBe(200);
   });
 
   test("removed source-resolution routes now return 404", async () => {
@@ -106,14 +101,45 @@ describe("riot package registry routes", () => {
     await ctx.drain();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await readJson(response)).toEqual({
       schema_version: 1,
       kind: "sparse",
       package_path_strategy: "cargo-lowercase-v1",
       index_base_url: "https://api.pkgs.ml/v1/index",
-      artifact_base_url: "https://cdn.pkgs.ml",
+      artifact_base_url: "https://api.pkgs.ml/v1/artifacts",
     });
+  });
+
+  test("artifact route proxies stored source archives through the api worker", async () => {
+    const { env } = makeEnv();
+    const publishResponse = await publishArtifact(
+      env,
+      await makePackageArtifact({
+        packageName: "kernel",
+        packageVersion: "0.0.1",
+        description: "Kernel package",
+        license: "Apache-2.0",
+        files: {
+          "src/kernel.ml": "let hello = \"world\"\n",
+        },
+      }),
+    );
+    expect(publishResponse.status).toBe(200);
+    const publishPayload = await readJson(publishResponse) as PublishResponse;
+
+    const response = await handleRequest(
+      new Request(`https://registry.test/v1/artifacts/${publishPayload.source_archive.key}`),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("content-type")).toContain("application/gzip");
+    const archiveBytes = new Uint8Array(await response.arrayBuffer());
+    expect(await readArchiveFileFromTarGz(archiveBytes, "riot.toml")).toContain('name = "kernel"');
+    expect(await readArchiveFileFromTarGz(archiveBytes, "src/kernel.ml")).toBe('let hello = "world"\n');
   });
 
   test("index package route serves the latest package document with etag revalidation", async () => {
@@ -138,7 +164,7 @@ describe("riot package registry routes", () => {
 
     expect(firstResponse.status).toBe(200);
     expect(firstResponse.headers.get("content-type")).toContain("application/json");
-    expect(firstResponse.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+    expect(firstResponse.headers.get("cache-control")).toBe("no-store");
 
     const etag = firstResponse.headers.get("etag");
     expect(etag).not.toBeNull();
@@ -717,9 +743,13 @@ interface PublishResponse {
   artifact_sha256: string;
   manifest: {
     key: string;
+    url?: string;
+    cdn_url?: string;
   };
   source_archive: {
     key: string;
+    url?: string;
+    cdn_url?: string;
   };
   claim: {
     created: boolean;

@@ -385,22 +385,15 @@ public = true
               body =
                 {|{
   "artifact_sha256": "deadbeef",
-  "package": "github.com/example/demo",
-  "source_url": "https://github.com/example/demo",
-  "package_subdir": ".",
-  "selector": "main",
-  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
   "package_name": "demo",
   "package_version": "0.1.0",
   "manifest": {
-    "key": "packages/github.com/example/demo/manifest.json",
-    "url": "https://api.pkgs.ml/v1/packages/github.com/example/demo/manifest/main.json",
-    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/example/demo/manifest.json"
+    "key": "packages/demo/0.1.0/deadbeef.manifest.json",
+    "url": "https://cdn.pkgs.ml/packages/demo/0.1.0/deadbeef.manifest.json"
   },
   "source_archive": {
-    "key": "sources/github.com/example/demo/source.tar.gz",
-    "url": "https://api.pkgs.ml/v1/packages/github.com/example/demo/source/main.tar.gz",
-    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/example/demo/source.tar.gz"
+    "key": "sources/demo/0.1.0/deadbeef.tar.gz",
+    "url": "https://api.pkgs.ml/v1/artifacts/sources/demo/0.1.0/deadbeef.tar.gz"
   },
   "claim": {
     "key": "claims/demo.json",
@@ -700,22 +693,15 @@ public = true
                       body =
                         {|{
   "artifact_sha256": "deadbeef",
-  "package": "github.com/example/riot/packages/demo",
-  "source_url": "https://github.com/example/riot",
-  "package_subdir": "packages/demo",
-  "selector": "ignored-by-test",
-  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
   "package_name": "demo",
   "package_version": "0.1.0",
   "manifest": {
-    "key": "packages/github.com/example/riot/packages/demo/manifest.json",
-    "url": "https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/manifest/main.json",
-    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/example/riot/packages/demo/manifest.json"
+    "key": "packages/demo/0.1.0/deadbeef.manifest.json",
+    "url": "https://cdn.pkgs.ml/packages/demo/0.1.0/deadbeef.manifest.json"
   },
   "source_archive": {
-    "key": "sources/github.com/example/riot/packages/demo/source.tar.gz",
-    "url": "https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/source/main.tar.gz",
-    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/example/riot/packages/demo/source.tar.gz"
+    "key": "sources/demo/0.1.0/deadbeef.tar.gz",
+    "url": "https://api.pkgs.ml/v1/artifacts/sources/demo/0.1.0/deadbeef.tar.gz"
   },
   "claim": {
     "key": "claims/demo.json",

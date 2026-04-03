@@ -350,21 +350,6 @@ export interface OwnerPackagesDocument {
   packages: WebPackageListItem[];
 }
 
-export interface RequestLogEntry {
-  request_id: string;
-  request_timestamp: string;
-  method: string;
-  path: string;
-  route: string;
-  package_locator?: string;
-  artifact_sha256?: string;
-  status: number;
-  success: boolean;
-  error_category?: string;
-  error_message?: string;
-  user_agent?: string | null;
-}
-
 export interface PublishedPackageRelease {
   artifactSha256: string;
   sourceKey: string;

@@ -20,7 +20,6 @@ import type {
   PublishedReleaseRecord,
   RecentPackagesDocument,
   RegistryEventRecord,
-  RequestLogEntry,
   SessionRecord,
   UserLoginRecord,
   UserRecord,
@@ -33,7 +32,6 @@ import {
   packageClaims,
   publishedReleases,
   registryEvents,
-  requestLogs,
   sessions,
   userLogins,
   users,
@@ -41,51 +39,6 @@ import {
 
 export async function applyMetadataMigrations(db: D1Database): Promise<void> {
   void db;
-}
-
-export async function writeRequestLog(db: D1Database, entry: RequestLogEntry): Promise<void> {
-  const database = registryDb(db);
-  await database.insert(requestLogs).values({
-    requestId: entry.request_id,
-    requestTimestamp: entry.request_timestamp,
-    method: entry.method,
-    path: entry.path,
-    route: entry.route,
-    packageLocator: entry.package_locator ?? null,
-    artifactSha256: entry.artifact_sha256 ?? null,
-    status: entry.status,
-    success: entry.success,
-    errorCategory: entry.error_category ?? null,
-    errorMessage: entry.error_message ?? null,
-    userAgent: entry.user_agent ?? null,
-  });
-}
-
-export async function listRequestLogs(
-  db: D1Database,
-  limit = 100,
-): Promise<RequestLogEntry[]> {
-  const database = registryDb(db);
-  const rows = await database
-    .select({
-      request_id: requestLogs.requestId,
-      request_timestamp: requestLogs.requestTimestamp,
-      method: requestLogs.method,
-      path: requestLogs.path,
-      route: requestLogs.route,
-      package_locator: requestLogs.packageLocator,
-      artifact_sha256: requestLogs.artifactSha256,
-      status: requestLogs.status,
-      success: requestLogs.success,
-      error_category: requestLogs.errorCategory,
-      error_message: requestLogs.errorMessage,
-      user_agent: requestLogs.userAgent,
-    })
-    .from(requestLogs)
-    .orderBy(desc(requestLogs.requestTimestamp))
-    .limit(limit);
-
-  return rows.map(parseRequestLogRecord);
 }
 
 export async function readUserRecord(db: D1Database, userId: string): Promise<UserRecord | null> {
@@ -1216,21 +1169,6 @@ interface PublishedReleaseRow {
   published_at: string;
 }
 
-interface RequestLogRow {
-  request_id: string;
-  request_timestamp: string;
-  method: string;
-  path: string;
-  route: string;
-  package_locator?: string | null;
-  artifact_sha256?: string | null;
-  status: number;
-  success: number | boolean;
-  error_category?: string | null;
-  error_message?: string | null;
-  user_agent?: string | null;
-}
-
 interface RegistryEventRow {
   event_id: string;
   event_type: RegistryEventRecord["event_type"];
@@ -1239,23 +1177,6 @@ interface RegistryEventRow {
   package_locator?: string | null;
   payload_json: string;
   created_at: string;
-}
-
-function parseRequestLogRecord(row: RequestLogRow): RequestLogEntry {
-  return {
-    request_id: row.request_id,
-    request_timestamp: row.request_timestamp,
-    method: row.method,
-    path: row.path,
-    route: row.route,
-    package_locator: row.package_locator ?? undefined,
-    artifact_sha256: row.artifact_sha256 ?? undefined,
-    status: row.status,
-    success: row.success === true || row.success === 1,
-    error_category: row.error_category ?? undefined,
-    error_message: row.error_message ?? undefined,
-    user_agent: row.user_agent ?? null,
-  };
 }
 
 function parseApiTokenRecord(row: ApiTokenRow): ApiTokenRecord {

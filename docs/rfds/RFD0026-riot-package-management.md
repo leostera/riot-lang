@@ -30,7 +30,7 @@ This RFD defines how `riot` should consume them.
 Riot now has the backend pieces for packages:
 
 - explicit publication through `api.pkgs.ml`
-- a sparse named-package index under `cdn.pkgs.ml/index/v1/...`
+- a sparse named-package index under `api.pkgs.ml/v1/index/...`
 - search for package discovery
 - immutable package provenance through canonical source locators and SHAs
 
@@ -422,7 +422,7 @@ The lockfile should preserve provenance explicitly.
 Illustrative examples:
 
 ```text
-registry+https://cdn.pkgs.ml/index/v1
+registry+https://api.pkgs.ml/v1/index
 source+https://github.com/leostera/minttea#main
 path+../minttea
 builtin+stdlib

@@ -14,7 +14,7 @@ type fetch = {
 
 type published_artifact_location = {
   key: string;
-  cdn_url: string;
+  url: string;
 }
 
 type published_record = {
@@ -276,6 +276,19 @@ let optional_string_field = fun ~context ~field fields ->
   | Some (Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
 
+let string_field_with_fallback = fun ~context ~field ~fallback fields ->
+  match List.assoc_opt field fields with
+  | Some (Data.Json.String value) ->
+      Ok value
+  | Some _ ->
+      Error (context ^ "." ^ field ^ " must be a string")
+  | None -> (
+      match List.assoc_opt fallback fields with
+      | Some (Data.Json.String value) -> Ok value
+      | Some _ -> Error (context ^ "." ^ fallback ^ " must be a string")
+      | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
+    )
+
 let bool_field = fun ~context ~field fields ->
   match object_field ~context ~field fields with
   | Error _ as err -> err
@@ -286,8 +299,8 @@ let published_artifact_location_of_json = fun ~context json ->
   match json with
   | Data.Json.Object fields ->
       let* key = string_field ~context ~field:"key" fields in
-      let* cdn_url = string_field ~context ~field:"cdn_url" fields in
-      Ok { key; cdn_url }
+      let* url = string_field_with_fallback ~context ~field:"url" ~fallback:"cdn_url" fields in
+      Ok { key; url }
   | _ -> Error (context ^ " must be an object")
 
 let published_record_of_json = fun ~context json ->

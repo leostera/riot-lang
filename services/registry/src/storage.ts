@@ -42,6 +42,14 @@ export function cdnObjectUrl(config: RegistryConfig, key: string): string {
   return `${config.cdnBaseUrl}/${key}`;
 }
 
+export function artifactRouteBaseUrl(config: RegistryConfig): string {
+  return `${config.indexBaseUrl}/v1/artifacts`;
+}
+
+export function artifactProxyUrl(config: RegistryConfig, key: string): string {
+  return `${artifactRouteBaseUrl(config)}/${key}`;
+}
+
 export function indexConfigKey(config: IndexConfig): string {
   return `${config.indexBasePath}/config.json`;
 }
@@ -82,7 +90,7 @@ export function buildIndexConfigDocument(config: IndexConfig): IndexConfigDocume
     kind: "sparse",
     package_path_strategy: "cargo-lowercase-v1",
     index_base_url: `${config.indexBaseUrl}/${config.indexRoutePath}`,
-    artifact_base_url: config.cdnBaseUrl,
+    artifact_base_url: artifactRouteBaseUrl(config),
   };
 }
 

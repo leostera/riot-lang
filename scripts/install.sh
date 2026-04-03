@@ -1,6 +1,6 @@
 #!/bin/sh
 # Riot installation script
-# Usage: curl -sSL https://cdn.pkgs.ml/riot/install.sh | sh
+# Usage: curl -sSL https://get.riot.ml | sh
 
 set -e
 

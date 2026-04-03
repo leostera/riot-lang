@@ -331,7 +331,7 @@ describe("registry indexing", () => {
         name: "runtime",
         slug: "runtime",
         package_count: 2,
-        packages: ["kernel", "actors"],
+        packages: ["actors", "kernel"],
       },
       {
         name: "actors",

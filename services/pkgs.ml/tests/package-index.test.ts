@@ -26,7 +26,7 @@ describe("buildPackageFacts", () => {
           canonical_locator: "github.com/leostera/riot-new/packages/kernel",
           repo_url: "https://github.com/leostera/riot-new",
           subdir: "packages/kernel",
-          sha: "abc123",
+          artifact_sha256: "abc123",
           description: "Kernel package",
           license: "MIT",
           homepage: undefined,

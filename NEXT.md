@@ -6,8 +6,6 @@
 
 * look into `typ`
 
-* riot.nvim !!!!
-
 # Planned
 
 * treat every .ml file in ./tests as a test, ./examples as a binary, ./bench as a bench
@@ -18,7 +16,12 @@
 
 * implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
+* Public stats panel for pkgs.ml with stats for pkgs, downloads, users, etc 
+
+
 # Next
+
+* riot lsp
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
@@ -123,3 +126,5 @@ Port.open({:spawn, "..."}, opts)
 * Std.Command.run "..." = (make "..." |> output)
 
 * Borow from Elixir.Enum group_by
+
+* Admin panel for pkgs.ml -- admins are listed via env vars at deploy time?

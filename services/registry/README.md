@@ -58,8 +58,8 @@ Wrangler reads `.env` during local development, and the Worker expects at least:
 
 ```dotenv
 CDN_BASE_URL=https://cdn.pkgs.ml
+INDEX_BASE_URL=https://api.pkgs.ml
 INDEX_BASE_PATH=index/v1
-GITHUB_TOKEN=
 ROOT_AUTH_TOKEN=
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
@@ -67,15 +67,13 @@ AUTH_COOKIE_DOMAIN=pkgs.ml
 PKGS_WEB_BASE_URL=https://pkgs.ml
 ```
 
-If `GITHUB_TOKEN` can read private repositories, the registry can publish from
-those upstreams. This is useful for on-premise or private testing setups.
-
 ## Current surface
 
 - `GET /` returns service metadata.
-- `GET /v1/packages/<locator>/resolve?ref=<selector>` materializes or reuses a source-backed package snapshot.
-- `GET /v1/packages/<locator>/manifest/<sha>.json` reads immutable manifests from R2.
-- `GET /v1/packages/<locator>/source/<sha>.tar.gz` redirects to immutable source archives on `cdn.pkgs.ml`.
+- `POST /v1/publish` accepts a `tar.gz` package artifact body and publishes it.
+- `GET /v1/index/config.json` returns the sparse index bootstrap document.
+- `GET /v1/index/<sharded-package-document>.json` returns sparse package documents.
+- `GET /v1/artifacts/<artifact-key>` proxies immutable package source artifacts from R2.
 - `GET /v1/auth/github/start?return_to=<url>` starts GitHub OAuth login.
 - `GET /v1/auth/github/callback?code=<code>&state=<state>` completes GitHub OAuth, creates a user session, and redirects back to `pkgs.ml`.
 - `POST /v1/auth/logout` clears the session cookie.
@@ -84,13 +82,20 @@ those upstreams. This is useful for on-premise or private testing setups.
 - `GET /v1/me/tokens` lists publish tokens for the authenticated user.
 - `POST /v1/me/tokens` creates a new publish token and returns the plaintext token once.
 - `DELETE /v1/me/tokens/<token-id>` revokes a publish token.
-- `POST /v1/packages/<locator>/publish?ref=<selector>` publishes a named package release, synchronously updates the sparse package index under `cdn.pkgs.ml/index/v1`, updates the registry search database, and accepts either `Authorization: Bearer <ROOT_AUTH_TOKEN>` or a user publish token created through `/v1/me/tokens`.
+
+Package publish is artifact-native:
+
+- the client uploads the package-root `tar.gz`
+- the registry derives package metadata from `riot.toml` at archive root
+- the registry stores immutable manifests and source artifacts in R2
+- the registry synchronously updates the sparse index and search rows
+- the sparse index and artifact downloads are served through `api.pkgs.ml`
 
 Legacy compatibility aliases under `registry.pkgs.ml` and `/api/v1`/`/package/.../-/...` remain available during the transition.
 
-The Worker stores request logs and registry control-plane metadata in D1:
-auth, sessions, API tokens, package claims, published releases, request logs,
-search, and derived web views. Runtime D1 access is implemented with
+The Worker stores registry control-plane metadata in D1:
+auth, sessions, API tokens, package claims, published releases, registry
+events, search, and derived web views. Runtime D1 access is implemented with
 `drizzle-orm`, while schema changes are managed only through Wrangler D1 SQL
 migrations in `services/registry/migrations/`.
 
@@ -101,12 +106,10 @@ deployed Worker:
 
 ```dotenv
 REGISTRY_E2E_BASE_URL=https://api.pkgs.ml
-REGISTRY_E2E_PACKAGE_LOCATOR=github.com/leostera/riot-new/packages/kernel
 REGISTRY_E2E_ROOT_AUTH_TOKEN=
-REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR=github.com/owner/repo/path/to/public-package
+REGISTRY_ARTIFACT_E2E_BASE_URL=https://api.pkgs.ml/v1/artifacts
 REGISTRY_E2E_SESSION_COOKIE=pkgs_session=...
 REGISTRY_E2E_GITHUB_LOGIN=leostera
-REGISTRY_INDEX_E2E_CDN_BASE_URL=https://cdn.pkgs.ml
 REGISTRY_INDEX_E2E_BASE_PATH=index/v1
 ```
 
@@ -118,10 +121,8 @@ bun run test:e2e
 
 The live tests are skipped when `REGISTRY_E2E_BASE_URL` is not set.
 The live publish smoke test is skipped unless `REGISTRY_E2E_ROOT_AUTH_TOKEN` is
-set. If `REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR` is omitted, it defaults to
-`REGISTRY_E2E_PACKAGE_LOCATOR`. The authenticated token-management smoke tests
-are skipped unless both `REGISTRY_E2E_SESSION_COOKIE` and
-`REGISTRY_E2E_GITHUB_LOGIN` are set.
+set. The authenticated token-management smoke tests are skipped unless both
+`REGISTRY_E2E_SESSION_COOKIE` and `REGISTRY_E2E_GITHUB_LOGIN` are set.
 
 `bun run test` only runs the local unit suite. The live registry smoke tests are
 kept behind `bun run test:e2e`.

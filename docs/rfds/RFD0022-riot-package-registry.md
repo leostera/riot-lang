@@ -14,8 +14,6 @@ Riot's package registry lives in `services/registry` and is deployed at
 
 It is the single control-plane service for:
 
-- source package materialization from public source locators such as
-  `github.com/owner/repo[/path]`
 - explicit authenticated package publication
 - package-name claims
 - immutable published release records
@@ -25,32 +23,22 @@ It is the single control-plane service for:
 
 The final model is intentionally explicit:
 
-- `riot add github.com/owner/repo[/path]` is a source dependency flow
 - `riot publish` is the only way to claim a public package name
 - `riot add <package-name>` installs from the sparse index
 - `riot add` never implicitly publishes or claims names
 
-GitHub is the first supported upstream provider.
-The public API is provider-neutral enough that more providers can be added
-later.
-
 ## Motivation
 [motivation]: #motivation
 
-The design pressure was to support both:
+The design pressure was to make named-package installs feel fast like Bun or
+Cargo while keeping publication explicit and deterministic.
 
-1. source-based installs that feel like Go
-2. named-package installs that feel fast like Bun or Cargo
+The registry therefore focuses on:
 
-The registry therefore separates two concerns:
-
-- source materialization
-- public package publication
-
-That gives Riot a clean mental model:
-
-- source locators identify where code comes from
-- published package names identify stable install targets
+- authenticated artifact publication
+- stable named install targets
+- immutable release artifacts
+- a sparse install index served from the API layer
 
 The registry deliberately does not own:
 
@@ -65,43 +53,27 @@ Those belong in `riot`.
 ## Final user model
 [guide-level-explanation]: #guide-level-explanation
 
-### Source installs
-
-`riot add github.com/leostera/minttea`
-
-This asks the registry to:
-
-1. normalize the source locator
-2. resolve the requested selector, defaulting to `main`
-3. fetch and store the source tarball in R2 if needed
-4. inspect the package and write an immutable manifest if needed
-5. return a concrete resolved SHA and immutable artifact locations
-
-This flow does not:
-
-- claim a package name
-- create a published release
-- update the sparse index
-
 ### Named publishes
 
 `riot publish`
 
 This asks the registry to:
 
-1. materialize the source package if needed
+1. accept a package-root `tar.gz` artifact upload
 2. validate that the package is publishable
 3. authenticate the publisher
 4. claim the package name if allowed
 5. create the immutable published release record
-6. synchronously update the sparse index
-7. synchronously update search and derived web views
-8. emit lifecycle events
+6. store the immutable manifest and source artifact in R2
+7. synchronously update the sparse index
+8. synchronously update search and derived web views
+9. emit lifecycle events
 
 After a successful publish, the package is immediately available through:
 
 - `GET /v1/search`
-- the sparse index under `cdn.pkgs.ml/index/v1/...`
+- the sparse index under `api.pkgs.ml/v1/index/...`
+- artifact downloads under `api.pkgs.ml/v1/artifacts/...`
 - `pkgs.ml`
 
 ### Named installs
@@ -112,9 +84,9 @@ This does not go through GitHub.
 It should eventually use:
 
 1. `GET /v1/search` only for discovery UX, if needed
-2. the sparse index config at `cdn.pkgs.ml/index/v1/config.json`
-3. the package shard document at `cdn.pkgs.ml/index/v1/...`
-4. the immutable tarball URL referenced by the chosen release
+2. the sparse index config at `api.pkgs.ml/v1/index/config.json`
+3. the package shard document at `api.pkgs.ml/v1/index/...`
+4. the immutable artifact URL referenced by the chosen release
 
 ## Authentication model
 
@@ -151,9 +123,9 @@ The implemented publish rules are:
 
 The version immutability rule is important:
 
-- same package name + same version + same source SHA: publish short-circuits as
+- same package name + same version + same artifact digest: publish short-circuits as
   an idempotent success
-- same package name + same version + different source SHA: publish fails with
+- same package name + same version + different artifact digest: publish fails with
   conflict
 
 This means Riot does not support overwriting an already-published version.
@@ -186,10 +158,10 @@ That orchestration belongs in `riot publish`.
 The main registry endpoints are:
 
 - `GET /`
-- `GET /v1/packages/<locator>/resolve?ref=<selector>`
-- `GET /v1/packages/<locator>/manifest/<sha>.json`
-- `GET /v1/packages/<locator>/source/<sha>.tar.gz`
-- `POST /v1/packages/<locator>/publish?ref=<selector>`
+- `POST /v1/publish`
+- `GET /v1/index/config.json`
+- `GET /v1/index/<sharded-package-document>.json`
+- `GET /v1/artifacts/<artifact-key>`
 - `GET /v1/search?q=<query>`
 - `GET /v1/events?limit=<count>&after=<event-id>`
 - `GET /v1/packages/<package-name>/events?version=<version>&limit=<count>`
@@ -219,7 +191,6 @@ Cloudflare D1 stores:
 - api tokens
 - package claims
 - published releases
-- selector resolutions
 - request-driven registry events
 - search rows and FTS tables
 - derived web-view documents
@@ -228,10 +199,9 @@ Cloudflare D1 stores:
 
 Cloudflare R2 stores:
 
-- immutable source tarballs
-- immutable source manifests
+- immutable published source tarballs
+- immutable publication manifests
 - sparse package-index files
-- request logs
 - cached user avatars
 - exported D1 backups
 
