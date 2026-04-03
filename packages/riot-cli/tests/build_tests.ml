@@ -41,14 +41,12 @@ let test_build_accepts_release_flag = fun _ctx ->
         Error "expected --release flag to be parsed"
 
 let make_workspace = fun binaries ->
-  let package =
-    Riot_model.Package.make
-      ~name:"demo"
-      ~path:(Path.v "/workspace/packages/demo")
-      ~relative_path:(Path.v "packages/demo")
-      ~binaries
-      ()
-  in
+  let package = Riot_model.Package.make
+    ~name:"demo"
+    ~path:(Path.v "/workspace/packages/demo")
+    ~relative_path:(Path.v "packages/demo")
+    ~binaries
+    () in
   Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->

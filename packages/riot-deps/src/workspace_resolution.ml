@@ -30,13 +30,15 @@ let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) 
       List.fold_left
         (fun acc (pkg: Riot_model.Lockfile.package) ->
           match pkg.id.registry, pkg.id.version with
-          | Some registry, Some version -> (registry ^ ":" ^ pkg.id.name, version) :: acc
+          | Some registry, Some version ->
+              (registry ^ ":" ^ pkg.id.name, version) :: acc
           | None, Some version -> (
               match pkg.provenance with
               | Riot_model.Lockfile.Source _ -> ("source:" ^ pkg.id.name, version) :: acc
               | _ -> acc
             )
-          | _ -> acc)
+          | _ ->
+              acc)
         []
         lockfile.packages
 
@@ -57,7 +59,8 @@ let emit_locked_packages = fun ~(emit:event_sink) ~(previous_lock:Riot_model.Loc
                 emit (Riot_model.Event.PackageVersionLocked { package = pkg.id.name; version })
           | _ -> ()
         )
-      | _ -> ())
+      | _ ->
+          ())
     current_lock.packages
 
 let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) ->

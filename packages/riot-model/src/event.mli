@@ -141,16 +141,11 @@ type kind =
       package: string;
       version: string option
     }
-  | DependencyManifestUpdated of {
-      path: string;
-      section: string;
-      operation: 
+  | DependencyManifestUpdated of { path: string; section: string; operation: 
         [
           | `Add
           | `Remove
-        ];
-      dependency: string
-    }
+        ]; dependency: string }
   | PackageVersionLocked of { package: string; version: string }
   | PackageVersionsUnchanged of { packages: int }
   | PackageVersionUpdated of { package: string; from_version: string; to_version: string }

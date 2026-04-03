@@ -54,7 +54,7 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
                   Needs_download
               )
 
-let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg: Riot_model.Lockfile.package) () ->
+let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.Lockfile.package) () ->
   let package = pkg.id.name in
   match pkg.id.version with
   | None -> Error (Error.MaterializationFailed {
@@ -116,7 +116,7 @@ let ensure_packages = fun ?(emit = no_emit) ~registry ~(lockfile:Riot_model.Lock
         | Riot_model.Lockfile.Workspace
         | Riot_model.Lockfile.Path _
         | Riot_model.Lockfile.Source _ -> loop rest
-      | Riot_model.Lockfile.Registry _ -> (
+        | Riot_model.Lockfile.Registry _ -> (
             match ensure_registry_package ~emit ~registry ~pkg () with
             | Ok _ -> loop rest
             | Error _ as err -> err

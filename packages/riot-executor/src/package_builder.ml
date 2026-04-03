@@ -172,7 +172,8 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
       (fun (node: Action_node.t) ->
         let is_package_export =
           List.exists
-            (function
+            (
+              function
               | Action.CreateLibrary _
               | Action.CreateExecutable _
               | Action.CreateSharedLibrary _ -> true
@@ -182,7 +183,8 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
               | Action.CompileC _
               | Action.CopyFile _
               | Action.WriteFile _
-              | Action.BuildForeignDependency _ -> false)
+              | Action.BuildForeignDependency _ -> false
+            )
             node.value.actions
         in
         if not is_package_export then
@@ -212,8 +214,7 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
 
 let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
   let seen = HashSet.create () in
-  outputs
-  |> List.filter_map
+  outputs |> List.filter_map
     (fun out_path ->
       let abs_path = Path.join sandbox_dir out_path in
       match Path.strip_prefix abs_path ~prefix:sandbox_dir with

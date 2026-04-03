@@ -493,21 +493,23 @@ let search = fun ?registry ~(request:search_request) () ->
 let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_dependency) ->
   let registry_name = Pkgs_ml.Registry.name registry in
   let started = Time.Instant.now () in
-  emit (Riot_model.Event.PackageMetadataFetchStarted { registry = registry_name; package = parsed.name });
-  let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name
-  |> Result.map_error
-    (fun error ->
-      emit
-        (Riot_model.Event.PackageMetadataFetchFailed {
-          registry = registry_name;
-          package = parsed.name;
-          error = Riot_model.Pm_error.PackageMetadataReadFailed {
-            package = parsed.name;
+  emit
+    (Riot_model.Event.PackageMetadataFetchStarted { registry = registry_name; package = parsed.name });
+  let* document =
+    Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name |> Result.map_error
+      (fun error ->
+        emit
+          (Riot_model.Event.PackageMetadataFetchFailed {
             registry = registry_name;
-            error
-          }
-        });
-      RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
+            package = parsed.name;
+            error = Riot_model.Pm_error.PackageMetadataReadFailed {
+              package = parsed.name;
+              registry = registry_name;
+              error
+            }
+          });
+        RegistryLookupFailed { package = parsed.name; registry = registry_name; error })
+  in
   match document with
   | None ->
       emit

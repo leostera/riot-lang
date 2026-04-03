@@ -11,8 +11,7 @@ type state = {
 
 let create = fun () -> { segments_rev = [] }
 
-let push_segment = fun state ba ~off ~len ->
-  state.segments_rev <- { Iovec.ba; off; len } :: state.segments_rev
+let push_segment = fun state ba ~off ~len -> state.segments_rev <- { Iovec.ba; off; len } :: state.segments_rev
 
 let write = fun state s ->
   if String.length s > 0 then
@@ -70,8 +69,7 @@ let hash_string = fun s ->
   finish state
 
 let hash_bytes = fun b ->
-  Kernel.Crypto.FFI.sha1_iovec
-    [|{ Iovec.ba = Bytes.copy b; off = 0; len = Bytes.length b }|]
+  Kernel.Crypto.FFI.sha1_iovec [|{ Iovec.ba = Bytes.copy b; off = 0; len = Bytes.length b }|]
 
 let hash_unit = fun () ->
   let state = create () in

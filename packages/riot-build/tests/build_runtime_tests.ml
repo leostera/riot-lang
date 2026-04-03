@@ -18,21 +18,17 @@ let make_broken_workspace = fun tmpdir ->
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
-  let package =
-    Riot_model.Package.make
-      ~name:"demo"
-      ~path:pkg_dir
-      ~relative_path:(Path.v "demo")
-      ~library:{ path = Path.v "src/lib.ml" }
-      ~sources:
-        {
-          src = [ Path.v "src/lib.ml" ];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        }
-      ()
+  let package = Riot_model.Package.make ~name:"demo" ~path:pkg_dir ~relative_path:(Path.v "demo") ~library:{
+    path = Path.v "src/lib.ml"
+  }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
   in
   Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
 
@@ -46,21 +42,17 @@ let make_valid_workspace = fun tmpdir ->
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
-  let package =
-    Riot_model.Package.make
-      ~name:"demo"
-      ~path:pkg_dir
-      ~relative_path:(Path.v "demo")
-      ~library:{ path = Path.v "src/lib.ml" }
-      ~sources:
-        {
-          src = [ Path.v "src/lib.ml" ];
-          native = [];
-          tests = [];
-          examples = [];
-          bench = [];
-        }
-      ()
+  let package = Riot_model.Package.make ~name:"demo" ~path:pkg_dir ~relative_path:(Path.v "demo") ~library:{
+    path = Path.v "src/lib.ml"
+  }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
   in
   Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
 

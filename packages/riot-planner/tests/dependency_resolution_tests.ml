@@ -3,11 +3,7 @@ module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
 let make_package = fun name ->
-  Riot_model.Package.make
-    ~name
-    ~path:(Path.v ".")
-    ~relative_path:(Path.v ".")
-    ()
+  Riot_model.Package.make ~name ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
 
 let test_transitive_closure_dependency_first_order = fun _ctx ->
   let dep_c =
@@ -66,20 +62,15 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         let _ = Fs.write "type t = int\nlet x = 1\n" Path.(src_dir / Path.v "foo.ml")
         |> Result.expect ~msg:"expected foo.ml write to succeed" in
         let _ = Fs.write "val y : Foo.t\n" Path.(src_dir / Path.v "bar.mli") |> Result.expect ~msg:"expected bar.mli write to succeed" in
-        let package =
-          Riot_model.Package.make
-            ~name:"pkg"
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
-            ~sources:
-              {
-                src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli" ];
-                native = [];
-                tests = [];
-                examples = [];
-                bench = [];
-              }
-            ()
+        let package = Riot_model.Package.make ~name:"pkg" ~path:package_root ~relative_path:(Path.v "pkg")
+          ~sources:{
+            src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
         in
         let workspace =
           Riot_model.Workspace.{

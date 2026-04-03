@@ -19,13 +19,7 @@ let test_collect_source_files = fun _ctx ->
         let _ = Fs.write "val x : int" mli_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "int main() {}" c_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "readme" txt_file |> Result.expect ~msg:"Write failed" in
-        let package =
-          Riot_model.Package.make
-            ~name:"test"
-            ~path:tmpdir
-            ~relative_path:(Path.v ".")
-            ()
-        in
+        let package = Riot_model.Package.make ~name:"test" ~path:tmpdir ~relative_path:(Path.v ".") () in
         let files = Riot_executor.Package_builder.collect_source_files package in
         let has_ml =
           List.exists (fun p -> Path.to_string p = Path.to_string ml_file) files
@@ -60,13 +54,7 @@ let test_collect_source_files = fun _ctx ->
   | Error _ -> Error "Tempdir creation failed"
 
 let test_build_result_status_variants = fun _ctx ->
-  let package =
-    Riot_model.Package.make
-      ~name:"test"
-      ~path:(Path.v ".")
-      ~relative_path:(Path.v ".")
-      ()
-  in
+  let package = Riot_model.Package.make ~name:"test" ~path:(Path.v ".") ~relative_path:(Path.v ".") () in
   let artifact =
     Riot_store.Artifact.{
       hash = Crypto.hash_string "test";
@@ -127,21 +115,17 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         let src_dir = Path.(package_dir / Path.v "src") in
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
         let _ = Fs.write "let answer = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"write source failed" in
-        let package =
-          Riot_model.Package.make
-            ~name:"pkg"
-            ~path:package_dir
-            ~relative_path:(Path.v "pkg")
-            ~library:{ path = Path.v "src/lib.ml" }
-            ~sources:
-              {
-                src = [ Path.v "src/lib.ml" ];
-                native = [];
-                tests = [];
-                examples = [];
-                bench = [];
-              }
-            ()
+        let package = Riot_model.Package.make ~name:"pkg" ~path:package_dir ~relative_path:(Path.v "pkg") ~library:{
+          path = Path.v "src/lib.ml"
+        }
+          ~sources:{
+            src = [ Path.v "src/lib.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
         in
         let workspace =
           Riot_model.Workspace.{

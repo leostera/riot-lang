@@ -128,12 +128,13 @@ let empty_sources = {
   bench = [];
 }
 
-let compare_path = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
+let compare_path = fun left right ->
+  String.compare (Path.to_string left) (Path.to_string right)
 
 let compare_option compare_value left right =
   match left, right with
   | None, None -> 0
-  | None, Some _ -> -1
+  | None, Some _ -> (-1)
   | Some _, None -> 1
   | Some left, Some right -> compare_value left right
 
@@ -150,9 +151,7 @@ let compare_dependency_source = fun left right ->
       if not (Int.equal by_path 0) then
         by_path
       else
-        let by_source_locator =
-          compare_option String.compare left.source_locator right.source_locator
-        in
+        let by_source_locator = compare_option String.compare left.source_locator right.source_locator in
         if not (Int.equal by_source_locator 0) then
           by_source_locator
         else
@@ -189,9 +188,11 @@ let compare_fix_provider = fun (left: Fix_provider.t) (right: Fix_provider.t) ->
   else
     compare_path left.source_path right.source_path
 
-let compare_profile_override = fun (left_name, _) (right_name, _) -> String.compare left_name right_name
+let compare_profile_override = fun (left_name, _) (right_name, _) ->
+  String.compare left_name right_name
 
-let compare_target_override = fun (left_name, _) (right_name, _) -> String.compare left_name right_name
+let compare_target_override = fun (left_name, _) (right_name, _) ->
+  String.compare left_name right_name
 
 let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_dependency) ->
   let by_name = String.compare left.name right.name in
@@ -200,7 +201,8 @@ let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_
   else
     compare_path left.path right.path
 
-let canonicalize_path_list = fun paths -> List.sort_uniq compare_path paths
+let canonicalize_path_list = fun paths ->
+  List.sort_uniq compare_path paths
 
 let canonicalize_sources = fun sources ->
   {
@@ -213,63 +215,52 @@ let canonicalize_sources = fun sources ->
 
 let canonicalize_foreign_dependency = fun (foreign: foreign_dependency) ->
   {
-    foreign with
-    inputs = canonicalize_path_list foreign.inputs;
-    outputs = canonicalize_path_list foreign.outputs;
+    foreign
+    with inputs = canonicalize_path_list foreign.inputs;
+    outputs = canonicalize_path_list foreign.outputs
   }
 
 let canonicalize = fun (pkg: t) ->
   {
-    pkg with
-    dependencies = List.sort compare_dependency pkg.dependencies;
+    pkg
+    with dependencies = List.sort compare_dependency pkg.dependencies;
     dev_dependencies = List.sort compare_dependency pkg.dev_dependencies;
     build_dependencies = List.sort compare_dependency pkg.build_dependencies;
-    foreign_dependencies =
-      pkg.foreign_dependencies
-      |> List.map canonicalize_foreign_dependency
-      |> List.sort compare_foreign_dependency;
+    foreign_dependencies = pkg.foreign_dependencies
+    |> List.map canonicalize_foreign_dependency
+    |> List.sort compare_foreign_dependency;
     binaries = List.sort compare_binary pkg.binaries;
     sources = canonicalize_sources pkg.sources;
-    compiler =
-      {
-        profile_overrides = List.sort compare_profile_override pkg.compiler.profile_overrides;
-        target_overrides = List.sort compare_target_override pkg.compiler.target_overrides;
-      };
+    compiler = {
+      profile_overrides = List.sort compare_profile_override pkg.compiler.profile_overrides;
+      target_overrides = List.sort compare_target_override pkg.compiler.target_overrides
+    };
     fix_providers = List.sort compare_fix_provider pkg.fix_providers;
   }
 
-let make = fun ~name ~path ~relative_path
-  ?(dependencies = [])
-  ?(dev_dependencies = [])
-  ?(build_dependencies = [])
-  ?(foreign_dependencies = [])
-  ?(binaries = [])
-  ?library
-  ?(sources = empty_sources)
-  ?(compiler = { profile_overrides = []; target_overrides = [] })
-  ?(commands = [])
-  ?(fix_providers = [])
-  ?(publish = default_publish_metadata)
-  () ->
-  canonicalize {
-    name;
-    path;
-    relative_path;
-    dependencies;
-    dev_dependencies;
-    build_dependencies;
-    foreign_dependencies;
-    binaries;
-    library;
-    sources;
-    compiler;
-    commands;
-    fix_providers;
-    publish;
-  }
+let make = fun ~name ~path ~relative_path ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(foreign_dependencies = []) ?(binaries = []) ?library ?(sources = empty_sources) ?(compiler = {
+  profile_overrides = [];
+  target_overrides = []
+}) ?(commands = []) ?(fix_providers = []) ?(publish = default_publish_metadata) () ->
+  canonicalize
+    {
+      name;
+      path;
+      relative_path;
+      dependencies;
+      dev_dependencies;
+      build_dependencies;
+      foreign_dependencies;
+      binaries;
+      library;
+      sources;
+      compiler;
+      commands;
+      fix_providers;
+      publish;
+    }
 
-let synthetic = fun ~name ~path ~relative_path ->
-  make ~name ~path ~relative_path ()
+let synthetic = fun ~name ~path ~relative_path -> make ~name ~path ~relative_path ()
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
 
@@ -348,33 +339,36 @@ let sources_for_scope = fun scope (pkg: t) ->
 let for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal ->
-      canonicalize {
-        pkg
-        with dev_dependencies = [];
-        build_dependencies = [];
-        binaries = binaries_for_scope Normal pkg;
-        commands = commands_for_scope Normal pkg;
-        sources = sources_for_scope Normal pkg;
-      }
+      canonicalize
+        {
+          pkg
+          with dev_dependencies = [];
+          build_dependencies = [];
+          binaries = binaries_for_scope Normal pkg;
+          commands = commands_for_scope Normal pkg;
+          sources = sources_for_scope Normal pkg;
+        }
   | Dev ->
-      canonicalize {
-        pkg
-        with build_dependencies = [];
-        library = None;
-        binaries = binaries_for_scope Dev pkg;
-        commands = commands_for_scope Dev pkg;
-        sources = sources_for_scope Dev pkg;
-      }
+      canonicalize
+        {
+          pkg
+          with build_dependencies = [];
+          library = None;
+          binaries = binaries_for_scope Dev pkg;
+          commands = commands_for_scope Dev pkg;
+          sources = sources_for_scope Dev pkg;
+        }
   | Build ->
-      canonicalize {
-        pkg
-        with dependencies = [];
-        dev_dependencies = [];
-        library = None;
-        binaries = [];
-        commands = commands_for_scope Build pkg;
-        sources = sources_for_scope Build pkg;
-      }
+      canonicalize
+        {
+          pkg
+          with dependencies = [];
+          dev_dependencies = [];
+          library = None;
+          binaries = [];
+          commands = commands_for_scope Build pkg;
+          sources = sources_for_scope Build pkg;
+        }
 
 let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
@@ -1492,22 +1486,25 @@ let from_toml:
                           ~package_path:path
                         | _ -> []
                       in
-                      Ok (canonicalize {
-                        name;
-                        path;
-                        relative_path;
-                        dependencies;
-                        dev_dependencies;
-                        build_dependencies;
-                        foreign_dependencies = foreign;
-                        binaries = all_binaries;
-                        library;
-                        sources;
-                        compiler;
-                        commands;
-                        fix_providers;
-                        publish;
-                      })
+                      Ok (
+                        canonicalize
+                          {
+                            name;
+                            path;
+                            relative_path;
+                            dependencies;
+                            dev_dependencies;
+                            build_dependencies;
+                            foreign_dependencies = foreign;
+                            binaries = all_binaries;
+                            library;
+                            sources;
+                            compiler;
+                            commands;
+                            fix_providers;
+                            publish;
+                          }
+                      )
     )
   | _ -> Error "TOML is not a table"
 
@@ -1716,29 +1713,32 @@ let from_json: Json.t -> (t, string) result = fun json ->
                               match publish with
                               | Error _ as err -> err
                               | Ok publish ->
-                                  Ok (canonicalize {
-                                    name;
-                                    path;
-                                    relative_path;
-                                    dependencies;
-                                    dev_dependencies;
-                                    build_dependencies;
-                                    foreign_dependencies = [];
-                                    binaries;
-                                    library;
-                                    sources =
+                                  Ok (
+                                    canonicalize
                                       {
-                                        src = [];
-                                        native = [];
-                                        tests = [];
-                                        examples = [];
-                                        bench = [];
-                                      };
-                                    compiler = { profile_overrides = []; target_overrides = [] };
-                                    commands = [];
-                                    fix_providers = [];
-                                    publish;
-                                  })
+                                        name;
+                                        path;
+                                        relative_path;
+                                        dependencies;
+                                        dev_dependencies;
+                                        build_dependencies;
+                                        foreign_dependencies = [];
+                                        binaries;
+                                        library;
+                                        sources =
+                                          {
+                                            src = [];
+                                            native = [];
+                                            tests = [];
+                                            examples = [];
+                                            bench = [];
+                                          };
+                                        compiler = { profile_overrides = []; target_overrides = [] };
+                                        commands = [];
+                                        fix_providers = [];
+                                        publish;
+                                      }
+                                  )
                         )
                     )
                 )
@@ -1752,30 +1752,32 @@ let from_json: Json.t -> (t, string) result = fun json ->
 module type Hash_writer = sig
   type state
   val write: state -> string -> unit
+
   val write_int: state -> int -> unit
+
   val write_float: state -> float -> unit
+
   val write_bool: state -> bool -> unit
+
   val write_list: (state -> 'a -> unit) -> state -> 'a list -> unit
 end
 
-let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (pkg: t) ->
-  let hash_string_option = fun value ->
+let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) state (pkg: t) ->
+  let hash_string_option value =
     match value with
     | Some value ->
         H.write_bool state true;
         H.write state value
-    | None ->
-        H.write_bool state false
+    | None -> H.write_bool state false
   in
-  let hash_path_option = fun value ->
+  let hash_path_option value =
     match value with
     | Some value ->
         H.write_bool state true;
         H.write state (Path.to_string value)
-    | None ->
-        H.write_bool state false
+    | None -> H.write_bool state false
   in
-  let rec hash_version = fun (version: Version.t) ->
+  let rec hash_version (version: Version.t) =
     H.write_int state version.major;
     H.write_int state version.minor;
     H.write_int state version.patch;
@@ -1792,7 +1794,7 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
       version.pre;
     hash_string_option version.build
   in
-  let hash_requirement = fun requirement ->
+  let hash_requirement requirement =
     match Version.view_requirement requirement with
     | Version.AnyRequirement ->
         H.write_int state 0
@@ -1825,7 +1827,7 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
         H.write_int state major;
         H.write_int state minor
   in
-  let hash_kind_override = fun value ->
+  let hash_kind_override value =
     match value with
     | Profile.Inherit -> H.write_int state 0
     | Profile.Override kind ->
@@ -1837,23 +1839,24 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
             | Native -> 1
           )
   in
-  let hash_inline_override = fun value ->
+  let hash_inline_override value =
     match value with
-    | Profile.Inherit -> H.write_int state 0
+    | Profile.Inherit ->
+        H.write_int state 0
     | Profile.Override (Some n) ->
         H.write_int state 1;
         H.write_int state n
     | Profile.Override None ->
         H.write_int state 2
   in
-  let hash_bool_override = fun value ->
+  let hash_bool_override value =
     match value with
     | Profile.Inherit -> H.write_int state 0
     | Profile.Override value ->
         H.write_int state 1;
         H.write_bool state value
   in
-  let hash_string_list_override = fun value ->
+  let hash_string_list_override value =
     match value with
     | Profile.Inherit -> H.write_int state 0
     | Profile.Override values ->
@@ -1862,7 +1865,7 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
   in
   H.write state pkg.name;
   (* Dependencies metadata *)
-  let hash_dependency = fun (dep: dependency) ->
+  let hash_dependency (dep: dependency) =
     H.write state dep.name;
     H.write_bool state dep.source.workspace;
     H.write_bool state dep.source.builtin;
@@ -1874,16 +1877,11 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
       | Some version ->
           H.write_bool state true;
           hash_requirement version
-      | None ->
-          H.write_bool state false
+      | None -> H.write_bool state false
     )
   in
-  List.iter
-    hash_dependency
-    pkg.dependencies;
-  List.iter
-    hash_dependency
-    pkg.dev_dependencies;
+  List.iter hash_dependency pkg.dependencies;
+  List.iter hash_dependency pkg.dev_dependencies;
   (
     match pkg.publish.version with
     | Some version ->
@@ -1962,7 +1960,7 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
     pkg.compiler.target_overrides;
   (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)
   let seen_source_files = HashSet.with_capacity 32 in
-  let hash_source_file = fun file_path ->
+  let hash_source_file file_path =
     let path_str = Path.to_string file_path in
     if HashSet.insert seen_source_files path_str then
       let abs_path =
@@ -2009,8 +2007,7 @@ let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (
         fdep.inputs)
     pkg.foreign_dependencies
 
-let hash = fun state pkg ->
-  hash_with (module Crypto.Sha256) state pkg
+let hash = fun state pkg -> hash_with (module Crypto.Sha256) state pkg
 
 module Tests = struct
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->

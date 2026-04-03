@@ -71,11 +71,7 @@ let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspa
               ^ "'"
             })
           else
-            Materializer.ensure_registry_package
-              ~emit:materialize_emit
-              ~registry
-              ~pkg:lock_package
-              ()
+            Materializer.ensure_registry_package ~emit:materialize_emit ~registry ~pkg:lock_package ()
             |> Result.map_error (fun err -> Error.ProjectionFailed { error = Error.message err })
     )
 
@@ -96,11 +92,7 @@ let load_manifest_toml = fun ~manifest_path ->
 let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   let version_opt = lock_package.id.version in
   let package_name = lock_package.id.name in
-  match materialized_root_of_lock_package
-    ~materialize_emit
-    ~registry
-    ~workspace_root
-    ~lock_package with
+  match materialized_root_of_lock_package ~materialize_emit ~registry ~workspace_root ~lock_package with
   | Error _ as err -> err
   | Ok package_root ->
       let started = Time.Instant.now () in
@@ -160,8 +152,12 @@ let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~works
     )
   | Riot_model.Lockfile.Path _
   | Riot_model.Lockfile.Source _
-  | Riot_model.Lockfile.Registry _ ->
-      load_external_package ~emit ~materialize_emit ~registry ~workspace_root ~lock_package
+  | Riot_model.Lockfile.Registry _ -> load_external_package
+    ~emit
+    ~materialize_emit
+    ~registry
+    ~workspace_root
+    ~lock_package
 
 let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
   List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.runtime_resolved
@@ -225,22 +221,6 @@ let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace
               )
           )
 
-let resolve_packages = fun
-  ?(emit = no_emit)
-  ?(materialize_emit = no_emit)
-  ~registry
-  ~workspace_root
-  ~packages
-  ~lockfile
-  () ->
+let resolve_packages = fun ?(emit = no_emit) ?(materialize_emit = no_emit) ~registry ~workspace_root ~packages ~lockfile () ->
   let root_ids = List.map workspace_package_id_of_package packages in
-  resolve_package_graph
-    ~emit
-    ~materialize_emit
-    ~registry
-    ~workspace_root
-    ~packages
-    ~lockfile
-    []
-    []
-    root_ids
+  resolve_package_graph ~emit ~materialize_emit ~registry ~workspace_root ~packages ~lockfile [] [] root_ids

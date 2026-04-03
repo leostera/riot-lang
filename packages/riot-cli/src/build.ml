@@ -116,12 +116,11 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       None
   | Riot_model.Event.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
       Some (
-        "    \027[1;34mCloning\027[0m "
-        ^ (
-            match ref_ with
-            | Some ref_ -> source_locator ^ "#" ^ ref_
-            | None -> source_locator
-          )
+        "    \027[1;34mCloning\027[0m " ^ (
+          match ref_ with
+          | Some ref_ -> source_locator ^ "#" ^ ref_
+          | None -> source_locator
+        )
       )
   | Riot_model.Event.DependencyManifestUpdated { path; section; operation; dependency } ->
       let verb =
@@ -129,28 +128,13 @@ let format_pm_event = fun ~seen_registry_updates kind ->
         | `Add -> "Added"
         | `Remove -> "Removed"
       in
-      Some
-        ("    \027[1;32m"
-        ^ verb
-        ^ "\027[0m "
-        ^ dependency
-        ^ " ("
-        ^ section
-        ^ ") in "
-        ^ path)
+      Some ("    \027[1;32m" ^ verb ^ "\027[0m " ^ dependency ^ " (" ^ section ^ ") in " ^ path)
   | Riot_model.Event.PackageVersionLocked { package; version } ->
       Some ("    \027[1;32mLocked\027[0m " ^ package ^ " (" ^ version ^ ")")
   | Riot_model.Event.PackageVersionsUnchanged _ ->
       Some "    Dependencies are already up to date"
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
-      Some
-        ("    \027[1;32mUpdated\027[0m "
-        ^ package
-        ^ " ("
-        ^ from_version
-        ^ " -> "
-        ^ to_version
-        ^ ")")
+      Some ("    \027[1;32mUpdated\027[0m " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")")
   | kind ->
       Some (Riot_model.Event.display kind)
 

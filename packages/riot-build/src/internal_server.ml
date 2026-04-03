@@ -216,21 +216,16 @@ and handle_get_package_info = fun state client_pid package_name ->
     match package_opt with
     | None ->
         Log.debug ("Server: Package " ^ package_name ^ " not found");
-        send client_pid
-          (
-            Protocol.ServerResponse (
-              Protocol.PackageInfo {
-                package =
-                  Package.synthetic
-                    ~name:package_name
-                    ~path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty path")
-                    ~relative_path:
-                      (Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path");
-                sources = [];
-                dependencies = [];
-              }
-            )
-          )
+        send
+          client_pid
+          (Protocol.ServerResponse (Protocol.PackageInfo {
+            package = Package.synthetic
+              ~name:package_name
+              ~path:((Path.of_string "" |> Result.expect ~msg:"Failed to create empty path"))
+              ~relative_path:((Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path"));
+            sources = [];
+            dependencies = []
+          }))
     | Some package ->
         let dep_nodes = Riot_planner.Package_graph.get_dependencies state.package_graph package in
         let dependencies = List.map Riot_planner.Package_graph.get_package dep_nodes in

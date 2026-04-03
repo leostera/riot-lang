@@ -191,21 +191,22 @@ let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stde
   let on_result file_result =
     on_event (Krasny.Report.File file_result);
     match output_mode with
-    | Json -> write_json_file ~writer:stdout_writer ~root file_result
+    | Json ->
+        write_json_file ~writer:stdout_writer ~root file_result
     | Text -> (
         match file_result.status with
         | Krasny.Runner.Failed -> write_failed_file ~writer:stdout_writer file_result
         | _ -> write_text_file ~writer:stdout_writer ~root file_result
       )
-    | QuietCheck ->
-        (
-          match mode, file_result.status with
-          | Krasny.Runner.Check, Krasny.Runner.Already_formatted -> ()
-          | Krasny.Runner.Check, Krasny.Runner.Failed -> write_failed_file ~writer:stdout_writer file_result
-          | Krasny.Runner.Check, _ -> write_text_file ~writer:stdout_writer ~root file_result
-          | _ -> ()
-        )
-    | Silent -> ()
+    | QuietCheck -> (
+        match mode, file_result.status with
+        | Krasny.Runner.Check, Krasny.Runner.Already_formatted -> ()
+        | Krasny.Runner.Check, Krasny.Runner.Failed -> write_failed_file ~writer:stdout_writer file_result
+        | Krasny.Runner.Check, _ -> write_text_file ~writer:stdout_writer ~root file_result
+        | _ -> ()
+      )
+    | Silent ->
+        ()
   in
   let result: Krasny.Runner.run_result =
     if List.is_empty explicit_targets then

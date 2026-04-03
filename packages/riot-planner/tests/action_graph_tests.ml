@@ -6,18 +6,10 @@ let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.def
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
 let make_package = fun name ->
-  Riot_model.Package.make
-    ~name
-    ~path:(Path.v ".")
-    ~relative_path:(Path.v ".")
-    ()
+  Riot_model.Package.make ~name ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
 
 let make_package_with_paths = fun ~name ~path ~relative_path ->
-  Riot_model.Package.make
-    ~name
-    ~path
-    ~relative_path
-    ()
+  Riot_model.Package.make ~name ~path ~relative_path ()
 
 let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
   let package = make_package "pkg" in
@@ -170,14 +162,12 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
       (fun tmpdir ->
         let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Riot_store.Store.create ~workspace in
-        let package =
-          Riot_model.Package.make
-            ~name:"minttea"
-            ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
-            ~relative_path:(Path.v "packages/minttea")
-            ~library:{ path = Path.v "src/minttea.ml" }
-            ()
-        in
+        let package = Riot_model.Package.make
+          ~name:"minttea"
+          ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
+          ~relative_path:(Path.v "packages/minttea")
+          ~library:{ path = Path.v "src/minttea.ml" }
+          () in
         let ctx = Riot_model.Build_ctx.make
           ~session_id:(Riot_model.Session_id.of_string "test-session")
           ~profile:Riot_model.Profile.release
@@ -228,14 +218,12 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
         let _ = Fs.write "int demo_stub(void) { return 1; }\n" native_path |> Result.expect ~msg:"write native source failed" in
         let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Riot_store.Store.create ~workspace in
-        let package =
-          Riot_model.Package.make
-            ~name:"demo"
-            ~path:package_root
-            ~relative_path:(Path.v "packages/demo")
-            ~library:{ path = Path.v "src/demo.ml" }
-            ()
-        in
+        let package = Riot_model.Package.make
+          ~name:"demo"
+          ~path:package_root
+          ~relative_path:(Path.v "packages/demo")
+          ~library:{ path = Path.v "src/demo.ml" }
+          () in
         let ctx = Riot_model.Build_ctx.make
           ~session_id:(Riot_model.Session_id.of_string "test-session")
           ~profile:Riot_model.Profile.release

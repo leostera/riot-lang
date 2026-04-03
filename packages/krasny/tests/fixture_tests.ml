@@ -45,7 +45,7 @@ let fixture_filter = fun tracked path ->
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:(ext ^ ".expected")
+  | Some ext -> Path.add_extension path ~ext:((ext ^ ".expected"))
   | None -> Path.add_extension path ~ext:"expected"
 
 let assert_roundtrip_hash = fun ~fixture_path ~formatted ->
@@ -69,7 +69,8 @@ let () =
     ~main:(fun ~args ->
       let tracked = tracked_fixtures () in
       let tests =
-        Test.FixtureRunner.cases ()
+        Test.FixtureRunner.cases
+          ()
           ~dir:fixtures_dir
           ~filter:(fixture_filter tracked)
           ~snapshot_path:(fun path -> Some (approved_snapshot_path path))

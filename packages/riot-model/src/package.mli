@@ -140,11 +140,7 @@ val make:
   unit ->
   t
 
-val synthetic:
-  name:string ->
-  path:Path.t ->
-  relative_path:Path.t ->
-  t
+val synthetic: name:string -> path:Path.t -> relative_path:Path.t -> t
 
 val key_of_string: string -> key
 

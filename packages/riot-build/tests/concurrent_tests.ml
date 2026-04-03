@@ -14,19 +14,16 @@ let make_package = fun tmpdir name content ->
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml" in
-  Riot_model.Package.make
-    ~name
-    ~path:pkg_dir
-    ~relative_path:(Path.v name)
-    ~library:{ path = Path.v "src/lib.ml" }
-    ~sources:
-      {
-        src = [ Path.v "src/lib.ml" ];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      }
+  Riot_model.Package.make ~name ~path:pkg_dir ~relative_path:(Path.v name) ~library:{
+    path = Path.v "src/lib.ml"
+  }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
     ()
 
 type Message.t +=

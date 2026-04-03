@@ -172,11 +172,7 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                   ~workspace:request.workspace
                   ~profile:"debug"
                   ~target:(Riot_model.Riot_dirs.host_target ()) in
-                match find_built_binary_path
-                  ~store
-                  ~package_name
-                  ~binary_name:request.binary_name
-                  results with
+                match find_built_binary_path ~store ~package_name ~binary_name:request.binary_name results with
                 | Error _ as err -> err
                 | Ok binary_path ->
                     let workspace_root = request.workspace.root in

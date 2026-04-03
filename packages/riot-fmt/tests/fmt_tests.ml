@@ -94,7 +94,10 @@ let test_fmt_check_reports_files_that_need_formatting = fun _ctx ->
         match Riot_fmt.run ~stdout ~stderr matches with
         | Ok () -> Error "expected fmt --check to fail when a file needs formatting"
         | Error _ ->
-            if String.contains (stdout_contents ()) "needs.ml (needs formatting)" && String.equal (stderr_contents ()) "" then
+            if
+              String.contains (stdout_contents ()) "needs.ml (needs formatting)"
+              && String.equal (stderr_contents ()) ""
+            then
               Ok ()
             else
               Error ("expected fmt --check to report the unformatted file, got stdout="

@@ -168,15 +168,17 @@ format = "full"
 
 let run = fun ~args ->
   let workspace_scan_cache = ref None in
-  let get_workspace_scan = fun () ->
+  let get_workspace_scan () =
     match !workspace_scan_cache with
     | Some workspace_scan -> workspace_scan
     | None ->
         let workspace_scan = scan_workspace () in
-        let _ = workspace_scan_cache := Some workspace_scan in
+        let _ =
+          workspace_scan_cache := Some workspace_scan
+        in
         workspace_scan
   in
-  let workspace_opt = fun () ->
+  let workspace_opt () =
     match get_workspace_scan () with
     | Loaded (workspace, _) -> Some workspace
     | NoWorkspace

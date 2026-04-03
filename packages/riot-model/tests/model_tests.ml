@@ -31,23 +31,20 @@ let make_package = fun () ->
       license = Some "Apache-2.0";
       is_public = Some true
     } in
-  Riot_model.Package.make
-    ~name:"minttea"
-    ~path:(Path.v "packages/minttea")
-    ~relative_path:(Path.v "packages/minttea")
-    ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
-    ~dev_dependencies:[ { name = "propane"; source = source ~workspace:true () } ]
-    ~build_dependencies:[ { name = "std"; source = source ~workspace:true () } ]
-    ~binaries:[ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ]
-    ~library:{ path = Path.v "src/minttea.ml" }
-    ~sources:
-      {
-        src = [ Path.v "src/minttea.ml"; Path.v "src/demo_cmd.ml" ];
-        native = [];
-        tests = [ Path.v "tests/model_tests.ml" ];
-        examples = [];
-        bench = [];
-      }
+  Riot_model.Package.make ~name:"minttea" ~path:(Path.v "packages/minttea") ~relative_path:(Path.v "packages/minttea") ~dependencies:[
+    { name = "std"; source = source ~workspace:true () }
+  ] ~dev_dependencies:[ { name = "propane"; source = source ~workspace:true () } ] ~build_dependencies:[
+    { name = "std"; source = source ~workspace:true () }
+  ] ~binaries:[ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ] ~library:{
+    path = Path.v "src/minttea.ml"
+  }
+    ~sources:{
+      src = [ Path.v "src/minttea.ml"; Path.v "src/demo_cmd.ml" ];
+      native = [];
+      tests = [ Path.v "tests/model_tests.ml" ];
+      examples = [];
+      bench = [];
+    }
     ~commands:[ command ]
     ~publish
     ()
@@ -139,13 +136,11 @@ path = "examples/test_https_httpbin.ml"
         ~path:tmpdir
         ~relative_path:(Path.v "packages/demo")
       |> Result.expect ~msg:"Expected package manifest to parse" in
-      let binary_names =
-        pkg.binaries
-        |> List.map (fun (bin: Riot_model.Package.binary) -> bin.name)
-        |> List.sort String.compare
-      in
+      let binary_names = pkg.binaries
+      |> List.map (fun (bin: Riot_model.Package.binary) -> bin.name)
+      |> List.sort String.compare in
       match binary_names with
-      | [ "simple_https"; "test_https_httpbin" ] -> Ok ()
+      | ["simple_https";"test_https_httpbin"] -> Ok ()
       | _ ->
           Error (
             "expected explicit example binary to suppress autodiscovery \
@@ -431,14 +426,12 @@ stdlib = ">= 1.0.0"
 
 let test_package_json_roundtrips_registry_requirement = fun _ctx ->
   let requirement = Std.Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
-  let package =
-    Riot_model.Package.make
-      ~name:"demo"
-      ~path:(Path.v "/tmp/demo")
-      ~relative_path:(Path.v "packages/demo")
-      ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
-      ()
-  in
+  let package = Riot_model.Package.make
+    ~name:"demo"
+    ~path:(Path.v "/tmp/demo")
+    ~relative_path:(Path.v "packages/demo")
+    ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
+    () in
   let decoded = Riot_model.Package.to_json package
   |> Riot_model.Package.from_json
   |> Result.expect ~msg:"expected package JSON to roundtrip" in

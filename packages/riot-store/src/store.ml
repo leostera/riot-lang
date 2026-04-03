@@ -252,11 +252,7 @@ let materialize_package_exports = fun store ~exports ~target_dir ->
         |> Result.map_error
           (fun _ -> "Failed to copy export: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst)
         | Ok false
-        | Error _ ->
-            Error
-              ("Export source is missing from the store: "
-              ^ Path.to_string src
-              ^ " (cache is corrupted; try `riot clean`)")
+        | Error _ -> Error ("Export source is missing from the store: " ^ Path.to_string src ^ " (cache is corrupted; try `riot clean`)")
   in
   List.fold_left
     (fun acc entry ->

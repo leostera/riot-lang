@@ -34,19 +34,16 @@ let make_simple_package = fun tmpdir name ->
   let riot_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v name ] in
-  Riot_model.Package.make
-    ~name
-    ~path:pkg_dir
-    ~relative_path:(Path.v name)
-    ~library:{ path = Path.v "src/lib.ml" }
-    ~sources:
-      {
-        src = [ Path.v "src/lib.ml" ];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      }
+  Riot_model.Package.make ~name ~path:pkg_dir ~relative_path:(Path.v name) ~library:{
+    path = Path.v "src/lib.ml"
+  }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
     ()
 
 let test_server_starts_and_shuts_down = fun _ctx -> Ok ()

@@ -162,16 +162,11 @@ type kind =
       package: string;
       version: string option
     }
-  | DependencyManifestUpdated of {
-      path: string;
-      section: string;
-      operation: 
+  | DependencyManifestUpdated of { path: string; section: string; operation: 
         [
           | `Add
           | `Remove
-        ];
-      dependency: string
-    }
+        ]; dependency: string }
   | PackageVersionLocked of { package: string; version: string }
   | PackageVersionsUnchanged of { packages: int }
   | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
@@ -904,10 +899,7 @@ let kind_to_json = function
         ("dependency", Json.String dependency);
       ]
   | PackageVersionLocked { package; version } ->
-      Json.Object [
-        ("package", Json.String package);
-        ("version", Json.String version);
-      ]
+      Json.Object [ ("package", Json.String package); ("version", Json.String version); ]
   | PackageVersionsUnchanged { packages } ->
       Json.Object [ ("packages", Json.Int packages) ]
   | PackageVersionUpdated { package; from_version; to_version } ->
@@ -1759,7 +1751,7 @@ let kind_from_json = fun json ->
                         source_locator;
                         ref_;
                         package;
-                        version;
+                        version
                       })
                   | _ -> Error "Invalid SourceDependencyMaterializationFinished data"
                 )
@@ -1768,19 +1760,16 @@ let kind_from_json = fun json ->
           | "riot.pm.manifest.updated" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "section" data_fields,
-                    List.assoc_opt "operation" data_fields,
-                    List.assoc_opt "dependency" data_fields
-                  with
+                  match List.assoc_opt "path" data_fields, List.assoc_opt "section" data_fields, List.assoc_opt
+                    "operation"
+                    data_fields, List.assoc_opt "dependency" data_fields with
                   | Some (Json.String path), Some (Json.String section), Some operation_json, Some (Json.String dependency) -> (
                       match manifest_operation_of_json operation_json with
                       | Some operation -> Ok (DependencyManifestUpdated {
                         path;
                         section;
                         operation;
-                        dependency;
+                        dependency
                       })
                       | None -> Error "Invalid DependencyManifestUpdated data"
                     )
@@ -1792,8 +1781,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields with
-                  | Some (Json.String package), Some (Json.String version) ->
-                      Ok (PackageVersionLocked { package; version })
+                  | Some (Json.String package), Some (Json.String version) -> Ok (PackageVersionLocked {
+                    package;
+                    version
+                  })
                   | _ -> Error "Invalid PackageVersionLocked data"
                 )
               | _ -> Error "Invalid PackageVersionLocked data"
@@ -1810,13 +1801,14 @@ let kind_from_json = fun json ->
           | "riot.pm.package.updated" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "from_version" data_fields,
-                    List.assoc_opt "to_version" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String from_version), Some (Json.String to_version) ->
-                      Ok (PackageVersionUpdated { package; from_version; to_version })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "from_version" data_fields, List.assoc_opt
+                    "to_version"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String from_version), Some (Json.String to_version) -> Ok (PackageVersionUpdated {
+                    package;
+                    from_version;
+                    to_version
+                  })
                   | _ -> Error "Invalid PackageVersionUpdated data"
                 )
               | _ -> Error "Invalid PackageVersionUpdated data"
@@ -2117,12 +2109,11 @@ module Tests = struct
   let test_manifest_update_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info
-      (DependencyManifestUpdated {
+      ~level:Info (DependencyManifestUpdated {
         path = "/tmp/workspace/riot.toml";
         section = "dependencies";
         operation = `Add;
-        dependency = "std";
+        dependency = "std"
       }) in
     match from_json (to_json event) with
     | Ok { kind=DependencyManifestUpdated { path; section; operation=`Add; dependency }; _ } ->
@@ -2140,8 +2131,7 @@ module Tests = struct
   let test_package_locked_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info
-      (PackageVersionLocked { package = "std"; version = "0.2.0" }) in
+      ~level:Info (PackageVersionLocked { package = "std"; version = "0.2.0" }) in
     match from_json (to_json event) with
     | Ok { kind=PackageVersionLocked { package; version }; _ } ->
         if String.equal package "std" && String.equal version "0.2.0" then
@@ -2154,8 +2144,7 @@ module Tests = struct
   let test_package_versions_unchanged_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info
-      (PackageVersionsUnchanged { packages = 3 }) in
+      ~level:Info (PackageVersionsUnchanged { packages = 3 }) in
     match from_json (to_json event) with
     | Ok { kind=PackageVersionsUnchanged { packages }; _ } ->
         if Int.equal packages 3 then
