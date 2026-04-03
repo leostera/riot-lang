@@ -64,29 +64,31 @@ let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.entry) on_file ->
   let path_string = Path.to_string path in
   if HashSet.contains seen path_string then
     Fs.Walker.Skip_subtree
-  else (
-    let _ = HashSet.insert seen path_string in
-    match entry.kind with
-    | Directory ->
-        if should_skip_directory path || should_ignore path then
-          Fs.Walker.Skip_subtree
-        else
+  else
+    (
+      let _ = HashSet.insert seen path_string in
+      match entry.kind with
+      | Directory ->
+          if should_skip_directory path || should_ignore path then
+            Fs.Walker.Skip_subtree
+          else
+            Fs.Walker.Continue
+      | File ->
+          if is_ocaml_source path && not (should_ignore path) then
+            on_file path;
           Fs.Walker.Continue
-    | File ->
-        if is_ocaml_source path && not (should_ignore path) then
-          on_file path;
-        Fs.Walker.Continue
-    | Symlink
-    | Other -> Fs.Walker.Continue)
+      | Symlink
+      | Other -> Fs.Walker.Continue
+    )
 
 let make_walker = fun ~roots ~should_ignore ->
   match Fs.Walker.create ~roots ~sort:true () with
   | Ok walker ->
-      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
-        let path = entry.path in
-        not (should_skip_directory path || should_ignore path))
-  | Error _ ->
-      panic "krasny walker configuration should be valid"
+      Fs.Walker.filter_entry walker
+        ~f:(fun (entry: Fs.Walker.entry) ->
+          let path = entry.path in
+          not (should_skip_directory path || should_ignore path))
+  | Error _ -> panic "krasny walker configuration should be valid"
 
 let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
   let seen = HashSet.create () in
@@ -94,10 +96,14 @@ let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
   let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
   let rec loop iter =
     match Iterator.next iter with
-    | None, _ -> ()
-    | Some (Error _), iter' -> loop iter'
+    | None, _ ->
+        ()
+    | Some (Error _), iter' ->
+        loop iter'
     | Some (Ok (entry: Fs.Walker.entry)), iter' ->
-        let _ = walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files) in
+        let _ =
+          walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files)
+        in
         loop iter'
   in
   loop iter;
@@ -319,30 +325,29 @@ type scanner_state = {
 
 let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
   let seen = HashSet.create () in
-  let state = {
-    owner;
-    scanner_ref;
-    should_ignore;
-    seen;
-  }
-  in
-  spawn (fun () ->
-    let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
-    let rec loop iter =
-      match Iterator.next iter with
-      | None, _ ->
-          send state.owner (ScannerComplete state.scanner_ref);
-          Ok ()
-      | Some (Error _), iter' ->
-          loop iter'
-      | Some (Ok (entry: Fs.Walker.entry)), iter' ->
-          let _ =
-            walk_action ~should_ignore:state.should_ignore ~seen:state.seen entry
-              (fun file -> send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file }))
-          in
-          loop iter'
-    in
-    loop iter)
+  let state = { owner; scanner_ref; should_ignore; seen } in
+  spawn
+    (fun () ->
+      let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
+      let rec loop iter =
+        match Iterator.next iter with
+        | None, _ ->
+            send state.owner (ScannerComplete state.scanner_ref);
+            Ok ()
+        | Some (Error _), iter' ->
+            loop iter'
+        | Some (Ok (entry: Fs.Walker.entry)), iter' ->
+            let _ =
+              walk_action
+                ~should_ignore:state.should_ignore
+                ~seen:state.seen
+                entry
+                (fun file ->
+                  send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file }))
+            in
+            loop iter'
+      in
+      loop iter)
 
 type dispatch_state = {
   owner: Pid.t;

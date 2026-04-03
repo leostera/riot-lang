@@ -23,10 +23,12 @@ let discover_fixture_paths = fun root ->
   | Error err -> Error err
   | Ok found ->
       Ok (
-        found
-        |> List.filter_map (fun (entry: Fs.Walker.entry) -> 
-        if not (is_snapshot_artifact entry.path) then (Some entry.path) else None )
-        |> List.sort Path.compare
+        found |> List.filter_map
+          (fun (entry: Fs.Walker.entry) ->
+            if not (is_snapshot_artifact entry.path) then
+              (Some entry.path)
+            else
+              None) |> List.sort Path.compare
       )
 
 let relpath = fun ~root path ->

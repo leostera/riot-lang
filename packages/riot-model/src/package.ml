@@ -999,42 +999,43 @@ let parse_foreign_dependency:
               | Error _ -> panic "foreign dependency walker configuration should be valid"
             in
             let walker =
-              Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
-                if Int.equal entry.depth 0 then
-                  true
-                else
-                  match Path.strip_prefix entry.path ~prefix:foreign_path with
-                  | Error _ -> false
-                  | Ok rel_path ->
-                      let entry_name = Path.basename rel_path in
-                      let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules" ] in
-                      let should_skip =
-                        String.starts_with ~prefix:"." entry_name || List.mem entry_name exclude_dirs
-                      in
-                      if should_skip then
-                        false
-                      else
-                        match entry.kind with
-                        | Directory -> true
-                        | File ->
-                            String.ends_with ~suffix:".rs" entry_name
-                            || String.ends_with ~suffix:".c" entry_name
-                            || String.ends_with ~suffix:".h" entry_name
-                            || String.ends_with ~suffix:".cpp" entry_name
-                            || String.ends_with ~suffix:".hpp" entry_name
-                            || entry_name = "Cargo.toml"
-                            || entry_name = "Cargo.lock"
-                            || entry_name = "build.rs"
-                            || entry_name = "CMakeLists.txt"
-                            || entry_name = "Makefile"
-                        | Symlink
-                        | Other -> false)
+              Fs.Walker.filter_entry walker
+                ~f:(fun (entry: Fs.Walker.entry) ->
+                  if Int.equal entry.depth 0 then
+                    true
+                  else
+                    match Path.strip_prefix entry.path ~prefix:foreign_path with
+                    | Error _ -> false
+                    | Ok rel_path ->
+                        let entry_name = Path.basename rel_path in
+                        let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules" ] in
+                        let should_skip =
+                          String.starts_with ~prefix:"." entry_name || List.mem entry_name exclude_dirs in
+                        if should_skip then
+                          false
+                        else
+                          match entry.kind with
+                          | Directory -> true
+                          | File -> String.ends_with ~suffix:".rs" entry_name
+                          || String.ends_with ~suffix:".c" entry_name
+                          || String.ends_with ~suffix:".h" entry_name
+                          || String.ends_with ~suffix:".cpp" entry_name
+                          || String.ends_with ~suffix:".hpp" entry_name
+                          || entry_name = "Cargo.toml"
+                          || entry_name = "Cargo.lock"
+                          || entry_name = "build.rs"
+                          || entry_name = "CMakeLists.txt"
+                          || entry_name = "Makefile"
+                          | Symlink
+                          | Other -> false)
             in
             let iter = Fs.Walker.into_iter walker in
             let rec loop acc iter =
               match Iter.Iterator.next iter with
-              | None, _ -> List.rev acc
-              | Some (Error _), iter' -> loop acc iter'
+              | None, _ ->
+                  List.rev acc
+              | Some (Error _), iter' ->
+                  loop acc iter'
               | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
                   match entry.kind with
                   | File -> (
@@ -1248,32 +1249,35 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
   { profile_overrides; target_overrides }
 
 let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
-  let collect_relative_files = fun ~root ~keep_file ~skip_dir ->
+  let collect_relative_files ~root ~keep_file ~skip_dir =
     let walker =
       match Fs.Walker.create ~roots:[ root ] ~sort:true ~follow_symlinks:true () with
       | Ok walker -> walker
       | Error _ -> panic "package walker configuration should be valid"
     in
     let walker =
-      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
-        if Int.equal entry.depth 0 then
-          true
-        else
-          match Path.strip_prefix entry.path ~prefix:package_path with
-          | Error _ -> false
-          | Ok rel_path -> (
-              match entry.kind with
-              | Directory -> not (skip_dir rel_path)
-              | File -> keep_file rel_path
-              | Symlink
-              | Other -> false
-            ))
+      Fs.Walker.filter_entry walker
+        ~f:(fun (entry: Fs.Walker.entry) ->
+          if Int.equal entry.depth 0 then
+            true
+          else
+            match Path.strip_prefix entry.path ~prefix:package_path with
+            | Error _ -> false
+            | Ok rel_path -> (
+                match entry.kind with
+                | Directory -> not (skip_dir rel_path)
+                | File -> keep_file rel_path
+                | Symlink
+                | Other -> false
+              ))
     in
     let iter = Fs.Walker.into_iter walker in
     let rec loop acc iter =
       match Iter.Iterator.next iter with
-      | None, _ -> List.rev acc
-      | Some (Error _), iter' -> loop acc iter'
+      | None, _ ->
+          List.rev acc
+      | Some (Error _), iter' ->
+          loop acc iter'
       | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
           match entry.kind with
           | File -> (
@@ -1320,38 +1324,39 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
     || String.starts_with ~prefix:"tests/generated/" path_str
     || String.starts_with ~prefix:"tests/diagnostics/" path_str
   in
-  let collect_relative_files = fun root ->
+  let collect_relative_files root =
     let walker =
       match Fs.Walker.create ~roots:[ root ] ~sort:true ~follow_symlinks:true () with
       | Ok walker -> walker
       | Error _ -> panic "package walker configuration should be valid"
     in
     let walker =
-      Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
-        if Int.equal entry.depth 0 then
-          true
-        else
-          match Path.strip_prefix entry.path ~prefix:package_path with
-          | Error _ -> false
-          | Ok rel_path -> (
-              match entry.kind with
-              | Directory ->
-                  not
-                    (should_skip_source_entry rel_path || should_skip_test_support_path rel_path)
-              | File ->
-                  not
-                    (should_skip_source_entry rel_path
-                    || should_skip_test_support_path rel_path
-                    || List.mem (Path.to_string rel_path) excluded_relpath_strings)
-              | Symlink
-              | Other -> false
-            ))
+      Fs.Walker.filter_entry walker
+        ~f:(fun (entry: Fs.Walker.entry) ->
+          if Int.equal entry.depth 0 then
+            true
+          else
+            match Path.strip_prefix entry.path ~prefix:package_path with
+            | Error _ -> false
+            | Ok rel_path -> (
+                match entry.kind with
+                | Directory -> not
+                  (should_skip_source_entry rel_path || should_skip_test_support_path rel_path)
+                | File -> not
+                  (should_skip_source_entry rel_path
+                  || should_skip_test_support_path rel_path
+                  || List.mem (Path.to_string rel_path) excluded_relpath_strings)
+                | Symlink
+                | Other -> false
+              ))
     in
     let iter = Fs.Walker.into_iter walker in
     let rec loop acc iter =
       match Iter.Iterator.next iter with
-      | None, _ -> List.rev acc
-      | Some (Error _), iter' -> loop acc iter'
+      | None, _ ->
+          List.rev acc
+      | Some (Error _), iter' ->
+          loop acc iter'
       | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
           match entry.kind with
           | File -> (

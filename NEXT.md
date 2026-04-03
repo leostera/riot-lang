@@ -3,34 +3,35 @@
 * create leostera/create-riot-app
 
 * implement ./docs/rfds/RFD0008-macro.md
-* include `syn` parsing stage in the riot build pipeline to get better syntax errors faster
 
 * look into `typ`
 
+# Planned
+
+* treat every .ml file in ./tests as a test, ./examples as a binary, ./bench as a bench
+
 * `riot run <url>` downloads the url as a git repo or tarball, unpacks in the global cache, builds and runs the `main` binary if one is present, otherwise it supports `<url>@<bin>` to specify the binary name
     `riot install <url>` does the same but promotes the binary to ~/.riot/bin/
+    * riot install <pkg> should actually install that package main binary from the registry
 
-* explore rewriting ocamldep over syn
+* implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
 # Next
 
+* riot.nvim !!!!
+
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
-* riot test shoudl run the binaries with `--json` and parse their results to present a unified summary of the amount of test cases passsed/skipped/failed, not just the suite-level stats
+* riot test/bench should run the binaries with `--json` and parse their results to present a unified summary of the amount of test cases passsed/skipped/failed, not just the suite-level stats
 
-* enforce binaries have a `val main : ~args:string list -> result` function
+* enforce examples/binaries have a `val main : ~args:string list -> result` function
 
 * --release flag should also be usable in riot test and riot run
 
-* implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
 * RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 
 * bug? how do we support creating projects without a .mli file and just generate it at build time for you?
-
-* treat every .ml file in ./tests as a test
-
-* treat every .ml file in ./examples as a binary
 
 * redefine the entire interface of all the collections in Kernel and Std
 
@@ -38,7 +39,6 @@
 
 * riot build pipeline uses `syn` to cache at the CST level
 
-* riot install <pkg> should actually install that package main binary from the registry
 
 # Later
 
@@ -75,8 +75,6 @@ Called from Kernel__Collections__Hashmap.get in file "/Users/leostera/Developer/
 ;
 
 * minttea test cases that let you specify inputs and assert outputs in _turns_
-
-* how to make `riot clean` fast?
 
 * Std.BigInt
 * Std.Rational

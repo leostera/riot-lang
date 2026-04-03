@@ -278,18 +278,19 @@ let collect_relative_files = fun ~package_root ->
     | Ok walker -> walker
     | Error _ -> panic "publisher walker configuration should be valid"
   in
-  let iter =
-    walker
-    |> Fs.Walker.filter_entry ~f:(fun (entry: Fs.Walker.entry) -> not (should_skip_entry entry.path))
-    |> Fs.Walker.into_iter
-  in
+  let iter = walker
+  |> Fs.Walker.filter_entry ~f:(fun (entry: Fs.Walker.entry) -> not (should_skip_entry entry.path))
+  |> Fs.Walker.into_iter in
   let rec loop acc iter =
     match Iter.Iterator.next iter with
-    | None, _ -> Ok (List.rev acc)
-    | Some (Error err), _ -> Error (publisher_error_of_walker_error ~package_root err)
+    | None, _ ->
+        Ok (List.rev acc)
+    | Some (Error err), _ ->
+        Error (publisher_error_of_walker_error ~package_root err)
     | Some (Ok (entry: Fs.Walker.entry)), iter' -> (
         match entry.kind with
-        | Directory -> loop acc iter'
+        | Directory ->
+            loop acc iter'
         | File -> (
             match Path.strip_prefix entry.path ~prefix:package_root with
             | Ok relative -> loop (relative :: acc) iter'
@@ -298,11 +299,10 @@ let collect_relative_files = fun ~package_root ->
               error = path_error_message err
             })
           )
-        | Symlink -> Error (SymlinkNotAllowed { path = entry.path })
-        | Other -> Error (UnsupportedEntry {
-            path = entry.path;
-            kind = walker_kind_to_string entry.kind
-          })
+        | Symlink ->
+            Error (SymlinkNotAllowed { path = entry.path })
+        | Other ->
+            Error (UnsupportedEntry { path = entry.path; kind = walker_kind_to_string entry.kind })
       )
   in
   loop [] iter

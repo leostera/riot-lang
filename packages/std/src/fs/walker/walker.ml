@@ -23,10 +23,7 @@ type error = {
 type file_item = (entry, error) result
 
 type create_error =
-  | MinDepthCannotBeMoreThanMaxDepth of {
-      min_depth: int;
-      max_depth: int;
-    }
+  | MinDepthCannotBeMoreThanMaxDepth of { min_depth: int; max_depth: int }
 
 type step =
   | Continue
@@ -46,15 +43,8 @@ type t = {
 }
 
 type dir_list =
-  | Opened of {
-      depth: int;
-      dir_path: Path.t;
-      handle: ReadDir.t;
-    }
-  | Closed of {
-      entries: file_item Vector.t;
-      mutable index: int;
-    }
+  | Opened of { depth: int; dir_path: Path.t; handle: ReadDir.t }
+  | Closed of { entries: file_item Vector.t; mutable index: int }
 
 type iterator_state = {
   opts: t;
@@ -65,24 +55,19 @@ type iterator_state = {
 }
 
 let create_error_message = function
-  | MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth } ->
-      "Walker min_depth cannot be greater than max_depth (min_depth="
-      ^ string_of_int min_depth
-      ^ ", max_depth="
-      ^ string_of_int max_depth
-      ^ ")"
+  | MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth } -> "Walker min_depth cannot be greater than max_depth (min_depth="
+  ^ string_of_int min_depth
+  ^ ", max_depth="
+  ^ string_of_int max_depth
+  ^ ")"
 
-let create = fun
-  ~roots
-  ?(sort = false)
-  ?(follow_symlinks = false)
-  ?(follow_root_links = true)
-  ?(max_open = 10)
-  ?(min_depth = 0)
-  ?(max_depth = max_int)
-  ?(contents_first = false)
-  () ->
-  let max_open = if max_open <= 0 then 1 else max_open in
+let create = fun ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = max_int) ?(contents_first = false) () ->
+  let max_open =
+    if max_open <= 0 then
+      1
+    else
+      max_open
+  in
   if min_depth > max_depth then
     Error (MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth })
   else
@@ -125,10 +110,8 @@ let make_error = fun ?path ~depth cause -> { path; depth; cause }
 
 let entry_for_path = fun opts ~depth path ->
   match metadata_for_path ~follow_symlinks:opts.follow_symlinks path with
-  | Ok metadata ->
-      Ok { path; depth; kind = entry_kind_of_metadata metadata }
-  | Error cause ->
-      Error (make_error ~path ~depth cause)
+  | Ok metadata -> Ok { path; depth; kind = entry_kind_of_metadata metadata }
+  | Error cause -> Error (make_error ~path ~depth cause)
 
 let compare_item_path = fun left right ->
   match (left, right) with
@@ -138,18 +121,19 @@ let compare_item_path = fun left right ->
       let left = Option.map Path.to_string left.path |> Option.unwrap_or ~default:"" in
       let right = Option.map Path.to_string right.path |> Option.unwrap_or ~default:"" in
       String.compare left right
-  | Error _, Ok _ -> -1
-  | Ok _, Error _ -> 1
+  | Error _, Ok _ ->
+      (-1)
+  | Ok _, Error _ ->
+      1
 
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
   match ReadDir.next handle with
   | None -> None
-  | Some relative -> Some (entry_for_path opts ~depth:(depth + 1) Path.(dir_path / relative))
+  | Some relative -> Some (entry_for_path opts ~depth:((depth + 1)) Path.(dir_path / relative))
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with
-  | Opened { depth; dir_path; handle } ->
-      next_dir_entry opts ~depth ~dir_path handle
+  | Opened { depth; dir_path; handle } -> next_dir_entry opts ~depth ~dir_path handle
   | Closed state ->
       if state.index >= Vector.len state.entries then
         None
@@ -158,8 +142,7 @@ let next_dir_list = fun opts dir_list ->
         | Some item ->
             state.index <- state.index + 1;
             Some item
-        | None ->
-            None
+        | None -> None
 
 let close_dir_list = fun opts dir_list ->
   match dir_list with
@@ -171,8 +154,7 @@ let close_dir_list = fun opts dir_list ->
         | Some item ->
             Vector.push entries item;
             drain ()
-        | None ->
-            ()
+        | None -> ()
       in
       drain ();
       Closed { entries; index = 0 }
@@ -196,24 +178,16 @@ let push = fun state (dent: entry) ->
   let () =
     if open_handle_budget = state.opts.max_open then
       match Vector.get state.stack_list state.oldest_opened with
-      | Some dir_list ->
-          Vector.set
-            state.stack_list
-            state.oldest_opened
-            (close_dir_list state.opts dir_list)
+      | Some dir_list -> Vector.set
+        state.stack_list
+        state.oldest_opened
+        (close_dir_list state.opts dir_list)
       | None -> ()
   in
   match ReadDir.create dent.path with
-  | Error cause ->
-      Error (make_error ~path:dent.path ~depth:dent.depth cause)
+  | Error cause -> Error (make_error ~path:dent.path ~depth:dent.depth cause)
   | Ok handle ->
-      let dir_list =
-        Opened {
-          depth = dent.depth;
-          dir_path = dent.path;
-          handle;
-        }
-      in
+      let dir_list = Opened { depth = dent.depth; dir_path = dent.path; handle } in
       let dir_list =
         if state.opts.sort then
           dir_list |> close_dir_list state.opts |> sort_dir_list
@@ -236,12 +210,9 @@ let skip_current_dir = fun state ->
 let rec maybe_emit_deferred = fun state ->
   if state.opts.contents_first && Vector.len state.stack_list < Vector.len state.deferred_dirs then
     match Vector.pop state.deferred_dirs with
-    | Some dent when skippable state.opts dent.depth ->
-        maybe_emit_deferred state
-    | Some dent ->
-        Some (Ok dent)
-    | None ->
-        None
+    | Some dent when skippable state.opts dent.depth -> maybe_emit_deferred state
+    | Some dent -> Some (Ok dent)
+    | None -> None
   else
     None
 
@@ -249,22 +220,30 @@ let handle_entry = fun state (dent: entry) ->
   if not (state.opts.accept_entry dent) then
     None
   else
-    let is_normal_dir = match dent.kind with Directory -> true | _ -> false in
+    let is_normal_dir =
+      match dent.kind with
+      | Directory -> true
+      | _ -> false
+    in
     let should_follow_root_link =
       dent.depth = 0
       && state.opts.follow_root_links
-      && (match dent.kind with
+      && (
+        match dent.kind with
         | Symlink -> maybe_directory_target dent.path
-        | _ -> false)
+        | _ -> false
+      )
     in
     if is_normal_dir || should_follow_root_link then
       match push state dent with
       | Error err -> Some (Error err)
       | Ok () ->
-          if is_normal_dir && state.opts.contents_first then (
-            Vector.push state.deferred_dirs dent;
-            None
-          ) else if skippable state.opts dent.depth then
+          if is_normal_dir && state.opts.contents_first then
+            (
+              Vector.push state.deferred_dirs dent;
+              None
+            )
+          else if skippable state.opts dent.depth then
             None
           else
             Some (Ok dent)
@@ -301,10 +280,12 @@ let rec next_item = fun state ->
               | Some item -> Some item
               | None -> next_item state
             end
-      else if Vector.len state.stack_list > state.opts.max_depth then (
-        pop state;
-        next_item state
-      ) else
+      else if Vector.len state.stack_list > state.opts.max_depth then
+        (
+          pop state;
+          next_item state
+        )
+      else
         let current_idx = Vector.len state.stack_list - 1 in
         match Vector.get state.stack_list current_idx with
         | None -> None
@@ -315,19 +296,15 @@ let rec next_item = fun state ->
                 next_item state
             | Some (Error err) ->
                 Some (Error err)
-            | Some (Ok dent) ->
-                begin
-                  match handle_entry state dent with
-                  | Some item -> Some item
-                  | None -> next_item state
-                end
+            | Some (Ok dent) -> begin
+                match handle_entry state dent with
+                | Some item -> Some item
+                | None -> next_item state
+              end
           )
 
 let filter_entry = fun walker ~f ->
-  {
-    walker with
-    accept_entry = (fun entry -> walker.accept_entry entry && f entry);
-  }
+  { walker with accept_entry = (fun entry -> walker.accept_entry entry && f entry) }
 
 let into_iter = fun opts ->
   let module Base = struct
@@ -344,20 +321,25 @@ let into_iter = fun opts ->
 
 let walk = fun ~roots ?(sort = true) ?follow_symlinks ~f () ->
   match create ~roots ~sort ?follow_symlinks () with
-  | Error err ->
-      Error (IO.Unknown_error (create_error_message err))
+  | Error err -> Error (IO.Unknown_error (create_error_message err))
   | Ok walker ->
       let state = make_state walker in
       let rec loop () =
         match next_item state with
-        | None -> Ok ()
-        | Some (Error err) -> Error err.cause
+        | None ->
+            Ok ()
+        | Some (Error err) ->
+            Error err.cause
         | Some (Ok dent) ->
             match f dent with
-            | Stop -> Ok ()
-            | Continue -> loop ()
+            | Stop ->
+                Ok ()
+            | Continue ->
+                loop ()
             | Skip_subtree ->
-                if match dent.kind with Directory -> true | _ -> false then
+                if match dent.kind with
+                  | Directory -> true
+                  | _ -> false then
                   skip_current_dir state;
                 loop ()
       in
@@ -365,15 +347,16 @@ let walk = fun ~roots ?(sort = true) ?follow_symlinks ~f () ->
 
 let to_list = fun ~roots ?(sort = true) ?follow_symlinks ?(include_directories = true) () ->
   match create ~roots ~sort ?follow_symlinks () with
-  | Error err ->
-      Error (IO.Unknown_error (create_error_message err))
+  | Error err -> Error (IO.Unknown_error (create_error_message err))
   | Ok walker ->
       let iter = into_iter walker in
       let items = ref [] in
       let rec loop iter =
         match Iterator.next iter with
-        | None, _ -> Ok (List.rev !items)
-        | Some (Error err), _ -> Error err.cause
+        | None, _ ->
+            Ok (List.rev !items)
+        | Some (Error err), _ ->
+            Error err.cause
         | Some (Ok dent), iter' ->
             begin
               match dent.kind with

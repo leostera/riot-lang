@@ -15,7 +15,6 @@ open Iter
 
     The convenience helpers [`walk`] and [`to_list`] are layered on top of that
     iterator surface. *)
-
 (** Lightweight classification for yielded entries.
 
     This is derived from filesystem metadata gathered for each entry. `Other`
@@ -26,7 +25,6 @@ type entry_kind =
   | Directory
   | Symlink
   | Other
-
 (** A yielded filesystem entry.
 
     - `path` is the full path to the discovered entry
@@ -40,7 +38,6 @@ type entry = {
   depth: int;
   kind: entry_kind;
 }
-
 (** Structured traversal error.
 
     Errors are yielded inline by the iterator so callers can choose whether to
@@ -54,21 +51,15 @@ type error = {
   depth: int;
   cause: Common.error;
 }
-
 (** One yielded walker item.
 
     The iterator never raises traversal errors. Instead:
     - `Ok entry` yields a filesystem entry
     - `Error error` yields a structured error for the current path *)
 type file_item = (entry, error) result
-
 (** Validation errors for walker construction. *)
 type create_error =
-  | MinDepthCannotBeMoreThanMaxDepth of {
-      min_depth: int;
-      max_depth: int;
-    }
-
+  | MinDepthCannotBeMoreThanMaxDepth of { min_depth: int; max_depth: int }
 (** Control signal returned by [`walk`]'s callback.
 
     - `Continue` keeps traversing normally
@@ -78,7 +69,6 @@ type step =
   | Continue
   | Skip_subtree
   | Stop
-
 (** A validated walk configuration. *)
 type t
 

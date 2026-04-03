@@ -36,36 +36,37 @@ let should_exclude = fun scanner path ->
     (fun pattern -> String.starts_with ~prefix:pattern dir_name || String.equal pattern dir_name)
     scanner.exclude_patterns
 
-let init_state = fun ?owner scanner ->
-  { scanner; owner; seen = HashSet.create () }
+let init_state = fun ?owner scanner -> { scanner; owner; seen = HashSet.create () }
 
 let handle_entry = fun state (entry: Std.Fs.Walker.entry) on_file ->
   let path: Path.t = entry.path in
   let path_string = Path.to_string path in
   if HashSet.contains state.seen path_string then
     Std.Fs.Walker.Skip_subtree
-  else (
-    let _ = HashSet.insert state.seen path_string in
-    match entry.kind with
-    | Directory ->
-        if
-          should_exclude state.scanner path
-          || is_non_source_test_path path
-          || state.scanner.should_ignore path
-        then
-          Std.Fs.Walker.Skip_subtree
-        else
+  else
+    (
+      let _ = HashSet.insert state.seen path_string in
+      match entry.kind with
+      | Directory ->
+          if
+            should_exclude state.scanner path
+            || is_non_source_test_path path
+            || state.scanner.should_ignore path
+          then
+            Std.Fs.Walker.Skip_subtree
+          else
+            Std.Fs.Walker.Continue
+      | File ->
+          if
+            is_ocaml_source path
+            && not (is_non_source_test_path path)
+            && not (state.scanner.should_ignore path)
+          then
+            on_file path;
           Std.Fs.Walker.Continue
-    | File ->
-        if
-          is_ocaml_source path
-          && not (is_non_source_test_path path)
-          && not (state.scanner.should_ignore path)
-        then
-          on_file path;
-        Std.Fs.Walker.Continue
-    | Symlink
-    | Other -> Std.Fs.Walker.Continue)
+      | Symlink
+      | Other -> Std.Fs.Walker.Continue
+    )
 
 let scan = fun scanner ->
   let state = init_state scanner in
@@ -81,14 +82,15 @@ let scan = fun scanner ->
 
 let start = fun ~owner scanner ->
   let state = init_state ~owner scanner in
-  spawn (fun () ->
-    let _ =
-      Std.Fs.Walker.walk
-        ~roots:scanner.roots
-        ~sort:true
-        ~f:(fun entry ->
-          handle_entry state entry (fun path -> send owner (Messages.ScannerDiscovered path)))
-        ()
-    in
-    send owner Messages.ScannerComplete;
-    Ok ())
+  spawn
+    (fun () ->
+      let _ =
+        Std.Fs.Walker.walk
+          ~roots:scanner.roots
+          ~sort:true
+          ~f:(fun entry ->
+            handle_entry state entry (fun path -> send owner (Messages.ScannerDiscovered path)))
+          ()
+      in
+      send owner Messages.ScannerComplete;
+      Ok ())

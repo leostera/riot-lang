@@ -197,6 +197,7 @@ module ReadDir: sig
 end
 
 module File = File
+
 module Walker = Walker
 
 (** # Path Operations *)

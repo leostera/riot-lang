@@ -81,39 +81,40 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   let walker =
     match Fs.Walker.create ~roots:[ workspace_root ] ~sort:true () with
     | Ok walker ->
-        Fs.Walker.filter_entry walker ~f:(fun (entry: Fs.Walker.entry) ->
-          match entry.kind with
-          | Directory -> not (should_skip_dir entry.path)
-          | File -> is_pending_snapshot entry.path
-          | Symlink
-          | Other -> false)
-    | Error _ ->
-        panic "snapshots walker configuration should be valid"
+        Fs.Walker.filter_entry walker
+          ~f:(fun (entry: Fs.Walker.entry) ->
+            match entry.kind with
+            | Directory -> not (should_skip_dir entry.path)
+            | File -> is_pending_snapshot entry.path
+            | Symlink
+            | Other -> false)
+    | Error _ -> panic "snapshots walker configuration should be valid"
   in
   let iter = Fs.Walker.into_iter walker in
   let rec collect acc iter =
     match Iter.Iterator.next iter with
-    | None, _ -> Ok (List.rev acc)
-    | Some (Error (err: Fs.Walker.error)), _ -> Error err.cause
-    | Some (Ok (entry: Fs.Walker.entry)), iter' ->
-        begin
-          match entry.kind with
-          | File ->
-              let snapshot = { approved = ensure_trailing_new_removed entry.path; pending = entry.path } in
-              collect (snapshot :: acc) iter'
-          | Directory
-          | Symlink
-          | Other ->
-              collect acc iter'
-        end
+    | None, _ ->
+        Ok (List.rev acc)
+    | Some (Error (err: Fs.Walker.error)), _ ->
+        Error err.cause
+    | Some (Ok (entry: Fs.Walker.entry)), iter' -> begin
+        match entry.kind with
+        | File ->
+            let snapshot = {
+              approved = ensure_trailing_new_removed entry.path;
+              pending = entry.path
+            } in
+            collect (snapshot :: acc) iter'
+        | Directory
+        | Symlink
+        | Other -> collect acc iter'
+      end
   in
   match collect [] iter with
   | Error err -> Error err
   | Ok snapshots ->
       Ok (
-        snapshots
-        |> List.filter (matches_query ?query)
-        |> List.sort
+        snapshots |> List.filter (matches_query ?query) |> List.sort
           (fun left right ->
             String.compare (Path.to_string left.pending) (Path.to_string right.pending))
       )
