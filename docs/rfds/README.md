@@ -22,6 +22,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0026` - Riot Package Management
 - `RFD0028` - Local Artifact Publishing
 - `RFD0029` - Std Archive and Compression Support
+- `RFD0030` - Typ Incremental Library-First Typechecker
 
 ## Accepted
 
