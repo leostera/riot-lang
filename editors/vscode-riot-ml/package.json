@@ -1,0 +1,125 @@
+{
+  "name": "riot-ml",
+  "displayName": "Riot ML",
+  "description": "VS Code integration for Riot",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Formatters",
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "riot.install",
+        "title": "Riot: Install Riot"
+      },
+      {
+        "command": "riot.buildWorkspace",
+        "title": "Riot: Build Workspace"
+      },
+      {
+        "command": "riot.testWorkspace",
+        "title": "Riot: Test Workspace"
+      },
+      {
+        "command": "riot.formatDocument",
+        "title": "Riot: Format Current Document"
+      },
+      {
+        "command": "riot.refreshDiagnostics",
+        "title": "Riot: Refresh Diagnostics"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "riot",
+        "required": [
+          "command",
+          "cwd"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "build",
+              "test"
+            ]
+          },
+          "cwd": {
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "configuration": {
+      "title": "Riot",
+      "properties": {
+        "riot.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the Riot executable. Leave empty to use the extension-managed Riot binary or `riot` from `PATH`."
+        },
+        "riot.installUrl": {
+          "type": "string",
+          "default": "https://get.riot.ml",
+          "markdownDescription": "Installer URL used by `Riot: Install Riot`."
+        },
+        "riot.formatOnSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Format `*.ml` and `*.mli` files with Riot before saving them."
+        },
+        "riot.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show Riot parser and lint diagnostics in the editor."
+        },
+        "riot.diagnostics.runFix": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also run `riot fix --json` when collecting diagnostics."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "bun run package",
+    "compile": "bun run check-types && bun run lint && node esbuild.js",
+    "watch": "bunx npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "bun run check-types && bun run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "bun run compile-tests && bun run compile && bun run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "keywords": [
+    "riot",
+    "ocaml",
+    "formatter",
+    "linter"
+  ],
+  "devDependencies": {
+    "@types/vscode": "^1.110.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.56.1",
+    "eslint": "^9.39.3",
+    "esbuild": "^0.27.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}

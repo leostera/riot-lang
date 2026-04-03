@@ -20,7 +20,8 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/mcp/AGENTS.md`: MCP transport and protocol types
 - `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
 - `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
-- `editors/nvim/riot.nvim/AGENTS.md`: Neovim plugin, editor-facing Riot command integration
+- `editors/riot.nvim/AGENTS.md`: Neovim plugin, editor-facing Riot command integration
+- `editors/vscode-riot-ml/AGENTS.md`: VS Code extension, editor-facing Riot command integration
 - `packages/riot-model/AGENTS.md`: shared build-system types and workspace/package model
 - `packages/riot-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
 - `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
