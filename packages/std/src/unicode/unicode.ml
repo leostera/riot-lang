@@ -30,6 +30,9 @@ module Rune = Rune
 (** UTF-8 encoding and decoding *)
 module Utf8 = Utf8
 
+(** UTF-16 position and offset conversion helpers *)
+module Utf16 = Utf16
+
 (** Grapheme clusters - user-perceived characters *)
 module Grapheme = Grapheme
 

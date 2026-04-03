@@ -212,6 +212,36 @@ module Utf8: sig
       Returns 1-4 for valid start bytes, 0 for continuation bytes or invalid bytes. *)
 end
 
+(** {1 UTF-16 Offsets} *)
+
+module Utf16: sig
+  type position = {
+    line: int;
+    character: int;
+  }
+
+  (** A zero-based line and UTF-16 code-unit offset within that line. *)
+  val code_units_of_rune: Rune.t -> int
+
+  (** [code_units_of_rune rune] returns how many UTF-16 code units [rune] occupies.
+
+      Most runes occupy 1 code unit; supplementary-plane runes occupy 2. *)
+  val position_of_offset: string -> offset:int -> position
+
+  (** [position_of_offset text ~offset] converts a UTF-8 byte offset into a
+      zero-based line and UTF-16 character position.
+
+      Offsets are clamped into the document bounds. Newlines reset the UTF-16
+      character count, and both [\n] and [\r\n] are treated as line breaks. *)
+  val offset_of_position: string -> position -> (int, string) Result.t
+
+  (** [offset_of_position text position] converts a zero-based UTF-16 position
+      into a UTF-8 byte offset.
+
+      Returns [Error _] when the line is out of bounds, the character extends
+      beyond the end of the line, or the position would split a surrogate pair. *)
+end
+
 (** {1 Text Segmentation} *)
 
 type line_break =

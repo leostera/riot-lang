@@ -1088,8 +1088,6 @@ module Float = Float
 (** **When to use:** Floating-point operations
     
     Extended float operations with parsing and formatting. *)
-module Fs = Fs
-
 (** **When to use:** Filesystem operations
     
     Use Fs for all file and directory operations with Result-based error handling.
@@ -1102,7 +1100,13 @@ module Fs = Fs
     - Watching for changes
     
     **See also:** {!Path} for path manipulation, {!Fs.File} for streaming *)
-module Graph = Graph
+module Fs = Fs
+
+(** **When to use:** Parsing and compiling glob patterns
+
+    Use Glob when you want shell-style wildcard matching that is first parsed
+    into a syntax tree and then lowered through {!Regex}. *)
+module Glob = Glob
 
 (** **When to use:** Graph data structures and visualization
     
@@ -1112,6 +1116,8 @@ module Graph = Graph
     - SimpleGraph → dependency tracking with topo sort
     - Dot → Graphviz visualization
     - Mermaid → Markdown-friendly diagrams *)
+module Graph = Graph
+
 module IO = IO
 
 (** **When to use:** Generic I/O abstractions
@@ -1215,12 +1221,10 @@ module Process = Process
     - Process linking for crash propagation
     - Checking if process is alive
     - Getting process info *)
-module Ptr = Ptr
-
 (** **When to use:** Physical equality and pointer operations
     
     Rarely needed in normal application code. *)
-module Random = Random
+module Ptr = Ptr
 
 (** **When to use:** Random value generation
     
@@ -1231,11 +1235,18 @@ module Random = Random
     - Testing with random data
     - Load balancing
     - Sampling *)
-module Ref = Ref
+module Random = Random
+
+(** **When to use:** Building or compiling regular expressions
+
+    Use Regex when you want a tree-shaped regex DSL above {!Kernel.Regex}, or
+    when you already have a raw regex string and want to compile it directly. *)
+module Regex = Regex
 
 (** **When to use:** Unique, opaque, type-witnessing references
     
     Use Ref for ensuring type safety across module boundaries. *)
+module Ref = Ref
 module Result = Result
 
 (** **When to use:** Explicit error handling
@@ -1391,6 +1402,7 @@ module Unicode = Unicode
     - Rune → Unicode code points
     - Grapheme → User-perceived characters
     - Utf8 → UTF-8 encoding/decoding
+    - Utf16 → UTF-16 line/column conversion
     - Segmentation → Word/sentence/line breaking *)
 module UUID = Uuid
 
