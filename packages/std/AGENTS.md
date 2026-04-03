@@ -20,6 +20,8 @@
 14. Keep `Std.Fs.Walker` on the cheap `ReadDir` path on the common case. Use directory-entry kind hints first and fall back to metadata only for unknown kinds or symlink-following semantics.
 15. Keep `Std.Fs.Walker.FileItem` opaque. The walker hot path should stay string-first internally and only pay `Path.t` construction when a caller explicitly asks for it through accessors such as `FileItem.path`.
 16. Keep `Std.Fs.ReadDir` split between raw and validated entry APIs. Hot recursive walkers should prefer raw names plus cheap kind hints; convenience path-typed helpers can stay layered above that.
+17. Keep `Std.Regex` tree-shaped and pure. Rendering and compilation should flow through `Kernel.Regex`; higher-level pattern syntaxes should target the regex AST instead of emitting ad hoc kernel pattern strings directly.
+18. Keep `Std.Glob` as a syntax-and-translation layer. Parse user glob strings into a glob AST first, then lower that AST into `Std.Regex` before compiling.
 
 ## Validate
 
