@@ -32,7 +32,7 @@ let build_cli = fun () ->
       ]
       in
       command "riot"
-      |> version "0.1.0"
+      |> version (Version_info.version_string ())
       |> about "OCaml build system and package manager"
       |> args
         [ flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output" |> count; ]
@@ -311,7 +311,7 @@ let run = fun ~args ->
           | Some ("upgrade", upgrade_matches) ->
               Upgrade.run upgrade_matches
           | Some ("version", _) ->
-              println "riot 0.1.0";
+              println (Version_info.version_string ());
               Ok ()
           | None ->
               Ok ()

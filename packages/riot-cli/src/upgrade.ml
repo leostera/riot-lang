@@ -6,9 +6,14 @@ type archive_source =
   | Local of Path.t
   | Remote of string
 
+type metadata_source =
+  | Metadata_local of Path.t
+  | Metadata_remote of string
+
 let out = eprintln
 
 let default_cdn_base_url = "https://cdn.pkgs.ml"
+let default_issues_url = "https://github.com/leostera/riot/issues"
 
 let command =
   let open ArgParser in
@@ -53,15 +58,14 @@ let gzip_read_error_message = function
 
 let version_label = fun version -> Option.unwrap_or ~default:"latest" version
 
-let pretty_version = fun version ->
-  if String.starts_with ~prefix:"riot " version then
-    String.sub version 5 (String.length version - 5)
-  else
-    version
-
 let archive_url = fun ?version ~target ~base_url () ->
   let version = version_label version in
   base_url ^ "/riot/riot-" ^ version ^ "-" ^ target ^ ".tar.gz"
+
+let metadata_url = fun ?version ~base_url () ->
+  match version with
+  | Some version -> base_url ^ "/riot/riot-" ^ version ^ ".json"
+  | None -> base_url ^ "/riot/latest.json"
 
 let riot_home_dir = fun () ->
   match Env.home_dir () with
@@ -121,6 +125,33 @@ let run_downloader = fun ~program ~args ~url ->
       Error detail
   | Error (Command.SystemError msg) ->
       Error ("failed to start " ^ program ^ " while downloading " ^ url ^ ": " ^ msg)
+
+let download_text = fun ~url ->
+  let run program args =
+    let cmd = Command.make program ~args in
+    match Command.output cmd with
+    | Ok { status = 0; stdout; _ } -> Ok stdout
+    | Ok { status; stderr; _ } ->
+        let detail =
+          if String.equal (String.trim stderr) "" then
+            program ^ " failed with status " ^ Int.to_string status ^ ": " ^ Command.to_string cmd
+          else
+            program ^ " failed with status " ^ Int.to_string status ^ ": " ^ String.trim stderr
+        in
+        Error detail
+    | Error (Command.SystemError msg) ->
+        Error ("failed to start " ^ program ^ " while downloading " ^ url ^ ": " ^ msg)
+  in
+  match run "curl" [ "-fsSL"; url ] with
+  | Ok content -> Ok content
+  | Error curl_error when String.contains curl_error "failed to start curl" -> (
+      match run "wget" [ "-q"; "-O-"; url ] with
+      | Ok content -> Ok content
+      | Error wget_error when String.contains wget_error "failed to start wget" ->
+          Error "riot upgrade requires curl or wget to download releases"
+      | Error wget_error -> Error wget_error
+    )
+  | Error error -> Error error
 
 let download_archive = fun ~url ~dst ->
   let dst_str = Path.to_string dst in
@@ -185,6 +216,59 @@ let binary_version = fun path ->
   | Error (Command.SystemError msg) ->
       Error ("failed to execute riot binary: " ^ msg)
 
+let resolve_metadata_source = fun ?version () ->
+  match Env.var Env.String ~name:"RIOT_UPGRADE_METADATA_PATH" with
+  | Some raw_path -> (
+      match Path.of_string raw_path with
+      | Ok path -> Ok (Metadata_local path)
+      | Error err -> Error ("invalid RIOT_UPGRADE_METADATA_PATH: " ^ path_error_message err)
+    )
+  | None ->
+      let base_url =
+        Env.var Env.String ~name:"RIOT_UPGRADE_BASE_URL"
+        |> Option.unwrap_or ~default:default_cdn_base_url
+      in
+      Ok (Metadata_remote (metadata_url ?version ~base_url ()))
+
+let load_metadata = fun source ->
+  let* content =
+    match source with
+    | Metadata_local path -> Fs.read path |> Result.map_error IO.error_message
+    | Metadata_remote url -> download_text ~url
+  in
+  Version_info.of_json_string content
+
+let display_label = fun metadata -> Version_info.release_label metadata
+
+let read_extracted_metadata = fun ~extract_dir ->
+  let path = Path.(extract_dir / Path.v "release.json") in
+  match Fs.exists path with
+  | Ok true -> Version_info.of_path path |> Result.map Option.some
+  | Ok false
+  | Error _ -> Ok None
+
+let metadata_from_binary_version = fun path ->
+  let* version = binary_version path in
+  match Version_info.of_version_string version with
+  | Some metadata -> Ok metadata
+  | None -> Ok {
+      Version_info.release_id = version;
+      build_sha = "unknown";
+      notes_url = None;
+      compare_url = None;
+      issues_url = Some default_issues_url;
+    }
+
+let resolved_metadata = fun ~latest_metadata ~extract_dir ~downloaded_binary ->
+  match latest_metadata with
+  | Some metadata ->
+      Ok metadata
+  | None ->
+      let* extracted = read_extracted_metadata ~extract_dir in
+      match extracted with
+      | Some metadata -> Ok metadata
+      | None -> metadata_from_binary_version downloaded_binary
+
 let resolve_archive_source = fun ?version ~target () ->
   match Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_PATH" with
   | Some raw_path -> (
@@ -209,48 +293,95 @@ let copy_local_archive = fun ~src ~dst ->
   | Ok () -> Ok ()
   | Error err -> Error (IO.error_message err)
 
-let write_header = fun ?current_version ~next_version () ->
-  let next_version = pretty_version next_version in
-  match current_version with
-  | Some current when not (String.equal (pretty_version current) next_version) ->
-      let current = pretty_version current in
-      out ("Riot " ^ next_version ^ " is out! You're on " ^ current)
-  | Some current ->
-      out ("Checking Riot " ^ pretty_version current ^ " for updates...")
-  | None ->
-      out ("Installing Riot " ^ next_version ^ "...")
+let write_newer_release_message = fun ~current ~next ->
+  out ("Riot " ^ display_label next ^ " is out! You're on " ^ display_label current)
 
-let write_unchanged_message = fun version ->
-  out ("Riot is already up to date (" ^ pretty_version version ^ ").")
+let write_unchanged_message = fun metadata ->
+  out ("Congrats! You're already on the latest version of Riot (which is " ^ display_label metadata ^ ")")
 
-let write_upgraded_message = fun ~duration_ms ~version ->
+let write_upgraded_message = fun ~duration_ms ~metadata ->
   let duration = Time.Duration.from_millis duration_ms |> Time.Duration.to_secs_string ~precision:2 in
-  out ("[" ^ duration ^ "s] Upgraded to " ^ pretty_version version ^ ".")
+  out ("[" ^ duration ^ "s] Upgraded.");
+  out "";
+  out ("Welcome to Riot " ^ display_label metadata ^ "!");
+  (
+    match metadata.Version_info.notes_url with
+    | Some url ->
+        out "";
+        out ("What's new in Riot " ^ display_label metadata ^ ":");
+        out "";
+        out ("    " ^ url)
+    | None -> ()
+  );
+  (
+    match metadata.issues_url with
+    | Some url ->
+        out "";
+        out "Report any bugs:";
+        out "";
+        out ("    " ^ url)
+    | None -> ()
+  );
+  (
+    match metadata.compare_url with
+    | Some url ->
+        out "";
+        out "Commit log:";
+        out "";
+        out ("    " ^ url)
+    | None -> ()
+  )
 
 let run = fun matches ->
   let started_at = Time.Instant.now () in
   let version = ArgParser.get_one matches "version" in
   let target = Riot_model.Riot_dirs.host_target () in
+  let current_metadata = Version_info.read_installed () in
   match ensure_install_dir () with
   | Error message ->
       out ("\027[1;31mError\027[0m: " ^ message);
       Error (Failure message)
   | Ok () -> (
-      match resolve_archive_source ?version ~target () with
+      let requested_metadata =
+        if Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_PATH" |> Option.is_some then
+          Ok None
+        else
+          match resolve_metadata_source ?version () with
+          | Error message -> Error message
+          | Ok (Metadata_local path) ->
+              Version_info.of_path path |> Result.map Option.some
+          | Ok (Metadata_remote url) -> (
+              match download_text ~url with
+              | Ok content -> Version_info.of_json_string content |> Result.map Option.some
+              | Error _ -> Ok None
+            )
+      in
+      let* latest_metadata =
+        requested_metadata
+        |> Result.map
+          (Option.map (fun (metadata: Version_info.t) ->
+             {
+               metadata with
+               issues_url = Option.or_else metadata.issues_url (fun () -> Some default_issues_url);
+             }))
+        |> Result.map_error (fun message -> Failure message)
+      in
+      match resolve_archive_source
+        ?version:(match latest_metadata with Some metadata -> Some metadata.release_id | None -> version)
+        ~target
+        () with
       | Error message ->
           out ("\027[1;31mError\027[0m: " ^ message);
           Error (Failure message)
       | Ok archive_source ->
           let* current_binary = installed_binary_path () |> Result.map_error (fun message -> Failure message) in
           let current_exists = Fs.exists current_binary |> Result.unwrap_or ~default:false in
-          let current_version =
-            if current_exists then
-              match binary_version current_binary with
-              | Ok version -> Some version
-              | Error _ -> None
-            else
-              None
-          in
+          (
+            match current_metadata, latest_metadata with
+            | Some current, Some latest when current_exists && Version_info.same_identity current latest ->
+                write_unchanged_message latest;
+                Ok ()
+            | _ ->
           match with_tempdir_result "riot-upgrade"
             (fun tempdir ->
               let archive_path = Path.(tempdir / Path.v "riot.tar.gz") in
@@ -263,8 +394,7 @@ let run = fun matches ->
               in
               let* () = Fs.create_dir_all extract_dir |> Result.map_error IO.error_message in
               let* () = extract_archive ~archive_path ~into:extract_dir in
-              let* next_version = binary_version downloaded_binary in
-              let () = write_header ?current_version ~next_version () in
+              let* metadata = resolved_metadata ~latest_metadata ~extract_dir ~downloaded_binary in
               let unchanged =
                 if current_exists then
                   same_file_contents ~left:current_binary ~right:downloaded_binary
@@ -273,21 +403,35 @@ let run = fun matches ->
               in
               let* unchanged = unchanged in
               if unchanged then (
-                write_unchanged_message next_version;
+                let* () =
+                  match current_metadata with
+                  | Some current when Version_info.same_identity current metadata -> Ok ()
+                  | _ -> Version_info.write_installed metadata
+                in
+                write_unchanged_message metadata;
                 Ok ()
               ) else (
+                let () =
+                  match current_metadata with
+                  | Some current when not (Version_info.same_identity current metadata) ->
+                      write_newer_release_message ~current ~next:metadata
+                  | Some _
+                  | None -> ()
+                in
                 let install_dir = Path.dirname current_binary in
                 let* () = Fs.create_dir_all install_dir |> Result.map_error IO.error_message in
                 let* () = install_binary_atomically ~src:downloaded_binary ~dst:current_binary in
+                let* () = Version_info.write_installed metadata in
                 let duration =
                   Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())
                   |> Time.Duration.to_millis
                 in
-                write_upgraded_message ~duration_ms:duration ~version:next_version;
+                write_upgraded_message ~duration_ms:duration ~metadata;
                 Ok ()
               )) with
           | Ok () -> Ok ()
           | Error message ->
               out ("\027[1;31mError\027[0m: " ^ message);
               Error (Failure message)
+          )
     )

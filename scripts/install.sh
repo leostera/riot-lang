@@ -65,6 +65,7 @@ detect_platform() {
 # Download and install riot
 install_riot() {
     INSTALL_DIR="${HOME}/.riot/bin"
+    RIOT_HOME="${HOME}/.riot"
     RIOT_REPO="leostera/riot"
     VERSION="${RIOT_VERSION:-latest}"
     
@@ -116,6 +117,10 @@ install_riot() {
     
     mv "$TMPDIR/riot" "$INSTALL_DIR/riot"
     chmod +x "$INSTALL_DIR/riot"
+
+    if [ -f "$TMPDIR/release.json" ]; then
+        mv "$TMPDIR/release.json" "$RIOT_HOME/release.json"
+    fi
     
     print_info "Riot installed to: $INSTALL_DIR/riot"
 }
