@@ -10,6 +10,12 @@ type document = {
   text: string;
 }
 
+type fixable_lint_diagnostic = {
+  diagnostic: Riot_fix.Diagnostic.t;
+  lsp_diagnostic: Lsp.Diagnostic.t;
+  fix: Riot_fix.Fix.fix;
+}
+
 type t = {
   initialized: bool;
   shutdown_requested: bool;
@@ -84,6 +90,95 @@ let lint_diagnostic_to_lsp = fun text -> fun (diagnostic : Riot_fix.Diagnostic.t
 let analyze_document = fun document ->
   Riot_fix.Source_runner.run ~rules:lint_rules ~filename:(filename_of_uri document.uri) document.text
 
+let compare_position = fun (left : Lsp.Position.t) -> fun (right : Lsp.Position.t) ->
+  match Int.compare left.line right.line with
+  | 0 -> Int.compare left.character right.character
+  | n -> n
+
+let ranges_overlap = fun (left : Lsp.Range.t) -> fun (right : Lsp.Range.t) ->
+  compare_position left.end_ right.start_ >= 0
+  && compare_position right.end_ left.start_ >= 0
+
+let same_range = fun (left : Lsp.Range.t) -> fun (right : Lsp.Range.t) ->
+  compare_position left.start_ right.start_ = 0
+  && compare_position left.end_ right.end_ = 0
+
+let same_lsp_diagnostic = fun (left : Lsp.Diagnostic.t) -> fun (right : Lsp.Diagnostic.t) ->
+  same_range left.range right.range
+  && Option.equal String.equal left.code right.code
+  && Option.equal String.equal left.source right.source
+  && String.equal left.message right.message
+
+let action_kind_allowed = fun only actual ->
+  let actual_name = Lsp.Action_kind.to_string actual in
+  match only with
+  | None -> true
+  | Some requested ->
+      List.exists
+        (fun requested_kind ->
+          let requested_name = Lsp.Action_kind.to_string requested_kind in
+          String.equal requested_name actual_name
+          || String.starts_with ~prefix:(requested_name ^ ".") actual_name)
+        requested
+
+let lint_diagnostic_requested = fun context range diagnostic ->
+  if List.is_empty context.Lsp.Text_document_methods.Code_action.diagnostics then
+    ranges_overlap diagnostic.Lsp.Diagnostic.range range
+  else
+    List.exists (same_lsp_diagnostic diagnostic) context.diagnostics
+
+let fix_text_edit_to_lsp = fun text -> fun (edit : Riot_fix.Fix.text_edit) ->
+  {
+    Lsp.Text_edit.range = Lsp.Utf16.range_of_offsets text ~start_offset:edit.span.start ~end_offset:edit.span.end_;
+    new_text = edit.new_text;
+  }
+
+let workspace_edit_of_fix_edits = fun document edits ->
+  {
+    Lsp.Workspace_edit.changes =
+      [ (document.uri, List.map (fix_text_edit_to_lsp document.text) edits) ];
+  }
+
+let fixable_lint_diagnostics = fun document result ->
+  result.Riot_fix.Source_runner.diagnostics
+  |> List.filter_map (fun diagnostic ->
+    match Riot_fix.Diagnostic.fix diagnostic with
+    | None -> None
+    | Some fix ->
+        Some { diagnostic; lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic; fix })
+
+let quickfix_action_of_entry = fun document entry ->
+  match Riot_fix.Fix.lower_fix ~source:document.text entry.fix with
+  | Error _ -> None
+  | Ok edits ->
+      Some
+        (Lsp.Code_action_or_command.Action
+           {
+             Lsp.Code_action.title = Riot_fix.Fix.title entry.fix;
+             kind = Some Lsp.Action_kind.Quick_fix;
+             diagnostics = Some [ entry.lsp_diagnostic ];
+             is_preferred = Some true;
+             edit = Some (workspace_edit_of_fix_edits document edits);
+             command = None;
+             data = None;
+           })
+
+let fix_all_action = fun document entries ->
+  match Riot_fix.Fix.lower_fixes ~source:document.text (List.map (fun entry -> entry.fix) entries) with
+  | Error _ -> None
+  | Ok edits ->
+      Some
+        (Lsp.Code_action_or_command.Action
+           {
+             Lsp.Code_action.title = "Fix all auto-fixable Riot diagnostics";
+             kind = Some Lsp.Action_kind.Source_fix_all;
+             diagnostics = Some (List.map (fun entry -> entry.lsp_diagnostic) entries);
+             is_preferred = None;
+             edit = Some (workspace_edit_of_fix_edits document edits);
+             command = None;
+             data = None;
+           })
+
 let publish_diagnostics = fun document ->
   let result = analyze_document document in
   let diagnostics =
@@ -135,7 +230,13 @@ let capabilities =
         (Lsp.Initialize.Server_capabilities.Sync_options
            { open_close = Some true; change = Some Lsp.Text_document.Sync_kind.Full; save = None });
     document_formatting_provider = Some true;
-    code_action_provider = Some (Lsp.Initialize.Server_capabilities.Bool false);
+    code_action_provider =
+      Some
+        (Lsp.Initialize.Server_capabilities.Provider_options
+           {
+             code_action_kinds = Some [ Lsp.Action_kind.Quick_fix; Source_fix_all ];
+             resolve_provider = Some false;
+           });
     experimental = None;
   }
 
@@ -227,6 +328,55 @@ let handle_formatting = fun state -> fun payload ->
                   ]
     )
 
+let handle_code_action = fun state -> fun payload ->
+  match Lsp.request_of_json Lsp.Text_document_methods.Code_action.request payload with
+  | Error reason ->
+      ok state [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+  | Ok (id, params) -> (
+      match find_document state params.text_document.uri with
+      | None ->
+          ok state
+            [
+              response_error ~id ~code:Lsp.Error_code.invalid_params
+                ~message:"code actions requested for a document that is not open" ();
+            ]
+      | Some document ->
+          let analysis = analyze_document document in
+          let fixable = fixable_lint_diagnostics document analysis in
+          let actions = [] in
+          let actions =
+            if action_kind_allowed params.context.only Lsp.Action_kind.Quick_fix then
+              actions
+              @ (
+                  fixable
+                  |> List.filter
+                    (fun entry ->
+                      lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
+                  |> List.filter_map (quickfix_action_of_entry document)
+                )
+            else
+              actions
+          in
+          let actions =
+            if action_kind_allowed params.context.only Lsp.Action_kind.Source_fix_all then
+              match fixable with
+              | [] -> actions
+              | _ -> (
+                  match fix_all_action document fixable with
+                  | Some action -> actions @ [ action ]
+                  | None -> actions
+                )
+            else
+              actions
+          in
+          let result =
+            match actions with
+            | [] -> None
+            | _ -> Some actions
+          in
+          ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Code_action.request result ]
+    )
+
 let handle_request = fun state -> fun request -> fun payload ->
   if (not state.initialized) && not (String.equal request.Jsonrpc.method_ "initialize") then
     let id = Option.unwrap_or request.Jsonrpc.id ~default:Jsonrpc.Null in
@@ -237,6 +387,7 @@ let handle_request = fun state -> fun request -> fun payload ->
     | "initialize" -> handle_initialize state payload
     | "shutdown" -> handle_shutdown state payload
     | "textDocument/formatting" -> handle_formatting state payload
+    | "textDocument/codeAction" -> handle_code_action state payload
     | method_ ->
         let id = Option.unwrap_or request.Jsonrpc.id ~default:Jsonrpc.Null in
         ok state [ response_error ~id ~code:Lsp.Error_code.method_not_found ~message:("unknown method `" ^ method_ ^ "`") () ]
