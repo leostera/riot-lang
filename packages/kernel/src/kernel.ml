@@ -33,6 +33,7 @@ module String = String
 module Type = Type
 module Uchar = Uchar
 module Random = Random
+module Regex = Regex
 module Dynlink = Dynlink
 module Ops = Ops
 module Domain = Domain

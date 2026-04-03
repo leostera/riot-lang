@@ -14,20 +14,25 @@ rules = [ "-no-stdlib" ]
 path = "src/kernel.ml"
 
 [target.macos]
-cc_flags = ["-I/opt/homebrew/opt/openssl@3/include"]
+cc_flags = [
+  "-I/opt/homebrew/opt/openssl@3/include",
+  "-I/opt/homebrew/opt/pcre2/include",
+]
 ld_flags = [
   "-framework", "CoreFoundation", 
   "-framework", "CoreServices", 
   "-framework", "Security",
   "-L/opt/homebrew/opt/openssl@3/lib", 
+  "-L/opt/homebrew/opt/pcre2/lib",
   "-lssl", 
   "-lcrypto",
+  "-lpcre2-8",
   "-lz"
 ]
 
 [target.linux]
 cc_flags = []
-ld_flags = ["-lssl", "-lcrypto", "-luuid", "-lz"]
+ld_flags = ["-lssl", "-lcrypto", "-lpcre2-8", "-luuid", "-lz"]
 
 [dependencies]
 stdlib = "*"

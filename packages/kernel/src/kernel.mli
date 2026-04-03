@@ -52,6 +52,8 @@ module Option = Option
 
 module Random = Random
 
+module Regex = Regex
+
 module Result = Result
 
 module String = String
