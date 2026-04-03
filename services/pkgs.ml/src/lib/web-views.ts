@@ -5,6 +5,7 @@ import type {
   PackageOverviewDocument,
   PackageRelationsDocument,
   PopularPackagesDocument,
+  RegistryStatsDashboardDocument,
   RecentPackagesDocument,
   RegistryStatsSummaryDocument,
   RegistryEventsDocument,
@@ -70,6 +71,21 @@ export async function fetchRegistryStatsSummary(): Promise<RegistryStatsSummaryD
   }
 
   return (await response.json()) as RegistryStatsSummaryDocument;
+}
+
+export async function fetchRegistryStatsDashboard(): Promise<RegistryStatsDashboardDocument> {
+  const config = getConfig();
+  const response = await fetch(`${config.registryBaseUrl}/v1/views/stats/dashboard`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Stats dashboard request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as RegistryStatsDashboardDocument;
 }
 
 export async function fetchOwnerPackages(ownerGithubLogin: string): Promise<OwnerPackagesDocument | null> {

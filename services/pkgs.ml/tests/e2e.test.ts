@@ -412,7 +412,7 @@ async function fetchPackageIndexDocument(packageName: string): Promise<PackageIn
   return (await response.json()) as PackageIndexDocument;
 }
 
-function buildInlinePackageArtifact(packageName: string, packageVersion: string): Uint8Array {
+function buildInlinePackageArtifact(packageName: string, packageVersion: string): ArrayBuffer {
   const entries = [
     tarEntry(
       "riot.toml",
@@ -429,7 +429,8 @@ function buildInlinePackageArtifact(packageName: string, packageVersion: string)
   ];
 
   const tarBody = Buffer.concat([...entries, Buffer.alloc(1024, 0)]);
-  return new Uint8Array(gzipSync(tarBody));
+  const bytes = new Uint8Array(gzipSync(tarBody));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 function tarEntry(path: string, contents: string): Buffer {

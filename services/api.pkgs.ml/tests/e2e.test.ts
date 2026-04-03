@@ -32,6 +32,7 @@ describe("riot package registry live e2e", () => {
       views_categories: "/v1/views/categories",
       views_owner_packages: "/v1/views/owners/<github-login>/packages",
       views_stats_summary: "/v1/views/stats/summary",
+      views_stats_dashboard: "/v1/views/stats/dashboard",
       auth_github_start: "/v1/auth/github/start?return_to=<url>",
       auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
       auth_logout: "/v1/auth/logout",

@@ -1,5 +1,5 @@
 import semver from "semver";
-import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, sql } from "drizzle-orm";
 
 import type {
   ApiTokenCapability,
@@ -7,6 +7,8 @@ import type {
   ApiTokenRecord,
   CategoriesIndexDocument,
   CategorySummary,
+  RegistryStatsActivityPoint,
+  RegistryStatsDashboardDocument,
   RegistryStatsSummaryDocument,
   OAuthStateRecord,
   OwnerPackagesDocument,
@@ -30,6 +32,7 @@ import {
   apiTokenLookups,
   apiTokens,
   binaryDownloads,
+  indexReads,
   packageDownloads,
   packages,
   oauthStates,
@@ -844,6 +847,33 @@ export async function readRegistryStatsSummaryDocument(
   };
 }
 
+export async function readRegistryStatsDashboardDocument(
+  db: D1Database,
+  windowDays = 30,
+): Promise<RegistryStatsDashboardDocument> {
+  const database = registryDb(db);
+  const summary = await readRegistryStatsSummaryDocument(db);
+  const [indexReadsRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(indexReads);
+
+  return {
+    schema_version: 1,
+    generated_at: summary.generated_at,
+    window_days: windowDays,
+    summary: {
+      ...summary,
+      total_index_reads: toCount(indexReadsRow?.count),
+      mean_package_downloads_per_package: summary.total_packages === 0
+        ? 0
+        : summary.total_package_downloads / summary.total_packages,
+    },
+    daily_activity: await listRegistryStatsActivity(db, windowDays),
+    top_packages: await listTopDownloadedPackages(db, 10),
+    latest_releases: await listLatestPublishedReleases(db, 10),
+  };
+}
+
 async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> {
   const database = registryDb(db);
   const rows = await database
@@ -936,6 +966,138 @@ async function readPackageDownloadCount(db: D1Database, packageName: string): Pr
   return toCount(row?.count);
 }
 
+async function listRegistryStatsActivity(
+  db: D1Database,
+  windowDays: number,
+): Promise<RegistryStatsActivityPoint[]> {
+  const database = registryDb(db);
+  const startDate = startOfUtcDay(addUtcDays(new Date(), -(windowDays - 1)));
+  const startIso = startDate.toISOString();
+
+  const packageBucket = sql<string>`substr(${packageDownloads.downloadedAt}, 1, 10)`;
+  const riotBucket = sql<string>`substr(${binaryDownloads.downloadedAt}, 1, 10)`;
+  const indexBucket = sql<string>`substr(${indexReads.readAt}, 1, 10)`;
+  const releaseBucket = sql<string>`substr(${publishedReleases.publishedAt}, 1, 10)`;
+
+  const [packageRows, riotRows, ocamlRows, indexRows, releaseRows] = await Promise.all([
+    database
+      .select({
+        date: packageBucket,
+        count: sql<number>`count(*)`,
+      })
+      .from(packageDownloads)
+      .where(gte(packageDownloads.downloadedAt, startIso))
+      .groupBy(packageBucket)
+      .orderBy(asc(packageBucket)),
+    database
+      .select({
+        date: riotBucket,
+        count: sql<number>`count(*)`,
+      })
+      .from(binaryDownloads)
+      .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "riot")))
+      .groupBy(riotBucket)
+      .orderBy(asc(riotBucket)),
+    database
+      .select({
+        date: riotBucket,
+        count: sql<number>`count(*)`,
+      })
+      .from(binaryDownloads)
+      .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "ocaml")))
+      .groupBy(riotBucket)
+      .orderBy(asc(riotBucket)),
+    database
+      .select({
+        date: indexBucket,
+        count: sql<number>`count(*)`,
+      })
+      .from(indexReads)
+      .where(gte(indexReads.readAt, startIso))
+      .groupBy(indexBucket)
+      .orderBy(asc(indexBucket)),
+    database
+      .select({
+        date: releaseBucket,
+        count: sql<number>`count(*)`,
+      })
+      .from(publishedReleases)
+      .where(gte(publishedReleases.publishedAt, startIso))
+      .groupBy(releaseBucket)
+      .orderBy(asc(releaseBucket)),
+  ]);
+
+  const packageCounts = toDateCountMap(packageRows);
+  const riotCounts = toDateCountMap(riotRows);
+  const ocamlCounts = toDateCountMap(ocamlRows);
+  const indexCounts = toDateCountMap(indexRows);
+  const releaseCounts = toDateCountMap(releaseRows);
+
+  return [...Array(windowDays)].map((_, index) => {
+    const day = addUtcDays(startDate, index).toISOString().slice(0, 10);
+    return {
+      date: day,
+      package_downloads: packageCounts.get(day) ?? 0,
+      riot_downloads: riotCounts.get(day) ?? 0,
+      ocaml_downloads: ocamlCounts.get(day) ?? 0,
+      index_reads: indexCounts.get(day) ?? 0,
+      releases_published: releaseCounts.get(day) ?? 0,
+    } satisfies RegistryStatsActivityPoint;
+  });
+}
+
+async function listTopDownloadedPackages(
+  db: D1Database,
+  limit: number,
+): Promise<RegistryStatsDashboardDocument["top_packages"]> {
+  const database = registryDb(db);
+  const totalDownloads = sql<number>`count(*)`;
+
+  const rows = await database
+    .select({
+      package_name: packageDownloads.packageName,
+      latest_version: sql<string>`coalesce(${packages.latestVersion}, '')`,
+      description: packages.description,
+      download_count: totalDownloads,
+    })
+    .from(packageDownloads)
+    .leftJoin(packages, eq(packageDownloads.packageName, packages.packageName))
+    .groupBy(packageDownloads.packageName, packages.latestVersion, packages.description)
+    .orderBy(desc(totalDownloads), asc(packageDownloads.packageName))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    package_name: row.package_name,
+    latest_version: row.latest_version,
+    description: row.description ?? undefined,
+    package_path: `/p/${row.package_name}`,
+    download_count: toCount(row.download_count),
+  }));
+}
+
+async function listLatestPublishedReleases(
+  db: D1Database,
+  limit: number,
+): Promise<RegistryStatsDashboardDocument["latest_releases"]> {
+  const database = registryDb(db);
+  const rows = await database
+    .select({
+      package_name: publishedReleases.packageName,
+      package_version: publishedReleases.packageVersion,
+      published_at: publishedReleases.publishedAt,
+    })
+    .from(publishedReleases)
+    .orderBy(desc(publishedReleases.publishedAt), asc(publishedReleases.packageName))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    package_name: row.package_name,
+    package_version: row.package_version,
+    package_path: `/p/${row.package_name}/${row.package_version}`,
+    published_at: row.published_at,
+  }));
+}
+
 async function listPackageClaims(db: D1Database): Promise<Map<string, PackageClaimRecord>> {
   const database = registryDb(db);
   const rows = await database
@@ -976,6 +1138,25 @@ function buildPackageDependentMap(
   }
 
   return dependents;
+}
+
+function toDateCountMap(rows: Array<{ date: string; count: number }>): Map<string, number> {
+  const values = new Map<string, number>();
+  for (const row of rows) {
+    values.set(row.date, toCount(row.count));
+  }
+
+  return values;
+}
+
+function startOfUtcDay(value: Date): Date {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  const copy = new Date(value);
+  copy.setUTCDate(copy.getUTCDate() + days);
+  return copy;
 }
 
 async function resolveOwnerAvatarUrls(

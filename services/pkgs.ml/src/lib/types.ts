@@ -207,6 +207,43 @@ export interface RegistryStatsSummaryDocument {
   total_users: number;
 }
 
+export interface RegistryStatsActivityPoint {
+  date: string;
+  package_downloads: number;
+  riot_downloads: number;
+  ocaml_downloads: number;
+  index_reads: number;
+  releases_published: number;
+}
+
+export interface StatsTopPackage {
+  package_name: string;
+  latest_version: string;
+  description?: string;
+  package_path: string;
+  download_count: number;
+}
+
+export interface StatsLatestRelease {
+  package_name: string;
+  package_version: string;
+  package_path: string;
+  published_at: string;
+}
+
+export interface RegistryStatsDashboardDocument {
+  schema_version: 1;
+  generated_at: string;
+  window_days: number;
+  summary: RegistryStatsSummaryDocument & {
+    total_index_reads: number;
+    mean_package_downloads_per_package: number;
+  };
+  daily_activity: RegistryStatsActivityPoint[];
+  top_packages: StatsTopPackage[];
+  latest_releases: StatsLatestRelease[];
+}
+
 export type RegistryEventType =
   | "package.submitted"
   | "package.verified"

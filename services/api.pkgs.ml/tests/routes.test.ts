@@ -31,6 +31,7 @@ describe("riot package registry routes", () => {
         views_categories: "/v1/views/categories",
         views_owner_packages: "/v1/views/owners/<github-login>/packages",
         views_stats_summary: "/v1/views/stats/summary",
+        views_stats_dashboard: "/v1/views/stats/dashboard",
         auth_github_start: "/v1/auth/github/start?return_to=<url>",
         auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/v1/auth/logout",
@@ -61,6 +62,7 @@ describe("riot package registry routes", () => {
         views_categories: "/api/v1/views/categories",
         views_owner_packages: "/api/v1/views/owners/<github-login>/packages",
         views_stats_summary: "/api/v1/views/stats/summary",
+        views_stats_dashboard: "/api/v1/views/stats/dashboard",
         auth_github_start: "/auth/github/start?return_to=<url>",
         auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/auth/logout",
@@ -794,6 +796,105 @@ describe("riot package registry routes", () => {
       total_packages: 1,
       total_versions: 1,
       total_users: 0,
+    });
+  });
+
+  test("stats dashboard exposes timeseries, top packages, and recent releases", async () => {
+    const { env, db } = makeEnv();
+
+    await publishArtifact(env, await makePackageArtifact({
+      packageName: "kernel",
+      packageVersion: "0.0.1",
+      description: "Kernel package",
+      license: "Apache-2.0",
+    }));
+    await publishArtifact(env, await makePackageArtifact({
+      packageName: "std",
+      packageVersion: "0.1.0",
+      description: "The Riot standard library",
+      license: "Apache-2.0",
+      dependencyLines: [
+        "[dependencies]",
+        'kernel = "0.0.1"',
+      ],
+    }));
+
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "kernelsha",
+      source_archive_key: "sources/kernel/0.0.1/kernelsha.tar.gz",
+      downloaded_at: "2026-04-04T09:00:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "kernelsha",
+      source_archive_key: "sources/kernel/0.0.1/kernelsha.tar.gz",
+      downloaded_at: "2026-04-04T09:15:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "std",
+      package_version: "0.1.0",
+      artifact_sha256: "stdsha",
+      source_archive_key: "sources/std/0.1.0/stdsha.tar.gz",
+      downloaded_at: "2026-04-04T10:00:00.000Z",
+    });
+    await writeBinaryDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      binary_name: "riot",
+      object_key: "riot/riot-v0.1.0-aarch64-apple-darwin.tar.gz",
+      downloaded_at: "2026-04-04T11:00:00.000Z",
+    });
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/views/stats/dashboard"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toMatchObject({
+      window_days: 30,
+      summary: {
+        total_package_downloads: 3,
+        total_riot_downloads: 1,
+        total_ocaml_downloads: 0,
+        total_packages: 2,
+        total_versions: 2,
+        total_users: 0,
+        total_index_reads: 0,
+        mean_package_downloads_per_package: 1.5,
+      },
+      top_packages: [
+        {
+          package_name: "kernel",
+          latest_version: "0.0.1",
+          download_count: 2,
+          package_path: "/p/kernel",
+        },
+        {
+          package_name: "std",
+          latest_version: "0.1.0",
+          download_count: 1,
+          package_path: "/p/std",
+        },
+      ],
+      latest_releases: [
+        {
+          package_name: "std",
+          package_version: "0.1.0",
+          package_path: "/p/std/0.1.0",
+        },
+        {
+          package_name: "kernel",
+          package_version: "0.0.1",
+          package_path: "/p/kernel/0.0.1",
+        },
+      ],
     });
   });
 

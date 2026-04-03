@@ -24,6 +24,7 @@ import {
   readPackageRelationsDocument,
   readPopularPackagesDocument,
   readRecentPackagesDocument,
+  readRegistryStatsDashboardDocument,
   readRegistryStatsSummaryDocument,
 } from "./metadata-db.ts";
 import { searchPackages } from "./search-db.ts";
@@ -90,6 +91,7 @@ async function routeRequest(
         views_categories: "/v1/views/categories",
         views_owner_packages: "/v1/views/owners/<github-login>/packages",
         views_stats_summary: "/v1/views/stats/summary",
+        views_stats_dashboard: "/v1/views/stats/dashboard",
         auth_github_start: "/v1/auth/github/start?return_to=<url>",
         auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/v1/auth/logout",
@@ -120,6 +122,7 @@ async function routeRequest(
         views_categories: "/api/v1/views/categories",
         views_owner_packages: "/api/v1/views/owners/<github-login>/packages",
         views_stats_summary: "/api/v1/views/stats/summary",
+        views_stats_dashboard: "/api/v1/views/stats/dashboard",
         auth_github_start: "/auth/github/start?return_to=<url>",
         auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/auth/logout",
@@ -550,6 +553,8 @@ async function handleViewDocument(
     }
     case "stats_summary":
       return json(await readRegistryStatsSummaryDocument(env.SEARCH_DB));
+    case "stats_dashboard":
+      return json(await readRegistryStatsDashboardDocument(env.SEARCH_DB));
   }
 }
 
@@ -684,7 +689,8 @@ type ParsedViewRoute =
   | { kind: "popular_packages" }
   | { kind: "categories" }
   | { kind: "owner_packages"; ownerGithubLogin: string }
-  | { kind: "stats_summary" };
+  | { kind: "stats_summary" }
+  | { kind: "stats_dashboard" };
 
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
@@ -719,6 +725,10 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
 
   if (normalizedPath === "stats/summary") {
     return { kind: "stats_summary" };
+  }
+
+  if (normalizedPath === "stats/dashboard") {
+    return { kind: "stats_dashboard" };
   }
 
   const packageOverviewMatch = normalizedPath.match(/^packages\/([^/]+)\/overview$/);
