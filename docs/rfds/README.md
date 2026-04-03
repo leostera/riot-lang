@@ -18,10 +18,10 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
 - `RFD0019` - Riot Fix Syntax-Directed Rewrites
 - `RFD0020` - Krasny Pretty Printer
-- `RFD0026` - Riot Package Management
 - `RFD0028` - Local Artifact Publishing
 - `RFD0029` - Std Archive and Compression Support
 - `RFD0030` - Typ Incremental Library-First Typechecker
+- `RFD0032` - Workspace Operational Config and Build Cache GC
 
 ## Accepted
 
@@ -29,7 +29,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 
 ## Rejected
 
-There are currently no RFDs marked `rejected`.
+- `RFD0031` - Lazy Dependency Materialization in the Build Graph
 
 ## Implemented
 
@@ -51,6 +51,7 @@ There are currently no RFDs marked `rejected`.
 - `RFD0023` - Riot Package Index
 - `RFD0024` - Riot Package Search
 - `RFD0025` - Snapshot Testing for Riot
+- `RFD0026` - Riot Package Management
 - `RFD0027` - Toolchain Manifest Contract
 
 ## Notes

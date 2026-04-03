@@ -2,7 +2,7 @@
 
 - Feature Name: `riot_package_management`
 - Start Date: `2026-03-30`
-- Status: `presented`
+- Status: `implemented`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 
@@ -34,8 +34,8 @@ Riot now has the backend pieces for packages:
 - search for package discovery
 - immutable package provenance through canonical source locators and SHAs
 
-What is still missing is the client-side model that makes those pieces usable
-from Riot.
+What was still missing when this RFD was written was the client-side model that
+makes those pieces usable from Riot.
 
 That model must solve several concrete problems at once:
 
@@ -647,12 +647,15 @@ Implemented:
 - workspace publish ordering and publishability validation
 - shared lockfile/resolution/materialization events in `riot-model`
 
-Still missing or intentionally different from this document:
+Intentionally different from earlier versions of this document:
 
-- builds currently materialize external packages eagerly in `riot-deps`
-  before projection, instead of planner-emitted `DownloadPackage` actions
-- some text below still describes the original phase-1 plan and is preserved
-  here as history; the live implementation is further along than that plan
+- Riot keeps external package materialization outside the normal
+  planner/executor action graph. Resolved external packages are repaired before
+  package build planning continues, instead of introducing planner-emitted
+  `DownloadPackage` or `EnsurePackageMaterialized` actions. That tradeoff is
+  documented in [RFD0031](./RFD0031-lazy-dependency-materialization.md).
+- Some text below still describes the original phase-1 plan and is preserved
+  here as history; the live implementation is further along than that plan.
 
 ### Phase-1 ownership and responsibilities
 
