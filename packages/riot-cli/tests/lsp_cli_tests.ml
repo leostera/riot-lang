@@ -21,30 +21,22 @@ let test_lsp_stdio_subcommand_parses = fun _ctx ->
       | None -> Error "expected top-level subcommand"
     )
 
-let test_normalize_args_aliases_bare_lsp_to_stdio = fun _ctx ->
-  Test.assert_equal
-    ~expected:[ "riot"; "lsp"; "stdio" ]
-    ~actual:(Riot_cli.Cli.normalize_args [ "riot"; "lsp" ]);
-  Ok ()
-
-let test_normalize_args_keeps_explicit_transport = fun _ctx ->
-  Test.assert_equal
-    ~expected:[ "riot"; "lsp"; "stdio" ]
-    ~actual:(Riot_cli.Cli.normalize_args [ "riot"; "lsp"; "stdio" ]);
-  Ok ()
-
-let test_normalize_args_keeps_non_lsp_commands = fun _ctx ->
-  Test.assert_equal
-    ~expected:[ "riot"; "build"; "syn" ]
-    ~actual:(Riot_cli.Cli.normalize_args [ "riot"; "build"; "syn" ]);
-  Ok ()
+let test_build_package_named_lsp_parses = fun _ctx ->
+  match parse_cli [ "riot"; "build"; "lsp" ] with
+  | Error err -> Error ("expected build lsp args to parse: " ^ err)
+  | Ok matches -> (
+      match ArgParser.get_subcommand matches with
+      | Some ("build", build_matches) ->
+          Test.assert_equal ~expected:[ "lsp" ] ~actual:(ArgParser.get_many build_matches "package");
+          Ok ()
+      | Some (name, _) -> Error ("expected build command, got: " ^ name)
+      | None -> Error "expected top-level subcommand"
+    )
 
 let tests =
   Test.[
     case "lsp: parse stdio transport subcommand" test_lsp_stdio_subcommand_parses;
-    case "lsp: bare lsp aliases to stdio" test_normalize_args_aliases_bare_lsp_to_stdio;
-    case "lsp: explicit transport is preserved" test_normalize_args_keeps_explicit_transport;
-    case "lsp: other commands are preserved" test_normalize_args_keeps_non_lsp_commands;
+    case "lsp: build package named lsp parses normally" test_build_package_named_lsp_parses;
   ]
 
 let name = "Riot CLI LSP Tests"

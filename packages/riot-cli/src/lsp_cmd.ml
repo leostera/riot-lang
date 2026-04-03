@@ -17,5 +17,5 @@ let run = fun matches ->
       ArgParser.print_error (ArgParser.UnknownSubcommand transport);
       Error (Failure ("Unknown lsp transport: " ^ transport))
   | None ->
-      ArgParser.print_error ArgParser.MissingSubcommand;
-      Error (Failure "Missing lsp transport")
+      ArgParser.print_help command;
+      Ok ()

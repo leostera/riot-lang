@@ -198,19 +198,7 @@ let is_lsp_invocation = fun args ->
   | _program :: rest -> loop rest
   | [] -> false
 
-let normalize_args = fun args ->
-  let rec loop prefix rest =
-    match rest with
-    | [] -> List.rev prefix
-    | "lsp" :: [] ->
-        List.rev_append prefix [ "lsp"; "stdio" ]
-    | current :: tail ->
-        loop (current :: prefix) tail
-  in
-  loop [] args
-
 let run = fun ~args ->
-  let args = normalize_args args in
   let workspace_scan_cache = ref None in
   let get_workspace_scan () =
     match !workspace_scan_cache with
