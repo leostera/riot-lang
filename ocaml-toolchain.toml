@@ -1,9 +1,10 @@
 [toolchain]
-version = "5.5.0-riot.1"
+version = "5.5.0-riot.2"
 targets = [
   "aarch64-apple-darwin",
   "aarch64-unknown-linux-gnu",
-  "aarch64-unknown-linux-musl",
+  #  "aarch64-unknown-linux-musl",
   "x86_64-unknown-linux-gnu",
-  "x86_64-unknown-linux-musl",
+  # "x86_64-unknown-linux-musl",
+  # "x86_64-w64-mingw32",
 ]

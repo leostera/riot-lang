@@ -49,7 +49,7 @@ kind = "native"
 (** Create ocaml-toolchain.toml *)
 let create_toolchain_toml = fun target_dir ->
   let content = {|[toolchain]
-version = "5.5.0-riot.1"
+version = "5.5.0-riot.2"
 |}
   in
   let path = Path.(target_dir / Path.v "ocaml-toolchain.toml") in

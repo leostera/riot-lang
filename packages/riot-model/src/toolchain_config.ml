@@ -13,7 +13,7 @@ type t = {
   targets: string list;  (* Target architectures for cross-compilation *)
 }
 
-let default_ocaml_version = "5.5.0-riot.1"
+let default_ocaml_version = "5.5.0-riot.2"
 
 let default = {
   version = default_ocaml_version;
