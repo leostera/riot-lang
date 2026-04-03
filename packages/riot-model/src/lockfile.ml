@@ -446,7 +446,13 @@ let to_string = fun lockfile ->
     "format_version = " ^ Int.to_string lockfile.format_version;
     "dependency_hash = " ^ render_string lockfile.dependency_hash;
   ]
-  @ List.map render_package lockfile.packages in
+  @ (
+    if List.is_empty lockfile.packages then
+      [ "packages = []" ]
+    else
+      List.map render_package lockfile.packages
+  )
+  in
   String.concat "\n\n" parts ^ "\n"
 
 module Tests = struct
@@ -548,4 +554,28 @@ path = "../vendor/foo"
         Error "expected one package in parsed lockfile"
     | Error err ->
         Error err [@test]
+
+  let test_lockfile_roundtrips_empty_packages (): (unit, string) result =
+    let lockfile = {
+      format_version = 1;
+      dependency_hash = "empty-lock";
+      packages = [];
+    }
+    in
+    let rendered = to_string lockfile in
+    match Toml.parse rendered with
+    | Error err ->
+        Error ("expected generated empty lockfile TOML to parse: " ^ Toml.error_to_string err)
+    | Ok toml -> (
+        match of_toml toml with
+        | Ok parsed when Int.equal parsed.format_version 1
+                       && String.equal parsed.dependency_hash "empty-lock"
+                       && List.is_empty parsed.packages
+                       && String.contains rendered "packages = []" ->
+            Ok ()
+        | Ok _ ->
+            Error "expected empty lockfile to round-trip through TOML"
+        | Error err ->
+            Error err
+      ) [@test]
 end [@test]
