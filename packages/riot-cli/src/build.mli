@@ -36,6 +36,7 @@ val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn
 
 val build_command:
   ?workspace:Riot_model.Workspace.t ->
+  ?prepared:bool ->
   ?scope:build_scope ->
   ?profile:string ->
   ?mode:output_mode ->

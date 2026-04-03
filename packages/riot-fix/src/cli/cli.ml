@@ -38,24 +38,50 @@ let list_diagnostics_output = Catalog.list_diagnostics_output
 
 let run_result = Execution.run_result
 
-let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ~profile:_ ->
+let unavailable_build_package = fun ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
   Error (Failure "No build_package callback was provided")
+
+let no_event = fun (_: event) -> ()
+
+let resolved_output_mode = fun ?output_mode (request: Request.t) ->
+  match output_mode with
+  | Some output_mode -> output_mode
+  | None -> (
+      match Request.(request.action) with
+      | Request.Run { output_mode; _ } -> output_mode
+      | Request.ListRules { format }
+      | Request.ListDiagnostics { format } -> Types.Report format
+      | Request.ExplainRule _ -> Types.Report Reporter.Text
+    )
+
+let run_request_direct = fun ~on_event ~output_mode (request: Request.t) ->
+  match request.action with
+  | Request.ListRules { format } ->
+      Catalog.list_rules format
+  | Request.ListDiagnostics { format } ->
+      Catalog.list_diagnostics format
+      | Request.ExplainRule { rule_id } ->
+          Catalog.explain_rule rule_id
+      | Request.Run {
+          mode;
+          limit;
+          target;
+          output_mode = _;
+          use_generated_runner = _;
+        } -> Execution.run_with_coordinator
+      ~on_event
+      ~output_mode
+      ~mode
+      ~scope:request.scope
+      ~limit
+      ~roots:[ target ]
+      ()
 
 let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode matches ->
   match Request.of_matches matches with
   | Error _ as err -> err
   | Ok request ->
-      let output_mode =
-        match output_mode with
-        | Some output_mode -> output_mode
-        | None -> (
-            match Request.(request.action) with
-            | Request.Run { output_mode; _ } -> output_mode
-            | Request.ListRules { format }
-            | Request.ListDiagnostics { format } -> Types.Report format
-            | Request.ExplainRule _ -> Types.Report Reporter.Text
-          )
-      in
+      let output_mode = resolved_output_mode ?output_mode request in
       match request.action with
       | Request.ListRules { format } ->
           Catalog.list_rules format
@@ -67,9 +93,8 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
         mode;
         limit;
         target;
-        forwarded_args;
         use_generated_runner;
-        _
+        output_mode = _;
       } -> (
           match request.scope, use_generated_runner with
           | Some scope, true ->
@@ -82,16 +107,12 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
                 ~cwd:request.cwd
                 ~build_package
                 ~report_output
-                ~args:forwarded_args
+                ~mode
+                ~limit
+                ~target
+                ~output_mode
                 scope
-          | _ -> Execution.run_with_coordinator
-            ~on_event
-            ~output_mode
-            ~mode
-            ~scope:request.scope
-            ~limit
-            ~roots:[ target ]
-            ()
+          | _ -> run_request_direct ~on_event ~output_mode request
         )
 
 let run = fun ?(build_package = unavailable_build_package) matches -> run_matches ~build_package matches

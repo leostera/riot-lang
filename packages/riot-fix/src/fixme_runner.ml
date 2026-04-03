@@ -10,21 +10,19 @@ type generated_provider = {
 type plan = {
   provider_hash: string;
   generated_dir: Path.t;
-  workspace_root: Path.t;
-  workspace_toml_path: Path.t;
-  toolchain_toml_path: Path.t;
   package_dir: Path.t;
-  package_toml_path: Path.t;
   src_dir: Path.t;
   providers_dir: Path.t;
   library_path: Path.t;
   main_path: Path.t;
-  registry_path: Path.t;
   binary_path: Path.t;
   package_name: string;
   binary_name: string;
+  package: Riot_model.Package.t;
   providers: generated_provider list;
 }
+
+let generator_version = "v6"
 
 let sanitize_component = fun text ->
   String.map
@@ -92,8 +90,8 @@ let provider_fingerprint = fun (provider: Riot_model.Fix_provider.t) ->
 let provider_hash = fun providers ->
   providers |> List.sort
     (fun (left: Riot_model.Fix_provider.t) right ->
-      String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> String.concat
-    "\n" |> Crypto.hash_string |> Crypto.Digest.hex
+      String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> fun fingerprints ->
+  String.concat "\n" (generator_version :: fingerprints) |> Crypto.hash_string |> Crypto.Digest.hex
 
 let generated_provider = fun plan provider ->
   let module_name = generated_module_name provider in
@@ -105,54 +103,21 @@ let generated_provider = fun plan provider ->
     support_module_sources = support_module_sources provider;
   }
 
-let plan = fun ~workspace_root ~target_dir_root providers ->
-  let hash = provider_hash providers in
-  let generated_dir =
-    Path.(target_dir_root / Path.v "riot-fix" / Path.v "fixme-runner" / Path.v hash) in
-  let workspace_root = Path.(generated_dir / Path.v "workspace") in
-  let build_dir_root = Path.(generated_dir / Path.v "build") in
-  let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "fixme-runner") in
-  let src_dir = Path.(package_dir / Path.v "src") in
-  let providers_dir = Path.(generated_dir / Path.v "providers") in
-  let binary_name = "fixme-runner" in
-  let package_name = "fixme-runner" in
-  let plan = {
-    provider_hash = hash;
-    generated_dir;
-    workspace_root;
-    workspace_toml_path =
-      Path.(workspace_root / Path.v "riot.toml");
-    toolchain_toml_path =
-      Path.(workspace_root / Path.v "ocaml-toolchain.toml");
-    package_dir;
-    package_toml_path =
-      Path.(package_dir / Path.v "riot.toml");
-    src_dir;
-    providers_dir;
-    library_path =
-      Path.(src_dir / Path.v "fixme_runner.ml");
-    main_path =
-      Path.(src_dir / Path.v "main.ml");
-    registry_path =
-      Path.(generated_dir / Path.v "fixme_registry.ml");
-    binary_path =
-      Path.(build_dir_root
-      / Path.v "release"
-      / Path.v (Riot_model.Riot_dirs.host_target ())
-      / Path.v "out"
-      / Path.v (package_name ^ "/" ^ binary_name));
-    package_name;
-    binary_name;
-    providers = [];
-  }
-  in
-  { plan with providers = List.map (generated_provider plan) providers }
+let relative_path_for_package = fun ~workspace_root package_dir ->
+  match Path.strip_prefix package_dir ~prefix:workspace_root with
+  | Ok relative -> relative
+  | Error _ -> package_dir
 
 let provider_module_line = fun (provider: generated_provider) ->
   "    (module " ^ provider.module_name ^ " : Riot_fix.Provider.S);"
 
 let registry_source = fun providers ->
-  let plan = plan ~workspace_root:(Path.v ".") ~target_dir_root:(Path.v "_build") providers in
+  let provider_lines =
+    providers
+    |> List.map
+      (fun (provider: Riot_model.Fix_provider.t) ->
+        "    (module " ^ generated_module_name provider ^ " : Riot_fix.Provider.S);")
+  in
   String.concat
     "\n"
     [
@@ -161,7 +126,7 @@ let registry_source = fun providers ->
       "let register () =";
       "  Riot_fix.Provider_registry.register_providers";
       "    [";
-      String.concat "\n" (List.map provider_module_line plan.providers);
+      String.concat "\n" provider_lines;
       "    ]";
       "";
     ]
@@ -181,18 +146,6 @@ let embedded_provider_module_source = fun (provider: generated_provider) ->
               String.concat "\n" [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
             provider.support_module_sources
         ); source; "end"; ""; ]
-
-let workspace_toml_source = fun plan ->
-  String.concat
-    "\n"
-    [
-      "[workspace]";
-      "members = [\"packages/fixme-runner\"]";
-      "";
-      "[riot]";
-      "target_dir = \"" ^ Path.to_string Path.(plan.generated_dir / Path.v "build") ^ "\"";
-      "";
-    ]
 
 let dependency_entries = fun workspace_root providers ->
   let workspace_packages =
@@ -260,27 +213,81 @@ let dependency_entries = fun workspace_root providers ->
   in
   dedupe_by_name [] [] entries
 
-let package_toml_source = fun workspace_root plan ->
-  let dependency_lines = dependency_entries workspace_root plan.providers
-  |> List.map
-    (fun ((name, path)) -> name ^ " = { path = " ^ "\"" ^ Path.to_string path ^ "\", version = \"*\" }") in
-  String.concat "\n"
-    [
-      "[package]";
-      "name = \"" ^ plan.package_name ^ "\"";
-      "version = \"0.1.0\"";
-      "";
-      "[lib]";
-      "path = \"src/fixme_runner.ml\"";
-      "";
-      "[[bin]]";
-      "name = \"" ^ plan.binary_name ^ "\"";
-      "path = \"src/main.ml\"";
-      "";
-      "[dependencies]";
-      String.concat "\n" dependency_lines;
-      "";
-    ]
+let dependency_of_entry = fun (name, path) ->
+  Riot_model.Package.{
+    name;
+    source = {
+      workspace = false;
+      builtin = false;
+      path = Some path;
+      source_locator = None;
+      ref_ = None;
+      version = Some Std.Version.any;
+    };
+  }
+
+let package_dependencies = fun ~workspace_root providers ->
+  dependency_entries workspace_root providers |> List.map dependency_of_entry
+
+let plan = fun ~workspace_root ~target_dir_root providers ->
+  let hash = provider_hash providers in
+  let generated_dir =
+    Path.(target_dir_root / Path.v "riot-fix" / Path.v "fixme-runner" / Path.v hash) in
+  let package_dir = Path.(generated_dir / Path.v "package") in
+  let src_dir = Path.(package_dir / Path.v "src") in
+  let providers_dir = Path.(generated_dir / Path.v "providers") in
+  let binary_name = "fixme-runner" in
+  let package_name = "fixme-runner" in
+  let binary_path =
+    Path.(
+      target_dir_root
+      / Path.v "release"
+      / Path.v (Riot_model.Riot_dirs.host_target ())
+      / Path.v "out"
+      / Path.v package_name
+      / Path.v binary_name
+    )
+  in
+  let placeholder_package =
+    Riot_model.Package.synthetic
+      ~name:package_name
+      ~path:package_dir
+      ~relative_path:(relative_path_for_package ~workspace_root package_dir)
+  in
+  let plan = {
+    provider_hash = hash;
+    generated_dir;
+    package_dir;
+    src_dir;
+    providers_dir;
+    library_path = Path.(src_dir / Path.v "fixme_runner.ml");
+    main_path = Path.(src_dir / Path.v "main.ml");
+    binary_path;
+    package_name;
+    binary_name;
+    package = placeholder_package;
+    providers = [];
+  }
+  in
+  let providers = List.map (generated_provider plan) providers in
+  let package =
+    Riot_model.Package.make
+      ~name:package_name
+      ~path:package_dir
+      ~relative_path:(relative_path_for_package ~workspace_root package_dir)
+      ~dependencies:(package_dependencies ~workspace_root providers)
+      ~binaries:[ Riot_model.Package.{ name = binary_name; path = Path.v "src/main.ml" } ]
+      ~library:Riot_model.Package.{ path = Path.v "src/fixme_runner.ml" }
+      ~sources:Riot_model.Package.{
+        src = [ Path.v "src/fixme_runner.ml"; Path.v "src/main.ml" ];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
+      ()
+  in
+  { plan with package; providers }
 
 let library_source = fun plan ->
   String.concat "\n"
@@ -288,12 +295,54 @@ let library_source = fun plan ->
       "open Std";
       "";
       String.concat "\n" (List.map embedded_provider_module_source plan.providers);
+      "let print_response_output response =";
+      "  match Riot_fix.response_output response with";
+      "  | Some output ->";
+      "      print output;";
+      "      (";
+      "        match response with";
+      "        | Riot_fix.ListedRules { format=Riot_fix.Reporter.Text; _ }";
+      "        | Riot_fix.ListedDiagnostics { format=Riot_fix.Reporter.Text; _ }";
+      "        | Riot_fix.ExplainedRule _ -> print \"\\n\"";
+      "        | Riot_fix.ListedRules { format=Riot_fix.Reporter.Json; _ }";
+      "        | Riot_fix.ListedDiagnostics { format=Riot_fix.Reporter.Json; _ }";
+      "        | Riot_fix.Completed -> ()";
+      "      );";
+      "      Ok ()";
+      "  | None -> Ok ()";
+      "";
+      "let run_generated_request ~args =";
+      "  match ArgParser.get_matches Riot_fix.Cli.command args with";
+      "  | Error err ->";
+      "      ArgParser.print_error err;";
+      "      ArgParser.print_help Riot_fix.Cli.command;";
+      "      Error (Failure \"Argument parsing failed\")";
+      "  | Ok matches -> (";
+      "      match Riot_fix.fix_request_of_matches matches with";
+      "      | Error _ as err -> err";
+      "      | Ok request ->";
+      "          let output_mode = Riot_fix.output_mode_of_request request in";
+      "          match request.Riot_fix.action with";
+      "          | Riot_fix.Run { mode; limit; target; _ } ->";
+      "              Riot_fix.Cli.Execution.run_with_coordinator";
+      "                ~output_mode";
+      "                ~mode";
+      "                ~scope:request.scope";
+      "                ~limit";
+      "                ~roots:[ target ]";
+      "                ()";
+      "          | _ ->";
+      "              match Riot_fix.fix ~output_mode request with";
+      "              | Error _ as err -> err";
+      "              | Ok response -> print_response_output response";
+      "    )";
+      "";
       "let main ~args =";
       "  Riot_fix.Provider_registry.register_providers";
       "    [";
       String.concat "\n" (List.map provider_module_line plan.providers);
       "    ];";
-      "  Riot_fix.Cli.main ~args ()";
+      "  run_generated_request ~args";
       "";
     ]
 
@@ -301,28 +350,12 @@ let main_source = String.concat
   "\n"
   [ "open Std"; ""; "let () ="; "  Actors.run ~main:Fixme_runner.main ~args:Env.args ()"; ""; ]
 
-let local_toolchain_source = fun workspace_root ->
-  let direct_config = Path.(workspace_root / Path.v "ocaml-toolchain.toml") in
-  let local_compiler = Path.(workspace_root / Path.v "vendor" / Path.v "ocaml" / Path.v "compiler") in
-  match Fs.exists direct_config with
-  | Ok true -> Some (`Copy direct_config)
-  | _ -> (
-      match Fs.is_dir local_compiler with
-      | Ok true -> Some (`Generate local_compiler)
-      | _ -> None
-    )
-
-let toolchain_toml_source = fun compiler_path ->
-  String.concat
-    "\n"
-    [ "[toolchain]"; "version = { path = \"" ^ Path.to_string compiler_path ^ "\" }"; ""; ]
-
 let ensure_directories = fun plan ->
   List.iter
     (fun path ->
       Fs.create_dir_all path
       |> Result.expect ~msg:(("failed to create generated fixme runner dir " ^ Path.to_string path)))
-    [ plan.workspace_root; plan.package_dir; plan.src_dir; plan.providers_dir ]
+    [ plan.generated_dir; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists = fun path remove ->
   match Fs.exists path with
@@ -330,7 +363,6 @@ let remove_if_exists = fun path remove ->
   | _ -> ()
 
 let cleanup_stale_sources = fun plan ->
-  remove_if_exists plan.registry_path Fs.remove_file;
   remove_if_exists plan.providers_dir Fs.remove_dir_all
 
 let write_file = fun path content ->
@@ -341,24 +373,18 @@ let copy_provider_source = fun (provider: generated_provider) ->
   |> Result.expect
     ~msg:(("failed to copy provider source " ^ Path.to_string provider.provider.source_path))
 
-let materialize_toolchain = fun workspace_root plan ->
-  match local_toolchain_source workspace_root with
-  | Some (`Copy source_path) -> Fs.copy ~src:source_path ~dst:plan.toolchain_toml_path
-  |> Result.expect ~msg:(("failed to copy " ^ Path.to_string source_path ^ " into fixme runner"))
-  | Some (`Generate compiler_path) -> write_file
-    plan.toolchain_toml_path
-    (toolchain_toml_source compiler_path)
-  | None -> ()
+let attach_to_workspace = fun workspace plan ->
+  let other_packages =
+    workspace.Riot_model.Workspace.packages
+    |> List.filter (fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name))
+  in
+  { workspace with packages = other_packages @ [ plan.package ] }
 
 let materialize = fun ~workspace_root ~target_dir_root providers ->
   let plan = plan ~workspace_root ~target_dir_root providers in
   cleanup_stale_sources plan;
   ensure_directories plan;
-  write_file plan.workspace_toml_path (workspace_toml_source plan);
-  materialize_toolchain workspace_root plan;
-  write_file plan.package_toml_path (package_toml_source workspace_root plan);
   write_file plan.library_path (library_source plan);
   write_file plan.main_path main_source;
-  write_file plan.registry_path (registry_source providers);
   List.iter copy_provider_source plan.providers;
   plan

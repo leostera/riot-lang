@@ -12,7 +12,6 @@ type fix_action = Cli.Request.action =
       mode: Runner.mode;
       limit: int option;
       target: Path.t;
-      forwarded_args: string list;
       output_mode: fix_output_mode;
       use_generated_runner: bool
     }

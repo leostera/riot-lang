@@ -8,7 +8,6 @@ type action =
       mode: Runner.mode;
       limit: int option;
       target: Path.t;
-      forwarded_args: string list;
       output_mode: Types.output_mode;
       use_generated_runner: bool
     }
@@ -33,18 +32,10 @@ let reporter_format = fun matches ->
 
 let output_mode = fun format -> Types.Report format
 
-let generated_runner_disabled = fun () ->
-  match Env.var String ~name:"RIOT_FIX_DISABLE_GENERATED_RUNNER" with
-  | Some ("1" | "true" | "yes") -> true
-  | _ -> false
-
 let use_generated_runner = fun scope ->
-  if generated_runner_disabled () then
-    false
-  else
-    match scope with
-    | Some scope when not (List.is_empty (Fix_config.providers (Some scope))) -> true
-    | _ -> false
+  match scope with
+  | Some scope when not (List.is_empty (Fix_config.providers (Some scope))) -> true
+  | _ -> false
 
 let check_request = fun ~cwd ~target ->
   let scope = Fix_config.load_scope ~cwd in
@@ -56,7 +47,6 @@ let check_request = fun ~cwd ~target ->
         mode = Runner.Check;
         limit = None;
         target;
-        forwarded_args = [];
         output_mode = Types.Silent;
         use_generated_runner = use_generated_runner scope;
       };
@@ -95,7 +85,6 @@ let of_matches = fun matches ->
                 mode;
                 limit;
                 target = Common.resolve_target matches;
-                forwarded_args = Common.args_of_matches matches;
                 output_mode = output_mode format;
                 use_generated_runner = use_generated_runner scope;
               }

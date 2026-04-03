@@ -77,6 +77,12 @@ val build:
   build_request ->
   (Riot_executor.Package_builder.build_result list, build_error) result
 
+val build_prepared:
+  ?on_event:(build_event -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  build_request ->
+  (Riot_executor.Package_builder.build_result list, build_error) result
+
 val run: ?on_event:(run_event -> unit) -> run_request -> (unit, run_error) result
 
 type suite_binary = Test_runtime.suite_binary = {

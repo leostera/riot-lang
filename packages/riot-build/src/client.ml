@@ -100,6 +100,15 @@ let connect_local = fun ?(emit = no_emit) ?workspace_manager ~workspace () ->
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error err -> Error (StartupFailed { error = err })
 
+let connect_local_prepared = fun ?workspace_manager ~workspace () ->
+  match Internal_server.start_local_prepared
+    ?workspace_manager
+    ~workspace
+    ~config:Server_config.default
+    () with
+  | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
+  | Error err -> Error (StartupFailed { error = err })
+
 let close = fun _t -> ()
 
 let send_request = fun t request -> send t.server_pid (Protocol.ServerRequest request)

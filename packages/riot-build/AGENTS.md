@@ -14,6 +14,7 @@
 8. Requested profiles must propagate end-to-end through the client/server/worker path. Do not recompute `debug` inside the internal server or build worker once a request already carries `profile`.
 9. Test-suite discovery narrowing belongs here. When the CLI parses `package:suite`, carry the suite filter through typed test requests and apply it before building/running binaries instead of forwarding the whole selector as a per-test query string.
 10. `build` returns per-package build results. `run`/`install`/`test`/`bench` should consume those returned outputs directly instead of round-tripping through the server/store to rediscover artifacts by name.
+11. Prepared workspaces are a valid input to the local build runtime. When a caller has already run dependency preparation and needs to append synthetic packages for the same build lane, reuse that prepared workspace instead of forcing a second `ensure_workspace` pass.
 
 ## Validate
 

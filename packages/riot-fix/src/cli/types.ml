@@ -1,6 +1,12 @@
 open Std
 
-type build_package = workspace_root:Path.t -> package_name:string -> profile:string -> (unit, exn) result
+type build_package =
+  workspace:Riot_model.Workspace.t ->
+  package_name:string ->
+  profile:string ->
+  ?transform_workspace:(Riot_model.Workspace.t -> Riot_model.Workspace.t) ->
+  unit ->
+  (unit, exn) result
 
 type run_outcome = {
   result: Runner.run_result;

@@ -71,6 +71,8 @@ let start_local = Internal_server.start_local
 
 let build = Build_runtime.build
 
+let build_prepared = Build_runtime.build_prepared
+
 let run = Run_runtime.run
 
 type suite_binary = Test_runtime.suite_binary = {

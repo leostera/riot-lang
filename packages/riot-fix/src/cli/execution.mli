@@ -21,6 +21,9 @@ val run_generated_runner:
   cwd:Path.t ->
   build_package:Types.build_package ->
   report_output:bool ->
-  args:string list ->
+  mode:Runner.mode ->
+  limit:int option ->
+  target:Path.t ->
+  output_mode:Types.output_mode ->
   Fix_config.scope ->
   (unit, exn) result

@@ -2,33 +2,31 @@ open Std
 
 let command = Riot_fix.Cli.command
 
-let current_dir = fun () -> Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
-
-let set_current_dir = fun path ->
-  Env.set_current_dir path
-  |> Result.expect ~msg:(("Failed to change directory to " ^ Path.to_string path))
-
-let with_current_dir = fun path fn ->
-  let original = current_dir () in
-  set_current_dir path;
-  try
-    let result = fn () in
-    set_current_dir original;
-    result
-  with
-  | exn ->
-      set_current_dir original;
-      raise exn
-
 let build_mode_of_output_mode = function
   | Riot_fix.Report Riot_fix.Reporter.Json -> Build.Json
   | Riot_fix.Report Riot_fix.Reporter.Text
   | Riot_fix.Silent -> Build.Human
 
-let build_package = fun ~mode ~workspace_root ~package_name ~profile ->
-  with_current_dir
-    workspace_root
-    (fun () -> Build.build_command ~mode ~profile (Some package_name) None)
+let prepare_workspace = fun (workspace: Riot_model.Workspace.t) ->
+  match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" () with
+  | Error err -> Error (Failure err)
+  | Ok registry -> (
+      match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      | Ok workspace -> Ok workspace
+      | Error err -> Error (Failure (Riot_model.Pm_error.message err))
+    )
+
+let build_package = fun ~mode ~(workspace:Riot_model.Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () ->
+  match prepare_workspace workspace with
+  | Error _ as err -> err
+  | Ok prepared_workspace ->
+      Build.build_command
+        ~workspace:(transform_workspace prepared_workspace)
+        ~prepared:true
+        ~mode
+        ~profile
+        (Some package_name)
+        None
 
 let run = fun matches ->
   match Riot_fix.fix_request_of_matches matches with

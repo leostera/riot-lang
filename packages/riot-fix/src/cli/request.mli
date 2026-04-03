@@ -8,7 +8,6 @@ type action =
       mode: Runner.mode;
       limit: int option;
       target: Path.t;
-      forwarded_args: string list;
       output_mode: Types.output_mode;
       use_generated_runner: bool
     }

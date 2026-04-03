@@ -22,6 +22,7 @@ type package_scope = {
 }
 
 type scope = {
+  workspace: Riot_model.Workspace.t;
   workspace_root: Path.t;
   target_dir_root: Path.t;
   workspace_config: fix_config;
@@ -108,6 +109,7 @@ let load_scope = fun ~cwd ->
             { package_root = pkg.path; config = load_fix_config package_toml })
       in
       Some {
+        workspace;
         workspace_root = workspace.root;
         target_dir_root = workspace.target_dir_root;
         workspace_config;
@@ -116,6 +118,8 @@ let load_scope = fun ~cwd ->
       }
 
 let workspace_root = fun scope -> scope.workspace_root
+
+let workspace = fun scope -> scope.workspace
 
 let target_dir_root = fun scope -> scope.target_dir_root
 

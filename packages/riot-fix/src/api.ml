@@ -14,7 +14,6 @@ type fix_action = Cli.Request.action =
       mode: Runner.mode;
       limit: int option;
       target: Path.t;
-      forwarded_args: string list;
       output_mode: fix_output_mode;
       use_generated_runner: bool
     }
@@ -31,7 +30,7 @@ type fix_response =
   | ListedDiagnostics of { format: Reporter.format; output: string }
   | ExplainedRule of { rule_id: string; output: string }
 
-let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ~profile:_ ->
+let unavailable_build_package = fun ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
   Error (Failure "No build_package callback was provided")
 
 let check_request = Cli.Request.check_request
@@ -80,9 +79,8 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
     mode;
     limit;
     target;
-    forwarded_args;
     use_generated_runner;
-    _
+    output_mode = _;
   } ->
       (
         match request.scope, use_generated_runner with
@@ -96,7 +94,10 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
               ~cwd:request.cwd
               ~build_package
               ~report_output
-              ~args:forwarded_args
+              ~mode
+              ~limit
+              ~target
+              ~output_mode
               scope
         | _ -> Cli.Execution.run_with_coordinator
           ~on_event

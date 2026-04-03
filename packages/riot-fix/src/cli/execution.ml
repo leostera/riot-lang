@@ -188,15 +188,54 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
   else
     Ok ()
 
-let run_generated_runner = fun ~cwd ~build_package ~report_output ~args scope ->
+let absolute_target = fun ~cwd target ->
+  if Path.is_absolute target then
+    Path.normalize target
+  else
+    Path.normalize Path.(cwd / target)
+
+let generated_runner_args = fun ~cwd ~mode ~limit ~target ~output_mode ->
+  let args = ref [] in
+  let push item = args := !args @ [ item ] in
+  let push_pair name value =
+    args := !args @ [ name; value ]
+  in
+  (
+    match mode with
+    | Runner.Apply -> push "--apply"
+    | Runner.Check -> push "--check"
+  );
+  (
+    match output_mode with
+    | Types.Report Reporter.Json -> push "--json"
+    | Types.Report Reporter.Text
+    | Types.Silent -> ()
+  );
+  (
+    match limit with
+    | Some limit -> push_pair "--limit" (Int.to_string limit)
+    | None -> ()
+  );
+  push (Path.to_string (absolute_target ~cwd target));
+  !args
+
+let run_generated_runner = fun ~cwd ~(build_package: Types.build_package) ~report_output ~mode ~limit ~target ~output_mode scope ->
+  let workspace = Fix_config.workspace scope in
   let workspace_root = Fix_config.workspace_root scope in
   let target_dir_root = Fix_config.target_dir_root scope in
   let providers = Fix_config.providers (Some scope) in
   trace_fix
     ("materializing generated runner for " ^ Int.to_string (List.length providers) ^ " providers");
   let plan = Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
+  let args = generated_runner_args ~cwd ~mode ~limit ~target ~output_mode in
   trace_fix ("building generated runner package " ^ plan.package_name);
-  match build_package ~workspace_root:plan.workspace_root ~package_name:plan.package_name ~profile:"release" with
+  match build_package
+    ~workspace
+    ~package_name:plan.package_name
+    ~profile:"release"
+    ~transform_workspace:(fun workspace -> Fixme_runner.attach_to_workspace workspace plan)
+    ()
+  with
   | Error err ->
       trace_fix ("building generated runner failed: " ^ Exception.to_string err);
       Error err
@@ -204,7 +243,6 @@ let run_generated_runner = fun ~cwd ~build_package ~report_output ~args scope ->
       let command = Command.make
         (Path.to_string plan.binary_path)
         ~cwd:(Path.to_string cwd)
-        ~env:[ ("RIOT_FIX_DISABLE_GENERATED_RUNNER", "1") ]
         ~args in
       trace_fix ("running generated runner " ^ Path.to_string plan.binary_path);
       if report_output then

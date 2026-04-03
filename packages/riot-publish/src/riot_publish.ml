@@ -204,7 +204,6 @@ let fix_request_for_publish = fun ~cwd ~target ->
     mode;
     limit;
     target;
-    forwarded_args=_;
     output_mode=_;
     use_generated_runner;
 
@@ -215,12 +214,6 @@ let fix_request_for_publish = fun ~cwd ~target ->
         else
           Riot_fix.Silent
       in
-      let forwarded_args =
-        if use_generated_runner then
-          [ "--check"; Path.to_string target ]
-        else
-          []
-      in
       {
         request
         with action =
@@ -228,7 +221,6 @@ let fix_request_for_publish = fun ~cwd ~target ->
             mode;
             limit;
             target;
-            forwarded_args;
             output_mode;
             use_generated_runner;
           };
@@ -259,10 +251,20 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
         (fun () ->
           Riot_fix.fix
             ~on_event:(fun event -> emit (Fix event))
-            ~build_package:(fun ~workspace_root ~package_name ~profile ->
-              build_package_in_workspace_root ~emit ~workspace_root ~package_name ~profile
-              |> Result.map (fun _ -> ())
-              |> Result.map_error (fun err -> Failure (publish_error_message err)))
+            ~build_package:(fun ~(workspace:Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () ->
+              match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+              | Error err -> Error (Failure (Riot_model.Pm_error.message err))
+              | Ok prepared_workspace ->
+                  Riot_build.build_prepared ~on_event:(fun event -> emit (Build event))
+                    Riot_build.{
+                      workspace = transform_workspace prepared_workspace;
+                      packages = [ package_name ];
+                      targets = Riot_build.Host;
+                      scope = Riot_build.Runtime;
+                      profile;
+                    }
+                  |> Result.map (fun _ -> ())
+                  |> Result.map_error (fun err -> Failure (Riot_build.build_error_message err)))
             fix_request
           |> Result.map (fun _ -> ()))
       |> Result.map_error

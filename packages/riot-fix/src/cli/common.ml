@@ -69,30 +69,3 @@ let clip_result_to_limit = fun remaining result ->
       }
     else
       Runner.{ result with diagnostics = take (remaining - parse_count) result.diagnostics }
-
-let args_of_matches = fun matches ->
-  let args = ref [] in
-  let push_flag enabled flag =
-    if enabled then
-      args := !args @ [ flag ]
-  in
-  let push_option name render =
-    match render with
-    | Some value -> args := !args @ [ name; value ]
-    | None -> ()
-  in
-  push_flag (ArgParser.get_flag matches "list-rules") "--list-rules";
-  push_flag (ArgParser.get_flag matches "list-diagnostics") "--list-diagnostics";
-  push_flag (ArgParser.get_flag matches "json") "--json";
-  push_flag (ArgParser.get_flag matches "apply") "--apply";
-  if not (ArgParser.get_flag matches "apply") then
-    push_flag true "--check";
-  push_option "--limit"
-    (ArgParser.get_int matches "limit" |> Option.map Int.to_string);
-  push_option "--explain" (ArgParser.get_one matches "explain");
-  (
-    match ArgParser.get_path matches "path" with
-    | Some path -> args := !args @ [ Path.to_string path ]
-    | None -> ()
-  );
-  !args

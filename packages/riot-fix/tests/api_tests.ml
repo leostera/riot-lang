@@ -17,17 +17,6 @@ let with_cwd = fun path fn ->
       Env.set_current_dir original |> Result.expect ~msg:"failed to restore cwd after exception";
       raise exn
 
-let with_env_var = fun ~name ~value fn ->
-  let _ = Env.set_var ~name ~value in
-  try
-    let result = fn () in
-    let _ = Env.set_var ~name ~value:"0" in
-    result
-  with
-  | exn ->
-      let _ = Env.set_var ~name ~value:"0" in
-      raise exn
-
 let parse_matches = fun argv ->
   match ArgParser.get_matches Riot_fix.Cli.command ("fix" :: argv) with
   | Error err -> Error (ArgParser.error_message err)
@@ -109,7 +98,6 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
                 mode = Riot_fix.Runner.Check;
                 limit = None;
                 target = sample;
-                forwarded_args = [ "--check"; Path.to_string sample ];
                 output_mode = Riot_fix.Silent;
                 use_generated_runner = false;
               };
@@ -121,36 +109,49 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
               Test.assert_true
                 (String.contains (Exception.to_string err) "Issues remain after riot fix");
               Test.assert_true (not (List.is_empty !seen));
-              Ok ())); Test.case "fix_request_of_matches disables generated runner when requested via env"
+              Ok ())); Test.case "fix_request_of_matches enables generated runner when providers are present"
     (fun _ctx ->
       with_tempdir "riot_fix_api"
         (fun tmpdir ->
           with_cwd tmpdir
             (fun () ->
+              let package_dir = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+              let fix_dir = Path.(package_dir / Path.v "fix") in
+              Fs.create_dir_all fix_dir |> Result.expect ~msg:"failed to create fix dir";
               Fs.write
                 {|
 [workspace]
-members = []
-
-[riot.fix.provider]
-rules = ["std:no-stdlib"]
+members = ["packages/demo"]
 |}
                 Path.(tmpdir / Path.v "riot.toml") |> Result.expect ~msg:"failed to write workspace riot.toml";
-              with_env_var ~name:"RIOT_FIX_DISABLE_GENERATED_RUNNER" ~value:"1"
-                (fun () ->
-                  match parse_matches [ "--check"; "sample.ml" ] with
-                  | Error _ as err -> err
-                  | Ok matches -> (
-                      match Riot_fix.fix_request_of_matches matches with
-                      | Error err -> Error (Exception.to_string err)
-                      | Ok request -> (
-                          match request.action with
-                          | Riot_fix.Run { use_generated_runner; _ } ->
-                              Test.assert_equal ~expected:false ~actual:use_generated_runner;
-                              Ok ()
-                          | _ -> Error "expected run request"
-                        )
-                    ))))); ]
+              Fs.write
+                {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[riot.fix.provider]
+rules = ["demo-rule"]
+|}
+                Path.(package_dir / Path.v "riot.toml")
+              |> Result.expect ~msg:"failed to write package riot.toml";
+              Fs.write
+                "let rules () = []\nlet explanations () = []\n"
+                Path.(fix_dir / Path.v "riot_fix_rules.ml")
+              |> Result.expect ~msg:"failed to write provider";
+              match parse_matches [ "--check"; "sample.ml" ] with
+              | Error _ as err -> err
+              | Ok matches -> (
+                  match Riot_fix.fix_request_of_matches matches with
+                  | Error err -> Error (Exception.to_string err)
+                  | Ok request -> (
+                      match request.action with
+                      | Riot_fix.Run { use_generated_runner; _ } ->
+                          Test.assert_equal ~expected:true ~actual:use_generated_runner;
+                          Ok ()
+                      | _ -> Error "expected run request"
+                    )
+                )))); ]
 
 let () =
   Actors.run

@@ -124,8 +124,7 @@ let client_target = fun packages ->
   | [ package ] -> Client.BuildPackage package
   | packages -> Client.BuildPackages packages
 
-let build = fun ?(on_event = no_event) ?workspace_manager request ->
-  let pm_session_id = Riot_model.Session_id.make () in
+let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager request ->
   match resolve_targets request with
   | Error _ as err -> err
   | Ok targets -> (
@@ -135,13 +134,8 @@ let build = fun ?(on_event = no_event) ?workspace_manager request ->
           match validate_target_toolchains request.workspace targets with
           | Error _ as err -> err
           | Ok () -> (
-              match Client.connect_local
+              match connect
                 ?workspace_manager
-                ~emit:(fun kind ->
-                  on_event
-                    (Pm (Riot_model.Event.create
-                      ~session_id:pm_session_id
-                      ~level:Riot_model.Event.Info kind)))
                 ~workspace:request.workspace
                 () with
               | Error err -> Error (ClientError err)
@@ -180,3 +174,28 @@ let build = fun ?(on_event = no_event) ?workspace_manager request ->
             )
         )
     )
+
+let build = fun ?(on_event = no_event) ?workspace_manager request ->
+  let pm_session_id = Riot_model.Session_id.make () in
+  build_with_connect
+    (fun ?workspace_manager ~workspace () ->
+      Client.connect_local
+        ?workspace_manager
+        ~emit:(fun kind ->
+          on_event
+            (Pm (Riot_model.Event.create
+              ~session_id:pm_session_id
+              ~level:Riot_model.Event.Info kind)))
+        ~workspace
+        ())
+    ~on_event
+    ?workspace_manager
+    request
+
+let build_prepared = fun ?(on_event = no_event) ?workspace_manager request ->
+  build_with_connect
+    (fun ?workspace_manager ~workspace () ->
+      Client.connect_local_prepared ?workspace_manager ~workspace ())
+    ~on_event
+    ?workspace_manager
+    request

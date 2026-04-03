@@ -20,7 +20,8 @@ The pipeline is:
 
 Rules can be built in or provided by workspace packages. Package-provided rules
 are compiled into a generated `fixme-runner` under `_build`, so `riot-fix` does not spawn
-one subprocess per rule.
+one subprocess per rule. That generated runner is a direct lint engine entrypoint, not a
+second wrapper around generated-runner selection.
 
 ## Rule ids
 

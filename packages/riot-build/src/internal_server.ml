@@ -468,7 +468,7 @@ and handle_build = fun state client_pid target scope profile target_arch session
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
+let start_server = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~prepare_workspace_first ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
   try
     trace_server
       ("start_local workspace_root="
@@ -487,10 +487,17 @@ let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_
           | Some workspace_manager -> workspace_manager
           | None -> Workspace_manager.create ()
         in
-        match prepare_workspace ~emit ~workspace_manager ~registry ~workspace () with
-        | Error err ->
-            trace_server ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
-            Error (WorkspacePreparationFailed { error = err })
+        let workspace_result =
+          if prepare_workspace_first then
+            prepare_workspace ~emit ~workspace_manager ~registry ~workspace ()
+            |> Result.map_error (fun err ->
+              trace_server ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
+              WorkspacePreparationFailed { error = err })
+          else
+            Ok workspace
+        in
+        match workspace_result with
+        | Error err -> Error err
         | Ok workspace ->
             trace_server
               ("start_local prepared workspace packages="
@@ -509,3 +516,24 @@ let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_
   | exn ->
       trace_server ("start_local exception: " ^ Exception.to_string exn);
       Error (UnexpectedException { error = Exception.to_string exn })
+
+let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~workspace ~config () ->
+  start_server
+    ~emit
+    ?workspace_manager
+    ?registry
+    ~registry_name
+    ~prepare_workspace_first:true
+    ~workspace
+    ~config
+    ()
+
+let start_local_prepared = fun ?workspace_manager ?registry ?(registry_name = default_registry_name) ~workspace ~config () ->
+  start_server
+    ?workspace_manager
+    ?registry
+    ~registry_name
+    ~prepare_workspace_first:false
+    ~workspace
+    ~config
+    ()

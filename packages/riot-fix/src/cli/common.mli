@@ -13,5 +13,3 @@ val relative_to_cwd: Path.t -> string
 val diagnostic_count: Runner.file_result -> int
 
 val clip_result_to_limit: int -> Runner.file_result -> Runner.file_result
-
-val args_of_matches: ArgParser.matches -> string list

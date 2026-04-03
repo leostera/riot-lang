@@ -20,6 +20,8 @@ val load_scope: cwd:Path.t -> scope option
 
 val workspace_root: scope -> Path.t
 
+val workspace: scope -> Riot_model.Workspace.t
+
 val target_dir_root: scope -> Path.t
 
 val providers: scope option -> Riot_model.Fix_provider.t list

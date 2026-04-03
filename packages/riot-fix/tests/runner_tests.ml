@@ -1920,8 +1920,11 @@ let render x y z =
             ~workspace_root:tmpdir
             ~target_dir_root:Path.(tmpdir / Path.v "_build")
             providers in
-          let package_toml = read_file plan.package_toml_path in
-          Test.assert_true (String.contains package_toml "helper = { path = \"");
+          let dependency_names =
+            plan.package.Riot_model.Package.dependencies
+            |> List.map (fun (dep: Riot_model.Package.dependency) -> dep.name)
+          in
+          Test.assert_true (List.mem "helper" dependency_names);
           Ok ()));
   Test.case "fixme runner registry source lists discovered providers"
     (fun _ctx ->
@@ -1943,7 +1946,62 @@ let render x y z =
       Test.assert_true (String.contains source "Provider_std_std");
       Test.assert_true (String.contains source "Provider_suri_suri");
       Ok ());
-  Test.case "fixme runner binary path uses generated build dir"
+  Test.case "fixme runner library source uses direct runner entrypoint"
+    (fun _ctx ->
+      with_tempdir "riot_fix_runner_entrypoint"
+        (fun tmpdir ->
+          let workspace_root = tmpdir in
+          let target_dir_root = Path.(workspace_root / Path.v "_build") in
+          let package_path = Path.(workspace_root / Path.v "packages" / Path.v "std") in
+          let fix_dir = Path.(package_path / Path.v "fix") in
+          Fs.create_dir_all fix_dir |> Result.expect ~msg:"failed to create fix dir";
+          let provider_source = Path.(fix_dir / Path.v "riot_fix_rules.ml") in
+          write_file provider_source "let rules () = []\nlet explanations () = []\n";
+          let provider =
+            Riot_model.Fix_provider.{
+              name = "std";
+              package_name = "std";
+              package_path;
+              source_path = provider_source;
+              rules = [ "std:no-stdlib" ];
+            }
+          in
+          let plan = Riot_fix.Fixme_runner.materialize
+            ~workspace_root
+            ~target_dir_root
+            [ provider ] in
+          let source = read_file plan.library_path in
+          Test.assert_true (String.contains source "Riot_fix.fix_request_of_matches matches");
+          Test.assert_true (String.contains source "Riot_fix.Cli.Execution.run_with_coordinator");
+          Ok ()));
+  Test.case "fixme runner main source uses actors entrypoint"
+    (fun _ctx ->
+      with_tempdir "riot_fix_runner_main"
+        (fun tmpdir ->
+          let workspace_root = tmpdir in
+          let target_dir_root = Path.(workspace_root / Path.v "_build") in
+          let package_path = Path.(workspace_root / Path.v "packages" / Path.v "std") in
+          let fix_dir = Path.(package_path / Path.v "fix") in
+          Fs.create_dir_all fix_dir |> Result.expect ~msg:"failed to create fix dir";
+          let provider_source = Path.(fix_dir / Path.v "riot_fix_rules.ml") in
+          write_file provider_source "let rules () = []\nlet explanations () = []\n";
+          let provider =
+            Riot_model.Fix_provider.{
+              name = "std";
+              package_name = "std";
+              package_path;
+              source_path = provider_source;
+              rules = [ "std:no-stdlib" ];
+            }
+          in
+          let plan = Riot_fix.Fixme_runner.materialize
+            ~workspace_root
+            ~target_dir_root
+            [ provider ] in
+          let source = read_file plan.main_path in
+          Test.assert_true (String.contains source "Actors.run ~main:Fixme_runner.main");
+          Ok ()));
+  Test.case "fixme runner binary path uses workspace build dir"
     (fun _ctx ->
       let provider =
         Riot_model.Fix_provider.{
@@ -1959,8 +2017,8 @@ let render x y z =
         ~target_dir_root:Path.(Path.v "/workspace" / Path.v "_build")
         [ provider ] in
       let binary_path = Path.to_string plan.binary_path in
-      Test.assert_true (String.contains binary_path "/build/release/");
-      Test.assert_false (String.contains binary_path "/workspace/_build/release/");
+      Test.assert_true (String.contains binary_path "/workspace/_build/release/");
+      Test.assert_false (String.contains binary_path "/riot-fix/fixme-runner/");
       Ok ());
   Test.case "fixme runner hash changes when provider support sources change"
     (fun _ctx ->

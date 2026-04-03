@@ -25,6 +25,7 @@ type request = {
   workspace_manager: Workspace_manager.t option;
   output_mode: output_mode;
   show_finished_summary: bool;
+  prepared: bool;
 }
 
 let build_trace_enabled = fun () ->
@@ -185,7 +186,7 @@ let profile_of_matches = fun matches ->
   else
     "debug"
 
-let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(prepared = false) ~packages ~targets () ->
   {
     build_request =
       Riot_build.{
@@ -198,6 +199,7 @@ let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profil
     workspace_manager;
     output_mode = mode;
     show_finished_summary;
+    prepared;
   }
 
 let request_of_matches = fun ~workspace matches ->
@@ -382,7 +384,8 @@ let run_request = fun (request: request) ->
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let result =
-    Riot_build.build ?workspace_manager:request.workspace_manager
+    (if request.prepared then Riot_build.build_prepared else Riot_build.build)
+      ?workspace_manager:request.workspace_manager
       ~on_event:(
         function
         | Riot_build.Pm kind ->
@@ -462,7 +465,7 @@ let load_workspace_strict = fun cwd ->
   | Ok (workspace, _) ->
       Ok { workspace; workspace_manager }
 
-let build_command = fun ?workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+let build_command = fun ?workspace ?(prepared = false) ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let loaded_workspace =
     match workspace with
     | Some workspace -> Ok { workspace; workspace_manager = Workspace_manager.create () }
@@ -475,7 +478,7 @@ let build_command = fun ?workspace ?(scope = Runtime) ?(profile = "debug") ?(mod
   | Ok { workspace; workspace_manager } ->
       run_request
         (
-          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~packages:((package_opt
+          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:((package_opt
           |> Option.to_list))
             ~targets:((
               match target_arch with

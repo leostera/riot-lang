@@ -56,6 +56,12 @@ val connect_local:
   unit ->
   (t, error) result
 
+val connect_local_prepared:
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace:Riot_model.Workspace.t ->
+  unit ->
+  (t, error) result
+
 val close: t -> unit
 
 val scan_workspace: t -> current_dir:Path.t -> (unit, 'a) result
