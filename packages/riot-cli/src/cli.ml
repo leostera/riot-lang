@@ -24,6 +24,7 @@ let build_cli = fun () ->
         Test_cmd.command;
         Bench_cmd.command;
         Toolchain_cmd.command;
+        Upgrade.command;
         Update_cmd.command;
         command "doc" |> about "Generate documentation";
         command "lsp" |> about "Start OCaml LSP server";
@@ -307,6 +308,8 @@ let run = fun ~args ->
             )
           | Some ("toolchain", toolchain_matches) ->
               Toolchain_cmd.run toolchain_matches
+          | Some ("upgrade", upgrade_matches) ->
+              Upgrade.run upgrade_matches
           | Some ("version", _) ->
               println "riot 0.1.0";
               Ok ()
