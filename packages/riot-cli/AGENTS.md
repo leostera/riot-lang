@@ -24,13 +24,14 @@
 18. PM human output should only show `Fetching <pkg> <version>` for real download-start events. Cache-hit materialization events and `PackageResolvedForBuild` stay structured in JSON but should be silent in human mode.
 19. `add`, `rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
 20. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
-21. `riot test` selectors should treat `package:suite` as suite discovery narrowing, not as a raw per-test substring. Only the remaining query text should be forwarded into `run-tests`.
-22. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
-23. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
-24. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.
-25. `add` / `rm` / `update` should consume the same shared `Riot_model.Event` PM stream that builds use. Do not duplicate JSON or human rendering logic for package-management-only wrapper events in the command modules.
-26. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
-27. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
+21. Outside a workspace, `riot add` may bootstrap a minimal root workspace (`riot.toml` + `riot.lock`) and then route the first add through the workspace root manifest. `riot rm` and `riot update` should stay no-op/user-guidance commands in that case rather than failing with the generic workspace error.
+22. `riot test` selectors should treat `package:suite` as suite discovery narrowing, not as a raw per-test substring. Only the remaining query text should be forwarded into `run-tests`.
+23. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
+24. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
+25. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.
+26. `add` / `rm` / `update` should consume the same shared `Riot_model.Event` PM stream that builds use. Do not duplicate JSON or human rendering logic for package-management-only wrapper events in the command modules.
+27. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
+28. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
 
 ## Validate
 

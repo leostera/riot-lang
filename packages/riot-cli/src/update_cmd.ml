@@ -6,6 +6,8 @@ type error =
 
 let out = eprintln
 
+let no_workspace_message = "No riot.toml, so nothing to update"
+
 let command =
   let open ArgParser in
     let open Arg in command "update"
@@ -38,3 +40,7 @@ let run = fun ~workspace matches ->
     () with
   | Ok () -> Ok ()
   | Error error -> fail (UpdateFailed error)
+
+let run_without_workspace = fun _matches ->
+  out no_workspace_message;
+  Ok ()

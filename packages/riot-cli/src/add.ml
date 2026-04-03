@@ -1,11 +1,15 @@
 open Std
 open Std.Collections
 
+let ( let* ) = Result.and_then
+
 type error =
   | MissingDependency
   | ConflictingTarget
   | ConflictingScope
   | CurrentDirUnavailable of string
+  | WorkspaceBootstrapFailed of string
+  | WorkspaceLoadFailed of string
   | AddFailed of Riot_deps.package_error
 
 let out = eprintln
@@ -29,6 +33,8 @@ let message = function
   | ConflictingTarget -> "cannot combine --workspace with --package"
   | ConflictingScope -> "cannot combine --build with --dev"
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
+  | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: " ^ error
+  | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: " ^ error
   | AddFailed error -> Riot_deps.package_error_message error
 
 let path_error_message = function
@@ -43,14 +49,14 @@ let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
   Error (Failure (message err))
 
-let selection_of_matches = fun matches ->
+let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches ->
   let package = ArgParser.get_one matches "package" in
   let workspace = ArgParser.get_flag matches "workspace" in
   match package, workspace with
   | Some _, true -> Error ConflictingTarget
   | Some package, false -> Ok (Riot_deps.Package package)
   | None, true -> Ok Riot_deps.Workspace
-  | None, false -> Ok Riot_deps.Current
+  | None, false -> Ok default_selection
 
 let scope_of_matches = fun matches ->
   let build = ArgParser.get_flag matches "build" in
@@ -65,7 +71,38 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind ->
   Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind
   |> Build.write_pm_event ~mode ~seen_registry_updates
 
-let run = fun ~workspace matches ->
+let empty_workspace_manifest_source = {|[workspace]
+members = []
+
+[dependencies]
+|}
+
+let bootstrap_empty_workspace = fun ~root ->
+  let manifest_path = Path.(root / Path.v "riot.toml") in
+  let* () = Fs.write empty_workspace_manifest_source manifest_path
+  |> Result.map_error (fun err -> WorkspaceBootstrapFailed (IO.error_message err)) in
+  let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+    ~workspace_manager:None
+    ~workspace_root:root
+    ~manifest_paths:[ manifest_path ]
+  |> Result.map_error (fun err -> WorkspaceBootstrapFailed err) in
+  let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
+  Riot_deps.Lockfile_store.write ~workspace_root:root lockfile
+  |> Result.map_error (fun err -> WorkspaceBootstrapFailed err)
+
+let load_workspace = fun ~root ->
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
+  |> Result.map_error (fun err -> WorkspaceLoadFailed err) in
+  if List.is_empty load_errors then
+    Ok workspace
+  else
+    let error = load_errors
+    |> List.map Riot_model.Workspace_manager.load_error_to_string
+    |> String.concat "; " in
+    Error (WorkspaceLoadFailed error)
+
+let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd matches ->
   let mode =
     if ArgParser.get_flag matches "json" then
       Build.Json
@@ -77,8 +114,8 @@ let run = fun ~workspace matches ->
     | Some dependency -> Ok dependency
     | None -> Error MissingDependency
   in
-  match dependency, selection_of_matches matches, scope_of_matches matches, Env.current_dir () with
-  | Ok dependency, Ok selection, Ok scope, Ok cwd ->
+  match dependency, selection_of_matches ~default_selection matches, scope_of_matches matches with
+  | Ok dependency, Ok selection, Ok scope ->
       let request: Riot_deps.add_request = Riot_deps.{ selection; scope; dependency } in
       let pm_session_id = Riot_model.Session_id.make () in
       let seen_registry_updates = HashSet.create () in
@@ -92,9 +129,20 @@ let run = fun ~workspace matches ->
         | Ok () -> Ok ()
         | Error error -> fail (AddFailed error)
       )
-  | (Error err, _, _, _)
-  | (_, Error err, _, _)
-  | (_, _, Error err, _) ->
-      fail err
-  | _, _, _, Error err ->
-      fail (CurrentDirUnavailable (path_error_message err))
+  | (Error err, _, _)
+  | (_, Error err, _)
+  | (_, _, Error err) -> fail err
+
+let run = fun ~workspace matches ->
+  match Env.current_dir () with
+  | Ok cwd -> run_request ~workspace ~cwd matches
+  | Error err -> fail (CurrentDirUnavailable (path_error_message err))
+
+let run_without_workspace = fun ~cwd matches ->
+  match bootstrap_empty_workspace ~root:cwd with
+  | Error err -> fail err
+  | Ok () -> (
+      match load_workspace ~root:cwd with
+      | Error err -> fail err
+      | Ok workspace -> run_request ~default_selection:Riot_deps.Workspace ~workspace ~cwd matches
+    )

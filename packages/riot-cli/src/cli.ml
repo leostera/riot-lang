@@ -99,6 +99,26 @@ let require_clean_workspace = fun workspace_scan_opt ->
   | Loaded (workspace, _) ->
       Ok workspace
 
+let fail_not_in_workspace = fun () ->
+  eprintln "❌ Not in a riot workspace";
+  Error (Failure "Not in a riot workspace")
+
+type current_manifest_status =
+  | Missing_manifest of Path.t
+  | Existing_manifest of Path.t
+
+let current_manifest_status = fun () ->
+  match Env.current_dir () with
+  | Error err -> Error ("failed to read current directory: " ^ path_error_message err)
+  | Ok cwd ->
+      let manifest_path = Path.(cwd / Path.v "riot.toml") in
+      (
+        match Fs.exists manifest_path with
+        | Ok true -> Ok (Existing_manifest cwd)
+        | Ok false -> Ok (Missing_manifest cwd)
+        | Error err -> Error ("failed to read riot.toml status: " ^ IO.error_message err)
+      )
+
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
@@ -259,14 +279,54 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("add", add_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> Add.run ~workspace add_matches
-              | Error _ as e -> e
+              match get_workspace_scan () with
+              | Loaded (_workspace, load_errors) when not (List.is_empty load_errors) -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Add.run ~workspace add_matches
+                )
+              | Loaded (workspace, _) ->
+                  Add.run ~workspace add_matches
+              | NoWorkspace -> (
+                  match current_manifest_status () with
+                  | Ok (Missing_manifest cwd) ->
+                      Add.run_without_workspace ~cwd add_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
+                  | Error err ->
+                      eprintln ("\027[1;31mError\027[0m: " ^ err);
+                      Error (Failure err)
+                )
+              | ScanFailed _ -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Add.run ~workspace add_matches
+                )
             )
           | Some ("rm", remove_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> Remove.run ~workspace remove_matches
-              | Error _ as e -> e
+              match get_workspace_scan () with
+              | Loaded (_workspace, load_errors) when not (List.is_empty load_errors) -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Remove.run ~workspace remove_matches
+                )
+              | Loaded (workspace, _) ->
+                  Remove.run ~workspace remove_matches
+              | NoWorkspace -> (
+                  match current_manifest_status () with
+                  | Ok (Missing_manifest _) ->
+                      Remove.run_without_workspace remove_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
+                  | Error err ->
+                      eprintln ("\027[1;31mError\027[0m: " ^ err);
+                      Error (Failure err)
+                )
+              | ScanFailed _ -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Remove.run ~workspace remove_matches
+                )
             )
           | Some ("fmt", fmt_matches) ->
               let explicit_paths = ArgParser.get_many fmt_matches "path" in
@@ -302,9 +362,29 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("update", update_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> Update_cmd.run ~workspace update_matches
-              | Error _ as e -> e
+              match get_workspace_scan () with
+              | Loaded (_workspace, load_errors) when not (List.is_empty load_errors) -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Update_cmd.run ~workspace update_matches
+                )
+              | Loaded (workspace, _) ->
+                  Update_cmd.run ~workspace update_matches
+              | NoWorkspace -> (
+                  match current_manifest_status () with
+                  | Ok (Missing_manifest _) ->
+                      Update_cmd.run_without_workspace update_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
+                  | Error err ->
+                      eprintln ("\027[1;31mError\027[0m: " ^ err);
+                      Error (Failure err)
+                )
+              | ScanFailed _ -> (
+                  match require_clean_workspace (get_workspace_scan ()) with
+                  | Error _ as e -> e
+                  | Ok workspace -> Update_cmd.run ~workspace update_matches
+                )
             )
           | Some ("toolchain", toolchain_matches) ->
               Toolchain_cmd.run toolchain_matches

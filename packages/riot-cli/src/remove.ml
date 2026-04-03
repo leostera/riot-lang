@@ -10,6 +10,8 @@ type error =
 
 let out = eprintln
 
+let no_workspace_message = "No riot.toml, so nothing to remove"
+
 let command =
   let open ArgParser in
     let open Arg in command "rm"
@@ -98,3 +100,7 @@ let run = fun ~workspace matches ->
       fail err
   | _, _, _, Error err ->
       fail (CurrentDirUnavailable (path_error_message err))
+
+let run_without_workspace = fun _matches ->
+  out no_workspace_message;
+  Ok ()
