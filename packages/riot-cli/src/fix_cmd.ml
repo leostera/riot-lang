@@ -16,17 +16,17 @@ let prepare_workspace = fun (workspace: Riot_model.Workspace.t) ->
       | Error err -> Error (Failure (Riot_model.Pm_error.message err))
     )
 
-let build_package = fun ~mode ~(workspace:Riot_model.Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () ->
+let build_package = fun ~mode ~(workspace:Riot_model.Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace ->
+  workspace) () ->
   match prepare_workspace workspace with
   | Error _ as err -> err
-  | Ok prepared_workspace ->
-      Build.build_command
-        ~workspace:(transform_workspace prepared_workspace)
-        ~prepared:true
-        ~mode
-        ~profile
-        (Some package_name)
-        None
+  | Ok prepared_workspace -> Build.build_command
+    ~workspace:(transform_workspace prepared_workspace)
+    ~prepared:true
+    ~mode
+    ~profile
+    (Some package_name)
+    None
 
 let run = fun matches ->
   match Riot_fix.fix_request_of_matches matches with

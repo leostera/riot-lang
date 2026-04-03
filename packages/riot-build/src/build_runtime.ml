@@ -134,10 +134,7 @@ let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager r
           match validate_target_toolchains request.workspace targets with
           | Error _ as err -> err
           | Ok () -> (
-              match connect
-                ?workspace_manager
-                ~workspace:request.workspace
-                () with
+              match connect ?workspace_manager ~workspace:request.workspace () with
               | Error err -> Error (ClientError err)
               | Ok client ->
                   try
@@ -183,9 +180,7 @@ let build = fun ?(on_event = no_event) ?workspace_manager request ->
         ?workspace_manager
         ~emit:(fun kind ->
           on_event
-            (Pm (Riot_model.Event.create
-              ~session_id:pm_session_id
-              ~level:Riot_model.Event.Info kind)))
+            (Pm (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind)))
         ~workspace
         ())
     ~on_event

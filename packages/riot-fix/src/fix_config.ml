@@ -140,19 +140,21 @@ let glob_match = fun pattern text ->
   (!previous).(0) <- true;
   for pattern_idx = 1 to pattern_len do
     let current = Array.make (text_len + 1) false in
-    if String.get pattern (pattern_idx - 1) = '*' then (
-      current.(0) <- (!previous).(0);
-      for text_idx = 1 to text_len do
-        current.(text_idx) <- (!previous).(text_idx) || current.(text_idx - 1)
-      done
-    ) else (
-      for text_idx = 1 to text_len do
-        current.(text_idx) <-
-          (!previous).(text_idx - 1)
+    if String.get pattern (pattern_idx - 1) = '*' then
+      (
+        current.(0) <- (!previous).(0);
+        for text_idx = 1 to text_len do
+          current.(text_idx) <- (!previous).(text_idx) || current.(text_idx - 1)
+        done
+      )
+    else
+      (
+        for text_idx = 1 to text_len do
+          current.(text_idx) <- (!previous).(text_idx - 1)
           && String.get pattern (pattern_idx - 1) = String.get text (text_idx - 1)
-      done;
-    );
-    previous := current
+        done;
+      );
+      previous := current
   done;
   (!previous).(text_len)
 
@@ -169,13 +171,9 @@ let glob_match_anywhere = fun pattern text ->
 let matches_pattern = fun pattern candidate ->
   let basename = Path.basename (Path.v candidate) in
   if String.contains pattern "*" then
-    glob_match pattern candidate
-    || glob_match pattern basename
-    || glob_match_anywhere pattern candidate
+    glob_match pattern candidate || glob_match pattern basename || glob_match_anywhere pattern candidate
   else
-    String.equal pattern candidate
-    || String.equal pattern basename
-    || String.contains candidate pattern
+    String.equal pattern candidate || String.equal pattern basename || String.contains candidate pattern
 
 let find_package_scope = fun scope file ->
   scope.packages |> List.filter_map

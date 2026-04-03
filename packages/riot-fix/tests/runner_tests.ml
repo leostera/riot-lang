@@ -1941,10 +1941,8 @@ let render x y z =
             ~workspace_root:tmpdir
             ~target_dir_root:Path.(tmpdir / Path.v "_build")
             providers in
-          let dependency_names =
-            plan.package.Riot_model.Package.dependencies
-            |> List.map (fun (dep: Riot_model.Package.dependency) -> dep.name)
-          in
+          let dependency_names = plan.package.Riot_model.Package.dependencies
+          |> List.map (fun (dep: Riot_model.Package.dependency) -> dep.name) in
           Test.assert_true (List.mem "helper" dependency_names);
           Ok ()));
   Test.case "fixme runner registry source lists discovered providers"
@@ -1987,10 +1985,7 @@ let render x y z =
               rules = [ "std:no-stdlib" ];
             }
           in
-          let plan = Riot_fix.Fixme_runner.materialize
-            ~workspace_root
-            ~target_dir_root
-            [ provider ] in
+          let plan = Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ] in
           let source = read_file plan.library_path in
           Test.assert_true (String.contains source "Riot_fix.fix_request_of_matches matches");
           Test.assert_true (String.contains source "Riot_fix.Cli.Execution.run_with_coordinator");
@@ -2015,10 +2010,7 @@ let render x y z =
               rules = [ "std:no-stdlib" ];
             }
           in
-          let plan = Riot_fix.Fixme_runner.materialize
-            ~workspace_root
-            ~target_dir_root
-            [ provider ] in
+          let plan = Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ] in
           let source = read_file plan.main_path in
           Test.assert_true (String.contains source "Actors.run ~main:Fixme_runner.main");
           Ok ()));

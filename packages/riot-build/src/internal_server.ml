@@ -489,10 +489,11 @@ let start_server = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry
         in
         let workspace_result =
           if prepare_workspace_first then
-            prepare_workspace ~emit ~workspace_manager ~registry ~workspace ()
-            |> Result.map_error (fun err ->
-              trace_server ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
-              WorkspacePreparationFailed { error = err })
+            prepare_workspace ~emit ~workspace_manager ~registry ~workspace () |> Result.map_error
+              (fun err ->
+                trace_server
+                  ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
+                WorkspacePreparationFailed { error = err })
           else
             Ok workspace
         in

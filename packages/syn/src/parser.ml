@@ -525,8 +525,7 @@ let syntax_kind_of_token_kind = function
 (** Make a token green element *)
 
 (** Convert list of tokens to green elements *)
-let make_node = fun kind children ->
-  Ceibo.Green.make_node ~kind ~children
+let make_node = fun kind children -> Ceibo.Green.make_node ~kind ~children
 
 (** Make an ERROR node with diagnostic *)
 let green_trivia_of_token_trivia = fun parser (trivia: Token.trivia) ->

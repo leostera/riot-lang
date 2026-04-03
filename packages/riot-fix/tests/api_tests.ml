@@ -133,8 +133,7 @@ version = "0.1.0"
 [riot.fix.provider]
 rules = ["demo-rule"]
 |}
-                Path.(package_dir / Path.v "riot.toml")
-              |> Result.expect ~msg:"failed to write package riot.toml";
+                Path.(package_dir / Path.v "riot.toml") |> Result.expect ~msg:"failed to write package riot.toml";
               Fs.write
                 "let rules () = []\nlet explanations () = []\n"
                 Path.(fix_dir / Path.v "riot_fix_rules.ml")

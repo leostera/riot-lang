@@ -3,12 +3,9 @@ open Std
 
 (** A syntax node with position information *)
 type ('kind, 'text) syntax_node
-
 (** A syntax token with position information *)
 type ('kind, 'text) syntax_token
-
 type ('kind, 'text) syntax_trivia
-
 (** A syntax element is either a node or token *)
 type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
@@ -35,10 +32,7 @@ module SyntaxNode: sig
 
   (** Fold over direct non-trivia children in source order. *)
   val fold_children:
-    ('kind, 'text) syntax_node ->
-    'acc ->
-    ('acc -> ('kind, 'text) syntax_element -> 'acc) ->
-    'acc
+    ('kind, 'text) syntax_node -> 'acc -> ('acc -> ('kind, 'text) syntax_element -> 'acc) -> 'acc
 
   (** Get a child by index *)
   val child: ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option

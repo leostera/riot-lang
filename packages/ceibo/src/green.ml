@@ -79,7 +79,7 @@ let replace_child = fun node ~index ~child ->
   make_node ~kind:node.kind ~children:(loop 0 node.children)
 
 let append_child = fun node ~child ->
-  make_node ~kind:node.kind ~children:(node.children @ [ child ])
+  make_node ~kind:node.kind ~children:((node.children @ [ child ]))
 
 let child_count = fun node -> List.length node.children
 
@@ -89,7 +89,10 @@ let child = fun node index ->
     | current :: _ when i = index -> Some current
     | _ :: rest -> loop (i + 1) rest
   in
-  if index < 0 then None else loop 0 node.children
+  if index < 0 then
+    None
+  else
+    loop 0 node.children
 
 let children = fun node -> node.children
 
@@ -119,8 +122,5 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("type", Data.Json.String "node");
     ("kind", kind_to_json node.kind);
     ("width", Data.Json.Int node.width);
-    (
-      "children",
-      Data.Json.Array (List.map (to_json ~kind_to_json ~text_to_json) node.children)
-    )
+    ("children", Data.Json.Array (List.map (to_json ~kind_to_json ~text_to_json) node.children))
   ]

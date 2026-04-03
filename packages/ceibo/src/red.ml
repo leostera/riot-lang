@@ -97,8 +97,7 @@ module SyntaxNode = struct
   let children = fun (node: ('kind, 'text) syntax_node) ->
     fold_children node [] (fun acc child -> child :: acc) |> List.rev
 
-  let children_list = fun (node: ('kind, 'text) syntax_node) ->
-    children node
+  let children_list = fun (node: ('kind, 'text) syntax_node) -> children node
 
   let kind = fun (node: ('kind, 'text) syntax_node) -> (green node).kind
 
@@ -183,16 +182,18 @@ module SyntaxNode = struct
 
   let rec preorder = fun (node: ('kind, 'text) syntax_node) f ->
     f (Node node);
-    fold_children node () (fun () ->
-      function
-      | Token t -> f (Token t)
-      | Node n -> preorder n f)
+    fold_children node ()
+      (fun () ->
+        function
+        | Token t -> f (Token t)
+        | Node n -> preorder n f)
 
   let rec postorder = fun (node: ('kind, 'text) syntax_node) f ->
-    fold_children node () (fun () ->
-      function
-      | Token t -> f (Token t)
-      | Node n -> postorder n f);
+    fold_children node ()
+      (fun () ->
+        function
+        | Token t -> f (Token t)
+        | Node n -> postorder n f);
     f (Node node)
 
   let tokens = fun (node: ('kind, 'text) syntax_node) ->
@@ -278,7 +279,6 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("span", Span.to_json (SyntaxNode.span node));
     (
       "children",
-      Data.Json.Array
-        (List.map (to_json ~kind_to_json ~text_to_json) (SyntaxNode.children node))
+      Data.Json.Array (List.map (to_json ~kind_to_json ~text_to_json) (SyntaxNode.children node))
     )
   ]

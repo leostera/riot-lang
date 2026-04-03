@@ -80,7 +80,8 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
     limit;
     target;
     use_generated_runner;
-    output_mode = _;
+    output_mode=_;
+
   } ->
       (
         match request.scope, use_generated_runner with

@@ -91,7 +91,7 @@ let provider_hash = fun providers ->
   providers |> List.sort
     (fun (left: Riot_model.Fix_provider.t) right ->
       String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> fun fingerprints ->
-  String.concat "\n" (generator_version :: fingerprints) |> Crypto.hash_string |> Crypto.Digest.hex
+    String.concat "\n" (generator_version :: fingerprints) |> Crypto.hash_string |> Crypto.Digest.hex
 
 let generated_provider = fun plan provider ->
   let module_name = generated_module_name provider in
@@ -112,12 +112,9 @@ let provider_module_line = fun (provider: generated_provider) ->
   "    (module " ^ provider.module_name ^ " : Riot_fix.Provider.S);"
 
 let registry_source = fun providers ->
-  let provider_lines =
-    providers
-    |> List.map
-      (fun (provider: Riot_model.Fix_provider.t) ->
-        "    (module " ^ generated_module_name provider ^ " : Riot_fix.Provider.S);")
-  in
+  let provider_lines = providers
+  |> List.map
+    (fun (provider: Riot_model.Fix_provider.t) -> "    (module " ^ generated_module_name provider ^ " : Riot_fix.Provider.S);") in
   String.concat
     "\n"
     [
@@ -216,14 +213,15 @@ let dependency_entries = fun workspace_root providers ->
 let dependency_of_entry = fun (name, path) ->
   Riot_model.Package.{
     name;
-    source = {
-      workspace = false;
-      builtin = false;
-      path = Some path;
-      source_locator = None;
-      ref_ = None;
-      version = Some Std.Version.any;
-    };
+    source =
+      {
+        workspace = false;
+        builtin = false;
+        path = Some path;
+        source_locator = None;
+        ref_ = None;
+        version = Some Std.Version.any;
+      };
   }
 
 let package_dependencies = fun ~workspace_root providers ->
@@ -239,29 +237,26 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
   let binary_name = "fixme-runner" in
   let package_name = "fixme-runner" in
   let binary_path =
-    Path.(
-      target_dir_root
-      / Path.v "release"
-      / Path.v (Riot_model.Riot_dirs.host_target ())
-      / Path.v "out"
-      / Path.v package_name
-      / Path.v binary_name
-    )
-  in
-  let placeholder_package =
-    Riot_model.Package.synthetic
-      ~name:package_name
-      ~path:package_dir
-      ~relative_path:(relative_path_for_package ~workspace_root package_dir)
-  in
+    Path.(target_dir_root
+    / Path.v "release"
+    / Path.v (Riot_model.Riot_dirs.host_target ())
+    / Path.v "out"
+    / Path.v package_name
+    / Path.v binary_name) in
+  let placeholder_package = Riot_model.Package.synthetic
+    ~name:package_name
+    ~path:package_dir
+    ~relative_path:(relative_path_for_package ~workspace_root package_dir) in
   let plan = {
     provider_hash = hash;
     generated_dir;
     package_dir;
     src_dir;
     providers_dir;
-    library_path = Path.(src_dir / Path.v "fixme_runner.ml");
-    main_path = Path.(src_dir / Path.v "main.ml");
+    library_path =
+      Path.(src_dir / Path.v "fixme_runner.ml");
+    main_path =
+      Path.(src_dir / Path.v "main.ml");
     binary_path;
     package_name;
     binary_name;
@@ -270,22 +265,19 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
   }
   in
   let providers = List.map (generated_provider plan) providers in
-  let package =
-    Riot_model.Package.make
-      ~name:package_name
-      ~path:package_dir
-      ~relative_path:(relative_path_for_package ~workspace_root package_dir)
-      ~dependencies:(package_dependencies ~workspace_root providers)
-      ~binaries:[ Riot_model.Package.{ name = binary_name; path = Path.v "src/main.ml" } ]
-      ~library:Riot_model.Package.{ path = Path.v "src/fixme_runner.ml" }
-      ~sources:Riot_model.Package.{
-        src = [ Path.v "src/fixme_runner.ml"; Path.v "src/main.ml" ];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      }
-      ()
+  let package = Riot_model.Package.make ~name:package_name ~path:package_dir ~relative_path:(relative_path_for_package
+    ~workspace_root
+    package_dir) ~dependencies:(package_dependencies ~workspace_root providers) ~binaries:[
+    Riot_model.Package.{ name = binary_name; path = Path.v "src/main.ml" }
+  ] ~library:Riot_model.Package.{ path = Path.v "src/fixme_runner.ml" }
+    ~sources:Riot_model.Package.{
+      src = [ Path.v "src/fixme_runner.ml"; Path.v "src/main.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
   in
   { plan with package; providers }
 
@@ -362,8 +354,7 @@ let remove_if_exists = fun path remove ->
   | Ok true -> remove path |> Result.expect ~msg:(("failed to clean " ^ Path.to_string path))
   | _ -> ()
 
-let cleanup_stale_sources = fun plan ->
-  remove_if_exists plan.providers_dir Fs.remove_dir_all
+let cleanup_stale_sources = fun plan -> remove_if_exists plan.providers_dir Fs.remove_dir_all
 
 let write_file = fun path content ->
   Fs.write content path |> Result.expect ~msg:(("failed to write " ^ Path.to_string path))
@@ -374,10 +365,8 @@ let copy_provider_source = fun (provider: generated_provider) ->
     ~msg:(("failed to copy provider source " ^ Path.to_string provider.provider.source_path))
 
 let attach_to_workspace = fun workspace plan ->
-  let other_packages =
-    workspace.Riot_model.Workspace.packages
-    |> List.filter (fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name))
-  in
+  let other_packages = workspace.Riot_model.Workspace.packages
+  |> List.filter (fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name)) in
   { workspace with packages = other_packages @ [ plan.package ] }
 
 let materialize = fun ~workspace_root ~target_dir_root providers ->

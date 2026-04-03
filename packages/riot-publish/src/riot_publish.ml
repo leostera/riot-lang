@@ -243,16 +243,16 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
     if request.skip_check then
       Ok ()
     else
-      run_check
-        ~emit
-        ~package_name:package.name
-        ~version:package.publish.version
-        ~stage:`fix
+      run_check ~emit ~package_name:package.name ~version:package.publish.version ~stage:`fix
         (fun () ->
-          Riot_fix.fix
-            ~on_event:(fun event -> emit (Fix event))
-            ~build_package:(fun ~(workspace:Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () ->
-              match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+          Riot_fix.fix ~on_event:(fun event -> emit (Fix event))
+            ~build_package:(fun ~(workspace:Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace ->
+              workspace) () ->
+              match Riot_deps.ensure_workspace
+                ~mode:Riot_deps.Dep_solver.Refresh
+                ~registry
+                ~workspace
+                () with
               | Error err -> Error (Failure (Riot_model.Pm_error.message err))
               | Ok prepared_workspace ->
                   Riot_build.build_prepared ~on_event:(fun event -> emit (Build event))
@@ -262,12 +262,9 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
                       targets = Riot_build.Host;
                       scope = Riot_build.Runtime;
                       profile;
-                    }
-                  |> Result.map (fun _ -> ())
-                  |> Result.map_error (fun err -> Failure (Riot_build.build_error_message err)))
-            fix_request
-          |> Result.map (fun _ -> ()))
-      |> Result.map_error
+                    } |> Result.map (fun _ -> ()) |> Result.map_error
+                    (fun err -> Failure (Riot_build.build_error_message err)))
+            fix_request |> Result.map (fun _ -> ())) |> Result.map_error
         (fun exn -> FixCheckFailed { package = package.name; error = exn_message exn })
   in
   let* () =

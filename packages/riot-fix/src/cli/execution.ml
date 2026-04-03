@@ -196,7 +196,9 @@ let absolute_target = fun ~cwd target ->
 
 let generated_runner_args = fun ~cwd ~mode ~limit ~target ~output_mode ->
   let args = ref [] in
-  let push item = args := !args @ [ item ] in
+  let push item =
+    args := !args @ [ item ]
+  in
   let push_pair name value =
     args := !args @ [ name; value ]
   in
@@ -219,7 +221,7 @@ let generated_runner_args = fun ~cwd ~mode ~limit ~target ~output_mode ->
   push (Path.to_string (absolute_target ~cwd target));
   !args
 
-let run_generated_runner = fun ~cwd ~(build_package: Types.build_package) ~report_output ~mode ~limit ~target ~output_mode scope ->
+let run_generated_runner = fun ~cwd ~(build_package:Types.build_package) ~report_output ~mode ~limit ~target ~output_mode scope ->
   let workspace = Fix_config.workspace scope in
   let workspace_root = Fix_config.workspace_root scope in
   let target_dir_root = Fix_config.target_dir_root scope in
@@ -229,21 +231,17 @@ let run_generated_runner = fun ~cwd ~(build_package: Types.build_package) ~repor
   let plan = Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
   let args = generated_runner_args ~cwd ~mode ~limit ~target ~output_mode in
   trace_fix ("building generated runner package " ^ plan.package_name);
-  match build_package
-    ~workspace
-    ~package_name:plan.package_name
-    ~profile:"release"
-    ~transform_workspace:(fun workspace -> Fixme_runner.attach_to_workspace workspace plan)
-    ()
+  match
+    build_package ~workspace ~package_name:plan.package_name ~profile:"release"
+      ~transform_workspace:(fun workspace ->
+        Fixme_runner.attach_to_workspace workspace plan)
+      ()
   with
   | Error err ->
       trace_fix ("building generated runner failed: " ^ Exception.to_string err);
       Error err
   | Ok () ->
-      let command = Command.make
-        (Path.to_string plan.binary_path)
-        ~cwd:(Path.to_string cwd)
-        ~args in
+      let command = Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args in
       trace_fix ("running generated runner " ^ Path.to_string plan.binary_path);
       if report_output then
         match Command.status command with

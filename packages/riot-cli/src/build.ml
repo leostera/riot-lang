@@ -384,8 +384,12 @@ let run_request = fun (request: request) ->
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let result =
-    (if request.prepared then Riot_build.build_prepared else Riot_build.build)
-      ?workspace_manager:request.workspace_manager
+    (
+      if request.prepared then
+        Riot_build.build_prepared
+      else
+        Riot_build.build
+    ) ?workspace_manager:request.workspace_manager
       ~on_event:(
         function
         | Riot_build.Pm kind ->

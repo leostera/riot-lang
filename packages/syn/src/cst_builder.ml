@@ -836,9 +836,8 @@ and type_definition_owned_trivia_spans = function
 
 let type_declaration_owned_trivia_spans =
   let rec collect groups_rev decl =
-    let groups_rev =
-      type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
-      :: groups_rev in
+    let groups_rev = type_definition_owned_trivia_spans (Cst.TypeDeclaration.type_definition decl)
+    :: groups_rev in
     match Cst.TypeDeclaration.next_and_declaration decl with
     | Some next -> collect groups_rev next
     | None -> List.concat (List.rev groups_rev)
@@ -4130,8 +4129,7 @@ let rec pattern_from_node = fun node ->
           else
             loop rest saw_tilde pending_label awaiting_payload acc
     in
-    Ceibo.Red.SyntaxNode.children node
-    |> fun children -> loop children false None false []
+    Ceibo.Red.SyntaxNode.children node |> fun children -> loop children false None false []
   in
   let node, attributes = peel_outer_pattern_attributes node in
   let pattern =

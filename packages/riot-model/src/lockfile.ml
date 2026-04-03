@@ -556,26 +556,18 @@ path = "../vendor/foo"
         Error err [@test]
 
   let test_lockfile_roundtrips_empty_packages (): (unit, string) result =
-    let lockfile = {
-      format_version = 1;
-      dependency_hash = "empty-lock";
-      packages = [];
-    }
-    in
+    let lockfile = { format_version = 1; dependency_hash = "empty-lock"; packages = [] } in
     let rendered = to_string lockfile in
     match Toml.parse rendered with
-    | Error err ->
-        Error ("expected generated empty lockfile TOML to parse: " ^ Toml.error_to_string err)
+    | Error err -> Error ("expected generated empty lockfile TOML to parse: "
+    ^ Toml.error_to_string err)
     | Ok toml -> (
         match of_toml toml with
         | Ok parsed when Int.equal parsed.format_version 1
-                       && String.equal parsed.dependency_hash "empty-lock"
-                       && List.is_empty parsed.packages
-                       && String.contains rendered "packages = []" ->
-            Ok ()
-        | Ok _ ->
-            Error "expected empty lockfile to round-trip through TOML"
-        | Error err ->
-            Error err
+        && String.equal parsed.dependency_hash "empty-lock"
+        && List.is_empty parsed.packages
+        && String.contains rendered "packages = []" -> Ok ()
+        | Ok _ -> Error "expected empty lockfile to round-trip through TOML"
+        | Error err -> Error err
       ) [@test]
 end [@test]

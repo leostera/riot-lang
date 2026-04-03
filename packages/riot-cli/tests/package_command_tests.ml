@@ -30,23 +30,17 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       let lockfile_path = Path.(workspace_root / Path.v "riot.lock") in
       let* () = Fs.create_dir_all workspace_root |> Result.map_error IO.error_message in
-      let* () =
-        Riot_cli.Add.bootstrap_empty_workspace ~root:workspace_root
-        |> Result.map_error Riot_cli.Add.message
-      in
+      let* () = Riot_cli.Add.bootstrap_empty_workspace ~root:workspace_root
+      |> Result.map_error Riot_cli.Add.message in
       let* manifest_source = Fs.read manifest_path |> Result.map_error IO.error_message in
       let* lockfile = Riot_deps.Lockfile_store.read ~workspace_root
       |> Result.map_error (fun err -> "expected lockfile read to succeed: " ^ err) in
       let* matches = parse_add [ "add"; "hello" ] in
-      let* selection =
-        Riot_cli.Add.selection_of_matches ~default_selection:Riot_deps.Workspace matches
-        |> Result.map_error Riot_cli.Add.message
-      in
+      let* selection = Riot_cli.Add.selection_of_matches ~default_selection:Riot_deps.Workspace matches
+      |> Result.map_error Riot_cli.Add.message in
       let workspace_manager = Riot_model.Workspace_manager.create () in
-      let* _workspace, load_errors =
-        Riot_model.Workspace_manager.scan workspace_manager workspace_root
-        |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err)
-      in
+      let* (_workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
+      |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err) in
       if not (String.contains manifest_source "[workspace]") then
         Error "expected bootstrap manifest to include [workspace]"
       else if not (String.contains manifest_source "members = []") then

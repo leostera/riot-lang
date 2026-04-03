@@ -324,10 +324,7 @@ module Red: sig
 
     (** `fold_children node init f` folds direct non-trivia children in source order. *)
     val fold_children:
-      ('kind, 'text) syntax_node ->
-      'acc ->
-      ('acc -> ('kind, 'text) syntax_element -> 'acc) ->
-      'acc
+      ('kind, 'text) syntax_node -> 'acc -> ('acc -> ('kind, 'text) syntax_element -> 'acc) -> 'acc
 
     (** `child node i` returns the child at index `i` (lazy fabrication). *)
     val child: ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
