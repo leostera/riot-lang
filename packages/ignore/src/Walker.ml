@@ -1,11 +1,7 @@
 open Std
 module List = Collections.List
-module Array = Collections.Array
 module Queue = Collections.Queue
-module Mutex = Sync.Mutex
-module Condition = Sync.Condition
-module Atomic = Sync.Atomic
-module Domain = Kernel.Domain
+module DynamicWorkerPool = WorkerPool.DynamicWorkerPool
 
 type error =
   | File_system of { path: Path.t option; cause: Fs.error }
@@ -377,184 +373,220 @@ type task = {
   frames: frame list;
 }
 
-type shared = {
-  queue: task Queue.t;
-  queue_lock: Mutex.t;
-  queue_cond: Condition.t;
-  stop: bool Atomic.t;
-  pending: int Atomic.t;
+type task_result = {
+  child_tasks: task list;
+  stop: bool;
+}
+
+type walk_message =
+  | Scan_finished of task_result
+  | Scan_failed of error
+  | Walk_completed of {
+      coordinator: Pid.t;
+      result: (unit, error) result;
+    }
+
+type Message.t += Ignore_walk of walk_message
+
+type state = {
+  owner: Pid.t;
+  coordinator: Pid.t;
+  pool: task DynamicWorkerPool.t;
+  idle_workers: task DynamicWorkerPool.worker Queue.t;
+  pending_tasks: task Queue.t;
+  mutable in_flight: int;
+  mutable stop: bool;
   mutable error: error option;
 }
 
-let set_error shared err =
-  Mutex.lock shared.queue_lock;
-  if Option.is_none shared.error then
-    shared.error <- Some err;
-  Atomic.set shared.stop true;
-  Condition.broadcast shared.queue_cond;
-  Mutex.unlock shared.queue_lock
-
-let stop_now shared =
-  Mutex.lock shared.queue_lock;
-  Atomic.set shared.stop true;
-  Condition.broadcast shared.queue_cond;
-  Mutex.unlock shared.queue_lock
-
-let finish_task shared child_tasks =
-  Mutex.lock shared.queue_lock;
-  List.iter (Queue.push shared.queue) child_tasks;
-  let delta = (List.length child_tasks) - 1 in
-  ignore (Atomic.fetch_and_add shared.pending delta);
-  Condition.broadcast shared.queue_cond;
-  Mutex.unlock shared.queue_lock
-
-let rec take_task shared =
-  Mutex.lock shared.queue_lock;
-  let rec loop () =
-    if Atomic.get shared.stop then
-      None
-    else
-      match Queue.pop shared.queue with
-      | Some task -> Some task
-      | None ->
-          if Atomic.get shared.pending = 0 then
-            None
-          else (
-            Condition.wait shared.queue_cond shared.queue_lock;
-            loop ()
-          )
-  in
-  let task = loop () in
-  Mutex.unlock shared.queue_lock;
-  task
-
-let apply_callback shared entry f =
-  let step =
-    if Atomic.get shared.stop then
-      Fs.Walker.Stop
-    else
-      f entry
-  in
-  step
-
-let process_directory_task config shared task f =
+let process_directory_task = fun config task f ->
   match read_child_entries config task.dir with
   | Error err ->
-      set_error shared err;
-      finish_task shared []
+      Error err
   | Ok entries ->
       let rec loop child_tasks =
         function
         | [] ->
-            finish_task shared (List.rev child_tasks)
+            Ok { child_tasks = List.rev child_tasks; stop = false }
         | entry :: rest ->
-            if Atomic.get shared.stop then
-              finish_task shared (List.rev child_tasks)
-            else
-              match decision_for_entry config task.frames entry with
-              | Error err ->
-                  set_error shared err;
-                  finish_task shared (List.rev child_tasks)
-              | Ok match_ when Match.is_ignore match_ ->
-                  loop child_tasks rest
-              | Ok _ -> (
-                  match Fs.Walker.FileItem.kind entry with
-                  | Fs.Walker.Directory -> (
-                      match load_frame config entry with
-                      | Error err ->
-                          set_error shared err;
-                          finish_task shared (List.rev child_tasks)
-                      | Ok frame -> (
-                          match apply_callback shared entry f with
-                          | Fs.Walker.Stop ->
-                              stop_now shared;
-                              finish_task shared (List.rev child_tasks)
-                          | Fs.Walker.Skip_subtree ->
-                              loop child_tasks rest
-                          | Fs.Walker.Continue ->
-                              loop ({ dir = entry; frames = task.frames @ [ frame ] } :: child_tasks) rest
-                        )
-                    )
-                  | Fs.Walker.File
-                  | Fs.Walker.Symlink
-                  | Fs.Walker.Other -> (
-                      match apply_callback shared entry f with
-                      | Fs.Walker.Stop ->
-                          stop_now shared;
-                          finish_task shared (List.rev child_tasks)
-                      | Fs.Walker.Skip_subtree
-                      | Fs.Walker.Continue ->
-                          loop child_tasks rest
-                    )
-                )
+            match decision_for_entry config task.frames entry with
+            | Error err ->
+                Error err
+            | Ok match_ when Match.is_ignore match_ ->
+                loop child_tasks rest
+            | Ok _ -> (
+                match Fs.Walker.FileItem.kind entry with
+                | Fs.Walker.Directory -> (
+                    match load_frame config entry with
+                    | Error err ->
+                        Error err
+                    | Ok frame -> (
+                        match f entry with
+                        | Fs.Walker.Stop ->
+                            Ok { child_tasks = List.rev child_tasks; stop = true }
+                        | Fs.Walker.Skip_subtree ->
+                            loop child_tasks rest
+                        | Fs.Walker.Continue ->
+                            loop ({ dir = entry; frames = task.frames @ [ frame ] } :: child_tasks) rest
+                      )
+                  )
+                | Fs.Walker.File
+                | Fs.Walker.Symlink
+                | Fs.Walker.Other -> (
+                    match f entry with
+                    | Fs.Walker.Stop ->
+                        Ok { child_tasks = List.rev child_tasks; stop = true }
+                    | Fs.Walker.Skip_subtree
+                    | Fs.Walker.Continue ->
+                        loop child_tasks rest
+                  )
+              )
       in
       loop [] entries
 
-let enqueue_root_task config shared ~f root =
+let dispatch_available = fun state ->
+  let rec loop () =
+    if state.stop || Option.is_some state.error then
+      ()
+    else
+      match (Queue.front state.idle_workers, Queue.front state.pending_tasks) with
+      | Some _, Some _ -> (
+          match (Queue.pop state.idle_workers, Queue.pop state.pending_tasks) with
+          | Some worker, Some task ->
+              state.in_flight <- state.in_flight + 1;
+              DynamicWorkerPool.send_task state.pool worker task;
+              loop ()
+          | _ -> panic "ignore walker dispatch queue desynchronized"
+        )
+      | _ -> ()
+  in
+  loop ()
+
+let finish_result = fun state ->
+  match state.error with
+  | Some err -> Error err
+  | None -> Ok ()
+
+let maybe_finish = fun state ->
+  dispatch_available state;
+  if state.in_flight = 0 && (state.stop || Queue.is_empty state.pending_tasks) then (
+    send state.owner (Ignore_walk (Walk_completed { coordinator = state.coordinator; result = finish_result state }));
+    true
+  ) else
+    false
+
+let enqueue_root_task = fun config state ~f root ->
   match root_entry config root with
   | Error err ->
-      set_error shared err
+      if Option.is_none state.error then
+        state.error <- Some err;
+      state.stop <- true
   | Ok entry -> (
       match decision_for_entry config [] entry with
       | Error err ->
-          set_error shared err
+          if Option.is_none state.error then
+            state.error <- Some err;
+          state.stop <- true
       | Ok match_ when Match.is_ignore match_ -> ()
       | Ok _ ->
           if should_descend_root entry then
             match load_frame config entry with
             | Error err ->
-                set_error shared err
+                if Option.is_none state.error then
+                  state.error <- Some err;
+                state.stop <- true
             | Ok frame -> (
-                match apply_callback shared entry f with
+                match f entry with
                 | Fs.Walker.Stop ->
-                    stop_now shared
+                    state.stop <- true
                 | Fs.Walker.Skip_subtree -> ()
                 | Fs.Walker.Continue ->
-                    Mutex.lock shared.queue_lock;
-                    Queue.push shared.queue { dir = entry; frames = [ frame ] };
-                    ignore (Atomic.fetch_and_add shared.pending 1);
-                    Condition.broadcast shared.queue_cond;
-                    Mutex.unlock shared.queue_lock
+                    Queue.push state.pending_tasks { dir = entry; frames = [ frame ] }
               )
           else
-            match apply_callback shared entry f with
-            | Fs.Walker.Stop -> stop_now shared
+            match f entry with
+            | Fs.Walker.Stop -> state.stop <- true
             | Fs.Walker.Skip_subtree
             | Fs.Walker.Continue -> ()
     )
 
-let parallel_walk config ~f =
-  let shared = {
-    queue = Queue.create ();
-    queue_lock = Mutex.create ();
-    queue_cond = Condition.create ();
-    stop = Atomic.make false;
-    pending = Atomic.make 0;
-    error = None;
-  } in
-  List.iter (enqueue_root_task config shared ~f) config.roots;
-  if Atomic.get shared.pending = 0 || Atomic.get shared.stop then
-    match shared.error with
-    | Some err -> Error err
-    | None -> Ok ()
+type event =
+  | Worker_ready of task DynamicWorkerPool.worker
+  | Walk_event of walk_message
+
+let rec coordinator_loop = fun state ->
+  if maybe_finish state then
+    Ok ()
   else
-    let worker_count = max 1 config.concurrency in
-    let workers =
-      Array.init worker_count (fun _ ->
-        Domain.spawn (fun () ->
-          let rec loop () =
-            match take_task shared with
-            | None -> ()
-            | Some task ->
-                process_directory_task config shared task f;
-                loop ()
-          in
-          loop ()))
+    let selector msg =
+      match msg with
+      | DynamicWorkerPool.WorkerReady worker -> (
+          match Ref.type_equal state.pool.task_ref (DynamicWorkerPool.get_worker_task_ref worker) with
+          | Some Type.Equal -> `select (Worker_ready worker)
+          | None -> `skip
+        )
+      | Ignore_walk inner -> `select (Walk_event inner)
+      | _ -> `skip
     in
-    Array.iter Domain.join workers;
-    match shared.error with
-    | Some err -> Error err
-    | None -> Ok ()
+    match receive ~selector () with
+    | Worker_ready worker ->
+        Queue.push state.idle_workers worker;
+        coordinator_loop state
+    | Walk_event (Scan_finished { child_tasks; stop }) ->
+        state.in_flight <- state.in_flight - 1;
+        if stop then
+          state.stop <- true
+        else
+          List.iter (Queue.push state.pending_tasks) child_tasks;
+        coordinator_loop state
+    | Walk_event (Scan_failed err) ->
+        state.in_flight <- state.in_flight - 1;
+        if Option.is_none state.error then
+          state.error <- Some err;
+        state.stop <- true;
+        coordinator_loop state
+    | Walk_event (Walk_completed _) ->
+        panic "ignore walker received nested completion event"
+
+let parallel_walk = fun config ~f ->
+  let owner = self () in
+  let init = fun () ->
+    let coordinator = self () in
+    let worker_fn = fun ~owner ~task ->
+      match process_directory_task config task f with
+      | Ok result ->
+          send owner (Ignore_walk (Scan_finished result))
+      | Error err ->
+          send owner (Ignore_walk (Scan_failed err))
+    in
+    let pool =
+      DynamicWorkerPool.start
+        ~concurrency:config.concurrency
+        ~owner:coordinator
+        ~worker_fn
+        ()
+    in
+    let state = {
+      owner;
+      coordinator;
+      pool;
+      idle_workers = Queue.create ();
+      pending_tasks = Queue.create ();
+      in_flight = 0;
+      stop = false;
+      error = None;
+    } in
+    List.iter (enqueue_root_task config state ~f) config.roots;
+    coordinator_loop state
+  in
+  let coordinator = spawn init in
+  let selector msg =
+    match msg with
+    | Ignore_walk (Walk_completed { coordinator = sender; result }) when Pid.equal sender coordinator ->
+        `select result
+    | _ -> `skip
+  in
+  receive ~selector ()
 
 let walk = fun config ~f ->
   if config.concurrency <= 1 then
@@ -564,7 +596,7 @@ let walk = fun config ~f ->
 
 let to_list = fun config ->
   let items = ref [] in
-  walk config
+  sequential_walk config
     ~f:(fun entry ->
       items := entry :: !items;
       Fs.Walker.Continue)

@@ -44,9 +44,9 @@ val create:
 
     When [concurrency > 1], traversal may visit sibling subtrees in parallel.
     Callback order is therefore not deterministic. The callback [f] may run
-    concurrently on multiple domains and must therefore be thread-safe and
-    free of order-sensitive side effects. [Skip_subtree] applies only to the
-    current directory branch, while [Stop] stops traversal globally. *)
+    concurrently on multiple worker actors and must therefore be thread-safe
+    and free of order-sensitive side effects. [Skip_subtree] applies only to
+    the current directory branch, while [Stop] stops traversal globally. *)
 val walk:
   t ->
   f:(Fs.Walker.FileItem.t -> Fs.Walker.step) ->

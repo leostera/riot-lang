@@ -3,6 +3,7 @@ open Std
 type config = {
   count_only: bool;
   concurrency: int;
+  repeat: int;
   roots: Path.t list;
 }
 
@@ -13,11 +14,12 @@ type parse_result =
 let default_config = {
   count_only = false;
   concurrency = System.available_parallelism;
+  repeat = 1;
   roots = [ Path.v "." ]
 }
 
 let print_usage = fun () ->
-  eprintln "usage: ignore_find [--count-only] [--concurrency N] [root ...]";
+  eprintln "usage: ignore_find [--count-only] [--concurrency N] [--repeat N] [root ...]";
   eprintln "defaults: hidden, .ignore, .gitignore"
 
 let rec parse_args = fun config ->
@@ -30,6 +32,13 @@ let rec parse_args = fun config ->
       try
         let concurrency = max 1 (int_of_string value) in
         parse_args { config with concurrency } rest
+      with
+      | Failure _ -> Help
+    )
+  | "--repeat" :: value :: rest -> (
+      try
+        let repeat = max 1 (int_of_string value) in
+        parse_args { config with repeat } rest
       with
       | Failure _ -> Help
     )
@@ -52,6 +61,25 @@ let render_error = function
   ^ string_of_int line
   ^ ": "
   ^ message
+
+let run_once = fun config walker ->
+  let count = Sync.Atomic.make 0 in
+  Ignore.Walker.walk walker
+    ~f:(fun entry ->
+      ignore (Sync.Atomic.fetch_and_add count 1);
+      if not config.count_only then
+        println (Fs.Walker.FileItem.path_string entry);
+      Fs.Walker.Continue)
+  |> Result.map (fun () -> Sync.Atomic.get count)
+
+let rec run_repeated = fun config walker remaining total ->
+  if remaining = 0 then
+    Ok total
+  else
+    match run_once config walker with
+    | Error err -> Error err
+    | Ok count ->
+        run_repeated config walker (remaining - 1) (total + count)
 
 let main = fun ~args ->
   let args =
@@ -85,19 +113,13 @@ let main = fun ~args ->
             );
           Ok ()
       | Ok walker ->
-          let count = ref 0 in
-          Ignore.Walker.walk walker
-            ~f:(fun entry ->
-              count := !count + 1;
-              if not config.count_only then
-                println (Fs.Walker.FileItem.path_string entry);
-              Fs.Walker.Continue) |> function
+          run_repeated config walker config.repeat 0 |> function
           | Error err ->
               eprintln (render_error err);
               Ok ()
-          | Ok () ->
+          | Ok total ->
               if config.count_only then
-                println (string_of_int !count);
+                println (string_of_int total);
               Ok ()
     )
 
