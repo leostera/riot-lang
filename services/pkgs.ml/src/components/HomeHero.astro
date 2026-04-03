@@ -11,15 +11,18 @@ import type {
   CategoriesIndexDocument,
   PopularPackagesDocument,
   RecentPackagesDocument,
+  RegistryStatsSummaryDocument,
 } from "@/lib/types.ts";
 
 interface Props {
   categories: CategoriesIndexDocument | null;
   popular: PopularPackagesDocument | null;
   recent: RecentPackagesDocument | null;
+  stats: RegistryStatsSummaryDocument | null;
 }
 
-const { categories, popular, recent } = Astro.props;
+const { categories, popular, recent, stats } = Astro.props;
+const number = new Intl.NumberFormat("en-US");
 ---
 
 <section class="border-b border-border">
@@ -34,6 +37,37 @@ const { categories, popular, recent } = Astro.props;
         autofocus
         placeholder="Search packages, descriptions, owners, or repositories..."
       />
+
+      {
+        stats ? (
+          <div class="grid gap-2 sm:grid-cols-3">
+            <div class="rounded-md border border-border bg-card px-4 py-3 text-left">
+              <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Riot installs
+              </div>
+              <div class="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {number.format(stats.total_riot_downloads)}
+              </div>
+            </div>
+            <div class="rounded-md border border-border bg-card px-4 py-3 text-left">
+              <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                OCaml installs
+              </div>
+              <div class="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {number.format(stats.total_ocaml_downloads)}
+              </div>
+            </div>
+            <div class="rounded-md border border-border bg-card px-4 py-3 text-left">
+              <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Package installs
+              </div>
+              <div class="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {number.format(stats.total_package_downloads)}
+              </div>
+            </div>
+          </div>
+        ) : null
+      }
     </div>
   </div>
 </section>

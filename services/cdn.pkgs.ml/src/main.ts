@@ -1,4 +1,5 @@
 import {
+  writeBinaryDownloadRecord,
   writeIndexReadRecord,
   writePackageDownloadRecord,
 } from "../../api.pkgs.ml/src/access-db.ts";
@@ -190,6 +191,11 @@ type AccessEvent =
       packageVersion: string;
       artifactSha256: string;
       sourceArchiveKey: string;
+    }
+  | {
+      kind: "binary_download";
+      binaryName: "riot" | "ocaml";
+      objectKey: string;
     };
 
 function classifyAccess(key: string): AccessEvent | null {
@@ -220,6 +226,22 @@ function classifyAccess(key: string): AccessEvent | null {
     };
   }
 
+  if (/^riot\/riot-[^/]+\.tar\.gz$/.test(key)) {
+    return {
+      kind: "binary_download",
+      binaryName: "riot",
+      objectKey: key,
+    };
+  }
+
+  if (/^ocaml\/ocaml-[^/]+\.tar\.gz$/.test(key)) {
+    return {
+      kind: "binary_download",
+      binaryName: "ocaml",
+      objectKey: key,
+    };
+  }
+
   return null;
 }
 
@@ -242,6 +264,14 @@ async function recordAccess(env: Env, access: AccessEvent): Promise<void> {
         package_version: access.packageVersion,
         artifact_sha256: access.artifactSha256,
         source_archive_key: access.sourceArchiveKey,
+        downloaded_at: now,
+      });
+      return;
+    case "binary_download":
+      await writeBinaryDownloadRecord(env.SEARCH_DB, {
+        download_id: crypto.randomUUID(),
+        binary_name: access.binaryName,
+        object_key: access.objectKey,
         downloaded_at: now,
       });
       return;

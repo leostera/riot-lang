@@ -172,6 +172,21 @@ export const packageDownloads = sqliteTable(
   }),
 );
 
+export const binaryDownloads = sqliteTable(
+  "binary_downloads",
+  {
+    downloadId: text("download_id").primaryKey(),
+    binaryName: text("binary_name").notNull(),
+    objectKey: text("object_key").notNull(),
+    downloadedAt: text("downloaded_at").notNull(),
+  },
+  (table) => ({
+    binaryIdx: index("idx_binary_downloads_binary").on(table.binaryName, table.downloadedAt),
+    objectIdx: index("idx_binary_downloads_object").on(table.objectKey),
+    downloadedAtIdx: index("idx_binary_downloads_downloaded_at").on(table.downloadedAt),
+  }),
+);
+
 export const packages = sqliteTable("packages", {
   packageName: text("package_name").primaryKey(),
   normalizedName: text("normalized_name").notNull(),

@@ -103,6 +103,7 @@ describe("registry indexing", () => {
       owner_github_login: "leostera",
       dependency_count: 1,
       dependent_count: 0,
+      download_count: 0,
       categories: [],
     });
 

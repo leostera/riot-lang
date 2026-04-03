@@ -1,5 +1,5 @@
 import semver from "semver";
-import { and, asc, desc, eq, gt } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 
 import type {
   ApiTokenCapability,
@@ -7,6 +7,7 @@ import type {
   ApiTokenRecord,
   CategoriesIndexDocument,
   CategorySummary,
+  RegistryStatsSummaryDocument,
   OAuthStateRecord,
   OwnerPackagesDocument,
   PackageClaimRecord,
@@ -28,6 +29,9 @@ import { registryDb } from "./db.ts";
 import {
   apiTokenLookups,
   apiTokens,
+  binaryDownloads,
+  packageDownloads,
+  packages,
   oauthStates,
   packageClaims,
   publishedReleases,
@@ -650,6 +654,7 @@ export async function readPackageOverviewDocument(
     release_count: snapshot.release_count,
     dependency_count: snapshot.dependencies.length,
     dependent_count: (dependentMap.get(packageName) ?? []).length,
+    download_count: await readPackageDownloadCount(db, packageName),
     categories: snapshot.categories,
     keywords: snapshot.keywords,
   };
@@ -802,6 +807,43 @@ export async function readOwnerPackagesDocument(
   };
 }
 
+export async function readRegistryStatsSummaryDocument(
+  db: D1Database,
+): Promise<RegistryStatsSummaryDocument> {
+  const database = registryDb(db);
+  const [packageDownloadsRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(packageDownloads);
+  const [riotDownloadsRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(binaryDownloads)
+    .where(eq(binaryDownloads.binaryName, "riot"));
+  const [ocamlDownloadsRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(binaryDownloads)
+    .where(eq(binaryDownloads.binaryName, "ocaml"));
+  const [packagesRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(packages);
+  const [versionsRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(publishedReleases);
+  const [usersRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(users);
+
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    total_package_downloads: toCount(packageDownloadsRow?.count),
+    total_riot_downloads: toCount(riotDownloadsRow?.count),
+    total_ocaml_downloads: toCount(ocamlDownloadsRow?.count),
+    total_packages: toCount(packagesRow?.count),
+    total_versions: toCount(versionsRow?.count),
+    total_users: toCount(usersRow?.count),
+  };
+}
+
 async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> {
   const database = registryDb(db);
   const rows = await database
@@ -882,6 +924,16 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
   });
 
   return snapshots;
+}
+
+async function readPackageDownloadCount(db: D1Database, packageName: string): Promise<number> {
+  const database = registryDb(db);
+  const [row] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(packageDownloads)
+    .where(eq(packageDownloads.packageName, packageName));
+
+  return toCount(row?.count);
 }
 
 async function listPackageClaims(db: D1Database): Promise<Map<string, PackageClaimRecord>> {
@@ -1006,6 +1058,19 @@ function toWebPackageListItem(
     release_count: row.release_count,
     package_path: `/p/${row.package_name}`,
   };
+}
+
+function toCount(value: unknown): number {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
 }
 
 function normalizeDependencies(dependenciesJson: string): PackageRelationDependency[] {

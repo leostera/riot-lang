@@ -116,6 +116,7 @@ export interface PackageOverviewDocument {
   release_count: number;
   dependency_count: number;
   dependent_count: number;
+  download_count: number;
   categories: string[];
   keywords: string[];
 }
@@ -193,6 +194,17 @@ export interface OwnerPackagesDocument {
   package_count: number;
   latest_update_at?: string;
   packages: WebPackageListItem[];
+}
+
+export interface RegistryStatsSummaryDocument {
+  schema_version: 1;
+  generated_at: string;
+  total_package_downloads: number;
+  total_riot_downloads: number;
+  total_ocaml_downloads: number;
+  total_packages: number;
+  total_versions: number;
+  total_users: number;
 }
 
 export type RegistryEventType =

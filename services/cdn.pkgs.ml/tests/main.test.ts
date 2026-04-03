@@ -106,6 +106,57 @@ describe("riot cdn worker", () => {
     ]);
   });
 
+  test("records Riot and OCaml archive downloads as binary downloads", async () => {
+    const bucket = new FakeR2Bucket();
+    const db = new FakeD1Database();
+    const ctx = new FakeExecutionContext();
+    const env: Env = {
+      ML_PKGS_CDN: bucket as unknown as R2Bucket,
+      SEARCH_DB: db as unknown as D1Database,
+    };
+
+    await bucket.put("riot/riot-latest-aarch64-apple-darwin.tar.gz", "riot-archive", {
+      httpMetadata: {
+        contentType: "application/gzip",
+      },
+    });
+    await bucket.put("ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz", "ocaml-archive", {
+      httpMetadata: {
+        contentType: "application/gzip",
+      },
+    });
+
+    const riotResponse = await worker.fetch(
+      new Request("https://cdn.pkgs.ml/riot/riot-latest-aarch64-apple-darwin.tar.gz"),
+      env,
+      ctx,
+    );
+    const ocamlResponse = await worker.fetch(
+      new Request("https://cdn.pkgs.ml/ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz"),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(riotResponse.status).toBe(200);
+    expect(ocamlResponse.status).toBe(200);
+
+    const downloads = await db
+      .prepare("SELECT binary_name, object_key FROM binary_downloads ORDER BY binary_name ASC")
+      .all<{ binary_name: string; object_key: string }>();
+
+    expect(downloads.results).toEqual([
+      {
+        binary_name: "ocaml",
+        object_key: "ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz",
+      },
+      {
+        binary_name: "riot",
+        object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
+      },
+    ]);
+  });
+
   test("serves sanitized sparse index documents and records index reads", async () => {
     const bucket = new FakeR2Bucket();
     const db = new FakeD1Database();

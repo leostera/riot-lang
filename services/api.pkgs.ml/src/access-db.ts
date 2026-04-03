@@ -1,6 +1,6 @@
-import { packageDownloads, indexReads } from "./schema.ts";
+import { binaryDownloads, packageDownloads, indexReads } from "./schema.ts";
 import { registryDb } from "./db.ts";
-import type { IndexReadRecord, PackageDownloadRecord } from "./types.ts";
+import type { BinaryDownloadRecord, IndexReadRecord, PackageDownloadRecord } from "./types.ts";
 
 export async function writeIndexReadRecord(
   db: D1Database,
@@ -26,6 +26,19 @@ export async function writePackageDownloadRecord(
     packageVersion: record.package_version,
     artifactSha256: record.artifact_sha256,
     sourceArchiveKey: record.source_archive_key,
+    downloadedAt: record.downloaded_at,
+  });
+}
+
+export async function writeBinaryDownloadRecord(
+  db: D1Database,
+  record: BinaryDownloadRecord,
+): Promise<void> {
+  const database = registryDb(db);
+  await database.insert(binaryDownloads).values({
+    downloadId: record.download_id,
+    binaryName: record.binary_name,
+    objectKey: record.object_key,
     downloadedAt: record.downloaded_at,
   });
 }

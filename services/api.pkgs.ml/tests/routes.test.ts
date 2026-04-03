@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { writeBinaryDownloadRecord, writePackageDownloadRecord } from "../src/access-db.ts";
 import { readArchiveFileFromTarGz } from "../src/archive.ts";
 import { handleRequest } from "../src/routes.ts";
 import {
@@ -29,6 +30,7 @@ describe("riot package registry routes", () => {
         views_popular_packages: "/v1/views/popular/packages",
         views_categories: "/v1/views/categories",
         views_owner_packages: "/v1/views/owners/<github-login>/packages",
+        views_stats_summary: "/v1/views/stats/summary",
         auth_github_start: "/v1/auth/github/start?return_to=<url>",
         auth_github_callback: "/v1/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/v1/auth/logout",
@@ -58,6 +60,7 @@ describe("riot package registry routes", () => {
         views_popular_packages: "/api/v1/views/popular/packages",
         views_categories: "/api/v1/views/categories",
         views_owner_packages: "/api/v1/views/owners/<github-login>/packages",
+        views_stats_summary: "/api/v1/views/stats/summary",
         auth_github_start: "/auth/github/start?return_to=<url>",
         auth_github_callback: "/auth/github/callback?code=<code>&state=<state>",
         auth_logout: "/auth/logout",
@@ -725,6 +728,73 @@ describe("riot package registry routes", () => {
     }));
 
     expect(response.status).toBe(200);
+  });
+
+  test("package overview and stats summary expose download counts", async () => {
+    const { env, db } = makeEnv();
+
+    await publishArtifact(env, await makePackageArtifact({
+      packageName: "kernel",
+      packageVersion: "0.0.1",
+      description: "Kernel package",
+      license: "Apache-2.0",
+    }));
+
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "deadbeef",
+      source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+      downloaded_at: "2026-04-04T12:00:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "deadbeef",
+      source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+      downloaded_at: "2026-04-04T12:01:00.000Z",
+    });
+    await writeBinaryDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      binary_name: "riot",
+      object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
+      downloaded_at: "2026-04-04T12:02:00.000Z",
+    });
+    await writeBinaryDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      binary_name: "ocaml",
+      object_key: "ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz",
+      downloaded_at: "2026-04-04T12:03:00.000Z",
+    });
+
+    const overview = await handleRequest(
+      new Request("https://registry.test/v1/views/packages/kernel/overview"),
+      env,
+      new FakeExecutionContext(),
+    );
+    const stats = await handleRequest(
+      new Request("https://registry.test/v1/views/stats/summary"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(overview.status).toBe(200);
+    expect(await readJson(overview)).toMatchObject({
+      package_name: "kernel",
+      download_count: 2,
+    });
+
+    expect(stats.status).toBe(200);
+    expect(await readJson(stats)).toMatchObject({
+      total_package_downloads: 2,
+      total_riot_downloads: 1,
+      total_ocaml_downloads: 1,
+      total_packages: 1,
+      total_versions: 1,
+      total_users: 0,
+    });
   });
 
   test("artifact publish accepts built-in OCaml dependencies without registry lookup", async () => {

@@ -6,6 +6,7 @@ import type {
   PackageRelationsDocument,
   PopularPackagesDocument,
   RecentPackagesDocument,
+  RegistryStatsSummaryDocument,
   RegistryEventsDocument,
 } from "./types.ts";
 
@@ -54,6 +55,21 @@ export async function fetchPopularPackages(): Promise<PopularPackagesDocument | 
 
 export async function fetchCategoriesIndex(): Promise<CategoriesIndexDocument | null> {
   return await fetchJsonOrNull<CategoriesIndexDocument>(viewUrl("categories"));
+}
+
+export async function fetchRegistryStatsSummary(): Promise<RegistryStatsSummaryDocument> {
+  const config = getConfig();
+  const response = await fetch(`${config.registryBaseUrl}/v1/views/stats/summary`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Stats summary request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as RegistryStatsSummaryDocument;
 }
 
 export async function fetchOwnerPackages(ownerGithubLogin: string): Promise<OwnerPackagesDocument | null> {
