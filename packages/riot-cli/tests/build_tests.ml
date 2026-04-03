@@ -120,6 +120,14 @@ let test_pm_event_hides_download_skipped = fun _ctx ->
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
+let test_pm_event_shows_locked_package = fun _ctx ->
+  let seen_registry_updates = HashSet.create () in
+  let actual = Riot_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Riot_model.Event.PackageVersionLocked { package = "std"; version = "0.2.0" }) in
+  Test.assert_equal ~expected:(Some "    \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
+  Ok ()
+
 let tests =
   Test.[
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
@@ -133,6 +141,7 @@ let tests =
     case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
     case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
     case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
+    case "build: pm locked package is shown" test_pm_event_shows_locked_package;
   ]
 
 let name = "Riot CLI Build Tests"

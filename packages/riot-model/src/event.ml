@@ -172,6 +172,7 @@ type kind =
         ];
       dependency: string
     }
+  | PackageVersionLocked of { package: string; version: string }
   | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
@@ -276,6 +277,7 @@ let name = function
   | SourceDependencyMaterializationStarted _ -> "riot.pm.source_dependency.materialization.started"
   | SourceDependencyMaterializationFinished _ -> "riot.pm.source_dependency.materialization.finished"
   | DependencyManifestUpdated _ -> "riot.pm.manifest.updated"
+  | PackageVersionLocked _ -> "riot.pm.package.locked"
   | PackageVersionUpdated _ -> "riot.pm.package.updated"
   | PackageManifestFetchStarted _ -> "riot.pm.package_manifest.fetch.started"
   | PackageManifestFetchFinished _ -> "riot.pm.package_manifest.fetch.finished"
@@ -471,6 +473,8 @@ let display = function
         | `Remove -> "Removed"
       in
       verb ^ " " ^ dependency ^ " (" ^ section ^ ") in " ^ path
+  | PackageVersionLocked { package; version } ->
+      "Locked " ^ package ^ " (" ^ version ^ ")"
   | PackageVersionUpdated { package; from_version; to_version } ->
       "Updated " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
   | PackageManifestFetchStarted { package; version } ->
@@ -894,6 +898,11 @@ let kind_to_json = function
         ("section", Json.String section);
         ("operation", json_of_manifest_operation operation);
         ("dependency", Json.String dependency);
+      ]
+  | PackageVersionLocked { package; version } ->
+      Json.Object [
+        ("package", Json.String package);
+        ("version", Json.String version);
       ]
   | PackageVersionUpdated { package; from_version; to_version } ->
       Json.Object [
@@ -1773,6 +1782,16 @@ let kind_from_json = fun json ->
                 )
               | _ -> Error "Invalid DependencyManifestUpdated data"
             )
+          | "riot.pm.package.locked" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields with
+                  | Some (Json.String package), Some (Json.String version) ->
+                      Ok (PackageVersionLocked { package; version })
+                  | _ -> Error "Invalid PackageVersionLocked data"
+                )
+              | _ -> Error "Invalid PackageVersionLocked data"
+            )
           | "riot.pm.package.updated" -> (
               match data with
               | Json.Object data_fields -> (
@@ -2101,5 +2120,19 @@ module Tests = struct
         else
           Error "expected dependency manifest update event to round-trip"
     | Ok _ -> Error "expected DependencyManifestUpdated after round-trip"
+    | Error err -> Error err [@test]
+
+  let test_package_locked_event_json_roundtrip (): (unit, string) result =
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info
+      (PackageVersionLocked { package = "std"; version = "0.2.0" }) in
+    match from_json (to_json event) with
+    | Ok { kind=PackageVersionLocked { package; version }; _ } ->
+        if String.equal package "std" && String.equal version "0.2.0" then
+          Ok ()
+        else
+          Error "expected package locked event to round-trip"
+    | Ok _ -> Error "expected PackageVersionLocked after round-trip"
     | Error err -> Error err [@test]
 end [@test]

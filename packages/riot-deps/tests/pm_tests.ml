@@ -2026,6 +2026,7 @@ let test_ensure_lock_materializes_registry_packages_during_projection = fun _ctx
             && List.mem "riot.pm.universe.built" event_names
             && List.mem "riot.pm.package_metadata.fetch.started" event_names
             && List.mem "riot.pm.package_metadata.fetch.finished" event_names
+            && List.mem "riot.pm.package.locked" event_names
             && List.mem "riot.pm.package_materialization.started" event_names
             && List.mem "riot.pm.package_materialization.finished" event_names
             && List.mem "riot.pm.package_manifest.fetch.started" event_names

@@ -151,6 +151,7 @@ type kind =
         ];
       dependency: string
     }
+  | PackageVersionLocked of { package: string; version: string }
   | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }

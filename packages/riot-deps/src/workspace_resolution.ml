@@ -23,6 +23,43 @@ let workspace_manifest_paths = fun (workspace: Riot_model.Workspace.t) ->
 let root_packages_for_workspace = fun (workspace: Riot_model.Workspace.t) ->
   List.filter Riot_model.Package.is_workspace_member workspace.packages
 
+let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) ->
+  match lockfile_opt with
+  | None -> []
+  | Some (lockfile: Riot_model.Lockfile.t) ->
+      List.fold_left
+        (fun acc (pkg: Riot_model.Lockfile.package) ->
+          match pkg.id.registry, pkg.id.version with
+          | Some registry, Some version -> (registry ^ ":" ^ pkg.id.name, version) :: acc
+          | None, Some version -> (
+              match pkg.provenance with
+              | Riot_model.Lockfile.Source _ -> ("source:" ^ pkg.id.name, version) :: acc
+              | _ -> acc
+            )
+          | _ -> acc)
+        []
+        lockfile.packages
+
+let emit_locked_packages = fun ~(emit:event_sink) ~(previous_lock:Riot_model.Lockfile.t option) (
+  current_lock: Riot_model.Lockfile.t
+) ->
+  let previous_versions = lock_package_version_map previous_lock in
+  List.iter
+    (fun (pkg: Riot_model.Lockfile.package) ->
+      match pkg.id.registry, pkg.id.version with
+      | Some registry, Some version ->
+          if Option.is_none (List.assoc_opt (registry ^ ":" ^ pkg.id.name) previous_versions) then
+            emit (Riot_model.Event.PackageVersionLocked { package = pkg.id.name; version })
+      | None, Some version -> (
+          match pkg.provenance with
+          | Riot_model.Lockfile.Source _ ->
+              if Option.is_none (List.assoc_opt ("source:" ^ pkg.id.name) previous_versions) then
+                emit (Riot_model.Event.PackageVersionLocked { package = pkg.id.name; version })
+          | _ -> ()
+        )
+      | _ -> ())
+    current_lock.packages
+
 let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) ->
   { lockfile with dependency_hash = dependency_hash }
 
@@ -131,6 +168,8 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
               emit (Riot_model.Event.DependencyResolutionFailed { error = err });
               Error err
           | Ok () -> (
+              if should_write then
+                emit_locked_packages ~emit ~previous_lock:existing_lock lockfile;
               let projection_emit =
                 if used_existing_lock then
                   no_emit
