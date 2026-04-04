@@ -22,6 +22,11 @@
 
 # Next
 
+* support single-package / non-workspace layouts
+
+* docs.pkgs.ml -- setup as worker that forwards static sites deployed to cdn.pkgs.ml/docs/pkg/vsn/...
+
+* riot doc -- generates documentation for your package and (optionally) for your dependencies and generates a static site (this is the command that docs.pkgs.ml uses to build the docs for you)
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
