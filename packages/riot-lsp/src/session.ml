@@ -127,17 +127,27 @@ let lint_diagnostic_requested = fun context range diagnostic ->
   else
     List.exists (same_lsp_diagnostic diagnostic) context.diagnostics
 
-let fix_text_edit_to_lsp = fun text -> fun (edit : Riot_fix.Fix.text_edit) ->
-  {
-    Lsp.Text_edit.range = Lsp.Utf16.range_of_offsets text ~start_offset:edit.span.start ~end_offset:edit.span.end_;
-    new_text = edit.new_text;
-  }
+let document_range = fun text ->
+  Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:(String.length text)
 
-let workspace_edit_of_fix_edits = fun document edits ->
+let workspace_edit_of_text = fun document text ->
   {
     Lsp.Workspace_edit.changes =
-      [ (document.uri, List.map (fix_text_edit_to_lsp document.text) edits) ];
+      [ (document.uri, [ { Lsp.Text_edit.range = document_range document.text; new_text = text } ]) ];
   }
+
+let maybe_format_text = fun document text ->
+  let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) text in
+  if not (List.is_empty parse_result.diagnostics) then
+    text
+  else
+    match Krasny.format parse_result with
+    | Ok formatted -> formatted
+    | Error _ -> text
+
+let finalized_workspace_edit_of_text = fun document text ->
+  let text = maybe_format_text document text in
+  workspace_edit_of_text document text
 
 let fixable_lint_diagnostics = fun document result ->
   result.Riot_fix.Source_runner.diagnostics
@@ -148,9 +158,9 @@ let fixable_lint_diagnostics = fun document result ->
         Some { diagnostic; lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic; fix })
 
 let quickfix_action_of_entry = fun document entry ->
-  match Riot_fix.Fix.lower_fix ~source:document.text entry.fix with
+  match Riot_fix.Fix.apply_fix ~source:document.text entry.fix with
   | Error _ -> None
-  | Ok edits ->
+  | Ok text ->
       Some
         (Lsp.Code_action_or_command.Action
            {
@@ -158,15 +168,15 @@ let quickfix_action_of_entry = fun document entry ->
              kind = Some Lsp.Action_kind.Quick_fix;
              diagnostics = Some [ entry.lsp_diagnostic ];
              is_preferred = Some true;
-             edit = Some (workspace_edit_of_fix_edits document edits);
+             edit = Some (finalized_workspace_edit_of_text document text);
              command = None;
              data = None;
            })
 
 let fix_all_action = fun document entries ->
-  match Riot_fix.Fix.lower_fixes ~source:document.text (List.map (fun entry -> entry.fix) entries) with
+  match Riot_fix.Fix.apply_fixes ~source:document.text (List.map (fun entry -> entry.fix) entries) with
   | Error _ -> None
-  | Ok edits ->
+  | Ok text ->
       Some
         (Lsp.Code_action_or_command.Action
            {
@@ -174,7 +184,7 @@ let fix_all_action = fun document entries ->
              kind = Some Lsp.Action_kind.Source_fix_all;
              diagnostics = Some (List.map (fun entry -> entry.lsp_diagnostic) entries);
              is_preferred = None;
-             edit = Some (workspace_edit_of_fix_edits document edits);
+             edit = Some (finalized_workspace_edit_of_text document text);
              command = None;
              data = None;
            })
@@ -290,9 +300,6 @@ let handle_shutdown = fun state -> fun payload ->
   | Ok (id, ()) ->
       let state = { state with shutdown_requested = true } in
       ok state [ Lsp.response_to_json ~id Lsp.Shutdown.request () ]
-
-let document_range = fun text ->
-  Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:(String.length text)
 
 let handle_formatting = fun state -> fun payload ->
   match Lsp.request_of_json Lsp.Text_document_methods.Formatting.request payload with

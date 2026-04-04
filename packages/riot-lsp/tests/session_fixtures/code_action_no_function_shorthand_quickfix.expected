@@ -141,14 +141,14 @@
                   "range": {
                     "start": {
                       "line": 0,
-                      "character": 13
+                      "character": 0
                     },
                     "end": {
-                      "line": 0,
-                      "character": 21
+                      "line": 1,
+                      "character": 0
                     }
                   },
-                  "newText": "fun value -> match value with"
+                  "newText": "let render = fun value ->\n  match value with\n  | x -> x + 1\n"
                 }
               ]
             }

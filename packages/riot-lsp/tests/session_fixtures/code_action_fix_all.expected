@@ -230,27 +230,14 @@
                   "range": {
                     "start": {
                       "line": 0,
-                      "character": 5
+                      "character": 0
                     },
                     "end": {
-                      "line": 0,
-                      "character": 16
+                      "line": 2,
+                      "character": 0
                     }
                   },
-                  "newText": "user_profile"
-                },
-                {
-                  "range": {
-                    "start": {
-                      "line": 1,
-                      "character": 5
-                    },
-                    "end": {
-                      "line": 1,
-                      "character": 14
-                    }
-                  },
-                  "newText": "account_id"
+                  "newText": "type user_profile = int\n\ntype account_id = string\n"
                 }
               ]
             }
