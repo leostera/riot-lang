@@ -1,5 +1,10 @@
 open Std
 
+type label =
+  | Nolabel
+  | Labelled of string
+  | Optional of string
+
 type var = {
   id: int;
   mutable link: t option;
@@ -15,7 +20,7 @@ and t =
   | Result of t * t
   | Array of t
   | Tuple of t list
-  | Arrow of t * t
+  | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
   | Hole of int
 
@@ -56,7 +61,7 @@ let rec free_vars = function
       free_vars (prune element)
   | Tuple members ->
       List.fold_left (fun acc member -> union acc (free_vars (prune member))) [] members
-  | Arrow (lhs, rhs) ->
+  | Arrow { lhs; rhs; _ } ->
       union (free_vars (prune lhs)) (free_vars (prune rhs))
   | Var var -> (
       match var.link with
@@ -81,7 +86,7 @@ let rec occurs = fun needle ty ->
       occurs needle element
   | Tuple members ->
       List.exists (occurs needle) members
-  | Arrow (lhs, rhs) ->
+  | Arrow { lhs; rhs; _ } ->
       occurs needle lhs || occurs needle rhs
   | Var var -> (
       match var.link with

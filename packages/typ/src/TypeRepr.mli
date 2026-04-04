@@ -1,6 +1,11 @@
 open Std
 
 (** Mutable prototype type representation used inside one inference query. *)
+type label =
+  | Nolabel
+  | Labelled of string
+  | Optional of string
+
 type var = {
   id: int;
   mutable link: t option;
@@ -16,7 +21,7 @@ and t =
   | Result of t * t
   | Array of t
   | Tuple of t list
-  | Arrow of t * t
+  | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
   | Hole of int
 val prune: t -> t

@@ -103,8 +103,8 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
         TypeRepr.Hole hole_id
     | TypeRepr.Tuple members ->
         TypeRepr.Tuple (List.map loop members)
-    | TypeRepr.Arrow (lhs, rhs) ->
-        TypeRepr.Arrow (loop lhs, loop rhs)
+    | TypeRepr.Arrow { label; lhs; rhs } ->
+        TypeRepr.Arrow { label; lhs = loop lhs; rhs = loop rhs }
     | TypeRepr.Var var -> (
         match List.assoc_opt var.id mapping with
         | Some replacement -> replacement
@@ -112,6 +112,18 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
       )
   in
   loop body
+
+let labels_match = fun left right ->
+  match (left, right) with
+  | (TypeRepr.Nolabel, TypeRepr.Nolabel) -> true
+  | (TypeRepr.Labelled left, TypeRepr.Labelled right) -> String.equal left right
+  | (TypeRepr.Optional left, TypeRepr.Optional right) -> String.equal left right
+  | _ -> false
+
+let type_label_of_body_label = function
+  | BodyArena.Positional -> TypeRepr.Nolabel
+  | BodyArena.Labeled label -> TypeRepr.Labelled label
+  | BodyArena.Optional label -> TypeRepr.Optional label
 
 let generalize = fun env ty ->
   let env_free = env_free_vars env in
@@ -170,7 +182,14 @@ let rec unify = fun (state: state) ~origin left right ->
             right_arity = List.length right_members
           }));
       List.iter2 (unify state ~origin) left_members right_members
-  | TypeRepr.Arrow (left_arg, left_res), TypeRepr.Arrow (right_arg, right_res) ->
+  | TypeRepr.Arrow { label = left_label; lhs = left_arg; rhs = left_res },
+    TypeRepr.Arrow { label = right_label; lhs = right_arg; rhs = right_res } ->
+      if not (labels_match left_label right_label) then
+        raise
+          (Unify_error (Typ_diagnostic.ExpectedActual {
+            expected = TypePrinter.type_to_string left;
+            actual = TypePrinter.type_to_string right
+          }));
       let () = unify state ~origin left_arg right_arg in
       unify state ~origin left_res right_res
   | TypeRepr.Var left_var, TypeRepr.Var right_var when left_var.id = right_var.id ->
@@ -334,31 +353,36 @@ let rec infer_expr = fun (state: state) env expr_id ->
                 infer_expr state env last_id
           )
         | BodyArena.EFun (parameters, body_id) ->
-            let rec lower_parameters env arg_types = function
+            let rec lower_parameters env = function
               | [] ->
-                  let body_ty = infer_expr state env body_id in
-                  List.fold_right
-                    (fun arg_ty acc -> TypeRepr.Arrow (arg_ty, acc))
-                    (List.rev arg_types)
-                    body_ty
-              | parameter_id :: rest ->
+                  infer_expr state env body_id
+              | (parameter: BodyArena.function_parameter) :: rest ->
                   let arg_ty = fresh_var state in
-                  let bindings = bind_pattern state parameter_id arg_ty in
-                  lower_parameters (bind_env env bindings) (arg_ty :: arg_types) rest
+                  let bindings = bind_pattern state parameter.pattern_id arg_ty in
+                  let body_ty = lower_parameters (bind_env env bindings) rest in
+                  TypeRepr.Arrow {
+                    label = type_label_of_body_label parameter.label;
+                    lhs = arg_ty;
+                    rhs = body_ty
+                  }
             in
-            lower_parameters env [] parameters
+            lower_parameters env parameters
         | BodyArena.EApply (callee_id, arguments) ->
             let callee_ty = infer_expr state env callee_id in
             let rec apply current_ty = function
               | [] -> current_ty
-              | argument_id :: rest ->
-                  let argument_ty = infer_expr state env argument_id in
+              | (argument: BodyArena.apply_argument) :: rest ->
+                  let argument_ty = infer_expr state env argument.value_id in
                   let result_ty = fresh_var state in
                   let () = try_unify
                     state
                     ~origin:(origin_of_expr state expr_id)
                     current_ty
-                    (TypeRepr.Arrow (argument_ty, result_ty)) in
+                    (TypeRepr.Arrow {
+                      label = type_label_of_body_label argument.label;
+                      lhs = argument_ty;
+                      rhs = result_ty
+                    }) in
                   apply result_ty rest
             in
             apply callee_ty arguments

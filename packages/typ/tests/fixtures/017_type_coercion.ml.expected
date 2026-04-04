@@ -48,7 +48,12 @@
       {
         "desc": {
           "arguments": [
-            2
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 2
+            }
           ],
           "callee_id": 1,
           "tag": "apply"
@@ -147,7 +152,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -302,7 +307,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -461,7 +466,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -620,7 +625,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -732,7 +737,7 @@
           "scheme": "int"
         }
       ],
-      "tag": "errored_export"
+      "tag": "trusted_export"
     },
     "source_id": 0
   },
@@ -789,18 +794,7 @@
       "tag": "value"
     }
   ],
-  "lowering_diagnostics": [
-    {
-      "ascription_span": {
-        "end": 63,
-        "start": 44
-      },
-      "id": "TYP1008",
-      "message": "type ascriptions are currently ignored during lowering",
-      "name": "ignored-type-ascription",
-      "severity": "warning"
-    }
-  ],
+  "lowering_diagnostics": [],
   "origin_map": [
     {
       "kind": "pattern",

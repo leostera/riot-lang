@@ -103,7 +103,12 @@
         "desc": {
           "body_id": 7,
           "parameters": [
-            5
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 5
+            }
           ],
           "tag": "fun"
         },
@@ -244,7 +249,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -399,7 +404,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -554,7 +559,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -709,7 +714,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -868,7 +873,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1039,7 +1044,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1210,7 +1215,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1381,7 +1386,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1552,7 +1557,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",

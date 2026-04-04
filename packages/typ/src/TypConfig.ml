@@ -11,27 +11,30 @@ let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
 
 let unknown = TypeRepr.Hole (-1)
 
+let arrow = fun ?(label=TypeRepr.Nolabel) lhs rhs ->
+  TypeRepr.Arrow { label; lhs; rhs }
+
 let polymorphic_eq =
   let lhs = TypeRepr.Var { id = 0; link = None } in
-  TypeScheme.Forall ([ 0 ], TypeRepr.Arrow (lhs, TypeRepr.Arrow (lhs, TypeRepr.Bool)))
+  TypeScheme.Forall ([ 0 ], arrow lhs (arrow lhs TypeRepr.Bool))
 
 let polymorphic_compare =
   let lhs = TypeRepr.Var { id = 0; link = None } in
-  TypeScheme.Forall ([ 0 ], TypeRepr.Arrow (lhs, TypeRepr.Arrow (lhs, TypeRepr.Bool)))
+  TypeScheme.Forall ([ 0 ], arrow lhs (arrow lhs TypeRepr.Bool))
 
 let polymorphic_pipe =
   let input = TypeRepr.Var { id = 0; link = None } in
   let output = TypeRepr.Var { id = 1; link = None } in
   TypeScheme.Forall (
     [ 0; 1 ],
-    TypeRepr.Arrow (input, TypeRepr.Arrow (TypeRepr.Arrow (input, output), output))
+    arrow input (arrow (arrow input output) output)
   )
 
 let int_binop =
-  monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Int)))
+  monomorphic (arrow TypeRepr.Int (arrow TypeRepr.Int TypeRepr.Int))
 
 let float_binop =
-  monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Float)))
+  monomorphic (arrow TypeRepr.Float (arrow TypeRepr.Float TypeRepr.Float))
 
 let option_none =
   TypeScheme.Forall ([ 0 ], TypeRepr.Option (TypeRepr.Var { id = 0; link = None }))
@@ -39,7 +42,7 @@ let option_none =
 let option_some =
   TypeScheme.Forall ([
     0
-  ], TypeRepr.Arrow (TypeRepr.Var { id = 0; link = None }, TypeRepr.Option (TypeRepr.Var {
+  ], arrow (TypeRepr.Var { id = 0; link = None }) (TypeRepr.Option (TypeRepr.Var {
     id = 0;
     link = None
   })))
@@ -48,34 +51,33 @@ let result_ok =
   TypeScheme.Forall ([
     1;
     0
-  ], TypeRepr.Arrow (
-    TypeRepr.Var { id = 0; link = None },
-    TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })
-  ))
+  ], arrow
+    (TypeRepr.Var { id = 0; link = None })
+    (TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })))
 
 let result_error =
   TypeScheme.Forall ([
     1;
     0
-  ], TypeRepr.Arrow (
-    TypeRepr.Var { id = 1; link = None },
-    TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })
-  ))
+  ], arrow
+    (TypeRepr.Var { id = 1; link = None })
+    (TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })))
 
 let runtime_args = TypeScheme.Forall ([], TypeRepr.Hole (-2))
 
 let runtime_run =
+  let args = TypeRepr.Var { id = 0; link = None } in
+  let exit_reason = TypeRepr.Var { id = 1; link = None } in
   TypeScheme.Forall ([
-    2;
     1;
     0
-  ], TypeRepr.Arrow (
-    TypeRepr.Var { id = 0; link = None },
-    TypeRepr.Arrow (TypeRepr.Var { id = 1; link = None }, TypeRepr.Arrow (TypeRepr.Unit, TypeRepr.Var {
-      id = 2;
-      link = None
-    }))
-  ))
+  ], arrow
+    ~label:(TypeRepr.Labelled "main")
+    (arrow ~label:(TypeRepr.Labelled "args") args (TypeRepr.Result (TypeRepr.Unit, exit_reason)))
+    (arrow
+      ~label:(TypeRepr.Labelled "args")
+      args
+      (arrow TypeRepr.Unit TypeRepr.Unit)))
 
 let default = {
   prelude = [
@@ -87,7 +89,7 @@ let default = {
     ("-", int_binop);
     ("*", int_binop);
     ("/", int_binop);
-    ("^", monomorphic (TypeRepr.Arrow (TypeRepr.String, TypeRepr.Arrow (TypeRepr.String, TypeRepr.String))));
+    ("^", monomorphic (arrow TypeRepr.String (arrow TypeRepr.String TypeRepr.String)));
     ("=", polymorphic_eq);
     ("!=", polymorphic_eq);
     ("<", polymorphic_compare);
@@ -99,19 +101,19 @@ let default = {
     ("*.", float_binop);
     ("/.", float_binop);
     ("|>", polymorphic_pipe);
-    ("not", monomorphic (TypeRepr.Arrow (TypeRepr.Bool, TypeRepr.Bool)));
-    ("Int.to_string", monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.String)));
+    ("not", monomorphic (arrow TypeRepr.Bool TypeRepr.Bool));
+    ("Int.to_string", monomorphic (arrow TypeRepr.Int TypeRepr.String));
     ("Int.min", int_binop);
     ("Int.max", int_binop);
-    ("Float.to_string", monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.String)));
-    ("Float.of_int", monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Float)));
-    ("Float.to_int", monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Int)));
-    ("Float.pow", monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Float))));
-    ("Float.cbrt", monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Float)));
+    ("Float.to_string", monomorphic (arrow TypeRepr.Float TypeRepr.String));
+    ("Float.of_int", monomorphic (arrow TypeRepr.Int TypeRepr.Float));
+    ("Float.to_int", monomorphic (arrow TypeRepr.Float TypeRepr.Int));
+    ("Float.pow", monomorphic (arrow TypeRepr.Float (arrow TypeRepr.Float TypeRepr.Float)));
+    ("Float.cbrt", monomorphic (arrow TypeRepr.Float TypeRepr.Float));
     ("Float.min", float_binop);
     ("Float.max", float_binop);
-    ("Array.length", monomorphic (TypeRepr.Arrow (TypeRepr.Array unknown, TypeRepr.Int)));
-    ("Std.println", monomorphic (TypeRepr.Arrow (TypeRepr.String, TypeRepr.Unit)));
+    ("Array.length", monomorphic (arrow (TypeRepr.Array unknown) TypeRepr.Int));
+    ("Std.println", monomorphic (arrow TypeRepr.String TypeRepr.Unit));
     ("Std.Env.args", runtime_args);
     ("Actors.run", runtime_run);
   ]

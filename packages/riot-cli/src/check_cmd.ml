@@ -39,7 +39,7 @@ let command =
     |> args
       [
         flag "json" |> long "json" |> help "Emit machine-readable JSON output";
-        flag "quiet" |> long "quiet" |> help "Suppress success output when no diagnostics are found";
+        flag "quiet" |> long "quiet" |> help "Suppress the final success summary when the check succeeds";
         option "package"
         |> short 'p'
         |> long "package"
@@ -862,6 +862,8 @@ let print_checked_file_json = fun ~stdout ~workspace_root checked_file ->
 
 let print_checked_files_summary = fun ~stdout checked_summary quiet ->
   if quiet then
+    ()
+  else if checked_summary.diagnostics = 0 && checked_summary.read_failures = 0 then
     ()
   else if checked_summary.has_error then
     ()

@@ -24,6 +24,21 @@ type match_case = {
   body_id: ExprId.t;
 }
 
+type label =
+  | Positional
+  | Labeled of string
+  | Optional of string
+
+type function_parameter = {
+  label: label;
+  pattern_id: PatId.t;
+}
+
+type apply_argument = {
+  label: label;
+  value_id: ExprId.t;
+}
+
 type expr_desc =
   | EVar of string
   | EInt of string
@@ -34,8 +49,8 @@ type expr_desc =
   | ETuple of ExprId.t list
   | EArray of ExprId.t list
   | ESequence of ExprId.t list
-  | EFun of PatId.t list * ExprId.t
-  | EApply of ExprId.t * ExprId.t list
+  | EFun of function_parameter list * ExprId.t
+  | EApply of ExprId.t * apply_argument list
   | EIndex of ExprId.t * ExprId.t
   | ELet of BindingId.t list * ExprId.t
   | EIf of ExprId.t * ExprId.t * ExprId.t
@@ -97,6 +112,17 @@ let find_binding = fun arena binding_id ->
 
 let render_ids = fun render ids -> ids |> List.map render |> String.concat ", "
 
+let render_label = function
+  | Positional -> "_"
+  | Labeled label -> "~" ^ label
+  | Optional label -> "?" ^ label
+
+let render_function_parameter = fun (parameter: function_parameter) ->
+  render_label parameter.label ^ ":" ^ PatId.to_string parameter.pattern_id
+
+let render_apply_argument = fun (argument: apply_argument) ->
+  render_label argument.label ^ ":" ^ ExprId.to_string argument.value_id
+
 let render_pattern_desc = function
   | PVar name -> "var " ^ name
   | PWildcard -> "_"
@@ -135,9 +161,16 @@ let render_expr_desc = function
   | ESequence elements ->
       "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
   | EFun (parameters, body_id) ->
-      "fun [" ^ render_ids PatId.to_string parameters ^ "] -> " ^ ExprId.to_string body_id
+      "fun ["
+      ^ (parameters |> List.map render_function_parameter |> String.concat ", ")
+      ^ "] -> "
+      ^ ExprId.to_string body_id
   | EApply (callee_id, arguments) ->
-      "apply " ^ ExprId.to_string callee_id ^ " [" ^ render_ids ExprId.to_string arguments ^ "]"
+      "apply "
+      ^ ExprId.to_string callee_id
+      ^ " ["
+      ^ (arguments |> List.map render_apply_argument |> String.concat ", ")
+      ^ "]"
   | EIndex (collection_id, index_id) ->
       "index " ^ ExprId.to_string collection_id ^ " [" ^ ExprId.to_string index_id ^ "]"
   | ELet (binding_ids, body_id) ->
@@ -246,6 +279,29 @@ let match_case_to_json = fun (case: match_case) ->
     ("body_id", Data.Json.Int (ExprId.to_int case.body_id));
   ]
 
+let label_to_json = function
+  | Positional -> Data.Json.Object [ ("tag", Data.Json.String "positional") ]
+  | Labeled label -> Data.Json.Object [
+    ("tag", Data.Json.String "labeled");
+    ("label", Data.Json.String label);
+  ]
+  | Optional label -> Data.Json.Object [
+    ("tag", Data.Json.String "optional");
+    ("label", Data.Json.String label);
+  ]
+
+let function_parameter_to_json = fun (parameter: function_parameter) ->
+  Data.Json.Object [
+    ("label", label_to_json parameter.label);
+    ("pattern_id", Data.Json.Int (PatId.to_int parameter.pattern_id));
+  ]
+
+let apply_argument_to_json = fun (argument: apply_argument) ->
+  Data.Json.Object [
+    ("label", label_to_json argument.label);
+    ("value_id", Data.Json.Int (ExprId.to_int argument.value_id));
+  ]
+
 let expr_desc_to_json = function
   | EVar name -> Data.Json.Object [
     ("tag", Data.Json.String "var");
@@ -293,17 +349,14 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "fun");
     (
       "parameters",
-      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) parameters)
+      Data.Json.Array (List.map function_parameter_to_json parameters)
     );
     ("body_id", Data.Json.Int (ExprId.to_int body_id));
   ]
   | EApply (callee_id, arguments) -> Data.Json.Object [
     ("tag", Data.Json.String "apply");
     ("callee_id", Data.Json.Int (ExprId.to_int callee_id));
-    (
-      "arguments",
-      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) arguments)
-    );
+    ("arguments", Data.Json.Array (List.map apply_argument_to_json arguments));
   ]
   | EIndex (collection_id, index_id) -> Data.Json.Object [
     ("tag", Data.Json.String "index");

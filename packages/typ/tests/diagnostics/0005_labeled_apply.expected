@@ -1,26 +1,5 @@
 {
-  "lowering_diagnostics": [
-    {
-      "id": "TYP1005",
-      "message": "labeled, optional, or locally abstract parameters are currently lowered as ordinary positional binders",
-      "name": "parameter-lowered-as-positional",
-      "parameter_span": {
-        "end": 28,
-        "start": 21
-      },
-      "severity": "warning"
-    },
-    {
-      "application_span": {
-        "end": 76,
-        "start": 67
-      },
-      "id": "TYP1007",
-      "message": "labeled or optional application arguments are currently lowered as ordinary positional arguments",
-      "name": "application-argument-lowered-as-positional",
-      "severity": "warning"
-    }
-  ],
+  "lowering_diagnostics": [],
   "parse_diagnostics": [],
   "typing_diagnostics": []
 }

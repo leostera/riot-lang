@@ -10,6 +10,47 @@ let keep_jsonl = fun path ->
   | Some ".jsonl" -> `keep
   | _ -> `skip
 
+let replace_all = fun text ->
+  fun ~pattern ->
+    fun ~with_ ->
+      let pattern_len = String.length pattern in
+      if Int.equal pattern_len 0 then
+        text
+      else
+        let buffer = IO.Buffer.create (String.length text + String.length with_) in
+        let starts_with_pattern offset =
+          let rec loop index =
+            if index >= pattern_len then
+              true
+            else if text.[offset + index] = pattern.[index] then
+              loop (index + 1)
+            else
+              false
+          in
+          offset + pattern_len <= String.length text && loop 0
+        in
+        let rec loop offset =
+          if offset >= String.length text then
+            ()
+          else if starts_with_pattern offset then (
+            IO.Buffer.add_string buffer with_;
+            loop (offset + pattern_len)
+          ) else (
+            IO.Buffer.add_char buffer text.[offset];
+            loop (offset + 1)
+          )
+        in
+        let () = loop 0 in
+        IO.Buffer.contents buffer
+
+let substitute_fixture_tokens = fun line ->
+  let repo_root =
+    Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".")
+  in
+  line
+  |> replace_all ~pattern:"__REPO_ROOT_URI__" ~with_:(Lsp.Uri.to_string (Lsp.Uri.of_path repo_root))
+  |> replace_all ~pattern:"__REPO_ROOT__" ~with_:(Path.to_string repo_root)
+
 let read_lines = fun path ->
   Fs.read path
   |> Result.map_error IO.error_message
@@ -18,6 +59,7 @@ let read_lines = fun path ->
       source
       |> String.split_on_char '\n'
       |> List.map String.trim
+      |> List.map substitute_fixture_tokens
       |> List.filter (fun line -> not (String.equal line "")))
 
 let run_fixture = fun path ->

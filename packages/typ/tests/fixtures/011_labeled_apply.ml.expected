@@ -57,8 +57,18 @@
       {
         "desc": {
           "arguments": [
-            1,
-            2
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 1
+            },
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 2
+            }
           ],
           "callee_id": 0,
           "tag": "apply"
@@ -70,8 +80,19 @@
         "desc": {
           "body_id": 3,
           "parameters": [
-            1,
-            2
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 1
+            },
+            {
+              "label": {
+                "label": "right",
+                "tag": "labeled"
+              },
+              "pattern_id": 2
+            }
           ],
           "tag": "fun"
         },
@@ -105,8 +126,19 @@
       {
         "desc": {
           "arguments": [
-            6,
-            7
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 6
+            },
+            {
+              "label": {
+                "label": "right",
+                "tag": "labeled"
+              },
+              "value_id": 7
+            }
           ],
           "callee_id": 5,
           "tag": "apply"
@@ -141,8 +173,19 @@
       {
         "desc": {
           "arguments": [
-            10,
-            11
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 10
+            },
+            {
+              "label": {
+                "label": "right",
+                "tag": "labeled"
+              },
+              "value_id": 11
+            }
           ],
           "callee_id": 9,
           "tag": "apply"
@@ -154,7 +197,12 @@
         "desc": {
           "body_id": 12,
           "parameters": [
-            5
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 5
+            }
           ],
           "tag": "fun"
         },
@@ -216,7 +264,7 @@
   "exports": [
     {
       "name": "choose",
-      "scheme": "int -> int -> int"
+      "scheme": "int -> ~right:int -> int"
     },
     {
       "name": "pick",
@@ -288,7 +336,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -451,7 +499,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -614,7 +662,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -777,7 +825,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -940,7 +988,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1024,7 +1072,7 @@
         }
       ],
       "expr_id": 4,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin": {
         "label": "fun_expression",
         "span": {
@@ -1095,7 +1143,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1171,7 +1219,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -1183,7 +1231,7 @@
         }
       ],
       "expr_id": 5,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -1254,7 +1302,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1330,7 +1378,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -1413,7 +1461,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1489,7 +1537,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -1572,7 +1620,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1648,7 +1696,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -1731,7 +1779,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1807,7 +1855,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -1827,7 +1875,7 @@
         }
       ],
       "expr_id": 9,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -1898,7 +1946,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -1974,7 +2022,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -2065,7 +2113,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -2141,7 +2189,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -2232,7 +2280,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -2308,7 +2356,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -2399,7 +2447,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -2475,7 +2523,7 @@
         },
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "not",
@@ -2508,7 +2556,7 @@
       "exports": [
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "pick",
@@ -2519,7 +2567,7 @@
           "scheme": "int -> int"
         }
       ],
-      "tag": "errored_export"
+      "tag": "trusted_export"
     },
     "source_id": 0
   },
@@ -2532,7 +2580,7 @@
       "exports_after": [
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         }
       ],
       "item_id": 0
@@ -2544,7 +2592,7 @@
       "exports_after": [
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "pick",
@@ -2560,7 +2608,7 @@
       "exports_after": [
         {
           "name": "choose",
-          "scheme": "int -> int -> int"
+          "scheme": "int -> ~right:int -> int"
         },
         {
           "name": "pick",
@@ -2606,38 +2654,7 @@
       "tag": "value"
     }
   ],
-  "lowering_diagnostics": [
-    {
-      "id": "TYP1005",
-      "message": "labeled, optional, or locally abstract parameters are currently lowered as ordinary positional binders",
-      "name": "parameter-lowered-as-positional",
-      "parameter_span": {
-        "end": 28,
-        "start": 21
-      },
-      "severity": "warning"
-    },
-    {
-      "application_span": {
-        "end": 76,
-        "start": 67
-      },
-      "id": "TYP1007",
-      "message": "labeled or optional application arguments are currently lowered as ordinary positional arguments",
-      "name": "application-argument-lowered-as-positional",
-      "severity": "warning"
-    },
-    {
-      "application_span": {
-        "end": 128,
-        "start": 121
-      },
-      "id": "TYP1007",
-      "message": "labeled or optional application arguments are currently lowered as ordinary positional arguments",
-      "name": "application-argument-lowered-as-positional",
-      "severity": "warning"
-    }
-  ],
+  "lowering_diagnostics": [],
   "origin_map": [
     {
       "kind": "pattern",
@@ -2673,7 +2690,7 @@
     },
     {
       "kind": "pattern",
-      "label": "recovered_parameter",
+      "label": "labeled_parameter_pattern",
       "origin_id": 2,
       "semantic_id": {
         "id": 2,
@@ -3106,7 +3123,7 @@
     },
     {
       "expr_id": 5,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin_id": 11,
       "span": {
         "end": 65,
@@ -3124,7 +3141,7 @@
     },
     {
       "expr_id": 9,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin_id": 19,
       "span": {
         "end": 119,
@@ -3178,7 +3195,7 @@
     },
     {
       "expr_id": 4,
-      "inferred_type": "int -> int -> int",
+      "inferred_type": "int -> ~right:int -> int",
       "origin_id": 7,
       "span": {
         "end": 46,

@@ -33,7 +33,12 @@
         "desc": {
           "body_id": 0,
           "parameters": [
-            1
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 1
+            }
           ],
           "tag": "fun"
         },
@@ -59,7 +64,12 @@
       {
         "desc": {
           "arguments": [
-            3
+            {
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 3
+            }
           ],
           "callee_id": 2,
           "tag": "apply"
@@ -174,7 +184,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -341,7 +351,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -504,7 +514,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -671,7 +681,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -838,7 +848,7 @@
         },
         {
           "name": "Actors.run",
-          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
         },
         {
           "name": "Array.length",
@@ -966,7 +976,7 @@
           "scheme": "string -> unit"
         }
       ],
-      "tag": "errored_export"
+      "tag": "trusted_export"
     },
     "source_id": 0
   },
@@ -1053,18 +1063,7 @@
       "tag": "value"
     }
   ],
-  "lowering_diagnostics": [
-    {
-      "ascription_span": {
-        "end": 50,
-        "start": 8
-      },
-      "id": "TYP1008",
-      "message": "type ascriptions are currently ignored during lowering",
-      "name": "ignored-type-ascription",
-      "severity": "warning"
-    }
-  ],
+  "lowering_diagnostics": [],
   "origin_map": [
     {
       "kind": "item",

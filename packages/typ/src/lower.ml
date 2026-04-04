@@ -327,9 +327,50 @@ let rec lower_pattern = fun (state: state) pattern ->
         pattern
         (unsupported_syntax_kind (Cst.Pattern.syntax_node pattern))
 
+let recovered_parameter_pattern = fun (state: state) syntax_node ~label parameter ->
+  match Cst.Parameter.binding_pattern parameter with
+  | Some pattern -> lower_pattern state pattern
+  | None -> (
+      match Cst.Parameter.name parameter with
+      | Some name -> add_pattern
+        state
+        ~syntax_node
+        ~label
+        (BodyArena.PVar name)
+      | None -> add_pattern state ~syntax_node ~label:"unsupported_parameter" BodyArena.PWildcard
+    )
+
+let positional_function_parameter = fun pattern_id ->
+  ({ BodyArena.label = BodyArena.Positional; pattern_id }: BodyArena.function_parameter)
+
+let labeled_function_parameter = fun label pattern_id ->
+  ({ BodyArena.label = BodyArena.Labeled label; pattern_id }: BodyArena.function_parameter)
+
+let optional_function_parameter = fun label pattern_id ->
+  ({ BodyArena.label = BodyArena.Optional label; pattern_id }: BodyArena.function_parameter)
+
 let rec lower_parameter = fun (state: state) parameter ->
   match parameter with
-  | Cst.Parameter.Positional { pattern; _ } -> lower_pattern state pattern
+  | Cst.Parameter.Positional { pattern; _ } ->
+      positional_function_parameter (lower_pattern state pattern)
+  | Cst.Parameter.Labeled labeled ->
+      let pattern_id =
+        recovered_parameter_pattern
+          state
+          labeled.syntax_node
+          ~label:"labeled_parameter_pattern"
+          parameter
+      in
+      labeled_function_parameter (Cst.Token.text labeled.label_token) pattern_id
+  | Cst.Parameter.Optional optional ->
+      let pattern_id =
+        recovered_parameter_pattern
+          state
+          optional.syntax_node
+          ~label:"optional_parameter_pattern"
+          parameter
+      in
+      optional_function_parameter (Cst.Token.text optional.label_token) pattern_id
   | parameter ->
       let syntax_node = Cst.Parameter.syntax_node parameter in
       let () = add_diagnostic
@@ -337,17 +378,8 @@ let rec lower_parameter = fun (state: state) parameter ->
         (Typ_diagnostic.ParameterLoweredAsPositional {
           parameter_span = Ceibo.Red.SyntaxNode.span syntax_node
         }) in
-      match Cst.Parameter.binding_pattern parameter with
-      | Some pattern -> lower_pattern state pattern
-      | None -> (
-          match Cst.Parameter.name parameter with
-          | Some name -> add_pattern
-            state
-            ~syntax_node
-            ~label:"recovered_parameter"
-            (BodyArena.PVar name)
-          | None -> add_pattern state ~syntax_node ~label:"unsupported_parameter" BodyArena.PWildcard
-        )
+      positional_function_parameter
+        (recovered_parameter_pattern state syntax_node ~label:"recovered_parameter" parameter)
 
 let synthetic_var_pattern = fun (state: state) syntax_node ~label ->
   let name = fresh_synthetic_name state label in
@@ -393,7 +425,7 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body ->
           ~syntax_node
           ~label:"function_match_body"
           (BodyArena.EMatch (argument_expr_id, lower_match_cases state cases)) in
-        let parameter_ids = parameter_ids @ [ synthetic_pattern_id ] in
+        let parameter_ids = parameter_ids @ [ positional_function_parameter synthetic_pattern_id ] in
         add_expr state ~syntax_node ~label:"wrapped_fun" (BodyArena.EFun (parameter_ids, match_id))
   in
   match body with
@@ -461,15 +493,10 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
 and lower_apply = fun (state: state) expression ->
   let lower_argument = function
     | Cst.Positional argument ->
-        lower_expr state argument
-    | Cst.Labeled { syntax_node; label_token; value; _ }
-    | Cst.Optional { syntax_node; label_token; value; _ } ->
-        let () = add_diagnostic
-          state
-          (Typ_diagnostic.ApplicationArgumentLoweredAsPositional {
-            application_span = Ceibo.Red.SyntaxNode.span syntax_node
-          }) in
-        (
+        ({ BodyArena.label = BodyArena.Positional; value_id = lower_expr state argument }:
+          BodyArena.apply_argument)
+    | Cst.Labeled { syntax_node; label_token; value; _ } ->
+        let value_id =
           match value with
           | Some value ->
               lower_expr state value
@@ -479,7 +506,21 @@ and lower_apply = fun (state: state) expression ->
                 ~syntax_node
                 ~label:"implicit_labeled_argument"
                 (BodyArena.EVar (Cst.Token.text label_token))
-        )
+        in
+        { BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token); value_id }
+    | Cst.Optional { syntax_node; label_token; value; _ } ->
+        let value_id =
+          match value with
+          | Some value ->
+              lower_expr state value
+          | None ->
+              add_expr
+                state
+                ~syntax_node
+                ~label:"implicit_optional_argument"
+                (BodyArena.EVar (Cst.Token.text label_token))
+        in
+        { BodyArena.label = BodyArena.Optional (Cst.Token.text label_token); value_id }
   in
   let rec collect = function
     | Cst.Expression.Apply { callee; argument; _ } ->
@@ -507,7 +548,13 @@ and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
     state
     ~syntax_node
     ~label:"infix_expression"
-    (BodyArena.EApply (operator_id, [ left_id; right_id ]))
+    (BodyArena.EApply (
+      operator_id,
+      [
+        { BodyArena.label = BodyArena.Positional; value_id = left_id };
+        { BodyArena.label = BodyArena.Positional; value_id = right_id };
+      ]
+    ))
 
 and lower_expr = fun (state: state) expression ->
   match expression with
@@ -533,7 +580,10 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"constructor_apply_expression"
-            (BodyArena.EApply (callee_id, [ payload_id ]))
+            (BodyArena.EApply (
+              callee_id,
+              [ { BodyArena.label = BodyArena.Positional; value_id = payload_id } ]
+            ))
     )
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
       match module_path_segments_of_expr receiver with
@@ -600,12 +650,7 @@ and lower_expr = fun (state: state) expression ->
       add_expr state ~syntax_node ~label:"sequence_expression" (BodyArena.ESequence element_ids)
   | Cst.Expression.Parenthesized { inner; _ } ->
       lower_expr state inner
-  | Cst.Expression.TypeAscription { syntax_node; expression; _ } ->
-      let () = add_diagnostic
-        state
-        (Typ_diagnostic.IgnoredTypeAscription {
-          ascription_span = Ceibo.Red.SyntaxNode.span syntax_node
-        }) in
+  | Cst.Expression.TypeAscription { expression; _ } ->
       lower_expr state expression
   | Cst.Expression.Polymorphic { syntax_node; expression; _ } ->
       let () = add_diagnostic
@@ -704,7 +749,10 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"prefix_expression"
-            (BodyArena.EApply (operator_id, [ operand_id ]))
+            (BodyArena.EApply (
+              operator_id,
+              [ { BodyArena.label = BodyArena.Positional; value_id = operand_id } ]
+            ))
     )
   | _ ->
       lower_unsupported_expr
@@ -797,11 +845,8 @@ let lower_source_file = fun ~source source_file ->
     | Cst.Implementation implementation ->
         let _items = implementation.items |> List.map (lower_structure_item state) in
         ()
-    | Cst.Interface interface -> add_diagnostic
-      state
-      (Typ_diagnostic.UnsupportedInterfaceFile {
-        interface_span = Ceibo.Red.SyntaxNode.span interface.syntax_node
-      })
+    | Cst.Interface _ ->
+        ()
   in
   {
     SemanticTree.item_tree = ItemTree.of_list (List.rev state.items);

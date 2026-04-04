@@ -30,6 +30,11 @@ let name_for_var = fun state id ->
       in
       name
 
+let render_arrow_label = function
+  | TypeRepr.Nolabel -> ""
+  | TypeRepr.Labelled label -> "~" ^ label ^ ":"
+  | TypeRepr.Optional label -> "?" ^ label ^ ":"
+
 let rec render_type = fun state ~nested ty ->
   match TypeRepr.prune ty with
   | TypeRepr.Int ->
@@ -76,8 +81,13 @@ let rec render_type = fun state ~nested ty ->
           "(" ^ text ^ ")"
         else
           text
-  | TypeRepr.Arrow (lhs, rhs) ->
-      let text = render_type state ~nested:true lhs ^ " -> " ^ render_type state ~nested:false rhs in
+  | TypeRepr.Arrow { label; lhs; rhs } ->
+      let text =
+        render_arrow_label label
+        ^ render_type state ~nested:true lhs
+        ^ " -> "
+        ^ render_type state ~nested:false rhs
+      in
       if nested then
         "(" ^ text ^ ")"
       else

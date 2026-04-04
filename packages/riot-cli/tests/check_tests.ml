@@ -176,8 +176,8 @@ let test_check_human_output_snapshot = fun ctx ->
                 Test.Snapshot.assert_text ~ctx ~actual:(stdout_contents ())
           ))
 
-let test_check_success_summary_uses_captured_stdout = fun _ctx ->
-  with_tempdir_result "riot_check_success_summary"
+let test_check_success_is_silent = fun _ctx ->
+  with_tempdir_result "riot_check_success_silent"
     (fun tmpdir ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
       let package_root = Path.(workspace_root / Path.v "packages/demo") in
@@ -196,7 +196,7 @@ let test_check_success_summary_uses_captured_stdout = fun _ctx ->
           let stderr, stderr_contents = make_capture_writer () in
           Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
           |> Result.expect ~msg:"check simple file";
-          Test.assert_equal ~expected:"Checked 1 file: ok\n" ~actual:(stdout_contents ());
+          Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
           Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
           Ok ())
 
@@ -338,7 +338,7 @@ let tests =
       "check: json streams a single explicit file without duplicates"
       test_check_json_streams_single_explicit_file_without_duplicates;
     case "check: human output snapshot" test_check_human_output_snapshot;
-    case "check: success summary uses captured stdout" test_check_success_summary_uses_captured_stdout;
+    case "check: clean success is silent" test_check_success_is_silent;
     case "check: package filter limits workspace scan" test_check_package_filter_limits_workspace_scan;
     case
       "check: package filter uses sibling source exports during package scans"

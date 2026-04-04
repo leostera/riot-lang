@@ -1,16 +1,5 @@
 {
-  "lowering_diagnostics": [
-    {
-      "ascription_span": {
-        "end": 56,
-        "start": 22
-      },
-      "id": "TYP1008",
-      "message": "type ascriptions are currently ignored during lowering",
-      "name": "ignored-type-ascription",
-      "severity": "warning"
-    }
-  ],
+  "lowering_diagnostics": [],
   "parse_diagnostics": [],
   "typing_diagnostics": []
 }

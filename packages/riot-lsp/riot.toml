@@ -21,6 +21,7 @@ jsonrpc = { path = "../jsonrpc", version = "*" }
 krasny = { path = "../krasny", version = "*" }
 lsp = { path = "../lsp", version = "*" }
 riot-fix = { path = "../riot-fix", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
 std = { path = "../std", version = "*" }
 syn = { path = "../syn", version = "*" }
 typ = { path = "../typ", version = "*" }

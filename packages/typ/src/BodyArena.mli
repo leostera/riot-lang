@@ -38,6 +38,25 @@ type match_case = {
   (** Body expression evaluated when the pattern matches. *)
   body_id: ExprId.t;
 }
+type label =
+  (** Ordinary unlabeled argument or parameter. *)
+  | Positional
+  (** A labeled argument or parameter introduced with `~label:`. *)
+  | Labeled of string
+  (** An optional argument or parameter introduced with `?label:`. *)
+  | Optional of string
+type function_parameter = {
+  (** Calling-convention label preserved from the source surface. *)
+  label: label;
+  (** Semantic pattern bound for this parameter. *)
+  pattern_id: PatId.t;
+}
+type apply_argument = {
+  (** Calling-convention label preserved from the call site. *)
+  label: label;
+  (** Lowered argument value expression. *)
+  value_id: ExprId.t;
+}
 type expr_desc =
   (** Variable reference. *)
   | EVar of string
@@ -58,9 +77,9 @@ type expr_desc =
   (** Sequence expression evaluated left-to-right, returning the last type. *)
   | ESequence of ExprId.t list
   (** Function expression with parameter patterns and one body expression. *)
-  | EFun of PatId.t list * ExprId.t
-  (** Application with one callee and positional arguments. *)
-  | EApply of ExprId.t * ExprId.t list
+  | EFun of function_parameter list * ExprId.t
+  (** Application with one callee and labeled or positional arguments. *)
+  | EApply of ExprId.t * apply_argument list
   (** Indexed access into one collection expression at one index expression. *)
   | EIndex of ExprId.t * ExprId.t
   (** Let-expression with local binding IDs and one body expression. *)
