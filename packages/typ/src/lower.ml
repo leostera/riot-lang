@@ -153,6 +153,12 @@ let add_item = fun (state: state) ~syntax_node item ->
       binding_ids;
       recursive
     }
+    | `Open module_path -> ItemTree.Open {
+      item_id;
+      origin_id;
+      scope_path = state.scope_path;
+      module_path
+    }
     | `Unsupported summary -> ItemTree.Unsupported {
       item_id;
       origin_id;
@@ -453,38 +459,38 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
   head :: tail
 
 and lower_apply = fun (state: state) expression ->
-  let rec collect arguments = function
-    | Cst.Expression.Apply { callee; argument; _ } ->
-        let argument_id =
-          match argument with
-          | Positional argument ->
-              lower_expr state argument
-          | Labeled { syntax_node; label_token; value; _ }
-          | Optional { syntax_node; label_token; value; _ } ->
-              let () = add_diagnostic
+  let lower_argument = function
+    | Cst.Positional argument ->
+        lower_expr state argument
+    | Cst.Labeled { syntax_node; label_token; value; _ }
+    | Cst.Optional { syntax_node; label_token; value; _ } ->
+        let () = add_diagnostic
+          state
+          (Typ_diagnostic.ApplicationArgumentLoweredAsPositional {
+            application_span = Ceibo.Red.SyntaxNode.span syntax_node
+          }) in
+        (
+          match value with
+          | Some value ->
+              lower_expr state value
+          | None ->
+              add_expr
                 state
-                (Typ_diagnostic.ApplicationArgumentLoweredAsPositional {
-                  application_span = Ceibo.Red.SyntaxNode.span syntax_node
-                }) in
-              (
-                match value with
-                | Some value ->
-                    lower_expr state value
-                | None ->
-                    add_expr
-                      state
-                      ~syntax_node
-                      ~label:"implicit_labeled_argument"
-                      (BodyArena.EVar (Cst.Token.text label_token))
-              )
-        in
-        collect (argument_id :: arguments) callee
+                ~syntax_node
+                ~label:"implicit_labeled_argument"
+                (BodyArena.EVar (Cst.Token.text label_token))
+        )
+  in
+  let rec collect = function
+    | Cst.Expression.Apply { callee; argument; _ } ->
+        let (callee_id, arguments) = collect callee in
+        (callee_id, arguments @ [ lower_argument argument ])
     | callee ->
         let callee_id = lower_expr state callee in
-        (callee_id, List.rev arguments)
+        (callee_id, [])
   in
   let syntax_node = Cst.Expression.syntax_node expression in
-  let (callee_id, arguments) = collect [] expression in
+  let (callee_id, arguments) = collect expression in
   add_expr state ~syntax_node ~label:"apply_expression" (BodyArena.EApply (callee_id, arguments))
 
 and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
@@ -651,18 +657,33 @@ and lower_expr = fun (state: state) expression ->
         ~syntax_node
         ~label:"local_open_expression"
         (BodyArena.ELocalOpen { module_path = path_text module_path; body_id })
-  | Cst.Expression.Prefix { syntax_node; operator_token; operand; _ } ->
-      let operator_id = add_expr
-        state
-        ~syntax_node
-        ~label:"prefix_operator"
-        (BodyArena.EVar (Cst.Token.text operator_token)) in
-      let operand_id = lower_expr state operand in
-      add_expr
-        state
-        ~syntax_node
-        ~label:"prefix_expression"
-        (BodyArena.EApply (operator_id, [ operand_id ]))
+  | Cst.Expression.Prefix { syntax_node; operator_token; operand; _ } -> (
+      match (Cst.Token.text operator_token, operand) with
+      | ("-", Cst.Expression.Literal (Cst.Literal.Int integer)) ->
+          add_expr
+            state
+            ~syntax_node
+            ~label:"negative_int_literal"
+            (BodyArena.EInt ("-" ^ int_text integer))
+      | ("-", Cst.Expression.Literal (Cst.Literal.Float float_)) ->
+          add_expr
+            state
+            ~syntax_node
+            ~label:"negative_float_literal"
+            (BodyArena.EFloat ("-" ^ float_text float_))
+      | _ ->
+          let operator_id = add_expr
+            state
+            ~syntax_node
+            ~label:"prefix_operator"
+            (BodyArena.EVar (Cst.Token.text operator_token)) in
+          let operand_id = lower_expr state operand in
+          add_expr
+            state
+            ~syntax_node
+            ~label:"prefix_expression"
+            (BodyArena.EApply (operator_id, [ operand_id ]))
+    )
   | _ ->
       lower_unsupported_expr
         state
@@ -684,15 +705,18 @@ let rec lower_structure_item = fun (state: state) item ->
   | Cst.StructureItem.Expression expression ->
       let _ = lower_top_level_expression state expression in
       ()
-  | Cst.StructureItem.OpenStatement {
-    target = Cst.OpenStatement.Path _;
-    _
-  }
-  | Cst.StructureItem.OpenStatement {
-    target = Cst.OpenStatement.ModuleExpression (Cst.ModuleExpression.Path _);
-    _
-  } ->
-      ()
+  | Cst.StructureItem.OpenStatement open_statement -> (
+      match Cst.OpenStatement.module_path open_statement with
+      | Some module_path ->
+          let _ =
+            add_item
+              state
+              ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
+              (`Open (path_text module_path))
+          in
+          ()
+      | None -> ()
+    )
   | Cst.StructureItem.TypeDeclaration _ ->
       ()
   | Cst.StructureItem.ModuleDeclaration declaration ->

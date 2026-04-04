@@ -4,6 +4,7 @@ type env = (string * TypeScheme.t) list
 
 type t = {
   prelude: env;
+  ambient: env;
 }
 
 let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
@@ -62,5 +63,10 @@ let default = {
     ("Float.min", float_binop);
     ("Float.max", float_binop);
     ("Array.length", monomorphic (TypeRepr.Arrow (TypeRepr.Array unknown, TypeRepr.Int)));
+    ("Std.println", monomorphic (TypeRepr.Arrow (TypeRepr.String, TypeRepr.Unit)));
   ]
+  ;
+  ambient = [];
 }
+
+let with_ambient = fun config ~ambient -> { config with ambient }

@@ -68,7 +68,7 @@
       },
       {
         "desc": {
-          "name": "table",
+          "name": "Array.length",
           "tag": "var"
         },
         "expr_id": 4,
@@ -76,7 +76,7 @@
       },
       {
         "desc": {
-          "name": "Array.length",
+          "name": "table",
           "tag": "var"
         },
         "expr_id": 5,
@@ -85,9 +85,9 @@
       {
         "desc": {
           "arguments": [
-            4
+            5
           ],
-          "callee_id": 5,
+          "callee_id": 4,
           "tag": "apply"
         },
         "expr_id": 6,
@@ -264,6 +264,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -389,6 +393,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -518,6 +526,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -643,6 +655,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -772,6 +788,145 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "table",
+          "scheme": "int array"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 4,
+      "inferred_type": "(_?-1 array) -> int",
+      "origin": {
+        "label": "qualified_path_expression",
+        "span": {
+          "end": 49,
+          "start": 36
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      "origin_id": 8
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -789,14 +944,14 @@
         }
       ],
       "expr_id": 5,
-      "inferred_type": "(_?-1 array) -> int",
+      "inferred_type": "int array",
       "origin": {
-        "label": "qualified_path_expression",
+        "label": "path_expression",
         "span": {
-          "end": 49,
-          "start": 36
+          "end": 55,
+          "start": 49
         },
-        "syntax_kind": "FIELD_ACCESS_EXPR"
+        "syntax_kind": "IDENT_EXPR"
       },
       "origin_id": 9
     },
@@ -903,135 +1058,8 @@
           "scheme": "int -> string"
         },
         {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "table",
-          "scheme": "int array"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 4,
-      "inferred_type": "int array",
-      "origin": {
-        "label": "path_expression",
-        "span": {
-          "end": 55,
-          "start": 49
-        },
-        "syntax_kind": "IDENT_EXPR"
-      },
-      "origin_id": 8
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -1163,6 +1191,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -1300,6 +1332,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1433,6 +1469,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -1703,26 +1743,10 @@
     },
     {
       "kind": "expr",
-      "label": "path_expression",
+      "label": "qualified_path_expression",
       "origin_id": 8,
       "semantic_id": {
         "id": 4,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 55,
-        "start": 49
-      },
-      "syntax_kind": "IDENT_EXPR"
-    },
-    {
-      "kind": "expr",
-      "label": "qualified_path_expression",
-      "origin_id": 9,
-      "semantic_id": {
-        "id": 5,
         "tag": "expr"
       },
       "source_id": 0,
@@ -1732,6 +1756,22 @@
         "start": 36
       },
       "syntax_kind": "FIELD_ACCESS_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 5,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 55,
+        "start": 49
+      },
+      "syntax_kind": "IDENT_EXPR"
     },
     {
       "kind": "expr",
@@ -1918,9 +1958,9 @@
       }
     },
     {
-      "expr_id": 4,
+      "expr_id": 5,
       "inferred_type": "int array",
-      "origin_id": 8,
+      "origin_id": 9,
       "span": {
         "end": 55,
         "start": 49
@@ -1945,9 +1985,9 @@
       }
     },
     {
-      "expr_id": 5,
+      "expr_id": 4,
       "inferred_type": "(_?-1 array) -> int",
-      "origin_id": 9,
+      "origin_id": 8,
       "span": {
         "end": 49,
         "start": 36

@@ -207,6 +207,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -336,6 +340,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -469,6 +477,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -598,6 +610,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",
@@ -731,6 +747,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -862,6 +882,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -991,6 +1015,10 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
         },
         {
           "name": "^",

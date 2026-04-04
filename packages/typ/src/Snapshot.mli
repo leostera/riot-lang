@@ -6,7 +6,9 @@ type t
 (** Build a snapshot from the current session sources.
 
     Analyses are prepared lazily per source and only forced by queries that
-    actually need them. *)
+    actually need them. Before the final per-source analysis runs, the snapshot
+    may synthesize an ambient environment from sibling source exports so
+    implicit file modules can participate in name resolution. *)
 val make: revision:int -> config:TypConfig.t -> sources:Source.t list -> t
 
 (** Monotonic session revision captured by this snapshot. *)

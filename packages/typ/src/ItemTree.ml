@@ -15,8 +15,16 @@ type unsupported_item = {
   summary: string;
 }
 
+type open_item = {
+  item_id: ItemId.t;
+  origin_id: OriginId.t;
+  scope_path: string list;
+  module_path: string;
+}
+
 type item =
   | Value of value_item
+  | Open of open_item
   | Unsupported of unsupported_item
 
 type t = item list
@@ -32,6 +40,7 @@ let find_item = fun items item_id ->
     (
       function
       | Value (item: value_item) -> ItemId.equal item.item_id item_id
+      | Open (item: open_item) -> ItemId.equal item.item_id item_id
       | Unsupported (item: unsupported_item) -> ItemId.equal item.item_id item_id
     )
     items
@@ -52,6 +61,16 @@ let item_to_json = function
         item.binding_ids)
     );
     ("recursive", Data.Json.Bool item.recursive);
+  ]
+  | Open (item: open_item) -> Data.Json.Object [
+    ("tag", Data.Json.String "open");
+    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) item.scope_path)
+    );
+    ("module_path", Data.Json.String item.module_path);
   ]
   | Unsupported (item: unsupported_item) -> Data.Json.Object [
     ("tag", Data.Json.String "unsupported");
@@ -89,6 +108,19 @@ let to_string = fun items ->
               ^ " bindings=["
               ^ (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ")
               ^ "]"
+          | Open (item: open_item) ->
+              let scope_prefix =
+                match item.scope_path with
+                | [] -> ""
+                | scope_path -> String.concat "." scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " open "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " "
+              ^ item.module_path
           | Unsupported (item: unsupported_item) ->
               let scope_prefix =
                 match item.scope_path with

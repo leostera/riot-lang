@@ -201,17 +201,6 @@ let has_prefix = fun ~prefix text ->
   else
     String.sub text 0 prefix_length = prefix
 
-let contains_dot = fun text ->
-  let rec loop index =
-    if index >= String.length text then
-      false
-    else if text.[index] = '.' then
-      true
-    else
-      loop (index + 1)
-  in
-  loop 0
-
 let aliases_for_local_open = fun env module_path ->
   let prefix = module_path ^ "." in
   env |> List.filter_map (fun (name, scheme) ->
@@ -219,10 +208,7 @@ let aliases_for_local_open = fun env module_path ->
       let suffix =
         String.sub name (String.length prefix) (String.length name - String.length prefix)
       in
-      if contains_dot suffix then
-        None
-      else
-        Some (suffix, scheme)
+      Some (suffix, scheme)
     else
       None)
 
@@ -499,8 +485,10 @@ and infer_recursive_group = fun (state: state) env bindings ->
 
 let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
 
+let ambient_names = fun (config: TypConfig.t) -> config.ambient |> List.map fst
+
 let export_env = fun config env ->
-  let hidden_names = prelude_names config in
+  let hidden_names = prelude_names config @ ambient_names config in
   render_env env |> List.filter (fun (name, _) -> not (List.mem name hidden_names))
 
 let introduced_entries = fun before after ->
@@ -524,7 +512,7 @@ let scope_prefix_keys = fun scope_path ->
         let current = current @ [ segment ] in
         loop (scope_key current :: acc) current rest
   in
-  loop [] [] scope_path
+  loop [ scope_key [] ] [] scope_path
 
 let scope_locals_for = fun scope_entries scope_path ->
   scope_prefix_keys scope_path |> List.fold_left
@@ -544,19 +532,39 @@ let update_scope_entries = fun scope_entries scope_path entries ->
   let updated = bind_env existing entries in
   (key, updated) :: List.remove_assoc key scope_entries
 
-let env_for_item_scope = fun export_env scope_entries scope_path ->
+let scope_opens_for = fun scope_opens scope_path ->
+  scope_prefix_keys scope_path |> List.fold_left
+    (fun acc key ->
+      match List.assoc_opt key scope_opens with
+      | Some modules -> acc @ modules
+      | None -> acc)
+    []
+
+let update_scope_opens = fun scope_opens scope_path module_path ->
+  let key = scope_key scope_path in
+  let existing =
+    match List.assoc_opt key scope_opens with
+    | Some modules -> modules
+    | None -> []
+  in
+  let updated = existing @ [ module_path ] in
+  (key, updated) :: List.remove_assoc key scope_opens
+
+let env_for_item_scope = fun export_env scope_entries scope_opens scope_path ->
   let locals = scope_locals_for scope_entries scope_path in
-  bind_env export_env locals
+  let base_env = bind_env export_env locals in
+  scope_opens_for scope_opens scope_path |> List.fold_left env_with_local_open base_env
 
 let infer_file = fun ~config file ->
   let state = make_state ~config file in
-  let rec loop export_state scope_entries = function
+  let initial_env = bind_env config.prelude config.ambient in
+  let rec loop export_state scope_entries scope_opens = function
     | [] -> export_state
     | item :: rest -> (
         match item with
         | ItemTree.Value value_item ->
             let visible_exports_before = export_env config export_state in
-            let item_env = env_for_item_scope export_state scope_entries value_item.scope_path in
+            let item_env = env_for_item_scope export_state scope_entries scope_opens value_item.scope_path in
             let env_after_item = infer_binding_group state item_env value_item.binding_ids in
             let introduced = introduced_entries item_env env_after_item in
             let (export_state, scope_entries) =
@@ -578,7 +586,22 @@ let infer_file = fun ~config file ->
               )
               :: state.item_traces
             in
-            loop export_state scope_entries rest
+            loop export_state scope_entries scope_opens rest
+        | ItemTree.Open open_item ->
+            let scope_opens = update_scope_opens scope_opens open_item.scope_path open_item.module_path in
+            let exports_after = export_env config export_state in
+            let () =
+              state.item_traces <- (
+                {
+                  Check_result.item_id = open_item.item_id;
+                  binding_names = [];
+                  exports_after
+                }:
+                  Check_result.item_trace
+              )
+              :: state.item_traces
+            in
+            loop export_state scope_entries scope_opens rest
         | ItemTree.Unsupported unsupported_item ->
             let exports_after = export_env config export_state in
             let () =
@@ -592,9 +615,9 @@ let infer_file = fun ~config file ->
               )
               :: state.item_traces
             in
-            loop export_state scope_entries rest)
+            loop export_state scope_entries scope_opens rest)
   in
-  let exports = loop config.prelude [] (ItemTree.items file.item_tree)
+  let exports = loop initial_env [] [] (ItemTree.items file.item_tree)
   in
   {
     exports = export_env config exports;

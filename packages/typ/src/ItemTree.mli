@@ -23,9 +23,21 @@ type unsupported_item = {
   (** Short recovery summary naming the unsupported syntax family. *)
   summary: string;
 }
+type open_item = {
+  (** Stable item identity. *)
+  item_id: ItemId.t;
+  (** Source origin for this open statement. *)
+  origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: string list;
+  (** Lowered module path opened for later sibling items. *)
+  module_path: string;
+}
 type item =
   (** Value-bearing top-level item. *)
   | Value of value_item
+  (** File- or module-scope open statement. *)
+  | Open of open_item
   (** Placeholder top-level item produced by recovery. *)
   | Unsupported of unsupported_item
 (** Ordered top-level item skeleton for one file. *)

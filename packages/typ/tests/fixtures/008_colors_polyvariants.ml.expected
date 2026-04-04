@@ -4,7 +4,7 @@
       {
         "binding_id": 0,
         "name": "to_string",
-        "origin_id": 46,
+        "origin_id": 47,
         "pattern_id": 0,
         "recursive": false,
         "scope_path": [],
@@ -13,7 +13,7 @@
       {
         "binding_id": 1,
         "name": "blue",
-        "origin_id": 54,
+        "origin_id": 55,
         "pattern_id": 9,
         "recursive": false,
         "scope_path": [],
@@ -27,7 +27,7 @@
           "tag": "var"
         },
         "expr_id": 0,
-        "origin_id": 2
+        "origin_id": 3
       },
       {
         "desc": {
@@ -35,7 +35,7 @@
           "tag": "var"
         },
         "expr_id": 1,
-        "origin_id": 5
+        "origin_id": 6
       },
       {
         "desc": {
@@ -43,7 +43,7 @@
           "value": "ANSI("
         },
         "expr_id": 2,
-        "origin_id": 6
+        "origin_id": 7
       },
       {
         "desc": {
@@ -51,14 +51,6 @@
           "tag": "var"
         },
         "expr_id": 3,
-        "origin_id": 7
-      },
-      {
-        "desc": {
-          "name": "i",
-          "tag": "var"
-        },
-        "expr_id": 4,
         "origin_id": 8
       },
       {
@@ -66,19 +58,27 @@
           "name": "Int.to_string",
           "tag": "var"
         },
-        "expr_id": 5,
+        "expr_id": 4,
         "origin_id": 9
       },
       {
         "desc": {
+          "name": "i",
+          "tag": "var"
+        },
+        "expr_id": 5,
+        "origin_id": 10
+      },
+      {
+        "desc": {
           "arguments": [
-            4
+            5
           ],
-          "callee_id": 5,
+          "callee_id": 4,
           "tag": "apply"
         },
         "expr_id": 6,
-        "origin_id": 10
+        "origin_id": 11
       },
       {
         "desc": {
@@ -86,7 +86,7 @@
           "value": ")"
         },
         "expr_id": 7,
-        "origin_id": 11
+        "origin_id": 12
       },
       {
         "desc": {
@@ -98,7 +98,7 @@
           "tag": "apply"
         },
         "expr_id": 8,
-        "origin_id": 12
+        "origin_id": 13
       },
       {
         "desc": {
@@ -110,7 +110,7 @@
           "tag": "apply"
         },
         "expr_id": 9,
-        "origin_id": 13
+        "origin_id": 14
       },
       {
         "desc": {
@@ -118,7 +118,7 @@
           "tag": "var"
         },
         "expr_id": 10,
-        "origin_id": 19
+        "origin_id": 20
       },
       {
         "desc": {
@@ -126,7 +126,7 @@
           "value": "RGB("
         },
         "expr_id": 11,
-        "origin_id": 20
+        "origin_id": 21
       },
       {
         "desc": {
@@ -134,14 +134,6 @@
           "tag": "var"
         },
         "expr_id": 12,
-        "origin_id": 21
-      },
-      {
-        "desc": {
-          "name": "r",
-          "tag": "var"
-        },
-        "expr_id": 13,
         "origin_id": 22
       },
       {
@@ -149,19 +141,27 @@
           "name": "Int.to_string",
           "tag": "var"
         },
-        "expr_id": 14,
+        "expr_id": 13,
         "origin_id": 23
       },
       {
         "desc": {
+          "name": "r",
+          "tag": "var"
+        },
+        "expr_id": 14,
+        "origin_id": 24
+      },
+      {
+        "desc": {
           "arguments": [
-            13
+            14
           ],
-          "callee_id": 14,
+          "callee_id": 13,
           "tag": "apply"
         },
         "expr_id": 15,
-        "origin_id": 24
+        "origin_id": 25
       },
       {
         "desc": {
@@ -169,7 +169,7 @@
           "tag": "var"
         },
         "expr_id": 16,
-        "origin_id": 25
+        "origin_id": 26
       },
       {
         "desc": {
@@ -177,7 +177,7 @@
           "value": ","
         },
         "expr_id": 17,
-        "origin_id": 26
+        "origin_id": 27
       },
       {
         "desc": {
@@ -185,14 +185,6 @@
           "tag": "var"
         },
         "expr_id": 18,
-        "origin_id": 27
-      },
-      {
-        "desc": {
-          "name": "g",
-          "tag": "var"
-        },
-        "expr_id": 19,
         "origin_id": 28
       },
       {
@@ -200,19 +192,27 @@
           "name": "Int.to_string",
           "tag": "var"
         },
-        "expr_id": 20,
+        "expr_id": 19,
         "origin_id": 29
       },
       {
         "desc": {
+          "name": "g",
+          "tag": "var"
+        },
+        "expr_id": 20,
+        "origin_id": 30
+      },
+      {
+        "desc": {
           "arguments": [
-            19
+            20
           ],
-          "callee_id": 20,
+          "callee_id": 19,
           "tag": "apply"
         },
         "expr_id": 21,
-        "origin_id": 30
+        "origin_id": 31
       },
       {
         "desc": {
@@ -220,7 +220,7 @@
           "tag": "var"
         },
         "expr_id": 22,
-        "origin_id": 31
+        "origin_id": 32
       },
       {
         "desc": {
@@ -228,7 +228,7 @@
           "value": ","
         },
         "expr_id": 23,
-        "origin_id": 32
+        "origin_id": 33
       },
       {
         "desc": {
@@ -236,14 +236,6 @@
           "tag": "var"
         },
         "expr_id": 24,
-        "origin_id": 33
-      },
-      {
-        "desc": {
-          "name": "b",
-          "tag": "var"
-        },
-        "expr_id": 25,
         "origin_id": 34
       },
       {
@@ -251,19 +243,27 @@
           "name": "Int.to_string",
           "tag": "var"
         },
-        "expr_id": 26,
+        "expr_id": 25,
         "origin_id": 35
       },
       {
         "desc": {
+          "name": "b",
+          "tag": "var"
+        },
+        "expr_id": 26,
+        "origin_id": 36
+      },
+      {
+        "desc": {
           "arguments": [
-            25
+            26
           ],
-          "callee_id": 26,
+          "callee_id": 25,
           "tag": "apply"
         },
         "expr_id": 27,
-        "origin_id": 36
+        "origin_id": 37
       },
       {
         "desc": {
@@ -271,7 +271,7 @@
           "value": ")"
         },
         "expr_id": 28,
-        "origin_id": 37
+        "origin_id": 38
       },
       {
         "desc": {
@@ -283,7 +283,7 @@
           "tag": "apply"
         },
         "expr_id": 29,
-        "origin_id": 38
+        "origin_id": 39
       },
       {
         "desc": {
@@ -295,7 +295,7 @@
           "tag": "apply"
         },
         "expr_id": 30,
-        "origin_id": 39
+        "origin_id": 40
       },
       {
         "desc": {
@@ -307,7 +307,7 @@
           "tag": "apply"
         },
         "expr_id": 31,
-        "origin_id": 40
+        "origin_id": 41
       },
       {
         "desc": {
@@ -319,7 +319,7 @@
           "tag": "apply"
         },
         "expr_id": 32,
-        "origin_id": 41
+        "origin_id": 42
       },
       {
         "desc": {
@@ -331,7 +331,7 @@
           "tag": "apply"
         },
         "expr_id": 33,
-        "origin_id": 42
+        "origin_id": 43
       },
       {
         "desc": {
@@ -343,7 +343,7 @@
           "tag": "apply"
         },
         "expr_id": 34,
-        "origin_id": 43
+        "origin_id": 44
       },
       {
         "desc": {
@@ -361,7 +361,7 @@
           "tag": "match"
         },
         "expr_id": 35,
-        "origin_id": 44
+        "origin_id": 45
       },
       {
         "desc": {
@@ -372,7 +372,7 @@
           "tag": "fun"
         },
         "expr_id": 36,
-        "origin_id": 45
+        "origin_id": 46
       },
       {
         "desc": {
@@ -380,7 +380,7 @@
           "tag": "int"
         },
         "expr_id": 37,
-        "origin_id": 49
+        "origin_id": 50
       },
       {
         "desc": {
@@ -388,7 +388,7 @@
           "tag": "int"
         },
         "expr_id": 38,
-        "origin_id": 50
+        "origin_id": 51
       },
       {
         "desc": {
@@ -396,7 +396,7 @@
           "tag": "int"
         },
         "expr_id": 39,
-        "origin_id": 51
+        "origin_id": 52
       },
       {
         "desc": {
@@ -408,7 +408,7 @@
           "tag": "tuple"
         },
         "expr_id": 40,
-        "origin_id": 52
+        "origin_id": 53
       },
       {
         "desc": {
@@ -417,7 +417,7 @@
           "variant_tag": "rgb"
         },
         "expr_id": 41,
-        "origin_id": 53
+        "origin_id": 54
       }
     ],
     "patterns": [
@@ -426,7 +426,7 @@
           "name": "to_string",
           "tag": "var"
         },
-        "origin_id": 0,
+        "origin_id": 1,
         "pat_id": 0
       },
       {
@@ -434,7 +434,7 @@
           "name": "t",
           "tag": "var"
         },
-        "origin_id": 1,
+        "origin_id": 2,
         "pat_id": 1
       },
       {
@@ -442,7 +442,7 @@
           "name": "i",
           "tag": "var"
         },
-        "origin_id": 3,
+        "origin_id": 4,
         "pat_id": 2
       },
       {
@@ -451,7 +451,7 @@
           "tag": "poly_variant",
           "variant_tag": "ansi"
         },
-        "origin_id": 4,
+        "origin_id": 5,
         "pat_id": 3
       },
       {
@@ -459,7 +459,7 @@
           "name": "r",
           "tag": "var"
         },
-        "origin_id": 14,
+        "origin_id": 15,
         "pat_id": 4
       },
       {
@@ -467,7 +467,7 @@
           "name": "g",
           "tag": "var"
         },
-        "origin_id": 15,
+        "origin_id": 16,
         "pat_id": 5
       },
       {
@@ -475,7 +475,7 @@
           "name": "b",
           "tag": "var"
         },
-        "origin_id": 16,
+        "origin_id": 17,
         "pat_id": 6
       },
       {
@@ -487,7 +487,7 @@
           ],
           "tag": "tuple"
         },
-        "origin_id": 17,
+        "origin_id": 18,
         "pat_id": 7
       },
       {
@@ -496,7 +496,7 @@
           "tag": "poly_variant",
           "variant_tag": "rgb"
         },
-        "origin_id": 18,
+        "origin_id": 19,
         "pat_id": 8
       },
       {
@@ -504,7 +504,7 @@
           "name": "blue",
           "tag": "var"
         },
-        "origin_id": 48,
+        "origin_id": 49,
         "pat_id": 9
       }
     ]
@@ -513,6 +513,10 @@
     {
       "name": "blue",
       "scheme": "_?2"
+    },
+    {
+      "name": "println",
+      "scheme": "string -> unit"
     },
     {
       "name": "to_string",
@@ -623,12 +627,20 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "t",
@@ -649,7 +661,7 @@
         },
         "syntax_kind": "IDENT_EXPR"
       },
-      "origin_id": 2
+      "origin_id": 3
     },
     {
       "env_before": [
@@ -754,6 +766,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -764,6 +780,10 @@
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "t",
@@ -783,141 +803,6 @@
           "start": 125
         },
         "syntax_kind": "INFIX_EXPR"
-      },
-      "origin_id": 5
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "i",
-          "scheme": "_?0"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "t",
-          "scheme": "'a"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 2,
-      "inferred_type": "string",
-      "origin": {
-        "label": "string_literal",
-        "span": {
-          "end": 133,
-          "start": 125
-        },
-        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 6
     },
@@ -1024,6 +909,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1036,6 +925,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1044,15 +937,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 3,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 2,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "string_literal",
         "span": {
-          "end": 157,
-          "start": 135
+          "end": 133,
+          "start": 125
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 7
     },
@@ -1159,6 +1052,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1171,6 +1068,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1179,7 +1080,150 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 5,
+      "expr_id": 3,
+      "inferred_type": "string -> string -> string",
+      "origin": {
+        "label": "infix_operator",
+        "span": {
+          "end": 157,
+          "start": 135
+        },
+        "syntax_kind": "INFIX_EXPR"
+      },
+      "origin_id": 8
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "i",
+          "scheme": "_?0"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "t",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 4,
       "inferred_type": "int -> string",
       "origin": {
         "label": "qualified_path_expression",
@@ -1294,6 +1338,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1306,6 +1354,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1314,7 +1366,7 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 4,
+      "expr_id": 5,
       "inferred_type": "_?0",
       "origin": {
         "label": "path_expression",
@@ -1323,141 +1375,6 @@
           "start": 149
         },
         "syntax_kind": "IDENT_EXPR"
-      },
-      "origin_id": 8
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "i",
-          "scheme": "_?0"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "t",
-          "scheme": "'a"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 6,
-      "inferred_type": "string",
-      "origin": {
-        "label": "apply_expression",
-        "span": {
-          "end": 151,
-          "start": 135
-        },
-        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 10
     },
@@ -1564,6 +1481,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1576,6 +1497,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1584,15 +1509,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 7,
+      "expr_id": 6,
       "inferred_type": "string",
       "origin": {
-        "label": "string_literal",
+        "label": "apply_expression",
         "span": {
-          "end": 157,
-          "start": 153
+          "end": 151,
+          "start": 135
         },
-        "syntax_kind": "STRING_LITERAL"
+        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 11
     },
@@ -1699,6 +1624,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1711,6 +1640,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1719,15 +1652,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 8,
+      "expr_id": 7,
       "inferred_type": "string",
       "origin": {
-        "label": "infix_expression",
+        "label": "string_literal",
         "span": {
           "end": 157,
-          "start": 135
+          "start": 153
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 12
     },
@@ -1834,6 +1767,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1846,6 +1783,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "t",
           "scheme": "'a"
         },
@@ -1854,13 +1795,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 9,
+      "expr_id": 8,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 157,
-          "start": 125
+          "start": 135
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -1969,24 +1910,24 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
-          "name": "b",
-          "scheme": "int"
-        },
-        {
-          "name": "g",
-          "scheme": "int"
+          "name": "i",
+          "scheme": "_?0"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
-          "name": "r",
-          "scheme": "int"
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "t",
@@ -1997,17 +1938,17 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 10,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 9,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "infix_expression",
         "span": {
-          "end": 258,
-          "start": 179
+          "end": 157,
+          "start": 125
         },
         "syntax_kind": "INFIX_EXPR"
       },
-      "origin_id": 19
+      "origin_id": 14
     },
     {
       "env_before": [
@@ -2112,6 +2053,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2128,6 +2073,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2140,15 +2089,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 11,
-      "inferred_type": "string",
+      "expr_id": 10,
+      "inferred_type": "string -> string -> string",
       "origin": {
-        "label": "string_literal",
+        "label": "infix_operator",
         "span": {
-          "end": 186,
+          "end": 258,
           "start": 179
         },
-        "syntax_kind": "STRING_LITERAL"
+        "syntax_kind": "INFIX_EXPR"
       },
       "origin_id": 20
     },
@@ -2255,6 +2204,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2271,6 +2224,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2283,15 +2240,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 12,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 11,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "string_literal",
         "span": {
-          "end": 258,
-          "start": 188
+          "end": 186,
+          "start": 179
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 21
     },
@@ -2398,6 +2355,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2414,6 +2375,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2426,7 +2391,158 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 14,
+      "expr_id": 12,
+      "inferred_type": "string -> string -> string",
+      "origin": {
+        "label": "infix_operator",
+        "span": {
+          "end": 258,
+          "start": 188
+        },
+        "syntax_kind": "INFIX_EXPR"
+      },
+      "origin_id": 22
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "b",
+          "scheme": "int"
+        },
+        {
+          "name": "g",
+          "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "r",
+          "scheme": "int"
+        },
+        {
+          "name": "t",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 13,
       "inferred_type": "int -> string",
       "origin": {
         "label": "qualified_path_expression",
@@ -2541,6 +2657,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2557,6 +2677,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2569,7 +2693,7 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 13,
+      "expr_id": 14,
       "inferred_type": "int",
       "origin": {
         "label": "path_expression",
@@ -2578,149 +2702,6 @@
           "start": 202
         },
         "syntax_kind": "IDENT_EXPR"
-      },
-      "origin_id": 22
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "b",
-          "scheme": "int"
-        },
-        {
-          "name": "g",
-          "scheme": "int"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "r",
-          "scheme": "int"
-        },
-        {
-          "name": "t",
-          "scheme": "'a"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 15,
-      "inferred_type": "string",
-      "origin": {
-        "label": "apply_expression",
-        "span": {
-          "end": 204,
-          "start": 188
-        },
-        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 24
     },
@@ -2827,6 +2808,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2843,6 +2828,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2855,15 +2844,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 16,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 15,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "apply_expression",
         "span": {
-          "end": 258,
-          "start": 206
+          "end": 204,
+          "start": 188
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 25
     },
@@ -2970,6 +2959,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -2986,6 +2979,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -2998,15 +2995,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 17,
-      "inferred_type": "string",
+      "expr_id": 16,
+      "inferred_type": "string -> string -> string",
       "origin": {
-        "label": "string_literal",
+        "label": "infix_operator",
         "span": {
-          "end": 210,
+          "end": 258,
           "start": 206
         },
-        "syntax_kind": "STRING_LITERAL"
+        "syntax_kind": "INFIX_EXPR"
       },
       "origin_id": 26
     },
@@ -3113,6 +3110,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3129,6 +3130,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3141,15 +3146,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 18,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 17,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "string_literal",
         "span": {
-          "end": 258,
-          "start": 212
+          "end": 210,
+          "start": 206
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 27
     },
@@ -3256,6 +3261,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3272,6 +3281,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3284,7 +3297,158 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 20,
+      "expr_id": 18,
+      "inferred_type": "string -> string -> string",
+      "origin": {
+        "label": "infix_operator",
+        "span": {
+          "end": 258,
+          "start": 212
+        },
+        "syntax_kind": "INFIX_EXPR"
+      },
+      "origin_id": 28
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "b",
+          "scheme": "int"
+        },
+        {
+          "name": "g",
+          "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "r",
+          "scheme": "int"
+        },
+        {
+          "name": "t",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 19,
       "inferred_type": "int -> string",
       "origin": {
         "label": "qualified_path_expression",
@@ -3399,6 +3563,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3415,6 +3583,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3427,7 +3599,7 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 19,
+      "expr_id": 20,
       "inferred_type": "int",
       "origin": {
         "label": "path_expression",
@@ -3436,149 +3608,6 @@
           "start": 226
         },
         "syntax_kind": "IDENT_EXPR"
-      },
-      "origin_id": 28
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "b",
-          "scheme": "int"
-        },
-        {
-          "name": "g",
-          "scheme": "int"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "r",
-          "scheme": "int"
-        },
-        {
-          "name": "t",
-          "scheme": "'a"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 21,
-      "inferred_type": "string",
-      "origin": {
-        "label": "apply_expression",
-        "span": {
-          "end": 228,
-          "start": 212
-        },
-        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 30
     },
@@ -3685,6 +3714,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3701,6 +3734,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3713,15 +3750,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 22,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 21,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "apply_expression",
         "span": {
-          "end": 258,
-          "start": 230
+          "end": 228,
+          "start": 212
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 31
     },
@@ -3828,6 +3865,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3844,6 +3885,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3856,15 +3901,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 23,
-      "inferred_type": "string",
+      "expr_id": 22,
+      "inferred_type": "string -> string -> string",
       "origin": {
-        "label": "string_literal",
+        "label": "infix_operator",
         "span": {
-          "end": 234,
+          "end": 258,
           "start": 230
         },
-        "syntax_kind": "STRING_LITERAL"
+        "syntax_kind": "INFIX_EXPR"
       },
       "origin_id": 32
     },
@@ -3971,6 +4016,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -3987,6 +4036,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -3999,15 +4052,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 24,
-      "inferred_type": "string -> string -> string",
+      "expr_id": 23,
+      "inferred_type": "string",
       "origin": {
-        "label": "infix_operator",
+        "label": "string_literal",
         "span": {
-          "end": 258,
-          "start": 236
+          "end": 234,
+          "start": 230
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 33
     },
@@ -4114,6 +4167,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4130,6 +4187,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -4142,7 +4203,158 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 26,
+      "expr_id": 24,
+      "inferred_type": "string -> string -> string",
+      "origin": {
+        "label": "infix_operator",
+        "span": {
+          "end": 258,
+          "start": 236
+        },
+        "syntax_kind": "INFIX_EXPR"
+      },
+      "origin_id": 34
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "b",
+          "scheme": "int"
+        },
+        {
+          "name": "g",
+          "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "r",
+          "scheme": "int"
+        },
+        {
+          "name": "t",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 25,
       "inferred_type": "int -> string",
       "origin": {
         "label": "qualified_path_expression",
@@ -4257,6 +4469,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4273,6 +4489,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -4285,7 +4505,7 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 25,
+      "expr_id": 26,
       "inferred_type": "int",
       "origin": {
         "label": "path_expression",
@@ -4294,149 +4514,6 @@
           "start": 250
         },
         "syntax_kind": "IDENT_EXPR"
-      },
-      "origin_id": 34
-    },
-    {
-      "env_before": [
-        {
-          "name": "!=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "*",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "*.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "+",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "+.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "-",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "-.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "/",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "/.",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "<",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "<=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": ">=",
-          "scheme": "'a. 'a -> 'a -> bool"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "^",
-          "scheme": "string -> string -> string"
-        },
-        {
-          "name": "b",
-          "scheme": "int"
-        },
-        {
-          "name": "g",
-          "scheme": "int"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "r",
-          "scheme": "int"
-        },
-        {
-          "name": "t",
-          "scheme": "'a"
-        },
-        {
-          "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
-        }
-      ],
-      "expr_id": 27,
-      "inferred_type": "string",
-      "origin": {
-        "label": "apply_expression",
-        "span": {
-          "end": 252,
-          "start": 236
-        },
-        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 36
     },
@@ -4543,6 +4620,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4559,6 +4640,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -4571,15 +4656,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 28,
+      "expr_id": 27,
       "inferred_type": "string",
       "origin": {
-        "label": "string_literal",
+        "label": "apply_expression",
         "span": {
-          "end": 258,
-          "start": 254
+          "end": 252,
+          "start": 236
         },
-        "syntax_kind": "STRING_LITERAL"
+        "syntax_kind": "APPLY_EXPR"
       },
       "origin_id": 37
     },
@@ -4686,6 +4771,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4702,6 +4791,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -4714,15 +4807,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 29,
+      "expr_id": 28,
       "inferred_type": "string",
       "origin": {
-        "label": "infix_expression",
+        "label": "string_literal",
         "span": {
           "end": 258,
-          "start": 236
+          "start": 254
         },
-        "syntax_kind": "INFIX_EXPR"
+        "syntax_kind": "STRING_LITERAL"
       },
       "origin_id": 38
     },
@@ -4829,6 +4922,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4845,6 +4942,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -4857,13 +4958,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 30,
+      "expr_id": 29,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 230
+          "start": 236
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -4972,6 +5073,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -4988,6 +5093,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -5000,13 +5109,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 31,
+      "expr_id": 30,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 212
+          "start": 230
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -5115,6 +5224,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -5131,6 +5244,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -5143,13 +5260,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 32,
+      "expr_id": 31,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 206
+          "start": 212
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -5258,6 +5375,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -5274,6 +5395,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -5286,13 +5411,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 33,
+      "expr_id": 32,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 188
+          "start": 206
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -5401,6 +5526,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -5417,6 +5546,10 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "r",
           "scheme": "int"
         },
@@ -5429,13 +5562,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 34,
+      "expr_id": 33,
       "inferred_type": "string",
       "origin": {
         "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 179
+          "start": 188
         },
         "syntax_kind": "INFIX_EXPR"
       },
@@ -5544,12 +5677,32 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
+          "name": "b",
+          "scheme": "int"
+        },
+        {
+          "name": "g",
+          "scheme": "int"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "r",
+          "scheme": "int"
         },
         {
           "name": "t",
@@ -5560,15 +5713,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 35,
+      "expr_id": 34,
       "inferred_type": "string",
       "origin": {
-        "label": "match_expression",
+        "label": "infix_expression",
         "span": {
           "end": 258,
-          "start": 95
+          "start": 179
         },
-        "syntax_kind": "MATCH_EXPR"
+        "syntax_kind": "INFIX_EXPR"
       },
       "origin_id": 44
     },
@@ -5675,6 +5828,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -5683,19 +5840,27 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "t",
+          "scheme": "'a"
+        },
+        {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 36,
-      "inferred_type": "'a -> string",
+      "expr_id": 35,
+      "inferred_type": "string",
       "origin": {
-        "label": "fun_expression",
+        "label": "match_expression",
         "span": {
           "end": 258,
-          "start": 86
+          "start": 95
         },
-        "syntax_kind": "FUN_EXPR"
+        "syntax_kind": "MATCH_EXPR"
       },
       "origin_id": 45
     },
@@ -5802,6 +5967,10 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -5810,25 +5979,25 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 37,
-      "inferred_type": "int",
+      "expr_id": 36,
+      "inferred_type": "'a -> string",
       "origin": {
-        "label": "int_literal",
+        "label": "fun_expression",
         "span": {
-          "end": 278,
-          "start": 277
+          "end": 258,
+          "start": 86
         },
-        "syntax_kind": "INT_LITERAL"
+        "syntax_kind": "FUN_EXPR"
       },
-      "origin_id": 49
+      "origin_id": 46
     },
     {
       "env_before": [
@@ -5933,12 +6102,20 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "to_string",
@@ -5949,13 +6126,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 38,
+      "expr_id": 37,
       "inferred_type": "int",
       "origin": {
         "label": "int_literal",
         "span": {
-          "end": 281,
-          "start": 279
+          "end": 278,
+          "start": 277
         },
         "syntax_kind": "INT_LITERAL"
       },
@@ -6064,12 +6241,20 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "to_string",
@@ -6080,13 +6265,13 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 39,
+      "expr_id": 38,
       "inferred_type": "int",
       "origin": {
         "label": "int_literal",
         "span": {
-          "end": 286,
-          "start": 282
+          "end": 281,
+          "start": 279
         },
         "syntax_kind": "INT_LITERAL"
       },
@@ -6195,12 +6380,20 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "to_string",
@@ -6211,15 +6404,15 @@
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
-      "expr_id": 40,
-      "inferred_type": "int * int * int",
+      "expr_id": 39,
+      "inferred_type": "int",
       "origin": {
-        "label": "tuple_expression",
+        "label": "int_literal",
         "span": {
           "end": 286,
-          "start": 277
+          "start": 282
         },
-        "syntax_kind": "TUPLE_EXPR"
+        "syntax_kind": "INT_LITERAL"
       },
       "origin_id": 52
     },
@@ -6326,12 +6519,159 @@
           "scheme": "int -> string"
         },
         {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "to_string",
+          "scheme": "'a. 'a -> string"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 40,
+      "inferred_type": "int * int * int",
+      "origin": {
+        "label": "tuple_expression",
+        "span": {
+          "end": 286,
+          "start": 277
+        },
+        "syntax_kind": "TUPLE_EXPR"
+      },
+      "origin_id": 53
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "to_string",
@@ -6352,7 +6692,7 @@
         },
         "syntax_kind": "POLY_VARIANT_EXPR"
       },
-      "origin_id": 53
+      "origin_id": 54
     }
   ],
   "file_summary": {
@@ -6361,6 +6701,10 @@
         {
           "name": "blue",
           "scheme": "_?2"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
         },
         {
           "name": "to_string",
@@ -6374,16 +6718,26 @@
   "filename": "/Users/leostera/Developer/github.com/leostera/riot/packages/typ/tests/fixtures/008_colors_polyvariants.ml",
   "item_traces": [
     {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 0
+    },
+    {
       "binding_names": [
+        "println",
         "to_string"
       ],
       "exports_after": [
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
         {
           "name": "to_string",
           "scheme": "'a. 'a -> string"
         }
       ],
-      "item_id": 0
+      "item_id": 1
     },
     {
       "binding_names": [
@@ -6395,20 +6749,31 @@
           "scheme": "_?2"
         },
         {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
           "name": "to_string",
           "scheme": "'a. 'a -> string"
         }
       ],
-      "item_id": 1
+      "item_id": 2
     }
   ],
   "item_tree": [
     {
+      "item_id": 0,
+      "module_path": "Std",
+      "origin_id": 0,
+      "scope_path": [],
+      "tag": "open"
+    },
+    {
       "binding_ids": [
         0
       ],
-      "item_id": 0,
-      "origin_id": 47,
+      "item_id": 1,
+      "origin_id": 48,
       "recursive": false,
       "scope_path": [],
       "tag": "value"
@@ -6417,8 +6782,8 @@
       "binding_ids": [
         1
       ],
-      "item_id": 1,
-      "origin_id": 55,
+      "item_id": 2,
+      "origin_id": 56,
       "recursive": false,
       "scope_path": [],
       "tag": "value"
@@ -6427,9 +6792,25 @@
   "lowering_diagnostics": [],
   "origin_map": [
     {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 0,
+      "semantic_id": {
+        "id": 0,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 8,
+        "start": 0
+      },
+      "syntax_kind": "OPEN_STMT"
+    },
+    {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 0,
+      "origin_id": 1,
       "semantic_id": {
         "id": 0,
         "tag": "pattern"
@@ -6445,7 +6826,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 1,
+      "origin_id": 2,
       "semantic_id": {
         "id": 1,
         "tag": "pattern"
@@ -6461,7 +6842,7 @@
     {
       "kind": "expr",
       "label": "path_expression",
-      "origin_id": 2,
+      "origin_id": 3,
       "semantic_id": {
         "id": 0,
         "tag": "expr"
@@ -6477,7 +6858,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 3,
+      "origin_id": 4,
       "semantic_id": {
         "id": 2,
         "tag": "pattern"
@@ -6493,7 +6874,7 @@
     {
       "kind": "pattern",
       "label": "poly_variant_pattern",
-      "origin_id": 4,
+      "origin_id": 5,
       "semantic_id": {
         "id": 3,
         "tag": "pattern"
@@ -6509,7 +6890,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 5,
+      "origin_id": 6,
       "semantic_id": {
         "id": 1,
         "tag": "expr"
@@ -6525,7 +6906,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 6,
+      "origin_id": 7,
       "semantic_id": {
         "id": 2,
         "tag": "expr"
@@ -6541,7 +6922,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 7,
+      "origin_id": 8,
       "semantic_id": {
         "id": 3,
         "tag": "expr"
@@ -6556,26 +6937,10 @@
     },
     {
       "kind": "expr",
-      "label": "path_expression",
-      "origin_id": 8,
-      "semantic_id": {
-        "id": 4,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 151,
-        "start": 149
-      },
-      "syntax_kind": "IDENT_EXPR"
-    },
-    {
-      "kind": "expr",
       "label": "qualified_path_expression",
       "origin_id": 9,
       "semantic_id": {
-        "id": 5,
+        "id": 4,
         "tag": "expr"
       },
       "source_id": 0,
@@ -6588,8 +6953,24 @@
     },
     {
       "kind": "expr",
-      "label": "apply_expression",
+      "label": "path_expression",
       "origin_id": 10,
+      "semantic_id": {
+        "id": 5,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 151,
+        "start": 149
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 11,
       "semantic_id": {
         "id": 6,
         "tag": "expr"
@@ -6605,7 +6986,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 11,
+      "origin_id": 12,
       "semantic_id": {
         "id": 7,
         "tag": "expr"
@@ -6621,7 +7002,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 12,
+      "origin_id": 13,
       "semantic_id": {
         "id": 8,
         "tag": "expr"
@@ -6637,7 +7018,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 13,
+      "origin_id": 14,
       "semantic_id": {
         "id": 9,
         "tag": "expr"
@@ -6653,7 +7034,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 14,
+      "origin_id": 15,
       "semantic_id": {
         "id": 4,
         "tag": "pattern"
@@ -6669,7 +7050,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 15,
+      "origin_id": 16,
       "semantic_id": {
         "id": 5,
         "tag": "pattern"
@@ -6685,7 +7066,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 16,
+      "origin_id": 17,
       "semantic_id": {
         "id": 6,
         "tag": "pattern"
@@ -6701,7 +7082,7 @@
     {
       "kind": "pattern",
       "label": "tuple_pattern",
-      "origin_id": 17,
+      "origin_id": 18,
       "semantic_id": {
         "id": 7,
         "tag": "pattern"
@@ -6717,7 +7098,7 @@
     {
       "kind": "pattern",
       "label": "poly_variant_pattern",
-      "origin_id": 18,
+      "origin_id": 19,
       "semantic_id": {
         "id": 8,
         "tag": "pattern"
@@ -6733,7 +7114,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 19,
+      "origin_id": 20,
       "semantic_id": {
         "id": 10,
         "tag": "expr"
@@ -6749,7 +7130,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 20,
+      "origin_id": 21,
       "semantic_id": {
         "id": 11,
         "tag": "expr"
@@ -6765,7 +7146,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 21,
+      "origin_id": 22,
       "semantic_id": {
         "id": 12,
         "tag": "expr"
@@ -6780,26 +7161,10 @@
     },
     {
       "kind": "expr",
-      "label": "path_expression",
-      "origin_id": 22,
-      "semantic_id": {
-        "id": 13,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 204,
-        "start": 202
-      },
-      "syntax_kind": "IDENT_EXPR"
-    },
-    {
-      "kind": "expr",
       "label": "qualified_path_expression",
       "origin_id": 23,
       "semantic_id": {
-        "id": 14,
+        "id": 13,
         "tag": "expr"
       },
       "source_id": 0,
@@ -6812,8 +7177,24 @@
     },
     {
       "kind": "expr",
-      "label": "apply_expression",
+      "label": "path_expression",
       "origin_id": 24,
+      "semantic_id": {
+        "id": 14,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 204,
+        "start": 202
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 25,
       "semantic_id": {
         "id": 15,
         "tag": "expr"
@@ -6829,7 +7210,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 25,
+      "origin_id": 26,
       "semantic_id": {
         "id": 16,
         "tag": "expr"
@@ -6845,7 +7226,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 26,
+      "origin_id": 27,
       "semantic_id": {
         "id": 17,
         "tag": "expr"
@@ -6861,7 +7242,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 27,
+      "origin_id": 28,
       "semantic_id": {
         "id": 18,
         "tag": "expr"
@@ -6876,26 +7257,10 @@
     },
     {
       "kind": "expr",
-      "label": "path_expression",
-      "origin_id": 28,
-      "semantic_id": {
-        "id": 19,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 228,
-        "start": 226
-      },
-      "syntax_kind": "IDENT_EXPR"
-    },
-    {
-      "kind": "expr",
       "label": "qualified_path_expression",
       "origin_id": 29,
       "semantic_id": {
-        "id": 20,
+        "id": 19,
         "tag": "expr"
       },
       "source_id": 0,
@@ -6908,8 +7273,24 @@
     },
     {
       "kind": "expr",
-      "label": "apply_expression",
+      "label": "path_expression",
       "origin_id": 30,
+      "semantic_id": {
+        "id": 20,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 228,
+        "start": 226
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 31,
       "semantic_id": {
         "id": 21,
         "tag": "expr"
@@ -6925,7 +7306,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 31,
+      "origin_id": 32,
       "semantic_id": {
         "id": 22,
         "tag": "expr"
@@ -6941,7 +7322,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 32,
+      "origin_id": 33,
       "semantic_id": {
         "id": 23,
         "tag": "expr"
@@ -6957,7 +7338,7 @@
     {
       "kind": "expr",
       "label": "infix_operator",
-      "origin_id": 33,
+      "origin_id": 34,
       "semantic_id": {
         "id": 24,
         "tag": "expr"
@@ -6972,26 +7353,10 @@
     },
     {
       "kind": "expr",
-      "label": "path_expression",
-      "origin_id": 34,
-      "semantic_id": {
-        "id": 25,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 252,
-        "start": 250
-      },
-      "syntax_kind": "IDENT_EXPR"
-    },
-    {
-      "kind": "expr",
       "label": "qualified_path_expression",
       "origin_id": 35,
       "semantic_id": {
-        "id": 26,
+        "id": 25,
         "tag": "expr"
       },
       "source_id": 0,
@@ -7004,8 +7369,24 @@
     },
     {
       "kind": "expr",
-      "label": "apply_expression",
+      "label": "path_expression",
       "origin_id": 36,
+      "semantic_id": {
+        "id": 26,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 252,
+        "start": 250
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 37,
       "semantic_id": {
         "id": 27,
         "tag": "expr"
@@ -7021,7 +7402,7 @@
     {
       "kind": "expr",
       "label": "string_literal",
-      "origin_id": 37,
+      "origin_id": 38,
       "semantic_id": {
         "id": 28,
         "tag": "expr"
@@ -7037,7 +7418,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 38,
+      "origin_id": 39,
       "semantic_id": {
         "id": 29,
         "tag": "expr"
@@ -7053,7 +7434,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 39,
+      "origin_id": 40,
       "semantic_id": {
         "id": 30,
         "tag": "expr"
@@ -7069,7 +7450,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 40,
+      "origin_id": 41,
       "semantic_id": {
         "id": 31,
         "tag": "expr"
@@ -7085,7 +7466,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 41,
+      "origin_id": 42,
       "semantic_id": {
         "id": 32,
         "tag": "expr"
@@ -7101,7 +7482,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 42,
+      "origin_id": 43,
       "semantic_id": {
         "id": 33,
         "tag": "expr"
@@ -7117,7 +7498,7 @@
     {
       "kind": "expr",
       "label": "infix_expression",
-      "origin_id": 43,
+      "origin_id": 44,
       "semantic_id": {
         "id": 34,
         "tag": "expr"
@@ -7133,7 +7514,7 @@
     {
       "kind": "expr",
       "label": "match_expression",
-      "origin_id": 44,
+      "origin_id": 45,
       "semantic_id": {
         "id": 35,
         "tag": "expr"
@@ -7149,7 +7530,7 @@
     {
       "kind": "expr",
       "label": "fun_expression",
-      "origin_id": 45,
+      "origin_id": 46,
       "semantic_id": {
         "id": 36,
         "tag": "expr"
@@ -7165,7 +7546,7 @@
     {
       "kind": "binding",
       "label": "binding",
-      "origin_id": 46,
+      "origin_id": 47,
       "semantic_id": {
         "id": 0,
         "tag": "binding"
@@ -7181,9 +7562,9 @@
     {
       "kind": "item",
       "label": "item",
-      "origin_id": 47,
+      "origin_id": 48,
       "semantic_id": {
-        "id": 0,
+        "id": 1,
         "tag": "item"
       },
       "source_id": 0,
@@ -7197,7 +7578,7 @@
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 48,
+      "origin_id": 49,
       "semantic_id": {
         "id": 9,
         "tag": "pattern"
@@ -7213,7 +7594,7 @@
     {
       "kind": "expr",
       "label": "int_literal",
-      "origin_id": 49,
+      "origin_id": 50,
       "semantic_id": {
         "id": 37,
         "tag": "expr"
@@ -7229,7 +7610,7 @@
     {
       "kind": "expr",
       "label": "int_literal",
-      "origin_id": 50,
+      "origin_id": 51,
       "semantic_id": {
         "id": 38,
         "tag": "expr"
@@ -7245,7 +7626,7 @@
     {
       "kind": "expr",
       "label": "int_literal",
-      "origin_id": 51,
+      "origin_id": 52,
       "semantic_id": {
         "id": 39,
         "tag": "expr"
@@ -7261,7 +7642,7 @@
     {
       "kind": "expr",
       "label": "tuple_expression",
-      "origin_id": 52,
+      "origin_id": 53,
       "semantic_id": {
         "id": 40,
         "tag": "expr"
@@ -7277,7 +7658,7 @@
     {
       "kind": "expr",
       "label": "poly_variant_expression",
-      "origin_id": 53,
+      "origin_id": 54,
       "semantic_id": {
         "id": 41,
         "tag": "expr"
@@ -7293,7 +7674,7 @@
     {
       "kind": "binding",
       "label": "binding",
-      "origin_id": 54,
+      "origin_id": 55,
       "semantic_id": {
         "id": 1,
         "tag": "binding"
@@ -7309,9 +7690,9 @@
     {
       "kind": "item",
       "label": "item",
-      "origin_id": 55,
+      "origin_id": 56,
       "semantic_id": {
-        "id": 1,
+        "id": 2,
         "tag": "item"
       },
       "source_id": 0,
@@ -7329,7 +7710,7 @@
     {
       "expr_id": 37,
       "inferred_type": "int",
-      "origin_id": 49,
+      "origin_id": 50,
       "span": {
         "end": 278,
         "start": 277
@@ -7338,43 +7719,43 @@
     {
       "expr_id": 0,
       "inferred_type": "'a",
-      "origin_id": 2,
+      "origin_id": 3,
       "span": {
         "end": 105,
         "start": 103
       }
     },
     {
-      "expr_id": 4,
+      "expr_id": 5,
       "inferred_type": "_?0",
-      "origin_id": 8,
+      "origin_id": 10,
       "span": {
         "end": 151,
         "start": 149
       }
     },
     {
-      "expr_id": 13,
+      "expr_id": 14,
       "inferred_type": "int",
-      "origin_id": 22,
+      "origin_id": 24,
       "span": {
         "end": 204,
         "start": 202
       }
     },
     {
-      "expr_id": 19,
+      "expr_id": 20,
       "inferred_type": "int",
-      "origin_id": 28,
+      "origin_id": 30,
       "span": {
         "end": 228,
         "start": 226
       }
     },
     {
-      "expr_id": 25,
+      "expr_id": 26,
       "inferred_type": "int",
-      "origin_id": 34,
+      "origin_id": 36,
       "span": {
         "end": 252,
         "start": 250
@@ -7383,7 +7764,7 @@
     {
       "expr_id": 38,
       "inferred_type": "int",
-      "origin_id": 50,
+      "origin_id": 51,
       "span": {
         "end": 281,
         "start": 279
@@ -7392,7 +7773,7 @@
     {
       "expr_id": 7,
       "inferred_type": "string",
-      "origin_id": 11,
+      "origin_id": 12,
       "span": {
         "end": 157,
         "start": 153
@@ -7401,7 +7782,7 @@
     {
       "expr_id": 17,
       "inferred_type": "string",
-      "origin_id": 26,
+      "origin_id": 27,
       "span": {
         "end": 210,
         "start": 206
@@ -7410,7 +7791,7 @@
     {
       "expr_id": 23,
       "inferred_type": "string",
-      "origin_id": 32,
+      "origin_id": 33,
       "span": {
         "end": 234,
         "start": 230
@@ -7419,7 +7800,7 @@
     {
       "expr_id": 28,
       "inferred_type": "string",
-      "origin_id": 37,
+      "origin_id": 38,
       "span": {
         "end": 258,
         "start": 254
@@ -7428,7 +7809,7 @@
     {
       "expr_id": 39,
       "inferred_type": "int",
-      "origin_id": 51,
+      "origin_id": 52,
       "span": {
         "end": 286,
         "start": 282
@@ -7437,7 +7818,7 @@
     {
       "expr_id": 11,
       "inferred_type": "string",
-      "origin_id": 20,
+      "origin_id": 21,
       "span": {
         "end": 186,
         "start": 179
@@ -7446,7 +7827,7 @@
     {
       "expr_id": 2,
       "inferred_type": "string",
-      "origin_id": 6,
+      "origin_id": 7,
       "span": {
         "end": 133,
         "start": 125
@@ -7455,14 +7836,14 @@
     {
       "expr_id": 40,
       "inferred_type": "int * int * int",
-      "origin_id": 52,
+      "origin_id": 53,
       "span": {
         "end": 286,
         "start": 277
       }
     },
     {
-      "expr_id": 5,
+      "expr_id": 4,
       "inferred_type": "int -> string",
       "origin_id": 9,
       "span": {
@@ -7471,7 +7852,7 @@
       }
     },
     {
-      "expr_id": 14,
+      "expr_id": 13,
       "inferred_type": "int -> string",
       "origin_id": 23,
       "span": {
@@ -7480,7 +7861,7 @@
       }
     },
     {
-      "expr_id": 20,
+      "expr_id": 19,
       "inferred_type": "int -> string",
       "origin_id": 29,
       "span": {
@@ -7489,7 +7870,7 @@
       }
     },
     {
-      "expr_id": 26,
+      "expr_id": 25,
       "inferred_type": "int -> string",
       "origin_id": 35,
       "span": {
@@ -7500,7 +7881,7 @@
     {
       "expr_id": 6,
       "inferred_type": "string",
-      "origin_id": 10,
+      "origin_id": 11,
       "span": {
         "end": 151,
         "start": 135
@@ -7509,7 +7890,7 @@
     {
       "expr_id": 15,
       "inferred_type": "string",
-      "origin_id": 24,
+      "origin_id": 25,
       "span": {
         "end": 204,
         "start": 188
@@ -7518,7 +7899,7 @@
     {
       "expr_id": 21,
       "inferred_type": "string",
-      "origin_id": 30,
+      "origin_id": 31,
       "span": {
         "end": 228,
         "start": 212
@@ -7527,7 +7908,7 @@
     {
       "expr_id": 27,
       "inferred_type": "string",
-      "origin_id": 36,
+      "origin_id": 37,
       "span": {
         "end": 252,
         "start": 236
@@ -7536,7 +7917,7 @@
     {
       "expr_id": 41,
       "inferred_type": "_?2",
-      "origin_id": 53,
+      "origin_id": 54,
       "span": {
         "end": 287,
         "start": 270
@@ -7545,7 +7926,7 @@
     {
       "expr_id": 3,
       "inferred_type": "string -> string -> string",
-      "origin_id": 7,
+      "origin_id": 8,
       "span": {
         "end": 157,
         "start": 135
@@ -7554,7 +7935,7 @@
     {
       "expr_id": 8,
       "inferred_type": "string",
-      "origin_id": 12,
+      "origin_id": 13,
       "span": {
         "end": 157,
         "start": 135
@@ -7563,7 +7944,7 @@
     {
       "expr_id": 24,
       "inferred_type": "string -> string -> string",
-      "origin_id": 33,
+      "origin_id": 34,
       "span": {
         "end": 258,
         "start": 236
@@ -7572,7 +7953,7 @@
     {
       "expr_id": 29,
       "inferred_type": "string",
-      "origin_id": 38,
+      "origin_id": 39,
       "span": {
         "end": 258,
         "start": 236
@@ -7581,7 +7962,7 @@
     {
       "expr_id": 22,
       "inferred_type": "string -> string -> string",
-      "origin_id": 31,
+      "origin_id": 32,
       "span": {
         "end": 258,
         "start": 230
@@ -7590,7 +7971,7 @@
     {
       "expr_id": 30,
       "inferred_type": "string",
-      "origin_id": 39,
+      "origin_id": 40,
       "span": {
         "end": 258,
         "start": 230
@@ -7599,7 +7980,7 @@
     {
       "expr_id": 1,
       "inferred_type": "string -> string -> string",
-      "origin_id": 5,
+      "origin_id": 6,
       "span": {
         "end": 157,
         "start": 125
@@ -7608,7 +7989,7 @@
     {
       "expr_id": 9,
       "inferred_type": "string",
-      "origin_id": 13,
+      "origin_id": 14,
       "span": {
         "end": 157,
         "start": 125
@@ -7617,7 +7998,7 @@
     {
       "expr_id": 18,
       "inferred_type": "string -> string -> string",
-      "origin_id": 27,
+      "origin_id": 28,
       "span": {
         "end": 258,
         "start": 212
@@ -7626,7 +8007,7 @@
     {
       "expr_id": 31,
       "inferred_type": "string",
-      "origin_id": 40,
+      "origin_id": 41,
       "span": {
         "end": 258,
         "start": 212
@@ -7635,7 +8016,7 @@
     {
       "expr_id": 16,
       "inferred_type": "string -> string -> string",
-      "origin_id": 25,
+      "origin_id": 26,
       "span": {
         "end": 258,
         "start": 206
@@ -7644,7 +8025,7 @@
     {
       "expr_id": 32,
       "inferred_type": "string",
-      "origin_id": 41,
+      "origin_id": 42,
       "span": {
         "end": 258,
         "start": 206
@@ -7653,7 +8034,7 @@
     {
       "expr_id": 12,
       "inferred_type": "string -> string -> string",
-      "origin_id": 21,
+      "origin_id": 22,
       "span": {
         "end": 258,
         "start": 188
@@ -7662,7 +8043,7 @@
     {
       "expr_id": 33,
       "inferred_type": "string",
-      "origin_id": 42,
+      "origin_id": 43,
       "span": {
         "end": 258,
         "start": 188
@@ -7671,7 +8052,7 @@
     {
       "expr_id": 10,
       "inferred_type": "string -> string -> string",
-      "origin_id": 19,
+      "origin_id": 20,
       "span": {
         "end": 258,
         "start": 179
@@ -7680,7 +8061,7 @@
     {
       "expr_id": 34,
       "inferred_type": "string",
-      "origin_id": 43,
+      "origin_id": 44,
       "span": {
         "end": 258,
         "start": 179
@@ -7689,7 +8070,7 @@
     {
       "expr_id": 35,
       "inferred_type": "string",
-      "origin_id": 44,
+      "origin_id": 45,
       "span": {
         "end": 258,
         "start": 95
@@ -7698,7 +8079,7 @@
     {
       "expr_id": 36,
       "inferred_type": "'a -> string",
-      "origin_id": 45,
+      "origin_id": 46,
       "span": {
         "end": 258,
         "start": 86
