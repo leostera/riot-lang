@@ -47,6 +47,11 @@ let to_snake_case = fun text ->
 
 let should_flag_function_name = fun text -> not (String.equal text (to_snake_case text))
 
+let make_fix = fun token replacement ->
+  Fix.make
+    ~title:(("Rename function " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement))
+    ~operations:[ Fix.replace_token_with_text ~target:token ~text:replacement; ]
+
 let make_diagnostic = fun token ->
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_snake_case original in
@@ -55,6 +60,7 @@ let make_diagnostic = fun token ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+    ~fix:(make_fix token replacement)
     ()
 
 let diagnostic_for_binding_site = fun (site: Traversal.binding_site) ->

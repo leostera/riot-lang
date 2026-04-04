@@ -116,6 +116,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run (Riot_fix.Pipeline.default ()) source in
       Test.assert_equal ~expected:1 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "snake-case-function-names exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let userProfile x = x\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Snake_case_function_names.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let user_profile x = x\n");
   Test.case "snake-case-function-names keeps compliant function names clean"
     (fun _ctx ->
       let source = "let user_profile x = x\n" in
@@ -155,6 +162,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run (Riot_fix.Pipeline.default ()) source in
       Test.assert_equal ~expected:1 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "class-case-module-names exposes an auto-fix"
+    (fun _ctx ->
+      let source = "module Foo_bar = struct end\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Class_case_module_names.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"module FooBar = struct end\n");
   Test.case "class-case-module-names keeps ClassCased modules clean"
     (fun _ctx ->
       let source = "module FooBar = struct end\n" in
@@ -178,6 +192,13 @@ let tests = [
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-useless-let-return"; "snake-case-variable-names" ] ~actual:codes;
       Ok ());
+  Test.case "snake-case-variable-names exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let currentUser = 42\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Snake_case_variable_names.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let current_user = 42\n");
   Test.case "snake-case-variable-names keeps compliant values clean"
     (fun _ctx ->
       let source = "let current_user = 42\n" in
@@ -252,6 +273,13 @@ let tests = [
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "snake-case-argument-names" ] ~actual:codes;
       Ok ());
+  Test.case "snake-case-argument-names exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render userId = userId\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Snake_case_argument_names.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render user_id = userId\n");
   Test.case "snake-case-argument-names keeps compliant arguments clean"
     (fun _ctx ->
       let source = "let render ~display_name ?page_size current_user = current_user\n" in
@@ -687,6 +715,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "snake-case-record-fields exposes an auto-fix"
+    (fun _ctx ->
+      let source = "type user = { displayName : string; created_at : int }\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Snake_case_record_fields.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"type user = { display_name : string; created_at : int }\n");
   Test.case
     "rule explanations explain record-field violations"
     (fun _ctx -> assert_explanation_contains ~rule_id:"snake-case-record-fields" ~snippet:"display_name");
@@ -709,6 +744,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "class-case-constructors exposes an auto-fix"
+    (fun _ctx ->
+      let source = "type user = | Guest_user | RegisteredUser\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Class_case_constructors.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"type user = | GuestUser | RegisteredUser\n");
   Test.case
     "rule explanations explain constructor-name violations"
     (fun _ctx -> assert_explanation_contains ~rule_id:"class-case-constructors" ~snippet:"GuestUser");
@@ -731,6 +773,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "snake-case-polyvariant-tags exposes an auto-fix"
+    (fun _ctx ->
+      let source = "type user = [ `GuestUser | `registered_user ]\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Snake_case_polyvariant_tags.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"type user = [ `guest_user | `registered_user ]\n");
   Test.case
     "rule explanations explain polyvariant-tag violations"
     (fun _ctx -> assert_explanation_contains ~rule_id:"snake-case-polyvariant-tags" ~snippet:"guest_user");

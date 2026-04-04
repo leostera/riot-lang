@@ -46,6 +46,11 @@ let to_class_case = fun text ->
 
 let should_flag_module_name = fun text -> contains_underscore text || not (starts_upper text)
 
+let make_fix = fun token replacement ->
+  Fix.make
+    ~title:(("Rename module " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement))
+    ~operations:[ Fix.replace_token_with_text ~target:token ~text:replacement; ]
+
 let make_diagnostic = fun token ->
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   let replacement = to_class_case original in
@@ -54,6 +59,7 @@ let make_diagnostic = fun token ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+    ~fix:(make_fix token replacement)
     ()
 
 let diagnostic_for_module_structure = fun decl ->
