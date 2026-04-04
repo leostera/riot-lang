@@ -4,8 +4,8 @@ Multicore actors for Riot.
 
 `actors` is Riot's low-level actor runtime package. It gives you lightweight
 processes, typed message passing, links and monitors, timers, async syscalls,
-and a runtime that can spread runnable actors across multiple scheduler workers
-with work stealing.
+and a multicore runtime that can spread runnable actors across scheduler
+workers with work stealing.
 
 If `std` is the application-facing stack, `actors` is the smaller surface you
 reach for when you want the runtime itself: process orchestration, internal

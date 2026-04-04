@@ -1,8 +1,8 @@
 [package]
 name = "actors"
 license = "Apache-2.0"
-description = "Actor runtime for multicore OCaml"
-version = "0.0.3"
+description = "Multicore actor runtime with work stealing, timers, and async syscalls"
+version = "0.0.4"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
 public = true
