@@ -914,6 +914,16 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "prefer-pipelines-for-nested-calls exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let rendered = foo (bar (baz (hex 1)))\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_pipelines_for_nested_calls.make () ]
+        () in
+      assert_single_fix_rewrite
+        ~pipeline
+        ~source
+        ~expected:"let rendered = 1 |> hex |> baz |> bar |> foo\n");
   Test.case
     "rule explanations explain nested pipeline preference"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-pipelines-for-nested-calls" ~snippet:"hex 1 |> baz |> bar |> foo");

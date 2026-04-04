@@ -37,12 +37,42 @@ let rec nested_call_count = fun expr ->
 
 let threshold = 4
 
+let rec pipeline_parts = fun expr ->
+  match unwrap_parens expr with
+  | Syn.Cst.Expression.Apply { callee; argument=Syn.Cst.Positional argument; _ } -> (
+      match pipeline_parts argument with
+      | Some (seed, stages) -> Some (seed, stages @ [ callee ])
+      | None -> Some (argument, [ callee ])
+    )
+  | _ -> None
+
+let pipeline_text = fun expr ->
+  match pipeline_parts expr with
+  | None -> None
+  | Some (seed, stages) ->
+      let seed = Rule_text.expression seed in
+      let stages = stages |> List.map Rule_text.expression in
+      Some (String.concat " |> " (seed :: stages))
+
 let make_diagnostic = fun expr ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
     ~suggestion:"Rewrite this call chain as a pipeline."
+    ?fix:
+      (match pipeline_text expr with
+      | None -> None
+      | Some text ->
+          Some
+            (Fix.make
+               ~title:"Rewrite nested calls as a pipeline"
+               ~operations:
+                 [
+                   Fix.replace_node_with_text
+                     ~target:(Syn.Cst.Expression.syntax_node expr)
+                     ~text:(" " ^ text);
+                 ]))
     ()
 
 let diagnostic_for_expression = fun expr ->
