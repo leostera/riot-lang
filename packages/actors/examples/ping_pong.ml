@@ -8,9 +8,11 @@ type Message.t +=
 let worker = fun () ->
   let sender =
     receive
-      ~selector:(function
+      ~selector:(
+        function
         | Ping sender -> `select sender
-        | _ -> `skip)
+        | _ -> `skip
+      )
       ()
   in
   send sender Pong;
@@ -20,11 +22,13 @@ let main = fun ~args:_ ->
   let worker_pid = spawn worker in
   send worker_pid (Ping (self ()));
   receive
-    ~selector:(function
+    ~selector:(
+      function
       | Pong ->
           Kernel.println "received pong";
           `select ()
-      | _ -> `skip)
+      | _ -> `skip
+    )
     ();
   Ok ()
 
