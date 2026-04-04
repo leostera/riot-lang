@@ -2,7 +2,7 @@
 name = "actors"
 license = "Apache-2.0"
 description = "Actor runtime for multicore OCaml"
-version = "0.0.2"
+version = "0.0.3"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
 public = true
