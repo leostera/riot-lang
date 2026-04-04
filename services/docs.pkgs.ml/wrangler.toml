@@ -1,0 +1,26 @@
+name = "pkgs-docs"
+compatibility_date = "2026-04-04"
+compatibility_flags = [ "nodejs_compat" ]
+workers_dev = false
+
+[[routes]]
+pattern = "docs.pkgs.ml"
+custom_domain = true
+
+[assets]
+directory = "./dist"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

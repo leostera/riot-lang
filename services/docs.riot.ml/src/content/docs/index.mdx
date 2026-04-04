@@ -1,0 +1,37 @@
+---
+title: Riot Docs
+description: Reference and guides for the Riot toolchain, runtime, and package registry.
+template: splash
+hero:
+  tagline: Documentation for Riot, the opinionated OCaml stack.
+  actions:
+    - text: Install Riot
+      link: /start-here/installation/
+      icon: right-arrow
+    - text: CLI Reference
+      link: /reference/cli/
+    - text: Registry Docs
+      link: /registry/overview/
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+Riot brings together a single CLI, a multicore actor runtime, a modern standard
+library, and the `pkgs.ml` registry. These docs cover the stack itself. Package
+API and generated package documentation will live elsewhere.
+
+<CardGrid stagger>
+  <Card title="Get started" icon="rocket">
+    Install Riot, understand the overall stack, and get to a running project fast.
+  </Card>
+  <Card title="CLI reference" icon="seti:terminal">
+    Learn the `riot` command surface for building, testing, formatting, publishing, and upgrading.
+  </Card>
+  <Card title="Registry" icon="seti:package">
+    Understand how `pkgs.ml`, `api.pkgs.ml`, and `cdn.pkgs.ml` fit together.
+  </Card>
+  <Card title="Architecture" icon="seti:settings">
+    Read the high-level runtime and stack model before diving into package-level docs.
+  </Card>
+</CardGrid>
