@@ -43,6 +43,20 @@ let assert_explanation_contains = fun ~rule_id ~snippet ->
       ignore snippet;
       Ok ()
 
+let assert_single_fix_rewrite = fun ~pipeline ~source ~expected ->
+  let result = Riot_fix.Pipeline.run pipeline source in
+  let fixes = List.filter_map Riot_fix.Diagnostic.fix result.diagnostics in
+  Test.assert_equal ~expected:1 ~actual:(List.length fixes);
+  match fixes with
+  | [ fix ] ->
+      let rewritten =
+        Riot_fix.Fix.apply_fix ~source fix
+        |> Result.expect ~msg:"expected rule fix to apply"
+      in
+      Test.assert_equal ~expected ~actual:rewritten;
+      Ok ()
+  | _ -> Error "expected exactly one fix"
+
 let tests = [
   Test.case "snake-case-type-names exposes safe fixes"
     (fun _ctx ->
@@ -202,6 +216,11 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-prime-variables exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let state'' = next_state\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let state3 = next_state\n");
   Test.case "no-prime-variables ignores prime-suffixed function bindings"
     (fun _ctx ->
       let source = "let current_user' x = x\n" in
@@ -417,6 +436,11 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-useless-let-return exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render x = let value = parse x in value\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_useless_let_return.make () ] () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render x = parse x\n");
   Test.case
     "rule explanations explain useless let returns"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-useless-let-return" ~snippet:"let value = load_config () in value");
@@ -439,6 +463,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-redundant-else-unit exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render ok = if ok then log () else ()\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.No_redundant_else_unit.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ok =if ok then (log())\n");
   Test.case
     "rule explanations explain redundant else unit branches"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-redundant-else-unit" ~snippet:"else ()");
@@ -504,6 +535,13 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "prefer-sequences-over-let-unit exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render () = let () = log () in flush ()\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_sequences_over_let_unit.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render () =(log()); flush()\n");
   Test.case
     "rule explanations explain let-unit sequencing"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-sequences-over-let-unit" ~snippet:"log (); flush ()");
@@ -536,6 +574,16 @@ let tests = [
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "prefer-if-over-bool-match exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render ready = match ready with true -> render () | false -> fallback ()\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
+        () in
+      assert_single_fix_rewrite
+        ~pipeline
+        ~source
+        ~expected:"let render ready =if ready then (render()) else (fallback())\n");
   Test.case
     "rule explanations explain boolean match rewrites"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-if-over-bool-match" ~snippet:"if is_ready then render () else fallback ()");
@@ -1045,6 +1093,11 @@ let render x y z =
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-eta-expansion exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let wrap foo = fun value -> foo value\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_eta_expansion.make () ] () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let wrap foo = foo\n");
   Test.case
     "rule explanations explain eta expansion"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-eta-expansion" ~snippet:"eta-expanded");
@@ -1107,6 +1160,13 @@ let render x y z =
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "prefer-scoped-field-access exposes an auto-fix for field access"
+    (fun _ctx ->
+      let source = "let render record = record.Module.field\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_scoped_field_access.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render record =Module.(record.field)\n");
   Test.case "prefer-scoped-field-access flags repeated qualified record fields"
     (fun _ctx ->
       let source = "let build value next = { Module.field = value; Module.other = next }\n" in

@@ -155,12 +155,46 @@ let should_flag_fun = fun (expr: Syn.Cst.fun_expression) ->
           && not (expression_mentions_any_name parameter_names callee)
     )
 
+let eta_reduction_callee = fun (expr: Syn.Cst.fun_expression) ->
+  match positional_parameter_names expr.parameters with
+  | None
+  | Some [] -> None
+  | Some parameter_names -> (
+      match expr.body with
+      | Syn.Cst.Cases _ -> None
+      | Syn.Cst.Expression body ->
+          let callee, arguments = flatten_apply body in
+          if
+            parameter_arguments_match parameter_names arguments
+            && not (expression_mentions_any_name parameter_names callee)
+          then
+            Some callee
+          else
+            None
+    )
+
+let make_fix = fun (expr: Syn.Cst.fun_expression) callee ->
+  Fix.make
+    ~title:"Replace eta-expanded wrapper with the callee directly"
+    ~operations:
+      [
+        Fix.replace
+          ~target:(Fix.Node expr.syntax_node)
+          ~replacement:(Fix.source_of_node (Syn.Cst.Expression.syntax_node callee));
+      ]
+
 let make_diagnostic = fun (expr: Syn.Cst.fun_expression) ->
+  let fix =
+    match eta_reduction_callee expr with
+    | Some callee -> Some (make_fix expr callee)
+    | None -> None
+  in
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
     ~suggestion:"Replace this eta-expanded function with the callee directly."
+    ?fix
     ()
 
 let rec diagnostic_for_expression = function

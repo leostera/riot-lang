@@ -21,12 +21,26 @@ code had two lines often becomes opaque once the function grows.
 let contains_prime = fun text ->
   String.exists (fun ch -> ch = '\'') text
 
+let trailing_prime_count = fun text ->
+  let rec loop index count =
+    if index < 0 then
+      count
+    else if String.get text index = '\'' then
+      loop (index - 1) (count + 1)
+    else
+      count
+  in
+  loop (String.length text - 1) 0
+
 let replacement_for = fun text ->
   if String.equal text "" then
     text
-  else if String.ends_with ~suffix:"'" text then
-    String.sub text 0 (String.length text - 1) ^ "2"
   else
+    let trailing_primes = trailing_prime_count text in
+    if trailing_primes > 0 then
+      let base = String.sub text 0 (String.length text - trailing_primes) in
+      base ^ Int.to_string (trailing_primes + 1)
+    else
     String.map
       (fun ch ->
         if ch = '\'' then
@@ -34,6 +48,11 @@ let replacement_for = fun text ->
         else
           ch)
       text
+
+let make_fix = fun token replacement ->
+  Fix.make
+    ~title:(("Rename " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement))
+    ~operations:[ Fix.replace_token_with_text ~target:token ~text:replacement; ]
 
 let make_diagnostic = fun token ->
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
@@ -43,6 +62,7 @@ let make_diagnostic = fun token ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+    ~fix:(make_fix token replacement)
     ()
 
 let diagnostic_for_binding_site = fun (site: Traversal.binding_site) ->

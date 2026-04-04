@@ -86,6 +86,47 @@ let suggestion_for_match = fun (expr: Syn.Cst.match_expression) ->
     )
   | _ -> "Rewrite this boolean match as an `if` expression."
 
+let if_text = fun ~condition ~then_branch ?else_branch () ->
+  match else_branch with
+  | Some else_branch -> "if " ^ condition ^ " then " ^ then_branch ^ " else " ^ else_branch
+  | None -> "if " ^ condition ^ " then " ^ then_branch
+
+let fix_text_for_match = fun (expr: Syn.Cst.match_expression) ->
+  match expr.cases with
+  | [first_case;second_case] ->
+      let scrutinee = Rule_text.expression expr.scrutinee in
+      let negated_scrutinee = "not (" ^ scrutinee ^ ")" in
+      let first_body = Rule_text.expression first_case.body |> Rule_text.parenthesize in
+      let second_body = Rule_text.expression second_case.body |> Rule_text.parenthesize in
+      (
+        match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
+        | TruePattern, FalsePattern ->
+            Some (if_text ~condition:scrutinee ~then_branch:first_body ~else_branch:second_body ())
+        | FalsePattern, TruePattern ->
+            Some (if_text ~condition:negated_scrutinee ~then_branch:first_body ~else_branch:second_body ())
+        | TruePattern, WildcardPattern ->
+            if is_unit_expression second_case.body then
+              Some (if_text ~condition:scrutinee ~then_branch:first_body ())
+            else
+              Some (if_text ~condition:scrutinee ~then_branch:first_body ~else_branch:second_body ())
+        | FalsePattern, WildcardPattern ->
+            if is_unit_expression second_case.body then
+              Some (if_text ~condition:negated_scrutinee ~then_branch:first_body ())
+            else
+              Some (if_text ~condition:negated_scrutinee ~then_branch:first_body ~else_branch:second_body ())
+        | _ -> None
+      )
+  | _ -> None
+
+let make_fix = fun (expr: Syn.Cst.match_expression) ->
+  match fix_text_for_match expr with
+  | None -> None
+  | Some text ->
+      Some
+        (Fix.make
+           ~title:"Rewrite boolean match as an if expression"
+           ~operations:[ Fix.replace_node_with_text ~target:expr.syntax_node ~text; ])
+
 let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] ->
@@ -103,11 +144,13 @@ let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
   | _ -> false
 
 let make_diagnostic = fun (expr: Syn.Cst.match_expression) ->
+  let fix = make_fix expr in
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:(suggestion_for_match expr)
+    ?fix
     ()
 
 let safe_should_flag_match = fun expr ->

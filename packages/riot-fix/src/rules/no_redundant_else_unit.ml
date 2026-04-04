@@ -21,12 +21,25 @@ let rec is_unit_expression = function
   | Syn.Cst.Expression.Parenthesized expr -> is_unit_expression expr.inner
   | _ -> false
 
+let make_fix = fun (expr: Syn.Cst.if_expression) ->
+  let condition = Rule_text.expression expr.condition in
+  let then_branch = Rule_text.expression expr.then_branch |> Rule_text.parenthesize in
+  Fix.make
+    ~title:"Remove redundant else () branch"
+    ~operations:
+      [
+        Fix.replace_node_with_text
+          ~target:expr.syntax_node
+          ~text:(("if " ^ condition) ^ " then " ^ then_branch);
+      ]
+
 let make_diagnostic = fun (expr: Syn.Cst.if_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Remove else () from this if expression."
+    ~fix:(make_fix expr)
     ()
 
 let diagnostic_for_expression = function

@@ -25,12 +25,25 @@ let rec is_unit_pattern = function
   | Syn.Cst.Pattern.Literal _ -> false
   | _ -> false
 
+let make_fix = fun (expr: Syn.Cst.let_expression) ->
+  let bound_value = Rule_text.expression expr.bound_value |> Rule_text.parenthesize in
+  let body = Rule_text.expression expr.body in
+  Fix.make
+    ~title:"Replace let-unit binding with a sequence"
+    ~operations:
+      [
+        Fix.replace_node_with_text
+          ~target:expr.syntax_node
+          ~text:(bound_value ^ "; " ^ body);
+      ]
+
 let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Replace this let-unit binding with a `;` sequence."
+    ~fix:(make_fix expr)
     ()
 
 let diagnostic_for_expression = function
