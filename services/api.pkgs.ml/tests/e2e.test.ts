@@ -206,7 +206,7 @@ describe("riot package registry live e2e", () => {
 
     const sourceResponse = await fetch(publication.source_archive.url);
     expect(sourceResponse.status).toBe(200);
-    expect(sourceResponse.headers.get("cache-control")).toBe("no-store");
+    expect(sourceResponse.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
 
     const config = await pollJson<IndexConfigPayload>(
       withCacheBust(`${indexBaseUrl}/${indexBasePath}/config.json`),

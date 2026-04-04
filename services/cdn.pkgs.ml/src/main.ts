@@ -61,6 +61,10 @@ async function handleRequest(
     });
   }
 
+  if (isPrivateObjectKey(key)) {
+    throw new Error("private_object_not_found");
+  }
+
   const response = isIndexDocumentKey(key)
     ? await handleIndexDocument(request, env, key)
     : await handleObject(request, env, key);
@@ -280,6 +284,10 @@ async function recordAccess(env: Env, access: AccessEvent): Promise<void> {
 
 function isIndexDocumentKey(key: string): boolean {
   return key === "index/v1/config.json" || /^index\/v1\/.+\.json$/.test(key);
+}
+
+function isPrivateObjectKey(key: string): boolean {
+  return key.startsWith("pipelines/") || key.includes("/_pipeline/");
 }
 
 function cacheControlForKey(key: string): string {

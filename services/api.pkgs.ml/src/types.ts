@@ -127,7 +127,13 @@ export type RegistryEventType =
   | "package.verified"
   | "package.indexed"
   | "package.searchable"
-  | "package.published";
+  | "package.published"
+  | "package.processing.queued"
+  | "package.processing.started"
+  | "package.processing.requeued"
+  | "package.processing.finished"
+  | "package.docs.staged"
+  | "package.build.staged";
 
 export interface RegistryEventRecord {
   event_id: string;
@@ -162,6 +168,104 @@ export interface BinaryDownloadRecord {
   binary_name: BinaryDownloadName;
   object_key: string;
   downloaded_at: string;
+}
+
+export type PackageReleaseToProcessStatus = "pending" | "processing" | "finished";
+
+export interface PackageReleaseToProcessRecord {
+  release_id: string;
+  package_name: string;
+  package_version: string;
+  artifact_sha256: string;
+  source_archive_key: string;
+  status: PackageReleaseToProcessStatus;
+  attempt_count: number;
+  next_attempt_at: string;
+  created_at: string;
+  updated_at: string;
+  last_attempted_at?: string;
+  lease_expires_at?: string;
+  finished_at?: string;
+  status_message?: string;
+  payload: PackagePublishedEvent;
+}
+
+export type PackagePipelineRunKind = "docs" | "build" | "test" | "fmt" | "fix" | "bench";
+
+export type PackagePipelineRunStatus =
+  | "staged"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "blocked";
+
+export type PackagePipelineRunnerKind = "cloudflare-container";
+
+export type PackagePipelineStepKind =
+  | "download"
+  | "unpack"
+  | "install-riot"
+  | "generate-docs"
+  | "build-package"
+  | "upload"
+  | "upload-report";
+
+export interface PackagePipelineRunRecord {
+  run_id: string;
+  run_kind: PackagePipelineRunKind;
+  package_name: string;
+  package_version: string;
+  artifact_sha256: string;
+  source_archive_key: string;
+  runner_kind: PackagePipelineRunnerKind;
+  status: PackagePipelineRunStatus;
+  output_prefix: string;
+  request_key: string;
+  created_at: string;
+  updated_at: string;
+  started_at?: string;
+  finished_at?: string;
+  status_message?: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface PackagePipelineRequestStep {
+  kind: PackagePipelineStepKind;
+  detail: string;
+}
+
+export interface PackagePipelineRequestRunner {
+  kind: "cloudflare-container";
+  status: "pending_runner";
+  notes: string[];
+}
+
+interface PackagePipelineRequestBase {
+  run_id: string;
+  run_kind: PackagePipelineRunKind;
+  package_name: string;
+  package_version: string;
+  artifact_sha256: string;
+  source_archive_key: string;
+  source_archive_url: string;
+  output_prefix: string;
+  riot_install_url: string;
+  riot_release_metadata_url: string;
+  command: string[];
+  runner: PackagePipelineRequestRunner;
+  steps: PackagePipelineRequestStep[];
+  created_at: string;
+}
+
+export interface DocsBuildRequest extends PackagePipelineRequestBase {
+  run_kind: "docs";
+  public_docs_url: string;
+}
+
+export interface PackageBuildRequest extends PackagePipelineRequestBase {
+  run_kind: "build";
+  result_key: string;
+  logs_key: string;
 }
 
 export interface RegistryEventsDocument {

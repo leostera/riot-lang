@@ -30,14 +30,25 @@ const logoutUrl = buildLogoutUrl(currentUrl);
 
     {
       showSearch ? (
-        <div class="min-w-0 md:max-w-[400px] md:justify-self-center md:w-full">
-          <SearchForm
-            query={searchQuery}
-            placeholder="Search packages, descriptions, owners, or repositories..."
-          />
+        <div class="flex min-w-0 items-center gap-4 md:justify-self-center md:w-full">
+          <div class="min-w-0 md:max-w-[400px] md:w-full">
+            <SearchForm
+              query={searchQuery}
+              placeholder="Search packages, descriptions, owners, or repositories..."
+            />
+          </div>
+          <nav class="hidden items-center gap-3 text-sm text-muted-foreground lg:flex">
+            <a href="/activity" class="hover:text-foreground">Activity</a>
+            <a href="/stats" class="hover:text-foreground">Stats</a>
+            <a href="/llms.txt" class="hover:text-foreground">LLMs</a>
+          </nav>
         </div>
       ) : (
-        <div class="hidden md:block" />
+        <nav class="hidden items-center gap-3 text-sm text-muted-foreground md:flex md:justify-self-center">
+          <a href="/activity" class="hover:text-foreground">Activity</a>
+          <a href="/stats" class="hover:text-foreground">Stats</a>
+          <a href="/llms.txt" class="hover:text-foreground">LLMs</a>
+        </nav>
       )
     }
 

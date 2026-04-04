@@ -26,6 +26,18 @@ function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
       return "Searchable";
     case "package.indexed":
       return "Indexed";
+    case "package.processing.queued":
+      return "Queued";
+    case "package.processing.started":
+      return "Processing";
+    case "package.processing.requeued":
+      return "Requeued";
+    case "package.processing.finished":
+      return "Processed";
+    case "package.docs.staged":
+      return "Docs Staged";
+    case "package.build.staged":
+      return "Build Staged";
   }
 }
 
@@ -41,6 +53,18 @@ function eventTone(eventType: RegistryEventRecord["event_type"]): string {
       return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
     case "package.indexed":
       return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+    case "package.processing.queued":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "package.processing.started":
+      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+    case "package.processing.requeued":
+      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
+    case "package.processing.finished":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.docs.staged":
+      return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
+    case "package.build.staged":
+      return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
   }
 }
 
@@ -65,6 +89,8 @@ function secondaryFacts(event: RegistryEventRecord): string[] {
   const artifactSha = event.payload.artifact_sha256;
   const dependencyCount = event.payload.dependency_count;
   const latest = event.payload.latest;
+  const attemptCount = event.payload.attempt_count;
+  const runKind = event.payload.run_kind;
 
   if (typeof event.package_version === "string" && event.package_version.length > 0) {
     facts.push(`version ${event.package_version}`);
@@ -76,6 +102,14 @@ function secondaryFacts(event: RegistryEventRecord): string[] {
 
   if (typeof latest === "string" && latest.length > 0) {
     facts.push(`latest ${latest}`);
+  }
+
+  if (typeof runKind === "string" && runKind.length > 0) {
+    facts.push(runKind);
+  }
+
+  if (typeof attemptCount === "number" && Number.isFinite(attemptCount)) {
+    facts.push(`attempt ${attemptCount}`);
   }
 
   if (typeof artifactSha === "string" && artifactSha.length >= 7) {
@@ -90,7 +124,7 @@ function secondaryFacts(event: RegistryEventRecord): string[] {
   <CardHeader className="border-b border-border">
     <CardTitle className="text-base">Recent activity</CardTitle>
     <CardDescription>
-      Latest publication and indexing events recorded for this package.
+      Latest publication, indexing, and post-publish pipeline events recorded for this package.
     </CardDescription>
   </CardHeader>
   <CardContent className="py-3">

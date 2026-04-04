@@ -19,6 +19,18 @@ function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
       return "Searchable";
     case "package.indexed":
       return "Indexed";
+    case "package.processing.queued":
+      return "Queued";
+    case "package.processing.started":
+      return "Processing";
+    case "package.processing.requeued":
+      return "Requeued";
+    case "package.processing.finished":
+      return "Processed";
+    case "package.docs.staged":
+      return "Docs Staged";
+    case "package.build.staged":
+      return "Build Staged";
   }
 }
 
@@ -34,6 +46,18 @@ function eventTone(eventType: RegistryEventRecord["event_type"]): string {
       return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
     case "package.indexed":
       return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+    case "package.processing.queued":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "package.processing.started":
+      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+    case "package.processing.requeued":
+      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
+    case "package.processing.finished":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.docs.staged":
+      return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
+    case "package.build.staged":
+      return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
   }
 }
 
@@ -75,20 +99,25 @@ function packageLabel(event: RegistryEventRecord): string {
 
 function secondaryFacts(event: RegistryEventRecord): string[] {
   const facts: string[] = [];
-  const selector = event.payload.selector;
-  const resolvedSha = event.payload.resolved_sha;
   const latest = event.payload.latest;
-
-  if (typeof selector === "string" && selector.length > 0) {
-    facts.push(`selector ${selector}`);
-  }
+  const artifactSha = event.payload.artifact_sha256;
+  const runKind = event.payload.run_kind;
+  const attemptCount = event.payload.attempt_count;
 
   if (typeof latest === "string" && latest.length > 0) {
     facts.push(`latest ${latest}`);
   }
 
-  if (typeof resolvedSha === "string" && resolvedSha.length >= 7) {
-    facts.push(`sha ${resolvedSha.slice(0, 12)}`);
+  if (typeof runKind === "string" && runKind.length > 0) {
+    facts.push(runKind);
+  }
+
+  if (typeof attemptCount === "number" && Number.isFinite(attemptCount)) {
+    facts.push(`attempt ${attemptCount}`);
+  }
+
+  if (typeof artifactSha === "string" && artifactSha.length >= 7) {
+    facts.push(`artifact ${artifactSha.slice(0, 12)}`);
   }
 
   if (typeof event.package_locator === "string" && event.package_locator.length > 0) {
@@ -150,7 +179,7 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
 
 <SiteLayout
   title="Activity · pkgs.ml"
-  description="Live package publishing, indexing, and search activity across the Riot package registry."
+  description="Live package publishing, indexing, and post-publish pipeline activity across the Riot package registry."
   showNavSearch={true}
 >
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -162,7 +191,7 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
               Registry activity
             </h1>
             <p class="text-base text-muted-foreground">
-              Publish, verification, indexing, and search events across the registry.
+              Publish, verification, indexing, and post-publish pipeline events across the registry.
             </p>
           </div>
 
@@ -222,6 +251,18 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "Searchable";
       case "package.indexed":
         return "Indexed";
+      case "package.processing.queued":
+        return "Queued";
+      case "package.processing.started":
+        return "Processing";
+      case "package.processing.requeued":
+        return "Requeued";
+      case "package.processing.finished":
+        return "Processed";
+      case "package.docs.staged":
+        return "Docs Staged";
+      case "package.build.staged":
+        return "Build Staged";
       default:
         return eventType;
     }
@@ -239,6 +280,18 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
       case "package.indexed":
         return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+      case "package.processing.queued":
+        return "border-slate-200 bg-slate-50 text-slate-700";
+      case "package.processing.started":
+        return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+      case "package.processing.requeued":
+        return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
+      case "package.processing.finished":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+      case "package.docs.staged":
+        return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
+      case "package.build.staged":
+        return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
       default:
         return "border-slate-200 bg-slate-50 text-slate-700";
     }
@@ -283,16 +336,20 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
   const secondaryFacts = (event) => {
     const facts = [];
 
-    if (typeof event.payload?.selector === "string" && event.payload.selector.length > 0) {
-      facts.push(`selector ${event.payload.selector}`);
-    }
-
     if (typeof event.payload?.latest === "string" && event.payload.latest.length > 0) {
       facts.push(`latest ${event.payload.latest}`);
     }
 
-    if (typeof event.payload?.resolved_sha === "string" && event.payload.resolved_sha.length >= 7) {
-      facts.push(`sha ${event.payload.resolved_sha.slice(0, 12)}`);
+    if (typeof event.payload?.run_kind === "string" && event.payload.run_kind.length > 0) {
+      facts.push(event.payload.run_kind);
+    }
+
+    if (typeof event.payload?.attempt_count === "number" && Number.isFinite(event.payload.attempt_count)) {
+      facts.push(`attempt ${event.payload.attempt_count}`);
+    }
+
+    if (typeof event.payload?.artifact_sha256 === "string" && event.payload.artifact_sha256.length >= 7) {
+      facts.push(`artifact ${event.payload.artifact_sha256.slice(0, 12)}`);
     }
 
     if (typeof event.package_locator === "string" && event.package_locator.length > 0) {

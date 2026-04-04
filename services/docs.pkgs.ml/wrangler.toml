@@ -17,6 +17,18 @@ binding = "ML_PKGS_CDN"
 bucket_name = "ml-pkgs-cdn"
 preview_bucket_name = "ml-pkgs-cdn"
 
+[[d1_databases]]
+binding = "SEARCH_DB"
+database_name = "riot-registry"
+database_id = "3a482dd8-a28f-4f87-a143-46153d492819"
+preview_database_id = "3a482dd8-a28f-4f87-a143-46153d492819"
+
+[[queues.consumers]]
+queue = "riot-package-published"
+
+[triggers]
+crons = ["* * * * *"]
+
 [observability]
 enabled = true
 head_sampling_rate = 1

@@ -23,5 +23,7 @@
 - [done] Make registry tests initialize SQLite from `services/registry/migrations/*.sql` so local schema matches remote D1 exactly.
 - [done] Add publish metadata (`description`, `license`, `public`, missing versions) to all real workspace package manifests so the repo can be bulk-published in live e2e.
 - [done] Add D1 backup and rollback plan for `services/registry` using Cloudflare-native Time Travel + scheduled D1→R2 exports.
+- [done] Persist `package.published` events into a retryable release-processing table and have a timer worker stage package docs and build-verification requests from there.
+- [pending] Build the actual container or sandbox runner that claims staged package pipeline requests, installs Riot, runs `riot doc` / `riot build`, and uploads results back to R2.
 - [pending] Decide whether to rename `SEARCH_DB` to a more accurate binding once the metadata migration is complete.
 - [pending] Decide whether `claimKey` / `releaseKey` should become API URLs or remain compatibility-only logical ids.

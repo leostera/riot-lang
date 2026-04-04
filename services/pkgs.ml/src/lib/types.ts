@@ -281,7 +281,13 @@ export type RegistryEventType =
   | "package.verified"
   | "package.indexed"
   | "package.searchable"
-  | "package.published";
+  | "package.published"
+  | "package.processing.queued"
+  | "package.processing.started"
+  | "package.processing.requeued"
+  | "package.processing.finished"
+  | "package.docs.staged"
+  | "package.build.staged";
 
 export interface RegistryEventRecord {
   event_id: string;

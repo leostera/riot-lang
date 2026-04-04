@@ -235,12 +235,12 @@ const schemaSections: SchemaSection[] = [
   {
     title: "Registry events",
     route: "GET https://api.pkgs.ml/v1/events?limit=<count>&after=<event-id>",
-    description: "Chronological package publication and indexing activity.",
+    description: "Chronological package publication, indexing, and post-publish pipeline activity.",
     fields: [
       { name: "limit", type: "number | undefined", notes: "Requested page size." },
       { name: "after", type: "string | undefined", notes: "Cursor-style event id for polling newer events." },
       { name: "events", type: "RegistryEventRecord[]", notes: "Newest-first event list." },
-      { name: "events[].event_type", type: "string", notes: "One of package.submitted, package.verified, package.published, package.indexed, package.searchable." },
+      { name: "events[].event_type", type: "string", notes: "One of package.submitted, package.verified, package.published, package.indexed, package.searchable, package.processing.queued, package.processing.started, package.processing.requeued, package.processing.finished, package.docs.staged, package.build.staged." },
       { name: "events[].payload", type: "object", notes: "Small event-specific payload used by the activity UIs." },
     ],
     example: pretty({

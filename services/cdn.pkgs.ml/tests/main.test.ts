@@ -106,6 +106,31 @@ describe("riot cdn worker", () => {
     ]);
   });
 
+  test("does not expose private pipeline request objects", async () => {
+    const bucket = new FakeR2Bucket();
+    const db = new FakeD1Database();
+    const ctx = new FakeExecutionContext();
+    const env: Env = {
+      ML_PKGS_CDN: bucket as unknown as R2Bucket,
+      SEARCH_DB: db as unknown as D1Database,
+    };
+
+    await bucket.put("pipelines/builds/kernel/0.0.1/deadbeef/request.json", "{\"ok\":true}", {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+      },
+    });
+
+    const response = await worker.fetch(
+      new Request("https://cdn.pkgs.ml/pipelines/builds/kernel/0.0.1/deadbeef/request.json"),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(404);
+  });
+
   test("records Riot and OCaml archive downloads as binary downloads", async () => {
     const bucket = new FakeR2Bucket();
     const db = new FakeD1Database();

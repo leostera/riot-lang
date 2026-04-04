@@ -187,6 +187,81 @@ export const binaryDownloads = sqliteTable(
   }),
 );
 
+export const packageReleasesToProcess = sqliteTable(
+  "package_releases_to_process",
+  {
+    releaseId: text("release_id").primaryKey(),
+    packageName: text("package_name").notNull(),
+    packageVersion: text("package_version").notNull(),
+    artifactSha256: text("artifact_sha256").notNull(),
+    sourceArchiveKey: text("source_archive_key").notNull(),
+    status: text("status").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: text("next_attempt_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    lastAttemptedAt: text("last_attempted_at"),
+    leaseExpiresAt: text("lease_expires_at"),
+    finishedAt: text("finished_at"),
+    statusMessage: text("status_message"),
+    payloadJson: text("payload_json").notNull(),
+  },
+  (table) => ({
+    identityUnique: uniqueIndex("package_releases_to_process_identity_unique").on(
+      table.packageName,
+      table.packageVersion,
+      table.artifactSha256,
+    ),
+    statusIdx: index("idx_package_releases_to_process_status").on(
+      table.status,
+      table.nextAttemptAt,
+      table.updatedAt,
+    ),
+    packageIdx: index("idx_package_releases_to_process_package").on(
+      table.packageName,
+      table.packageVersion,
+      table.updatedAt,
+    ),
+  }),
+);
+
+export const packagePipelineRuns = sqliteTable(
+  "package_pipeline_runs",
+  {
+    runId: text("run_id").primaryKey(),
+    runKind: text("run_kind").notNull(),
+    packageName: text("package_name").notNull(),
+    packageVersion: text("package_version").notNull(),
+    artifactSha256: text("artifact_sha256").notNull(),
+    sourceArchiveKey: text("source_archive_key").notNull(),
+    runnerKind: text("runner_kind").notNull(),
+    status: text("status").notNull(),
+    outputPrefix: text("output_prefix").notNull(),
+    requestKey: text("request_key").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    startedAt: text("started_at"),
+    finishedAt: text("finished_at"),
+    statusMessage: text("status_message"),
+    metadataJson: text("metadata_json").notNull(),
+  },
+  (table) => ({
+    identityUnique: uniqueIndex("package_pipeline_runs_identity_unique").on(
+      table.packageName,
+      table.packageVersion,
+      table.artifactSha256,
+      table.runKind,
+    ),
+    packageIdx: index("idx_package_pipeline_runs_package").on(
+      table.packageName,
+      table.packageVersion,
+      table.runKind,
+      table.createdAt,
+    ),
+    statusIdx: index("idx_package_pipeline_runs_status").on(table.status, table.updatedAt),
+  }),
+);
+
 export const packages = sqliteTable("packages", {
   packageName: text("package_name").primaryKey(),
   normalizedName: text("normalized_name").notNull(),
