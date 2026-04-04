@@ -1,5 +1,6 @@
 ---
 import GitHubAvatar from "@/components/GitHubAvatar.astro";
+import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -27,6 +28,7 @@ async function renderReadmeMarkdown(markdown: string): Promise<string> {
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype)
+      .use(rehypeHighlight, { detect: true, ignoreMissing: true })
       .use(rehypeStringify)
       .process(markdown),
   );
@@ -40,6 +42,7 @@ const ownerAvatarUrl = overview?.owner_github_avatar_url;
 const packageHref = `/p/${document.name}`;
 const docsHref = `https://docs.pkgs.ml/p/${encodeURIComponent(document.name)}/${encodeURIComponent(selectedVersion)}/`;
 const readmeHtml = readme?.readme_markdown ? await renderReadmeMarkdown(readme.readme_markdown) : null;
+const hasReadme = Boolean(readmeHtml);
 
 const installFact = facts.find((fact) => fact.label === "Install");
 const tomlFact = facts.find((fact) => fact.label === "riot.toml");
@@ -72,57 +75,87 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
 
     <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
       <div class="grid min-w-0 gap-4">
-        <div class="grid gap-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
-            <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              v{selectedVersion}
-            </span>
-          </div>
-
-          <p class="max-w-3xl text-base leading-7 text-muted-foreground">
-            {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
-          </p>
-
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
-            <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
-            {
-              release.homepage ? (
-                <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
-              ) : null
-            }
-          </div>
-        </div>
-
         {
-          readmeHtml ? (
-            <div class="grid gap-3 border-t border-border pt-4">
+          hasReadme ? (
+            <div class="grid gap-3">
               <div
-                class="max-w-3xl text-base leading-7 text-foreground
+                class="readme-prose max-w-3xl px-1 py-1 text-base leading-8 text-foreground sm:px-4 lg:px-5
                   [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-4
-                  [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground
+                  [&_blockquote]:my-5 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground
                   [&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.95em]
-                  [&_h1]:font-heading [&_h1]:text-2xl [&_h1]:font-medium [&_h1]:tracking-tight
-                  [&_h2]:font-heading [&_h2]:text-xl [&_h2]:font-medium [&_h2]:tracking-tight
-                  [&_h3]:font-heading [&_h3]:text-lg [&_h3]:font-medium
-                  [&_hr]:border-border
-                  [&_ol]:my-3 [&_ol]:pl-5 [&_ol]:list-decimal
-                  [&_p]:my-3
-                  [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted [&_pre]:px-3 [&_pre]:py-2 [&_pre]:text-sm
+                  [&_h1]:mb-6 [&_h1]:mt-2 [&_h1]:font-heading [&_h1]:text-2xl [&_h1]:font-medium [&_h1]:leading-tight [&_h1]:tracking-tight
+                  [&_h2]:mb-4 [&_h2]:mt-10 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:font-medium [&_h2]:leading-tight [&_h2]:tracking-tight
+                  [&_h3]:mb-3 [&_h3]:mt-8 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:font-medium [&_h3]:leading-tight
+                  [&_hr]:my-8 [&_hr]:border-border
+                  [&_li]:my-1.5
+                  [&_ol]:my-4 [&_ol]:pl-5 [&_ol]:list-decimal
+                  [&_p]:my-4
+                  [&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted [&_pre]:px-3 [&_pre]:py-3 [&_pre]:text-sm
                   [&_pre_code]:bg-transparent [&_pre_code]:p-0
-                  [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm
+                  [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm
                   [&_td]:border-b [&_td]:border-border/70 [&_td]:px-3 [&_td]:py-2
                   [&_th]:border-b [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium
-                  [&_ul]:my-3 [&_ul]:pl-5 [&_ul]:list-disc"
+                  [&_ul]:my-4 [&_ul]:pl-5 [&_ul]:list-disc"
                 set:html={readmeHtml}
               />
             </div>
-          ) : null
+          ) : (
+            <div class="grid gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
+                <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  v{selectedVersion}
+                </span>
+              </div>
+
+              <p class="max-w-3xl text-base leading-7 text-muted-foreground">
+                {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+              </p>
+
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
+                <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
+                {
+                  release.homepage ? (
+                    <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
+                  ) : null
+                }
+              </div>
+            </div>
+          )
         }
       </div>
 
       <aside class="grid gap-3 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+        {
+          hasReadme ? (
+            <div class="grid gap-3 border-b border-border pb-3">
+              <div class="grid gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
+                  <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    v{selectedVersion}
+                  </span>
+                </div>
+
+                <p class="text-base leading-7 text-muted-foreground">
+                  {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+                </p>
+              </div>
+
+              <div class="grid gap-1 text-sm text-muted-foreground">
+                <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
+                <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
+                {
+                  release.homepage ? (
+                    <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
+                  ) : null
+                }
+              </div>
+            </div>
+          ) : null
+        }
+
         <div class="grid gap-2">
           <div class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             Install

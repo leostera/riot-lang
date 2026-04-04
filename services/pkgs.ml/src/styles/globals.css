@@ -134,3 +134,88 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .readme-prose .hljs {
+    color: var(--foreground);
+    background: transparent;
+  }
+
+  .readme-prose .hljs-comment,
+  .readme-prose .hljs-quote {
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+
+  .readme-prose .hljs-keyword,
+  .readme-prose .hljs-selector-tag,
+  .readme-prose .hljs-literal,
+  .readme-prose .hljs-meta .hljs-keyword {
+    color: #c41f45;
+  }
+
+  .readme-prose .hljs-string,
+  .readme-prose .hljs-regexp,
+  .readme-prose .hljs-subst {
+    color: #0f766e;
+  }
+
+  .readme-prose .hljs-title,
+  .readme-prose .hljs-title.function_,
+  .readme-prose .hljs-function .hljs-title,
+  .readme-prose .hljs-attr,
+  .readme-prose .hljs-property {
+    color: #9a3412;
+  }
+
+  .readme-prose .hljs-number,
+  .readme-prose .hljs-symbol,
+  .readme-prose .hljs-bullet {
+    color: #b45309;
+  }
+
+  .readme-prose .hljs-type,
+  .readme-prose .hljs-built_in,
+  .readme-prose .hljs-class .hljs-title {
+    color: #0369a1;
+  }
+
+  .readme-prose .hljs-variable,
+  .readme-prose .hljs-params,
+  .readme-prose .hljs-name {
+    color: var(--foreground);
+  }
+
+  .dark .readme-prose .hljs-keyword,
+  .dark .readme-prose .hljs-selector-tag,
+  .dark .readme-prose .hljs-literal,
+  .dark .readme-prose .hljs-meta .hljs-keyword {
+    color: #ff7b8d;
+  }
+
+  .dark .readme-prose .hljs-string,
+  .dark .readme-prose .hljs-regexp,
+  .dark .readme-prose .hljs-subst {
+    color: #5eead4;
+  }
+
+  .dark .readme-prose .hljs-title,
+  .dark .readme-prose .hljs-title.function_,
+  .dark .readme-prose .hljs-function .hljs-title,
+  .dark .readme-prose .hljs-attr,
+  .dark .readme-prose .hljs-property {
+    color: #fdba74;
+  }
+
+  .dark .readme-prose .hljs-number,
+  .dark .readme-prose .hljs-symbol,
+  .dark .readme-prose .hljs-bullet {
+    color: #fbbf24;
+  }
+
+  .dark .readme-prose .hljs-type,
+  .dark .readme-prose .hljs-built_in,
+  .dark .readme-prose .hljs-class .hljs-title {
+    color: #7dd3fc;
+  }
+}
