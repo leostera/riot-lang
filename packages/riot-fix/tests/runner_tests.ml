@@ -351,6 +351,11 @@ let tests = [
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-open-bang" ] ~actual:codes;
       Ok ());
+  Test.case "no-open-bang exposes an auto-fix"
+    (fun _ctx ->
+      let source = "open! List\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_open_bang.make () ] () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"open List\n");
   Test.case "no-open-bang keeps plain open statements clean"
     (fun _ctx ->
       let source = "open List\n" in
@@ -531,6 +536,16 @@ let tests = [
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-boolean-comparisons-in-conditionals" ] ~actual:codes;
       Ok ());
+  Test.case "no-boolean-comparisons-in-conditionals exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render is_ready = if is_ready = false then log ()\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
+        () in
+      assert_single_fix_rewrite
+        ~pipeline
+        ~source
+        ~expected:"let render is_ready = if not (is_ready) then log ()\n");
   Test.case "no-boolean-comparisons-in-conditionals keeps direct conditions clean"
     (fun _ctx ->
       let source = "let render is_ready = if is_ready then log ()\n" in
@@ -1178,6 +1193,13 @@ let render x y z =
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-redundant-begin-end" ] ~actual:codes;
       Ok ());
+  Test.case "no-redundant-begin-end exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render value = begin value end\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.No_redundant_begin_end.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = (value)\n");
   Test.case "no-redundant-begin-end keeps ordinary parentheses clean"
     (fun _ctx ->
       let source = "let render value = (value + 1)\n" in

@@ -29,12 +29,23 @@ let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression
       | _ -> None
     ) |> Option.unwrap_or ~default:false
 
-let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
+let make_fix = fun ({ syntax_node; inner; _ }: Syn.Cst.parenthesized_expression) ->
+  Fix.make
+    ~title:"Replace begin/end with ordinary grouping"
+    ~operations:
+      [
+        Fix.replace_node_with_text
+          ~target:syntax_node
+          ~text:(" " ^ Rule_text.parenthesize (Rule_text.expression inner));
+      ]
+
+let make_diagnostic = fun ({ syntax_node; _ } as expr: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Replace begin/end with ordinary grouping or remove it entirely."
+    ~fix:(make_fix expr)
     ()
 
 let diagnostic_for_expression = function

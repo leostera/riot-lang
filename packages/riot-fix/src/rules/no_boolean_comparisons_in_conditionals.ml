@@ -68,12 +68,55 @@ let suggestion_for_condition = fun expr ->
     )
   | None -> "Simplify this boolean comparison."
 
+let rewrite_text_for_condition = fun expr ->
+  match comparison_operands expr with
+  | Some (op, left, right) -> (
+      match bool_literal_value left, bool_literal_value right with
+      | Some true, None ->
+          if String.equal op "=" then
+            Some (Rule_text.expression right)
+          else
+            Some ("not (" ^ Rule_text.expression right ^ ")")
+      | Some false, None ->
+          if String.equal op "=" then
+            Some ("not (" ^ Rule_text.expression right ^ ")")
+          else
+            Some (Rule_text.expression right)
+      | None, Some true ->
+          if String.equal op "=" then
+            Some (Rule_text.expression left)
+          else
+            Some ("not (" ^ Rule_text.expression left ^ ")")
+      | None, Some false ->
+          if String.equal op "=" then
+            Some ("not (" ^ Rule_text.expression left ^ ")")
+          else
+            Some (Rule_text.expression left)
+      | _ -> None
+    )
+  | None -> None
+
+let make_fix = fun (if_expr: Syn.Cst.if_expression) ->
+  match rewrite_text_for_condition if_expr.condition with
+  | None -> None
+  | Some text ->
+      Some
+        (Fix.make
+           ~title:"Simplify boolean comparison in condition"
+           ~operations:
+             [
+               Fix.replace_node_with_text
+                 ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
+                 ~text:(" " ^ text);
+             ])
+
 let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
     ~suggestion:(suggestion_for_condition if_expr.condition)
+    ?fix:(make_fix if_expr)
     ()
 
 let diagnostic_for_expression = function
