@@ -513,6 +513,28 @@ and lower_expr = fun (state: state) expression ->
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
       add_expr state ~syntax_node ~label:"path_expression" (BodyArena.EVar (path_text path))
+  | Cst.Expression.Constructor { syntax_node; constructor_path; payload; _ } -> (
+      let constructor_name = path_text constructor_path in
+      match payload with
+      | None ->
+          add_expr
+            state
+            ~syntax_node
+            ~label:"constructor_expression"
+            (BodyArena.EVar constructor_name)
+      | Some payload ->
+          let callee_id = add_expr
+            state
+            ~syntax_node:(Cst.Ident.syntax_node constructor_path)
+            ~label:"constructor_path_expression"
+            (BodyArena.EVar constructor_name) in
+          let payload_id = lower_expr state payload in
+          add_expr
+            state
+            ~syntax_node
+            ~label:"constructor_apply_expression"
+            (BodyArena.EApply (callee_id, [ payload_id ]))
+    )
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
       match module_path_segments_of_expr receiver with
       | Some module_segments ->

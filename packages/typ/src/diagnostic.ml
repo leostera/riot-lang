@@ -86,14 +86,14 @@ let severity = function
   | IgnoredPatternTypeConstraint _
   | IgnoredMatchGuard _
   | IgnoredPolymorphicAnnotation _
-  | UnsupportedInterfaceFile _
   | UnboundName _
   | TypeMismatch _
   | UnsupportedSemanticExpression _
   | RecursiveGroupRequiresSimpleVariableBinders _ -> Error
   | ParameterLoweredAsPositional _
   | ApplicationArgumentLoweredAsPositional _
-  | IgnoredTypeAscription _ -> Warning
+  | IgnoredTypeAscription _
+  | UnsupportedInterfaceFile _ -> Warning
 
 let severity_to_string = function
   | Error -> "error"

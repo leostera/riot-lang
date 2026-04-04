@@ -13,11 +13,11 @@
       {
         "binding_id": 1,
         "name": "packed",
-        "origin_id": 9,
+        "origin_id": 11,
         "pattern_id": 2,
         "recursive": false,
         "scope_path": [],
-        "value_id": 2
+        "value_id": 4
       }
     ],
     "expressions": [
@@ -42,11 +42,30 @@
       },
       {
         "desc": {
-          "summary": "APPLY_EXPR",
-          "tag": "hole"
+          "name": "Some",
+          "tag": "var"
         },
         "expr_id": 2,
         "origin_id": 8
+      },
+      {
+        "desc": {
+          "digits": "1",
+          "tag": "int"
+        },
+        "expr_id": 3,
+        "origin_id": 9
+      },
+      {
+        "desc": {
+          "arguments": [
+            3
+          ],
+          "callee_id": 2,
+          "tag": "apply"
+        },
+        "expr_id": 4,
+        "origin_id": 10
       }
     ],
     "patterns": [
@@ -78,12 +97,16 @@
   },
   "exports": [
     {
+      "name": "Env.args",
+      "scheme": "_?-2"
+    },
+    {
       "name": "id",
       "scheme": "'a. 'a -> 'a"
     },
     {
       "name": "packed",
-      "scheme": "_?0"
+      "scheme": "int option"
     },
     {
       "name": "println",
@@ -150,8 +173,20 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -192,6 +227,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -289,8 +340,20 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -331,6 +394,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -424,8 +503,20 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -468,6 +559,22 @@
           "scheme": "int -> string"
         },
         {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
+        },
+        {
           "name": "Std.println",
           "scheme": "string -> unit"
         },
@@ -493,28 +600,366 @@
         }
       ],
       "expr_id": 2,
-      "inferred_type": "_?0",
+      "inferred_type": "int -> int option",
       "origin": {
-        "label": "unsupported_expression",
+        "label": "constructor_path_expression",
+        "span": {
+          "end": 69,
+          "start": 64
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      "origin_id": 8
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 3,
+      "inferred_type": "int",
+      "origin": {
+        "label": "int_literal",
+        "span": {
+          "end": 71,
+          "start": 69
+        },
+        "syntax_kind": "INT_LITERAL"
+      },
+      "origin_id": 9
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
+        },
+        {
+          "name": "Std.println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "println",
+          "scheme": "string -> unit"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        }
+      ],
+      "expr_id": 4,
+      "inferred_type": "int option",
+      "origin": {
+        "label": "constructor_apply_expression",
         "span": {
           "end": 71,
           "start": 64
         },
         "syntax_kind": "APPLY_EXPR"
       },
-      "origin_id": 8
+      "origin_id": 10
     }
   ],
   "file_summary": {
     "export_result": {
       "exports": [
         {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
           "name": "id",
           "scheme": "'a. 'a -> 'a"
         },
         {
           "name": "packed",
-          "scheme": "_?0"
+          "scheme": "int option"
         },
         {
           "name": "println",
@@ -534,10 +979,15 @@
     },
     {
       "binding_names": [
+        "Env.args",
         "id",
         "println"
       ],
       "exports_after": [
+        {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
         {
           "name": "id",
           "scheme": "'a. 'a -> 'a"
@@ -555,12 +1005,16 @@
       ],
       "exports_after": [
         {
+          "name": "Env.args",
+          "scheme": "_?-2"
+        },
+        {
           "name": "id",
           "scheme": "'a. 'a -> 'a"
         },
         {
           "name": "packed",
-          "scheme": "_?0"
+          "scheme": "int option"
         },
         {
           "name": "println",
@@ -593,7 +1047,7 @@
         1
       ],
       "item_id": 2,
-      "origin_id": 10,
+      "origin_id": 12,
       "recursive": false,
       "scope_path": [],
       "tag": "value"
@@ -609,20 +1063,6 @@
       "message": "type ascriptions are currently ignored during lowering",
       "name": "ignored-type-ascription",
       "severity": "warning"
-    },
-    {
-      "context": "expression",
-      "id": "TYP1001",
-      "message": "unsupported expression lowered using type hole: APPLY_EXPR",
-      "name": "unsupported-syntax",
-      "reason": null,
-      "recovery": "hole_expression",
-      "severity": "error",
-      "syntax_kind": "APPLY_EXPR",
-      "syntax_span": {
-        "end": 71,
-        "start": 64
-      }
     }
   ],
   "origin_map": [
@@ -756,10 +1196,42 @@
     },
     {
       "kind": "expr",
-      "label": "unsupported_expression",
+      "label": "constructor_path_expression",
       "origin_id": 8,
       "semantic_id": {
         "id": 2,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 69,
+        "start": 64
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "int_literal",
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 3,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 71,
+        "start": 69
+      },
+      "syntax_kind": "INT_LITERAL"
+    },
+    {
+      "kind": "expr",
+      "label": "constructor_apply_expression",
+      "origin_id": 10,
+      "semantic_id": {
+        "id": 4,
         "tag": "expr"
       },
       "source_id": 0,
@@ -773,7 +1245,7 @@
     {
       "kind": "binding",
       "label": "binding",
-      "origin_id": 9,
+      "origin_id": 11,
       "semantic_id": {
         "id": 1,
         "tag": "binding"
@@ -789,7 +1261,7 @@
     {
       "kind": "item",
       "label": "item",
-      "origin_id": 10,
+      "origin_id": 12,
       "semantic_id": {
         "id": 2,
         "tag": "item"
@@ -807,6 +1279,24 @@
   "source_id": 0,
   "type_index": [
     {
+      "expr_id": 3,
+      "inferred_type": "int",
+      "origin_id": 9,
+      "span": {
+        "end": 71,
+        "start": 69
+      }
+    },
+    {
+      "expr_id": 2,
+      "inferred_type": "int -> int option",
+      "origin_id": 8,
+      "span": {
+        "end": 69,
+        "start": 64
+      }
+    },
+    {
       "expr_id": 0,
       "inferred_type": "'a",
       "origin_id": 3,
@@ -816,9 +1306,9 @@
       }
     },
     {
-      "expr_id": 2,
-      "inferred_type": "_?0",
-      "origin_id": 8,
+      "expr_id": 4,
+      "inferred_type": "int option",
+      "origin_id": 10,
       "span": {
         "end": 71,
         "start": 64

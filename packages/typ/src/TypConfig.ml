@@ -33,8 +33,56 @@ let int_binop =
 let float_binop =
   monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Float)))
 
+let option_none =
+  TypeScheme.Forall ([ 0 ], TypeRepr.Option (TypeRepr.Var { id = 0; link = None }))
+
+let option_some =
+  TypeScheme.Forall ([
+    0
+  ], TypeRepr.Arrow (TypeRepr.Var { id = 0; link = None }, TypeRepr.Option (TypeRepr.Var {
+    id = 0;
+    link = None
+  })))
+
+let result_ok =
+  TypeScheme.Forall ([
+    1;
+    0
+  ], TypeRepr.Arrow (
+    TypeRepr.Var { id = 0; link = None },
+    TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })
+  ))
+
+let result_error =
+  TypeScheme.Forall ([
+    1;
+    0
+  ], TypeRepr.Arrow (
+    TypeRepr.Var { id = 1; link = None },
+    TypeRepr.Result (TypeRepr.Var { id = 0; link = None }, TypeRepr.Var { id = 1; link = None })
+  ))
+
+let runtime_args = TypeScheme.Forall ([], TypeRepr.Hole (-2))
+
+let runtime_run =
+  TypeScheme.Forall ([
+    2;
+    1;
+    0
+  ], TypeRepr.Arrow (
+    TypeRepr.Var { id = 0; link = None },
+    TypeRepr.Arrow (TypeRepr.Var { id = 1; link = None }, TypeRepr.Arrow (TypeRepr.Unit, TypeRepr.Var {
+      id = 2;
+      link = None
+    }))
+  ))
+
 let default = {
   prelude = [
+    ("None", option_none);
+    ("Some", option_some);
+    ("Ok", result_ok);
+    ("Error", result_error);
     ("+", int_binop);
     ("-", int_binop);
     ("*", int_binop);
@@ -64,6 +112,8 @@ let default = {
     ("Float.max", float_binop);
     ("Array.length", monomorphic (TypeRepr.Arrow (TypeRepr.Array unknown, TypeRepr.Int)));
     ("Std.println", monomorphic (TypeRepr.Arrow (TypeRepr.String, TypeRepr.Unit)));
+    ("Std.Env.args", runtime_args);
+    ("Actors.run", runtime_run);
   ]
   ;
   ambient = [];

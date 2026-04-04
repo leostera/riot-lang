@@ -46,6 +46,24 @@ let rec render_type = fun state ~nested ty ->
       "_?" ^ Int.to_string hole_id
   | TypeRepr.Var var ->
       name_for_var state var.id
+  | TypeRepr.Option element ->
+      let text = render_type state ~nested:true element ^ " option" in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
+  | TypeRepr.Result (ok_ty, error_ty) ->
+      let text =
+        "("
+        ^ render_type state ~nested:false ok_ty
+        ^ ", "
+        ^ render_type state ~nested:false error_ty
+        ^ ") result"
+      in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
   | TypeRepr.Array element ->
       let text = render_type state ~nested:true element ^ " array" in
       if nested then

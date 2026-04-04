@@ -11,6 +11,8 @@ and t =
   | Bool
   | String
   | Unit
+  | Option of t
+  | Result of t * t
   | Array of t
   | Tuple of t list
   | Arrow of t * t
@@ -46,6 +48,10 @@ let rec free_vars = function
   | Unit
   | Hole _ ->
       []
+  | Option element ->
+      free_vars (prune element)
+  | Result (ok_ty, error_ty) ->
+      union (free_vars (prune ok_ty)) (free_vars (prune error_ty))
   | Array element ->
       free_vars (prune element)
   | Tuple members ->
@@ -67,6 +73,10 @@ let rec occurs = fun needle ty ->
   | Unit
   | Hole _ ->
       false
+  | Option element ->
+      occurs needle element
+  | Result (ok_ty, error_ty) ->
+      occurs needle ok_ty || occurs needle error_ty
   | Array element ->
       occurs needle element
   | Tuple members ->

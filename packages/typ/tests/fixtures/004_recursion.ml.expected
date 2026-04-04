@@ -367,8 +367,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -409,6 +417,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -510,8 +534,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -552,6 +584,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -653,8 +701,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -695,6 +751,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -796,8 +868,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -838,6 +918,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -939,8 +1035,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -981,6 +1085,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1082,8 +1202,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1124,6 +1252,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1225,8 +1369,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1267,6 +1419,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1368,8 +1536,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1410,6 +1586,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1511,8 +1703,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1553,6 +1753,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1654,8 +1870,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1696,6 +1920,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1797,8 +2037,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1839,6 +2087,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -1940,8 +2204,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -1982,6 +2254,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2083,8 +2371,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2125,6 +2421,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2222,8 +2534,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2264,6 +2584,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2365,8 +2701,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2407,6 +2751,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2508,8 +2868,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2550,6 +2918,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2651,8 +3035,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2693,6 +3085,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2794,8 +3202,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2836,6 +3252,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -2937,8 +3369,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -2979,6 +3419,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3080,8 +3536,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3122,6 +3586,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3223,8 +3703,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3265,6 +3753,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3366,8 +3870,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3408,6 +3920,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3509,8 +4037,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3551,6 +4087,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3652,8 +4204,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3694,6 +4254,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3795,8 +4371,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3837,6 +4421,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",
@@ -3938,8 +4538,16 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "Actors.run",
+          "scheme": "'a 'b 'c. 'a -> 'b -> unit -> 'c"
+        },
+        {
           "name": "Array.length",
           "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'b -> ('a, 'b) result"
         },
         {
           "name": "Float.cbrt",
@@ -3980,6 +4588,22 @@
         {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Std.Env.args",
+          "scheme": "_?-2"
         },
         {
           "name": "Std.println",

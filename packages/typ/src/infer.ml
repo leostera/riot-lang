@@ -93,6 +93,10 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
         TypeRepr.String
     | TypeRepr.Unit ->
         TypeRepr.Unit
+    | TypeRepr.Option element ->
+        TypeRepr.Option (loop element)
+    | TypeRepr.Result (ok_ty, error_ty) ->
+        TypeRepr.Result (loop ok_ty, loop error_ty)
     | TypeRepr.Array element ->
         TypeRepr.Array (loop element)
     | TypeRepr.Hole hole_id ->
@@ -146,6 +150,11 @@ let rec unify = fun (state: state) ~origin left right ->
   | (TypeRepr.String, TypeRepr.String)
   | (TypeRepr.Unit, TypeRepr.Unit) ->
       ()
+  | TypeRepr.Option left_element, TypeRepr.Option right_element ->
+      unify state ~origin left_element right_element
+  | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
+      let () = unify state ~origin left_ok right_ok in
+      unify state ~origin left_error right_error
   | (TypeRepr.Hole _, _)
   | (_, TypeRepr.Hole _) ->
       ()

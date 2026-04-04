@@ -12,6 +12,8 @@ and t =
   | Bool
   | String
   | Unit
+  | Option of t
+  | Result of t * t
   | Array of t
   | Tuple of t list
   | Arrow of t * t
