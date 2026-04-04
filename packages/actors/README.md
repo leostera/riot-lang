@@ -2,15 +2,16 @@
 
 Multicore actors for Riot.
 
-`actors` is Riot's low-level actor runtime package. It gives you lightweight
-processes, typed message passing, links and monitors, timers, async syscalls,
-and a multicore runtime that can spread runnable actors across scheduler
-workers with work stealing.
+`actors` is Riot's actor runtime package. It is not a side option next to the
+rest of the stack. It is the runtime underneath Riot itself: `std`, `blink`,
+`suri`, and the rest of the ecosystem ultimately run on top of these process,
+mailbox, timer, and scheduler semantics.
 
-If `std` is the application-facing stack, `actors` is the smaller surface you
-reach for when you want the runtime itself: process orchestration, internal
-concurrency, or infrastructure that should sit closer to Riot's scheduling and
-mailbox model.
+This package exists so that runtime-level libraries and lower-level Riot code
+can depend on that layer directly. It gives you lightweight processes, typed
+message passing, links and monitors, timers, async syscalls, and a multicore
+runtime that can spread runnable actors across scheduler workers with work
+stealing.
 
 ## Install
 
@@ -20,7 +21,7 @@ riot add actors
 
 ## What value it gives you
 
-Use `actors` when you want:
+Everything built on Riot gets these properties because it runs on `actors`:
 
 - Erlang-style processes and mailboxes without pulling in the whole `std`
   surface;
@@ -31,7 +32,8 @@ Use `actors` when you want:
   runtime;
 - a small runtime package you can build other Riot infrastructure on top of.
 
-In practice that makes `actors` a good fit for:
+You add `actors` as a direct dependency when you are working at the runtime
+layer itself. In practice that usually means:
 
 - build systems and task executors;
 - schedulers, brokers, queues, and orchestration layers;
@@ -39,9 +41,10 @@ In practice that makes `actors` a good fit for:
 - systems code that wants actor semantics without the rest of the application
   stack.
 
-If you are building a normal application, service, or CLI, start with `std`
-instead. `std` already builds on the same runtime and gives you the rest of the
-practical surface area around it.
+If you are building a normal application, service, or CLI, you are still using
+`actors`, just indirectly through `std`. Most application code should start
+with `std`, because it already builds on the same runtime and gives you the
+rest of the practical surface area around it.
 
 ## Quick start
 
