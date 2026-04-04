@@ -1,5 +1,7 @@
 ---
+import { env } from "cloudflare:workers";
 import VscodeWorkbench from "@/components/VscodeWorkbench.tsx";
+import { readPlayAuthenticatedSession, type PlayAuthEnv } from "@/lib/auth.ts";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchPackageExamples, fetchPackageOverview } from "@/lib/api.ts";
 import { exampleLabel, examplePathFromRoute } from "@/lib/examples.ts";
@@ -9,6 +11,10 @@ const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
 const requestedTail = Astro.params.example ?? "";
 const requestedPath = examplePathFromRoute(requestedTail);
+const authenticatedUser = await readPlayAuthenticatedSession(env as unknown as PlayAuthEnv, Astro.request);
+const loginUrl = `https://api.pkgs.ml/v1/auth/github/start?return_to=${encodeURIComponent(
+  Astro.url.toString(),
+)}`;
 const [overview, examples] = await Promise.all([
   fetchPackageOverview(packageName),
   fetchPackageExamples(packageName, { version }),
@@ -45,6 +51,8 @@ const workspace =
         client:only="react"
         activePath={workspace?.activePath ?? "/workspace/src/main.ml"}
         files={workspace?.files ?? []}
+        authenticated={authenticatedUser !== null}
+        loginUrl={loginUrl}
       />
     ) : (
       <section class="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-5xl items-center px-4 py-8 sm:px-6">

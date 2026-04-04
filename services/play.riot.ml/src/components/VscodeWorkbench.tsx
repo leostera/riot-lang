@@ -8,11 +8,14 @@ import * as vscode from "vscode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ensureRiotLanguageExtension } from "@/lib/riot-language-extension.ts";
 import { ensureTomlLanguage } from "@/lib/toml-language.ts";
+import { ensurePlayRunAction } from "@/lib/workbench-actions.ts";
 import type { WorkspaceFile } from "@/lib/workspace.ts";
 
 interface Props {
   files: WorkspaceFile[];
   activePath: string;
+  authenticated?: boolean;
+  loginUrl?: string;
 }
 
 const workspaceRoot = monaco.Uri.file("/workspace");
@@ -58,7 +61,7 @@ function ensureWorkbench(container: HTMLElement) {
   return initPromise;
 }
 
-export default function VscodeWorkbench({ files, activePath }: Props) {
+export default function VscodeWorkbench({ files, activePath, authenticated = false, loginUrl }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -72,6 +75,13 @@ export default function VscodeWorkbench({ files, activePath }: Props) {
   );
 
   const activeFilePath = activePath.startsWith("/") ? activePath : `/workspace/${activePath.replace(/^\/+/, "")}`;
+
+  useEffect(() => {
+    ensurePlayRunAction({
+      authenticated,
+      loginUrl,
+    });
+  }, [authenticated, loginUrl]);
 
   useEffect(() => {
     const container = containerRef.current;
