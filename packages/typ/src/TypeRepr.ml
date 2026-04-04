@@ -7,9 +7,11 @@ type var = {
 
 and t =
   | Int
+  | Float
   | Bool
   | String
   | Unit
+  | Array of t
   | Tuple of t list
   | Arrow of t * t
   | Var of var
@@ -38,11 +40,14 @@ let diff = fun left right ->
 
 let rec free_vars = function
   | Int
+  | Float
   | Bool
   | String
   | Unit
   | Hole _ ->
       []
+  | Array element ->
+      free_vars (prune element)
   | Tuple members ->
       List.fold_left (fun acc member -> union acc (free_vars (prune member))) [] members
   | Arrow (lhs, rhs) ->
@@ -56,11 +61,14 @@ let rec free_vars = function
 let rec occurs = fun needle ty ->
   match prune ty with
   | Int
+  | Float
   | Bool
   | String
   | Unit
   | Hole _ ->
       false
+  | Array element ->
+      occurs needle element
   | Tuple members ->
       List.exists (occurs needle) members
   | Arrow (lhs, rhs) ->

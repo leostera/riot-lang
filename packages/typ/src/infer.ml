@@ -85,12 +85,16 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
     match TypeRepr.prune ty with
     | TypeRepr.Int ->
         TypeRepr.Int
+    | TypeRepr.Float ->
+        TypeRepr.Float
     | TypeRepr.Bool ->
         TypeRepr.Bool
     | TypeRepr.String ->
         TypeRepr.String
     | TypeRepr.Unit ->
         TypeRepr.Unit
+    | TypeRepr.Array element ->
+        TypeRepr.Array (loop element)
     | TypeRepr.Hole hole_id ->
         TypeRepr.Hole hole_id
     | TypeRepr.Tuple members ->
@@ -137,6 +141,7 @@ let rec unify = fun (state: state) ~origin left right ->
   let right = TypeRepr.prune right in
   match (left, right) with
   | (TypeRepr.Int, TypeRepr.Int)
+  | (TypeRepr.Float, TypeRepr.Float)
   | (TypeRepr.Bool, TypeRepr.Bool)
   | (TypeRepr.String, TypeRepr.String)
   | (TypeRepr.Unit, TypeRepr.Unit) ->
@@ -144,6 +149,8 @@ let rec unify = fun (state: state) ~origin left right ->
   | (TypeRepr.Hole _, _)
   | (_, TypeRepr.Hole _) ->
       ()
+  | TypeRepr.Array left_element, TypeRepr.Array right_element ->
+      unify state ~origin left_element right_element
   | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
       if List.length left_members != List.length right_members then
         raise
@@ -187,6 +194,42 @@ let try_unify = fun (state: state) ~origin left right ->
 
 let bind_env = fun env bindings -> bindings @ env
 
+let has_prefix = fun ~prefix text ->
+  let prefix_length = String.length prefix in
+  if String.length text < prefix_length then
+    false
+  else
+    String.sub text 0 prefix_length = prefix
+
+let contains_dot = fun text ->
+  let rec loop index =
+    if index >= String.length text then
+      false
+    else if text.[index] = '.' then
+      true
+    else
+      loop (index + 1)
+  in
+  loop 0
+
+let aliases_for_local_open = fun env module_path ->
+  let prefix = module_path ^ "." in
+  env |> List.filter_map (fun (name, scheme) ->
+    if has_prefix ~prefix name then
+      let suffix =
+        String.sub name (String.length prefix) (String.length name - String.length prefix)
+      in
+      if contains_dot suffix then
+        None
+      else
+        Some (suffix, scheme)
+    else
+      None)
+
+let env_with_local_open = fun env module_path ->
+  let aliases = aliases_for_local_open env module_path in
+  bind_env env aliases
+
 let rec bind_pattern = fun (state: state) pat_id expected_ty ->
   match SemanticTree.find_pattern state.file pat_id with
   | None -> []
@@ -198,6 +241,9 @@ let rec bind_pattern = fun (state: state) pat_id expected_ty ->
           []
       | BodyArena.PInt _ ->
           let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.Int in
+          []
+      | BodyArena.PFloat _ ->
+          let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.Float in
           []
       | BodyArena.PBool _ ->
           let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.Bool in
@@ -218,6 +264,14 @@ let rec bind_pattern = fun (state: state) pat_id expected_ty ->
             expected_ty
             (TypeRepr.Tuple element_types) in
           List.map2 (bind_pattern state) elements element_types |> List.flatten
+      | BodyArena.PAlias { pattern_id; alias } ->
+          let bindings = bind_pattern state pattern_id expected_ty in
+          (alias, TypeScheme.Forall ([], expected_ty)) :: bindings
+      | BodyArena.PPolyVariant { payload; _ } -> (
+          match payload with
+          | Some payload_id -> bind_pattern state payload_id (fresh_hole state)
+          | None -> []
+        )
       | BodyArena.PUnsupported _ ->
           []
     )
@@ -250,6 +304,8 @@ let rec infer_expr = fun (state: state) env expr_id ->
           )
         | BodyArena.EInt _ ->
             TypeRepr.Int
+        | BodyArena.EFloat _ ->
+            TypeRepr.Float
         | BodyArena.EBool _ ->
             TypeRepr.Bool
         | BodyArena.EString _ ->
@@ -258,6 +314,16 @@ let rec infer_expr = fun (state: state) env expr_id ->
             TypeRepr.Unit
         | BodyArena.ETuple elements ->
             TypeRepr.Tuple (List.map (infer_expr state env) elements)
+        | BodyArena.EArray elements ->
+            let element_ty = fresh_var state in
+            let () =
+              List.iter
+                (fun element_id ->
+                  let inferred_element = infer_expr state env element_id in
+                  try_unify state ~origin:(origin_of_expr state element_id) element_ty inferred_element)
+                elements
+            in
+            TypeRepr.Array element_ty
         | BodyArena.EFun (parameters, body_id) ->
             let rec lower_parameters env arg_types = function
               | [] ->
@@ -287,6 +353,21 @@ let rec infer_expr = fun (state: state) env expr_id ->
                   apply result_ty rest
             in
             apply callee_ty arguments
+        | BodyArena.EIndex (collection_id, index_id) ->
+            let collection_ty = infer_expr state env collection_id in
+            let index_ty = infer_expr state env index_id in
+            let element_ty = fresh_var state in
+            let () = try_unify
+              state
+              ~origin:(origin_of_expr state index_id)
+              index_ty
+              TypeRepr.Int in
+            let () = try_unify
+              state
+              ~origin:(origin_of_expr state collection_id)
+              collection_ty
+              (TypeRepr.Array element_ty) in
+            element_ty
         | BodyArena.ELet (binding_ids, body_id) ->
             let env = infer_binding_group state env binding_ids in
             infer_expr state env body_id
@@ -313,6 +394,17 @@ let rec infer_expr = fun (state: state) env expr_id ->
                 cases
             in
             result_ty
+        | BodyArena.EPolyVariant { payload; _ } ->
+            let () =
+              match payload with
+              | Some payload_id ->
+                  let _ = infer_expr state env payload_id in
+                  ()
+              | None -> ()
+            in
+            fresh_hole state
+        | BodyArena.ELocalOpen { module_path; body_id } ->
+            infer_expr state (env_with_local_open env module_path) body_id
         | BodyArena.EUnsupported summary ->
             let hole = fresh_hole state in
             let () = add_diagnostic
@@ -397,17 +489,74 @@ let export_env = fun config env ->
   let hidden_names = prelude_names config in
   render_env env |> List.filter (fun (name, _) -> not (List.mem name hidden_names))
 
+let introduced_entries = fun before after ->
+  let introduced = introduced_names before after in
+  render_env after |> List.filter (fun (name, _) -> List.mem name introduced)
+
+let qualify_name = fun scope_path name ->
+  match scope_path with
+  | [] -> name
+  | _ -> String.concat "." scope_path ^ "." ^ name
+
+let qualify_entries = fun scope_path entries ->
+  List.map (fun (name, scheme) -> (qualify_name scope_path name, scheme)) entries
+
+let scope_key = fun scope_path -> String.concat "." scope_path
+
+let scope_prefix_keys = fun scope_path ->
+  let rec loop acc current = function
+    | [] -> List.rev acc
+    | segment :: rest ->
+        let current = current @ [ segment ] in
+        loop (scope_key current :: acc) current rest
+  in
+  loop [] [] scope_path
+
+let scope_locals_for = fun scope_entries scope_path ->
+  scope_prefix_keys scope_path |> List.fold_left
+    (fun acc key ->
+      match List.assoc_opt key scope_entries with
+      | Some entries -> bind_env acc entries
+      | None -> acc)
+    []
+
+let update_scope_entries = fun scope_entries scope_path entries ->
+  let key = scope_key scope_path in
+  let existing =
+    match List.assoc_opt key scope_entries with
+    | Some entries -> entries
+    | None -> []
+  in
+  let updated = bind_env existing entries in
+  (key, updated) :: List.remove_assoc key scope_entries
+
+let env_for_item_scope = fun export_env scope_entries scope_path ->
+  let locals = scope_locals_for scope_entries scope_path in
+  bind_env export_env locals
+
 let infer_file = fun ~config file ->
   let state = make_state ~config file in
-  let exports =
-    List.fold_left
-      (fun env item ->
+  let rec loop export_state scope_entries = function
+    | [] -> export_state
+    | item :: rest -> (
         match item with
         | ItemTree.Value value_item ->
-            let env_before = export_env config env in
-            let env = infer_binding_group state env value_item.binding_ids in
-            let exports_after = export_env config env in
-            let binding_names = introduced_names env_before exports_after in
+            let visible_exports_before = export_env config export_state in
+            let item_env = env_for_item_scope export_state scope_entries value_item.scope_path in
+            let env_after_item = infer_binding_group state item_env value_item.binding_ids in
+            let introduced = introduced_entries item_env env_after_item in
+            let (export_state, scope_entries) =
+              match value_item.scope_path with
+              | [] ->
+                  (env_after_item, scope_entries)
+              | scope_path ->
+                  (
+                    bind_env export_state (qualify_entries scope_path introduced),
+                    update_scope_entries scope_entries scope_path introduced
+                  )
+            in
+            let exports_after = export_env config export_state in
+            let binding_names = introduced_names visible_exports_before exports_after in
             let () =
               state.item_traces <- (
                 { Check_result.item_id = value_item.item_id; binding_names; exports_after }:
@@ -415,9 +564,9 @@ let infer_file = fun ~config file ->
               )
               :: state.item_traces
             in
-            env
+            loop export_state scope_entries rest
         | ItemTree.Unsupported unsupported_item ->
-            let exports_after = export_env config env in
+            let exports_after = export_env config export_state in
             let () =
               state.item_traces <- (
                 {
@@ -429,9 +578,9 @@ let infer_file = fun ~config file ->
               )
               :: state.item_traces
             in
-            env)
-      config.prelude
-      (ItemTree.items file.item_tree)
+            loop export_state scope_entries rest)
+  in
+  let exports = loop config.prelude [] (ItemTree.items file.item_tree)
   in
   {
     exports = export_env config exports;

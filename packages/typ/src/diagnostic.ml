@@ -6,6 +6,7 @@ type severity =
 
 type supported_literal =
   | IntLiteral
+  | FloatLiteral
   | BoolLiteral
   | StringLiteral
   | UnitLiteral
@@ -40,7 +41,7 @@ type t =
   | IgnoredPatternTypeConstraint of { constraint_span: Syn.Ceibo.Span.t }
   | ParameterLoweredAsPositional of { parameter_span: Syn.Ceibo.Span.t }
   | IgnoredMatchGuard of { guard_span: Syn.Ceibo.Span.t }
-  | UnsupportedApplicationArgumentLabels of { application_span: Syn.Ceibo.Span.t }
+  | ApplicationArgumentLoweredAsPositional of { application_span: Syn.Ceibo.Span.t }
   | IgnoredTypeAscription of { ascription_span: Syn.Ceibo.Span.t }
   | IgnoredPolymorphicAnnotation of { annotation_span: Syn.Ceibo.Span.t }
   | UnsupportedInterfaceFile of { interface_span: Syn.Ceibo.Span.t }
@@ -55,7 +56,7 @@ let code = function
   | IgnoredPatternTypeConstraint _ -> "TYP1004"
   | ParameterLoweredAsPositional _ -> "TYP1005"
   | IgnoredMatchGuard _ -> "TYP1006"
-  | UnsupportedApplicationArgumentLabels _ -> "TYP1007"
+  | ApplicationArgumentLoweredAsPositional _ -> "TYP1007"
   | IgnoredTypeAscription _ -> "TYP1008"
   | IgnoredPolymorphicAnnotation _ -> "TYP1009"
   | UnsupportedInterfaceFile _ -> "TYP1010"
@@ -70,7 +71,7 @@ let name = function
   | IgnoredPatternTypeConstraint _ -> "ignored-pattern-type-constraint"
   | ParameterLoweredAsPositional _ -> "parameter-lowered-as-positional"
   | IgnoredMatchGuard _ -> "ignored-match-guard"
-  | UnsupportedApplicationArgumentLabels _ -> "unsupported-application-argument-labels"
+  | ApplicationArgumentLoweredAsPositional _ -> "application-argument-lowered-as-positional"
   | IgnoredTypeAscription _ -> "ignored-type-ascription"
   | IgnoredPolymorphicAnnotation _ -> "ignored-polymorphic-annotation"
   | UnsupportedInterfaceFile _ -> "unsupported-interface-file"
@@ -85,7 +86,7 @@ let severity = function
   | IgnoredPatternTypeConstraint _
   | ParameterLoweredAsPositional _
   | IgnoredMatchGuard _
-  | UnsupportedApplicationArgumentLabels _
+  | ApplicationArgumentLoweredAsPositional _
   | IgnoredTypeAscription _
   | IgnoredPolymorphicAnnotation _
   | UnsupportedInterfaceFile _
@@ -104,7 +105,7 @@ let primary_span = function
   | IgnoredPatternTypeConstraint { constraint_span } -> constraint_span
   | ParameterLoweredAsPositional { parameter_span } -> parameter_span
   | IgnoredMatchGuard { guard_span } -> guard_span
-  | UnsupportedApplicationArgumentLabels { application_span } -> application_span
+  | ApplicationArgumentLoweredAsPositional { application_span } -> application_span
   | IgnoredTypeAscription { ascription_span } -> ascription_span
   | IgnoredPolymorphicAnnotation { annotation_span } -> annotation_span
   | UnsupportedInterfaceFile { interface_span } -> interface_span
@@ -115,6 +116,7 @@ let primary_span = function
 
 let supported_literal_to_string = function
   | IntLiteral -> "int"
+  | FloatLiteral -> "float"
   | BoolLiteral -> "bool"
   | StringLiteral -> "string"
   | UnitLiteral -> "unit"
@@ -176,7 +178,7 @@ let message = function
   | IgnoredPatternTypeConstraint _ -> "type-constrained pattern lowered without its annotation"
   | ParameterLoweredAsPositional _ -> "labeled, optional, or locally abstract parameters are currently lowered as ordinary positional binders"
   | IgnoredMatchGuard _ -> "match guards are currently ignored during lowering"
-  | UnsupportedApplicationArgumentLabels _ -> "labeled or optional application arguments are not lowered yet"
+  | ApplicationArgumentLoweredAsPositional _ -> "labeled or optional application arguments are currently lowered as ordinary positional arguments"
   | IgnoredTypeAscription _ -> "type ascriptions are currently ignored during lowering"
   | IgnoredPolymorphicAnnotation _ -> "explicit polymorphic annotations are currently ignored during lowering"
   | UnsupportedInterfaceFile _ -> "interface files are not lowered by the prototype yet"
@@ -267,7 +269,7 @@ let fields_to_json = function
       [ ("parameter_span", span_to_json parameter_span); ]
   | IgnoredMatchGuard { guard_span } ->
       [ ("guard_span", span_to_json guard_span); ]
-  | UnsupportedApplicationArgumentLabels { application_span } ->
+  | ApplicationArgumentLoweredAsPositional { application_span } ->
       [ ("application_span", span_to_json application_span); ]
   | IgnoredTypeAscription { ascription_span } ->
       [ ("ascription_span", span_to_json ascription_span); ]

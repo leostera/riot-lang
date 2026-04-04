@@ -8,9 +8,11 @@ type var = {
 
 and t =
   | Int
+  | Float
   | Bool
   | String
   | Unit
+  | Array of t
   | Tuple of t list
   | Arrow of t * t
   | Var of var

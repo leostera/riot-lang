@@ -4,10 +4,13 @@ type pattern_desc =
   | PVar of string
   | PWildcard
   | PInt of string
+  | PFloat of string
   | PBool of bool
   | PString of string
   | PUnit
   | PTuple of PatId.t list
+  | PAlias of { pattern_id: PatId.t; alias: string }
+  | PPolyVariant of { tag: string; payload: PatId.t option }
   | PUnsupported of string
 
 type pattern_node = {
@@ -24,15 +27,20 @@ type match_case = {
 type expr_desc =
   | EVar of string
   | EInt of string
+  | EFloat of string
   | EBool of bool
   | EString of string
   | EUnit
   | ETuple of ExprId.t list
+  | EArray of ExprId.t list
   | EFun of PatId.t list * ExprId.t
   | EApply of ExprId.t * ExprId.t list
+  | EIndex of ExprId.t * ExprId.t
   | ELet of BindingId.t list * ExprId.t
   | EIf of ExprId.t * ExprId.t * ExprId.t
   | EMatch of ExprId.t * match_case list
+  | EPolyVariant of { tag: string; payload: ExprId.t option }
+  | ELocalOpen of { module_path: string; body_id: ExprId.t }
   | EUnsupported of string
   | EHole of string
 
@@ -45,6 +53,7 @@ and expr_node = {
 and binding = {
   binding_id: BindingId.t;
   origin_id: OriginId.t;
+  scope_path: string list;
   name: string option;
   pattern_id: PatId.t;
   value_id: ExprId.t;
@@ -91,10 +100,18 @@ let render_pattern_desc = function
   | PVar name -> "var " ^ name
   | PWildcard -> "_"
   | PInt digits -> "int " ^ digits
+  | PFloat digits -> "float " ^ digits
   | PBool value -> "bool " ^ Bool.to_string value
   | PString value -> "string \"" ^ String.escaped value ^ "\""
   | PUnit -> "unit"
   | PTuple elements -> "tuple [" ^ render_ids PatId.to_string elements ^ "]"
+  | PAlias { pattern_id; alias } ->
+      "alias " ^ alias ^ " = " ^ PatId.to_string pattern_id
+  | PPolyVariant { tag; payload } -> (
+      match payload with
+      | Some pattern_id -> "poly_variant `" ^ tag ^ " " ^ PatId.to_string pattern_id
+      | None -> "poly_variant `" ^ tag
+    )
   | PUnsupported summary -> "unsupported(" ^ summary ^ ")"
 
 let render_expr_desc = function
@@ -102,6 +119,8 @@ let render_expr_desc = function
       "var " ^ name
   | EInt digits ->
       "int " ^ digits
+  | EFloat digits ->
+      "float " ^ digits
   | EBool value ->
       "bool " ^ Bool.to_string value
   | EString value ->
@@ -110,10 +129,14 @@ let render_expr_desc = function
       "unit"
   | ETuple elements ->
       "tuple [" ^ render_ids ExprId.to_string elements ^ "]"
+  | EArray elements ->
+      "array [" ^ render_ids ExprId.to_string elements ^ "]"
   | EFun (parameters, body_id) ->
       "fun [" ^ render_ids PatId.to_string parameters ^ "] -> " ^ ExprId.to_string body_id
   | EApply (callee_id, arguments) ->
       "apply " ^ ExprId.to_string callee_id ^ " [" ^ render_ids ExprId.to_string arguments ^ "]"
+  | EIndex (collection_id, index_id) ->
+      "index " ^ ExprId.to_string collection_id ^ " [" ^ ExprId.to_string index_id ^ "]"
   | ELet (binding_ids, body_id) ->
       "let [" ^ render_ids BindingId.to_string binding_ids ^ "] in " ^ ExprId.to_string body_id
   | EIf (condition_id, then_id, else_id) ->
@@ -130,6 +153,13 @@ let render_expr_desc = function
           "(" ^ PatId.to_string case.pattern_id ^ " -> " ^ ExprId.to_string case.body_id ^ ")")
       |> String.concat ", " in
       "match " ^ ExprId.to_string scrutinee_id ^ " with [" ^ cases_text ^ "]"
+  | EPolyVariant { tag; payload } -> (
+      match payload with
+      | Some expr_id -> "poly_variant `" ^ tag ^ " " ^ ExprId.to_string expr_id
+      | None -> "poly_variant `" ^ tag
+    )
+  | ELocalOpen { module_path; body_id } ->
+      "local_open " ^ module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
       "unsupported(" ^ summary ^ ")"
   | EHole summary ->
@@ -141,10 +171,15 @@ let render_binding = fun (binding: binding) ->
     | Some name -> name
     | None -> "_"
   in
+  let qualified_name =
+    match binding.scope_path with
+    | [] -> name
+    | scope_path -> String.concat "." scope_path ^ "." ^ name
+  in
   "  "
   ^ BindingId.to_string binding.binding_id
   ^ " "
-  ^ name
+  ^ qualified_name
   ^ " "
   ^ PatId.to_string binding.pattern_id
   ^ " "
@@ -161,6 +196,25 @@ let pattern_desc_to_json = function
   | PInt digits -> Data.Json.Object [
     ("tag", Data.Json.String "int");
     ("digits", Data.Json.String digits)
+  ]
+  | PFloat digits -> Data.Json.Object [
+    ("tag", Data.Json.String "float");
+    ("digits", Data.Json.String digits)
+  ]
+  | PAlias { pattern_id; alias } -> Data.Json.Object [
+    ("tag", Data.Json.String "alias");
+    ("pattern_id", Data.Json.Int (PatId.to_int pattern_id));
+    ("alias", Data.Json.String alias)
+  ]
+  | PPolyVariant { tag; payload } -> Data.Json.Object [
+    ("tag", Data.Json.String "poly_variant");
+    ("variant_tag", Data.Json.String tag);
+    (
+      "payload",
+      match payload with
+      | Some pattern_id -> Data.Json.Int (PatId.to_int pattern_id)
+      | None -> Data.Json.Null
+    );
   ]
   | PBool value -> Data.Json.Object [
     ("tag", Data.Json.String "bool");
@@ -198,6 +252,10 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "int");
     ("digits", Data.Json.String digits)
   ]
+  | EFloat digits -> Data.Json.Object [
+    ("tag", Data.Json.String "float");
+    ("digits", Data.Json.String digits)
+  ]
   | EBool value -> Data.Json.Object [
     ("tag", Data.Json.String "bool");
     ("value", Data.Json.Bool value)
@@ -209,6 +267,13 @@ let expr_desc_to_json = function
   | EUnit -> Data.Json.Object [ ("tag", Data.Json.String "unit") ]
   | ETuple elements -> Data.Json.Object [
     ("tag", Data.Json.String "tuple");
+    (
+      "elements",
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+    );
+  ]
+  | EArray elements -> Data.Json.Object [
+    ("tag", Data.Json.String "array");
     (
       "elements",
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
@@ -230,6 +295,11 @@ let expr_desc_to_json = function
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) arguments)
     );
   ]
+  | EIndex (collection_id, index_id) -> Data.Json.Object [
+    ("tag", Data.Json.String "index");
+    ("collection_id", Data.Json.Int (ExprId.to_int collection_id));
+    ("index_id", Data.Json.Int (ExprId.to_int index_id));
+  ]
   | ELet (binding_ids, body_id) -> Data.Json.Object [
     ("tag", Data.Json.String "let");
     (
@@ -248,6 +318,21 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "match");
     ("scrutinee_id", Data.Json.Int (ExprId.to_int scrutinee_id));
     ("cases", Data.Json.Array (List.map match_case_to_json cases));
+  ]
+  | EPolyVariant { tag; payload } -> Data.Json.Object [
+    ("tag", Data.Json.String "poly_variant");
+    ("variant_tag", Data.Json.String tag);
+    (
+      "payload",
+      match payload with
+      | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+      | None -> Data.Json.Null
+    );
+  ]
+  | ELocalOpen { module_path; body_id } -> Data.Json.Object [
+    ("tag", Data.Json.String "local_open");
+    ("module_path", Data.Json.String module_path);
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
   ]
   | EUnsupported summary -> Data.Json.Object [
     ("tag", Data.Json.String "unsupported");
@@ -281,6 +366,10 @@ let binding_to_json = fun (binding: binding) ->
   Data.Json.Object [
     ("binding_id", Data.Json.Int (BindingId.to_int binding.binding_id));
     ("origin_id", Data.Json.Int (OriginId.to_int binding.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) binding.scope_path)
+    );
     ("name", name_json);
     ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));
     ("value_id", Data.Json.Int (ExprId.to_int binding.value_id));

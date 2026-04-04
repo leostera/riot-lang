@@ -34,6 +34,8 @@ let rec render_type = fun state ~nested ty ->
   match TypeRepr.prune ty with
   | TypeRepr.Int ->
       "int"
+  | TypeRepr.Float ->
+      "float"
   | TypeRepr.Bool ->
       "bool"
   | TypeRepr.String ->
@@ -44,6 +46,12 @@ let rec render_type = fun state ~nested ty ->
       "_?" ^ Int.to_string hole_id
   | TypeRepr.Var var ->
       name_for_var state var.id
+  | TypeRepr.Array element ->
+      let text = render_type state ~nested:true element ^ " array" in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
   | TypeRepr.Tuple members ->
       members |> List.map (render_type state ~nested:true) |> String.concat " * " |> fun text ->
         if nested then

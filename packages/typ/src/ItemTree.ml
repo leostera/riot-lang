@@ -3,6 +3,7 @@ open Std
 type value_item = {
   item_id: ItemId.t;
   origin_id: OriginId.t;
+  scope_path: string list;
   binding_ids: BindingId.t list;
   recursive: bool;
 }
@@ -10,6 +11,7 @@ type value_item = {
 type unsupported_item = {
   item_id: ItemId.t;
   origin_id: OriginId.t;
+  scope_path: string list;
   summary: string;
 }
 
@@ -40,6 +42,10 @@ let item_to_json = function
     ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) item.scope_path)
+    );
+    (
       "binding_ids",
       Data.Json.Array (List.map
         (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id))
@@ -51,6 +57,10 @@ let item_to_json = function
     ("tag", Data.Json.String "unsupported");
     ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) item.scope_path)
+    );
     ("summary", Data.Json.String item.summary);
   ]
 
@@ -63,19 +73,33 @@ let to_string = fun items ->
       items |> List.map
         (
           function
-          | Value (item: value_item) -> "  "
-          ^ ItemId.to_string item.item_id
-          ^ " value "
-          ^ OriginId.to_string item.origin_id
-          ^ " recursive="
-          ^ Bool.to_string item.recursive
-          ^ " bindings=["
-          ^ (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ")
-          ^ "]"
-          | Unsupported (item: unsupported_item) -> "  "
-          ^ ItemId.to_string item.item_id
-          ^ " unsupported "
-          ^ OriginId.to_string item.origin_id
-          ^ " "
-          ^ item.summary
+          | Value (item: value_item) ->
+              let scope_prefix =
+                match item.scope_path with
+                | [] -> ""
+                | scope_path -> String.concat "." scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " value "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " recursive="
+              ^ Bool.to_string item.recursive
+              ^ " bindings=["
+              ^ (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ")
+              ^ "]"
+          | Unsupported (item: unsupported_item) ->
+              let scope_prefix =
+                match item.scope_path with
+                | [] -> ""
+                | scope_path -> String.concat "." scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " unsupported "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " "
+              ^ item.summary
         ) |> String.concat "\n" |> fun text -> text ^ "\n"

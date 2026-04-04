@@ -4,6 +4,7 @@ open Syn
 
 type state = {
   source: Source.t;
+  mutable scope_path: string list;
   mutable next_origin_id: int;
   mutable next_pattern_id: int;
   mutable next_expr_id: int;
@@ -55,6 +56,7 @@ let binding_name_of_pattern =
 let make_state = fun source ->
   {
     source;
+    scope_path = [];
     next_origin_id = 0;
     next_pattern_id = 0;
     next_expr_id = 0;
@@ -124,6 +126,7 @@ let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~value_id ~r
   let binding = {
     BodyArena.binding_id;
     origin_id;
+    scope_path = state.scope_path;
     name;
     pattern_id;
     value_id;
@@ -143,13 +146,19 @@ let add_item = fun (state: state) ~syntax_node item ->
   let origin_id = add_origin state ~semantic_id:(OriginMap.Item item_id) ~label:"item" syntax_node in
   let item =
     match item with
-    | `Value (binding_ids, recursive) -> ItemTree.Value {
+        | `Value (binding_ids, recursive) -> ItemTree.Value {
       item_id;
       origin_id;
+      scope_path = state.scope_path;
       binding_ids;
       recursive
     }
-    | `Unsupported summary -> ItemTree.Unsupported { item_id; origin_id; summary }
+    | `Unsupported summary -> ItemTree.Unsupported {
+      item_id;
+      origin_id;
+      scope_path = state.scope_path;
+      summary
+    }
   in
   let () =
     state.items <- item :: state.items
@@ -163,6 +172,17 @@ let fresh_synthetic_name = fun (state: state) prefix ->
   in
   name
 
+let with_scope = fun (state: state) scope_path f ->
+  let previous_scope_path = state.scope_path in
+  let () =
+    state.scope_path <- scope_path
+  in
+  let result = f () in
+  let () =
+    state.scope_path <- previous_scope_path
+  in
+  result
+
 let int_text = fun (integer: Cst.integer_constant) ->
   let sign =
     match integer.Cst.sign_token with
@@ -171,10 +191,19 @@ let int_text = fun (integer: Cst.integer_constant) ->
   in
   sign ^ Cst.Token.text integer.literal_token
 
+let float_text = fun (float_: Cst.float_constant) ->
+  let sign =
+    match float_.Cst.sign_token with
+    | Some sign -> Cst.Token.text sign
+    | None -> ""
+  in
+  sign ^ Cst.Token.text float_.literal_token
+
 let unsupported_syntax_kind = fun syntax_node -> Cst.syntax_kind syntax_node
 
 let supported_literal_subset = [
   Typ_diagnostic.IntLiteral;
+  Typ_diagnostic.FloatLiteral;
   Typ_diagnostic.BoolLiteral;
   Typ_diagnostic.StringLiteral;
   Typ_diagnostic.UnitLiteral;
@@ -235,6 +264,11 @@ let rec lower_pattern = fun (state: state) pattern ->
         ~syntax_node
         ~label:"int_pattern"
         (BodyArena.PInt (int_text integer))
+      | Cst.PatternLiteral.Float float_ -> add_pattern
+        state
+        ~syntax_node
+        ~label:"float_pattern"
+        (BodyArena.PFloat (float_text float_))
       | Cst.PatternLiteral.Bool { value; _ } -> add_pattern
         state
         ~syntax_node
@@ -258,6 +292,20 @@ let rec lower_pattern = fun (state: state) pattern ->
       let element_ids = elements
       |> List.map (fun (element: Cst.tuple_pattern_element) -> lower_pattern state element.pattern) in
       add_pattern state ~syntax_node ~label:"tuple_pattern" (BodyArena.PTuple element_ids)
+  | Cst.Pattern.Alias { syntax_node; pattern; name_token; _ } ->
+      let pattern_id = lower_pattern state pattern in
+      add_pattern
+        state
+        ~syntax_node
+        ~label:"alias_pattern"
+        (BodyArena.PAlias { pattern_id; alias = Cst.Token.text name_token })
+  | Cst.Pattern.PolyVariant { syntax_node; tag_token; payload; _ } ->
+      let payload = payload |> Option.map (lower_pattern state) in
+      add_pattern
+        state
+        ~syntax_node
+        ~label:"poly_variant_pattern"
+        (BodyArena.PPolyVariant { tag = Cst.Token.text tag_token; payload })
   | Cst.Pattern.Parenthesized { inner; _ } ->
       lower_pattern state inner
   | Cst.Pattern.Typed { syntax_node; pattern; _ } ->
@@ -406,17 +454,31 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
 
 and lower_apply = fun (state: state) expression ->
   let rec collect arguments = function
-    | Cst.Expression.Apply { callee; argument=Positional argument; _ } ->
-        let argument_id = lower_expr state argument in
+    | Cst.Expression.Apply { callee; argument; _ } ->
+        let argument_id =
+          match argument with
+          | Positional argument ->
+              lower_expr state argument
+          | Labeled { syntax_node; label_token; value; _ }
+          | Optional { syntax_node; label_token; value; _ } ->
+              let () = add_diagnostic
+                state
+                (Typ_diagnostic.ApplicationArgumentLoweredAsPositional {
+                  application_span = Ceibo.Red.SyntaxNode.span syntax_node
+                }) in
+              (
+                match value with
+                | Some value ->
+                    lower_expr state value
+                | None ->
+                    add_expr
+                      state
+                      ~syntax_node
+                      ~label:"implicit_labeled_argument"
+                      (BodyArena.EVar (Cst.Token.text label_token))
+              )
+        in
         collect (argument_id :: arguments) callee
-    | Cst.Expression.Apply { syntax_node; callee; _ } ->
-        let () = add_diagnostic
-          state
-          (Typ_diagnostic.UnsupportedApplicationArgumentLabels {
-            application_span = Ceibo.Red.SyntaxNode.span syntax_node
-          }) in
-        let callee_id = lower_expr state callee in
-        (callee_id, List.rev arguments)
     | callee ->
         let callee_id = lower_expr state callee in
         (callee_id, List.rev arguments)
@@ -471,6 +533,11 @@ and lower_expr = fun (state: state) expression ->
         ~syntax_node:integer.syntax_node
         ~label:"int_literal"
         (BodyArena.EInt (int_text integer))
+      | Cst.Literal.Float float_ -> add_expr
+        state
+        ~syntax_node:float_.syntax_node
+        ~label:"float_literal"
+        (BodyArena.EFloat (float_text float_))
       | Cst.Literal.Bool { syntax_node; value; _ } -> add_expr
         state
         ~syntax_node
@@ -497,6 +564,9 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.Tuple { syntax_node; elements; _ } ->
       let element_ids = List.map (lower_expr state) elements in
       add_expr state ~syntax_node ~label:"tuple_expression" (BodyArena.ETuple element_ids)
+  | Cst.Expression.Array { syntax_node; elements; _ } ->
+      let element_ids = List.map (lower_expr state) elements in
+      add_expr state ~syntax_node ~label:"array_expression" (BodyArena.EArray element_ids)
   | Cst.Expression.Parenthesized { inner; _ } ->
       lower_expr state inner
   | Cst.Expression.TypeAscription { syntax_node; expression; _ } ->
@@ -526,6 +596,10 @@ and lower_expr = fun (state: state) expression ->
       lower_function_like state ~syntax_node ~parameters:[] ~body:(`Cases cases)
   | Cst.Expression.Apply _ ->
       lower_apply state expression
+  | Cst.Expression.Index { syntax_node; collection; index; _ } ->
+      let collection_id = lower_expr state collection in
+      let index_id = lower_expr state index in
+      add_expr state ~syntax_node ~label:"index_expression" (BodyArena.EIndex (collection_id, index_id))
   | Cst.Expression.Infix infix ->
       lower_infix state infix
   | Cst.Expression.If {
@@ -559,6 +633,21 @@ and lower_expr = fun (state: state) expression ->
       let scrutinee_id = lower_expr state scrutinee in
       let cases = lower_match_cases state cases in
       add_expr state ~syntax_node ~label:"match_expression" (BodyArena.EMatch (scrutinee_id, cases))
+  | Cst.Expression.PolyVariant { syntax_node; tag_token; payload; _ } ->
+      let payload = payload |> Option.map (lower_expr state) in
+      add_expr
+        state
+        ~syntax_node
+        ~label:"poly_variant_expression"
+        (BodyArena.EPolyVariant { tag = Cst.Token.text tag_token; payload })
+  | Cst.Expression.LocalOpen (LetOpen { syntax_node; module_path; body; _ })
+  | Cst.Expression.LocalOpen (Delimited { syntax_node; module_path; body; _ }) ->
+      let body_id = lower_expr state body in
+      add_expr
+        state
+        ~syntax_node
+        ~label:"local_open_expression"
+        (BodyArena.ELocalOpen { module_path = path_text module_path; body_id })
   | Cst.Expression.Prefix { syntax_node; operator_token; operand; _ } ->
       let operator_id = add_expr
         state
@@ -584,12 +673,27 @@ let lower_top_level_expression = fun (state: state) expression ->
   let binding_id = add_binding state ~syntax_node ~name:None ~pattern_id ~value_id ~recursive:false in
   add_item state ~syntax_node (`Value ([ binding_id ], false))
 
-let lower_structure_item = fun (state: state) item ->
+let rec lower_structure_item = fun (state: state) item ->
   match item with
   | Cst.StructureItem.LetBinding binding ->
-      lower_let_binding_group state binding
+      let _ = lower_let_binding_group state binding in
+      ()
   | Cst.StructureItem.Expression expression ->
-      lower_top_level_expression state expression
+      let _ = lower_top_level_expression state expression in
+      ()
+  | Cst.StructureItem.OpenStatement {
+    target = Cst.OpenStatement.Path _;
+    _
+  }
+  | Cst.StructureItem.OpenStatement {
+    target = Cst.OpenStatement.ModuleExpression (Cst.ModuleExpression.Path _);
+    _
+  } ->
+      ()
+  | Cst.StructureItem.TypeDeclaration _ ->
+      ()
+  | Cst.StructureItem.ModuleDeclaration declaration ->
+      lower_module_declaration state declaration
   | item ->
       let syntax_node = Cst.StructureItem.syntax_node item in
       let syntax_kind = Cst.syntax_kind syntax_node in
@@ -605,7 +709,37 @@ let lower_structure_item = fun (state: state) item ->
           }
         )
       in
-      add_item state ~syntax_node (`Unsupported summary)
+      let _ = add_item state ~syntax_node (`Unsupported summary) in
+      ()
+
+and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStructure.t) ->
+  let syntax_node = Cst.ModuleStructure.syntax_node declaration in
+  if Cst.ModuleStructure.is_recursive declaration || Option.is_some (Cst.ModuleStructure.next_and_declaration declaration) then
+    let syntax_kind = Cst.syntax_kind syntax_node in
+    let summary = SyntaxKind.to_string syntax_kind in
+    let () = add_diagnostic state
+      (
+        Typ_diagnostic.UnsupportedSyntax {
+          syntax_kind;
+          syntax_span = Ceibo.Red.SyntaxNode.span syntax_node;
+          context = Typ_diagnostic.StructureItem;
+          recovery = Typ_diagnostic.PlaceholderItem;
+          reason = None;
+        }
+      )
+    in
+    let _ = add_item state ~syntax_node (`Unsupported summary) in
+    ()
+  else
+    let nested_scope_path = state.scope_path @ [ Cst.ModuleStructure.name declaration ] in
+    let module_expression = Cst.ModuleStructure.module_expression declaration in
+    with_scope state nested_scope_path (fun () ->
+      match CstBuilder.structure_items_of_module_expression module_expression with
+      | Ok items ->
+          let _ = List.map (lower_structure_item state) items in
+          ()
+      | Error builder_error ->
+          add_diagnostic state (Typ_diagnostic.CstBuilderError { builder_error }))
 
 let lower_source_file = fun ~source source_file ->
   let state = make_state source in

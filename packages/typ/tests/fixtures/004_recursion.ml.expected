@@ -7,6 +7,7 @@
         "origin_id": 15,
         "pattern_id": 0,
         "recursive": true,
+        "scope_path": [],
         "value_id": 12
       },
       {
@@ -15,6 +16,7 @@
         "origin_id": 31,
         "pattern_id": 2,
         "recursive": true,
+        "scope_path": [],
         "value_id": 25
       }
     ],
@@ -309,24 +311,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -343,6 +429,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 0,
@@ -360,24 +450,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -394,6 +568,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 1,
@@ -411,24 +589,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -445,6 +707,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 2,
@@ -462,24 +728,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -496,6 +846,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 3,
@@ -513,24 +867,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -547,6 +985,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 4,
@@ -564,24 +1006,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -598,6 +1124,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 9,
@@ -615,24 +1145,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -649,6 +1263,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 5,
@@ -666,24 +1284,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -700,6 +1402,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 6,
@@ -717,24 +1423,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -751,6 +1541,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 7,
@@ -768,24 +1562,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -802,6 +1680,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 8,
@@ -819,24 +1701,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -853,6 +1819,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 10,
@@ -870,24 +1840,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -904,6 +1958,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 11,
@@ -921,24 +1979,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -951,6 +2093,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 12,
@@ -968,24 +2114,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1002,6 +2232,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 13,
@@ -1019,24 +2253,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1053,6 +2371,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 14,
@@ -1070,24 +2392,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1104,6 +2510,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 15,
@@ -1121,24 +2531,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1155,6 +2649,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 16,
@@ -1172,24 +2670,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1206,6 +2788,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 17,
@@ -1223,24 +2809,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1257,6 +2927,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 22,
@@ -1274,24 +2948,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1308,6 +3066,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 18,
@@ -1325,24 +3087,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1359,6 +3205,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 19,
@@ -1376,24 +3226,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1410,6 +3344,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 20,
@@ -1427,24 +3365,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1461,6 +3483,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 21,
@@ -1478,24 +3504,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1512,6 +3622,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 23,
@@ -1529,24 +3643,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1563,6 +3761,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 24,
@@ -1580,24 +3782,108 @@
     {
       "env_before": [
         {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "+",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
           "name": "-",
           "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
         {
           "name": "/",
           "scheme": "int -> int -> int"
         },
         {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "<",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "int -> int -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "int -> int -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "(_?-1 array) -> int"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "float -> string"
+        },
+        {
+          "name": "Int.max",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.min",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
         },
         {
           "name": "even",
@@ -1610,6 +3896,10 @@
         {
           "name": "odd",
           "scheme": "int -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
         }
       ],
       "expr_id": 25,
@@ -1670,6 +3960,7 @@
       "item_id": 0,
       "origin_id": 32,
       "recursive": true,
+      "scope_path": [],
       "tag": "value"
     }
   ],

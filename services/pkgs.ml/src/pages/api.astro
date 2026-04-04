@@ -57,6 +57,7 @@ const schemaSections: SchemaSection[] = [
         publish_artifact: "/v1/publish",
         search: "/v1/search?q=<query>",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_examples: "/v1/views/packages/<package-name>/examples?version=<version>",
       },
       cdn_routes: {
         index_config: "/index/v1/config.json",
@@ -177,6 +178,34 @@ const schemaSections: SchemaSection[] = [
       download_count: 42,
       categories: ["systems"],
       keywords: ["runtime", "kernel"],
+    }),
+  },
+  {
+    title: "Package examples view",
+    route: "GET https://api.pkgs.ml/v1/views/packages/<package>/examples?version=<version>",
+    description: "Runnable example sources discovered from the published package artifact.",
+    fields: [
+      { name: "schema_version", type: "1", notes: "Current view schema version." },
+      { name: "package_name", type: "string", notes: "Package name." },
+      { name: "package_version", type: "string", notes: "Resolved package version." },
+      { name: "source_key", type: "string", notes: "Install artifact key containing the example files." },
+      { name: "examples", type: "PackageExampleDocument[]", notes: "Artifact-backed example sources for this release." },
+      { name: "examples[].name", type: "string", notes: "Example binary name derived from the file basename." },
+      { name: "examples[].path", type: "string", notes: "Relative path to the example source inside the artifact." },
+      { name: "examples[].source_code", type: "string", notes: "Raw example source file contents." },
+    ],
+    example: pretty({
+      schema_version: 1,
+      package_name: "actors",
+      package_version: "0.0.4",
+      source_key: "sources/actors/0.0.4/abc123.tar.gz",
+      examples: [
+        {
+          name: "ping_pong",
+          path: "examples/ping_pong.ml",
+          source_code: "let () = print_endline \"pong\"\\n",
+        },
+      ],
     }),
   },
   {

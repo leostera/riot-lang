@@ -45,11 +45,11 @@ let all_entries = [
     ];
   entry
     ~diagnostic_id:"TYP1007"
-    ~name:"unsupported-application-argument-labels"
-    ~summary:"A labeled or optional application argument was parsed, but the prototype only handles positional application."
+    ~name:"application-argument-lowered-as-positional"
+    ~summary:"A labeled or optional application argument was lowered as an ordinary positional argument."
     ~details:[
-      "The application still lowers into a recoverable semantic form.";
-      "Expect follow-up type information around the call site to be partial until labeled application is implemented.";
+      "This keeps more real OCaml call sites analyzable while the prototype still lacks first-class label semantics.";
+      "The call can still be inferred, but labels do not yet participate in argument matching or reordering.";
     ];
   entry
     ~diagnostic_id:"TYP1008"

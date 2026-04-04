@@ -8,6 +8,8 @@ type pattern_desc =
   | PWildcard
   (** Integer literal pattern. *)
   | PInt of string
+  (** Floating-point literal pattern. *)
+  | PFloat of string
   (** Boolean literal pattern. *)
   | PBool of bool
   (** String literal pattern. *)
@@ -16,6 +18,10 @@ type pattern_desc =
   | PUnit
   (** Tuple pattern with child pattern IDs. *)
   | PTuple of PatId.t list
+  (** Alias pattern that binds the matched value under an extra name. *)
+  | PAlias of { pattern_id: PatId.t; alias: string }
+  (** Lenient polymorphic-variant pattern with an optional payload pattern. *)
+  | PPolyVariant of { tag: string; payload: PatId.t option }
   (** Recovery pattern preserved after unsupported surface syntax. *)
   | PUnsupported of string
 type pattern_node = {
@@ -37,6 +43,8 @@ type expr_desc =
   | EVar of string
   (** Integer literal expression. *)
   | EInt of string
+  (** Floating-point literal expression. *)
+  | EFloat of string
   (** Boolean literal expression. *)
   | EBool of bool
   (** String literal expression. *)
@@ -45,16 +53,24 @@ type expr_desc =
   | EUnit
   (** Tuple expression with child expression IDs. *)
   | ETuple of ExprId.t list
+  (** Array expression with child expression IDs. *)
+  | EArray of ExprId.t list
   (** Function expression with parameter patterns and one body expression. *)
   | EFun of PatId.t list * ExprId.t
   (** Application with one callee and positional arguments. *)
   | EApply of ExprId.t * ExprId.t list
+  (** Indexed access into one collection expression at one index expression. *)
+  | EIndex of ExprId.t * ExprId.t
   (** Let-expression with local binding IDs and one body expression. *)
   | ELet of BindingId.t list * ExprId.t
   (** Conditional expression. *)
   | EIf of ExprId.t * ExprId.t * ExprId.t
   (** Match expression with normalized cases. *)
   | EMatch of ExprId.t * match_case list
+  (** Lenient polymorphic-variant expression with an optional payload. *)
+  | EPolyVariant of { tag: string; payload: ExprId.t option }
+  (** Local module open expression with the lowered body expression. *)
+  | ELocalOpen of { module_path: string; body_id: ExprId.t }
   (** Unsupported semantic node that still reached the inferencer. *)
   | EUnsupported of string
   (** Recovery hole introduced during lowering. *)
@@ -74,6 +90,8 @@ and binding = {
   binding_id: BindingId.t;
   (** Source origin for this binding. *)
   origin_id: OriginId.t;
+  (** Lexical module path that owns this binding, empty at top level. *)
+  scope_path: string list;
   (** Simple binder name when one exists. *)
   name: string option;
   (** Pattern bound by this binding. *)

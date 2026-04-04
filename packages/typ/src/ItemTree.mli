@@ -6,6 +6,8 @@ type value_item = {
   item_id: ItemId.t;
   (** Source origin for this item shell. *)
   origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: string list;
   (** Top-level bindings introduced by this item. *)
   binding_ids: BindingId.t list;
   (** Whether the item's binding group is recursive. *)
@@ -16,6 +18,8 @@ type unsupported_item = {
   item_id: ItemId.t;
   (** Source origin for this placeholder item. *)
   origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: string list;
   (** Short recovery summary naming the unsupported syntax family. *)
   summary: string;
 }

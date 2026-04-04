@@ -3,6 +3,7 @@ import type {
   CategoriesIndexDocument,
   OwnerPackagesDocument,
   PackageDownloadsDocument,
+  PackageExamplesDocument,
   PackageOverviewDocument,
   PackageReadmeDocument,
   PackageRelationsDocument,
@@ -72,6 +73,22 @@ export async function fetchPackageReadme(
   }`;
 
   return await fetchJsonOrNull<PackageReadmeDocument>(viewUrl(path));
+}
+
+export async function fetchPackageExamples(
+  packageName: string,
+  options?: { version?: string },
+): Promise<PackageExamplesDocument | null> {
+  const params = new URLSearchParams();
+  if (options?.version !== undefined) {
+    params.set("version", options.version);
+  }
+
+  const path = `packages/${encodeURIComponent(packageName)}/examples${
+    params.size > 0 ? `?${params.toString()}` : ""
+  }`;
+
+  return await fetchJsonOrNull<PackageExamplesDocument>(viewUrl(path));
 }
 
 export async function fetchPackageDownloads(packageName: string): Promise<PackageDownloadsDocument | null> {
