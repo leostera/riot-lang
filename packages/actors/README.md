@@ -1,401 +1,163 @@
 # Actors
 
-A minimal single-core actor runtime for building build systems and lightweight concurrent applications.
+Multicore actors for Riot.
 
-## Overview
+`actors` is Riot's low-level actor runtime package. It gives you lightweight
+processes, typed message passing, links and monitors, timers, async syscalls,
+and a runtime that can spread runnable actors across multiple scheduler workers
+with work stealing.
 
-Actors is a stripped-down version of the full Riot actor runtime, designed specifically for single-core environments where you need lightweight processes, message passing, and cooperative concurrency without the complexity of multi-core scheduling. It's particularly well-suited for build systems, task orchestration, and scenarios where you want actor-model concurrency within a single OS thread.
+If `std` is the application-facing stack, `actors` is the smaller surface you
+reach for when you want the runtime itself: process orchestration, internal
+concurrency, or infrastructure that should sit closer to Riot's scheduling and
+mailbox model.
 
-## Core Philosophy & Design Decisions
+## Install
 
-### 1. **Single-Core Simplicity**
-Unlike the full Riot runtime which implements work-stealing across multiple cores, actors uses a simple single-threaded cooperative scheduler. This eliminates:
-- Complex synchronization primitives
-- Lock-free data structures  
-- Cross-core work stealing
-- Thread safety concerns
-
-**Trade-off**: Cannot utilize multiple CPU cores, but gains simplicity and predictability.
-
-### 2. **Cooperative Scheduling**
-Processes must explicitly yield control via `yield()` or blocking operations (`receive`). This provides:
-- Deterministic execution order (useful for testing)
-- No preemption overhead
-- Simple debugging and reasoning about execution
-
-**Trade-off**: A process that never yields can starve others, but this makes control flow explicit.
-
-### 3. **Effect-based Process Management** 
-Uses OCaml 5's effect handlers for process suspension/resumption:
-- `Yield` effect: Suspend process and return to scheduler
-- `Receive` effect: Suspend process until message arrives
-
-This provides lightweight green threads without OS thread overhead.
-
-### 4. **Run-Once Restriction**
-The scheduler can only be started once per OS process via `run ~main`. Subsequent calls raise a clear error.
-
-**Rationale**: Prevents accidentally nested schedulers and makes resource cleanup simpler.
-
-## Architecture
-
-### Core Components
-
-```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Scheduler     │───▶│ Run Queue    │───▶│  Process 1  │
-│                 │    │ (FIFO Queue) │    │             │
-│ - process table │    │              │    │ - mailbox   │
-│ - current proc  │    │              │    │ - save queue│
-│ - run queue     │    │              │    │ - state     │
-│ - status        │    │              │    └─────────────┘
-└─────────────────┘    │              │           │
-                       │              │           │
-                       │              │    ┌─────────────┐
-                       │              │───▶│  Process 2  │
-                       │              │    │             │
-                       │              │    │ - mailbox   │
-                       │              │    │ - save queue│
-                       │              │    │ - state     │
-                       └──────────────┘    └─────────────┘
+```sh
+riot add actors
 ```
 
-### 1. **Scheduler (`scheduler.ml`)**
-The heart of the runtime, managing:
-- **Process Table**: HashMap of PID → Process
-- **Run Queue**: FIFO queue of processes ready to execute
-- **Current Process**: Currently executing process (if any)
-- **Status**: Exit code for entire program
+## What value it gives you
 
-**Key Design Decision**: Uses a simple round-robin scheduler rather than priority-based scheduling for predictability.
+Use `actors` when you want:
 
-### 2. **Process (`process.ml`)**
-Lightweight process abstraction containing:
-- **PID**: Unique process identifier
-- **Mailbox**: Incoming message queue (FIFO)  
-- **Save Queue**: Messages skipped by selective receive
-- **State**: Running/Waiting/Dead status
-- **Function**: User-provided process function
+- Erlang-style processes and mailboxes without pulling in the whole `std`
+  surface;
+- parallel execution across multiple worker schedulers instead of a single-core
+  event loop;
+- failure-aware process relationships through links and monitors;
+- timer-based wakeups and async syscall integration inside the same actor
+  runtime;
+- a small runtime package you can build other Riot infrastructure on top of.
 
-**Mailbox Design**: Processes have both a main mailbox and a "save queue" for messages that don't match selective receive patterns. This implements proper Erlang-style selective receive semantics.
+In practice that makes `actors` a good fit for:
 
-### 3. **Message System (`message.ml`)**
-Uses OCaml's extensible variants for type-safe message passing:
+- build systems and task executors;
+- schedulers, brokers, queues, and orchestration layers;
+- protocol runtimes and infrastructure packages;
+- systems code that wants actor semantics without the rest of the application
+  stack.
+
+If you are building a normal application, service, or CLI, start with `std`
+instead. `std` already builds on the same runtime and gives you the rest of the
+practical surface area around it.
+
+## Quick start
+
 ```ocaml
-type Message.t = ..  (* Extensible variant *)
-type Message.t += 
-  | MyMessage of string
-  | AnotherMessage of int
-```
+open Std
+open Actors
 
-**Design Benefits**:
-- Type safety: Messages are statically typed
-- Extensibility: Each module can add its own message types
-- Pattern matching: Natural OCaml pattern matching on messages
+type Message.t +=
+  | Ping of Pid.t
+  | Pong
 
-### 4. **Process State Management (`proc_state.ml`)**
-Uses OCaml 5 effect handlers to manage process continuations:
-- **Continue**: Process has more work to do
-- **Suspend**: Process is waiting for messages (empty mailbox)
-- **Delay**: Process has messages but needs to yield (fairness)
-
-**Critical Design Decision**: Copied directly from full Riot runtime because effect-based cooperative multitasking is complex and well-tested.
-
-### 5. **Effects (`proc_effect.ml`)**
-Defines the core effects that processes can perform:
-```ocaml
-type _ Effect.t +=
-  | Yield : unit Effect.t
-  | Receive : { selector : Message.t -> ('msg, unit) Proc_state.selector_result } -> 'msg Effect.t
-```
-
-**Design Philosophy**: Effects make concurrency explicit - you can see exactly where a process might suspend by looking for effect handlers.
-
-## API Design
-
-### Core Functions
-
-#### `run : main:(unit -> Process.exit_reason) -> int`
-Starts the scheduler with an initial process. Returns Unix exit code.
-- **Single-use**: Can only be called once per OS process
-- **Blocking**: Runs until all processes complete or main process exits
-- **Exit Handling**: Converts process exit reasons to Unix exit codes
-
-#### `spawn : (unit -> Process.exit_reason) -> Pid.t`
-Creates a new lightweight process.
-- **Non-blocking**: Process is added to run queue but doesn't execute immediately
-- **Returns PID**: Unique identifier for sending messages
-- **Isolation**: Each process has its own call stack and local variables
-
-#### `send : Pid.t -> Message.t -> unit`
-Sends a message to a process.
-- **Asynchronous**: Never blocks sender
-- **Reliable**: Messages always arrive (no network failures in single-core)
-- **Ordered**: Messages from sender A to receiver B arrive in order
-- **Wake-up**: Automatically wakes waiting processes
-
-#### `receive : unit -> Message.t`
-Receives any message from the process mailbox.
-- **Blocking**: Suspends process if no messages available  
-- **FIFO**: Returns oldest message first
-- **Type-safe**: Returns `Message.t` but you pattern match to specific types
-
-#### `selective_receive : (Message.t -> [`select of 'msg | `skip]) -> 'msg`
-Receives only messages matching a pattern.
-- **Filtering**: Only accepts messages where selector returns `select`
-- **Queueing**: Skipped messages are saved for later
-- **Type-safe**: Return type is determined by selector function
-
-**Design Rationale**: This implements proper Erlang-style selective receive, which is crucial for many concurrent patterns like request-response protocols.
-
-### Example Usage Patterns
-
-#### 1. Basic Message Passing
-```ocaml
-type Message.t += Hello of string
-
-let worker () =
-  match receive () with
-  | Hello name -> 
-      Printf.printf "Hello, %s!\n" name;
-      Ok ()
-  | _ -> Ok ()
-
-let main () =
-  let worker_pid = spawn worker in
-  send worker_pid (Hello "World");
-  yield (); (* Let worker run *)
-  Ok ()
-
-let () = run ~main |> exit
-```
-
-#### 2. Request-Response Pattern  
-```ocaml
-type Message.t += 
-  | Request of Pid.t * string  (* reply_to, data *)
-  | Response of string
-
-let server () =
-  let rec loop () =
-    match receive () with
-    | Request (reply_to, data) ->
-        let result = "Processed: " ^ data in
-        send reply_to (Response result);
-        loop ()
-    | Exit -> Ok ()
-    | _ -> loop ()
-  in loop ()
-
-let client server_pid () =
-  let my_pid = self () in
-  send server_pid (Request (my_pid, "hello"));
-  match receive () with
-  | Response result -> 
-      Printf.printf "Got: %s\n" result;
-      Ok ()
-  | _ -> Ok ()
-```
-
-#### 3. Build System Pattern (Coordinator/Worker)
-```ocaml
-type Message.t += 
-  | Compile of string
-  | Compiled of string * bool
-  | Done
-
-let worker name coordinator_pid () =
-  let rec loop () =
-    match receive () with
-    | Compile file ->
-        (* Simulate compilation *)
-        Printf.printf "[%s] Compiling %s\n" name file;
-        yield (); (* Simulate work *)
-        send coordinator_pid (Compiled (file, true));
-        loop ()
-    | Exit -> Ok ()
-    | _ -> loop ()
-  in loop ()
-
-let coordinator files () =
-  let workers = List.init 3 (fun i ->
-    spawn (worker ("Worker" ^ string_of_int i) (self ()))) in
-  
-  (* Distribute work *)
-  List.iteri (fun i file ->
-    let worker = List.nth workers (i mod 3) in
-    send worker (Compile file)) files;
-    
-  (* Collect results *)
-  let rec collect n acc =
-    if n = 0 then acc else
-    match receive () with  
-    | Compiled (file, success) ->
-        collect (n-1) ((file, success) :: acc)
-    | _ -> collect n acc
+let worker = fun () ->
+  let sender =
+    receive ~selector:(function
+      | Ping sender -> `select sender
+      | _ -> `skip)
+      ()
   in
-  let results = collect (List.length files) [] in
-  List.iter (send) workers Exit; (* Shutdown workers *)
+  send sender Pong;
   Ok ()
+
+let main = fun ~args:_ ->
+  let pid = spawn worker in
+  send pid (Ping (self ()));
+  receive
+    ~selector:(function
+      | Pong -> `select ()
+      | _ -> `skip)
+    ();
+  Ok ()
+
+let () = run ~main ~args:Env.args ()
 ```
 
-## Testing Architecture
+The package also ships a runnable example:
 
-### Test Organization
-Tests are organized into separate executables to avoid the "run-once" restriction:
-
-```
-test/
-├── spawn_single_test.ml          # Basic process spawning
-├── spawn_multiple_test.ml        # Multiple process spawning  
-├── spawn_self_pid_test.ml        # Self PID retrieval
-├── message_basic_test.ml         # Basic message passing
-├── message_multiple_test.ml      # Multiple message handling
-├── message_ping_pong_test.ml     # Bidirectional communication
-├── message_dead_process_test.ml  # Error handling
-├── selective_receive_skip_test.ml    # Message filtering
-├── selective_receive_queue_test.ml   # Queue ordering
-├── receive_any_test.ml              # Non-selective receive
-├── lifecycle_normal_exit_test.ml     # Normal termination
-├── lifecycle_exception_exit_test.ml  # Exception handling
-├── lifecycle_main_process_exit_test.ml     # Main process lifecycle
-├── lifecycle_state_transitions_test.ml    # Process states
-└── lifecycle_scheduler_termination_test.ml # Scheduler cleanup
+```sh
+riot run -p actors ping_pong
 ```
 
-### Test Design Principles
-1. **One Runtime Per Test**: Each test file creates its own scheduler instance
-2. **Deterministic**: Tests use `yield()` to control execution order  
-3. **Self-Contained**: No shared state between tests
-4. **Clear Assertions**: Tests fail with descriptive error messages
+## The APIs you will actually use
 
-## Debugging & Observability
+The most important entry points are:
 
-### Trace System
-Enable detailed execution tracing:
-```ocaml
-let () =
-  enable_trace ();  (* Turn on tracing *)
-  run ~main;        (* Run with tracing *)
-  disable_trace ()  (* Turn off tracing *)
-```
+- `run` to start the runtime;
+- `spawn` and `spawn_link` to create processes;
+- `send`, `receive`, and `receive_any` for mailbox-driven workflows;
+- `self` to get the current PID;
+- `yield` to spend cooperative reductions explicitly when long-running work
+  should give other actors a chance to run;
+- `Process.monitor`, `Process.link`, `Process.unlink`, and `Process.demonitor`
+  for process lifecycle coordination;
+- `Timer.send_after` and `Timer.send_interval` for delayed or repeating
+  messages;
+- `syscall` for async source integration through the runtime's reactor.
 
-**Trace Output Example**:
-```
-[TRACE] Spawning process <0.2.0>
-[TRACE] Adding process <0.2.0> to run queue  
-[TRACE] Process <0.1.0> yielding
-[TRACE] Sending message to <0.2.0>
-[TRACE] Process <0.2.0> was waiting, now runnable
-[TRACE] Process <0.2.0> receiving (mailbox empty? false)
-[TRACE] Process <0.2.0> has 1 messages
-[TRACE] Process <0.2.0> got message
-[TRACE] Process <0.2.0> selected message
-```
+Most day-to-day actor code stays very small:
 
-**Design**: Tracing is optional and can be enabled/disabled at runtime without recompilation.
+1. define message constructors on `Message.t`
+2. `spawn` a process loop
+3. `send` messages to it
+4. `receive` the messages you care about
 
-## Limitations & Trade-offs
+## Runtime model
 
-### What's Missing (Compared to Full Riot)
-- **Multi-core scheduling**: Single-threaded only
-- **I/O integration**: No async file/network operations  
-- **Timers**: Sleep is just yield, no real time-based scheduling
-- **Process linking**: No automatic failure propagation
-- **Process monitoring**: No death notifications
-- **Supervisors**: No automatic restart strategies
-- **Hot code loading**: No dynamic code updates
+You do not need to manually assign actors to cores.
 
-### Performance Characteristics
-- **Process creation**: Very lightweight (just memory allocation)
-- **Message passing**: Single memory copy, no serialization
-- **Context switching**: Effect handler overhead only
-- **Memory usage**: Minimal per-process overhead
-- **Throughput**: Limited by single-core execution
+The runtime starts one normal worker scheduler per configured slot plus a
+dedicated reactor domain for timers and async I/O. Runnable actors are placed
+onto worker-local queues, and idle workers can steal runnable actors from busy
+workers. That means a burst of independent actors can spread across multiple
+cores without you having to shard work yourself.
 
-### When to Use Actors
-**Good for**:
-- Build systems and task orchestration
-- Testing concurrent algorithms  
-- Educational purposes (learning actor model)
-- Prototyping larger concurrent systems
-- Single-core environments (embedded, etc.)
+The important semantic guarantees remain actor-centric:
 
-**Not good for**:
-- CPU-intensive parallel computation
-- High-throughput network servers  
-- Real-time systems (no preemption)
-- Large-scale distributed systems
+- PIDs are runtime-wide.
+- `send` targets a PID, not a scheduler.
+- messages sent from one sender to one recipient are observed in send order.
+- blocked actors resume when their mailbox, timer, or async source makes them
+  runnable again.
 
-## Implementation Notes
+The runtime is still cooperative at the process level. A process doing a large
+amount of CPU work should either block in meaningful runtime operations or call
+`yield` periodically so it shares execution fairly with other runnable actors.
 
-### Key Files
-- `actors.ml/.mli`: Public API and main entry points
-- `scheduler.ml`: Core scheduling algorithm and process management  
-- `process.ml`: Process data structure and mailbox management
-- `proc_state.ml`: Effect-based continuation handling (copied from full Riot)
-- `proc_effect.ml`: Effect type definitions
-- `message.ml`: Extensible message type system
-- `mailbox.ml`: FIFO message queues
-- `pid.ml`: Process identifier implementation  
-- `trace.ml`: Optional debug tracing system
+## Configuration and observability
 
-### Dependencies
-- **OCaml 5.1+**: Required for effect handlers
-- **No external dependencies**: Pure OCaml implementation
-- **Gluon**: Optional dependency (unused in actors but available)
+The runtime defaults to Riot's normal scheduler sizing, but you can pass an
+explicit `Actors.Config.t` to `run` when you want to size the worker pool or
+change timer resolution.
 
-### Build System Integration
-```ocaml
-# dune-project
-(package
- (name actors)
- (synopsis "Minimal single-core actor runtime for build systems")
- (depends ocaml gluon))
-```
+For debugging and tuning:
 
-## Future Directions
+- `enable_trace` / `disable_trace` turn tracing on and off;
+- `trace_counters` exposes scheduler counters such as steals, failed steals,
+  remote wakeups, and duplicate enqueue races;
+- `reset_trace_counters` clears those counters between runs.
 
-### Possible Extensions  
-- **Timer support**: Real time-based scheduling
-- **Process monitoring**: Death notifications and linking
-- **I/O integration**: File system operations via effects
-- **Backpressure**: Message queue size limits
-- **Metrics**: Runtime statistics and profiling
-- **Supervision**: Basic restart strategies
+This is most useful when you are working on infrastructure code and want to
+understand whether the runtime is balancing work the way you expect.
 
-### Migration Path to Full Riot
-Code written for actors should be largely compatible with full Riot:
-- Same message passing semantics
-- Same process model
-- Same effect-based API
-- Compatible PID types
+## Example patterns
 
-The main changes needed are:
-- Multi-core considerations (no shared mutable state)
-- I/O operations (use Riot's async I/O instead of blocking)
-- Supervision trees (replace manual process management)
+Patterns that fit naturally in `actors`:
 
-## Contributing
+- coordinator/worker execution pools;
+- request/response processes;
+- background resource managers;
+- mailbox-driven protocol implementations;
+- timer-triggered retries and timeouts;
+- supervision-like lifecycle coordination built from links and monitors.
 
-### Code Style
-- Follow existing patterns and naming conventions
-- Add comprehensive tests for new features
-- Update documentation for API changes
-- Use meaningful trace messages for debugging
+## Related packages
 
-### Testing Guidelines
-- Each test should be a separate executable
-- Tests should be deterministic and not depend on timing
-- Use descriptive failure messages
-- Test both success and failure cases
-
-### Performance Considerations
-- Prefer simple algorithms over micro-optimizations
-- Profile before optimizing (use tracing)
-- Consider memory allocation patterns
-- Balance between generality and performance
-
----
-
-Actors provides a clean, understandable implementation of the actor model suitable for learning, prototyping, and building concurrent applications that don't require multi-core parallelism. Its simple architecture makes it easy to understand, debug, and extend while providing the core benefits of actor-based concurrency.
+- `kernel` provides the lower-level async and runtime primitives that `actors`
+  builds on.
+- `std` is the higher-level application stack built on the same actor runtime.
+- `blink` and `suri` are examples of packages that build richer abstractions on
+  top of Riot's concurrency model.
