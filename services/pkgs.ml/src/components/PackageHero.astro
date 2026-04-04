@@ -22,13 +22,68 @@ interface Props {
   readme?: PackageReadmeDocument | null;
 }
 
+function markOcamlCodeBlocks(node: unknown): void {
+  if (!node || typeof node !== "object") {
+    return;
+  }
+
+  const element = node as {
+    type?: string;
+    tagName?: string;
+    properties?: { className?: string[] | string };
+    children?: unknown[];
+  };
+
+  if (element.type === "element" && element.tagName === "pre") {
+    const codeChild = element.children?.find((child) => {
+      if (!child || typeof child !== "object") {
+        return false;
+      }
+
+      const childElement = child as { type?: string; tagName?: string };
+      return childElement.type === "element" && childElement.tagName === "code";
+    }) as
+      | {
+          properties?: { className?: string[] | string };
+        }
+      | undefined;
+
+    if (codeChild) {
+      const classNames = Array.isArray(codeChild.properties?.className)
+        ? [...codeChild.properties.className]
+        : typeof codeChild.properties?.className === "string"
+          ? [codeChild.properties.className]
+          : [];
+
+      const hasLanguage = classNames.some((className) => className.startsWith("language-"));
+      if (!hasLanguage) {
+        codeChild.properties = {
+          ...codeChild.properties,
+          className: [...classNames, "language-ocaml"],
+        };
+      }
+    }
+  }
+
+  for (const child of element.children ?? []) {
+    markOcamlCodeBlocks(child);
+  }
+}
+
+function rehypeDefaultOcaml() {
+  return (tree: unknown) => {
+    markOcamlCodeBlocks(tree);
+  };
+}
+
 async function renderReadmeMarkdown(markdown: string): Promise<string> {
   return String(
     await unified()
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype)
-      .use(rehypeHighlight, { detect: true, ignoreMissing: true })
+      .use(rehypeDefaultOcaml)
+      .use(rehypeHighlight)
       .use(rehypeStringify)
       .process(markdown),
   );
