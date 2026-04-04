@@ -140,6 +140,29 @@ export interface PackageRelationsDocument {
   dependents: PackageRelationDependent[];
 }
 
+export interface PackageDailyDownloadPoint {
+  date: string;
+  download_count: number;
+}
+
+export interface PackageVersionDownloadPoint {
+  version: string;
+  published_at: string;
+  download_count: number;
+  is_latest: boolean;
+}
+
+export interface PackageDownloadsDocument {
+  schema_version: 1;
+  package_name: string;
+  latest_version: string;
+  generated_at: string;
+  window_days: number;
+  total_downloads: number;
+  daily_downloads: PackageDailyDownloadPoint[];
+  version_downloads: PackageVersionDownloadPoint[];
+}
+
 export interface WebPackageListItem {
   package_name: string;
   latest_version: string;

@@ -12,6 +12,7 @@ import type {
   RegistryStatsSummaryDocument,
   OAuthStateRecord,
   OwnerPackagesDocument,
+  PackageDownloadsDocument,
   PackageClaimRecord,
   PackageRelationDependency,
   PackageRelationDependent,
@@ -685,6 +686,85 @@ export async function readPackageRelationsDocument(
   };
 }
 
+export async function readPackageDownloadsDocument(
+  db: D1Database,
+  packageName: string,
+  windowDays = 30,
+): Promise<PackageDownloadsDocument | null> {
+  const database = registryDb(db);
+  const releaseRows = await database
+    .select({
+      package_version: publishedReleases.packageVersion,
+      published_at: publishedReleases.publishedAt,
+      artifact_sha256: publishedReleases.artifactSha256,
+    })
+    .from(publishedReleases)
+    .where(eq(publishedReleases.packageName, packageName))
+    .orderBy(desc(publishedReleases.publishedAt));
+
+  if (releaseRows.length === 0) {
+    return null;
+  }
+
+  const latestVersion = [...releaseRows]
+    .sort((left, right) => compareVersionRecordsDesc(left, right))[0]?.package_version ?? releaseRows[0]?.package_version ?? "";
+  const [totalRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(packageDownloads)
+    .where(eq(packageDownloads.packageName, packageName));
+
+  const versionCountRows = await database
+    .select({
+      version: packageDownloads.packageVersion,
+      count: sql<number>`count(*)`,
+    })
+    .from(packageDownloads)
+    .where(eq(packageDownloads.packageName, packageName))
+    .groupBy(packageDownloads.packageVersion);
+  const versionCounts = new Map<string, number>();
+  for (const row of versionCountRows) {
+    versionCounts.set(row.version, toCount(row.count));
+  }
+
+  const startDate = startOfUtcDay(addUtcDays(new Date(), -(windowDays - 1)));
+  const startIso = startDate.toISOString();
+  const bucket = sql<string>`substr(${packageDownloads.downloadedAt}, 1, 10)`;
+  const dailyRows = await database
+    .select({
+      date: bucket,
+      count: sql<number>`count(*)`,
+    })
+    .from(packageDownloads)
+    .where(and(eq(packageDownloads.packageName, packageName), gte(packageDownloads.downloadedAt, startIso)))
+    .groupBy(bucket)
+    .orderBy(asc(bucket));
+  const dailyCounts = toDateCountMap(dailyRows);
+
+  return {
+    schema_version: 1,
+    package_name: packageName,
+    latest_version: latestVersion,
+    generated_at: new Date().toISOString(),
+    window_days: windowDays,
+    total_downloads: toCount(totalRow?.count),
+    daily_downloads: [...Array(windowDays)].map((_, index) => {
+      const day = addUtcDays(startDate, index).toISOString().slice(0, 10);
+      return {
+        date: day,
+        download_count: dailyCounts.get(day) ?? 0,
+      };
+    }),
+    version_downloads: [...releaseRows]
+      .sort((left, right) => compareVersionRecordsDesc(left, right))
+      .map((release) => ({
+        version: release.package_version,
+        published_at: release.published_at,
+        download_count: versionCounts.get(release.package_version) ?? 0,
+        is_latest: release.package_version === latestVersion,
+      })),
+  };
+}
+
 export async function readRecentPackagesDocument(
   db: D1Database,
 ): Promise<RecentPackagesDocument | null> {
@@ -1288,6 +1368,35 @@ function normalizeDependencies(dependenciesJson: string): PackageRelationDepende
 function compareReleaseVersionsDesc(
   left: PublishedReleaseRecord,
   right: PublishedReleaseRecord,
+): number {
+  const leftVersion = semver.valid(left.package_version);
+  const rightVersion = semver.valid(right.package_version);
+
+  if (leftVersion !== null && rightVersion !== null) {
+    const semverResult = semver.rcompare(leftVersion, rightVersion);
+    if (semverResult !== 0) {
+      return semverResult;
+    }
+  } else if (leftVersion !== null || rightVersion !== null) {
+    return leftVersion !== null ? -1 : 1;
+  }
+
+  const publishedAtResult = right.published_at.localeCompare(left.published_at);
+  if (publishedAtResult !== 0) {
+    return publishedAtResult;
+  }
+
+  const versionResult = right.package_version.localeCompare(left.package_version);
+  if (versionResult !== 0) {
+    return versionResult;
+  }
+
+  return right.artifact_sha256.localeCompare(left.artifact_sha256);
+}
+
+function compareVersionRecordsDesc(
+  left: { package_version: string; published_at: string; artifact_sha256: string },
+  right: { package_version: string; published_at: string; artifact_sha256: string },
 ): number {
   const leftVersion = semver.valid(left.package_version);
   const rightVersion = semver.valid(right.package_version);

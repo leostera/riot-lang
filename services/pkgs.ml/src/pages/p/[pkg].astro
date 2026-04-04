@@ -4,15 +4,21 @@ import PackageHero from "@/components/PackageHero.astro";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchPackageRelease } from "@/lib/package-index.ts";
-import { fetchPackageEvents, fetchPackageOverview, fetchPackageRelations } from "@/lib/web-views.ts";
+import {
+  fetchPackageDownloads,
+  fetchPackageEvents,
+  fetchPackageOverview,
+  fetchPackageRelations,
+} from "@/lib/web-views.ts";
 
 const packageName = Astro.params.pkg ?? "";
 const resolved = await fetchPackageRelease(packageName);
-const [overview, relations, events] =
+const [overview, downloads, relations, events] =
   resolved === null
-    ? [null, null, { events: [] }]
+    ? [null, null, null, { events: [] }]
     : await Promise.all([
         fetchPackageOverview(packageName),
+        fetchPackageDownloads(packageName),
         fetchPackageRelations(packageName),
         fetchPackageEvents(packageName),
       ]);
@@ -40,6 +46,7 @@ if (resolved === null) {
           document={resolved.document}
           release={resolved.release}
           overview={overview}
+          downloads={downloads}
           relations={relations}
           events={events.events}
         />

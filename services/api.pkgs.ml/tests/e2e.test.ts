@@ -26,6 +26,7 @@ describe("riot package registry live e2e", () => {
     expect(payload.routes).toEqual({
       publish_artifact: "/v1/publish",
       views_package_overview: "/v1/views/packages/<package-name>/overview",
+      views_package_downloads: "/v1/views/packages/<package-name>/downloads",
       views_package_relations: "/v1/views/packages/<package-name>/relations",
       views_recent_packages: "/v1/views/recent/packages",
       views_popular_packages: "/v1/views/popular/packages",

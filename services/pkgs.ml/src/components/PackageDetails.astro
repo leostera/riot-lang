@@ -1,5 +1,6 @@
 ---
 import PackageActivity from "@/components/PackageActivity.astro";
+import PackageDownloadsChart from "@/components/PackageDownloadsChart";
 import {
   Card,
   CardContent,
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import type {
   IndexedPackageRelease,
+  PackageDownloadsDocument,
   PackageIndexDocument,
   PackageOverviewDocument,
   PackageRelationsDocument,
@@ -19,11 +21,12 @@ interface Props {
   document: PackageIndexDocument;
   release: IndexedPackageRelease;
   overview?: PackageOverviewDocument | null;
+  downloads?: PackageDownloadsDocument | null;
   relations?: PackageRelationsDocument | null;
   events?: RegistryEventRecord[];
 }
 
-const { document, release, relations = null, events = [] } = Astro.props;
+const { document, release, downloads = null, relations = null, events = [] } = Astro.props;
 const dependencyRows =
   relations?.dependencies ??
   release.dependencies.map((dependency) => {
@@ -45,11 +48,44 @@ const dependencyRows =
 
     return { package_name: name, requirement };
   });
+const recentEvents = events.slice(0, 12);
 ---
 
 <section class="w-full px-4 pb-10 sm:px-6 xl:px-8">
   <div class="mx-auto grid w-full max-w-6xl gap-4">
     <Card size="sm" className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-base">Installs</CardTitle>
+        <CardDescription>
+          Total installs for {document.name} and the version-level breakdown.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 py-3">
+        <div class="grid gap-1">
+          <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Total installs
+          </div>
+          <div class="text-2xl font-semibold tracking-tight text-foreground">
+            {downloads?.total_downloads ?? 0}
+          </div>
+        </div>
+
+        {
+          downloads ? (
+            <PackageDownloadsChart
+              client:load
+              dailyDownloads={downloads.daily_downloads}
+              versionDownloads={downloads.version_downloads}
+            />
+          ) : (
+            <p class="text-base text-muted-foreground">No install data has been recorded for this package yet.</p>
+          )
+        }
+      </CardContent>
+    </Card>
+
+    <div class="grid gap-4 xl:grid-cols-3">
+      <Card size="sm" className="rounded-md shadow-none">
       <CardHeader className="border-b border-border">
         <CardTitle className="text-base">Dependencies</CardTitle>
         <CardDescription>
@@ -76,37 +112,38 @@ const dependencyRows =
           )
         }
       </CardContent>
-    </Card>
+      </Card>
 
-    <Card size="sm" className="rounded-md shadow-none">
-      <CardHeader className="border-b border-border">
-        <CardTitle className="text-base">Dependents</CardTitle>
-        <CardDescription>
-          Packages that currently depend on {document.name}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="py-3">
-        {
-          (relations?.dependents.length ?? 0) === 0 ? (
-            <p class="text-sm text-muted-foreground">No indexed dependents yet.</p>
-          ) : (
-            <ul class="grid gap-2">
-              {relations?.dependents.map((dependent) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
-                  <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
-                    {dependent.package_name}
-                  </a>
-                  <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
-                    {dependent.requirement}
-                  </code>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </CardContent>
-    </Card>
+      <Card size="sm" className="rounded-md shadow-none">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-base">Dependents</CardTitle>
+          <CardDescription>
+            Packages that currently depend on {document.name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-3">
+          {
+            (relations?.dependents.length ?? 0) === 0 ? (
+              <p class="text-sm text-muted-foreground">No indexed dependents yet.</p>
+            ) : (
+              <ul class="grid gap-2">
+                {relations?.dependents.map((dependent) => (
+                  <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
+                    <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
+                      {dependent.package_name}
+                    </a>
+                    <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+                      {dependent.requirement}
+                    </code>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </CardContent>
+      </Card>
 
-    <PackageActivity events={events} />
+      <PackageActivity events={recentEvents} />
+    </div>
   </div>
 </section>

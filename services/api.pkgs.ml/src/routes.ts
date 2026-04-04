@@ -20,6 +20,7 @@ import {
   listApiTokenRecords,
   readCategoriesIndexDocument,
   readOwnerPackagesDocument,
+  readPackageDownloadsDocument,
   readPackageOverviewDocument,
   readPackageRelationsDocument,
   readPopularPackagesDocument,
@@ -85,6 +86,7 @@ async function routeRequest(
       routes: {
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
         views_popular_packages: "/v1/views/popular/packages",
@@ -116,6 +118,7 @@ async function routeRequest(
         riot_latest_metadata: "/api/v1/riot/latest.json",
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
         views_popular_packages: "/api/v1/views/popular/packages",
@@ -511,6 +514,14 @@ async function handleViewDocument(
 
       return json(document);
     }
+    case "package_downloads": {
+      const document = await readPackageDownloadsDocument(env.SEARCH_DB, viewRoute.packageName);
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Package download stats were not found.");
+      }
+
+      return json(document);
+    }
     case "package_relations": {
       const document = await readPackageRelationsDocument(env.SEARCH_DB, viewRoute.packageName);
       if (document === null) {
@@ -684,6 +695,7 @@ interface ParsedPackageEventsRoute {
 
 type ParsedViewRoute =
   | { kind: "package_overview"; packageName: string }
+  | { kind: "package_downloads"; packageName: string }
   | { kind: "package_relations"; packageName: string }
   | { kind: "recent_packages" }
   | { kind: "popular_packages" }
@@ -736,6 +748,14 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
     return {
       kind: "package_overview",
       packageName: decodeURIComponent(packageOverviewMatch[1] ?? ""),
+    };
+  }
+
+  const packageDownloadsMatch = normalizedPath.match(/^packages\/([^/]+)\/downloads$/);
+  if (packageDownloadsMatch !== null) {
+    return {
+      kind: "package_downloads",
+      packageName: decodeURIComponent(packageDownloadsMatch[1] ?? ""),
     };
   }
 

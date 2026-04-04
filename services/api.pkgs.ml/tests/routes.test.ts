@@ -25,6 +25,7 @@ describe("riot package registry routes", () => {
       routes: {
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
         views_popular_packages: "/v1/views/popular/packages",
@@ -56,6 +57,7 @@ describe("riot package registry routes", () => {
         riot_latest_metadata: "/api/v1/riot/latest.json",
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
         views_popular_packages: "/api/v1/views/popular/packages",
@@ -796,6 +798,73 @@ describe("riot package registry routes", () => {
       total_packages: 1,
       total_versions: 1,
       total_users: 0,
+    });
+  });
+
+  test("package downloads view exposes daily totals and per-version download counts", async () => {
+    const { env, db } = makeEnv();
+
+    await publishArtifact(env, await makePackageArtifact({
+      packageName: "kernel",
+      packageVersion: "0.0.1",
+      description: "Kernel package",
+      license: "Apache-2.0",
+    }));
+    await publishArtifact(env, await makePackageArtifact({
+      packageName: "kernel",
+      packageVersion: "0.1.0",
+      description: "Kernel package",
+      license: "Apache-2.0",
+    }));
+
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "oldsha",
+      source_archive_key: "sources/kernel/0.0.1/oldsha.tar.gz",
+      downloaded_at: "2026-04-04T09:00:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.1.0",
+      artifact_sha256: "newsha",
+      source_archive_key: "sources/kernel/0.1.0/newsha.tar.gz",
+      downloaded_at: "2026-04-04T09:10:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.1.0",
+      artifact_sha256: "newsha",
+      source_archive_key: "sources/kernel/0.1.0/newsha.tar.gz",
+      downloaded_at: "2026-04-04T10:00:00.000Z",
+    });
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/views/packages/kernel/downloads"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toMatchObject({
+      package_name: "kernel",
+      latest_version: "0.1.0",
+      total_downloads: 3,
+      version_downloads: [
+        {
+          version: "0.1.0",
+          download_count: 2,
+          is_latest: true,
+        },
+        {
+          version: "0.0.1",
+          download_count: 1,
+          is_latest: false,
+        },
+      ],
     });
   });
 

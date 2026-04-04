@@ -62,24 +62,24 @@ function formatTimestamp(value: string): string {
 
 function secondaryFacts(event: RegistryEventRecord): string[] {
   const facts: string[] = [];
-  const selector = event.payload.selector;
-  const resolvedSha = event.payload.resolved_sha;
+  const artifactSha = event.payload.artifact_sha256;
+  const dependencyCount = event.payload.dependency_count;
   const latest = event.payload.latest;
 
   if (typeof event.package_version === "string" && event.package_version.length > 0) {
     facts.push(`version ${event.package_version}`);
   }
 
-  if (typeof selector === "string" && selector.length > 0) {
-    facts.push(`selector ${selector}`);
+  if (typeof dependencyCount === "number" && Number.isFinite(dependencyCount)) {
+    facts.push(`${dependencyCount} deps`);
   }
 
   if (typeof latest === "string" && latest.length > 0) {
     facts.push(`latest ${latest}`);
   }
 
-  if (typeof resolvedSha === "string" && resolvedSha.length >= 7) {
-    facts.push(`sha ${resolvedSha.slice(0, 12)}`);
+  if (typeof artifactSha === "string" && artifactSha.length >= 7) {
+    facts.push(`artifact ${artifactSha.slice(0, 12)}`);
   }
 
   return facts;
@@ -88,9 +88,9 @@ function secondaryFacts(event: RegistryEventRecord): string[] {
 
 <Card size="sm" className="rounded-md shadow-none">
   <CardHeader className="border-b border-border">
-    <CardTitle className="text-base">Activity</CardTitle>
+    <CardTitle className="text-base">Recent activity</CardTitle>
     <CardDescription>
-      Publication and indexing events recorded for this package.
+      Latest publication and indexing events recorded for this package.
     </CardDescription>
   </CardHeader>
   <CardContent className="py-3">
@@ -98,7 +98,7 @@ function secondaryFacts(event: RegistryEventRecord): string[] {
       events.length === 0 ? (
         <p class="text-base text-muted-foreground">No activity has been recorded for this package yet.</p>
       ) : (
-        <ul class="grid gap-3">
+        <ul class="grid gap-2">
           {events.map((event) => (
             <li class="rounded-md border border-border bg-card px-4 py-3">
               <div class="grid gap-3 md:grid-cols-[176px_minmax(0,1fr)] md:items-start md:gap-4">

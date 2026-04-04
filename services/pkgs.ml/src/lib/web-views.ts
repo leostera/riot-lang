@@ -2,6 +2,7 @@ import { getConfig } from "./config.ts";
 import type {
   CategoriesIndexDocument,
   OwnerPackagesDocument,
+  PackageDownloadsDocument,
   PackageOverviewDocument,
   PackageRelationsDocument,
   PopularPackagesDocument,
@@ -37,6 +38,12 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
 export async function fetchPackageOverview(packageName: string): Promise<PackageOverviewDocument | null> {
   return await fetchJsonOrNull<PackageOverviewDocument>(
     viewUrl(`packages/${encodeURIComponent(packageName)}/overview`),
+  );
+}
+
+export async function fetchPackageDownloads(packageName: string): Promise<PackageDownloadsDocument | null> {
+  return await fetchJsonOrNull<PackageDownloadsDocument>(
+    viewUrl(`packages/${encodeURIComponent(packageName)}/downloads`),
   );
 }
 
