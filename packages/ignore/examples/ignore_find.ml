@@ -54,7 +54,8 @@ let rec parse_args = fun config ->
       in
       parse_args { config with roots } rest
 
-let render_error = function
+let render_error = fun value ->
+  match value with
   | Ignore.Walker.File_system { cause; _ } -> Kernel.IO.error_message cause
   | Ignore.Walker.Invalid_glob { path; line; message; _ } -> Path.to_string path
   ^ ":"
@@ -69,8 +70,7 @@ let run_once = fun config walker ->
       ignore (Sync.Atomic.fetch_and_add count 1);
       if not config.count_only then
         println (Fs.Walker.FileItem.path_string entry);
-      Fs.Walker.Continue)
-  |> Result.map (fun () -> Sync.Atomic.get count)
+      Fs.Walker.Continue) |> Result.map (fun () -> Sync.Atomic.get count)
 
 let rec run_repeated = fun config walker remaining total ->
   if remaining = 0 then
@@ -78,8 +78,7 @@ let rec run_repeated = fun config walker remaining total ->
   else
     match run_once config walker with
     | Error err -> Error err
-    | Ok count ->
-        run_repeated config walker (remaining - 1) (total + count)
+    | Ok count -> run_repeated config walker (remaining - 1) (total + count)
 
 let main = fun ~args ->
   let args =

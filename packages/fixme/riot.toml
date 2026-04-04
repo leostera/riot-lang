@@ -10,4 +10,4 @@ path = "src/fixme.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }
-syn = { path = "../syn" , version = "*"}
+syn = { path = "../syn", version = "*" }
