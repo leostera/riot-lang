@@ -3,6 +3,18 @@ open Std.Collections
 open Tty
 open Riot_model
 
+let default_stdout = fun buf ->
+  if String.ends_with ~suffix:"\n" buf then
+    println (String.sub buf 0 (String.length buf - 1))
+  else
+    print buf
+
+let default_stderr = fun buf ->
+  if String.ends_with ~suffix:"\n" buf then
+    eprintln (String.sub buf 0 (String.length buf - 1))
+  else
+    eprint buf
+
 type action =
   | Explain of { diagnostic_id: string; json: bool }
   | Check of { paths: Path.t list; json: bool; quiet: bool }
@@ -217,14 +229,27 @@ let validate_explicit_targets = fun roots ->
 let resolve_targets = fun ?workspace paths ->
   let scope = workspace_scope workspace in
   let collect_ordered_files = fun roots ->
-    roots
-    |> List.concat_map
+    let explicit_files, directory_roots =
+      roots
+      |> List.fold_left
+        (fun (files, directories) root ->
+          if Path.is_file root then
+            (root :: files, directories)
+          else
+            (files, root :: directories))
+        ([], [])
+    in
+    let walked_files =
+      directory_roots
+      |> List.concat_map
       (fun root ->
         Krasny.Runner.collect_ocaml_files
           ~should_ignore:(should_ignore_file scope)
           ~roots:[ root ]
           ()
         |> List.sort compare_paths)
+    in
+    dedupe_paths (explicit_files @ walked_files)
   in
   let roots =
     if List.is_empty paths then
@@ -248,8 +273,8 @@ let message = function
   | NoTargets -> "no OCaml files found"
   | UnknownDiagnosticId { diagnostic_id } -> "unknown typ diagnostic id: " ^ diagnostic_id
 
-let fail = fun err ->
-  eprintln ("\027[1;31mError\027[0m: " ^ message err);
+let fail = fun ?(stderr = default_stderr) err ->
+  stderr ("\027[1;31mError\027[0m: " ^ message err ^ "\n");
   Error (Failure (message err))
 
 let action_of_matches = fun matches ->
@@ -452,10 +477,11 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
   let severity_label = Style.styled style (severity ^ ":") in
   let header =
     path_text
+    ^ ":"
     ^ Int.to_string line
     ^ ":"
     ^ Int.to_string column
-    ^ ": "
+    ^ ":"
     ^ "\n\n"
     ^ severity_label
     ^ " ["
@@ -482,35 +508,41 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
   | None -> header
   | Some (line_num, start_col, code_line, pointer_span) ->
       let line_label = Int.to_string line_num in
-      let gutter = String.length line_label in
+      let indent_prefix = String.make (String.length line_label + 1) ' ' in
       let pointer = String.make (Int.max 0 start_col) ' ' ^ String.make pointer_span '^' in
       let styled_pointer = Style.styled style pointer in
-      let fix = diagnostic_fix diagnostic in
-      let styled_fix =
-        match fix with
-        | None -> ""
-        | Some msg -> "\n" ^ Style.styled fix_style " fix:" ^ " " ^ msg
-      in
       let styled_expected =
         match diagnostic_expected diagnostic with
         | None -> ""
         | Some msg -> " " ^ (Style.styled style msg)
       in
+      let fix_line =
+        match diagnostic_fix diagnostic with
+        | None -> ""
+        | Some msg ->
+            indent_prefix
+            ^ Style.styled fix_style "fix:"
+            ^ " "
+            ^ msg
+            ^ "\n\n"
+      in
       header
       ^ "\n"
-      ^ (String.make gutter ' ')
-      ^ " |\n"
+      ^ indent_prefix
+      ^ "|\n"
       ^ line_label
       ^ " | "
       ^ code_line
       ^ "\n"
-      ^ (String.make gutter ' ')
-      ^ " | "
+      ^ indent_prefix
+      ^ "| "
       ^ styled_pointer
       ^ styled_expected
       ^ "\n"
-      ^ "  |\n\n"
-      ^ styled_fix
+      ^ indent_prefix
+      ^ "|\n\n"
+      ^ fix_line
+      ^ indent_prefix
       ^ explain_msg
       ^ "\n"
 
@@ -539,29 +571,58 @@ let check_source_file = fun path ->
       let diagnostics = diagnostics_of_report report in
       Typed { path; report; diagnostics }
 
-let check_all = fun ?workspace ?on_result paths ->
+let start_to_json = fun ~workspace_root ~target_count ->
+  let workspace_root_json =
+    match workspace_root with
+    | Some root -> Data.Json.String (Path.to_string root)
+    | None -> Data.Json.Null
+  in
+  Data.Json.Object [
+    ("type", Data.Json.String "check_start");
+    ("workspace_root", workspace_root_json);
+    ("target_count", Data.Json.Int target_count);
+  ]
+
+let checked_summary_to_json = fun (summary: checked_summary) ->
+  Data.Json.Object [
+    ("files", Data.Json.Int summary.checked_files);
+    ("read_failures", Data.Json.Int summary.read_failures);
+    ("diagnostics", Data.Json.Int summary.diagnostics);
+    ("warnings", Data.Json.Int summary.warnings);
+  ]
+
+type check_run_summary = {
+  target_count: int;
+  summary: checked_summary;
+}
+
+let check_all = fun ?workspace ?on_start ?on_result paths ->
   match resolve_targets ?workspace paths with
   | Error err -> Error err
   | Ok target_files ->
-      (
-        match target_files with
-        | [] -> Error NoTargets
-        | _ ->
-            target_files
-            |> List.map
-              (fun path ->
-                let checked_file = check_source_file path in
-                (match on_result with
-                | Some callback -> callback checked_file
-                | None -> ());
-                checked_file)
-            |> Result.ok
-      )
+      match target_files with
+      | [] -> Error NoTargets
+      | _ ->
+          let summary = ref empty_checked_summary in
+          let _ =
+            match on_start with
+            | Some callback -> callback (List.length target_files)
+            | None -> ()
+          in
+          target_files
+          |> List.iter
+            (fun path ->
+              let checked_file = check_source_file path in
+              summary := update_checked_summary !summary checked_file;
+              match on_result with
+              | Some callback -> callback checked_file
+              | None -> ());
+          Ok { target_count = List.length target_files; summary = !summary }
 
-let print_checked_file = fun ~workspace_root checked_file ->
+let print_checked_file = fun ~stdout ~stderr ~workspace_root checked_file ->
   match checked_file with
   | Unreadable { path; reason } ->
-      eprintln (relative_or_absolute ~workspace_root path ^ ": " ^ reason)
+      stderr (relative_or_absolute ~workspace_root path ^ ": " ^ reason ^ "\n")
   | Typed { path; report; diagnostics } ->
       if List.is_empty diagnostics then
         ()
@@ -570,7 +631,7 @@ let print_checked_file = fun ~workspace_root checked_file ->
         let path_text = relative_or_absolute ~workspace_root path in
         List.iter
           (fun diagnostic ->
-            println
+            stdout
               (format_diagnostic
                 ~path_text
                 ~source_layout
@@ -600,29 +661,27 @@ let checked_file_to_json = fun ~workspace_root checked_file ->
 let checked_file_diagnostics_to_json = fun ~workspace_root path diagnostics ->
   let path_text = relative_or_absolute ~workspace_root path in
   let index = ref 0 in
-  List.iter
+  diagnostics
+  |> List.map
     (fun diagnostic ->
-      let json =
-        Data.Json.Object [
-          ("type", Data.Json.String "check_diagnostic");
-          ("path", Data.Json.String path_text);
-          ("diagnostic_index", Data.Json.Int !index);
-          ("diagnostic", diagnostic_to_json diagnostic);
-        ]
-      in
-      Data.Json.to_string json |> println;
-      index := !index + 1)
-    diagnostics
+      let json = Data.Json.Object [
+        ("type", Data.Json.String "check_diagnostic");
+        ("path", Data.Json.String path_text);
+        ("diagnostic_index", Data.Json.Int !index);
+        ("diagnostic", diagnostic_to_json diagnostic);
+      ] in
+      index := !index + 1;
+      json)
 
-let print_checked_file_json = fun ~workspace_root checked_file ->
+let checked_file_events_to_json = fun ~workspace_root checked_file ->
   match checked_file with
   | Unreadable _ ->
-      Data.Json.Object [
+      [
+        Data.Json.Object [
         ("type", Data.Json.String "check_file");
         ("result", checked_file_to_json ~workspace_root checked_file);
       ]
-      |> Data.Json.to_string
-      |> println
+      ]
   | Typed { path; report; diagnostics } ->
       let file_json =
         Data.Json.Object [
@@ -630,131 +689,76 @@ let print_checked_file_json = fun ~workspace_root checked_file ->
           ("result", checked_file_to_json ~workspace_root (Typed { path; report; diagnostics }));
         ]
       in
-      Data.Json.to_string file_json |> println;
-      checked_file_diagnostics_to_json ~workspace_root path diagnostics
+      file_json :: checked_file_diagnostics_to_json ~workspace_root path diagnostics
 
-let print_checked_files_summary = fun checked_summary quiet ->
+let print_json_lines = fun ~stdout events ->
+  events
+  |> List.iter (fun json -> stdout (Data.Json.to_string json ^ "\n"))
+
+let print_checked_file_json = fun ~stdout ~workspace_root checked_file ->
+  checked_file
+  |> checked_file_events_to_json ~workspace_root
+  |> print_json_lines ~stdout
+
+let print_checked_files_summary = fun ~stdout checked_summary quiet ->
   if quiet then
     ()
   else if checked_summary.has_error then
     ()
   else if checked_summary.checked_files = 1 then
-    println "Checked 1 file: ok"
+    stdout "Checked 1 file: ok\n"
   else
-    println
-      ("Checked " ^ Int.to_string checked_summary.checked_files ^ " files: ok")
+    stdout ("Checked " ^ Int.to_string checked_summary.checked_files ^ " files: ok\n")
 
-let checked_files_ok = fun checked_files ->
-  checked_files
-  |> List.for_all
-    (function
-      | Unreadable _ -> false
-      | Typed { diagnostics; _ } -> not (has_errors diagnostics))
-
-let checked_files_summary = fun checked_files ->
-  let files = List.length checked_files in
-  let read_failures =
-    checked_files
-    |> List.filter (function | Unreadable _ -> true | Typed _ -> false)
-    |> List.length
-  in
-  let diagnostics_count =
-    checked_files
-    |> List.filter_map
-      (function
-        | Unreadable _ -> Some 0
-        | Typed { diagnostics; _ } -> Some (List.length diagnostics))
-    |> List.fold_left (fun acc n -> acc + n) 0
-  in
-  let warning_count =
-    checked_files
-    |> List.fold_left
-      (fun count checked_file ->
-        match checked_file with
-        | Unreadable _ -> count
-        | Typed { diagnostics; _ } ->
-            count + List.length (List.filter has_warning_diagnostic diagnostics))
-      0
-  in
+let print_json_summary = fun ~stdout (summary: checked_summary) ->
   Data.Json.Object [
-    ("files", Data.Json.Int files);
-    ("read_failures", Data.Json.Int read_failures);
-    ("diagnostics", Data.Json.Int diagnostics_count);
-    ("warnings", Data.Json.Int warning_count);
-  ]
+      ("type", Data.Json.String "check_summary");
+      ("ok", Data.Json.Bool (not summary.has_error));
+      ("summary", checked_summary_to_json summary);
+    ]
+  |> Data.Json.to_string
+  |> fun line -> stdout (line ^ "\n")
 
-let print_json = fun ~workspace_root checked_files ->
-  checked_files |> List.iter (print_checked_file_json ~workspace_root);
-  let files = List.length checked_files in
-  let read_failures =
-    checked_files
-    |> List.filter (function | Unreadable _ -> true | Typed _ -> false)
-    |> List.length
-  in
-  let diagnostics =
-    checked_files
-    |> List.filter_map
-      (function
-        | Unreadable _ -> Some 0
-        | Typed { diagnostics; _ } -> Some (List.length diagnostics))
-    |> List.fold_left (fun acc n -> acc + n) 0
-  in
-  let warnings =
-    checked_files
-    |> List.fold_left
-      (fun count checked_file ->
-        match checked_file with
-        | Unreadable _ -> count
-        | Typed { diagnostics; _ } ->
-            count + List.length (List.filter has_warning_diagnostic diagnostics))
-      0
-  in
-  Data.Json.Object [
-    ("type", Data.Json.String "check_summary");
-    ("ok", Data.Json.Bool (checked_files_ok checked_files));
-    ("summary", Data.Json.Object [
-      ("files", Data.Json.Int files);
-      ("read_failures", Data.Json.Int read_failures);
-      ("diagnostics", Data.Json.Int diagnostics);
-      ("warnings", Data.Json.Int warnings);
-    ]);
-  ] |> Data.Json.to_string |> println
-
-let run_explain = fun ~json diagnostic_id ->
+let run_explain = fun ?(stdout = default_stdout) ?(stderr = default_stderr) ~json diagnostic_id ->
   match Typ.Explanations.explain diagnostic_id with
-  | None -> fail (UnknownDiagnosticId { diagnostic_id })
+  | None -> fail ~stderr (UnknownDiagnosticId { diagnostic_id })
   | Some explanation ->
       if json then
-        Typ.Explanations.to_json explanation |> Data.Json.to_string |> println
+        stdout (Data.Json.to_string (Typ.Explanations.to_json explanation) ^ "\n")
       else
-        Typ.Explanations.format explanation |> println;
+        stdout (Typ.Explanations.format explanation ^ "\n");
       Ok ()
 
-let run = fun ?workspace matches ->
+let run = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) matches ->
   match action_of_matches matches with
-  | Error err -> fail err
-  | Ok (Explain { diagnostic_id; json }) -> run_explain ~json diagnostic_id
+  | Error err -> fail ~stderr err
+  | Ok (Explain { diagnostic_id; json }) -> run_explain ~stdout ~stderr ~json diagnostic_id
   | Ok (Check { paths; json; quiet }) -> (
-      let summary = ref empty_checked_summary in
       let workspace_root =
         workspace_scope workspace |> Option.map (fun scope -> scope.workspace_root)
       in
+      let on_start =
+        fun target_count ->
+          if json then
+            print_json_lines
+              ~stdout
+              [ start_to_json ~workspace_root ~target_count ]
+      in
       let on_result =
         fun checked_file ->
-          summary := update_checked_summary !summary checked_file;
           if json then
-            print_checked_file_json ~workspace_root checked_file
+            print_checked_file_json ~stdout ~workspace_root checked_file
           else
-            print_checked_file ~workspace_root checked_file
+            print_checked_file ~stdout ~stderr ~workspace_root checked_file
       in
-      match check_all ?workspace ~on_result paths with
-      | Error err -> fail (match err with NoTargets -> NoTargets | _ -> err)
-      | Ok checked_files ->
+      match check_all ?workspace ~on_start ~on_result paths with
+      | Error err -> fail ~stderr (match err with NoTargets -> NoTargets | _ -> err)
+      | Ok { summary; _ } ->
           if json then
-            print_json ~workspace_root checked_files
+            print_json_summary ~stdout summary
           else
-            print_checked_files_summary !summary quiet;
-          if !summary.has_error then
+            print_checked_files_summary ~stdout summary quiet;
+          if summary.has_error then
             Error (Failure "typecheck failed")
           else
             Ok ()
