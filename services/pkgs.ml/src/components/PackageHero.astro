@@ -1,5 +1,7 @@
 ---
 import GitHubAvatar from "@/components/GitHubAvatar.astro";
+import ocaml from "highlight.js/lib/languages/ocaml";
+import { common } from "lowlight";
 import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -83,7 +85,15 @@ async function renderReadmeMarkdown(markdown: string): Promise<string> {
       .use(remarkGfm)
       .use(remarkRehype)
       .use(rehypeDefaultOcaml)
-      .use(rehypeHighlight)
+      .use(rehypeHighlight, {
+        aliases: {
+          ocaml: ["ml"],
+        },
+        languages: {
+          ...common,
+          ocaml,
+        },
+      })
       .use(rehypeStringify)
       .process(markdown),
   );
