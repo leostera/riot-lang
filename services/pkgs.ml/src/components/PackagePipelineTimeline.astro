@@ -94,21 +94,41 @@ const stageStates = stages.map((stage) => ({
             {stageStates.map((stage, index) => (
               <>
                 <div class="grid w-32 shrink-0 justify-items-center gap-2 text-center">
-                  <span
-                    class:list={[
-                      "relative inline-flex h-8 w-8 items-center justify-center rounded-full border",
-                      stage.event === null
-                        ? "border-border bg-background text-muted-foreground"
-                        : "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300",
-                    ]}
-                    aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
-                  >
-                    {
-                      stage.event === null ? null : (
-                        <span class="h-2.5 w-2.5 rounded-full bg-current" aria-hidden="true" />
-                      )
-                    }
-                  </span>
+                  <div class="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <span
+                      class:list={[
+                        "h-px w-full",
+                        index === 0
+                          ? "bg-transparent"
+                          : stageStates[index - 1]?.event !== null && stage.event !== null
+                            ? "bg-emerald-600 dark:bg-emerald-500"
+                            : "bg-border",
+                      ]}
+                      aria-hidden="true"
+                    />
+
+                    <span
+                      class:list={[
+                        "inline-flex h-3 w-3 items-center justify-center rounded-full",
+                        stage.event === null
+                          ? "border border-border bg-background"
+                          : "bg-emerald-600 dark:bg-emerald-500",
+                      ]}
+                      aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                    />
+
+                    <span
+                      class:list={[
+                        "h-px w-full",
+                        index === stageStates.length - 1
+                          ? "bg-transparent"
+                          : stage.event !== null && stageStates[index + 1]?.event !== null
+                            ? "bg-emerald-600 dark:bg-emerald-500"
+                            : "bg-border",
+                      ]}
+                      aria-hidden="true"
+                    />
+                  </div>
 
                   <div class="grid gap-1">
                     <div class="text-sm font-medium leading-tight text-foreground">{stage.label}</div>
