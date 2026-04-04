@@ -7,6 +7,63 @@ export async function readArchiveFileFromTarGz(
   return await readFileFromTarGz(archiveBytes, archiveRelativePath);
 }
 
+export async function listArchiveFilesFromTarGz(
+  archiveBytes: Uint8Array<ArrayBuffer>,
+  options?: { prefix?: string },
+): Promise<string[]> {
+  const tarBytes = await gunzip(archiveBytes);
+  const normalizedPrefix = options?.prefix ? normalizeArchivePath(options.prefix) : null;
+  const files: string[] = [];
+
+  for (const entry of iterateTarEntries(tarBytes)) {
+    if (!isRegularFileEntry(entry.typeFlag)) {
+      continue;
+    }
+
+    const normalized = normalizeArchivePath(entry.name);
+    if (normalizedPrefix !== null && !normalized.startsWith(`${normalizedPrefix}/`)) {
+      continue;
+    }
+
+    files.push(normalized);
+  }
+
+  return files;
+}
+
+export async function readArchiveFilesFromTarGz(
+  archiveBytes: Uint8Array<ArrayBuffer>,
+  archiveRelativePaths: string[],
+): Promise<Array<{ path: string; contents: string }>> {
+  const tarBytes = await gunzip(archiveBytes);
+  const candidates = new Map<string, string>();
+
+  for (const path of archiveRelativePaths) {
+    const normalized = normalizeArchivePath(path);
+    candidates.set(normalized.toLowerCase(), normalized);
+  }
+
+  const files: Array<{ path: string; contents: string }> = [];
+  for (const entry of iterateTarEntries(tarBytes)) {
+    if (!isRegularFileEntry(entry.typeFlag)) {
+      continue;
+    }
+
+    const normalized = normalizeArchivePath(entry.name);
+    const key = normalized.toLowerCase();
+    if (!candidates.has(key)) {
+      continue;
+    }
+
+    files.push({
+      path: normalized,
+      contents: new TextDecoder().decode(entry.body),
+    });
+  }
+
+  return files;
+}
+
 export async function readFirstArchiveFileFromTarGz(
   archiveBytes: Uint8Array<ArrayBuffer>,
   archiveRelativePaths: string[],

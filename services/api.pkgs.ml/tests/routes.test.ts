@@ -26,6 +26,7 @@ describe("riot package registry routes", () => {
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_readme: "/v1/views/packages/<package-name>/readme?version=<version>",
+        views_package_examples: "/v1/views/packages/<package-name>/examples?version=<version>",
         views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -59,6 +60,7 @@ describe("riot package registry routes", () => {
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_readme: "/api/v1/views/packages/<package-name>/readme?version=<version>",
+        views_package_examples: "/api/v1/views/packages/<package-name>/examples?version=<version>",
         views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -543,6 +545,51 @@ describe("riot package registry routes", () => {
       package_version: "0.1.0",
       readme_path: "README.md",
       readme_markdown: "# std\n\nThe Riot standard library.\n",
+    });
+  });
+
+  test("package examples view exposes example sources from the stored artifact", async () => {
+    const { env } = makeEnv();
+    const publishResponse = await publishArtifact(
+      env,
+      await makePackageArtifact({
+        packageName: "actors",
+        packageVersion: "0.0.4",
+        description: "The multicore actor runtime that powers Riot",
+        license: "Apache-2.0",
+        files: {
+          "examples/ping_pong.ml": "let () = print_endline \"pong\"\n",
+          "examples/support/format.ml": "let format value = value\n",
+          "src/actors.ml": "let hello = \"actors\"\n",
+        },
+      }),
+    );
+    expect(publishResponse.status).toBe(200);
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/views/packages/actors/examples?version=0.0.4"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toEqual({
+      schema_version: 1,
+      package_name: "actors",
+      package_version: "0.0.4",
+      source_key: expect.stringContaining("sources/actors/0.0.4/"),
+      examples: [
+        {
+          name: "ping_pong",
+          path: "examples/ping_pong.ml",
+          source_code: "let () = print_endline \"pong\"\n",
+        },
+        {
+          name: "format",
+          path: "examples/support/format.ml",
+          source_code: "let format value = value\n",
+        },
+      ],
     });
   });
 

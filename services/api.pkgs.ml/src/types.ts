@@ -410,6 +410,23 @@ export interface PackageOverviewDocument {
   keywords: string[];
 }
 
+export interface PackageExampleSummary {
+  name: string;
+  path: string;
+}
+
+export interface PackageExampleDocument extends PackageExampleSummary {
+  source_code: string;
+}
+
+export interface PackageExamplesDocument {
+  schema_version: 1;
+  package_name: string;
+  package_version: string;
+  source_key: string;
+  examples: PackageExampleDocument[];
+}
+
 export interface PackageRelationDependency {
   package_name: string;
   requirement: string;

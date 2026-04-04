@@ -19,6 +19,7 @@ import {
   listPackageRegistryEvents,
   listApiTokenRecords,
   readCategoriesIndexDocument,
+  readPublishedRelease,
   readOwnerPackagesDocument,
   readPackageDownloadsDocument,
   readPackageOverviewDocument,
@@ -27,9 +28,12 @@ import {
   readRecentPackagesDocument,
   readRegistryStatsDashboardDocument,
   readRegistryStatsSummaryDocument,
-  readPublishedRelease,
 } from "./metadata-db.ts";
-import { readFirstArchiveFileFromTarGz } from "./archive.ts";
+import {
+  listArchiveFilesFromTarGz,
+  readArchiveFilesFromTarGz,
+  readFirstArchiveFileFromTarGz,
+} from "./archive.ts";
 import { searchPackages } from "./search-db.ts";
 import {
   artifactManifestKey,
@@ -89,6 +93,7 @@ async function routeRequest(
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_readme: "/v1/views/packages/<package-name>/readme?version=<version>",
+        views_package_examples: "/v1/views/packages/<package-name>/examples?version=<version>",
         views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -122,6 +127,7 @@ async function routeRequest(
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_readme: "/api/v1/views/packages/<package-name>/readme?version=<version>",
+        views_package_examples: "/api/v1/views/packages/<package-name>/examples?version=<version>",
         views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -531,6 +537,18 @@ async function handleViewDocument(
 
       return json(document);
     }
+    case "package_examples": {
+      const document = await readPackageExamplesDocument(
+        env,
+        viewRoute.packageName,
+        url.searchParams.get("version") ?? undefined,
+      );
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Package examples were not found.");
+      }
+
+      return json(document);
+    }
     case "package_downloads": {
       const document = await readPackageDownloadsDocument(env.SEARCH_DB, viewRoute.packageName);
       if (document === null) {
@@ -713,6 +731,7 @@ interface ParsedPackageEventsRoute {
 type ParsedViewRoute =
   | { kind: "package_overview"; packageName: string }
   | { kind: "package_readme"; packageName: string }
+  | { kind: "package_examples"; packageName: string }
   | { kind: "package_downloads"; packageName: string }
   | { kind: "package_relations"; packageName: string }
   | { kind: "recent_packages" }
@@ -777,6 +796,14 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
     };
   }
 
+  const packageExamplesMatch = normalizedPath.match(/^packages\/([^/]+)\/examples$/);
+  if (packageExamplesMatch !== null) {
+    return {
+      kind: "package_examples",
+      packageName: decodeURIComponent(packageExamplesMatch[1] ?? ""),
+    };
+  }
+
   const packageDownloadsMatch = normalizedPath.match(/^packages\/([^/]+)\/downloads$/);
   if (packageDownloadsMatch !== null) {
     return {
@@ -816,28 +843,12 @@ async function readPackageReadmeDocument(
   readme_path: string;
   readme_markdown: string;
 } | null> {
-  const release =
-    version === undefined
-      ? (await readPackageOverviewDocument(env.SEARCH_DB, packageName))
-      : null;
-
-  const resolvedRelease =
-    version === undefined
-      ? release === null
-        ? null
-        : {
-            package_version: release.latest_version,
-            source_key: release.source_key,
-          }
-      : await readPublishedRelease(env.SEARCH_DB, packageName, version);
-
+  const resolvedRelease = await resolvePackageArtifactRelease(env, packageName, version);
   if (resolvedRelease === null) {
     return null;
   }
 
-  const sourceKey = "source_key" in resolvedRelease ? resolvedRelease.source_key : resolvedRelease.source_archive_key;
-  const packageVersion = resolvedRelease.package_version;
-  const object = await env.ML_PKGS_CDN.get(sourceKey);
+  const object = await env.ML_PKGS_CDN.get(resolvedRelease.source_key);
   if (object === null) {
     return null;
   }
@@ -863,11 +874,108 @@ async function readPackageReadmeDocument(
   return {
     schema_version: 1,
     package_name: packageName,
-    package_version: packageVersion,
-    source_key: sourceKey,
+    package_version: resolvedRelease.package_version,
+    source_key: resolvedRelease.source_key,
     readme_path: readme.path,
     readme_markdown: readme.contents,
   };
+}
+
+async function readPackageExamplesDocument(
+  env: Env,
+  packageName: string,
+  version?: string,
+): Promise<{
+  schema_version: 1;
+  package_name: string;
+  package_version: string;
+  source_key: string;
+  examples: Array<{
+    name: string;
+    path: string;
+    source_code: string;
+  }>;
+} | null> {
+  const resolvedRelease = await resolvePackageArtifactRelease(env, packageName, version);
+  if (resolvedRelease === null) {
+    return null;
+  }
+
+  const object = await env.ML_PKGS_CDN.get(resolvedRelease.source_key);
+  if (object === null) {
+    return null;
+  }
+
+  const archiveBytes = new Uint8Array(await object.arrayBuffer());
+  const examplePaths = (await listArchiveFilesFromTarGz(archiveBytes, { prefix: "examples" }))
+    .filter((path) => isPublishedExamplePath(path))
+    .sort((left, right) => left.localeCompare(right));
+  const exampleFiles = await readArchiveFilesFromTarGz(archiveBytes, examplePaths);
+  const exampleFileByPath = new Map(exampleFiles.map((example) => [example.path, example.contents]));
+
+  return {
+    schema_version: 1,
+    package_name: packageName,
+    package_version: resolvedRelease.package_version,
+    source_key: resolvedRelease.source_key,
+    examples: examplePaths.flatMap((path) => {
+      const sourceCode = exampleFileByPath.get(path);
+      if (sourceCode === undefined) {
+        return [];
+      }
+
+      return [{
+        name: exampleNameFromPath(path),
+        path,
+        source_code: sourceCode,
+      }];
+    }),
+  };
+}
+
+async function resolvePackageArtifactRelease(
+  env: Env,
+  packageName: string,
+  version?: string,
+): Promise<{ package_version: string; source_key: string } | null> {
+  if (version === undefined) {
+    const overview = await readPackageOverviewDocument(env.SEARCH_DB, packageName);
+    if (overview === null) {
+      return null;
+    }
+
+    return {
+      package_version: overview.latest_version,
+      source_key: overview.source_key,
+    };
+  }
+
+  const release = await readPublishedRelease(env.SEARCH_DB, packageName, version);
+  if (release === null) {
+    return null;
+  }
+
+  return {
+    package_version: release.package_version,
+    source_key: release.source_archive_key,
+  };
+}
+
+function isPublishedExamplePath(path: string): boolean {
+  const normalized = trimSlashes(path);
+  if (!normalized.startsWith("examples/") || !normalized.endsWith(".ml")) {
+    return false;
+  }
+
+  return normalized
+    .split("/")
+    .every((segment) => segment.length > 0 && !segment.startsWith("."));
+}
+
+function exampleNameFromPath(path: string): string {
+  const normalized = trimSlashes(path);
+  const fileName = normalized.split("/").pop() ?? normalized;
+  return fileName.endsWith(".ml") ? fileName.slice(0, -".ml".length) : fileName;
 }
 
 function resolveIndexStorageKey(path: string, config: ReturnType<typeof getConfig>): string | null {
