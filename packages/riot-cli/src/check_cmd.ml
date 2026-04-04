@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Tty
 open Riot_model
 
 type action =
@@ -99,6 +100,18 @@ let is_supported_source_file = fun path ->
   match Path.extension path with
   | Some ".ml" | Some ".mli" -> true
   | _ -> false
+
+let relative_or_absolute = fun ~workspace_root path ->
+  let normalize = Path.normalize in
+  let path = normalize path in
+  match workspace_root with
+  | Some root -> (
+      let root = normalize root in
+      match Path.strip_prefix path ~prefix:root with
+      | Ok rel -> Path.to_string rel
+      | Error _ -> Path.to_string path
+    )
+  | None -> Path.to_string path
 
 let workspace_scope = fun (workspace : Workspace.t option) ->
   let scope_of_path path =
@@ -332,6 +345,27 @@ let source_of_diagnostic = function
   | Lowering _
   | Typing _ -> "typ"
 
+let severity_style = fun severity ->
+  match severity with
+  | "warning" -> Style.default |> Style.fg (Color.make "#E5C07B") |> Style.bold
+  | "note" -> Style.default |> Style.fg (Color.make "#56B6C2") |> Style.bold
+  | _ -> Style.default |> Style.fg (Color.make "#E06C75") |> Style.bold
+
+let fix_style = Style.default |> Style.fg (Color.make "#98C379") |> Style.bold
+
+let diagnostic_fix = function
+  | Parse diagnostic -> Syn.Diagnostic.fix_message diagnostic
+  | _ -> None
+
+let diagnostic_expected = function
+  | Parse diagnostic -> (
+      let expected = Syn.Diagnostic.expected_message diagnostic in
+      if String.length expected = 0 then
+        None
+      else
+        Some ("expected " ^ expected))
+  | _ -> None
+
 let data_of_diagnostic = function
   | Parse diagnostic -> Syn.Diagnostic.to_json diagnostic
   | Lowering diagnostic
@@ -413,14 +447,17 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
   let start_position = position_of_offset source_text span.start in
   let line = start_position.line + 1 in
   let column = start_position.character + 1 in
+  let severity = severity_string_of_diagnostic diagnostic in
+  let style = severity_style severity in
+  let severity_label = Style.styled style (severity ^ ":") in
   let header =
     path_text
-    ^ ":"
     ^ Int.to_string line
     ^ ":"
     ^ Int.to_string column
     ^ ": "
-    ^ severity_string_of_diagnostic diagnostic
+    ^ "\n\n"
+    ^ severity_label
     ^ " ["
     ^ phase_of_diagnostic diagnostic
     ^ "] "
@@ -428,12 +465,37 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
     ^ ": "
     ^ message_of_diagnostic diagnostic
   in
+  let explain_msg =
+    match diagnostic with
+    | Parse diagnostic ->
+        let id = Syn.Diagnostic.id diagnostic in
+        "  For more information about this error, try `riot fmt --explain "
+        ^ id
+        ^ "`"
+    | Lowering _
+    | Typing _ ->
+        "  For more information about this error, try `riot check --explain "
+        ^ code_of_diagnostic diagnostic
+        ^ "`"
+  in
   match extract_snippet source_layout source_text span with
   | None -> header
   | Some (line_num, start_col, code_line, pointer_span) ->
       let line_label = Int.to_string line_num in
       let gutter = String.length line_label in
       let pointer = String.make (Int.max 0 start_col) ' ' ^ String.make pointer_span '^' in
+      let styled_pointer = Style.styled style pointer in
+      let fix = diagnostic_fix diagnostic in
+      let styled_fix =
+        match fix with
+        | None -> ""
+        | Some msg -> "\n" ^ Style.styled fix_style " fix:" ^ " " ^ msg
+      in
+      let styled_expected =
+        match diagnostic_expected diagnostic with
+        | None -> ""
+        | Some msg -> " " ^ (Style.styled style msg)
+      in
       header
       ^ "\n"
       ^ (String.make gutter ' ')
@@ -444,12 +506,17 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
       ^ "\n"
       ^ (String.make gutter ' ')
       ^ " | "
-      ^ pointer
+      ^ styled_pointer
+      ^ styled_expected
+      ^ "\n"
+      ^ "  |\n\n"
+      ^ styled_fix
+      ^ explain_msg
       ^ "\n"
 
-let read_report_to_json = fun ~path reason ->
+let read_report_to_json = fun ~workspace_root ~path reason ->
   Data.Json.Object [
-    ("path", Data.Json.String (Path.to_string path));
+    ("path", Data.Json.String (relative_or_absolute ~workspace_root path));
     ("ok", Data.Json.Bool false);
     ("error", Data.Json.String reason);
     ("diagnostics", Data.Json.Array []);
@@ -491,16 +558,16 @@ let check_all = fun ?workspace ?on_result paths ->
             |> Result.ok
       )
 
-let print_checked_file = fun checked_file ->
+let print_checked_file = fun ~workspace_root checked_file ->
   match checked_file with
   | Unreadable { path; reason } ->
-      eprintln (Path.to_string path ^ ": " ^ reason)
+      eprintln (relative_or_absolute ~workspace_root path ^ ": " ^ reason)
   | Typed { path; report; diagnostics } ->
       if List.is_empty diagnostics then
         ()
       else (
         let source_layout = make_source_layout report.source in
-        let path_text = Path.to_string path in
+        let path_text = relative_or_absolute ~workspace_root path in
         List.iter
           (fun diagnostic ->
             println
@@ -511,7 +578,7 @@ let print_checked_file = fun checked_file ->
                 diagnostic))
           diagnostics)
 
-let checked_file_to_json = fun checked_file ->
+let checked_file_to_json = fun ~workspace_root checked_file ->
   match checked_file with
   | Typed { path; report } ->
       let diagnostics = diagnostics_of_report report in
@@ -524,14 +591,14 @@ let checked_file_to_json = fun checked_file ->
         ]
       in
       Data.Json.Object [
-        ("path", Data.Json.String (Path.to_string path));
+        ("path", Data.Json.String (relative_or_absolute ~workspace_root path));
         ("ok", Data.Json.Bool (not (has_errors diagnostics)));
         ("summary", summary);
       ]
-  | Unreadable { path; reason } -> read_report_to_json ~path reason
+  | Unreadable { path; reason } -> read_report_to_json ~workspace_root ~path reason
 
-let checked_file_diagnostics_to_json = fun path diagnostics ->
-  let path_text = Path.to_string path in
+let checked_file_diagnostics_to_json = fun ~workspace_root path diagnostics ->
+  let path_text = relative_or_absolute ~workspace_root path in
   let index = ref 0 in
   List.iter
     (fun diagnostic ->
@@ -547,12 +614,12 @@ let checked_file_diagnostics_to_json = fun path diagnostics ->
       index := !index + 1)
     diagnostics
 
-let print_checked_file_json = fun checked_file ->
+let print_checked_file_json = fun ~workspace_root checked_file ->
   match checked_file with
   | Unreadable _ ->
       Data.Json.Object [
         ("type", Data.Json.String "check_file");
-        ("result", checked_file_to_json checked_file);
+        ("result", checked_file_to_json ~workspace_root checked_file);
       ]
       |> Data.Json.to_string
       |> println
@@ -560,11 +627,11 @@ let print_checked_file_json = fun checked_file ->
       let file_json =
         Data.Json.Object [
           ("type", Data.Json.String "check_file");
-          ("result", checked_file_to_json (Typed { path; report; diagnostics }));
+          ("result", checked_file_to_json ~workspace_root (Typed { path; report; diagnostics }));
         ]
       in
       Data.Json.to_string file_json |> println;
-      checked_file_diagnostics_to_json path diagnostics
+      checked_file_diagnostics_to_json ~workspace_root path diagnostics
 
 let print_checked_files_summary = fun checked_summary quiet ->
   if quiet then
@@ -616,8 +683,8 @@ let checked_files_summary = fun checked_files ->
     ("warnings", Data.Json.Int warning_count);
   ]
 
-let print_json = fun checked_files ->
-  checked_files |> List.iter print_checked_file_json;
+let print_json = fun ~workspace_root checked_files ->
+  checked_files |> List.iter (print_checked_file_json ~workspace_root);
   let files = List.length checked_files in
   let read_failures =
     checked_files
@@ -669,19 +736,22 @@ let run = fun ?workspace matches ->
   | Ok (Explain { diagnostic_id; json }) -> run_explain ~json diagnostic_id
   | Ok (Check { paths; json; quiet }) -> (
       let summary = ref empty_checked_summary in
+      let workspace_root =
+        workspace_scope workspace |> Option.map (fun scope -> scope.workspace_root)
+      in
       let on_result =
         fun checked_file ->
           summary := update_checked_summary !summary checked_file;
           if json then
-            print_checked_file_json checked_file
+            print_checked_file_json ~workspace_root checked_file
           else
-            print_checked_file checked_file
+            print_checked_file ~workspace_root checked_file
       in
       match check_all ?workspace ~on_result paths with
       | Error err -> fail (match err with NoTargets -> NoTargets | _ -> err)
       | Ok checked_files ->
           if json then
-            print_json checked_files
+            print_json ~workspace_root checked_files
           else
             print_checked_files_summary !summary quiet;
           if !summary.has_error then
