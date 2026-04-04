@@ -58,6 +58,14 @@
       {
         "command": "riot.refreshDiagnostics",
         "title": "Riot: Refresh Diagnostics"
+      },
+      {
+        "command": "riot.addPackage",
+        "title": "Riot: Add Package"
+      },
+      {
+        "command": "riot.removePackage",
+        "title": "Riot: Remove Package"
       }
     ],
     "taskDefinitions": [

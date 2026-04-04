@@ -27,6 +27,18 @@ export interface ReleaseMetadata {
 	issues_url?: string;
 }
 
+export interface RiotManifestInfo {
+	root: vscode.Uri;
+	kind: "package" | "workspace";
+	packageName?: string;
+}
+
+export interface PackageCommandTarget {
+	cwd: vscode.Uri;
+	args: string[];
+	label: string;
+}
+
 const defaultInstallUrl = "https://get.riot.ml";
 const defaultLatestMetadataUrl = "https://api.pkgs.ml/v1/riot/latest.json";
 
@@ -191,6 +203,127 @@ export const nearestRiotRoot = async (uri: vscode.Uri): Promise<vscode.Uri | und
 
 		current = parent;
 	}
+};
+
+const parseManifestInfo = (source: string): Omit<RiotManifestInfo, "root"> | undefined => {
+	let inPackage = false;
+	let sawWorkspace = false;
+	let packageName: string | undefined;
+
+	for (const rawLine of source.split(/\r?\n/)) {
+		const line = rawLine.trim();
+
+		if (line === "[package]") {
+			inPackage = true;
+			continue;
+		}
+
+		if (line === "[workspace]") {
+			inPackage = false;
+			sawWorkspace = true;
+			continue;
+		}
+
+		if (line.startsWith("[")) {
+			inPackage = false;
+			continue;
+		}
+
+		if (!inPackage) {
+			continue;
+		}
+
+		const match = /^name\s*=\s*"([^"]+)"$/.exec(line);
+		if (match) {
+			packageName = match[1];
+			break;
+		}
+	}
+
+	if (packageName) {
+		return {
+			kind: "package",
+			packageName,
+		};
+	}
+
+	if (sawWorkspace) {
+		return {
+			kind: "workspace",
+		};
+	}
+
+	return undefined;
+};
+
+export const nearestRiotManifestInfo = async (
+	uri: vscode.Uri,
+): Promise<RiotManifestInfo | undefined> => {
+	if (uri.scheme !== "file") {
+		return undefined;
+	}
+
+	let current = path.dirname(uri.fsPath);
+	while (true) {
+		const manifestPath = path.join(current, "riot.toml");
+		if (await exists(manifestPath)) {
+			try {
+				const manifest = await fs.readFile(manifestPath, "utf8");
+				const info = parseManifestInfo(manifest);
+				if (!info) {
+					return undefined;
+				}
+
+				return {
+					root: vscode.Uri.file(current),
+					...info,
+				};
+			} catch {
+				return undefined;
+			}
+		}
+
+		const parent = path.dirname(current);
+		if (parent === current) {
+			return undefined;
+		}
+
+		current = parent;
+	}
+};
+
+export const packageCommandTargetFor = async (
+	uri?: vscode.Uri,
+): Promise<PackageCommandTarget | undefined> => {
+	if (uri) {
+		const manifest = await nearestRiotManifestInfo(uri);
+		if (manifest?.kind === "package" && manifest.packageName) {
+			return {
+				cwd: manifest.root,
+				args: [],
+				label: `package ${manifest.packageName}`,
+			};
+		}
+
+		if (manifest?.kind === "workspace") {
+			return {
+				cwd: manifest.root,
+				args: ["--workspace"],
+				label: "workspace",
+			};
+		}
+	}
+
+	const root = await workspaceRootFor(uri);
+	if (!root) {
+		return undefined;
+	}
+
+	return {
+		cwd: root,
+		args: ["--workspace"],
+		label: "workspace",
+	};
 };
 
 export const workspaceRootFor = async (uri?: vscode.Uri): Promise<vscode.Uri | undefined> => {

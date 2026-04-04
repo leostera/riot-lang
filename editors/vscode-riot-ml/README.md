@@ -21,6 +21,8 @@ CLI-based formatter and diagnostics path.
 - falls back to `riot fmt` / `riot fix` CLI integration when the LSP server is
   unavailable
 - adds `Riot: Build Workspace` and `Riot: Test Workspace` commands
+- adds `Riot: Add Package` and `Riot: Remove Package` commands that shell out to
+  `riot add` / `riot rm` against the nearest Riot manifest for the active file
 - contributes VS Code tasks for `riot build` and `riot test`
 
 ## Requirements
