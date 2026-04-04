@@ -17,9 +17,10 @@ name = "session_fixture_tests"
 path = "tests/session_fixture_tests.ml"
 
 [dependencies]
-std = { path = "../std", version = "*" }
 jsonrpc = { path = "../jsonrpc", version = "*" }
-lsp = { path = "../lsp", version = "*" }
-syn = { path = "../syn", version = "*" }
 krasny = { path = "../krasny", version = "*" }
+lsp = { path = "../lsp", version = "*" }
 riot-fix = { path = "../riot-fix", version = "*" }
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }
+typ = { path = "../typ", version = "*" }

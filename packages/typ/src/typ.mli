@@ -70,6 +70,8 @@ module Source: module type of Source
 
 module Diagnostic: module type of Diagnostic
 
+module Explanations: module type of Explanations
+
 module OriginMap: module type of OriginMap
 
 module ItemTree: module type of ItemTree

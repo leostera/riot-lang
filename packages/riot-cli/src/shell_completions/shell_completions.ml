@@ -139,6 +139,7 @@ _riot() {
 
     builtin_commands=(
         'build:Build packages'
+        'check:Typecheck one OCaml file'
         'fix:Lint code and optionally apply safe fixes'
         'run:Run a binary'
         'test:Run tests'
@@ -233,6 +234,13 @@ _riot() {
                     _describe 'package' packages
                     ;;
             esac
+            ;;
+        check)
+            _arguments \
+                '--json[Emit machine-readable JSON output]' \
+                '--quiet[Suppress the success summary when no diagnostics are found]' \
+                '--explain[Explain a typ diagnostic id]:diagnostic-id:' \
+                ':path:_files'
             ;;
         test)
             # Check if we're completing the test pattern (position 3)

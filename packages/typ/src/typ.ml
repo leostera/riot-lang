@@ -7,6 +7,7 @@ module OriginId = OriginId
 module Position = Position
 module Source = Source
 module Diagnostic = Diagnostic
+module Explanations = Explanations
 module OriginMap = OriginMap
 module ItemTree = ItemTree
 module BodyArena = BodyArena

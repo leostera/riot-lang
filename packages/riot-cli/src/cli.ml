@@ -7,6 +7,7 @@ let build_cli = fun () ->
       let builtin_commands = [
         Add.command;
         Build.command;
+        Check_cmd.command;
         Remove.command;
         Clean.command;
         Completions.command;
@@ -255,6 +256,8 @@ let run = fun ~args ->
                 )
               | Error _ as e -> e
             )
+          | Some ("check", check_matches) ->
+              Check_cmd.run check_matches
           | Some ("run", run_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (

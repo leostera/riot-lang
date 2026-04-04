@@ -9,6 +9,7 @@ type document = {
   uri: Lsp.Uri.t;
   version: int;
   text: string;
+  typ_source_id: Typ.SourceId.t;
 }
 
 type fixable_lint_diagnostic = {
@@ -21,6 +22,7 @@ type t = {
   initialized: bool;
   shutdown_requested: bool;
   documents: document list;
+  typ_session: Typ.Session.t;
 }
 
 type outcome = {
@@ -29,7 +31,12 @@ type outcome = {
   exit_code: int option;
 }
 
-let empty = { initialized = false; shutdown_requested = false; documents = [] }
+let empty = {
+  initialized = false;
+  shutdown_requested = false;
+  documents = [];
+  typ_session = Typ.Session.empty ~config:Typ.Config.default;
+}
 
 let uri_equal = fun left ->
   fun right ->
@@ -60,6 +67,11 @@ let filename_of_uri = fun uri ->
   match Lsp.Uri.to_path uri with
   | Ok path -> path
   | Error _ -> Path.v "buffer.ml"
+
+let typ_source_origin_of_uri = fun uri ->
+  match Lsp.Uri.to_path uri with
+  | Ok path -> Typ.Source.Path path
+  | Error _ -> Typ.Source.Label (Lsp.Uri.to_string uri)
 
 let diagnostic_to_lsp = fun text ->
   fun (diagnostic: Syn.Diagnostic.t) ->
@@ -97,6 +109,27 @@ let lint_diagnostic_to_lsp = fun text ->
       message = Riot_fix.Diagnostic.message diagnostic;
       tags = None;
       data = Some (Riot_fix.Diagnostic.to_json diagnostic);
+    }
+
+let typ_diagnostic_severity = fun severity ->
+  match severity with
+  | Typ.Diagnostic.Error -> Lsp.Diagnostic.Error
+  | Typ.Diagnostic.Warning -> Lsp.Diagnostic.Warning
+
+let typ_diagnostic_to_lsp = fun text ->
+  fun (diagnostic: Typ.Diagnostic.t) ->
+    let span = Typ.Diagnostic.primary_span diagnostic in
+    {
+      Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets
+        text
+        ~start_offset:span.start
+        ~end_offset:span.end_;
+      severity = Some (typ_diagnostic_severity (Typ.Diagnostic.severity diagnostic));
+      code = Some (Typ.Diagnostic.code diagnostic);
+      source = Some "typ";
+      message = Typ.Diagnostic.message diagnostic;
+      tags = None;
+      data = Some (Typ.Diagnostic.to_json diagnostic);
     }
 
 let analyze_document = fun document ->
@@ -207,10 +240,22 @@ let fix_all_action = fun document entries ->
         }
       )
 
-let publish_diagnostics = fun document ->
+let typ_diagnostics = fun state ->
+  fun document ->
+    let snapshot = Typ.Session.snapshot state.typ_session in
+    Typ.Query.diagnostics snapshot document.typ_source_id
+    |> List.filter_map (function
+      | Typ.Query.Parse _ -> None
+      | Typ.Query.Lowering _ -> None
+      | Typ.Query.Typing diagnostic ->
+          Some (typ_diagnostic_to_lsp document.text diagnostic))
+
+let publish_diagnostics = fun state ->
+  fun document ->
   let result = analyze_document document in
   let diagnostics = List.map (diagnostic_to_lsp document.text) result.parse_diagnostics
-  @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics in
+  @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics
+  @ typ_diagnostics state document in
   let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
     uri = document.uri;
     version = Some document.version;
@@ -469,14 +514,40 @@ let handle_did_open = fun state ->
   fun payload ->
     match Lsp.notification_of_json Lsp.Text_document_methods.Did_open.notification payload with
     | Error _reason -> ok state []
-    | Ok params ->
-        let document = {
-          uri = params.text_document.uri;
-          version = params.text_document.version;
-          text = params.text_document.text
-        } in
-        let state = upsert_document state document in
-        ok state [ publish_diagnostics document ]
+    | Ok params -> (
+        match find_document state params.text_document.uri with
+        | Some existing ->
+            let typ_session =
+              Typ.Session.update_source_text
+                state.typ_session
+                existing.typ_source_id
+                ~text:params.text_document.text
+            in
+            let document = {
+              uri = params.text_document.uri;
+              version = params.text_document.version;
+              text = params.text_document.text;
+              typ_source_id = existing.typ_source_id
+            } in
+            let state = { state with typ_session } |> fun state -> upsert_document state document in
+            ok state [ publish_diagnostics state document ]
+        | None ->
+            let (typ_session, typ_source_id) =
+              Typ.Session.create_source
+                state.typ_session
+                ~kind:Typ.Source.File
+                ~origin:(typ_source_origin_of_uri params.text_document.uri)
+                ~text:params.text_document.text
+            in
+            let document = {
+              uri = params.text_document.uri;
+              version = params.text_document.version;
+              text = params.text_document.text;
+              typ_source_id
+            } in
+            let state = { state with typ_session } |> fun state -> upsert_document state document in
+            ok state [ publish_diagnostics state document ]
+      )
 
 let handle_did_change = fun state ->
   fun payload ->
@@ -489,9 +560,17 @@ let handle_did_change = fun state ->
             match apply_changes document.text params.content_changes with
             | Error _ -> ok state []
             | Ok text ->
-                let document = { uri = document.uri; version = params.text_document.version; text } in
-                let state = upsert_document state document in
-                ok state [ publish_diagnostics document ]
+                let typ_session =
+                  Typ.Session.update_source_text state.typ_session document.typ_source_id ~text
+                in
+                let document = {
+                  uri = document.uri;
+                  version = params.text_document.version;
+                  text;
+                  typ_source_id = document.typ_source_id
+                } in
+                let state = { state with typ_session } |> fun state -> upsert_document state document in
+                ok state [ publish_diagnostics state document ]
           )
       )
 
@@ -499,9 +578,18 @@ let handle_did_close = fun state ->
   fun payload ->
     match Lsp.notification_of_json Lsp.Text_document_methods.Did_close.notification payload with
     | Error _reason -> ok state []
-    | Ok params ->
-        let state = remove_document state params.text_document.uri in
-        ok state [ clear_diagnostics params.text_document.uri ]
+    | Ok params -> (
+        match find_document state params.text_document.uri with
+        | None ->
+            let state = remove_document state params.text_document.uri in
+            ok state [ clear_diagnostics params.text_document.uri ]
+        | Some document ->
+            let state = {
+              (remove_document state params.text_document.uri) with
+              typ_session = Typ.Session.remove_source state.typ_session document.typ_source_id
+            } in
+            ok state [ clear_diagnostics params.text_document.uri ]
+      )
 
 let handle_notification = fun state ->
   fun request ->
