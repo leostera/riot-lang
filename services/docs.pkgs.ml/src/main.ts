@@ -20,6 +20,7 @@ export interface Env {
 }
 
 const TEXT_CONTENT_TYPE = "text/plain; charset=utf-8";
+const PKGS_WEB_BASE_URL = "https://pkgs.ml";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -42,7 +43,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   const match = matchPackageDocsPath(url.pathname);
 
   if (match === null) {
-    return await env.ASSETS.fetch(request);
+    return redirectToPkgs(url);
   }
 
   if (!url.pathname.endsWith("/") && match.rest.length === 0) {
@@ -62,6 +63,12 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   return await respondWithObject(request, object);
+}
+
+function redirectToPkgs(url: URL): Response {
+  const target = new URL(PKGS_WEB_BASE_URL);
+  target.search = url.search;
+  return Response.redirect(target.toString(), 302);
 }
 
 function matchPackageDocsPath(pathname: string):

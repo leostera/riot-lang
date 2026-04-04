@@ -20,6 +20,7 @@ const breadcrumbBits = release.canonical_locator.split("/");
 const owner = overview?.owner_github_login ?? breadcrumbBits[1] ?? "unknown";
 const ownerAvatarUrl = overview?.owner_github_avatar_url;
 const packageHref = `/p/${document.name}`;
+const docsHref = `https://docs.pkgs.ml/p/${encodeURIComponent(document.name)}/${encodeURIComponent(selectedVersion)}/`;
 
 const installFact = facts.find((fact) => fact.label === "Install");
 const tomlFact = facts.find((fact) => fact.label === "riot.toml");
@@ -66,6 +67,7 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
 
           <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
+            <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
             {
               release.homepage ? (
                 <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
