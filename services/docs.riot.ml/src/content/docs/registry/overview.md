@@ -61,3 +61,23 @@ That means:
 - the package artifact is immutable
 - the sparse index points at the install artifact
 - installers do not need repository-layout knowledge to unpack a package
+
+## What Riot the CLI does here
+
+The normal CLI path is:
+
+1. `riot add` and `riot update` resolve through the sparse index and rewrite
+   `riot.lock`
+2. `riot search` queries `api.pkgs.ml`
+3. `riot publish` uploads a package-root artifact to `api.pkgs.ml`
+4. installed artifacts are fetched from `cdn.pkgs.ml`
+
+That split is intentional: the API owns mutable control-plane actions, while
+the CDN owns the read path for immutable package data.
+
+## Related RFDs
+
+- [RFD0022 Riot Package Registry](/rfds/rfd0022-riot-package-registry/)
+- [RFD0023 Riot Package Index](/rfds/rfd0023-riot-package-index/)
+- [RFD0026 Riot Package Management](/rfds/rfd0026-riot-package-management/)
+- [RFD0028 Local Artifact Publishing](/rfds/rfd0028-local-artifact-publishing/)

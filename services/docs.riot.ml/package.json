@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "sync:rfds": "bun scripts/sync-rfds.mjs",
+    "build": "bun run sync:rfds && astro build",
     "preview": "astro preview",
-    "check": "astro check && tsc --noEmit",
-    "deploy": "astro build && wrangler deploy",
+    "check": "bun run sync:rfds && astro check && tsc --noEmit",
+    "deploy": "bun run build && wrangler deploy",
     "astro": "astro"
   },
   "dependencies": {

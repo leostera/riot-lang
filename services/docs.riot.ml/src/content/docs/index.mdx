@@ -1,37 +1,56 @@
 ---
 title: Riot Docs
-description: Reference and guides for the Riot toolchain, runtime, and package registry.
+description: Guides and reference material for Riot, the opinionated OCaml stack.
 template: splash
 hero:
-  tagline: Documentation for Riot, the opinionated OCaml stack.
+  tagline: One tool, one runtime model, one package story.
   actions:
+    - text: Quickstart
+      link: /start-here/quickstart/
+      icon: right-arrow
     - text: Install Riot
       link: /start-here/installation/
-      icon: right-arrow
+    - text: Publishing and Registry
+      link: /registry/publishing/
+      variant: minimal
     - text: CLI Reference
       link: /reference/cli/
-    - text: Registry Docs
-      link: /registry/overview/
-      variant: minimal
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
 
-Riot brings together a single CLI, a multicore actor runtime, a modern standard
-library, and the `pkgs.ml` registry. These docs cover the stack itself. Package
-API and generated package documentation will live elsewhere.
+Riot is an opinionated stack for building applications in OCaml. It brings
+together a single CLI, a multicore actor runtime, a large standard library, and
+an artifact-native package registry.
+
+This site documents the stack itself:
+
+- how to install and upgrade Riot
+- how to work with the `riot` CLI day to day
+- how package management and publishing work
+- how the runtime, `std`, and the registry fit together
+
+Generated package documentation does not live here. Package docs are reserved
+for `docs.pkgs.ml`.
+
+If you want the deeper design rationale behind the current stack, the
+[RFDs section](/rfds/) mirrors Riot's Requests for Discussion alongside these
+guides.
 
 <CardGrid stagger>
   <Card title="Get started" icon="rocket">
-    Install Riot, understand the overall stack, and get to a running project fast.
+    Install Riot, create a workspace, and get to a running project quickly.
   </Card>
-  <Card title="CLI reference" icon="seti:terminal">
-    Learn the `riot` command surface for building, testing, formatting, publishing, and upgrading.
+  <Card title="A single tool" icon="seti:terminal">
+    Learn how `riot` handles package management, builds, testing, formatting, linting, and upgrades.
   </Card>
-  <Card title="Registry" icon="seti:package">
-    Understand how `pkgs.ml`, `api.pkgs.ml`, and `cdn.pkgs.ml` fit together.
+  <Card title="Modern package management" icon="seti:package">
+    Understand `riot.lock`, `pkgs.ml`, artifact publishing, and the split between the registry API and CDN.
   </Card>
-  <Card title="Architecture" icon="seti:settings">
-    Read the high-level runtime and stack model before diving into package-level docs.
+  <Card title="Runtime and std" icon="seti:settings">
+    Read the high-level stack model before diving into package-level docs.
+  </Card>
+  <Card title="RFDs" icon="seti:book">
+    Read the design record behind Riot's build system, runtime, package manager, registry, and language tooling.
   </Card>
 </CardGrid>

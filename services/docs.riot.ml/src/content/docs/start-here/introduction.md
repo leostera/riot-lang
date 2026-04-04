@@ -3,25 +3,44 @@ title: Introduction
 description: What Riot is, what it includes, and how the stack is divided.
 ---
 
-Riot is an opinionated OCaml stack centered around four pieces:
+Riot is an opinionated OCaml stack for building applications and systems. It is
+designed around one coherent workflow instead of a pile of loosely connected
+tools.
 
-1. `riot`, a single CLI for package management, building, testing, formatting, linting, toolchains, and publishing.
-2. An actor-model runtime for multicore OCaml applications.
-3. A modern standard library aimed at application and systems work.
-4. The `pkgs.ml` registry for discovering, downloading, and publishing packages.
+At a high level, Riot is four things:
+
+1. `riot`, a single CLI for package management, builds, testing, formatting,
+   linting, toolchains, publishing, and upgrades.
+2. A multicore-ready actor-model runtime for long-running applications.
+3. `std`, a batteries-included standard library for real systems work.
+4. `pkgs.ml`, the package registry and distribution surface for Riot packages.
 
 Riot is intentionally integrated. The goal is not to present a menu of
-interchangeable defaults. The goal is to give you one coherent workflow from
-creating a project to publishing a package.
+interchangeable defaults. The goal is to give you a workflow from creating a
+workspace to publishing a package without first assembling your own stack.
+
+## The central idea
+
+Riot leans on a few strong opinions:
+
+- one tool instead of many wrappers
+- one lockfile story through `riot.lock`
+- one package story through `pkgs.ml`
+- one runtime model centered on actors, messages, and supervision
+- one standard library with a clear systems-programming bias
+
+That is why the landing page describes Riot as "my stack". It is not trying to
+be every possible OCaml workflow. It is trying to be a cohesive one.
 
 ## What these docs cover
 
 This site documents the Riot stack itself:
 
-- how to install Riot
-- how the `riot` command surface is organized
-- how the registry works at the stack level
-- how the runtime and broader stack fit together
+- how to install Riot and get moving quickly
+- how the `riot` CLI is organized
+- how package management, lockfiles, and publishing work
+- how the registry is split across `pkgs.ml`, `api.pkgs.ml`, and `cdn.pkgs.ml`
+- how the runtime, `std`, and the stack fit together
 
 This site does **not** host generated package documentation. Package docs will
 be served separately from `docs.pkgs.ml`.
@@ -33,3 +52,9 @@ be served separately from `docs.pkgs.ml`.
 - `api.pkgs.ml`: registry control-plane API
 - `cdn.pkgs.ml`: sparse index and immutable artifact downloads
 - `docs.pkgs.ml`: generated package documentation surface
+
+## Read next
+
+- [Installation](/start-here/installation/) for the install and upgrade flow
+- [Quickstart](/start-here/quickstart/) for the shortest path to a running app
+- [CLI Overview](/reference/cli/) for the shape of the tool

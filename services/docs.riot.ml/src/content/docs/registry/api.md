@@ -3,7 +3,7 @@ title: API and Sparse Index
 description: Where to find the registry API docs and how clients should approach the index.
 ---
 
-For human-facing registry API docs, start with:
+For human-facing registry API docs and schemas, start with:
 
 - `https://pkgs.ml/api`
 - `https://pkgs.ml/llms.txt`
@@ -30,6 +30,8 @@ Use `cdn.pkgs.ml` for:
 - `index/v1/config.json`
 - sparse package shard documents
 - immutable package artifacts
+- Riot release metadata and binary downloads
+- OCaml toolchain downloads
 
 ## Sparse index flow
 
@@ -47,3 +49,9 @@ Use `cdn.pkgs.ml` for:
 
 The current public schema docs for these endpoints are maintained on
 `pkgs.ml/api`.
+
+## Generated package docs
+
+Generated package documentation belongs on `docs.pkgs.ml`, not on this site.
+Use this site for stack-level docs, and use `docs.pkgs.ml` for package API
+docs once a package has generated documentation available.
