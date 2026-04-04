@@ -729,6 +729,25 @@ export async function readPackageDownloadsDocument(
   const startDate = startOfUtcDay(addUtcDays(new Date(), -(windowDays - 1)));
   const startIso = startDate.toISOString();
   const bucket = sql<string>`substr(${packageDownloads.downloadedAt}, 1, 10)`;
+
+  const versionBucketRows = await database
+    .select({
+      date: bucket,
+      version: packageDownloads.packageVersion,
+      count: sql<number>`count(*)`,
+    })
+    .from(packageDownloads)
+    .where(and(eq(packageDownloads.packageName, packageName), gte(packageDownloads.downloadedAt, startIso)))
+    .groupBy(bucket, packageDownloads.packageVersion)
+    .orderBy(asc(bucket), asc(packageDownloads.packageVersion));
+  const versionDailyCounts = new Map<string, Map<string, number>>();
+  for (const row of versionBucketRows) {
+    const day = row.date;
+    const perDay = versionDailyCounts.get(day) ?? new Map<string, number>();
+    perDay.set(row.version, toCount(row.count));
+    versionDailyCounts.set(day, perDay);
+  }
+
   const dailyRows = await database
     .select({
       date: bucket,
@@ -739,6 +758,48 @@ export async function readPackageDownloadsDocument(
     .groupBy(bucket)
     .orderBy(asc(bucket));
   const dailyCounts = toDateCountMap(dailyRows);
+  const sortedReleases = [...releaseRows].sort((left, right) => compareVersionRecordsDesc(left, right));
+  const visibleVersions = sortedReleases.slice(0, 5).map((release) => release.package_version);
+  const visibleVersionSet = new Set(visibleVersions);
+  const dayKeys = [...Array(windowDays)].map((_, index) => addUtcDays(startDate, index).toISOString().slice(0, 10));
+  const stackedDownloads = visibleVersions.map((version) => ({
+    key: version,
+    label: version,
+    is_latest: version === latestVersion,
+    is_other: false,
+    total_downloads: versionCounts.get(version) ?? 0,
+    daily_downloads: dayKeys.map((day) => ({
+      date: day,
+      download_count: versionDailyCounts.get(day)?.get(version) ?? 0,
+    })),
+  }));
+  const otherDailyDownloads = dayKeys.map((day) => {
+    const perDay = versionDailyCounts.get(day);
+    let count = 0;
+    if (perDay !== undefined) {
+      for (const [version, value] of perDay.entries()) {
+        if (!visibleVersionSet.has(version)) {
+          count += value;
+        }
+      }
+    }
+
+    return {
+      date: day,
+      download_count: count,
+    };
+  });
+  const otherTotalDownloads = otherDailyDownloads.reduce((total, point) => total + point.download_count, 0);
+  if (otherTotalDownloads > 0) {
+    stackedDownloads.push({
+      key: "other",
+      label: "Other",
+      is_latest: false,
+      is_other: true,
+      total_downloads: otherTotalDownloads,
+      daily_downloads: otherDailyDownloads,
+    });
+  }
 
   return {
     schema_version: 1,
@@ -754,8 +815,8 @@ export async function readPackageDownloadsDocument(
         download_count: dailyCounts.get(day) ?? 0,
       };
     }),
-    version_downloads: [...releaseRows]
-      .sort((left, right) => compareVersionRecordsDesc(left, right))
+    stacked_downloads: stackedDownloads,
+    version_downloads: [...sortedReleases]
       .map((release) => ({
         version: release.package_version,
         published_at: release.published_at,

@@ -58,7 +58,7 @@ const recentEvents = events.slice(0, 12);
       <CardHeader className="border-b border-border">
         <CardTitle className="text-base">Installs</CardTitle>
         <CardDescription>
-          Total installs for {document.name} and the version-level breakdown.
+          Downloads over the last 30 days, stacked by release.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 py-3">
@@ -75,14 +75,23 @@ const recentEvents = events.slice(0, 12);
           downloads ? (
             <PackageDownloadsChart
               client:load
-              dailyDownloads={downloads.daily_downloads}
-              versionDownloads={downloads.version_downloads}
+              stackedDownloads={downloads.stacked_downloads}
             />
           ) : (
             <p class="text-base text-muted-foreground">No install data has been recorded for this package yet.</p>
           )
         }
+      </CardContent>
+    </Card>
 
+    <Card size="sm" className="rounded-md shadow-none">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-base">Package status</CardTitle>
+        <CardDescription>
+          Submission, indexing, and post-publish processing milestones for this release.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="py-3">
         <PackagePipelineTimeline events={events} />
       </CardContent>
     </Card>

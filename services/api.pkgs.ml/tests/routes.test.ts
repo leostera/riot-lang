@@ -25,6 +25,7 @@ describe("riot package registry routes", () => {
       routes: {
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_readme: "/v1/views/packages/<package-name>/readme?version=<version>",
         views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -57,6 +58,7 @@ describe("riot package registry routes", () => {
         riot_latest_metadata: "/api/v1/riot/latest.json",
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_readme: "/api/v1/views/packages/<package-name>/readme?version=<version>",
         views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -512,6 +514,38 @@ describe("riot package registry routes", () => {
     expect(indexedQueue.messages).toHaveLength(1);
   });
 
+  test("package readme view exposes the versioned README markdown from the stored artifact", async () => {
+    const { env } = makeEnv();
+    const publishResponse = await publishArtifact(
+      env,
+      await makePackageArtifact({
+        packageName: "std",
+        packageVersion: "0.1.0",
+        description: "The Riot standard library",
+        license: "Apache-2.0",
+        files: {
+          "README.md": "# std\n\nThe Riot standard library.\n",
+          "src/std.ml": "let hello = \"riot\"\n",
+        },
+      }),
+    );
+    expect(publishResponse.status).toBe(200);
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/views/packages/std/readme?version=0.1.0"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toMatchObject({
+      package_name: "std",
+      package_version: "0.1.0",
+      readme_path: "README.md",
+      readme_markdown: "# std\n\nThe Riot standard library.\n",
+    });
+  });
+
   test("artifact publish short-circuits duplicate package versions for the same artifact", async () => {
     const { env, db, queue, indexedQueue } = makeEnv();
     const archive = await makePackageArtifact({
@@ -853,6 +887,22 @@ describe("riot package registry routes", () => {
       package_name: "kernel",
       latest_version: "0.1.0",
       total_downloads: 3,
+      stacked_downloads: [
+        {
+          key: "0.1.0",
+          label: "0.1.0",
+          total_downloads: 2,
+          is_latest: true,
+          is_other: false,
+        },
+        {
+          key: "0.0.1",
+          label: "0.0.1",
+          total_downloads: 1,
+          is_latest: false,
+          is_other: false,
+        },
+      ],
       version_downloads: [
         {
           version: "0.1.0",

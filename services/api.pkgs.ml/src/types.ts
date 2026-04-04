@@ -434,6 +434,15 @@ export interface PackageDailyDownloadPoint {
   download_count: number;
 }
 
+export interface PackageStackedDownloadSeries {
+  key: string;
+  label: string;
+  is_latest: boolean;
+  is_other: boolean;
+  total_downloads: number;
+  daily_downloads: PackageDailyDownloadPoint[];
+}
+
 export interface PackageVersionDownloadPoint {
   version: string;
   published_at: string;
@@ -449,7 +458,17 @@ export interface PackageDownloadsDocument {
   window_days: number;
   total_downloads: number;
   daily_downloads: PackageDailyDownloadPoint[];
+  stacked_downloads: PackageStackedDownloadSeries[];
   version_downloads: PackageVersionDownloadPoint[];
+}
+
+export interface PackageReadmeDocument {
+  schema_version: 1;
+  package_name: string;
+  package_version: string;
+  source_key: string;
+  readme_path: string;
+  readme_markdown: string;
 }
 
 export interface WebPackageListItem {

@@ -27,7 +27,9 @@ import {
   readRecentPackagesDocument,
   readRegistryStatsDashboardDocument,
   readRegistryStatsSummaryDocument,
+  readPublishedRelease,
 } from "./metadata-db.ts";
+import { readFirstArchiveFileFromTarGz } from "./archive.ts";
 import { searchPackages } from "./search-db.ts";
 import {
   artifactManifestKey,
@@ -86,6 +88,7 @@ async function routeRequest(
       routes: {
         publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
+        views_package_readme: "/v1/views/packages/<package-name>/readme?version=<version>",
         views_package_downloads: "/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -118,6 +121,7 @@ async function routeRequest(
         riot_latest_metadata: "/api/v1/riot/latest.json",
         riot_release_metadata: "/api/v1/riot/riot-<version>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
+        views_package_readme: "/api/v1/views/packages/<package-name>/readme?version=<version>",
         views_package_downloads: "/api/v1/views/packages/<package-name>/downloads",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -255,7 +259,7 @@ async function routeRequest(
       return methodNotAllowed(["GET"]);
     }
 
-    return await handleViewDocument(env, viewRoute);
+    return await handleViewDocument(env, url, viewRoute);
   }
 
   if (matchesPath(path, "v1/me/tokens", "api/v1/me/tokens")) {
@@ -503,6 +507,7 @@ async function handleListTokens(request: Request, env: Env): Promise<Response> {
 
 async function handleViewDocument(
   env: Env,
+  url: URL,
   viewRoute: ParsedViewRoute,
 ): Promise<Response> {
   switch (viewRoute.kind) {
@@ -510,6 +515,18 @@ async function handleViewDocument(
       const document = await readPackageOverviewDocument(env.SEARCH_DB, viewRoute.packageName);
       if (document === null) {
         throw new HttpError(404, "view_not_found", "Package overview was not found.");
+      }
+
+      return json(document);
+    }
+    case "package_readme": {
+      const document = await readPackageReadmeDocument(
+        env,
+        viewRoute.packageName,
+        url.searchParams.get("version") ?? undefined,
+      );
+      if (document === null) {
+        throw new HttpError(404, "view_not_found", "Package README was not found.");
       }
 
       return json(document);
@@ -695,6 +712,7 @@ interface ParsedPackageEventsRoute {
 
 type ParsedViewRoute =
   | { kind: "package_overview"; packageName: string }
+  | { kind: "package_readme"; packageName: string }
   | { kind: "package_downloads"; packageName: string }
   | { kind: "package_relations"; packageName: string }
   | { kind: "recent_packages" }
@@ -751,6 +769,14 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
     };
   }
 
+  const packageReadmeMatch = normalizedPath.match(/^packages\/([^/]+)\/readme$/);
+  if (packageReadmeMatch !== null) {
+    return {
+      kind: "package_readme",
+      packageName: decodeURIComponent(packageReadmeMatch[1] ?? ""),
+    };
+  }
+
   const packageDownloadsMatch = normalizedPath.match(/^packages\/([^/]+)\/downloads$/);
   if (packageDownloadsMatch !== null) {
     return {
@@ -776,6 +802,72 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
   }
 
   throw new HttpError(404, "not_found", "View route does not exist.");
+}
+
+async function readPackageReadmeDocument(
+  env: Env,
+  packageName: string,
+  version?: string,
+): Promise<{
+  schema_version: 1;
+  package_name: string;
+  package_version: string;
+  source_key: string;
+  readme_path: string;
+  readme_markdown: string;
+} | null> {
+  const release =
+    version === undefined
+      ? (await readPackageOverviewDocument(env.SEARCH_DB, packageName))
+      : null;
+
+  const resolvedRelease =
+    version === undefined
+      ? release === null
+        ? null
+        : {
+            package_version: release.latest_version,
+            source_key: release.source_key,
+          }
+      : await readPublishedRelease(env.SEARCH_DB, packageName, version);
+
+  if (resolvedRelease === null) {
+    return null;
+  }
+
+  const sourceKey = "source_key" in resolvedRelease ? resolvedRelease.source_key : resolvedRelease.source_archive_key;
+  const packageVersion = resolvedRelease.package_version;
+  const object = await env.ML_PKGS_CDN.get(sourceKey);
+  if (object === null) {
+    return null;
+  }
+
+  const archiveBytes = new Uint8Array(await object.arrayBuffer());
+  const readme = await readFirstArchiveFileFromTarGz(archiveBytes, [
+    "README.md",
+    "README.markdown",
+    "README.mdown",
+    "README.txt",
+    "README",
+    "readme.md",
+    "readme.markdown",
+    "readme.mdown",
+    "readme.txt",
+    "readme",
+  ]);
+
+  if (readme === null) {
+    return null;
+  }
+
+  return {
+    schema_version: 1,
+    package_name: packageName,
+    package_version: packageVersion,
+    source_key: sourceKey,
+    readme_path: readme.path,
+    readme_markdown: readme.contents,
+  };
 }
 
 function resolveIndexStorageKey(path: string, config: ReturnType<typeof getConfig>): string | null {

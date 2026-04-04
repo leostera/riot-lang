@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libzstd-dev \
     m4 \
+    musl-tools \
     pkg-config \
     rsync \
     uuid-dev \

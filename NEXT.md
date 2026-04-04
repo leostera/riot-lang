@@ -22,6 +22,8 @@
 
 # Next
 
+* `riot toolchain list-available` queries cdn.pkgs.ml/ocaml/ to get all the available toolchain versions
+
 * support single-package / non-workspace layouts
 
 * docs.pkgs.ml -- setup as worker that forwards static sites deployed to cdn.pkgs.ml/docs/pkg/vsn/...

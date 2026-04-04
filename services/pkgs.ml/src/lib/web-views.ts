@@ -4,6 +4,7 @@ import type {
   OwnerPackagesDocument,
   PackageDownloadsDocument,
   PackageOverviewDocument,
+  PackageReadmeDocument,
   PackageRelationsDocument,
   PopularPackagesDocument,
   RegistryServiceRootDocument,
@@ -55,6 +56,22 @@ export async function fetchPackageOverview(packageName: string): Promise<Package
   return await fetchJsonOrNull<PackageOverviewDocument>(
     viewUrl(`packages/${encodeURIComponent(packageName)}/overview`),
   );
+}
+
+export async function fetchPackageReadme(
+  packageName: string,
+  options?: { version?: string },
+): Promise<PackageReadmeDocument | null> {
+  const params = new URLSearchParams();
+  if (options?.version !== undefined) {
+    params.set("version", options.version);
+  }
+
+  const path = `packages/${encodeURIComponent(packageName)}/readme${
+    params.size > 0 ? `?${params.toString()}` : ""
+  }`;
+
+  return await fetchJsonOrNull<PackageReadmeDocument>(viewUrl(path));
 }
 
 export async function fetchPackageDownloads(packageName: string): Promise<PackageDownloadsDocument | null> {

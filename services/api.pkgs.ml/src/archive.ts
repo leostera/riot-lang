@@ -7,6 +7,34 @@ export async function readArchiveFileFromTarGz(
   return await readFileFromTarGz(archiveBytes, archiveRelativePath);
 }
 
+export async function readFirstArchiveFileFromTarGz(
+  archiveBytes: Uint8Array<ArrayBuffer>,
+  archiveRelativePaths: string[],
+): Promise<{ path: string; contents: string } | null> {
+  const tarBytes = await gunzip(archiveBytes);
+  const candidates = new Set<string>();
+
+  for (const path of archiveRelativePaths) {
+    candidates.add(normalizeArchivePath(path).toLowerCase());
+  }
+
+  for (const entry of iterateTarEntries(tarBytes)) {
+    if (!isRegularFileEntry(entry.typeFlag)) {
+      continue;
+    }
+
+    const normalized = normalizeArchivePath(entry.name);
+    if (candidates.has(normalized.toLowerCase())) {
+      return {
+        path: normalized,
+        contents: new TextDecoder().decode(entry.body),
+      };
+    }
+  }
+
+  return null;
+}
+
 async function gunzip(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   const stream = new Response(bytes).body;
   if (stream === null) {
