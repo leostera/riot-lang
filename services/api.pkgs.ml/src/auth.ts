@@ -5,17 +5,20 @@ import { getConfig, getGitHubApiBaseUrl } from "./config.ts";
 import { HttpError } from "./errors.ts";
 import {
   deleteSessionRecord,
+  deleteSessionHandoffRecord,
   deleteOAuthStateRecord,
   readApiTokenLookupRecord,
   readApiTokenRecord,
   readOAuthStateRecord,
   readSessionRecord,
+  readSessionHandoffRecord,
   readUserLoginRecord,
   readUserRecord,
   writeApiTokenLookupRecord,
   writeApiTokenRecord,
   writeOAuthStateRecord,
   writeSessionRecord,
+  writeSessionHandoffRecord,
   writeUserLoginRecord,
   writeUserRecord,
 } from "./metadata-db.ts";
@@ -29,12 +32,14 @@ import type {
   Env,
   OAuthStateRecord,
   SessionRecord,
+  SessionHandoffRecord,
   UserRecord,
 } from "./types.ts";
 
 const SESSION_COOKIE_NAME = "pkgs_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const SESSION_HANDOFF_TTL_MS = 5 * 60 * 1000;
 const API_TOKEN_PREFIX = "sk-";
 
 interface GitHubUserProfile {
@@ -123,6 +128,43 @@ export async function logoutSession(
   }
 
   await deleteSessionRecord(env.SEARCH_DB, sessionId);
+}
+
+export async function createSessionHandoff(
+  env: Env,
+  session: SessionRecord,
+  returnTo: string,
+): Promise<SessionHandoffRecord> {
+  const createdAt = new Date();
+  const record: SessionHandoffRecord = {
+    handoff_id: crypto.randomUUID(),
+    session_id: session.session_id,
+    return_to: returnTo,
+    created_at: createdAt.toISOString(),
+    expires_at: new Date(createdAt.getTime() + SESSION_HANDOFF_TTL_MS).toISOString(),
+  };
+
+  await writeSessionHandoffRecord(env.SEARCH_DB, record);
+  return record;
+}
+
+export async function consumeSessionHandoff(
+  env: Env,
+  handoffId: string,
+): Promise<SessionHandoffRecord | null> {
+  const record = await readSessionHandoffRecord(env.SEARCH_DB, handoffId);
+  if (record === null) {
+    return null;
+  }
+
+  await deleteSessionHandoffRecord(env.SEARCH_DB, handoffId);
+
+  const expiresAt = new Date(record.expires_at);
+  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+    return null;
+  }
+
+  return record;
 }
 
 export function buildSessionCookie(env: Env, session: SessionRecord): string {
@@ -441,7 +483,9 @@ async function createSession(env: Env, user: UserRecord): Promise<SessionRecord>
 }
 
 export function resolveReturnTo(env: Env, rawReturnTo: string | null): string {
-  const baseUrl = new URL(getConfig(env).pkgsWebBaseUrl);
+  const config = getConfig(env);
+  const baseUrl = new URL(config.pkgsWebBaseUrl);
+  const playBaseUrl = new URL(config.playWebBaseUrl);
 
   if (rawReturnTo === null || rawReturnTo.trim().length === 0) {
     return baseUrl.toString();
@@ -454,7 +498,7 @@ export function resolveReturnTo(env: Env, rawReturnTo: string | null): string {
 
   try {
     const target = new URL(trimmed);
-    if (target.origin !== baseUrl.origin) {
+    if (target.origin !== baseUrl.origin && target.origin !== playBaseUrl.origin) {
       return baseUrl.toString();
     }
 
@@ -462,6 +506,20 @@ export function resolveReturnTo(env: Env, rawReturnTo: string | null): string {
   } catch {
     return baseUrl.toString();
   }
+}
+
+export function isPlayReturnTo(env: Env, returnTo: string): boolean {
+  try {
+    return new URL(returnTo).origin === new URL(getConfig(env).playWebBaseUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+export function buildPlaySessionCompletionUrl(env: Env, handoffId: string): string {
+  const url = new URL("/v1/auth/complete", getConfig(env).playWebBaseUrl);
+  url.searchParams.set("handoff", handoffId);
+  return url.toString();
 }
 
 function readSessionIdFromCookies(request: Request): string | null {

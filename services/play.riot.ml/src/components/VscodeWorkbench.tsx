@@ -7,6 +7,7 @@ import * as monaco from "monaco-editor";
 import * as vscode from "vscode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ensureRiotLanguageExtension } from "@/lib/riot-language-extension.ts";
+import { ensureTomlLanguage } from "@/lib/toml-language.ts";
 import type { WorkspaceFile } from "@/lib/workspace.ts";
 
 interface Props {
@@ -85,6 +86,7 @@ export default function VscodeWorkbench({ files, activePath }: Props) {
 
     async function openActiveFile() {
       await ensureWorkbench(container!);
+      ensureTomlLanguage();
       await ensureRiotLanguageExtension();
       if (cancelled) {
         return;

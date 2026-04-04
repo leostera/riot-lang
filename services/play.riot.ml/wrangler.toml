@@ -4,6 +4,15 @@ compatibility_date = "2026-04-04"
 compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
 
+[vars]
+AUTH_COOKIE_DOMAIN = "riot.ml"
+PKGS_WEB_BASE_URL = "https://play.riot.ml"
+
+[[d1_databases]]
+binding = "SEARCH_DB"
+database_name = "riot-registry"
+database_id = "3a482dd8-a28f-4f87-a143-46153d492819"
+
 [[routes]]
 pattern = "play.riot.ml"
 custom_domain = true

@@ -9,7 +9,6 @@ const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
 const requestedTail = Astro.params.example ?? "";
 const requestedPath = examplePathFromRoute(requestedTail);
-
 const [overview, examples] = await Promise.all([
   fetchPackageOverview(packageName),
   fetchPackageExamples(packageName, { version }),

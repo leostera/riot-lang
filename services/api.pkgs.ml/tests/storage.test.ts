@@ -13,6 +13,7 @@ describe("registry storage", () => {
       viewsBasePath: "views/v1",
       authCookieDomain: "pkgs.ml",
       pkgsWebBaseUrl: "https://pkgs.ml",
+      playWebBaseUrl: "https://play.riot.ml",
     };
 
     expect(packageIndexKey(config, "x")).toBe("index/v1/1/x.json");

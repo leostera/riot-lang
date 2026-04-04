@@ -25,6 +25,7 @@ import type {
   RecentPackagesDocument,
   RegistryEventRecord,
   SessionRecord,
+  SessionHandoffRecord,
   UserLoginRecord,
   UserRecord,
 } from "./types.ts";
@@ -40,6 +41,7 @@ import {
   packageClaims,
   publishedReleases,
   registryEvents,
+  sessionHandoffs,
   sessions,
   userLogins,
   users,
@@ -234,6 +236,56 @@ export async function writeSessionRecord(
 export async function deleteSessionRecord(db: D1Database, sessionId: string): Promise<void> {
   const database = registryDb(db);
   await database.delete(sessions).where(eq(sessions.sessionId, sessionId));
+}
+
+export async function readSessionHandoffRecord(
+  db: D1Database,
+  handoffId: string,
+): Promise<SessionHandoffRecord | null> {
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      handoff_id: sessionHandoffs.handoffId,
+      session_id: sessionHandoffs.sessionId,
+      return_to: sessionHandoffs.returnTo,
+      created_at: sessionHandoffs.createdAt,
+      expires_at: sessionHandoffs.expiresAt,
+    })
+    .from(sessionHandoffs)
+    .where(eq(sessionHandoffs.handoffId, handoffId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function writeSessionHandoffRecord(
+  db: D1Database,
+  record: SessionHandoffRecord,
+): Promise<void> {
+  const database = registryDb(db);
+  await database
+    .insert(sessionHandoffs)
+    .values({
+      handoffId: record.handoff_id,
+      sessionId: record.session_id,
+      returnTo: record.return_to,
+      createdAt: record.created_at,
+      expiresAt: record.expires_at,
+    })
+    .onConflictDoUpdate({
+      target: sessionHandoffs.handoffId,
+      set: {
+        sessionId: record.session_id,
+        returnTo: record.return_to,
+        createdAt: record.created_at,
+        expiresAt: record.expires_at,
+      },
+    });
+}
+
+export async function deleteSessionHandoffRecord(db: D1Database, handoffId: string): Promise<void> {
+  const database = registryDb(db);
+  await database.delete(sessionHandoffs).where(eq(sessionHandoffs.handoffId, handoffId));
 }
 
 export async function readApiTokenRecord(

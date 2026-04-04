@@ -1,9 +1,12 @@
 import {
   buildClearedSessionCookie,
+  buildPlaySessionCompletionUrl,
   buildSessionCookie,
   completeGitHubAuthorization,
+  createSessionHandoff,
   createGitHubAuthorizationUrl,
   createPublishApiToken,
+  isPlayReturnTo,
   logoutSession,
   readAuthenticatedSession,
   requireAuthenticatedSession,
@@ -213,6 +216,11 @@ async function routeRequest(
     }
 
     const { session, returnTo } = await completeGitHubAuthorization(env, url, code, state);
+    if (isPlayReturnTo(env, returnTo)) {
+      const handoff = await createSessionHandoff(env, session, returnTo);
+      return redirect(buildPlaySessionCompletionUrl(env, handoff.handoff_id));
+    }
+
     return redirect(returnTo, {
       "set-cookie": buildSessionCookie(env, session),
     });

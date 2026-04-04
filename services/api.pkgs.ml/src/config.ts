@@ -9,6 +9,7 @@ export function getConfig(env: Env): RegistryConfig {
     viewsBasePath: trimSlashes(env.VIEWS_BASE_PATH ?? "views/v1"),
     authCookieDomain: trimLeadingDot(env.AUTH_COOKIE_DOMAIN ?? "pkgs.ml"),
     pkgsWebBaseUrl: trimTrailingSlash(env.PKGS_WEB_BASE_URL ?? "https://pkgs.ml"),
+    playWebBaseUrl: trimTrailingSlash(env.PLAY_WEB_BASE_URL ?? "https://play.riot.ml"),
   };
 }
 

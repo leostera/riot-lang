@@ -8,7 +8,6 @@ import { buildExampleWorkspace } from "@/lib/workspace.ts";
 const packageName = Astro.params.pkg ?? "";
 const requestedTail = Astro.params.example ?? "";
 const requestedPath = examplePathFromRoute(requestedTail);
-
 const [overview, examples] = await Promise.all([
   fetchPackageOverview(packageName),
   fetchPackageExamples(packageName),

@@ -40,6 +40,21 @@ export const sessions = sqliteTable(
   }),
 );
 
+export const sessionHandoffs = sqliteTable(
+  "session_handoffs",
+  {
+    handoffId: text("handoff_id").primaryKey(),
+    sessionId: text("session_id").notNull(),
+    returnTo: text("return_to").notNull(),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+  },
+  (table) => ({
+    sessionIdx: index("idx_session_handoffs_session_id").on(table.sessionId),
+    expiresIdx: index("idx_session_handoffs_expires_at").on(table.expiresAt),
+  }),
+);
+
 export const apiTokens = sqliteTable(
   "api_tokens",
   {

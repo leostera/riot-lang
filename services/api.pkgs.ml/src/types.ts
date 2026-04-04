@@ -17,6 +17,7 @@ export interface Env {
   ROOT_AUTH_TOKEN?: string;
   AUTH_COOKIE_DOMAIN?: string;
   PKGS_WEB_BASE_URL?: string;
+  PLAY_WEB_BASE_URL?: string;
   D1_REST_API_TOKEN?: string;
   D1_BACKUP_ACCOUNT_ID?: string;
   D1_BACKUP_DATABASE_ID?: string;
@@ -32,6 +33,7 @@ export interface RegistryConfig {
   viewsBasePath: string;
   authCookieDomain: string;
   pkgsWebBaseUrl: string;
+  playWebBaseUrl: string;
 }
 
 export type IndexConfig = RegistryConfig;
@@ -96,6 +98,14 @@ export interface SessionRecord {
   session_id: string;
   user_id: string;
   github_login: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface SessionHandoffRecord {
+  handoff_id: string;
+  session_id: string;
+  return_to: string;
   created_at: string;
   expires_at: string;
 }
