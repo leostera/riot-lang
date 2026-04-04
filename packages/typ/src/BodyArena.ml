@@ -57,14 +57,9 @@ type t = {
   bindings: binding list;
 }
 
-let empty = {
-  patterns = [];
-  expressions = [];
-  bindings = [];
-}
+let empty = { patterns = []; expressions = []; bindings = [] }
 
-let of_lists = fun ~patterns ~expressions ~bindings ->
-  { patterns; expressions; bindings }
+let of_lists = fun ~patterns ~expressions ~bindings -> { patterns; expressions; bindings }
 
 let patterns = fun arena -> arena.patterns
 
@@ -73,18 +68,24 @@ let expressions = fun arena -> arena.expressions
 let bindings = fun arena -> arena.bindings
 
 let find_pattern = fun arena pat_id ->
-  List.find_opt (fun (node: pattern_node) -> PatId.equal node.pat_id pat_id) arena.patterns
+  List.find_opt
+    (fun (node: pattern_node) ->
+      PatId.equal node.pat_id pat_id)
+    arena.patterns
 
 let find_expr = fun arena expr_id ->
-  List.find_opt (fun (node: expr_node) -> ExprId.equal node.expr_id expr_id) arena.expressions
+  List.find_opt
+    (fun (node: expr_node) ->
+      ExprId.equal node.expr_id expr_id)
+    arena.expressions
 
 let find_binding = fun arena binding_id ->
-  List.find_opt (fun (binding: binding) -> BindingId.equal binding.binding_id binding_id) arena.bindings
+  List.find_opt
+    (fun (binding: binding) ->
+      BindingId.equal binding.binding_id binding_id)
+    arena.bindings
 
-let render_ids = fun render ids ->
-  ids
-  |> List.map render
-  |> String.concat ", "
+let render_ids = fun render ids -> ids |> List.map render |> String.concat ", "
 
 let render_pattern_desc = function
   | PVar name -> "var " ^ name
@@ -97,12 +98,18 @@ let render_pattern_desc = function
   | PUnsupported summary -> "unsupported(" ^ summary ^ ")"
 
 let render_expr_desc = function
-  | EVar name -> "var " ^ name
-  | EInt digits -> "int " ^ digits
-  | EBool value -> "bool " ^ Bool.to_string value
-  | EString value -> "string \"" ^ String.escaped value ^ "\""
-  | EUnit -> "unit"
-  | ETuple elements -> "tuple [" ^ render_ids ExprId.to_string elements ^ "]"
+  | EVar name ->
+      "var " ^ name
+  | EInt digits ->
+      "int " ^ digits
+  | EBool value ->
+      "bool " ^ Bool.to_string value
+  | EString value ->
+      "string \"" ^ String.escaped value ^ "\""
+  | EUnit ->
+      "unit"
+  | ETuple elements ->
+      "tuple [" ^ render_ids ExprId.to_string elements ^ "]"
   | EFun (parameters, body_id) ->
       "fun [" ^ render_ids PatId.to_string parameters ^ "] -> " ^ ExprId.to_string body_id
   | EApply (callee_id, arguments) ->
@@ -117,15 +124,16 @@ let render_expr_desc = function
       ^ " else "
       ^ ExprId.to_string else_id
   | EMatch (scrutinee_id, cases) ->
-      let cases_text =
-        cases
-        |> List.map (fun (case: match_case) ->
+      let cases_text = cases
+      |> List.map
+        (fun (case: match_case) ->
           "(" ^ PatId.to_string case.pattern_id ^ " -> " ^ ExprId.to_string case.body_id ^ ")")
-        |> String.concat ", "
-      in
+      |> String.concat ", " in
       "match " ^ ExprId.to_string scrutinee_id ^ " with [" ^ cases_text ^ "]"
-  | EUnsupported summary -> "unsupported(" ^ summary ^ ")"
-  | EHole summary -> "hole(" ^ summary ^ ")"
+  | EUnsupported summary ->
+      "unsupported(" ^ summary ^ ")"
+  | EHole summary ->
+      "hole(" ^ summary ^ ")"
 
 let render_binding = fun (binding: binding) ->
   let name =
@@ -145,25 +153,35 @@ let render_binding = fun (binding: binding) ->
   ^ Bool.to_string binding.recursive
 
 let pattern_desc_to_json = function
-  | PVar name ->
-      Data.Json.Object [ ("tag", Data.Json.String "var"); ("name", Data.Json.String name) ]
-  | PWildcard ->
-      Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
-  | PInt digits ->
-      Data.Json.Object [ ("tag", Data.Json.String "int"); ("digits", Data.Json.String digits) ]
-  | PBool value ->
-      Data.Json.Object [ ("tag", Data.Json.String "bool"); ("value", Data.Json.Bool value) ]
-  | PString value ->
-      Data.Json.Object [ ("tag", Data.Json.String "string"); ("value", Data.Json.String value) ]
-  | PUnit ->
-      Data.Json.Object [ ("tag", Data.Json.String "unit") ]
-  | PTuple elements ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "tuple");
-        ("elements", Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) elements));
-      ]
-  | PUnsupported summary ->
-      Data.Json.Object [ ("tag", Data.Json.String "unsupported"); ("summary", Data.Json.String summary) ]
+  | PVar name -> Data.Json.Object [
+    ("tag", Data.Json.String "var");
+    ("name", Data.Json.String name)
+  ]
+  | PWildcard -> Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
+  | PInt digits -> Data.Json.Object [
+    ("tag", Data.Json.String "int");
+    ("digits", Data.Json.String digits)
+  ]
+  | PBool value -> Data.Json.Object [
+    ("tag", Data.Json.String "bool");
+    ("value", Data.Json.Bool value)
+  ]
+  | PString value -> Data.Json.Object [
+    ("tag", Data.Json.String "string");
+    ("value", Data.Json.String value)
+  ]
+  | PUnit -> Data.Json.Object [ ("tag", Data.Json.String "unit") ]
+  | PTuple elements -> Data.Json.Object [
+    ("tag", Data.Json.String "tuple");
+    (
+      "elements",
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) elements)
+    );
+  ]
+  | PUnsupported summary -> Data.Json.Object [
+    ("tag", Data.Json.String "unsupported");
+    ("summary", Data.Json.String summary)
+  ]
 
 let match_case_to_json = fun (case: match_case) ->
   Data.Json.Object [
@@ -172,56 +190,73 @@ let match_case_to_json = fun (case: match_case) ->
   ]
 
 let expr_desc_to_json = function
-  | EVar name ->
-      Data.Json.Object [ ("tag", Data.Json.String "var"); ("name", Data.Json.String name) ]
-  | EInt digits ->
-      Data.Json.Object [ ("tag", Data.Json.String "int"); ("digits", Data.Json.String digits) ]
-  | EBool value ->
-      Data.Json.Object [ ("tag", Data.Json.String "bool"); ("value", Data.Json.Bool value) ]
-  | EString value ->
-      Data.Json.Object [ ("tag", Data.Json.String "string"); ("value", Data.Json.String value) ]
-  | EUnit ->
-      Data.Json.Object [ ("tag", Data.Json.String "unit") ]
-  | ETuple elements ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "tuple");
-        ("elements", Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements));
-      ]
-  | EFun (parameters, body_id) ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "fun");
-        ("parameters", Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) parameters));
-        ("body_id", Data.Json.Int (ExprId.to_int body_id));
-      ]
-  | EApply (callee_id, arguments) ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "apply");
-        ("callee_id", Data.Json.Int (ExprId.to_int callee_id));
-        ("arguments", Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) arguments));
-      ]
-  | ELet (binding_ids, body_id) ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "let");
-        ("binding_ids", Data.Json.Array (List.map (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id)) binding_ids));
-        ("body_id", Data.Json.Int (ExprId.to_int body_id));
-      ]
-  | EIf (condition_id, then_id, else_id) ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "if");
-        ("condition_id", Data.Json.Int (ExprId.to_int condition_id));
-        ("then_id", Data.Json.Int (ExprId.to_int then_id));
-        ("else_id", Data.Json.Int (ExprId.to_int else_id));
-      ]
-  | EMatch (scrutinee_id, cases) ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "match");
-        ("scrutinee_id", Data.Json.Int (ExprId.to_int scrutinee_id));
-        ("cases", Data.Json.Array (List.map match_case_to_json cases));
-      ]
-  | EUnsupported summary ->
-      Data.Json.Object [ ("tag", Data.Json.String "unsupported"); ("summary", Data.Json.String summary) ]
-  | EHole summary ->
-      Data.Json.Object [ ("tag", Data.Json.String "hole"); ("summary", Data.Json.String summary) ]
+  | EVar name -> Data.Json.Object [
+    ("tag", Data.Json.String "var");
+    ("name", Data.Json.String name)
+  ]
+  | EInt digits -> Data.Json.Object [
+    ("tag", Data.Json.String "int");
+    ("digits", Data.Json.String digits)
+  ]
+  | EBool value -> Data.Json.Object [
+    ("tag", Data.Json.String "bool");
+    ("value", Data.Json.Bool value)
+  ]
+  | EString value -> Data.Json.Object [
+    ("tag", Data.Json.String "string");
+    ("value", Data.Json.String value)
+  ]
+  | EUnit -> Data.Json.Object [ ("tag", Data.Json.String "unit") ]
+  | ETuple elements -> Data.Json.Object [
+    ("tag", Data.Json.String "tuple");
+    (
+      "elements",
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+    );
+  ]
+  | EFun (parameters, body_id) -> Data.Json.Object [
+    ("tag", Data.Json.String "fun");
+    (
+      "parameters",
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) parameters)
+    );
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+  ]
+  | EApply (callee_id, arguments) -> Data.Json.Object [
+    ("tag", Data.Json.String "apply");
+    ("callee_id", Data.Json.Int (ExprId.to_int callee_id));
+    (
+      "arguments",
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) arguments)
+    );
+  ]
+  | ELet (binding_ids, body_id) -> Data.Json.Object [
+    ("tag", Data.Json.String "let");
+    (
+      "binding_ids",
+      Data.Json.Array (List.map (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id)) binding_ids)
+    );
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+  ]
+  | EIf (condition_id, then_id, else_id) -> Data.Json.Object [
+    ("tag", Data.Json.String "if");
+    ("condition_id", Data.Json.Int (ExprId.to_int condition_id));
+    ("then_id", Data.Json.Int (ExprId.to_int then_id));
+    ("else_id", Data.Json.Int (ExprId.to_int else_id));
+  ]
+  | EMatch (scrutinee_id, cases) -> Data.Json.Object [
+    ("tag", Data.Json.String "match");
+    ("scrutinee_id", Data.Json.Int (ExprId.to_int scrutinee_id));
+    ("cases", Data.Json.Array (List.map match_case_to_json cases));
+  ]
+  | EUnsupported summary -> Data.Json.Object [
+    ("tag", Data.Json.String "unsupported");
+    ("summary", Data.Json.String summary)
+  ]
+  | EHole summary -> Data.Json.Object [
+    ("tag", Data.Json.String "hole");
+    ("summary", Data.Json.String summary)
+  ]
 
 let pattern_node_to_json = fun (node: pattern_node) ->
   Data.Json.Object [
@@ -260,44 +295,31 @@ let to_json = fun arena ->
   ]
 
 let to_string = fun arena ->
-  let pattern_lines =
-    arena.patterns
-    |> List.map (fun (node: pattern_node) ->
+  let pattern_lines = arena.patterns
+  |> List.map
+    (fun (node: pattern_node) ->
       "  "
       ^ PatId.to_string node.pat_id
       ^ " "
       ^ OriginId.to_string node.origin_id
       ^ " "
-      ^ render_pattern_desc node.desc)
-  in
-  let binding_lines =
-    arena.bindings
-    |> List.map render_binding
-  in
-  let expr_lines =
-    arena.expressions
-    |> List.map (fun (node: expr_node) ->
+      ^ render_pattern_desc node.desc) in
+  let binding_lines = arena.bindings |> List.map render_binding in
+  let expr_lines = arena.expressions
+  |> List.map
+    (fun (node: expr_node) ->
       "  "
       ^ ExprId.to_string node.expr_id
       ^ " "
       ^ OriginId.to_string node.origin_id
       ^ " "
-      ^ render_expr_desc node.desc)
-  in
+      ^ render_expr_desc node.desc) in
   String.concat
     "\n"
-    ([
-       "patterns:";
-     ]
-     @ pattern_lines
-     @ [
-       "";
-       "bindings:";
-     ]
-     @ binding_lines
-     @ [
-       "";
-       "expressions:";
-     ]
-     @ expr_lines
-     @ [ "" ])
+    ([ "patterns:"; ]
+    @ pattern_lines
+    @ [ ""; "bindings:"; ]
+    @ binding_lines
+    @ [ ""; "expressions:"; ]
+    @ expr_lines
+    @ [ "" ])

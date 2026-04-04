@@ -10,12 +10,7 @@ val empty: config:TypConfig.t -> t
 val config: t -> TypConfig.t
 
 (** Add one logical source and return its stable [SourceId]. *)
-val create_source:
-  t ->
-  kind:Source.kind ->
-  origin:Source.origin ->
-  text:string ->
-  t * SourceId.t
+val create_source: t -> kind:Source.kind -> origin:Source.origin -> text:string -> t * SourceId.t
 
 (** Replace the text for one existing source while preserving its [SourceId]. *)
 val update_source_text: t -> SourceId.t -> text:string -> t

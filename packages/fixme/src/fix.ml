@@ -191,8 +191,7 @@ let lower_fixes = fun ~source fixes ->
   | Error _ as err -> err
   | Ok edits -> validate_edits ~source (List.concat edits)
 
-let validate_fix = fun ~source fix ->
-  lower_fix ~source fix |> Result.map (fun _ -> ())
+let validate_fix = fun ~source fix -> lower_fix ~source fix |> Result.map (fun _ -> ())
 
 let apply_fix = fun ~source fix ->
   match lower_fix ~source fix with

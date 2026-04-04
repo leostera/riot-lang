@@ -24,10 +24,9 @@ let make_diagnostic = fun token ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:"Remove ! or qualify the module usage explicitly."
-    ~fix:
-      (Fix.make
-         ~title:"Replace open! with plain open"
-         ~operations:[ Fix.replace_token_with_text ~target:token ~text:""; ])
+    ~fix:(Fix.make
+      ~title:"Replace open! with plain open"
+      ~operations:[ Fix.replace_token_with_text ~target:token ~text:""; ])
     ()
 
 let diagnostic_for_open_statement = fun stmt ->

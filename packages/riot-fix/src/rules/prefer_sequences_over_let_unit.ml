@@ -30,12 +30,9 @@ let make_fix = fun (expr: Syn.Cst.let_expression) ->
   let body = Rule_text.expression expr.body in
   Fix.make
     ~title:"Replace let-unit binding with a sequence"
-    ~operations:
-      [
-        Fix.replace_node_with_text
-          ~target:expr.syntax_node
-          ~text:(bound_value ^ "; " ^ body);
-      ]
+    ~operations:[
+      Fix.replace_node_with_text ~target:expr.syntax_node ~text:((bound_value ^ "; " ^ body));
+    ]
 
 let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
   Diagnostic.make

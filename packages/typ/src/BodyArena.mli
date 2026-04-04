@@ -18,7 +18,6 @@ type pattern_desc =
   | PTuple of PatId.t list
   (** Recovery pattern preserved after unsupported surface syntax. *)
   | PUnsupported of string
-
 type pattern_node = {
   (** Best-effort stable pattern identifier. *)
   pat_id: PatId.t;
@@ -27,14 +26,12 @@ type pattern_node = {
   (** Semantic payload for the pattern. *)
   desc: pattern_desc;
 }
-
 type match_case = {
   (** Pattern tested by this case. *)
   pattern_id: PatId.t;
   (** Body expression evaluated when the pattern matches. *)
   body_id: ExprId.t;
 }
-
 type expr_desc =
   (** Variable reference. *)
   | EVar of string
@@ -86,7 +83,6 @@ and binding = {
   (** Whether the binding participates in a recursive group. *)
   recursive: bool;
 }
-
 (** Arena-style storage for patterns, bindings, and expressions. *)
 type t
 
@@ -94,11 +90,7 @@ type t
 val empty: t
 
 (** Build one arena from prepared node lists. *)
-val of_lists:
-  patterns:pattern_node list ->
-  expressions:expr_node list ->
-  bindings:binding list ->
-  t
+val of_lists: patterns:pattern_node list -> expressions:expr_node list -> bindings:binding list -> t
 
 (** Enumerate all stored patterns. *)
 val patterns: t -> pattern_node list

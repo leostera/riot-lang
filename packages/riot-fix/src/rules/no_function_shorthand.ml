@@ -20,12 +20,9 @@ available for places where the shorthand is genuinely a better fit.
 let make_fix = fun (expr: Syn.Cst.function_expression) ->
   Fix.make
     ~title:"Rewrite function shorthand as an explicit parameter match"
-    ~operations:
-      [
-        Fix.replace_token_with_text
-          ~target:(Syn.Cst.Token.syntax_token expr.keyword_token)
-          ~text:"fun value -> match value with";
-      ]
+    ~operations:[
+      Fix.replace_token_with_text ~target:(Syn.Cst.Token.syntax_token expr.keyword_token) ~text:"fun value -> match value with";
+    ]
 
 let make_diagnostic = fun binding ->
   let value = Syn.Cst.LetBinding.value binding in

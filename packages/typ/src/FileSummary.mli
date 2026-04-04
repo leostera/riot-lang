@@ -2,19 +2,13 @@ open Std
 
 (** Export-facing summary for one analyzed source. *)
 type exports = (string * TypeScheme.t) list
-
 type export_result =
   (** Exports are safe enough for downstream reuse. *)
-  | TrustedExport of {
-      exports: exports;
-    }
+  | TrustedExport of { exports: exports }
   (** Exports were still computed, but the source had type or lowering errors. *)
-  | ErroredExport of {
-      exports: exports;
-    }
+  | ErroredExport of { exports: exports }
   (** No export can be trusted for this source revision. *)
   | NoExport
-
 type t = {
   (** Source summarized by this export result. *)
   source_id: SourceId.t;

@@ -52,61 +52,60 @@ open Std
     - `Typ.Check.check_source`
     - `Typ.Report.render_report`
 *)
+module SourceId: module type of SourceId
 
-module SourceId : module type of SourceId
+module ItemId: module type of ItemId
 
-module ItemId : module type of ItemId
+module BindingId: module type of BindingId
 
-module BindingId : module type of BindingId
+module ExprId: module type of ExprId
 
-module ExprId : module type of ExprId
+module PatId: module type of PatId
 
-module PatId : module type of PatId
+module OriginId: module type of OriginId
 
-module OriginId : module type of OriginId
+module Position: module type of Position
 
-module Position : module type of Position
+module Source: module type of Source
 
-module Source : module type of Source
+module Diagnostic: module type of Diagnostic
 
-module Diagnostic : module type of Diagnostic
+module OriginMap: module type of OriginMap
 
-module OriginMap : module type of OriginMap
+module ItemTree: module type of ItemTree
 
-module ItemTree : module type of ItemTree
+module BodyArena: module type of BodyArena
 
-module BodyArena : module type of BodyArena
+module SemanticTree: module type of SemanticTree
 
-module SemanticTree : module type of SemanticTree
+module TypeRepr: module type of TypeRepr
 
-module TypeRepr : module type of TypeRepr
+module TypeScheme: module type of TypeScheme
 
-module TypeScheme : module type of TypeScheme
+module TypePrinter: module type of TypePrinter
 
-module TypePrinter : module type of TypePrinter
+module TypeIndex: module type of TypeIndex
 
-module TypeIndex : module type of TypeIndex
+module FileSummary: module type of FileSummary
 
-module FileSummary : module type of FileSummary
+module Config: module type of TypConfig
 
-module Config : module type of TypConfig
+module Check_result: module type of Check_result
 
-module Check_result : module type of Check_result
+module Lower: module type of Lower
 
-module Lower : module type of Lower
+module Infer: module type of Infer
 
-module Infer : module type of Infer
+module SourceAnalysis: module type of SourceAnalysis
 
-module SourceAnalysis : module type of SourceAnalysis
+module Snapshot: module type of Snapshot
 
-module Snapshot : module type of Snapshot
+module Session: module type of Session
 
-module Session : module type of Session
+module Query: module type of Query
 
-module Query : module type of Query
+module Batch: module type of Batch
 
-module Batch : module type of Batch
+module Check: module type of Check
 
-module Check : module type of Check
-
-module Report : module type of Report
+module Report: module type of Report

@@ -55,24 +55,19 @@ let pipeline_text = fun expr ->
       Some (String.concat " |> " (seed :: stages))
 
 let make_diagnostic = fun expr ->
-  Diagnostic.make
-    ~severity:Warning
-    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-    ~suggestion:"Rewrite this call chain as a pipeline."
-    ?fix:
-      (match pipeline_text expr with
+  Diagnostic.make ~severity:Warning ~kind:(Diagnostic.Known { rule_id; message = rule_description }) ~span:(Syn.Ceibo.Red.SyntaxNode.span
+    (Syn.Cst.Expression.syntax_node expr)) ~suggestion:"Rewrite this call chain as a pipeline."
+    ?fix:((
+      match pipeline_text expr with
       | None -> None
-      | Some text ->
-          Some
-            (Fix.make
-               ~title:"Rewrite nested calls as a pipeline"
-               ~operations:
-                 [
-                   Fix.replace_node_with_text
-                     ~target:(Syn.Cst.Expression.syntax_node expr)
-                     ~text:(" " ^ text);
-                 ]))
+      | Some text -> Some (Fix.make
+        ~title:"Rewrite nested calls as a pipeline"
+        ~operations:[
+          Fix.replace_node_with_text
+            ~target:(Syn.Cst.Expression.syntax_node expr)
+            ~text:((" " ^ text));
+        ])
+    ))
     ()
 
 let diagnostic_for_expression = fun expr ->

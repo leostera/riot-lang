@@ -99,16 +99,13 @@ let rewrite_text_for_condition = fun expr ->
 let make_fix = fun (if_expr: Syn.Cst.if_expression) ->
   match rewrite_text_for_condition if_expr.condition with
   | None -> None
-  | Some text ->
-      Some
-        (Fix.make
-           ~title:"Simplify boolean comparison in condition"
-           ~operations:
-             [
-               Fix.replace_node_with_text
-                 ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
-                 ~text:(" " ^ text);
-             ])
+  | Some text -> Some (Fix.make
+    ~title:"Simplify boolean comparison in condition"
+    ~operations:[
+      Fix.replace_node_with_text
+        ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
+        ~text:((" " ^ text));
+    ])
 
 let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) ->
   Diagnostic.make

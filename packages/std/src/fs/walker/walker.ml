@@ -10,10 +10,7 @@ type entry_kind =
 
 type path_repr =
   | Full_path of string
-  | Joined_path of {
-      dir_path: string;
-      name: string;
-    }
+  | Joined_path of { dir_path: string; name: string }
 
 type entry = {
   path_repr: path_repr;
@@ -77,10 +74,8 @@ module FileItem = struct
     | Some path -> path
     | None ->
         let path_string = path_string_of_entry item in
-        let path =
-          Path.of_string path_string
-          |> Result.expect ~msg:(("Invalid walker path " ^ path_string))
-        in
+        let path = Path.of_string path_string
+        |> Result.expect ~msg:(("Invalid walker path " ^ path_string)) in
         item.path_cache <- Some path;
         path
 
@@ -237,15 +232,18 @@ let root_entry_for_path = fun opts ~depth path ->
 
 let hinted_entry_for_name = fun opts ~depth ~dir_path ~name kind ->
   match kind with
-  | ReadDir.Regular -> Ok (joined_entry ~depth ~kind:File ~dir_path ~name)
-  | ReadDir.Directory -> Ok (joined_entry ~depth ~kind:Directory ~dir_path ~name)
+  | ReadDir.Regular ->
+      Ok (joined_entry ~depth ~kind:File ~dir_path ~name)
+  | ReadDir.Directory ->
+      Ok (joined_entry ~depth ~kind:Directory ~dir_path ~name)
   | ReadDir.Symlink ->
       let path_string = join_path_string dir_path name in
       if opts.follow_symlinks then
         entry_for_path_string opts ~depth path_string
       else
         Ok (joined_entry ~depth ~kind:Symlink ~dir_path ~name)
-  | ReadDir.Other -> Ok (joined_entry ~depth ~kind:Other ~dir_path ~name)
+  | ReadDir.Other ->
+      Ok (joined_entry ~depth ~kind:Other ~dir_path ~name)
   | ReadDir.Unknown ->
       let path_string = join_path_string dir_path name in
       entry_for_path_string opts ~depth path_string
@@ -266,8 +264,12 @@ let compare_item_path = fun left right ->
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
   match ReadDir.next_raw_entry handle with
   | None -> None
-  | Some relative ->
-      Some (hinted_entry_for_name opts ~depth:((depth + 1)) ~dir_path ~name:relative.name relative.kind)
+  | Some relative -> Some (hinted_entry_for_name
+    opts
+    ~depth:((depth + 1))
+    ~dir_path
+    ~name:relative.name
+    relative.kind)
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with

@@ -11,7 +11,7 @@ let empty = {
   item_tree = ItemTree.empty;
   body_arena = BodyArena.empty;
   origin_map = OriginMap.empty;
-  diagnostics = [];
+  diagnostics = []
 }
 
 let find_origin = fun file origin_id ->

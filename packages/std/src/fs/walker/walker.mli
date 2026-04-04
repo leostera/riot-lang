@@ -31,7 +31,7 @@ type entry_kind =
     `FileItem` is intentionally opaque so the walker can evolve its internal
     path representation without leaking those details to callers. Use the
     accessors below instead of destructuring entries directly. *)
-module FileItem : sig
+module FileItem: sig
   (** One discovered filesystem entry. *)
   type t
 
@@ -41,12 +41,7 @@ module FileItem : sig
       [Std.Fs.ReadDir] that still want to reuse the shared [FileItem] surface.
       The full path remains lazy until callers request it through [path] or
       [path_string]. *)
-  val make:
-    path_string:string ->
-    name:string ->
-    depth:int ->
-    kind:entry_kind ->
-    t
+  val make: path_string:string -> name:string -> depth:int -> kind:entry_kind -> t
 
   (** The full discovered path. *)
   val path: t -> Path.t

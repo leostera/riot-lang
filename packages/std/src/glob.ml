@@ -167,55 +167,41 @@ let optimize = fun glob ->
   loop [] glob
 
 let no_separator = Regex.char_class ~negated:true [ Regex.Single '/' ]
+
 let non_empty_segment = Regex.one_or_more no_separator
-let recursive_prefix =
-  Regex.zero_or_more (Regex.seq [ non_empty_segment; Regex.literal "/" ])
+
+let recursive_prefix = Regex.zero_or_more (Regex.seq [ non_empty_segment; Regex.literal "/" ])
 
 let body_to_regex = fun glob ->
-  let rec lower acc =
-    function
+  let rec lower acc = function
     | [] -> Regex.seq (List.rev acc)
-    | Recursive_wildcard :: Separator :: rest ->
-        lower (recursive_prefix :: acc) rest
-    | Literal value :: rest ->
-        lower (Regex.literal value :: acc) rest
-    | Separator :: rest ->
-        lower (Regex.literal "/" :: acc) rest
-    | Wildcard :: rest ->
-        lower (Regex.zero_or_more no_separator :: acc) rest
-    | Recursive_wildcard :: rest ->
-        lower (Regex.zero_or_more Regex.any_char :: acc) rest
-    | Single_wildcard :: rest ->
-        lower (no_separator :: acc) rest
-    | Char_class { negated; items } :: rest ->
-        lower (Regex.char_class ~negated items :: acc) rest
+    | Recursive_wildcard :: Separator :: rest -> lower (recursive_prefix :: acc) rest
+    | Literal value :: rest -> lower (Regex.literal value :: acc) rest
+    | Separator :: rest -> lower (Regex.literal "/" :: acc) rest
+    | Wildcard :: rest -> lower (Regex.zero_or_more no_separator :: acc) rest
+    | Recursive_wildcard :: rest -> lower (Regex.zero_or_more Regex.any_char :: acc) rest
+    | Single_wildcard :: rest -> lower (no_separator :: acc) rest
+    | Char_class { negated; items } :: rest -> lower (Regex.char_class ~negated items :: acc) rest
   in
   glob |> optimize |> lower []
 
 let to_regex_set = fun globs ->
   match List.map body_to_regex globs with
-  | [] ->
-      Regex.seq
-        [ Regex.start_of_text; Regex.literal "\000riot-empty-globset"; Regex.end_of_text ]
-  | [ body ] ->
-      Regex.seq [ Regex.start_of_text; body; Regex.end_of_text ]
-  | bodies ->
-      Regex.seq [ Regex.start_of_text; Regex.alt bodies; Regex.end_of_text ]
+  | [] -> Regex.seq
+    [ Regex.start_of_text; Regex.literal "\000riot-empty-globset"; Regex.end_of_text ]
+  | [ body ] -> Regex.seq [ Regex.start_of_text; body; Regex.end_of_text ]
+  | bodies -> Regex.seq [ Regex.start_of_text; Regex.alt bodies; Regex.end_of_text ]
 
 let create = fun patterns ->
   if List.is_empty patterns then
     Error Empty
   else
     match from_strings patterns with
-    | Error { input; message; offset } ->
-        Error (Invalid_glob { input; message; offset })
+    | Error { input; message; offset } -> Error (Invalid_glob { input; message; offset })
     | Ok globs -> (
         match Regex.compile (to_regex_set globs) with
-        | Error { message; offset } ->
-            Error (Invalid_regex { message; offset })
-        | Ok regex ->
-            Ok regex
+        | Error { message; offset } -> Error (Invalid_regex { message; offset })
+        | Ok regex -> Ok regex
       )
 
-let matches = fun matcher ~str ->
-  Ok (Regex.is_match matcher str)
+let matches = fun matcher ~str -> Ok (Regex.is_match matcher str)

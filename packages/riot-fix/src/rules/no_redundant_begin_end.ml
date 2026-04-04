@@ -32,12 +32,11 @@ let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression
 let make_fix = fun ({ syntax_node; inner; _ }: Syn.Cst.parenthesized_expression) ->
   Fix.make
     ~title:"Replace begin/end with ordinary grouping"
-    ~operations:
-      [
-        Fix.replace_node_with_text
-          ~target:syntax_node
-          ~text:(" " ^ Rule_text.parenthesize (Rule_text.expression inner));
-      ]
+    ~operations:[
+      Fix.replace_node_with_text
+        ~target:syntax_node
+        ~text:((" " ^ Rule_text.parenthesize (Rule_text.expression inner)));
+    ]
 
 let make_diagnostic = fun ({ syntax_node; _ } as expr: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make

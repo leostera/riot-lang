@@ -55,23 +55,22 @@ let receiver_looks_like_record = function
   | _ ->
       false
 
-let make_field_access_fix = fun ({ syntax_node; receiver; field_name; _ }: Syn.Cst.field_access_expression) ->
+let make_field_access_fix = fun (
+  { syntax_node; receiver; field_name; _ }: Syn.Cst.field_access_expression
+) ->
   match receiver with
   | Syn.Cst.Expression.FieldAccess { receiver; field_name=module_name; _ } ->
       let module_name = Syn.Cst.Token.text module_name in
       let receiver = Rule_text.expression receiver in
       let field_name = Syn.Cst.Token.text field_name in
-      Some
-        (Fix.make
-           ~title:"Rewrite field access to scoped module qualification"
-           ~operations:
-             [
-               Fix.replace_node_with_text
-                 ~target:syntax_node
-                 ~text:(module_name ^ ".(" ^ receiver ^ "." ^ field_name ^ ")");
-             ])
-  | _ ->
-      None
+      Some (Fix.make
+        ~title:"Rewrite field access to scoped module qualification"
+        ~operations:[
+          Fix.replace_node_with_text
+            ~target:syntax_node
+            ~text:((module_name ^ ".(" ^ receiver ^ "." ^ field_name ^ ")"));
+        ])
+  | _ -> None
 
 let make_diagnostic = fun ({ syntax_node; _ } as expr: Syn.Cst.field_access_expression) ->
   Diagnostic.make

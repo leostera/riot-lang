@@ -11,10 +11,8 @@ type entry = {
   (** Final inferred type for the indexed expression. *)
   inferred_type: TypeRepr.t;
 }
-
 (** Per-source type index used by [Query.type_at]. *)
 type t
-
 (** Minimal traced expression payload used to build the type index. *)
 type traced_expr = {
   (** Expression traced by inference. *)
@@ -29,10 +27,7 @@ type traced_expr = {
 val empty: t
 
 (** Build an index from expression traces and their source origins. *)
-val of_traced_exprs:
-  origin_map:OriginMap.t ->
-  traced_expr list ->
-  t
+val of_traced_exprs: origin_map:OriginMap.t -> traced_expr list -> t
 
 (** Enumerate all indexed entries. *)
 val entries: t -> entry list

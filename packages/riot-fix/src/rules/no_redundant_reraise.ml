@@ -57,15 +57,11 @@ let make_diagnostic = fun ({ syntax_node; body; _ }: Syn.Cst.try_expression) ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Remove this try/with and use the body directly."
-    ~fix:
-      (Fix.make
-         ~title:"Remove redundant try/with reraise"
-         ~operations:
-           [
-             Fix.replace_node
-               ~target:syntax_node
-               ~replacement:(Syn.Cst.Expression.syntax_node body);
-           ])
+    ~fix:(Fix.make
+      ~title:"Remove redundant try/with reraise"
+      ~operations:[
+        Fix.replace_node ~target:syntax_node ~replacement:(Syn.Cst.Expression.syntax_node body);
+      ])
     ()
 
 let diagnostic_for_expression = function

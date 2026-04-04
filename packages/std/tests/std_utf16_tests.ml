@@ -7,25 +7,19 @@ let expect_position = fun ~text ~offset ~line ~character ->
   if actual.line = line && actual.character = character then
     Ok ()
   else
-    Error
-      ("expected position "
-      ^ Int.to_string line
-      ^ ":"
-      ^ Int.to_string character
-      ^ ", got "
-      ^ Int.to_string actual.line
-      ^ ":"
-      ^ Int.to_string actual.character)
+    Error ("expected position "
+    ^ Int.to_string line
+    ^ ":"
+    ^ Int.to_string character
+    ^ ", got "
+    ^ Int.to_string actual.line
+    ^ ":"
+    ^ Int.to_string actual.character)
 
 let expect_offset = fun ~text ~position:target ~offset ->
   match Unicode.Utf16.offset_of_position text target with
   | Ok actual when actual = offset -> Ok ()
-  | Ok actual ->
-      Error
-        ("expected offset "
-        ^ Int.to_string offset
-        ^ ", got "
-        ^ Int.to_string actual)
+  | Ok actual -> Error ("expected offset " ^ Int.to_string offset ^ ", got " ^ Int.to_string actual)
   | Error message -> Error ("expected offset " ^ Int.to_string offset ^ ", got error: " ^ message)
 
 let test_code_units_ascii = fun _ctx ->
@@ -78,10 +72,8 @@ let tests =
     case "utf16 offset_of_position counts surrogate pairs" test_offset_of_position_counts_surrogate_pairs;
     case "utf16 position_of_offset handles crlf" test_position_of_offset_handles_crlf;
     case "utf16 offset_of_position handles crlf" test_offset_of_position_handles_crlf;
-    case "utf16 offset_of_position rejects split surrogate pair"
-      test_offset_of_position_rejects_split_surrogate_pair;
-    case "utf16 offset_of_position rejects character beyond line"
-      test_offset_of_position_rejects_character_beyond_line;
+    case "utf16 offset_of_position rejects split surrogate pair" test_offset_of_position_rejects_split_surrogate_pair;
+    case "utf16 offset_of_position rejects character beyond line" test_offset_of_position_rejects_character_beyond_line;
   ]
 
 let () =

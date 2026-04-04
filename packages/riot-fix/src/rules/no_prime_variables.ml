@@ -41,13 +41,13 @@ let replacement_for = fun text ->
       let base = String.sub text 0 (String.length text - trailing_primes) in
       base ^ Int.to_string (trailing_primes + 1)
     else
-    String.map
-      (fun ch ->
-        if ch = '\'' then
-          '2'
-        else
-          ch)
-      text
+      String.map
+        (fun ch ->
+          if ch = '\'' then
+            '2'
+          else
+            ch)
+        text
 
 let make_fix = fun token replacement ->
   Fix.make

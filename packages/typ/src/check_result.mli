@@ -1,9 +1,7 @@
 open Std
 
 (** Shared output types for a single prototype type-check run. *)
-
 type env = (string * TypeScheme.t) list
-
 (** Environment snapshot captured before an expression is inferred. *)
 type expr_trace = {
   (** Expression traced by this snapshot. *)
@@ -15,7 +13,6 @@ type expr_trace = {
   (** Final inferred type for the expression. *)
   inferred_type: TypeRepr.t;
 }
-
 (** Export-facing snapshot captured after a top-level item finishes. *)
 type item_trace = {
   (** Item traced by this snapshot. *)
@@ -25,7 +22,6 @@ type item_trace = {
   (** Export environment visible after the item was processed. *)
   exports_after: env;
 }
-
 (** Full result of checking one source input through parse, lower, and infer. *)
 type t = {
   (** Stable logical source identity assigned by the batch wrapper. *)

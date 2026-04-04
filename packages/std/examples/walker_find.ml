@@ -13,10 +13,18 @@ type parse_result =
 
 let default_config = { count_only = false; sort = false; roots = [ Path.v "." ] }
 
-let ignored_paths = [ ".git"; ".git/**"; "**/.git"; "**/.git/**"; ".worktrees"; ".worktrees/**"; "**/.worktrees"; "**/.worktrees/**" ]
+let ignored_paths = [
+  ".git";
+  ".git/**";
+  "**/.git";
+  "**/.git/**";
+  ".worktrees";
+  ".worktrees/**";
+  "**/.worktrees";
+  "**/.worktrees/**"
+]
 
-let ignored_globs =
-  Glob.create ignored_paths |> Result.expect ~msg:"walker_find ignore globs should compile"
+let ignored_globs = Glob.create ignored_paths |> Result.expect ~msg:"walker_find ignore globs should compile"
 
 let should_ignore = fun entry ->
   Glob.matches ignored_globs ~str:(Fs.Walker.FileItem.path_string entry)
@@ -57,11 +65,9 @@ let main = fun ~args ->
       print_usage ();
       Ok ()
   | Config config ->
-      let walker =
-        Fs.Walker.create ~roots:config.roots ~sort:config.sort ()
-        |> Result.expect ~msg:"walker_find configuration should be valid"
-        |> Fs.Walker.filter_entry ~f:(fun entry -> not (should_ignore entry))
-      in
+      let walker = Fs.Walker.create ~roots:config.roots ~sort:config.sort ()
+      |> Result.expect ~msg:"walker_find configuration should be valid"
+      |> Fs.Walker.filter_entry ~f:(fun entry -> not (should_ignore entry)) in
       let iter = Fs.Walker.into_iter walker in
       let count = ref 0 in
       let rec loop iter =

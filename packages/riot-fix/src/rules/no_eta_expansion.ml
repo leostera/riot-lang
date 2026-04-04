@@ -176,12 +176,11 @@ let eta_reduction_callee = fun (expr: Syn.Cst.fun_expression) ->
 let make_fix = fun (expr: Syn.Cst.fun_expression) callee ->
   Fix.make
     ~title:"Replace eta-expanded wrapper with the callee directly"
-    ~operations:
-      [
-        Fix.replace
-          ~target:(Fix.Node expr.syntax_node)
-          ~replacement:(Fix.source_of_node (Syn.Cst.Expression.syntax_node callee));
-      ]
+    ~operations:[
+      Fix.replace
+        ~target:(Fix.Node expr.syntax_node)
+        ~replacement:(Fix.source_of_node (Syn.Cst.Expression.syntax_node callee));
+    ]
 
 let make_diagnostic = fun (expr: Syn.Cst.fun_expression) ->
   let fix =

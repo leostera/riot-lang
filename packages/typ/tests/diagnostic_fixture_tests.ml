@@ -5,7 +5,7 @@ let diagnostics_dir = Path.v "packages/typ/tests/diagnostics"
 
 let diagnostic_marker_path = fun path ->
   match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:(ext ^ ".diagnostic")
+  | Some ext -> Path.add_extension path ~ext:((ext ^ ".diagnostic"))
   | None -> Path.add_extension path ~ext:"diagnostic"
 
 let filter_diagnostic_fixture = fun path ->
@@ -18,14 +18,22 @@ let filter_diagnostic_fixture = fun path ->
         `keep
       else
         `skip
-  | _ ->
-      `skip
+  | _ -> `skip
 
 let diagnostics_to_json = fun (report: Check_result.t) ->
   Std.Data.Json.Object [
-    ("parse_diagnostics", Std.Data.Json.Array (List.map Syn.Diagnostic.to_json report.parse_diagnostics));
-    ("lowering_diagnostics", Std.Data.Json.Array (List.map Diagnostic.to_json report.lowering_diagnostics));
-    ("typing_diagnostics", Std.Data.Json.Array (List.map Diagnostic.to_json report.typing_diagnostics));
+    (
+      "parse_diagnostics",
+      Std.Data.Json.Array (List.map Syn.Diagnostic.to_json report.parse_diagnostics)
+    );
+    (
+      "lowering_diagnostics",
+      Std.Data.Json.Array (List.map Diagnostic.to_json report.lowering_diagnostics)
+    );
+    (
+      "typing_diagnostics",
+      Std.Data.Json.Array (List.map Diagnostic.to_json report.typing_diagnostics)
+    );
   ]
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->

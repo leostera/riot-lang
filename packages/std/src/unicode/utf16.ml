@@ -7,7 +7,7 @@ type position = {
 }
 
 let code_units_of_rune = fun rune ->
-  if Rune.to_int rune > 0xFFFF then
+  if Rune.to_int rune > 0xffff then
     2
   else
     1
@@ -26,7 +26,8 @@ let next_step = fun text byte_offset ->
           Some (Newline 2)
         else
           Some (Newline 1)
-    | '\n' -> Some (Newline 1)
+    | '\n' ->
+        Some (Newline 1)
     | _ -> (
         match Utf8.decode_rune text byte_offset with
         | Some (rune, next_byte_offset) -> Some (Rune (rune, next_byte_offset - byte_offset))
@@ -42,8 +43,10 @@ let position_of_offset = fun text ~offset ->
       match next_step text byte_offset with
       | None -> { line; character }
       | Some (Newline width) -> loop (byte_offset + width) (line + 1) 0
-      | Some (Rune (rune, width)) ->
-          loop (byte_offset + width) line (character + code_units_of_rune rune)
+      | Some (Rune (rune, width)) -> loop
+        (byte_offset + width)
+        line
+        (character + code_units_of_rune rune)
   in
   loop 0 0 0
 
@@ -65,25 +68,22 @@ let offset_of_position = fun text ({ line; character } as position) ->
       if current_character = character then
         Ok byte_offset
       else if byte_offset >= String.length text then
-        Error
-          ("character "
-          ^ Int.to_string character
-          ^ " is beyond the end of line "
-          ^ Int.to_string position.line)
+        Error ("character "
+        ^ Int.to_string character
+        ^ " is beyond the end of line "
+        ^ Int.to_string position.line)
       else
         match next_step text byte_offset with
         | None ->
-            Error
-              ("character "
-              ^ Int.to_string character
-              ^ " is beyond the end of line "
-              ^ Int.to_string position.line)
+            Error ("character "
+            ^ Int.to_string character
+            ^ " is beyond the end of line "
+            ^ Int.to_string position.line)
         | Some (Newline _) ->
-            Error
-              ("character "
-              ^ Int.to_string character
-              ^ " is beyond the end of line "
-              ^ Int.to_string position.line)
+            Error ("character "
+            ^ Int.to_string character
+            ^ " is beyond the end of line "
+            ^ Int.to_string position.line)
         | Some (Rune (rune, width)) ->
             let next_character = current_character + code_units_of_rune rune in
             if next_character = character then

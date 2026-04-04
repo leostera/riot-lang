@@ -17,8 +17,10 @@ let test_lsp_stdio_subcommand_parses = fun _ctx ->
           | Some (name, _) -> Error ("expected stdio transport, got: " ^ name)
           | None -> Error "expected lsp transport subcommand"
         )
-      | Some (name, _) -> Error ("expected lsp command, got: " ^ name)
-      | None -> Error "expected top-level subcommand"
+      | Some (name, _) ->
+          Error ("expected lsp command, got: " ^ name)
+      | None ->
+          Error "expected top-level subcommand"
     )
 
 let test_build_package_named_lsp_parses = fun _ctx ->
@@ -29,8 +31,10 @@ let test_build_package_named_lsp_parses = fun _ctx ->
       | Some ("build", build_matches) ->
           Test.assert_equal ~expected:[ "lsp" ] ~actual:(ArgParser.get_many build_matches "package");
           Ok ()
-      | Some (name, _) -> Error ("expected build command, got: " ^ name)
-      | None -> Error "expected top-level subcommand"
+      | Some (name, _) ->
+          Error ("expected build command, got: " ^ name)
+      | None ->
+          Error "expected top-level subcommand"
     )
 
 let tests =

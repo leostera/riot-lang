@@ -2,14 +2,13 @@ open Std
 open Std.Data
 
 let env_to_json = fun env ->
-  Json.Array (
-    env
-    |> List.map (fun (name, scheme) ->
+  Json.Array (env
+  |> List.map
+    (fun (name, scheme) ->
       Json.Object [
         ("name", Json.String name);
         ("scheme", Json.String (TypePrinter.scheme_to_string scheme));
-      ])
-  )
+      ]))
 
 let item_trace_to_json = fun (trace: Check_result.item_trace) ->
   Json.Object [
@@ -21,17 +20,15 @@ let item_trace_to_json = fun (trace: Check_result.item_trace) ->
 let expr_trace_to_json = fun origin_map (trace: Check_result.expr_trace) ->
   let origin_json =
     match OriginMap.find origin_map trace.origin_id with
-    | Some origin ->
-        Json.Object [
-          ("label", Json.String origin.label);
-          ("syntax_kind", Json.String (Syn.SyntaxKind.to_string origin.syntax_kind));
-          ("span", Json.Object [
-            ("start", Json.Int origin.span.start);
-            ("end", Json.Int origin.span.end_);
-          ]);
-        ]
-    | None ->
-        Json.Null
+    | Some origin -> Json.Object [
+      ("label", Json.String origin.label);
+      ("syntax_kind", Json.String (Syn.SyntaxKind.to_string origin.syntax_kind));
+      (
+        "span",
+        Json.Object [ ("start", Json.Int origin.span.start); ("end", Json.Int origin.span.end_); ]
+      );
+    ]
+    | None -> Json.Null
   in
   Json.Object [
     ("expr_id", Json.Int (ExprId.to_int trace.expr_id));
@@ -50,8 +47,7 @@ let to_json = fun (report: Check_result.t) ->
   let expr_traces_json =
     match report.origin_map with
     | None -> Json.Null
-    | Some origin_map ->
-        Json.Array (List.map (expr_trace_to_json origin_map) report.expr_traces)
+    | Some origin_map -> Json.Array (List.map (expr_trace_to_json origin_map) report.expr_traces)
   in
   Json.Object [
     ("source_id", Json.Int (SourceId.to_int report.source_id));
@@ -69,5 +65,4 @@ let to_json = fun (report: Check_result.t) ->
     ("expr_traces", expr_traces_json);
   ]
 
-let render_report = fun (report: Check_result.t) ->
-  Json.to_string_pretty (to_json report)
+let render_report = fun (report: Check_result.t) -> Json.to_string_pretty (to_json report)

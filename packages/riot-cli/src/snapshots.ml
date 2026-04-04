@@ -102,10 +102,7 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
         | File ->
-            let snapshot = {
-              approved = ensure_trailing_new_removed path;
-              pending = path
-            } in
+            let snapshot = { approved = ensure_trailing_new_removed path; pending = path } in
             collect (snapshot :: acc) iter'
         | Directory
         | Symlink

@@ -49,10 +49,7 @@ let assert_single_fix_rewrite = fun ~pipeline ~source ~expected ->
   Test.assert_equal ~expected:1 ~actual:(List.length fixes);
   match fixes with
   | [ fix ] ->
-      let rewritten =
-        Riot_fix.Fix.apply_fix ~source fix
-        |> Result.expect ~msg:"expected rule fix to apply"
-      in
+      let rewritten = Riot_fix.Fix.apply_fix ~source fix |> Result.expect ~msg:"expected rule fix to apply" in
       Test.assert_equal ~expected ~actual:rewritten;
       Ok ()
   | _ -> Error "expected exactly one fix"
@@ -542,10 +539,7 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.No_boolean_comparisons_in_conditionals.make () ]
         () in
-      assert_single_fix_rewrite
-        ~pipeline
-        ~source
-        ~expected:"let render is_ready = if not (is_ready) then log ()\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render is_ready = if not (is_ready) then log ()\n");
   Test.case "no-boolean-comparisons-in-conditionals keeps direct conditions clean"
     (fun _ctx ->
       let source = "let render is_ready = if is_ready then log ()\n" in
@@ -623,20 +617,14 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
         () in
-      assert_single_fix_rewrite
-        ~pipeline
-        ~source
-        ~expected:"let render ready =if ready then (render ()) else (fallback ())\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ready =if ready then (render ()) else (fallback ())\n");
   Test.case "prefer-if-over-bool-match preserves multiline branch source in auto-fixes"
     (fun _ctx ->
       let source = "let f =\n  match f with\n  | true -> do_something\n  | _ ->\n      if f then\n        print\n" in
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
         () in
-      assert_single_fix_rewrite
-        ~pipeline
-        ~source
-        ~expected:"let f =if f then (do_something) else (if f then\n        print)\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let f =if f then (do_something) else (if f then\n        print)\n");
   Test.case
     "rule explanations explain boolean match rewrites"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-if-over-bool-match" ~snippet:"if is_ready then render () else fallback ()");
@@ -930,10 +918,7 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_pipelines_for_nested_calls.make () ]
         () in
-      assert_single_fix_rewrite
-        ~pipeline
-        ~source
-        ~expected:"let rendered = 1 |> hex |> baz |> bar |> foo\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let rendered = 1 |> hex |> baz |> bar |> foo\n");
   Test.case
     "rule explanations explain nested pipeline preference"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-pipelines-for-nested-calls" ~snippet:"hex 1 |> baz |> bar |> foo");
@@ -973,16 +958,11 @@ let tests = [
       let source = "let render = function | x -> x + 1\n" in
       let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_function_shorthand.make () ] () in
       let result = Riot_fix.Pipeline.run pipeline source in
-      let fix =
-        result.diagnostics
-        |> List.filter_map Riot_fix.Diagnostic.fix
-        |> List.hd
-      in
-      let rewritten =
-        Riot_fix.Fix.apply_fix ~source fix
-        |> Result.expect ~msg:"expected no-function-shorthand fix to apply"
-      in
-      Test.assert_equal ~expected:"let render = fun value -> match value with | x -> x + 1\n" ~actual:rewritten;
+      let fix = result.diagnostics |> List.filter_map Riot_fix.Diagnostic.fix |> List.hd in
+      let rewritten = Riot_fix.Fix.apply_fix ~source fix |> Result.expect ~msg:"expected no-function-shorthand fix to apply" in
+      Test.assert_equal
+        ~expected:"let render = fun value -> match value with | x -> x + 1\n"
+        ~actual:rewritten;
       Ok ());
   Test.case "no-function-shorthand keeps fun expressions clean"
     (fun _ctx ->
@@ -2244,7 +2224,11 @@ let render x y z =
       let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let expressions = Riot_fix.Rule_query.expressions
-        Riot_fix.Rule.{ file_path = "sample.ml"; source = "let render x = let y = x + 1 in y; y\n"; cst } in
+        Riot_fix.Rule.{
+          file_path = "sample.ml";
+          source = "let render x = let y = x + 1 in y; y\n";
+          cst
+        } in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
   Test.case "rule query collects let bindings from the typed CST"
@@ -2255,7 +2239,7 @@ let render x y z =
         Riot_fix.Rule.{
           file_path = "sample.ml";
           source = "let render x = x\nlet other y = let z = y in z\n";
-          cst;
+          cst
         } in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
@@ -2271,7 +2255,7 @@ let render x y z =
         Riot_fix.Rule.{
           file_path = "sample.ml";
           source = "type user = { name : string }\nlet render x = x\n";
-          cst = implementation_cst;
+          cst = implementation_cst
         }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
@@ -2279,7 +2263,7 @@ let render x y z =
         Riot_fix.Rule.{
           file_path = "sample.mli";
           source = "type service\nval render : int -> int\n";
-          cst = interface_cst;
+          cst = interface_cst
         }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in

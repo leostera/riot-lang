@@ -12,7 +12,7 @@ let keep_ml = fun path ->
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with
-  | Some ext -> Some (Path.add_extension path ~ext:(ext ^ ".expected"))
+  | Some ext -> Some (Path.add_extension path ~ext:((ext ^ ".expected")))
   | None -> Some (Path.add_extension path ~ext:"expected")
 
 let split_on_double_underscore = fun value ->
@@ -25,10 +25,10 @@ let split_on_double_underscore = fun value ->
       find (idx + 1)
   in
   match find 0 with
-  | Some idx ->
-      Some
-        ( String.sub value 0 idx,
-          String.sub value (idx + 2) (String.length value - idx - 2) )
+  | Some idx -> Some (
+    String.sub value 0 idx,
+    String.sub value (idx + 2) (String.length value - idx - 2)
+  )
   | None -> None
 
 let rule_id_of_fixture = fun path ->
@@ -43,29 +43,37 @@ let rule_id_of_fixture = fun path ->
   | _ -> Error ("invalid autofix fixture name: " ^ basename)
 
 let find_rule = fun rule_id ->
-  Riot_fix.Pipeline.default_rules ()
-  |> List.find_opt (fun rule -> String.equal (Riot_fix.Rule.id rule) rule_id)
-  |> Result.of_option ~error:("unknown rule fixture id: " ^ rule_id)
+  Riot_fix.Pipeline.default_rules () |> List.find_opt
+    (fun rule ->
+      String.equal (Riot_fix.Rule.id rule) rule_id) |> Result.of_option
+    ~error:(("unknown rule fixture id: " ^ rule_id))
 
 let result_to_json = fun result ->
   Json.obj
     [
-      ( "diagnostics",
-        Json.array (List.map Riot_fix.Diagnostic.to_json result.Fixme.Rule_test.initial.diagnostics) );
-      ( "fixed_source",
+      (
+        "diagnostics",
+        Json.array (List.map Riot_fix.Diagnostic.to_json result.Fixme.Rule_test.initial.diagnostics)
+      );
+      (
+        "fixed_source",
         match result.fixed_source with
         | Some source -> Json.String source
-        | None -> Json.Null );
-      ( "applied_fixes",
-        Json.array (List.map Riot_fix.Fix.to_json result.applied_fixes) );
-      ( "after_diagnostics",
+        | None -> Json.Null
+      );
+      ("applied_fixes", Json.array (List.map Riot_fix.Fix.to_json result.applied_fixes));
+      (
+        "after_diagnostics",
         match result.after with
         | Some after -> Json.array (List.map Riot_fix.Diagnostic.to_json after.diagnostics)
-        | None -> Json.array [] );
-      ( "after_parse_diagnostics",
+        | None -> Json.array []
+      );
+      (
+        "after_parse_diagnostics",
         match result.after with
         | Some after -> Json.array (List.map Syn.Diagnostic.to_json after.parse_diagnostics)
-        | None -> Json.array [] );
+        | None -> Json.array []
+      );
     ]
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
@@ -86,13 +94,14 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   in
   Test.Snapshot.assert_text
     ~ctx:ctx.test
-    ~actual:(Json.to_string_pretty (result_to_json result) ^ "\n")
+    ~actual:((Json.to_string_pretty (result_to_json result) ^ "\n"))
 
 let () =
   Actors.run
     ~main:(fun ~args ->
       let tests =
-        Test.FixtureRunner.cases ()
+        Test.FixtureRunner.cases
+          ()
           ~dir:fixture_root
           ~filter:keep_ml
           ~snapshot_path:approved_snapshot_path

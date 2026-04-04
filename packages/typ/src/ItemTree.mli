@@ -11,7 +11,6 @@ type value_item = {
   (** Whether the item's binding group is recursive. *)
   recursive: bool;
 }
-
 type unsupported_item = {
   (** Stable item identity. *)
   item_id: ItemId.t;
@@ -20,13 +19,11 @@ type unsupported_item = {
   (** Short recovery summary naming the unsupported syntax family. *)
   summary: string;
 }
-
 type item =
   (** Value-bearing top-level item. *)
   | Value of value_item
   (** Placeholder top-level item produced by recovery. *)
   | Unsupported of unsupported_item
-
 (** Ordered top-level item skeleton for one file. *)
 type t
 

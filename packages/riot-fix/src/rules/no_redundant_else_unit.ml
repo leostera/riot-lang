@@ -26,12 +26,11 @@ let make_fix = fun (expr: Syn.Cst.if_expression) ->
   let then_branch = Rule_text.expression expr.then_branch |> Rule_text.parenthesize in
   Fix.make
     ~title:"Remove redundant else () branch"
-    ~operations:
-      [
-        Fix.replace_node_with_text
-          ~target:expr.syntax_node
-          ~text:(("if " ^ condition) ^ " then " ^ then_branch);
-      ]
+    ~operations:[
+      Fix.replace_node_with_text
+        ~target:expr.syntax_node
+        ~text:((("if " ^ condition) ^ " then " ^ then_branch));
+    ]
 
 let make_diagnostic = fun (expr: Syn.Cst.if_expression) ->
   Diagnostic.make

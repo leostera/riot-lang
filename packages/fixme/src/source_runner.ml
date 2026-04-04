@@ -41,7 +41,9 @@ let parse ?filename source: Syn.Parser.parse_result =
   | Some filename -> Syn.parse ~filename source
   | None -> Syn.parse_implementation source
 
-let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (parse_result: Syn.Parser.parse_result) ->
+let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (
+  parse_result: Syn.Parser.parse_result
+) ->
   emit_progress on_progress (Parsed { parse_diagnostics = List.length parse_result.diagnostics });
   trace
     ?filename

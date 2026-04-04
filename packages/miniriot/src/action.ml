@@ -447,15 +447,17 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
         | _ -> None)
       mods
   in
-  let has_interface = fun mod_ ->
+  let has_interface mod_ =
     try
-      let node_ids = Dep_graph.Module_registry.get_by_name dep_graph.registry (Dep_graph.Module.module_name mod_) in
+      let node_ids = Dep_graph.Module_registry.get_by_name
+        dep_graph.registry
+        (Dep_graph.Module.module_name mod_) in
       List.exists
         (fun node_id ->
           let node = Graph.get_node dep_graph.graph node_id in
           match node.value.kind with
-          | Dep_graph.MLI intf_mod ->
-              Dep_graph.Module.module_name intf_mod = Dep_graph.Module.module_name mod_
+          | Dep_graph.MLI intf_mod -> Dep_graph.Module.module_name intf_mod
+          = Dep_graph.Module.module_name mod_
           | _ -> false)
         node_ids
     with

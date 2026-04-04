@@ -91,37 +91,45 @@ let parse_line = fun ~syntax ~line_number input ->
         input
     in
     let only_dir = String.ends_with ~suffix:"/" body in
-    let body = if only_dir then drop_suffix body "/" else body in
+    let body =
+      if only_dir then
+        drop_suffix body "/"
+      else
+        body
+    in
     if String.equal body "" then
       Ok None
     else
       let pattern = normalize_pattern body in
       match Glob.create [ pattern ] with
-      | Ok matcher ->
-          Ok
-            (Some
-               {
-                 matcher;
-                 action = action_for_pattern syntax ~negated;
-                 only_dir;
-               })
-      | Error (Glob.Invalid_glob { message; offset; _ }) ->
-          Error { line = line_number; input; message; offset }
-      | Error (Glob.Invalid_regex { message; offset }) ->
-          Error { line = line_number; input; message; offset }
-      | Error Glob.Empty ->
-          Error { line = line_number; input; message = "empty glob"; offset = None }
+      | Ok matcher -> Ok (Some { matcher; action = action_for_pattern syntax ~negated; only_dir })
+      | Error (Glob.Invalid_glob { message; offset; _ }) -> Error {
+        line = line_number;
+        input;
+        message;
+        offset
+      }
+      | Error (Glob.Invalid_regex { message; offset }) -> Error {
+        line = line_number;
+        input;
+        message;
+        offset
+      }
+      | Error Glob.Empty -> Error {
+        line = line_number;
+        input;
+        message = "empty glob";
+        offset = None
+      }
 
 let of_lines = fun ~root ~syntax lines ->
-  let rec loop line_number acc =
-    function
+  let rec loop line_number acc = function
     | [] ->
         let rules = List.rev acc in
         let unmatched_is_ignore_on_files =
           match syntax with
           | Ignore_file -> false
-          | Override ->
-              List.exists (fun rule -> Match.is_whitelist rule.action) rules
+          | Override -> List.exists (fun rule -> Match.is_whitelist rule.action) rules
         in
         Ok { root; rules; unmatched_is_ignore_on_files }
     | line :: rest -> (
@@ -133,19 +141,19 @@ let of_lines = fun ~root ~syntax lines ->
   in
   loop 1 [] lines
 
-let of_string = fun ~root ~syntax text ->
-  of_lines ~root ~syntax (String.split_on_char '\n' text)
+let of_string = fun ~root ~syntax text -> of_lines ~root ~syntax (String.split_on_char '\n' text)
 
 let from_file = fun ~syntax path ->
   match Fs.exists path with
-  | Error err -> Error (File_system err)
-  | Ok false -> Ok None
+  | Error err ->
+      Error (File_system err)
+  | Ok false ->
+      Ok None
   | Ok true -> (
       match Fs.read path with
-      | Ok text ->
-          of_string ~root:(Path.dirname path) ~syntax text
-          |> Result.map Option.some
-          |> Result.map_err (fun err -> Invalid_glob err)
+      | Ok text -> of_string ~root:(Path.dirname path) ~syntax text
+      |> Result.map Option.some
+      |> Result.map_err (fun err -> Invalid_glob err)
       | Error err -> Error (File_system err)
     )
 
@@ -161,8 +169,7 @@ let matches_rule = fun rule ~candidate ~is_dir ->
 
 let matched = fun matcher ~path ~is_dir ->
   let candidate = relative_path_string matcher path in
-  let rec loop =
-    function
+  let rec loop = function
     | [] ->
         if matcher.unmatched_is_ignore_on_files && not is_dir then
           Match.Ignore

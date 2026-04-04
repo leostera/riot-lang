@@ -10,10 +10,9 @@ let analysis_of_source = Snapshot.find_analysis
 let diagnostics = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with
   | None -> []
-  | Some analysis ->
-      (analysis.parse_diagnostics |> List.map (fun diagnostic -> Parse diagnostic))
-      @ (analysis.lowering_diagnostics |> List.map (fun diagnostic -> Lowering diagnostic))
-      @ (analysis.typing_diagnostics |> List.map (fun diagnostic -> Typing diagnostic))
+  | Some analysis -> (analysis.parse_diagnostics |> List.map (fun diagnostic -> Parse diagnostic))
+  @ (analysis.lowering_diagnostics |> List.map (fun diagnostic -> Lowering diagnostic))
+  @ (analysis.typing_diagnostics |> List.map (fun diagnostic -> Typing diagnostic))
 
 let export_of = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with
@@ -34,7 +33,6 @@ let type_at = fun snapshot source_id position ->
   match analysis_of_source snapshot source_id with
   | None -> None
   | Some analysis ->
-      TypeIndex.find_at analysis.type_index position
-      |> function
+      TypeIndex.find_at analysis.type_index position |> function
       | Some entry -> Some entry.inferred_type
       | None -> None

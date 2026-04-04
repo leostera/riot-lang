@@ -16,9 +16,11 @@ and t =
   | Hole of int
 
 let rec prune = function
-  | Var ({ link = Some linked; _ } as var) ->
+  | Var ({ link=Some linked; _ } as var) ->
       let linked = prune linked in
-      let () = var.link <- Some linked in
+      let () =
+        var.link <- Some linked
+      in
       linked
   | ty -> ty
 
@@ -39,18 +41,17 @@ let rec free_vars = function
   | Bool
   | String
   | Unit
-  | Hole _ -> []
+  | Hole _ ->
+      []
   | Tuple members ->
-      List.fold_left
-        (fun acc member -> union acc (free_vars (prune member)))
-        []
-        members
+      List.fold_left (fun acc member -> union acc (free_vars (prune member))) [] members
   | Arrow (lhs, rhs) ->
       union (free_vars (prune lhs)) (free_vars (prune rhs))
   | Var var -> (
       match var.link with
       | Some linked -> free_vars linked
-      | None -> [ var.id ])
+      | None -> [ var.id ]
+    )
 
 let rec occurs = fun needle ty ->
   match prune ty with
@@ -58,7 +59,8 @@ let rec occurs = fun needle ty ->
   | Bool
   | String
   | Unit
-  | Hole _ -> false
+  | Hole _ ->
+      false
   | Tuple members ->
       List.exists (occurs needle) members
   | Arrow (lhs, rhs) ->
@@ -66,4 +68,5 @@ let rec occurs = fun needle ty ->
   | Var var -> (
       match var.link with
       | Some linked -> occurs needle linked
-      | None -> var.id = needle)
+      | None -> var.id = needle
+    )

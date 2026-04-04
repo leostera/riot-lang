@@ -1,6 +1,5 @@
 open Std
 open Std.Data
-
 module Framing = Framing
 module Session = Session
 
@@ -36,13 +35,11 @@ module File_log = struct
     Ok { path; sink }
 
   let write = fun t ~level message ->
-    let line =
-      Datetime.to_iso8601 (Datetime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n"
-    in
-    ignore (Fs.File.write_all t.sink line : (unit, _) result);
-    ignore (Fs.File.sync_data t.sink : (unit, _) result)
+    let line = Datetime.to_iso8601 (Datetime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
+    ignore ((Fs.File.write_all t.sink line: (unit, _) result));
+    ignore ((Fs.File.sync_data t.sink: (unit, _) result))
 
-  let close = fun t -> ignore (Fs.File.close t.sink : (unit, _) result)
+  let close = fun t -> ignore ((Fs.File.close t.sink: (unit, _) result))
 end
 
 let log = fun logger ~level message ->
@@ -74,27 +71,35 @@ let write_outbound = fun output messages ->
   List.fold_left
     (fun acc json ->
       let* () = acc in
-      Framing.write output (Std.Data.Json.to_string json) |> Result.map_error (fun message -> Failure message))
-    (Ok ()) messages
+      Framing.write output (Std.Data.Json.to_string json)
+      |> Result.map_error (fun message -> Failure message))
+    (Ok ())
+    messages
 
-let rec loop = fun logger -> fun input -> fun output -> fun state ->
-  let* payload_opt = Framing.read input |> Result.map_error (fun message -> Failure message) in
-  match payload_opt with
-  | None -> Ok ()
-  | Some payload ->
-      log logger ~level:"DEBUG" ("received " ^ payload_summary payload);
-      let outcome = Session.handle_payload state payload in
-      if not (List.is_empty outcome.outbound) then
-        log logger ~level:"DEBUG"
-          ("sending " ^ Int.to_string (List.length outcome.outbound) ^ " outbound message(s)");
-      Option.iter
-        (fun code -> log logger ~level:"INFO" ("lsp session exiting with code " ^ Int.to_string code))
-        outcome.exit_code;
-      let* () = write_outbound output outcome.outbound in
-      match outcome.exit_code with
-      | Some 0 -> Ok ()
-      | Some code -> Error (Failure ("riot-lsp exited with status " ^ Int.to_string code))
-      | None -> loop logger input output outcome.state
+let rec loop = fun logger ->
+  fun input ->
+    fun output ->
+      fun state ->
+        let* payload_opt = Framing.read input |> Result.map_error (fun message -> Failure message) in
+        match payload_opt with
+        | None -> Ok ()
+        | Some payload ->
+            log logger ~level:"DEBUG" ("received " ^ payload_summary payload);
+            let outcome = Session.handle_payload state payload in
+            if not (List.is_empty outcome.outbound) then
+              log
+                logger
+                ~level:"DEBUG"
+                ("sending " ^ Int.to_string (List.length outcome.outbound) ^ " outbound message(s)");
+            Option.iter
+              (fun code ->
+                log logger ~level:"INFO" ("lsp session exiting with code " ^ Int.to_string code))
+              outcome.exit_code;
+            let* () = write_outbound output outcome.outbound in
+            match outcome.exit_code with
+            | Some 0 -> Ok ()
+            | Some code -> Error (Failure ("riot-lsp exited with status " ^ Int.to_string code))
+            | None -> loop logger input output outcome.state
 
 let run = fun ?log_path () ->
   let input = Fs.File.from_fd IO.stdin in
@@ -102,10 +107,11 @@ let run = fun ?log_path () ->
   match File_log.open_sink ?path:log_path () with
   | Error _ -> loop None input output Session.empty
   | Ok logger ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> File_log.close logger)
+      Kernel.Fun.protect ~finally:(fun () -> File_log.close logger)
         (fun () ->
-          log (Some logger) ~level:"INFO"
+          log
+            (Some logger)
+            ~level:"INFO"
             ("riot-lsp started; logging to " ^ Path.to_string logger.path);
           match loop (Some logger) input output Session.empty with
           | Ok () as ok ->

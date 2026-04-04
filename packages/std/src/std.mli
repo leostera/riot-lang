@@ -1088,6 +1088,7 @@ module Float = Float
 (** **When to use:** Floating-point operations
     
     Extended float operations with parsing and formatting. *)
+
 (** **When to use:** Filesystem operations
     
     Use Fs for all file and directory operations with Result-based error handling.
@@ -1217,6 +1218,7 @@ module Process = Process
     - Process linking for crash propagation
     - Checking if process is alive
     - Getting process info *)
+
 (** **When to use:** Physical equality and pointer operations
     
     Rarely needed in normal application code. *)
@@ -1237,7 +1239,9 @@ module Random = Random
     
     Use Ref for ensuring type safety across module boundaries. *)
 module Ref = Ref
+
 module Regex = Regex
+
 module Result = Result
 
 (** **When to use:** Explicit error handling

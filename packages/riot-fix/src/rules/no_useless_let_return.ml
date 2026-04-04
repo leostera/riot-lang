@@ -46,15 +46,13 @@ let make_fix = fun (expr: Syn.Cst.let_expression) ->
   if expr.parameters != [] || Option.is_some expr.and_binding then
     None
   else
-    Some
-      (Fix.make
-         ~title:"Replace this let-binding with its bound expression"
-         ~operations:
-           [
-             Fix.replace
-               ~target:(Fix.Node expr.syntax_node)
-               ~replacement:(Fix.source_of_node (Syn.Cst.Expression.syntax_node expr.bound_value));
-           ])
+    Some (Fix.make
+      ~title:"Replace this let-binding with its bound expression"
+      ~operations:[
+        Fix.replace
+          ~target:(Fix.Node expr.syntax_node)
+          ~replacement:(Fix.source_of_node (Syn.Cst.Expression.syntax_node expr.bound_value));
+      ])
 
 let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
   let fix = make_fix expr in

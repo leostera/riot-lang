@@ -26,10 +26,8 @@ let header_separator = fun payload ->
   loop 0
 
 let parse_content_length = fun headers ->
-  let parse_int = fun value ->
-    try
-      Some (int_of_string value)
-    with
+  let parse_int value =
+    try Some (int_of_string value) with
     | Failure _ -> None
   in
   let rec loop = function
@@ -54,12 +52,10 @@ let decode_one = fun framed ->
   match header_separator framed with
   | None -> Error "missing header/body separator"
   | Some (header_end, separator_len) ->
-      let headers =
-        String.sub framed 0 header_end
-        |> String.split_on_char '\n'
-        |> List.map strip_line_ending
-        |> List.filter (fun line -> not (String.equal line ""))
-      in
+      let headers = String.sub framed 0 header_end
+      |> String.split_on_char '\n'
+      |> List.map strip_line_ending
+      |> List.filter (fun line -> not (String.equal line "")) in
       let payload_start = header_end + separator_len in
       let body = String.sub framed payload_start (String.length framed - payload_start) in
       let* content_length = parse_content_length headers in
@@ -73,7 +69,8 @@ let decode_one = fun framed ->
 let read = fun file ->
   let rec read_headers acc =
     match Fs.File.read_line file with
-    | Error error -> Error (IO.error_message error)
+    | Error error ->
+        Error (IO.error_message error)
     | Ok "" ->
         if List.is_empty acc then
           Ok None
@@ -95,5 +92,4 @@ let read = fun file ->
       let* () = Fs.File.read_exact file buffer ~offset:0 ~len:content_length |> Result.map_error IO.error_message in
       Ok (Some (IO.Bytes.to_string buffer))
 
-let write = fun file payload ->
-  Fs.File.write_all file (encode payload) |> Result.map_error IO.error_message
+let write = fun file payload -> Fs.File.write_all file (encode payload) |> Result.map_error IO.error_message

@@ -2,13 +2,11 @@ open Std
 
 let check_source = fun ~filename source ->
   let session = Session.empty ~config:TypConfig.default in
-  let (session, source_id) =
-    Session.create_source
-      session
-      ~kind:Source.File
-      ~origin:(Source.Path filename)
-      ~text:source
-  in
+  let (session, source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Path filename)
+    ~text:source in
   let snapshot = Session.snapshot session in
   match Query.analysis_of_source snapshot source_id with
   | None ->
@@ -32,10 +30,12 @@ let check_source = fun ~filename source ->
   | Some analysis ->
       let (item_tree, body_arena, origin_map) =
         match analysis.semantic_tree with
-        | Some semantic_tree ->
-            (Some semantic_tree.item_tree, Some semantic_tree.body_arena, Some semantic_tree.origin_map)
-        | None ->
-            (None, None, None)
+        | Some semantic_tree -> (
+          Some semantic_tree.item_tree,
+          Some semantic_tree.body_arena,
+          Some semantic_tree.origin_map
+        )
+        | None -> (None, None, None)
       in
       {
         Check_result.source_id;

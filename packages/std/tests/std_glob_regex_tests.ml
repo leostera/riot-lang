@@ -36,7 +36,8 @@ let tests = [ Test.case "std regex DSL compiles and matches"
       let glob = Glob.create [ "./**" ] |> Result.expect ~msg:"create glob" in
       Test.assert_true
         (Glob.matches glob ~str:"./foo/bar/baz.ml" |> Result.unwrap_or ~default:false);
-      Test.assert_true (Glob.matches glob ~str:"./" |> Result.unwrap_or ~default:false);
+      Test.assert_true
+        (Glob.matches glob ~str:"./" |> Result.unwrap_or ~default:false);
       Ok ()); Test.case "glob character classes and single wildcards compile"
     (fun _ctx ->
       let glob = Glob.create [ "test/[ab]?.ml" ] |> Result.expect ~msg:"create glob" in
@@ -51,14 +52,14 @@ let tests = [ Test.case "std regex DSL compiles and matches"
       Ok ()); Test.case "glob parse errors report offsets"
     (fun _ctx ->
       match Glob.create [ "foo[" ] with
-      | Ok _ -> Error "expected invalid glob"
+      | Ok _ ->
+          Error "expected invalid glob"
       | Error (Glob.Invalid_glob { message; offset; _ }) ->
           Test.assert_true (String.length message > 0);
           Test.assert_equal ~expected:(Some 3) ~actual:offset;
           Ok ()
       | Error _ ->
-          Error "expected invalid glob"
-    ); Test.case "glob create compiles many patterns into one matcher"
+          Error "expected invalid glob"); Test.case "glob create compiles many patterns into one matcher"
     (fun _ctx ->
       let glob = Glob.create [ "./*"; "../**/woo" ] |> Result.expect ~msg:"create glob set" in
       Test.assert_true

@@ -45,22 +45,21 @@ let semantic_id_equal = fun left right ->
   | _ -> false
 
 let find = fun origins origin_id ->
-  List.find_opt (fun (origin: origin) -> OriginId.equal origin.origin_id origin_id) origins
+  List.find_opt
+    (fun (origin: origin) ->
+      OriginId.equal origin.origin_id origin_id)
+    origins
 
 let find_by_semantic_id = fun origins semantic_id ->
   List.find_opt (fun (origin: origin) -> semantic_id_equal origin.semantic_id semantic_id) origins
 
-let find_item = fun origins item_id ->
-  find_by_semantic_id origins (Item item_id)
+let find_item = fun origins item_id -> find_by_semantic_id origins (Item item_id)
 
-let find_binding = fun origins binding_id ->
-  find_by_semantic_id origins (Binding binding_id)
+let find_binding = fun origins binding_id -> find_by_semantic_id origins (Binding binding_id)
 
-let find_expr = fun origins expr_id ->
-  find_by_semantic_id origins (Expr expr_id)
+let find_expr = fun origins expr_id -> find_by_semantic_id origins (Expr expr_id)
 
-let find_pattern = fun origins pat_id ->
-  find_by_semantic_id origins (Pattern pat_id)
+let find_pattern = fun origins pat_id -> find_by_semantic_id origins (Pattern pat_id)
 
 let kind_to_string = function
   | ItemKind -> "item"
@@ -75,32 +74,25 @@ let semantic_id_to_string = function
   | Pattern pat_id -> PatId.to_string pat_id
 
 let semantic_id_to_json = function
-  | Item item_id ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "item");
-        ("id", Data.Json.Int (ItemId.to_int item_id));
-      ]
-  | Binding binding_id ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "binding");
-        ("id", Data.Json.Int (BindingId.to_int binding_id));
-      ]
-  | Expr expr_id ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "expr");
-        ("id", Data.Json.Int (ExprId.to_int expr_id));
-      ]
-  | Pattern pat_id ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "pattern");
-        ("id", Data.Json.Int (PatId.to_int pat_id));
-      ]
+  | Item item_id -> Data.Json.Object [
+    ("tag", Data.Json.String "item");
+    ("id", Data.Json.Int (ItemId.to_int item_id));
+  ]
+  | Binding binding_id -> Data.Json.Object [
+    ("tag", Data.Json.String "binding");
+    ("id", Data.Json.Int (BindingId.to_int binding_id));
+  ]
+  | Expr expr_id -> Data.Json.Object [
+    ("tag", Data.Json.String "expr");
+    ("id", Data.Json.Int (ExprId.to_int expr_id));
+  ]
+  | Pattern pat_id -> Data.Json.Object [
+    ("tag", Data.Json.String "pattern");
+    ("id", Data.Json.Int (PatId.to_int pat_id));
+  ]
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
-  Data.Json.Object [
-    ("start", Data.Json.Int span.start);
-    ("end", Data.Json.Int span.end_);
-  ]
+  Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
 let origin_to_json = fun (origin: origin) ->
   Data.Json.Object [
@@ -114,30 +106,29 @@ let origin_to_json = fun (origin: origin) ->
     ("span", span_to_json origin.span);
   ]
 
-let to_json = fun origins ->
-  Data.Json.Array (List.map origin_to_json origins)
+let to_json = fun origins -> Data.Json.Array (List.map origin_to_json origins)
 
 let to_string = fun origins ->
   match origins with
   | [] -> "  none\n"
-  | _ ->
-      origins
-      |> List.map (fun (origin: origin) ->
-        "  "
-        ^ OriginId.to_string origin.origin_id
-        ^ " "
-        ^ kind_to_string (kind_of_semantic_id origin.semantic_id)
-        ^ " "
-        ^ semantic_id_to_string origin.semantic_id
-        ^ " "
-        ^ origin.label
-        ^ " "
-        ^ Syn.SyntaxKind.to_string origin.syntax_kind
-        ^ " @ "
-        ^ Syn.Ceibo.Span.to_string origin.span
-        ^ " "
-        ^ SourceId.to_string origin.source_id
-        ^ " rev="
-        ^ Int.to_string origin.source_revision)
-      |> String.concat "\n"
-      |> fun text -> text ^ "\n"
+  | _ -> origins
+  |> List.map
+    (fun (origin: origin) ->
+      "  "
+      ^ OriginId.to_string origin.origin_id
+      ^ " "
+      ^ kind_to_string (kind_of_semantic_id origin.semantic_id)
+      ^ " "
+      ^ semantic_id_to_string origin.semantic_id
+      ^ " "
+      ^ origin.label
+      ^ " "
+      ^ Syn.SyntaxKind.to_string origin.syntax_kind
+      ^ " @ "
+      ^ Syn.Ceibo.Span.to_string origin.span
+      ^ " "
+      ^ SourceId.to_string origin.source_id
+      ^ " rev="
+      ^ Int.to_string origin.source_revision)
+  |> String.concat "\n"
+  |> fun text -> text ^ "\n"

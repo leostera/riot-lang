@@ -6,8 +6,7 @@ type t = {
   prelude: env;
 }
 
-let monomorphic = fun ty ->
-  TypeScheme.Forall ([], ty)
+let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
 
 let polymorphic_eq =
   let lhs = TypeRepr.Var { id = 0; link = None } in
@@ -21,5 +20,5 @@ let default = {
     ("/", monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Int))));
     ("=", polymorphic_eq);
     ("not", monomorphic (TypeRepr.Arrow (TypeRepr.Bool, TypeRepr.Bool)));
-  ];
+  ]
 }

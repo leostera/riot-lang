@@ -3,14 +3,7 @@ open Std
 (** Error surfaced by ignore-aware traversal. *)
 type error =
   | File_system of { path: Path.t option; cause: Fs.error }
-  | Invalid_glob of {
-      path: Path.t;
-      line: int;
-      input: string;
-      message: string;
-      offset: int option;
-    }
-
+  | Invalid_glob of { path: Path.t; line: int; input: string; message: string; offset: int option }
 (** An ignore-aware walk plan. *)
 type t
 
@@ -47,10 +40,7 @@ val create:
     concurrently on multiple worker actors and must therefore be thread-safe
     and free of order-sensitive side effects. [Skip_subtree] applies only to
     the current directory branch, while [Stop] stops traversal globally. *)
-val walk:
-  t ->
-  f:(Fs.Walker.FileItem.t -> Fs.Walker.step) ->
-  (unit, error) Result.t
+val walk: t -> f:(Fs.Walker.FileItem.t -> Fs.Walker.step) -> (unit, error) Result.t
 
 (** Collect all yielded entries into a list. *)
 val to_list: t -> (Fs.Walker.FileItem.t list, error) Result.t
