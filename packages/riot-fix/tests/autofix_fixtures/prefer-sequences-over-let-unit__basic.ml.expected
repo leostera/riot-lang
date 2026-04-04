@@ -2,51 +2,51 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Matching on booleans should be written as `if` expressions",
+      "message": "Effectful let-unit bindings should be written as `;` sequences",
       "span": {
-        "start": 7,
-        "end": 86
+        "start": 15,
+        "end": 43
       },
-      "rule_id": "prefer-if-over-bool-match",
-      "suggestion": "Rewrite this match as `if <condition> then ... else ...`.",
+      "rule_id": "prefer-sequences-over-let-unit",
+      "suggestion": "Replace this let-unit binding with a `;` sequence.",
       "fix": {
-        "title": "Rewrite boolean match as an if expression",
+        "title": "Replace let-unit binding with a sequence",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 7,
-                "end": 86
+                "start": 15,
+                "end": 43
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "if f then (do_something) else (if f then\n        print)"
+              "text": "(log()); flush()"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let f =if f then (do_something) else (if f then\n        print)\n",
+  "fixed_source": "let render () =(log()); flush()\n",
   "applied_fixes": [
     {
-      "title": "Rewrite boolean match as an if expression",
+      "title": "Replace let-unit binding with a sequence",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 7,
-              "end": 86
+              "start": 15,
+              "end": 43
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "if f then (do_something) else (if f then\n        print)"
+            "text": "(log()); flush()"
           }
         }
       ]

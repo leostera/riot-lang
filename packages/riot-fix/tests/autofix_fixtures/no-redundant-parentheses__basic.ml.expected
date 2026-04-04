@@ -2,51 +2,51 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Matching on booleans should be written as `if` expressions",
+      "message": "Obvious grouping parentheses should be removed",
       "span": {
-        "start": 7,
-        "end": 86
+        "start": 18,
+        "end": 26
       },
-      "rule_id": "prefer-if-over-bool-match",
-      "suggestion": "Rewrite this match as `if <condition> then ... else ...`.",
+      "rule_id": "no-redundant-parentheses",
+      "suggestion": "Remove these redundant parentheses.",
       "fix": {
-        "title": "Rewrite boolean match as an if expression",
+        "title": "Remove redundant parentheses",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 7,
-                "end": 86
+                "start": 18,
+                "end": 26
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "if f then (do_something) else (if f then\n        print)"
+              "text": " value"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let f =if f then (do_something) else (if f then\n        print)\n",
+  "fixed_source": "let render value = value\n",
   "applied_fixes": [
     {
-      "title": "Rewrite boolean match as an if expression",
+      "title": "Remove redundant parentheses",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 7,
-              "end": 86
+              "start": 18,
+              "end": 26
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "if f then (do_something) else (if f then\n        print)"
+            "text": " value"
           }
         }
       ]

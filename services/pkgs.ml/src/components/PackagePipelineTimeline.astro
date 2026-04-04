@@ -1,0 +1,142 @@
+---
+import type { RegistryEventRecord, RegistryEventType } from "../lib/types.ts";
+
+interface Props {
+  events: RegistryEventRecord[];
+}
+
+interface PipelineStage {
+  key: string;
+  label: string;
+  event_types: RegistryEventType[];
+}
+
+const { events } = Astro.props;
+
+const stages: PipelineStage[] = [
+  {
+    key: "submitted",
+    label: "Submitted",
+    event_types: ["package.submitted"],
+  },
+  {
+    key: "indexed",
+    label: "Indexed",
+    event_types: ["package.indexed"],
+  },
+  {
+    key: "searchable",
+    label: "Searchable",
+    event_types: ["package.searchable"],
+  },
+  {
+    key: "docs-ready",
+    label: "Docs ready",
+    event_types: ["package.docs.staged"],
+  },
+  {
+    key: "completed",
+    label: "Completed",
+    event_types: ["package.processing.finished"],
+  },
+];
+
+function latestStageEvent(eventTypes: RegistryEventType[]): RegistryEventRecord | null {
+  let latest: RegistryEventRecord | null = null;
+
+  for (const event of events) {
+    if (!eventTypes.includes(event.event_type)) {
+      continue;
+    }
+
+    if (latest === null || event.created_at > latest.created_at) {
+      latest = event;
+    }
+  }
+
+  return latest;
+}
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+const stageStates = stages.map((stage) => ({
+  ...stage,
+  event: latestStageEvent(stage.event_types),
+}));
+---
+
+<div class="grid gap-3 border-t border-border pt-4">
+  <div class="grid gap-0.5">
+    <div class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline</div>
+    <p class="text-sm text-muted-foreground">
+      Submission, indexing, and post-publish processing milestones for this release.
+    </p>
+  </div>
+
+  {
+    events.length === 0 ? (
+      <p class="text-base text-muted-foreground">No pipeline data has been recorded for this release yet.</p>
+    ) : (
+      <div class="overflow-x-auto pb-1">
+        <div class="min-w-[720px]">
+          <div class="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2">
+            {stageStates.map((stage, index) => (
+              <>
+                <div class="flex justify-center">
+                  <span
+                    class:list={[
+                      "inline-flex h-8 w-8 items-center justify-center rounded-sm border text-sm font-semibold",
+                      stage.event === null
+                        ? "border-border bg-background text-muted-foreground"
+                        : "border-primary bg-primary text-primary-foreground",
+                    ]}
+                    aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                  >
+                    {stage.event === null ? "·" : "x"}
+                  </span>
+                </div>
+
+                {
+                  index < stageStates.length - 1 ? (
+                    <div
+                      class:list={[
+                        "h-px w-full",
+                        stage.event !== null && stageStates[index + 1]?.event !== null
+                          ? "bg-primary"
+                          : "bg-border",
+                      ]}
+                      aria-hidden="true"
+                    />
+                  ) : null
+                }
+              </>
+            ))}
+          </div>
+
+          <div class="mt-3 grid grid-cols-5 gap-3">
+            {stageStates.map((stage) => (
+              <div class="grid justify-items-center gap-1 text-center">
+                <div class="text-sm font-medium text-foreground">{stage.label}</div>
+                <div class="text-xs text-muted-foreground">
+                  {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+</div>

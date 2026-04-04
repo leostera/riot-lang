@@ -1,0 +1,1 @@
+type userProfile = int

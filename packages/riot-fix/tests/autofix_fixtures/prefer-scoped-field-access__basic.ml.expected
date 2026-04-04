@@ -2,51 +2,51 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Matching on booleans should be written as `if` expressions",
+      "message": "Module-qualified field access should use scoped qualification syntax",
       "span": {
-        "start": 7,
-        "end": 86
+        "start": 19,
+        "end": 39
       },
-      "rule_id": "prefer-if-over-bool-match",
-      "suggestion": "Rewrite this match as `if <condition> then ... else ...`.",
+      "rule_id": "prefer-scoped-field-access",
+      "suggestion": "Prefer Module.(value.field) style for module-qualified record access.",
       "fix": {
-        "title": "Rewrite boolean match as an if expression",
+        "title": "Rewrite field access to scoped module qualification",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 7,
-                "end": 86
+                "start": 19,
+                "end": 39
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "if f then (do_something) else (if f then\n        print)"
+              "text": "Module.(record.field)"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let f =if f then (do_something) else (if f then\n        print)\n",
+  "fixed_source": "let render record =Module.(record.field)\n",
   "applied_fixes": [
     {
-      "title": "Rewrite boolean match as an if expression",
+      "title": "Rewrite field access to scoped module qualification",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 7,
-              "end": 86
+              "start": 19,
+              "end": 39
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "if f then (do_something) else (if f then\n        print)"
+            "text": "Module.(record.field)"
           }
         }
       ]

@@ -2,51 +2,51 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Matching on booleans should be written as `if` expressions",
+      "message": "Deeply nested function calls should usually be written as pipelines",
       "span": {
-        "start": 7,
-        "end": 86
+        "start": 14,
+        "end": 38
       },
-      "rule_id": "prefer-if-over-bool-match",
-      "suggestion": "Rewrite this match as `if <condition> then ... else ...`.",
+      "rule_id": "prefer-pipelines-for-nested-calls",
+      "suggestion": "Rewrite this call chain as a pipeline.",
       "fix": {
-        "title": "Rewrite boolean match as an if expression",
+        "title": "Rewrite nested calls as a pipeline",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 7,
-                "end": 86
+                "start": 14,
+                "end": 38
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "if f then (do_something) else (if f then\n        print)"
+              "text": " 1 |> hex |> baz |> bar |> foo"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let f =if f then (do_something) else (if f then\n        print)\n",
+  "fixed_source": "let rendered = 1 |> hex |> baz |> bar |> foo\n",
   "applied_fixes": [
     {
-      "title": "Rewrite boolean match as an if expression",
+      "title": "Rewrite nested calls as a pipeline",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 7,
-              "end": 86
+              "start": 14,
+              "end": 38
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "if f then (do_something) else (if f then\n        print)"
+            "text": " 1 |> hex |> baz |> bar |> foo"
           }
         }
       ]

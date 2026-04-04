@@ -2,51 +2,51 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Matching on booleans should be written as `if` expressions",
+      "message": "Else branches that only return unit should be omitted",
       "span": {
-        "start": 7,
-        "end": 86
+        "start": 15,
+        "end": 41
       },
-      "rule_id": "prefer-if-over-bool-match",
-      "suggestion": "Rewrite this match as `if <condition> then ... else ...`.",
+      "rule_id": "no-redundant-else-unit",
+      "suggestion": "Remove else () from this if expression.",
       "fix": {
-        "title": "Rewrite boolean match as an if expression",
+        "title": "Remove redundant else () branch",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 7,
-                "end": 86
+                "start": 15,
+                "end": 41
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "if f then (do_something) else (if f then\n        print)"
+              "text": "if ok then (log())"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let f =if f then (do_something) else (if f then\n        print)\n",
+  "fixed_source": "let render ok =if ok then (log())\n",
   "applied_fixes": [
     {
-      "title": "Rewrite boolean match as an if expression",
+      "title": "Remove redundant else () branch",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 7,
-              "end": 86
+              "start": 15,
+              "end": 41
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "if f then (do_something) else (if f then\n        print)"
+            "text": "if ok then (log())"
           }
         }
       ]

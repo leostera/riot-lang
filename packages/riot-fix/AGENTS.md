@@ -20,9 +20,11 @@
 14. Apply `riot.fix.ignore` during discovery, not after collection. Ignored subtrees should be pruned before they ever reach the worker queue.
 15. Keep `Riot_fix` as the reusable library boundary. The top-level package should own `fix_request`, `fix`, and `Event.to_json`; `Cli` is the standalone adapter layered on top.
 16. Keep fixture-backed `riot-fix` coverage on `Std.Test.FixtureRunner` plus adjacent `.expected` snapshots. Do not add a second package-local fixture harness when the native snapshot suite can own the contract.
+17. Keep autofix fixtures proving that safe rewrites still parse after application. Add at least one autofix fixture for each builtin rule that returns a concrete fix.
 
 ## Validate
 
 `timeout 30 riot build riot-fix`
 `timeout 180 riot test riot-fix:runner_tests`
+`timeout 180 riot test riot-fix:autofix_fixture_tests`
 `timeout 180 riot test riot-fix:fixture_tests`

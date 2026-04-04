@@ -62,6 +62,10 @@ let result_to_json = fun result ->
         match result.after with
         | Some after -> Json.array (List.map Riot_fix.Diagnostic.to_json after.diagnostics)
         | None -> Json.array [] );
+      ( "after_parse_diagnostics",
+        match result.after with
+        | Some after -> Json.array (List.map Syn.Diagnostic.to_json after.parse_diagnostics)
+        | None -> Json.array [] );
     ]
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
@@ -69,6 +73,17 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* rule = find_rule rule_id in
   let* source = Fs.read ctx.fixture_path |> Result.map_error IO.error_message in
   let* result = Fixme.Rule_test.run_rule ~rule ~filename:ctx.fixture_path source in
+  let* () =
+    match result.fixed_source with
+    | Some _ -> Ok ()
+    | None -> Error ("autofix fixture did not apply a fix for rule " ^ rule_id)
+  in
+  let* () =
+    match result.after with
+    | Some after when List.is_empty after.parse_diagnostics -> Ok ()
+    | Some _ -> Error ("autofix fixture rewrote to invalid OCaml for rule " ^ rule_id)
+    | None -> Error ("autofix fixture did not produce a post-fix analysis for rule " ^ rule_id)
+  in
   Test.Snapshot.assert_text
     ~ctx:ctx.test
     ~actual:(Json.to_string_pretty (result_to_json result) ^ "\n")

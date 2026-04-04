@@ -1,0 +1,57 @@
+{
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+      "span": {
+        "start": 12,
+        "end": 34
+      },
+      "rule_id": "no-function-shorthand",
+      "suggestion": "Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`",
+      "fix": {
+        "title": "Rewrite function shorthand as an explicit parameter match",
+        "operations": [
+          {
+            "kind": "replace",
+            "target": {
+              "kind": "token",
+              "span": {
+                "start": 13,
+                "end": 21
+              }
+            },
+            "replacement": {
+              "kind": "text",
+              "text": "fun value -> match value with"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "fixed_source": "let render = fun value -> match value with | x -> x + 1\n",
+  "applied_fixes": [
+    {
+      "title": "Rewrite function shorthand as an explicit parameter match",
+      "operations": [
+        {
+          "kind": "replace",
+          "target": {
+            "kind": "token",
+            "span": {
+              "start": 13,
+              "end": 21
+            }
+          },
+          "replacement": {
+            "kind": "text",
+            "text": "fun value -> match value with"
+          }
+        }
+      ]
+    }
+  ],
+  "after_diagnostics": [],
+  "after_parse_diagnostics": []
+}

@@ -1,0 +1,63 @@
+{
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Eta-expanded functions should be replaced by the function they call",
+      "span": {
+        "start": 14,
+        "end": 37
+      },
+      "rule_id": "no-eta-expansion",
+      "suggestion": "Replace this eta-expanded function with the callee directly.",
+      "fix": {
+        "title": "Replace eta-expanded wrapper with the callee directly",
+        "operations": [
+          {
+            "kind": "replace",
+            "target": {
+              "kind": "node",
+              "span": {
+                "start": 14,
+                "end": 37
+              }
+            },
+            "replacement": {
+              "kind": "source_of_node",
+              "span": {
+                "start": 27,
+                "end": 31
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "fixed_source": "let wrap foo = foo\n",
+  "applied_fixes": [
+    {
+      "title": "Replace eta-expanded wrapper with the callee directly",
+      "operations": [
+        {
+          "kind": "replace",
+          "target": {
+            "kind": "node",
+            "span": {
+              "start": 14,
+              "end": 37
+            }
+          },
+          "replacement": {
+            "kind": "source_of_node",
+            "span": {
+              "start": 27,
+              "end": 31
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "after_diagnostics": [],
+  "after_parse_diagnostics": []
+}

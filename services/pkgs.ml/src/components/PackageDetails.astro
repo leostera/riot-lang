@@ -1,6 +1,7 @@
 ---
 import PackageActivity from "@/components/PackageActivity.astro";
 import PackageDownloadsChart from "@/components/PackageDownloadsChart";
+import PackagePipelineTimeline from "@/components/PackagePipelineTimeline.astro";
 import {
   Card,
   CardContent,
@@ -81,6 +82,8 @@ const recentEvents = events.slice(0, 12);
             <p class="text-base text-muted-foreground">No install data has been recorded for this package yet.</p>
           )
         }
+
+        <PackagePipelineTimeline events={events} />
       </CardContent>
     </Card>
 

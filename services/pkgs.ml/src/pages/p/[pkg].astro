@@ -20,7 +20,7 @@ const [overview, downloads, relations, events] =
         fetchPackageOverview(packageName),
         fetchPackageDownloads(packageName),
         fetchPackageRelations(packageName),
-        fetchPackageEvents(packageName),
+        fetchPackageEvents(packageName, { version: resolved.release.version }),
       ]);
 
 if (resolved === null) {
