@@ -90,31 +90,41 @@ const stageStates = stages.map((stage) => ({
       <p class="text-base text-muted-foreground">No pipeline data has been recorded for this release yet.</p>
     ) : (
       <div class="overflow-x-auto pb-1">
-        <div class="min-w-[720px]">
-          <div class="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2">
+        <div class="flex min-w-[760px] items-start gap-0">
             {stageStates.map((stage, index) => (
               <>
-                <div class="flex justify-center">
+                <div class="grid w-32 shrink-0 justify-items-center gap-2 text-center">
                   <span
                     class:list={[
-                      "inline-flex h-8 w-8 items-center justify-center rounded-sm border text-sm font-semibold",
+                      "relative inline-flex h-8 w-8 items-center justify-center rounded-full border",
                       stage.event === null
                         ? "border-border bg-background text-muted-foreground"
-                        : "border-primary bg-primary text-primary-foreground",
+                        : "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300",
                     ]}
                     aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
                   >
-                    {stage.event === null ? "·" : "x"}
+                    {
+                      stage.event === null ? null : (
+                        <span class="h-2.5 w-2.5 rounded-full bg-current" aria-hidden="true" />
+                      )
+                    }
                   </span>
+
+                  <div class="grid gap-1">
+                    <div class="text-sm font-medium leading-tight text-foreground">{stage.label}</div>
+                    <div class="text-xs leading-tight text-muted-foreground">
+                      {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
+                    </div>
+                  </div>
                 </div>
 
                 {
                   index < stageStates.length - 1 ? (
                     <div
                       class:list={[
-                        "h-px w-full",
+                        "mt-4 h-px min-w-10 flex-1",
                         stage.event !== null && stageStates[index + 1]?.event !== null
-                          ? "bg-primary"
+                          ? "bg-emerald-600 dark:bg-emerald-500"
                           : "bg-border",
                       ]}
                       aria-hidden="true"
@@ -123,18 +133,6 @@ const stageStates = stages.map((stage) => ({
                 }
               </>
             ))}
-          </div>
-
-          <div class="mt-3 grid grid-cols-5 gap-3">
-            {stageStates.map((stage) => (
-              <div class="grid justify-items-center gap-1 text-center">
-                <div class="text-sm font-medium text-foreground">{stage.label}</div>
-                <div class="text-xs text-muted-foreground">
-                  {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     )
