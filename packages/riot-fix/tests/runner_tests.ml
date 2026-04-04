@@ -1131,6 +1131,13 @@ let render x y z =
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-redundant-parentheses exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render value = (value)\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.No_redundant_parentheses.make () ]
+        () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = value\n");
   Test.case
     "rule explanations explain redundant parentheses"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-redundant-parentheses" ~snippet:"obvious grouping");
@@ -1180,6 +1187,11 @@ let render x y z =
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
+  Test.case "no-redundant-reraise exposes an auto-fix"
+    (fun _ctx ->
+      let source = "let render value = try render_inner value with exn -> raise exn\n" in
+      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_redundant_reraise.make () ] () in
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = render_inner value\n");
   Test.case
     "rule explanations explain redundant reraises"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-redundant-reraise" ~snippet:"raise exn");

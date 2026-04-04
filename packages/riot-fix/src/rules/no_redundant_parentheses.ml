@@ -112,6 +112,15 @@ let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
     ~suggestion:"Remove these redundant parentheses."
+    ~fix:
+      (Fix.make
+         ~title:"Remove redundant parentheses"
+         ~operations:
+           [
+             Fix.replace_node_with_text
+               ~target:expr.syntax_node
+               ~text:(" " ^ Rule_text.expression expr.inner);
+           ])
     ()
 
 let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
