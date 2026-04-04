@@ -25,7 +25,13 @@ let blend = RGB.blend
   (`rgb (0, 0, 255))    (* Blue *)
   (`rgb (255, 255, 0))  (* Yellow *)
   ~mix:0.5
-(* Returns: `rgb (0, 242, 54) - Green! *)
+(* Returns the package's LUV-based midpoint as an RGB value *)
+```
+
+A runnable example is included:
+
+```sh
+riot run -p colors blend_demo
 ```
 
 ## Why Perceptual Color Blending Matters
@@ -45,7 +51,7 @@ let naive_blend = ((0+255)/2, (0+255)/2, (255+0)/2)
 ```ocaml
 (* Perceptually uniform blending in LUV space *)
 let blend = RGB.blend (`rgb (0, 0, 255)) (`rgb (255, 255, 0)) ~mix:0.5
-(* Result: `rgb (0, 242, 54) - Green! Matches human perception *)
+(* Result: a midpoint computed by converting through LUV space *)
 ```
 
 The difference: LUV is **perceptually uniform**. Equal numeric distances in LUV correspond to equal perceived color differences by humans.
