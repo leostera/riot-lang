@@ -447,6 +447,20 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
         | _ -> None)
       mods
   in
+  let has_interface = fun mod_ ->
+    try
+      let node_ids = Dep_graph.Module_registry.get_by_name dep_graph.registry (Dep_graph.Module.module_name mod_) in
+      List.exists
+        (fun node_id ->
+          let node = Graph.get_node dep_graph.graph node_id in
+          match node.value.kind with
+          | Dep_graph.MLI intf_mod ->
+              Dep_graph.Module.module_name intf_mod = Dep_graph.Module.module_name mod_
+          | _ -> false)
+        node_ids
+    with
+    | Not_found -> false
+  in
   (* First, copy all header files *)
   Dep_graph.iter
     (fun node ->
@@ -493,7 +507,10 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
             in
             actions := action :: !actions;
             cmo_files := !cmo_files @ [ output ];
-            outputs := Filename.concat sandbox_dir output :: !outputs
+            outputs := Filename.concat sandbox_dir output :: !outputs;
+            if not (has_interface mod_) then
+              let cmi_output = Module.cmi mod_ in
+              outputs := Filename.concat sandbox_dir cmi_output :: !outputs
         | { file=Generated { path; contents }; kind=ML mod_; open_modules; _ } ->
             (* Write generated .ml file *)
             let write = WriteFile { path; content = contents } in
@@ -515,7 +532,7 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
             cmo_files := !cmo_files @ [ output ];
             outputs := Filename.concat sandbox_dir output :: !outputs;
             (* For aliases modules, also add the .cmi as an output *)
-            if is_aliases then
+            if is_aliases || not (has_interface mod_) then
               let cmi_output = Module.cmi mod_ in
               outputs := Filename.concat sandbox_dir cmi_output :: !outputs
         | { file=Generated { path; contents }; kind=MLI mod_; open_modules; _;  } ->

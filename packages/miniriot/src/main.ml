@@ -68,6 +68,8 @@ let () =
   build_package ~build_results "ceibo" "packages/ceibo";
   build_package ~build_results "http" "packages/http";
   build_package ~build_results "blink" "packages/blink";
+  build_package ~build_results "jsonrpc" "packages/jsonrpc";
+  build_package ~build_results "lsp" "packages/lsp";
   build_package ~build_results "pkgs-ml" "packages/pkgs-ml";
   build_package ~build_results "syn" "packages/syn";
   build_package ~build_results "fixme" "packages/fixme";
@@ -80,6 +82,8 @@ let () =
   build_package ~build_results "riot-init" "packages/riot-init";
   build_package ~build_results "riot-fix" "packages/riot-fix";
   build_package ~build_results "riot-fmt" "packages/riot-fmt";
+  build_package ~build_results "riot-lsp" "packages/riot-lsp";
+  build_package ~build_results "pubgrub" "packages/pubgrub";
   build_package ~build_results "riot-deps" "packages/riot-deps";
   build_package ~build_results "riot-build" "packages/riot-build";
   build_package ~build_results "riot-publish" "packages/riot-publish";

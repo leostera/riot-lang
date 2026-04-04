@@ -870,32 +870,51 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     let node = Alias_module.make_node ns child_modules in
     Graph.add_node t.graph node
   in
-  (* Then we create the library interface for the package *)
-  let intf_node =
-    let intf = Library_interface.make_node
-      intf_mod
-      child_modules
-      (aliases @ [ aliases_node ])
-      ~exists:has_library_interface_mli
-      ~actual_path:library_interface_mli_path in
-    Graph.add_node t.graph intf
+  (* If a library has a root .ml but no root .mli, do not synthesize a fake
+     interface node. The implementation-produced .cmi is the public surface. *)
+  let intf_node, impl_node =
+    if has_library_interface_ml && not has_library_interface_mli then
+      let impl = Library_interface.make_node
+        impl_mod
+        child_modules
+        (aliases @ [ aliases_node ])
+        ~exists:true
+        ~actual_path:library_interface_ml_path in
+      let impl_node = Graph.add_node t.graph impl in
+      Module_registry.register t.registry intf_mod impl_node.id;
+      Module_registry.register t.registry impl_mod impl_node.id;
+      Graph.add_edge impl_node ~depends_on:aliases_node;
+      (impl_node, impl_node)
+    else
+      (
+        (* Then we create the library interface for the package *)
+        let intf_node =
+          let intf = Library_interface.make_node
+            intf_mod
+            child_modules
+            (aliases @ [ aliases_node ])
+            ~exists:has_library_interface_mli
+            ~actual_path:library_interface_mli_path in
+          Graph.add_node t.graph intf
+        in
+        Module_registry.register t.registry intf_mod intf_node.id;
+        let impl_node =
+          let impl = Library_interface.make_node
+            impl_mod
+            child_modules
+            (aliases @ [ aliases_node ])
+            ~exists:has_library_interface_ml
+            ~actual_path:library_interface_ml_path in
+          Graph.add_node t.graph impl
+        in
+        Module_registry.register t.registry impl_mod impl_node.id;
+        (* Add edges between aliases, intf, and impl for the package *)
+        Graph.add_edge intf_node ~depends_on:aliases_node;
+        Graph.add_edge impl_node ~depends_on:aliases_node;
+        Graph.add_edge impl_node ~depends_on:intf_node;
+        (intf_node, impl_node)
+      )
   in
-  Module_registry.register t.registry intf_mod intf_node.id;
-  let impl_node =
-    let impl = Library_interface.make_node
-      impl_mod
-      child_modules
-      (aliases @ [ aliases_node ])
-      ~exists:has_library_interface_ml
-      ~actual_path:library_interface_ml_path in
-    Graph.add_node t.graph impl
-  in
-  Module_registry.register t.registry impl_mod impl_node.id;
-  (* Add edges between aliases, intf, and impl for the package *)
-  Graph.add_edge intf_node ~depends_on:aliases_node;
-  Graph.add_edge impl_node ~depends_on:aliases_node;
-  (* impl also needs aliases directly *)
-  Graph.add_edge impl_node ~depends_on:intf_node;
   let ctx = {
     ns;
     aliases = aliases @ [ aliases_node ];
