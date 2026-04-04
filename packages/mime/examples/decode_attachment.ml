@@ -13,9 +13,7 @@ let main = fun ~args:_ ->
   match Mime.parse ~headers ~body with
   | Ok (SinglePart part) ->
       let filename = Mime.get_filename part |> Option.unwrap_or ~default:"<none>" in
-      let decoded = Mime.get_decoded_content part
-      |> Result.expect ~msg:"example content should decode"
-      in
+      let decoded = Mime.get_decoded_content part |> Result.expect ~msg:"example content should decode" in
       println ("filename = " ^ filename);
       println ("content = " ^ decoded);
       Ok ()

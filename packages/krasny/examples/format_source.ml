@@ -10,7 +10,6 @@ let main = fun ~args:_ ->
   | Ok formatted ->
       println formatted;
       Ok ()
-  | Error err ->
-      Error (Format_failed (Krasny.format_error_to_string err))
+  | Error err -> Error (Format_failed (Krasny.format_error_to_string err))
 
 let () = Actors.run ~main ~args:Env.args ()

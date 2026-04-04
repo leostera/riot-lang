@@ -6,8 +6,7 @@ let main = fun ~args:_ ->
     ~method_:"ping"
     ~params:(Named [ ("client", Data.Json.string "riot") ])
     ~id:(Number 1)
-    ()
-  in
+    () in
   println (Data.Json.to_string_pretty (Jsonrpc.request_to_json request));
   Ok ()
 
