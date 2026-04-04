@@ -91,13 +91,38 @@ let if_text = fun ~condition ~then_branch ?else_branch () ->
   | Some else_branch -> "if " ^ condition ^ " then " ^ then_branch ^ " else " ^ else_branch
   | None -> "if " ^ condition ^ " then " ^ then_branch
 
-let fix_text_for_match = fun (expr: Syn.Cst.match_expression) ->
+let source_slice = fun ~source span ->
+  let len = Syn.Ceibo.Span.(span.end_ - span.start) in
+  String.sub source span.start len
+
+let source_of_node_without_outer_trivia = fun ~source node ->
+  let tokens =
+    Traversal.find_tokens
+      (fun token -> not (Traversal.is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token)))
+      node
+  in
+  match tokens with
+  | [] -> source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span node)
+  | first :: rest ->
+      let last =
+        match List.rev rest with
+        | last :: _ -> last
+        | [] -> first
+      in
+      let start = (Syn.Ceibo.Red.SyntaxToken.span first).start in
+      let end_ = (Syn.Ceibo.Red.SyntaxToken.span last).end_ in
+      source_slice ~source (Syn.Ceibo.Span.make ~start ~end_)
+
+let expression_source = fun ~source expr ->
+  source_of_node_without_outer_trivia ~source (Syn.Cst.Expression.syntax_node expr)
+
+let fix_text_for_match = fun ~source -> fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] ->
-      let scrutinee = Rule_text.expression expr.scrutinee in
+      let scrutinee = expression_source ~source expr.scrutinee in
       let negated_scrutinee = "not (" ^ scrutinee ^ ")" in
-      let first_body = Rule_text.expression first_case.body |> Rule_text.parenthesize in
-      let second_body = Rule_text.expression second_case.body |> Rule_text.parenthesize in
+      let first_body = expression_source ~source first_case.body |> Rule_text.parenthesize in
+      let second_body = expression_source ~source second_case.body |> Rule_text.parenthesize in
       (
         match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
         | TruePattern, FalsePattern ->
@@ -118,8 +143,8 @@ let fix_text_for_match = fun (expr: Syn.Cst.match_expression) ->
       )
   | _ -> None
 
-let make_fix = fun (expr: Syn.Cst.match_expression) ->
-  match fix_text_for_match expr with
+let make_fix = fun ~source -> fun (expr: Syn.Cst.match_expression) ->
+  match fix_text_for_match ~source expr with
   | None -> None
   | Some text ->
       Some
@@ -143,8 +168,8 @@ let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
       )
   | _ -> false
 
-let make_diagnostic = fun (expr: Syn.Cst.match_expression) ->
-  let fix = make_fix expr in
+let make_diagnostic = fun ~source -> fun (expr: Syn.Cst.match_expression) ->
+  let fix = make_fix ~source expr in
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
@@ -157,8 +182,9 @@ let safe_should_flag_match = fun expr ->
   try should_flag_match expr with
   | Match_failure _ -> false
 
-let diagnostic_for_expression = function
-  | Syn.Cst.Expression.Match expr when safe_should_flag_match expr -> Some (make_diagnostic expr)
+let diagnostic_for_expression = fun ~source ->
+  function
+  | Syn.Cst.Expression.Match expr when safe_should_flag_match expr -> Some (make_diagnostic ~source expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
@@ -166,7 +192,7 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
   |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  |> List.filter_map (diagnostic_for_expression ~source:ctx.source)
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

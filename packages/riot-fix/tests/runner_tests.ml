@@ -626,7 +626,17 @@ let tests = [
       assert_single_fix_rewrite
         ~pipeline
         ~source
-        ~expected:"let render ready =if ready then (render()) else (fallback())\n");
+        ~expected:"let render ready =if ready then (render ()) else (fallback ())\n");
+  Test.case "prefer-if-over-bool-match preserves multiline branch source in auto-fixes"
+    (fun _ctx ->
+      let source = "let f =\n  match f with\n  | true -> do_something\n  | _ ->\n      if f then\n        print\n" in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
+        () in
+      assert_single_fix_rewrite
+        ~pipeline
+        ~source
+        ~expected:"let f =if f then (do_something) else (if f then\n        print)\n");
   Test.case
     "rule explanations explain boolean match rewrites"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-if-over-bool-match" ~snippet:"if is_ready then render () else fallback ()");
@@ -2234,14 +2244,19 @@ let render x y z =
       let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let expressions = Riot_fix.Rule_query.expressions
-        Riot_fix.Rule.{ file_path = "sample.ml"; cst } in
+        Riot_fix.Rule.{ file_path = "sample.ml"; source = "let render x = let y = x + 1 in y; y\n"; cst } in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
   Test.case "rule query collects let bindings from the typed CST"
     (fun _ctx ->
       let result = Syn.parse_implementation "let render x = x\nlet other y = let z = y in z\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let bindings = Riot_fix.Rule_query.let_bindings Riot_fix.Rule.{ file_path = "sample.ml"; cst } in
+      let bindings = Riot_fix.Rule_query.let_bindings
+        Riot_fix.Rule.{
+          file_path = "sample.ml";
+          source = "let render x = x\nlet other y = let z = y in z\n";
+          cst;
+        } in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
         ~actual:((bindings |> List.map Syn.Cst.LetBinding.name));
@@ -2253,11 +2268,19 @@ let render x y z =
       let implementation_cst = Syn.build_cst implementation |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let interface_cst = Syn.build_cst interface |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let implementation_types = Riot_fix.Rule_query.type_declarations
-        Riot_fix.Rule.{ file_path = "sample.ml"; cst = implementation_cst }
+        Riot_fix.Rule.{
+          file_path = "sample.ml";
+          source = "type user = { name : string }\nlet render x = x\n";
+          cst = implementation_cst;
+        }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       let interface_types = Riot_fix.Rule_query.type_declarations
-        Riot_fix.Rule.{ file_path = "sample.mli"; cst = interface_cst }
+        Riot_fix.Rule.{
+          file_path = "sample.mli";
+          source = "type service\nval render : int -> int\n";
+          cst = interface_cst;
+        }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;

@@ -41,7 +41,7 @@ let parse ?filename source: Syn.Parser.parse_result =
   | Some filename -> Syn.parse ~filename source
   | None -> Syn.parse_implementation source
 
-let lint_diagnostics = fun ~rules ?filename ?on_progress (parse_result: Syn.Parser.parse_result) ->
+let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (parse_result: Syn.Parser.parse_result) ->
   emit_progress on_progress (Parsed { parse_diagnostics = List.length parse_result.diagnostics });
   trace
     ?filename
@@ -55,12 +55,13 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress (parse_result: Syn.Pars
         emit_progress on_progress CstBuilt;
         trace ?filename "built cst";
         let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
+        let source_text = source in
         let file_path =
           match filename with
           | Some filename -> Path.to_string filename
           | None -> "<stdin>"
         in
-        let ctx = Rule.{ file_path; cst } in
+        let ctx = Rule.{ file_path; source = source_text; cst } in
         rules |> List.concat_map
           (fun rule ->
             let rule_id = Rule.id rule in
@@ -79,7 +80,7 @@ let run = fun ~rules ?filename ?on_progress source ->
   let parse_result = parse ?filename source in
   {
     tree = parse_result.tree;
-    diagnostics = lint_diagnostics ~rules ?filename ?on_progress parse_result;
+    diagnostics = lint_diagnostics ~rules ?filename ?on_progress ~source parse_result;
     parse_diagnostics = parse_result.diagnostics
   }
 
