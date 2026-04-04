@@ -3,7 +3,7 @@ name = "riot-deps"
 version = "0.0.2"
 description = "Dependency management and lock refresh"
 license = "Apache-2.0"
-public = true
+public = false
 
 [lib]
 path = "src/riot_deps.ml"

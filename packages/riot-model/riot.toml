@@ -3,7 +3,7 @@ name = "riot-model"
 version = "0.0.2"
 description = "Shared workspace, package, and build types"
 license = "Apache-2.0"
-public = true
+public = false
 
 [lib]
 path = "src/riot_model.ml"

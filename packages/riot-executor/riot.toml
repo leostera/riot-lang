@@ -3,7 +3,7 @@ name = "riot-executor"
 version = "0.0.2"
 description = "Build execution and result aggregation"
 license = "Apache-2.0"
-public = true
+public = false
 
 [lib]
 path = "src/riot_executor.ml"

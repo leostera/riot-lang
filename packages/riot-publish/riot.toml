@@ -3,7 +3,7 @@ name = "riot-publish"
 version = "0.0.2"
 description = "Publish workflow orchestration"
 license = "Apache-2.0"
-public = true
+public = false
 
 [lib]
 path = "src/riot_publish.ml"
