@@ -2,16 +2,15 @@
 
 Multicore actors for Riot.
 
-`actors` is Riot's actor runtime package. It is not a side option next to the
-rest of the stack. It is the runtime underneath Riot itself: `std`, `blink`,
-`suri`, and the rest of the ecosystem ultimately run on top of these process,
-mailbox, timer, and scheduler semantics.
+`actors` is Riot's actor runtime package that everything runs on: `std`,
+`blink`, `suri`, and the rest of the ecosystem ultimately run on top of these
+process, mailbox, timer, and scheduler semantics.
 
 This package exists so that runtime-level libraries and lower-level Riot code
-can depend on that layer directly. It gives you lightweight processes, typed
-message passing, links and monitors, timers, async syscalls, and a multicore
-runtime that can spread runnable actors across scheduler workers with work
-stealing.
+can depend on that layer directly and explicitly. It gives you lightweight
+processes, typed message passing, links and monitors, timers, async syscalls,
+and a multicore runtime that can spread runnable actors across scheduler
+workers with work stealing.
 
 ## Install
 
@@ -107,6 +106,33 @@ Most day-to-day actor code stays very small:
 2. `spawn` a process loop
 3. `send` messages to it
 4. `receive` the messages you care about
+
+## How it works
+
+At a high level, `actors` runs one normal scheduler worker per configured slot
+plus a dedicated reactor domain for timers and async I/O.
+
+The important pieces are:
+
+- **lightweight processes**: spawned actors are green-thread processes with
+  their own mailbox and continuation state rather than OS threads;
+- **effects for suspension**: `receive`, `yield`, and actor-aware syscalls
+  suspend and resume work through OCaml 5 effects, which keeps actor code
+  looking direct instead of callback-driven;
+- **worker-local runnable queues**: each scheduler owns a local runnable queue
+  for the actors it is currently driving;
+- **work stealing**: when a worker runs out of local work, it can steal runnable
+  actors from busier workers so execution spreads across cores;
+- **reactor-driven wakeups**: actors waiting on timers or async sources are
+  re-enqueued when those operations become ready.
+
+So the mental model is:
+
+1. `spawn` creates an actor and places it on a worker queue
+2. the actor runs until it finishes, yields, blocks on `receive`, or waits on
+   async I/O
+3. blocked actors sleep without consuming a worker
+4. runnable actors can move between workers when the runtime steals work
 
 ## Runtime model
 
