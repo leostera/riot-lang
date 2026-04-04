@@ -3,6 +3,7 @@ import VscodeWorkbench from "@/components/VscodeWorkbench.tsx";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchPackageExamples, fetchPackageOverview } from "@/lib/api.ts";
 import { exampleLabel, examplePathFromRoute } from "@/lib/examples.ts";
+import { buildExampleWorkspace } from "@/lib/workspace.ts";
 
 const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
@@ -24,6 +25,18 @@ const displayTitle =
   selectedExample === null ? `${packageName} example not found` : `${packageName} · ${exampleLabel(selectedExample.path)}`;
 const description =
   overview?.description ?? `Explore ${packageName} examples in the Riot Playground.`;
+const workspace =
+  selectedExample === null || examples === null
+    ? null
+    : buildExampleWorkspace({
+        packageName,
+        packageVersion: version,
+        activeExamplePath: `/workspace/${selectedExample.path}`,
+        examples: examples.examples.map((example) => ({
+          path: `/workspace/${example.path}`,
+          sourceCode: example.source_code,
+        })),
+      });
 ---
 
 <SiteLayout title={`${displayTitle} · play.riot.ml`} description={description} immersive>
@@ -31,13 +44,8 @@ const description =
     selectedExample ? (
       <VscodeWorkbench
         client:only="react"
-        activePath={`/workspace/${selectedExample.path}`}
-        files={
-          examples?.examples.map((example) => ({
-            path: `/workspace/${example.path}`,
-            sourceCode: example.source_code,
-          })) ?? []
-        }
+        activePath={workspace?.activePath ?? "/workspace/src/main.ml"}
+        files={workspace?.files ?? []}
       />
     ) : (
       <section class="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-5xl items-center px-4 py-8 sm:px-6">

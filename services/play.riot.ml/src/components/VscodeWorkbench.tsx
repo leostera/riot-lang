@@ -6,11 +6,8 @@ import { RegisteredMemoryFile } from "@codingame/monaco-vscode-files-service-ove
 import * as monaco from "monaco-editor";
 import * as vscode from "vscode";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-interface WorkspaceFile {
-  path: string;
-  sourceCode: string;
-}
+import { ensureRiotLanguageExtension } from "@/lib/riot-language-extension.ts";
+import type { WorkspaceFile } from "@/lib/workspace.ts";
 
 interface Props {
   files: WorkspaceFile[];
@@ -88,6 +85,7 @@ export default function VscodeWorkbench({ files, activePath }: Props) {
 
     async function openActiveFile() {
       await ensureWorkbench(container!);
+      await ensureRiotLanguageExtension();
       if (cancelled) {
         return;
       }

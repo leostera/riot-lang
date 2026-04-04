@@ -1,24 +1,10 @@
 ---
 import VscodeWorkbench from "@/components/VscodeWorkbench.tsx";
 import SiteLayout from "@/layouts/SiteLayout.astro";
+import { buildStarterWorkspace, parseWorkspaceDependencies } from "@/lib/workspace.ts";
 
-function parseDeps(value: string | null): string[] {
-  if (value === null) {
-    return [];
-  }
-
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-}
-
-const deps = parseDeps(Astro.url.searchParams.get("deps"));
-const dependencyLines = deps.map((dep) => `   - ${dep}`).join("\n");
-
-const sourceCode = deps.length > 0
-  ? `(* Requested package dependencies:\n${dependencyLines}\n*)\n\nlet () =\n  print_endline "Riot Playground is warming up"`
-  : `(* Riot Playground *)\n\nlet () =\n  print_endline "Start typing here"`;
+const dependencies = parseWorkspaceDependencies(Astro.url.searchParams.get("deps"));
+const workspace = buildStarterWorkspace(dependencies);
 ---
 
 <SiteLayout
@@ -28,12 +14,7 @@ const sourceCode = deps.length > 0
 >
   <VscodeWorkbench
     client:only="react"
-    activePath="/workspace/main.ml"
-    files={[
-      {
-        path: "/workspace/main.ml",
-        sourceCode,
-      },
-    ]}
+    activePath={workspace.activePath}
+    files={workspace.files}
   />
 </SiteLayout>
