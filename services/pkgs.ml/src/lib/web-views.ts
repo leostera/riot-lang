@@ -6,6 +6,7 @@ import type {
   PackageOverviewDocument,
   PackageRelationsDocument,
   PopularPackagesDocument,
+  RegistryServiceRootDocument,
   RegistryStatsDashboardDocument,
   RecentPackagesDocument,
   RegistryStatsSummaryDocument,
@@ -33,6 +34,21 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
   }
 
   return (await response.json()) as T;
+}
+
+export async function fetchRegistryServiceDocument(): Promise<RegistryServiceRootDocument> {
+  const config = getConfig();
+  const response = await fetch(`${config.registryBaseUrl}/`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Registry service request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as RegistryServiceRootDocument;
 }
 
 export async function fetchPackageOverview(packageName: string): Promise<PackageOverviewDocument | null> {

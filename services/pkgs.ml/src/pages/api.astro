@@ -1,0 +1,208 @@
+---
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import SiteLayout from "@/layouts/SiteLayout.astro";
+import { getConfig } from "@/lib/config";
+import { fetchRegistryServiceDocument } from "@/lib/web-views";
+
+const config = getConfig();
+const service = await fetchRegistryServiceDocument();
+const routeRows = Object.entries(service.routes);
+const cdnRouteRows = Object.entries(service.cdn_routes);
+
+const publishExample = [
+  "curl -X POST https://api.pkgs.ml/v1/publish \\",
+  "  -H \"Authorization: Bearer <publish-token>\" \\",
+  "  -H \"Content-Type: application/gzip\" \\",
+  "  --data-binary @package.tar.gz",
+].join("\n");
+
+const searchExample = "curl -fsSL 'https://api.pkgs.ml/v1/search?q=std'";
+const discoveryExample = "curl -fsSL https://api.pkgs.ml/";
+const indexExample = "curl -fsSL https://cdn.pkgs.ml/index/v1/config.json";
+---
+
+<SiteLayout
+  title="API · pkgs.ml"
+  description="API and CDN surface for Riot’s OCaml package registry."
+  navSearchQuery=""
+>
+  <section class="border-b border-border">
+    <div class="mx-auto grid w-full max-w-6xl gap-3 px-4 py-8 sm:px-6">
+      <nav class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <a class="hover:text-foreground" href="/">home</a>
+        <span>/</span>
+        <span class="text-foreground">api</span>
+      </nav>
+      <div class="grid gap-2">
+        <h1 class="font-heading text-2xl font-semibold tracking-tight text-foreground">
+          pkgs.ml API
+        </h1>
+        <p class="max-w-3xl text-base leading-7 text-muted-foreground">
+          The registry exposes two public surfaces: the control plane on <code>api.pkgs.ml</code>
+          for publishing, search, auth, views, events, and stats; and the read plane on{" "}
+          <code>cdn.pkgs.ml</code> for the sparse index, package artifacts, and Riot/OCaml
+          distribution files.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-6">
+    <div class="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:px-6">
+      <div class="grid gap-4 lg:grid-cols-2">
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">Control plane</CardTitle>
+            <CardDescription>
+              Authenticated and query-style routes served from {config.registryBaseUrl}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 py-4 text-base text-muted-foreground">
+            <p>
+              Use the control plane to search packages, fetch package views, list events, create
+              API tokens, and publish artifacts.
+            </p>
+            <p>
+              Machine-readable route discovery is available at <code>{config.registryBaseUrl}/</code>.
+            </p>
+            <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-sm text-foreground"><code>{discoveryExample}</code></pre>
+          </CardContent>
+        </Card>
+
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">CDN read plane</CardTitle>
+            <CardDescription>
+              Sparse index and immutable download URLs served from {config.indexBaseUrl}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 py-4 text-base text-muted-foreground">
+            <p>
+              Use the CDN surface to bootstrap the sparse index, read package shard documents, and
+              download published artifacts.
+            </p>
+            <p>
+              Start from <code>{service.index_base_url}/config.json</code>, then read package docs
+              and fetch artifacts via <code>source_key</code>.
+            </p>
+            <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-sm text-foreground"><code>{indexExample}</code></pre>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">Control-plane routes</CardTitle>
+            <CardDescription>
+              Current public routes reported by the live registry service.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[560px] text-left text-sm">
+                <thead class="border-b border-border text-muted-foreground">
+                  <tr>
+                    <th class="px-4 py-2 font-medium">Route</th>
+                    <th class="px-4 py-2 font-medium">Path</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {
+                    routeRows.map(([name, path]) => (
+                      <tr class="border-b border-border/70 last:border-b-0">
+                        <td class="px-4 py-3 align-top font-medium text-foreground">{name}</td>
+                        <td class="px-4 py-3 align-top text-muted-foreground">
+                          <code>{path}</code>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">CDN routes</CardTitle>
+            <CardDescription>
+              Public immutable download and sparse-index routes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[420px] text-left text-sm">
+                <thead class="border-b border-border text-muted-foreground">
+                  <tr>
+                    <th class="px-4 py-2 font-medium">Route</th>
+                    <th class="px-4 py-2 font-medium">Path</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {
+                    cdnRouteRows.map(([name, path]) => (
+                      <tr class="border-b border-border/70 last:border-b-0">
+                        <td class="px-4 py-3 align-top font-medium text-foreground">{name}</td>
+                        <td class="px-4 py-3 align-top text-muted-foreground">
+                          <code>{path}</code>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-2">
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">Examples</CardTitle>
+            <CardDescription>
+              Minimal requests for search, publishing, and route discovery.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-4">
+            <div class="grid gap-2">
+              <div class="text-sm font-medium text-foreground">Search</div>
+              <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-sm text-foreground"><code>{searchExample}</code></pre>
+            </div>
+
+            <div class="grid gap-2">
+              <div class="text-sm font-medium text-foreground">Publish artifact</div>
+              <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-sm text-foreground"><code>{publishExample}</code></pre>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card size="sm" className="rounded-md shadow-none">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">Client model</CardTitle>
+            <CardDescription>
+              How third-party clients should think about the registry surface.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 py-4 text-base text-muted-foreground">
+            <p>
+              For package resolution, start from the sparse index config on <code>cdn.pkgs.ml</code>,
+              then read package documents from the shard path and fetch package artifacts by joining{" "}
+              <code>artifact_base_url</code> and the release <code>source_key</code>.
+            </p>
+            <p>
+              For publishing, create a package-root <code>tar.gz</code> with <code>tusk.toml</code> at
+              archive root and upload it to <code>POST /v1/publish</code> with a bearer token.
+            </p>
+            <p>
+              For agents and non-human clients, see{" "}
+              <a class="text-foreground hover:text-primary" href="/llms.txt">/llms.txt</a>.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

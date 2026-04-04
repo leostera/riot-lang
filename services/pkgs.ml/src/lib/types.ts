@@ -22,6 +22,15 @@ export interface SearchResponse {
   results: SearchResult[];
 }
 
+export interface RegistryServiceRootDocument {
+  service: string;
+  routes: Record<string, string>;
+  cdn_routes: Record<string, string>;
+  legacy_routes: Record<string, string>;
+  cdn_base_url: string;
+  index_base_url: string;
+}
+
 export interface IndexedPackageRelease {
   version: string;
   published_at: string;

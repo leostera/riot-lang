@@ -10,9 +10,10 @@
     "deploy": "astro build && rm -rf .wrangler/deploy && wrangler pages deploy ./dist --project-name riot-web"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
     "@fontsource-variable/source-sans-3": "^5.2.9",
     "@fontsource/cormorant-garamond": "^5.2.7",
+    "@tailwindcss/vite": "^4.2.2",
+    "asciinema-player": "^3.15.1",
     "astro": "^6.1.1",
     "tailwindcss": "^4.2.2"
   },
