@@ -7,7 +7,7 @@ CLEAN_BUILD="${2:-0}"
 SOURCE_DIR="/src/vendor/ocaml"
 WORK_DIR="/work/vendor/ocaml"
 OUTPUT_DIR="/out"
-WORKTREE_LAYOUT_VERSION="2"
+WORKTREE_LAYOUT_VERSION="3"
 VERSION_FILE="$WORK_DIR/.riot-worktree-layout-version"
 
 toolchain_suffix_name() {
@@ -73,6 +73,31 @@ sync_ocaml_source_tree() {
   fi
 
   rm -f "$files_to_copy" "$files_to_remove"
+
+  sync_ocaml_nested_submodules "$source_dir" "$worktree_dir"
+}
+
+sync_ocaml_nested_submodules() {
+  local source_dir="$1"
+  local worktree_dir="$2"
+  local gitmodules_file="$source_dir/.gitmodules"
+  local submodule_path=""
+
+  [ -f "$gitmodules_file" ] || return 0
+
+  git -C "$source_dir" config --file .gitmodules --get-regexp '^submodule\..*\.path$' | \
+    while read -r _ submodule_path; do
+      [ -n "$submodule_path" ] || continue
+
+      if [ -d "$source_dir/$submodule_path" ]; then
+        mkdir -p "$worktree_dir/$submodule_path"
+        rsync -a --delete --exclude '.git' \
+          "$source_dir/$submodule_path"/ \
+          "$worktree_dir/$submodule_path"/
+      else
+        rm -rf "$worktree_dir/$submodule_path"
+      fi
+    done
 }
 
 linux_sdk_arch_dir() {

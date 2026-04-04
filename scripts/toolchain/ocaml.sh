@@ -10,7 +10,7 @@ DOCKERFILE="$REPO_ROOT/docker/ocaml-toolchain.Dockerfile"
 ENV_FILE="${RIOT_CDN_ENV_FILE:-${OCAML_CDN_ENV_FILE:-$REPO_ROOT/.env}}"
 DOCKER_CACHE_ROOT="$REPO_ROOT/.docker/volumes/ocaml"
 LOCAL_CACHE_ROOT="${RIOT_OCAML_LOCAL_CACHE_ROOT:-/tmp/riot/ocaml}"
-WORKTREE_LAYOUT_VERSION="2"
+WORKTREE_LAYOUT_VERSION="3"
 
 MODE=""
 OUTPUT_ROOT="$REPO_ROOT/dist/toolchains/ocaml"
@@ -429,6 +429,31 @@ sync_ocaml_source_tree() {
   fi
 
   rm -f "$files_to_copy" "$files_to_remove"
+
+  sync_ocaml_nested_submodules "$source_dir" "$worktree_dir"
+}
+
+sync_ocaml_nested_submodules() {
+  local source_dir="$1"
+  local worktree_dir="$2"
+  local gitmodules_file="$source_dir/.gitmodules"
+  local submodule_path=""
+
+  [ -f "$gitmodules_file" ] || return 0
+
+  git -C "$source_dir" config --file .gitmodules --get-regexp '^submodule\..*\.path$' | \
+    while read -r _ submodule_path; do
+      [ -n "$submodule_path" ] || continue
+
+      if [ -d "$source_dir/$submodule_path" ]; then
+        mkdir -p "$worktree_dir/$submodule_path"
+        rsync -a --delete --exclude '.git' \
+          "$source_dir/$submodule_path"/ \
+          "$worktree_dir/$submodule_path"/
+      else
+        rm -rf "$worktree_dir/$submodule_path"
+      fi
+    done
 }
 
 reset_stale_local_worktree_if_needed() {
