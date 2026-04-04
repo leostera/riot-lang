@@ -20,6 +20,29 @@ type state = {
 
 let path_text = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> String.concat "."
 
+let is_module_name = fun name ->
+  String.length name > 0
+  && Char.uppercase_ascii name.[0] = name.[0]
+  && Char.lowercase_ascii name.[0] != name.[0]
+
+let rec module_path_segments_of_expr = function
+  | Cst.Expression.Path { path; _ } ->
+      let segments = Cst.Ident.segments path |> List.map Cst.Token.text in
+      if List.is_empty segments || not (List.for_all is_module_name segments) then
+        None
+      else
+        Some segments
+  | Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
+      match module_path_segments_of_expr receiver with
+      | Some segments ->
+          let field_name = Cst.Token.text field_name in
+          if is_module_name field_name then
+            Some (segments @ [ field_name ])
+          else
+            None
+      | None -> None)
+  | _ -> None
+
 let binding_name_of_pattern =
   let rec loop = function
     | Cst.Pattern.Identifier { name_token; _ } -> Some (Cst.Token.text name_token)
@@ -422,6 +445,22 @@ and lower_expr = fun (state: state) expression ->
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
       add_expr state ~syntax_node ~label:"path_expression" (BodyArena.EVar (path_text path))
+  | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
+      match module_path_segments_of_expr receiver with
+      | Some module_segments ->
+          let qualified_name =
+            String.concat "." (module_segments @ [ Cst.Token.text field_name ])
+          in
+          add_expr
+            state
+            ~syntax_node
+            ~label:"qualified_path_expression"
+            (BodyArena.EVar qualified_name)
+      | None ->
+          lower_unsupported_expr
+            state
+            expression
+            (unsupported_syntax_kind (Cst.Expression.syntax_node expression)))
   | Cst.Expression.Operator { syntax_node; operator_tokens; _ } ->
       let operator = operator_tokens |> List.map Cst.Token.text |> String.concat "" in
       add_expr state ~syntax_node ~label:"operator_expression" (BodyArena.EVar operator)
