@@ -55,6 +55,8 @@ type expr_desc =
   | ETuple of ExprId.t list
   (** Array expression with child expression IDs. *)
   | EArray of ExprId.t list
+  (** Sequence expression evaluated left-to-right, returning the last type. *)
+  | ESequence of ExprId.t list
   (** Function expression with parameter patterns and one body expression. *)
   | EFun of PatId.t list * ExprId.t
   (** Application with one callee and positional arguments. *)

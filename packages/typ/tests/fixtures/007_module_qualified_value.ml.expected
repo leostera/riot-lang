@@ -117,11 +117,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -129,11 +129,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -248,11 +248,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -260,11 +260,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -379,11 +379,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -391,11 +391,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -510,11 +510,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -522,11 +522,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",

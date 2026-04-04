@@ -84,16 +84,16 @@ let severity = function
   | CstBuilderError _
   | UnsupportedSyntax _
   | IgnoredPatternTypeConstraint _
-  | ParameterLoweredAsPositional _
   | IgnoredMatchGuard _
-  | ApplicationArgumentLoweredAsPositional _
-  | IgnoredTypeAscription _
   | IgnoredPolymorphicAnnotation _
   | UnsupportedInterfaceFile _
   | UnboundName _
   | TypeMismatch _
   | UnsupportedSemanticExpression _
   | RecursiveGroupRequiresSimpleVariableBinders _ -> Error
+  | ParameterLoweredAsPositional _
+  | ApplicationArgumentLoweredAsPositional _
+  | IgnoredTypeAscription _ -> Warning
 
 let severity_to_string = function
   | Error -> "error"

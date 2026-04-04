@@ -127,11 +127,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -139,11 +139,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -258,11 +258,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -270,11 +270,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -385,11 +385,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -397,11 +397,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -555,7 +555,7 @@
       "id": "TYP1008",
       "message": "type ascriptions are currently ignored during lowering",
       "name": "ignored-type-ascription",
-      "severity": "error"
+      "severity": "warning"
     },
     {
       "context": "expression",

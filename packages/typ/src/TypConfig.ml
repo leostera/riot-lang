@@ -14,6 +14,10 @@ let polymorphic_eq =
   let lhs = TypeRepr.Var { id = 0; link = None } in
   TypeScheme.Forall ([ 0 ], TypeRepr.Arrow (lhs, TypeRepr.Arrow (lhs, TypeRepr.Bool)))
 
+let polymorphic_compare =
+  let lhs = TypeRepr.Var { id = 0; link = None } in
+  TypeScheme.Forall ([ 0 ], TypeRepr.Arrow (lhs, TypeRepr.Arrow (lhs, TypeRepr.Bool)))
+
 let polymorphic_pipe =
   let input = TypeRepr.Var { id = 0; link = None } in
   let output = TypeRepr.Var { id = 1; link = None } in
@@ -24,9 +28,6 @@ let polymorphic_pipe =
 
 let int_binop =
   monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Int)))
-
-let int_cmp =
-  monomorphic (TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Arrow (TypeRepr.Int, TypeRepr.Bool)))
 
 let float_binop =
   monomorphic (TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Arrow (TypeRepr.Float, TypeRepr.Float)))
@@ -40,10 +41,10 @@ let default = {
     ("^", monomorphic (TypeRepr.Arrow (TypeRepr.String, TypeRepr.Arrow (TypeRepr.String, TypeRepr.String))));
     ("=", polymorphic_eq);
     ("!=", polymorphic_eq);
-    ("<", int_cmp);
-    ("<=", int_cmp);
-    (">", int_cmp);
-    (">=", int_cmp);
+    ("<", polymorphic_compare);
+    ("<=", polymorphic_compare);
+    (">", polymorphic_compare);
+    (">=", polymorphic_compare);
     ("+.", float_binop);
     ("-.", float_binop);
     ("*.", float_binop);

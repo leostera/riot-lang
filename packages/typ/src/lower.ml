@@ -567,6 +567,9 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.Array { syntax_node; elements; _ } ->
       let element_ids = List.map (lower_expr state) elements in
       add_expr state ~syntax_node ~label:"array_expression" (BodyArena.EArray element_ids)
+  | Cst.Expression.Sequence { syntax_node; expressions; _ } ->
+      let element_ids = List.map (lower_expr state) expressions in
+      add_expr state ~syntax_node ~label:"sequence_expression" (BodyArena.ESequence element_ids)
   | Cst.Expression.Parenthesized { inner; _ } ->
       lower_expr state inner
   | Cst.Expression.TypeAscription { syntax_node; expression; _ } ->

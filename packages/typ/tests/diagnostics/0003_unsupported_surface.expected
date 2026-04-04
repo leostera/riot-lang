@@ -8,7 +8,7 @@
       "id": "TYP1008",
       "message": "type ascriptions are currently ignored during lowering",
       "name": "ignored-type-ascription",
-      "severity": "error"
+      "severity": "warning"
     }
   ],
   "parse_diagnostics": [],

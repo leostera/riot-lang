@@ -268,11 +268,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -280,11 +280,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -403,11 +403,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -415,11 +415,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -538,11 +538,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -550,11 +550,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -673,11 +673,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -685,11 +685,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -808,11 +808,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -820,11 +820,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -935,11 +935,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -947,11 +947,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1066,11 +1066,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1078,11 +1078,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1197,11 +1197,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1209,11 +1209,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1328,11 +1328,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1340,11 +1340,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1459,11 +1459,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1471,11 +1471,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1598,11 +1598,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1610,11 +1610,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1737,11 +1737,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1749,11 +1749,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -1876,11 +1876,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -1888,11 +1888,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -2015,11 +2015,11 @@
         },
         {
           "name": "<",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "<=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "=",
@@ -2027,11 +2027,11 @@
         },
         {
           "name": ">",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": ">=",
-          "scheme": "int -> int -> bool"
+          "scheme": "'a. 'a -> 'a -> bool"
         },
         {
           "name": "Array.length",
@@ -2223,7 +2223,7 @@
         "end": 28,
         "start": 21
       },
-      "severity": "error"
+      "severity": "warning"
     },
     {
       "application_span": {
@@ -2233,7 +2233,7 @@
       "id": "TYP1007",
       "message": "labeled or optional application arguments are currently lowered as ordinary positional arguments",
       "name": "application-argument-lowered-as-positional",
-      "severity": "error"
+      "severity": "warning"
     },
     {
       "application_span": {
@@ -2243,7 +2243,7 @@
       "id": "TYP1007",
       "message": "labeled or optional application arguments are currently lowered as ordinary positional arguments",
       "name": "application-argument-lowered-as-positional",
-      "severity": "error"
+      "severity": "warning"
     }
   ],
   "origin_map": [

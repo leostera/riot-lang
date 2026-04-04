@@ -33,6 +33,7 @@ type expr_desc =
   | EUnit
   | ETuple of ExprId.t list
   | EArray of ExprId.t list
+  | ESequence of ExprId.t list
   | EFun of PatId.t list * ExprId.t
   | EApply of ExprId.t * ExprId.t list
   | EIndex of ExprId.t * ExprId.t
@@ -131,6 +132,8 @@ let render_expr_desc = function
       "tuple [" ^ render_ids ExprId.to_string elements ^ "]"
   | EArray elements ->
       "array [" ^ render_ids ExprId.to_string elements ^ "]"
+  | ESequence elements ->
+      "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
   | EFun (parameters, body_id) ->
       "fun [" ^ render_ids PatId.to_string parameters ^ "] -> " ^ ExprId.to_string body_id
   | EApply (callee_id, arguments) ->
@@ -274,6 +277,13 @@ let expr_desc_to_json = function
   ]
   | EArray elements -> Data.Json.Object [
     ("tag", Data.Json.String "array");
+    (
+      "elements",
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+    );
+  ]
+  | ESequence elements -> Data.Json.Object [
+    ("tag", Data.Json.String "sequence");
     (
       "elements",
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)

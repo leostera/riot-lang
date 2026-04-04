@@ -324,6 +324,20 @@ let rec infer_expr = fun (state: state) env expr_id ->
                 elements
             in
             TypeRepr.Array element_ty
+        | BodyArena.ESequence elements -> (
+            match List.rev elements with
+            | [] -> TypeRepr.Unit
+            | last_id :: reversed_prefix ->
+                let prefix = List.rev reversed_prefix in
+                let () =
+                  List.iter
+                    (fun element_id ->
+                      let element_ty = infer_expr state env element_id in
+                      try_unify state ~origin:(origin_of_expr state element_id) element_ty TypeRepr.Unit)
+                    prefix
+                in
+                infer_expr state env last_id
+          )
         | BodyArena.EFun (parameters, body_id) ->
             let rec lower_parameters env arg_types = function
               | [] ->
