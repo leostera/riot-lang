@@ -63,6 +63,17 @@ type checked_file =
       reason: string;
     }
 
+type prepared_source =
+  | Readable_source of {
+      path: Path.t;
+      source: string;
+      source_id: Typ.SourceId.t;
+    }
+  | Unreadable_source of {
+      path: Path.t;
+      reason: string;
+    }
+
 type checked_summary = {
   checked_files: int;
   read_failures: int;
@@ -594,6 +605,129 @@ let check_source_file = fun path ->
       let diagnostics = diagnostics_of_report report in
       Typed { path; report; diagnostics }
 
+let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
+  let (item_tree, body_arena, origin_map) =
+    match analysis.semantic_tree with
+    | Some semantic_tree -> (
+        Some semantic_tree.item_tree,
+        Some semantic_tree.body_arena,
+        Some semantic_tree.origin_map)
+    | None -> (None, None, None)
+  in
+  {
+    Typ.Check_result.source_id = analysis.source.source_id;
+    filename = path;
+    source = analysis.source.text;
+    parse_diagnostics = analysis.parse_diagnostics;
+    item_tree;
+    body_arena;
+    origin_map;
+    semantic_tree = analysis.semantic_tree;
+    lowering_diagnostics = analysis.lowering_diagnostics;
+    typing_diagnostics = analysis.typing_diagnostics;
+    file_summary = analysis.file_summary;
+    type_index = analysis.type_index;
+    exports = Typ.SourceAnalysis.exports analysis;
+    item_traces = analysis.item_traces;
+    expr_traces = analysis.expr_traces;
+  }
+
+let check_source_group = fun paths ->
+  let session = Typ.Session.empty ~config:Typ.Config.default in
+  let (session, prepared_sources) =
+    paths
+    |> List.fold_left
+      (fun (session, prepared_sources) path ->
+        match Fs.read path with
+        | Error err ->
+            (
+              session,
+              prepared_sources @ [ Unreadable_source { path; reason = IO.error_message err } ])
+        | Ok source ->
+            let (session, source_id) = Typ.Session.create_source
+              session
+              ~kind:Typ.Source.File
+              ~origin:(Typ.Source.Path path)
+              ~text:source in
+            (session, prepared_sources @ [ Readable_source { path; source; source_id } ]))
+      (session, [])
+  in
+  let snapshot = Typ.Session.snapshot session in
+  prepared_sources
+  |> List.map
+    (function
+      | Unreadable_source { path; reason } -> Unreadable { path; reason }
+      | Readable_source { path; source; source_id } -> (
+          match Typ.Query.analysis_of_source snapshot source_id with
+          | Some analysis ->
+              let report = report_of_analysis path analysis in
+              let diagnostics = diagnostics_of_report report in
+              Typed { path; report; diagnostics }
+          | None ->
+              let report = Typ.Batch.check_source ~filename:path source in
+              let diagnostics = diagnostics_of_report report in
+              Typed { path; report; diagnostics }))
+
+let package_root_for_target = fun (workspace: Workspace.t) path ->
+  workspace.packages
+  |> List.filter Package.is_workspace_member
+  |> List.sort
+    (fun (left: Package.t) (right: Package.t) ->
+      Int.compare (String.length (Path.to_string right.path)) (String.length (Path.to_string left.path)))
+  |> List.find_opt
+    (fun (pkg: Package.t) ->
+      Path.equal path pkg.path || match Path.strip_prefix path ~prefix:pkg.path with
+      | Ok _ -> true
+      | Error _ -> false)
+  |> Option.map (fun (pkg: Package.t) -> pkg.path)
+
+let grouped_targets_for_session = fun ?workspace target_files ->
+  let group_key_for path =
+    match workspace with
+    | Some workspace -> (
+        match package_root_for_target workspace path with
+        | Some package_root -> Path.to_string package_root
+        | None -> Path.to_string (Path.dirname path))
+    | None -> "__riot-check-session__"
+  in
+  target_files
+  |> List.fold_left
+    (fun groups path ->
+      let key = group_key_for path in
+      let existing =
+        match List.assoc_opt key groups with
+        | Some existing -> existing
+        | None -> []
+      in
+      (key, existing @ [ path ]) :: List.remove_assoc key groups)
+    []
+  |> List.rev
+
+let checked_file_path = function
+  | Typed { path; _ }
+  | Unreadable { path; _ } -> path
+
+let path_key = fun path -> Path.normalize path |> Path.to_string
+
+let check_target_files = fun ?workspace ~scan_mode target_files ->
+  if not scan_mode then
+    target_files |> List.map check_source_file
+  else
+    let checked_by_path =
+      grouped_targets_for_session ?workspace target_files
+      |> List.concat_map (fun (_, paths) -> check_source_group paths)
+      |> List.fold_left
+        (fun checked_by_path checked_file ->
+          (path_key (checked_file_path checked_file), checked_file) :: checked_by_path)
+        []
+    in
+    target_files
+    |> List.map
+      (fun path ->
+        checked_by_path
+        |> List.assoc_opt (path_key path)
+        |> Option.expect ~msg:("missing checked result for " ^ Path.to_string path))
+
 let start_to_json = fun ~workspace_root ~target_count ->
   let workspace_root_json =
     match workspace_root with
@@ -627,19 +761,22 @@ let check_all = fun ?workspace ?package_filter ?on_start ?on_result paths ->
       | [] -> Error NoTargets
       | _ ->
           let summary = ref empty_checked_summary in
+          let scan_mode = List.is_empty paths in
           let _ =
             match on_start with
             | Some callback -> callback (List.length target_files)
             | None -> ()
           in
-          target_files
-          |> List.iter
-            (fun path ->
-              let checked_file = check_source_file path in
-              summary := update_checked_summary !summary checked_file;
-              match on_result with
-              | Some callback -> callback checked_file
-              | None -> ());
+          let checked_files = check_target_files ?workspace ~scan_mode target_files in
+          let _ =
+            checked_files
+            |> List.iter
+              (fun checked_file ->
+                summary := update_checked_summary !summary checked_file;
+                match on_result with
+                | Some callback -> callback checked_file
+                | None -> ())
+          in
           Ok { target_count = List.length target_files; summary = !summary }
 
 let print_checked_file = fun ~stdout ~stderr ~workspace_root checked_file ->

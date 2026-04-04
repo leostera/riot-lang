@@ -245,6 +245,71 @@ let test_check_package_filter_limits_workspace_scan = fun _ctx ->
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ()))
 
+let test_check_package_filter_uses_package_session_for_cross_file_exports = fun _ctx ->
+  with_tempdir_result "riot_check_package_session"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let colors_root = Path.(workspace_root / Path.v "packages/colors") in
+      let helper_source = Path.(colors_root / Path.v "src/helper.ml") in
+      let colors_source = Path.(colors_root / Path.v "src/colors.ml") in
+      let demo_source = Path.(colors_root / Path.v "examples/blend_demo.ml") in
+      let workspace = make_workspace workspace_root [
+        make_package ~name:"colors" ~path:colors_root ~relative_path:(Path.v "packages/colors")
+      ] in
+      match write_file helper_source "let twice x = x + x\n" with
+      | Error err -> Error err
+      | Ok () ->
+          match write_file colors_source "let id x = Helper.twice x\n" with
+          | Error err -> Error err
+          | Ok () ->
+              match write_file demo_source "open Colors\nlet answer = id 21\n" with
+              | Error err -> Error err
+              | Ok () ->
+                  let matches =
+                    parse_check [ "check"; "--json"; "-p"; "colors" ]
+                    |> Result.expect ~msg:"parse check args"
+                  in
+                  let stdout, stdout_contents = make_capture_writer () in
+                  let stderr, stderr_contents = make_capture_writer () in
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
+                  |> Result.expect ~msg:"package check should use sibling source exports";
+                  let events = parse_jsonl (stdout_contents ()) in
+                  let file_events =
+                    events
+                    |> List.filter
+                      (fun json ->
+                        match Data.Json.get_field "type" json with
+                        | Some (Data.Json.String "check_file") -> true
+                        | _ -> false)
+                  in
+                  let file_paths =
+                    file_events
+                    |> List.filter_map
+                      (fun json ->
+                        match Data.Json.get_field "result" json with
+                        | Some result_json -> Data.Json.get_field "path" result_json
+                        | None -> None)
+                  in
+                  Test.assert_equal
+                    ~expected:[
+                      Data.Json.String "packages/colors/examples/blend_demo.ml";
+                      Data.Json.String "packages/colors/src/colors.ml";
+                      Data.Json.String "packages/colors/src/helper.ml";
+                    ]
+                    ~actual:file_paths;
+                  let diagnostic_count =
+                    events
+                    |> List.filter
+                      (fun json ->
+                        match Data.Json.get_field "type" json with
+                        | Some (Data.Json.String "check_diagnostic") -> true
+                        | _ -> false)
+                    |> List.length
+                  in
+                  Test.assert_equal ~expected:0 ~actual:diagnostic_count;
+                  Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+                  Ok ())
+
 let test_check_rejects_package_filter_without_workspace = fun _ctx ->
   let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
   let stdout, stdout_contents = make_capture_writer () in
@@ -275,6 +340,9 @@ let tests =
     case "check: human output snapshot" test_check_human_output_snapshot;
     case "check: success summary uses captured stdout" test_check_success_summary_uses_captured_stdout;
     case "check: package filter limits workspace scan" test_check_package_filter_limits_workspace_scan;
+    case
+      "check: package filter uses sibling source exports during package scans"
+      test_check_package_filter_uses_package_session_for_cross_file_exports;
     case
       "check: package filter requires workspace"
       test_check_rejects_package_filter_without_workspace;
