@@ -17,12 +17,14 @@ let default_stderr = fun buf ->
 
 type action =
   | Explain of { diagnostic_id: string; json: bool }
-  | Check of { paths: Path.t list; json: bool; quiet: bool }
+  | Check of { paths: Path.t list; package_filter: string option; json: bool; quiet: bool }
 
 type error =
   | ExplainAndPath of { path: Path.t }
   | InvalidPath of { path: Path.t; reason: string }
   | NoTargets
+  | PackageFilterRequiresWorkspace of { package_name: string }
+  | UnknownPackage of { package_name: string }
   | UnknownDiagnosticId of { diagnostic_id: string }
 
 type diagnostic =
@@ -38,6 +40,10 @@ let command =
       [
         flag "json" |> long "json" |> help "Emit machine-readable JSON output";
         flag "quiet" |> long "quiet" |> help "Suppress success output when no diagnostics are found";
+        option "package"
+        |> short 'p'
+        |> long "package"
+        |> help "Typecheck sources from a specific workspace package";
         option "explain" |> long "explain" |> help "Explain a typ diagnostic id such as TYP2001";
         positional "path"
         |> required false
@@ -108,6 +114,14 @@ let workspace_roots = fun (workspace : Workspace.t) ->
   |> List.map (fun (pkg: Package.t) -> pkg.path)
   |> dedupe_paths
 
+let workspace_roots_for_package = fun (workspace : Workspace.t) package_name ->
+  workspace.packages
+  |> List.filter
+    (fun (pkg: Package.t) ->
+      Package.is_workspace_member pkg && String.equal pkg.name package_name)
+  |> List.map (fun (pkg: Package.t) -> pkg.path)
+  |> dedupe_paths
+
 let is_supported_source_file = fun path ->
   match Path.extension path with
   | Some ".ml" | Some ".mli" -> true
@@ -161,10 +175,15 @@ let resolve_root = fun (workspace : Workspace.t option) ->
   | Some workspace -> workspace.root
   | None -> Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".")
 
-let resolve_search_roots = fun (workspace : Workspace.t option) ->
-  match workspace with
-  | Some workspace -> Ok (workspace_roots workspace)
-  | None -> Ok [ resolve_root None ]
+let resolve_search_roots = fun ?package_filter (workspace : Workspace.t option) ->
+  match workspace, package_filter with
+  | Some workspace, Some package_name -> (
+      match workspace_roots_for_package workspace package_name with
+      | [] -> Error (UnknownPackage { package_name })
+      | roots -> Ok roots)
+  | Some workspace, None -> Ok (workspace_roots workspace)
+  | None, Some package_name -> Error (PackageFilterRequiresWorkspace { package_name })
+  | None, None -> Ok [ resolve_root None ]
 
 let matches_ignore_pattern = fun ~root pattern path ->
   let rel =
@@ -226,7 +245,7 @@ let validate_explicit_targets = fun roots ->
   in
   loop roots []
 
-let resolve_targets = fun ?workspace paths ->
+let resolve_targets = fun ?workspace ?package_filter paths ->
   let scope = workspace_scope workspace in
   let collect_ordered_files = fun roots ->
     let explicit_files, directory_roots =
@@ -253,7 +272,7 @@ let resolve_targets = fun ?workspace paths ->
   in
   let roots =
     if List.is_empty paths then
-      resolve_search_roots workspace
+      resolve_search_roots ?package_filter workspace
     else
       validate_explicit_targets paths |> Result.map (List.sort_uniq compare_paths)
   in
@@ -271,6 +290,9 @@ let message = function
       "cannot use --explain together with a path (" ^ Path.to_string path ^ ")"
   | InvalidPath { path; reason } -> "invalid check path " ^ Path.to_string path ^ ": " ^ reason
   | NoTargets -> "no OCaml files found"
+  | PackageFilterRequiresWorkspace { package_name } ->
+      "cannot use --package " ^ package_name ^ " outside a riot workspace"
+  | UnknownPackage { package_name } -> "unknown workspace package: " ^ package_name
   | UnknownDiagnosticId { diagnostic_id } -> "unknown typ diagnostic id: " ^ diagnostic_id
 
 let fail = fun ?(stderr = default_stderr) err ->
@@ -280,11 +302,12 @@ let fail = fun ?(stderr = default_stderr) err ->
 let action_of_matches = fun matches ->
   let json = ArgParser.get_flag matches "json" in
   let quiet = ArgParser.get_flag matches "quiet" in
+  let package_filter = ArgParser.get_one matches "package" in
   let paths = ArgParser.get_many matches "path" |> List.map Path.v in
   match ArgParser.get_one matches "explain", paths with
   | Some diagnostic_id, [] -> Ok (Explain { diagnostic_id; json })
   | Some _, path :: _ -> Error (ExplainAndPath { path })
-  | None, paths -> Ok (Check { paths; json; quiet })
+  | None, paths -> Ok (Check { paths; package_filter; json; quiet })
 
 let diagnostics_of_report = fun (report: Typ.Check_result.t) ->
   (report.parse_diagnostics |> List.map (fun diagnostic -> Parse diagnostic))
@@ -596,8 +619,8 @@ type check_run_summary = {
   summary: checked_summary;
 }
 
-let check_all = fun ?workspace ?on_start ?on_result paths ->
-  match resolve_targets ?workspace paths with
+let check_all = fun ?workspace ?package_filter ?on_start ?on_result paths ->
+  match resolve_targets ?workspace ?package_filter paths with
   | Error err -> Error err
   | Ok target_files ->
       match target_files with
@@ -733,7 +756,7 @@ let run = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) m
   match action_of_matches matches with
   | Error err -> fail ~stderr err
   | Ok (Explain { diagnostic_id; json }) -> run_explain ~stdout ~stderr ~json diagnostic_id
-  | Ok (Check { paths; json; quiet }) -> (
+  | Ok (Check { paths; package_filter; json; quiet }) -> (
       let workspace_root =
         workspace_scope workspace |> Option.map (fun scope -> scope.workspace_root)
       in
@@ -751,8 +774,14 @@ let run = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) m
           else
             print_checked_file ~stdout ~stderr ~workspace_root checked_file
       in
-      match check_all ?workspace ~on_start ~on_result paths with
-      | Error err -> fail ~stderr (match err with NoTargets -> NoTargets | _ -> err)
+      match check_all ?workspace ?package_filter ~on_start ~on_result paths with
+      | Error err ->
+          fail ~stderr
+            (match err with
+            | NoTargets -> NoTargets
+            | PackageFilterRequiresWorkspace _ as err -> err
+            | UnknownPackage _ as err -> err
+            | _ -> err)
       | Ok { summary; _ } ->
           if json then
             print_json_summary ~stdout summary

@@ -28,6 +28,8 @@ The Riot CLI provides a one-shot interface to the Riot build system. Each comman
 - `riot publish -p <name>` - Publish a specific workspace package
 - `riot fmt --check` - Check OCaml formatting with krasny
 - `riot fmt --check --json` - Emit JSONL formatting events
+- `riot check` - Typecheck workspace packages or the current directory
+- `riot check -p <name>` - Typecheck a specific workspace package
 
 ## Dependencies
 

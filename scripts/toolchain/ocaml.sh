@@ -355,6 +355,7 @@ build_linux_host_target() {
   local worktree_dir
   local tarball_path
   local checksum_path
+  local build_jobs_env=()
 
   platform="$(docker_platform_for_target "$target")"
   image_tag="riot-ocaml-toolchain:${target}"
@@ -377,11 +378,21 @@ build_linux_host_target() {
     --tag "$image_tag" \
     --file "$DOCKERFILE" \
     "$REPO_ROOT"
+
+  if [ "$platform" = "linux/amd64" ] && [ "$(uname -s)" = "Darwin" ]; then
+    case "$(uname -m)" in
+      arm64|aarch64)
+        build_jobs_env=(--env RIOT_OCAML_BUILD_JOBS=1)
+        ;;
+    esac
+  fi
+
   run_cmd docker run \
     --rm \
     --platform "$platform" \
     --env RIOT_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
     --env OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+    "${build_jobs_env[@]}" \
     --volume "$REPO_ROOT:/src:ro" \
     --volume "$worktree_dir:/work" \
     --volume "$output_dir:/out" \

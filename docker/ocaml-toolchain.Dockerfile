@@ -11,8 +11,12 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     file \
+    g++-aarch64-linux-gnu \
     g++-mingw-w64-x86-64 \
+    g++-x86-64-linux-gnu \
+    gcc-aarch64-linux-gnu \
     gcc-mingw-w64-x86-64 \
+    gcc-x86-64-linux-gnu \
     gawk \
     git \
     libpcre2-dev \

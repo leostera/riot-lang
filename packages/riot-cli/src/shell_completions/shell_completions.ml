@@ -139,7 +139,7 @@ _riot() {
 
     builtin_commands=(
         'build:Build packages'
-        'check:Typecheck one OCaml file'
+        'check:Typecheck one or more OCaml files'
         'fix:Lint code and optionally apply safe fixes'
         'run:Run a binary'
         'test:Run tests'
@@ -152,6 +152,7 @@ _riot() {
         'search:Search registry packages'
         'completions:Generate shell completions'
         'doc:Generate documentation'
+        'docs:Generate documentation'
         'lsp:Start LSP server'
         'version:Show version'
     )
@@ -237,10 +238,19 @@ _riot() {
             ;;
         check)
             _arguments \
+                '(-p --package)'{-p,--package}'[Typecheck sources from package]:package:->packages' \
                 '--json[Emit machine-readable JSON output]' \
                 '--quiet[Suppress the success summary when no diagnostics are found]' \
                 '--explain[Explain a typ diagnostic id]:diagnostic-id:' \
-                ':path:_files'
+                '*:path:_files'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
             ;;
         test)
             # Check if we're completing the test pattern (position 3)
@@ -322,7 +332,7 @@ _riot() {
                 compadd stdio
             fi
             ;;
-        clean|install|login|logout|new|doc|version)
+        clean|install|login|logout|new|doc|docs|version)
             # These commands have their own completion logic
             # Can be extended later
             ;;
