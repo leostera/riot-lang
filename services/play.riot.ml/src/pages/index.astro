@@ -1,0 +1,39 @@
+---
+import VscodeWorkbench from "@/components/VscodeWorkbench.tsx";
+import SiteLayout from "@/layouts/SiteLayout.astro";
+
+function parseDeps(value: string | null): string[] {
+  if (value === null) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+const deps = parseDeps(Astro.url.searchParams.get("deps"));
+const dependencyLines = deps.map((dep) => `   - ${dep}`).join("\n");
+
+const sourceCode = deps.length > 0
+  ? `(* Requested package dependencies:\n${dependencyLines}\n*)\n\nlet () =\n  print_endline "Riot Playground is warming up"`
+  : `(* Riot Playground *)\n\nlet () =\n  print_endline "Start typing here"`;
+---
+
+<SiteLayout
+  title="play.riot.ml"
+  description="An in-browser Riot workspace for exploring packages and examples."
+  immersive
+>
+  <VscodeWorkbench
+    client:only="react"
+    activePath="/workspace/main.ml"
+    files={[
+      {
+        path: "/workspace/main.ml",
+        sourceCode,
+      },
+    ]}
+  />
+</SiteLayout>

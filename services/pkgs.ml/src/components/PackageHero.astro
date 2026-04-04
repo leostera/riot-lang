@@ -1,5 +1,10 @@
 ---
 import GitHubAvatar from "@/components/GitHubAvatar.astro";
+import {
+  packageExampleLabel,
+  packageExamplePlayHref,
+  packagePlaygroundHref,
+} from "@/lib/package-examples.ts";
 import ocaml from "highlight.js/lib/languages/ocaml";
 import { common } from "lowlight";
 import rehypeHighlight from "rehype-highlight";
@@ -11,6 +16,7 @@ import { unified } from "unified";
 import { buildPackageFacts, formatDate } from "../lib/package-index.ts";
 import type {
   IndexedPackageRelease,
+  PackageExamplesDocument,
   PackageIndexDocument,
   PackageOverviewDocument,
   PackageReadmeDocument,
@@ -22,6 +28,7 @@ interface Props {
   selectedVersion: string;
   overview?: PackageOverviewDocument | null;
   readme?: PackageReadmeDocument | null;
+  examples?: PackageExamplesDocument | null;
 }
 
 function markOcamlCodeBlocks(node: unknown): void {
@@ -99,13 +106,21 @@ async function renderReadmeMarkdown(markdown: string): Promise<string> {
   );
 }
 
-const { document, release, selectedVersion, overview = null, readme = null } = Astro.props;
+const {
+  document,
+  release,
+  selectedVersion,
+  overview = null,
+  readme = null,
+  examples = null,
+} = Astro.props;
 const facts = buildPackageFacts(document, release);
 const breadcrumbBits = release.canonical_locator.split("/");
 const owner = overview?.owner_github_login ?? breadcrumbBits[1] ?? "unknown";
 const ownerAvatarUrl = overview?.owner_github_avatar_url;
 const packageHref = `/p/${document.name}`;
 const docsHref = `https://docs.pkgs.ml/p/${encodeURIComponent(document.name)}/${encodeURIComponent(selectedVersion)}/`;
+const playgroundHref = packagePlaygroundHref(document.name, selectedVersion, document.latest);
 const readmeHtml = readme?.readme_markdown ? await renderReadmeMarkdown(readme.readme_markdown) : null;
 const hasReadme = Boolean(readmeHtml);
 
@@ -180,6 +195,7 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
                 <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
+                <a href={playgroundHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open in playground</a>
                 {
                   release.homepage ? (
                     <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
@@ -211,6 +227,7 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
               <div class="grid gap-1 text-sm text-muted-foreground">
                 <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
                 <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
+                <a href={playgroundHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open in playground</a>
                 {
                   release.homepage ? (
                     <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
@@ -297,6 +314,24 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
                     <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                       {category}
                     </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null
+          }
+
+          {
+            (examples?.examples.length ?? 0) > 0 ? (
+              <div class="grid gap-1">
+                <dt class="text-sm text-muted-foreground">Examples</dt>
+                <dd class="grid gap-1">
+                  {examples?.examples.map((example) => (
+                    <a
+                      href={packageExamplePlayHref(document.name, selectedVersion, example.path)}
+                      class="text-sm text-primary hover:text-foreground"
+                    >
+                      {packageExampleLabel(example.path)}
+                    </a>
                   ))}
                 </dd>
               </div>

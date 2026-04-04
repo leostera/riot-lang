@@ -7,6 +7,7 @@ import { fetchPackageRelease } from "@/lib/package-index.ts";
 import {
   fetchPackageDownloads,
   fetchPackageEvents,
+  fetchPackageExamples,
   fetchPackageOverview,
   fetchPackageReadme,
   fetchPackageRelations,
@@ -15,12 +16,13 @@ import {
 const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
 const resolved = await fetchPackageRelease(packageName, version);
-const [overview, readme, downloads, relations, events] =
+const [overview, readme, examples, downloads, relations, events] =
   resolved === null
-    ? [null, null, null, null, { events: [] }]
+    ? [null, null, null, null, null, { events: [] }]
     : await Promise.all([
         fetchPackageOverview(packageName),
         fetchPackageReadme(packageName, { version }),
+        fetchPackageExamples(packageName, { version }),
         fetchPackageDownloads(packageName),
         fetchPackageRelations(packageName),
         fetchPackageEvents(packageName, { version }),
@@ -49,6 +51,7 @@ if (resolved === null) {
           selectedVersion={resolved.release.version}
           overview={overview}
           readme={readme}
+          examples={examples}
         />
         <PackageDetails
           document={resolved.document}
