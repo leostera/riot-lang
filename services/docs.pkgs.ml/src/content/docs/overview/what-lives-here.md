@@ -10,6 +10,7 @@ That means this site should eventually host:
 - rendered package API docs
 - module and type documentation
 - versioned package docs
+- static package-doc sites under `/p/<package>/<version>/`
 
 This site should **not** be the main human registry UI. For that, use:
 
@@ -17,7 +18,23 @@ This site should **not** be the main human registry UI. For that, use:
 - `api.pkgs.ml` for control-plane API access
 - `cdn.pkgs.ml` for sparse index and immutable package artifact downloads
 
+## Route shape
+
+Package docs are expected to be served from:
+
+```text
+docs.pkgs.ml/p/<package>/<version>/
+```
+
+and backed by generated static files stored in the package CDN bucket at keys
+like:
+
+```text
+docs/<package>/<version>/index.html
+docs/<package>/<version>/...
+```
+
 ## Current status
 
-This site is only bootstrapped right now. Generated package docs will be added
-once the package documentation pipeline is in place.
+The domain now acts as a worker-backed forwarding surface for those generated
+docs paths. The package-doc generation pipeline itself is still the next step.
