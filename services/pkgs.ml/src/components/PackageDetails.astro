@@ -28,6 +28,7 @@ interface Props {
 }
 
 const { document, release, downloads = null, relations = null, events = [] } = Astro.props;
+const fullActivityHref = `/p/${encodeURIComponent(document.name)}/${encodeURIComponent(release.version)}/activity`;
 const dependencyRows =
   relations?.dependencies ??
   release.dependencies.map((dependency) => {
@@ -175,7 +176,11 @@ const recentEvents = events.slice(0, 12);
         </CardContent>
       </Card>
 
-      <PackageActivity events={recentEvents} collapsedByDefault />
+      <PackageActivity
+        events={recentEvents}
+        collapsedByDefault
+        fullActivityHref={fullActivityHref}
+      />
     </div>
   </div>
 </section>

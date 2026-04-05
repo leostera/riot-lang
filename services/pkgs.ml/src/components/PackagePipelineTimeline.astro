@@ -78,60 +78,100 @@ const stageStates = stages.map((stage) => ({
 ---
 
 <div class="grid gap-3">
-  {
+{
     events.length === 0 ? (
       <p class="text-base text-muted-foreground">No pipeline data has been recorded for this release yet.</p>
     ) : (
-      <div class="overflow-x-auto pb-1">
-        <div class="flex min-w-[760px] items-start gap-0">
-            {stageStates.map((stage, index) => (
-                <div class="flex min-w-[132px] flex-1 flex-col items-center gap-3 text-center">
-                  <div class="flex h-4 w-full items-center pt-1">
+      <>
+        <div class="grid gap-2 md:hidden">
+          {stageStates.map((stage, index) => (
+            <div class="flex items-start gap-3">
+              <div class="flex w-4 shrink-0 flex-col items-center">
+                <span
+                  class:list={[
+                    "mt-1 inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full",
+                    stage.event === null
+                      ? "border border-border bg-background"
+                      : "bg-emerald-600 dark:bg-emerald-500",
+                  ]}
+                  aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                />
+                {
+                  index < stageStates.length - 1 ? (
                     <span
                       class:list={[
-                        "h-px w-full",
-                        index === 0
-                          ? "bg-transparent"
-                          : stageStates[index - 1]?.event !== null && stage.event !== null
-                            ? "bg-emerald-600 dark:bg-emerald-500"
-                            : "bg-border",
+                        "mt-1 min-h-8 w-px flex-1",
+                        stage.event !== null && stageStates[index + 1]?.event !== null
+                          ? "bg-emerald-600 dark:bg-emerald-500"
+                          : "bg-border",
                       ]}
                       aria-hidden="true"
                     />
+                  ) : null
+                }
+              </div>
 
-                    <span
-                      class:list={[
-                        "inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full",
-                        stage.event === null
-                          ? "border border-border bg-background"
-                          : "bg-emerald-600 dark:bg-emerald-500",
-                      ]}
-                      aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
-                    />
+              <div class="min-w-0 flex-1 pb-3">
+                <div class="text-sm font-medium leading-tight text-foreground">{stage.label}</div>
+                <div class="mt-1 text-xs leading-tight text-muted-foreground">
+                  {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
-                    <span
-                      class:list={[
-                        "h-px w-full",
-                        index === stageStates.length - 1
-                          ? "bg-transparent"
-                          : stage.event !== null && stageStates[index + 1]?.event !== null
-                            ? "bg-emerald-600 dark:bg-emerald-500"
-                            : "bg-border",
-                      ]}
-                      aria-hidden="true"
-                    />
-                  </div>
+        <div class="hidden overflow-x-auto pb-1 md:block">
+          <div class="flex min-w-[760px] items-start gap-0">
+              {stageStates.map((stage, index) => (
+                  <div class="flex min-w-[132px] flex-1 flex-col items-center gap-3 text-center">
+                    <div class="flex h-4 w-full items-center pt-1">
+                      <span
+                        class:list={[
+                          "h-px w-full",
+                          index === 0
+                            ? "bg-transparent"
+                            : stageStates[index - 1]?.event !== null && stage.event !== null
+                              ? "bg-emerald-600 dark:bg-emerald-500"
+                              : "bg-border",
+                        ]}
+                        aria-hidden="true"
+                      />
 
-                  <div class="flex flex-col items-center gap-1">
-                    <div class="text-sm font-medium leading-tight text-foreground">{stage.label}</div>
-                    <div class="text-xs leading-tight text-muted-foreground">
-                      {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
+                      <span
+                        class:list={[
+                          "inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full",
+                          stage.event === null
+                            ? "border border-border bg-background"
+                            : "bg-emerald-600 dark:bg-emerald-500",
+                        ]}
+                        aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                      />
+
+                      <span
+                        class:list={[
+                          "h-px w-full",
+                          index === stageStates.length - 1
+                            ? "bg-transparent"
+                            : stage.event !== null && stageStates[index + 1]?.event !== null
+                              ? "bg-emerald-600 dark:bg-emerald-500"
+                              : "bg-border",
+                        ]}
+                        aria-hidden="true"
+                      />
+                    </div>
+
+                    <div class="flex flex-col items-center gap-1">
+                      <div class="text-sm font-medium leading-tight text-foreground">{stage.label}</div>
+                      <div class="text-xs leading-tight text-muted-foreground">
+                        {stage.event === null ? "Pending" : formatTimestamp(stage.event.created_at)}
+                      </div>
                     </div>
                   </div>
-                </div>
-            ))}
+              ))}
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 </div>

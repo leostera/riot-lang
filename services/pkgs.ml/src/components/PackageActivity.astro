@@ -6,192 +6,360 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  eventLabel,
+  eventTone,
+  formatEventTimestamp,
+  formatEventTimestampCompact,
+  packageActivityHref,
+  packageHref,
+  packageLabel,
+  secondaryFacts,
+} from "@/lib/registry-events.ts";
 import type { RegistryEventRecord } from "../lib/types.ts";
 
 interface Props {
   events: RegistryEventRecord[];
   collapsedByDefault?: boolean;
+  showListDisclosure?: boolean;
+  fullActivityHref?: string;
+  title?: string;
+  description?: string;
+  eventLinkMode?: "package" | "activity" | "none";
+  emptyMessage?: string;
 }
 
-const { events, collapsedByDefault = false } = Astro.props;
+const {
+  events,
+  collapsedByDefault = false,
+  showListDisclosure = true,
+  fullActivityHref,
+  title = "Recent activity",
+  description = "Latest publication, indexing, and post-publish pipeline events recorded for this package.",
+  eventLinkMode = "none",
+  emptyMessage = "No activity has been recorded for this package yet.",
+} = Astro.props;
 
-function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
-  switch (eventType) {
-    case "package.submitted":
-      return "Submitted";
-    case "package.verified":
-      return "Verified";
-    case "package.published":
-      return "Published";
-    case "package.searchable":
-      return "Searchable";
-    case "package.indexed":
-      return "Indexed";
-    case "package.processing.queued":
-      return "Queued";
-    case "package.processing.started":
-      return "Processing";
-    case "package.processing.requeued":
-      return "Requeued";
-    case "package.processing.blocked":
-      return "Blocked";
-    case "package.processing.finished":
-      return "Processed";
-    case "package.docs.staged":
-      return "Docs Staged";
-    case "package.docs.generated":
-      return "Docs Ready";
-    case "package.docs.failed":
-      return "Docs Failed";
-    case "package.build.staged":
-      return "Build Staged";
-    case "package.build.verified":
-      return "Build Verified";
-    case "package.build.failed":
-      return "Build Failed";
+function eventTargetHref(event: RegistryEventRecord): string | null {
+  if (eventLinkMode === "activity") {
+    return packageActivityHref(event);
   }
+
+  if (eventLinkMode === "package") {
+    return packageHref(event);
+  }
+
+  return null;
 }
 
-function eventTone(eventType: RegistryEventRecord["event_type"]): string {
-  switch (eventType) {
-    case "package.submitted":
-      return "border-slate-200 bg-slate-50 text-slate-700";
-    case "package.verified":
-      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
-    case "package.published":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
-    case "package.searchable":
-      return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
-    case "package.indexed":
-      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
-    case "package.processing.queued":
-      return "border-slate-200 bg-slate-50 text-slate-700";
-    case "package.processing.started":
-      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
-    case "package.processing.requeued":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
-    case "package.processing.blocked":
-      return "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200";
-    case "package.processing.finished":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
-    case "package.docs.staged":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
-    case "package.docs.generated":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
-    case "package.docs.failed":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
-    case "package.build.staged":
-      return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
-    case "package.build.verified":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
-    case "package.build.failed":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
-  }
-}
-
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date);
-}
-
-function secondaryFacts(event: RegistryEventRecord): string[] {
-  const facts: string[] = [];
-  const artifactSha = event.payload.artifact_sha256;
-  const dependencyCount = event.payload.dependency_count;
-  const latest = event.payload.latest;
-  const attemptCount = event.payload.attempt_count;
-  const runKind = event.payload.run_kind;
-
-  if (typeof event.package_version === "string" && event.package_version.length > 0) {
-    facts.push(`version ${event.package_version}`);
-  }
-
-  if (typeof dependencyCount === "number" && Number.isFinite(dependencyCount)) {
-    facts.push(`${dependencyCount} deps`);
-  }
-
-  if (typeof latest === "string" && latest.length > 0) {
-    facts.push(`latest ${latest}`);
-  }
-
-  if (typeof runKind === "string" && runKind.length > 0) {
-    facts.push(runKind);
-  }
-
-  if (typeof attemptCount === "number" && Number.isFinite(attemptCount)) {
-    facts.push(`attempt ${attemptCount}`);
-  }
-
-  if (typeof artifactSha === "string" && artifactSha.length >= 7) {
-    facts.push(`artifact ${artifactSha.slice(0, 12)}`);
-  }
-
-  return facts;
-}
+const renderedEvents = events.map((event) => ({
+  event,
+  facts: secondaryFacts(event),
+  targetHref: eventTargetHref(event),
+  payloadJson:
+    Object.keys(event.payload).length > 0
+      ? JSON.stringify(event.payload, null, 2)
+      : null,
+}));
 ---
 
 <Card size="sm" className="rounded-md shadow-none">
   <CardHeader className="border-b border-border">
-    <CardTitle className="text-base">Recent activity</CardTitle>
-    <CardDescription>
-      Latest publication, indexing, and post-publish pipeline events recorded for this package.
-    </CardDescription>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="grid gap-1">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>
+          {description}
+        </CardDescription>
+      </div>
+
+      {
+        fullActivityHref ? (
+          <a
+            href={fullActivityHref}
+            class="text-sm font-medium text-primary hover:text-foreground"
+          >
+            Open full activity
+          </a>
+        ) : null
+      }
+    </div>
   </CardHeader>
   <CardContent className="py-3">
-    <details class="group" open={!collapsedByDefault}>
-      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground marker:hidden">
-        <span>{events.length === 0 ? "No activity recorded yet" : `Show ${events.length} recent events`}</span>
-        <span class="text-xs text-muted-foreground group-open:hidden">Expand</span>
-        <span class="hidden text-xs text-muted-foreground group-open:inline">Collapse</span>
-      </summary>
+    {
+      showListDisclosure ? (
+        <details class="group" open={!collapsedByDefault}>
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground marker:hidden">
+            <span>{events.length === 0 ? "No activity recorded yet" : `Show ${events.length} recent events`}</span>
+            <span class="text-xs text-muted-foreground group-open:hidden">Expand</span>
+            <span class="hidden text-xs text-muted-foreground group-open:inline">Collapse</span>
+          </summary>
 
-      <div class="mt-3">
-        {
-          events.length === 0 ? (
-            <p class="text-base text-muted-foreground">No activity has been recorded for this package yet.</p>
-          ) : (
-            <ul class="grid gap-2">
-              {events.map((event) => (
-                <li class="rounded-md border border-border bg-card px-4 py-3">
-                  <div class="grid gap-3 md:grid-cols-[176px_minmax(0,1fr)] md:items-start md:gap-4">
-                    <div class="grid gap-1 text-sm text-muted-foreground">
-                      <time datetime={event.created_at}>{formatTimestamp(event.created_at)}</time>
-                      <span class:list={["inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium", eventTone(event.event_type)]}>
-                        {eventLabel(event.event_type)}
-                      </span>
+          <div class="mt-3">
+            {
+              renderedEvents.length === 0 ? (
+                <p class="text-base text-muted-foreground">{emptyMessage}</p>
+              ) : (
+                <ul class="grid gap-2">
+                  {renderedEvents.map(({ event, facts, targetHref, payloadJson }) => (
+                    <li>
+                      <details class="group overflow-hidden rounded-md border border-border bg-card">
+                        <summary class="flex cursor-pointer list-none items-start justify-between gap-3 px-4 py-3 marker:hidden">
+                          <div class="min-w-0 flex-1">
+                            <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                              <time class="shrink-0 text-xs text-muted-foreground" datetime={event.created_at}>
+                                {formatEventTimestampCompact(event.created_at)}
+                              </time>
+                              <span class:list={["inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-medium", eventTone(event.event_type)]}>
+                                {eventLabel(event.event_type)}
+                              </span>
+                              {
+                                targetHref ? (
+                                  <a href={targetHref} class="min-w-0 text-sm font-medium text-foreground hover:text-primary">
+                                    {packageLabel(event)}
+                                  </a>
+                                ) : (
+                                  <span class="min-w-0 text-sm font-medium text-foreground">
+                                    {packageLabel(event)}
+                                  </span>
+                                )
+                              }
+                              {
+                                facts.length > 0 ? (
+                                  <span class="min-w-0 text-sm text-muted-foreground sm:truncate">
+                                    {facts.join(" · ")}
+                                  </span>
+                                ) : null
+                              }
+                            </div>
+                          </div>
+
+                          <span class="shrink-0 text-xs text-muted-foreground group-open:hidden">Details</span>
+                          <span class="hidden shrink-0 text-xs text-muted-foreground group-open:inline">Hide</span>
+                        </summary>
+
+                        <div class="grid gap-4 border-t border-border px-4 py-3">
+                          <dl class="grid gap-3 sm:grid-cols-2">
+                            <div class="grid gap-1">
+                              <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">When</dt>
+                              <dd class="text-sm text-foreground">{formatEventTimestamp(event.created_at)}</dd>
+                            </div>
+
+                            <div class="grid gap-1">
+                              <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Event</dt>
+                              <dd>
+                                <span class:list={["inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium", eventTone(event.event_type)]}>
+                                  {eventLabel(event.event_type)}
+                                </span>
+                              </dd>
+                            </div>
+
+                            {
+                              event.package_name ? (
+                                <div class="grid gap-1">
+                                  <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Package</dt>
+                                  <dd class="text-sm text-foreground">{event.package_name}</dd>
+                                </div>
+                              ) : null
+                            }
+
+                            {
+                              event.package_version ? (
+                                <div class="grid gap-1">
+                                  <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Version</dt>
+                                  <dd class="text-sm text-foreground">{event.package_version}</dd>
+                                </div>
+                              ) : null
+                            }
+
+                            {
+                              event.package_locator ? (
+                                <div class="grid gap-1 sm:col-span-2">
+                                  <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Locator</dt>
+                                  <dd class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-xs text-foreground">
+                                    {event.package_locator}
+                                  </dd>
+                                </div>
+                              ) : null
+                            }
+
+                            {
+                              targetHref ? (
+                                <div class="grid gap-1 sm:col-span-2">
+                                  <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Inspect</dt>
+                                  <dd>
+                                    <a href={targetHref} class="text-sm font-medium text-primary hover:text-foreground">
+                                      {eventLinkMode === "activity" ? "Open package activity" : "Open package page"}
+                                    </a>
+                                  </dd>
+                                </div>
+                              ) : null
+                            }
+                          </dl>
+
+                          {
+                            facts.length > 0 ? (
+                              <div class="grid gap-2">
+                                <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Facts</div>
+                                <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                                  {facts.map((fact) => (
+                                    <span class="rounded-sm border border-border bg-muted px-2 py-0.5">
+                                      {fact}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null
+                          }
+
+                          {
+                            payloadJson ? (
+                              <div class="grid gap-2">
+                                <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payload</div>
+                                <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-xs leading-6 text-foreground">{payloadJson}</pre>
+                              </div>
+                            ) : null
+                          }
+                        </div>
+                      </details>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </div>
+        </details>
+      ) : (
+        renderedEvents.length === 0 ? (
+          <p class="text-base text-muted-foreground">{emptyMessage}</p>
+        ) : (
+          <ul class="grid gap-2">
+            {renderedEvents.map(({ event, facts, targetHref, payloadJson }) => (
+              <li>
+                <details class="group overflow-hidden rounded-md border border-border bg-card">
+                  <summary class="flex cursor-pointer list-none items-start justify-between gap-3 px-4 py-3 marker:hidden">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <time class="shrink-0 text-xs text-muted-foreground" datetime={event.created_at}>
+                          {formatEventTimestampCompact(event.created_at)}
+                        </time>
+                        <span class:list={["inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-medium", eventTone(event.event_type)]}>
+                          {eventLabel(event.event_type)}
+                        </span>
+                        {
+                          targetHref ? (
+                            <a href={targetHref} class="min-w-0 text-sm font-medium text-foreground hover:text-primary">
+                              {packageLabel(event)}
+                            </a>
+                          ) : (
+                            <span class="min-w-0 text-sm font-medium text-foreground">
+                              {packageLabel(event)}
+                            </span>
+                          )
+                        }
+                        {
+                          facts.length > 0 ? (
+                            <span class="min-w-0 text-sm text-muted-foreground sm:truncate">
+                              {facts.join(" · ")}
+                            </span>
+                          ) : null
+                        }
+                      </div>
                     </div>
 
-                    <div class="grid min-w-0 gap-2">
-                      <div class="text-base font-medium text-foreground">
-                        {event.package_version ? `${event.package_name} ${event.package_version}` : event.package_name}
+                    <span class="shrink-0 text-xs text-muted-foreground group-open:hidden">Details</span>
+                    <span class="hidden shrink-0 text-xs text-muted-foreground group-open:inline">Hide</span>
+                  </summary>
+
+                  <div class="grid gap-4 border-t border-border px-4 py-3">
+                    <dl class="grid gap-3 sm:grid-cols-2">
+                      <div class="grid gap-1">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">When</dt>
+                        <dd class="text-sm text-foreground">{formatEventTimestamp(event.created_at)}</dd>
                       </div>
 
-                      <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        {secondaryFacts(event).map((fact) => (
-                          <span class="rounded-sm border border-border bg-muted px-2 py-0.5">
-                            {fact}
+                      <div class="grid gap-1">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Event</dt>
+                        <dd>
+                          <span class:list={["inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium", eventTone(event.event_type)]}>
+                            {eventLabel(event.event_type)}
                           </span>
-                        ))}
+                        </dd>
                       </div>
-                    </div>
+
+                      {
+                        event.package_name ? (
+                          <div class="grid gap-1">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Package</dt>
+                            <dd class="text-sm text-foreground">{event.package_name}</dd>
+                          </div>
+                        ) : null
+                      }
+
+                      {
+                        event.package_version ? (
+                          <div class="grid gap-1">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Version</dt>
+                            <dd class="text-sm text-foreground">{event.package_version}</dd>
+                          </div>
+                        ) : null
+                      }
+
+                      {
+                        event.package_locator ? (
+                          <div class="grid gap-1 sm:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Locator</dt>
+                            <dd class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-xs text-foreground">
+                              {event.package_locator}
+                            </dd>
+                          </div>
+                        ) : null
+                      }
+
+                      {
+                        targetHref ? (
+                          <div class="grid gap-1 sm:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Inspect</dt>
+                            <dd>
+                              <a href={targetHref} class="text-sm font-medium text-primary hover:text-foreground">
+                                {eventLinkMode === "activity" ? "Open package activity" : "Open package page"}
+                              </a>
+                            </dd>
+                          </div>
+                        ) : null
+                      }
+                    </dl>
+
+                    {
+                      facts.length > 0 ? (
+                        <div class="grid gap-2">
+                          <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Facts</div>
+                          <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                            {facts.map((fact) => (
+                              <span class="rounded-sm border border-border bg-muted px-2 py-0.5">
+                                {fact}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    }
+
+                    {
+                      payloadJson ? (
+                        <div class="grid gap-2">
+                          <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payload</div>
+                          <pre class="overflow-x-auto rounded-md border border-border bg-muted px-3 py-3 text-xs leading-6 text-foreground">{payloadJson}</pre>
+                        </div>
+                      ) : null
+                    }
                   </div>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </div>
-    </details>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )
+      )
+    }
   </CardContent>
 </Card>
