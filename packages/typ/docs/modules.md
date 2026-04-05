@@ -567,4 +567,4 @@ What we do want to preserve is the real contract:
 - strengthening preserves path equalities
 - anonymous functor application requires dependency elimination
 
-That is the bad boy we actually need `typ` to implement.
+That is the module-calculus contract `typ` actually needs to implement.

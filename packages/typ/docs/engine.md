@@ -417,4 +417,4 @@ Today Riot still has to do a lot of work around the compiler:
 The whole point of this engine contract is to move that burden out of the host
 and into a reusable in-process semantic library.
 
-That is the bad boy this layer needs to deliver.
+That is the engine contract this layer needs to deliver.

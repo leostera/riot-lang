@@ -453,4 +453,4 @@ So the real takeaways are:
 - make dependency erasure first-class
 - keep generalized facts serializable and query-facing
 
-That is the shared bad boy underneath the rest of the `typ` specs.
+That is the shared solver contract underneath the rest of the `typ` specs.
