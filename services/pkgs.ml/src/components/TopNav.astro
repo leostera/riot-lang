@@ -53,6 +53,31 @@ const logoutUrl = buildLogoutUrl(currentUrl);
     }
 
     <div class="ml-auto flex items-center gap-2">
+      <details class="relative md:hidden">
+        <summary
+          class:list={[
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "list-none rounded-md px-3 [&::-webkit-details-marker]:hidden cursor-pointer",
+          ]}
+        >
+          Menu
+        </summary>
+
+        <div class="absolute right-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
+          <div class="grid text-sm">
+            <a href="/activity" class="px-3 py-2 text-foreground hover:bg-muted">
+              Activity
+            </a>
+            <a href="/stats" class="px-3 py-2 text-foreground hover:bg-muted">
+              Stats
+            </a>
+            <a href="/llms.txt" class="px-3 py-2 text-foreground hover:bg-muted">
+              LLMs
+            </a>
+          </div>
+        </div>
+      </details>
+
       <button
         type="button"
         class:list={[
@@ -120,27 +145,6 @@ const logoutUrl = buildLogoutUrl(currentUrl);
         )
       }
     </div>
-
-    <nav class="col-span-full -mx-1 flex items-center gap-2 overflow-x-auto px-1 text-sm text-muted-foreground md:hidden">
-      <a
-        href="/activity"
-        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
-      >
-        Activity
-      </a>
-      <a
-        href="/stats"
-        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
-      >
-        Stats
-      </a>
-      <a
-        href="/llms.txt"
-        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
-      >
-        LLMs
-      </a>
-    </nav>
   </div>
 </header>
 

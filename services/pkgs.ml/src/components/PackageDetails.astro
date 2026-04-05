@@ -105,24 +105,34 @@ const recentEvents = events.slice(0, 12);
         </CardDescription>
       </CardHeader>
       <CardContent className="py-3">
-        {
-          dependencyRows.length === 0 ? (
-            <p class="text-sm text-muted-foreground">No dependencies declared for this release.</p>
-          ) : (
-            <ul class="grid gap-2">
-              {dependencyRows.map((dependency) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
-                  <a href={`/p/${dependency.package_name}`} class="font-medium text-foreground hover:text-primary">
-                    {dependency.package_name}
-                  </a>
-                  <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
-                    {dependency.requirement}
-                  </code>
-                </li>
-              ))}
-            </ul>
-          )
-        }
+        <details class="group">
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground marker:hidden">
+            <span>{dependencyRows.length === 0 ? "No dependencies" : `Show ${dependencyRows.length} dependencies`}</span>
+            <span class="text-xs text-muted-foreground group-open:hidden">Expand</span>
+            <span class="hidden text-xs text-muted-foreground group-open:inline">Collapse</span>
+          </summary>
+
+          <div class="mt-3">
+            {
+              dependencyRows.length === 0 ? (
+                <p class="text-sm text-muted-foreground">No dependencies declared for this release.</p>
+              ) : (
+                <ul class="grid gap-2">
+                  {dependencyRows.map((dependency) => (
+                    <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
+                      <a href={`/p/${dependency.package_name}`} class="font-medium text-foreground hover:text-primary">
+                        {dependency.package_name}
+                      </a>
+                      <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+                        {dependency.requirement}
+                      </code>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </div>
+        </details>
       </CardContent>
       </Card>
 
@@ -134,28 +144,38 @@ const recentEvents = events.slice(0, 12);
           </CardDescription>
         </CardHeader>
         <CardContent className="py-3">
-          {
-            (relations?.dependents.length ?? 0) === 0 ? (
-              <p class="text-sm text-muted-foreground">No indexed dependents yet.</p>
-            ) : (
-              <ul class="grid gap-2">
-                {relations?.dependents.map((dependent) => (
-                  <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
-                    <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
-                      {dependent.package_name}
-                    </a>
-                    <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
-                      {dependent.requirement}
-                    </code>
-                  </li>
-                ))}
-              </ul>
-            )
-          }
+          <details class="group">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground marker:hidden">
+              <span>{(relations?.dependents.length ?? 0) === 0 ? "No dependents" : `Show ${relations?.dependents.length ?? 0} dependents`}</span>
+              <span class="text-xs text-muted-foreground group-open:hidden">Expand</span>
+              <span class="hidden text-xs text-muted-foreground group-open:inline">Collapse</span>
+            </summary>
+
+            <div class="mt-3">
+              {
+                (relations?.dependents.length ?? 0) === 0 ? (
+                  <p class="text-sm text-muted-foreground">No indexed dependents yet.</p>
+                ) : (
+                  <ul class="grid gap-2">
+                    {relations?.dependents.map((dependent) => (
+                      <li class="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2 text-base last:border-b-0 last:pb-0">
+                        <a href={`/p/${dependent.package_name}`} class="font-medium text-foreground hover:text-primary">
+                          {dependent.package_name}
+                        </a>
+                        <code class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+                          {dependent.requirement}
+                        </code>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            </div>
+          </details>
         </CardContent>
       </Card>
 
-      <PackageActivity events={recentEvents} />
+      <PackageActivity events={recentEvents} collapsedByDefault />
     </div>
   </div>
 </section>

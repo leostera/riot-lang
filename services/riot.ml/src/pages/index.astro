@@ -25,15 +25,16 @@ const introCastUrl = "/riot.cast";
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
   </nav>
 
-  <main class="mx-auto flex w-full flex-col items-center px-3 py-14 md:py-24">
-    <section class="pt-12 w-full text-center md:pt-16">
+  <main class="mx-auto flex w-full flex-col items-center px-3 py-8 md:py-24">
+    <section class="w-full pt-6 text-center md:pt-16">
       <img
         src="/logo.svg"
         alt="Riot logo"
         class="mx-auto mb-4 h-auto w-40 opacity-95 md:w-52"
       />
       <p class="mx-auto mt-4 max-w-xl text-[1.15rem] font-thin text-[#c8afb7] md:text-[1.35rem]">
-        There are many OCaml stacks, but this one is mine.
+        There are many OCaml stacks,
+        <span class="block sm:inline">this one is mine.</span>
       </p>
 
       <div class="mt-6 flex flex-wrap justify-center gap-4 text-base text-[#c8afb7]">
@@ -254,10 +255,13 @@ const introCastUrl = "/riot.cast";
 
   </main>
 
-  <footer class="mx-auto flex flex-row justify-center items-center mt-10 w-[min(calc(100%-2rem),60rem)] px-0 pt-4 pb-16">
-    <p class="font-['Cormorant_Garamond','Times_New_Roman',serif] text-[#fff6f8]">
-      Built with ♥️ and 🤖 from Stockholm and Prague by 
-      <a class="text-[#f5344d] text-[20px]" href="https://leostera.com">@leostera</a>
+  <footer class="mx-auto mt-10 flex w-full max-w-[60rem] justify-center px-4 pb-16 pt-4 text-center">
+    <p class="font-['Cormorant_Garamond','Times_New_Roman',serif] text-[#fff6f8] leading-tight">
+      <span class="block">Built with ♥️ and 🤖</span>
+      <span class="block">from Stockholm and Prague</span>
+      <span class="block">
+        by <a class="text-[#f5344d] text-[20px]" href="https://leostera.com">@leostera</a>
+      </span>
     </p>
   </footer>
 
