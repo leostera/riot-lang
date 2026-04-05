@@ -831,6 +831,16 @@ describe("riot package registry routes", () => {
       package_version: "0.0.1",
       artifact_sha256: "deadbeef",
       source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+      riot_agent: "riot-docs-pipeline@1.0",
+      downloaded_at: "2026-04-04T11:59:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "deadbeef",
+      source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T12:00:00.000Z",
     });
     await writePackageDownloadRecord(db as unknown as D1Database, {
@@ -839,18 +849,28 @@ describe("riot package registry routes", () => {
       package_version: "0.0.1",
       artifact_sha256: "deadbeef",
       source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T12:01:00.000Z",
     });
     await writeBinaryDownloadRecord(db as unknown as D1Database, {
       download_id: crypto.randomUUID(),
       binary_name: "riot",
       object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
+      riot_agent: "riot-docs-pipeline@1.0",
+      downloaded_at: "2026-04-04T12:01:30.000Z",
+    });
+    await writeBinaryDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      binary_name: "riot",
+      object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T12:02:00.000Z",
     });
     await writeBinaryDownloadRecord(db as unknown as D1Database, {
       download_id: crypto.randomUUID(),
       binary_name: "ocaml",
       object_key: "ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T12:03:00.000Z",
     });
 
@@ -904,6 +924,16 @@ describe("riot package registry routes", () => {
       package_version: "0.0.1",
       artifact_sha256: "oldsha",
       source_archive_key: "sources/kernel/0.0.1/oldsha.tar.gz",
+      riot_agent: "riot-docs-pipeline@1.0",
+      downloaded_at: "2026-04-04T08:30:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "oldsha",
+      source_archive_key: "sources/kernel/0.0.1/oldsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T09:00:00.000Z",
     });
     await writePackageDownloadRecord(db as unknown as D1Database, {
@@ -912,6 +942,7 @@ describe("riot package registry routes", () => {
       package_version: "0.1.0",
       artifact_sha256: "newsha",
       source_archive_key: "sources/kernel/0.1.0/newsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T09:10:00.000Z",
     });
     await writePackageDownloadRecord(db as unknown as D1Database, {
@@ -920,6 +951,7 @@ describe("riot package registry routes", () => {
       package_version: "0.1.0",
       artifact_sha256: "newsha",
       source_archive_key: "sources/kernel/0.1.0/newsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T10:00:00.000Z",
     });
 
@@ -991,6 +1023,16 @@ describe("riot package registry routes", () => {
       package_version: "0.0.1",
       artifact_sha256: "kernelsha",
       source_archive_key: "sources/kernel/0.0.1/kernelsha.tar.gz",
+      riot_agent: "riot-docs-pipeline@1.0",
+      downloaded_at: "2026-04-04T08:45:00.000Z",
+    });
+    await writePackageDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      package_name: "kernel",
+      package_version: "0.0.1",
+      artifact_sha256: "kernelsha",
+      source_archive_key: "sources/kernel/0.0.1/kernelsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T09:00:00.000Z",
     });
     await writePackageDownloadRecord(db as unknown as D1Database, {
@@ -999,6 +1041,7 @@ describe("riot package registry routes", () => {
       package_version: "0.0.1",
       artifact_sha256: "kernelsha",
       source_archive_key: "sources/kernel/0.0.1/kernelsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T09:15:00.000Z",
     });
     await writePackageDownloadRecord(db as unknown as D1Database, {
@@ -1007,12 +1050,21 @@ describe("riot package registry routes", () => {
       package_version: "0.1.0",
       artifact_sha256: "stdsha",
       source_archive_key: "sources/std/0.1.0/stdsha.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T10:00:00.000Z",
     });
     await writeBinaryDownloadRecord(db as unknown as D1Database, {
       download_id: crypto.randomUUID(),
       binary_name: "riot",
       object_key: "riot/riot-v0.1.0-aarch64-apple-darwin.tar.gz",
+      riot_agent: "riot-docs-pipeline@1.0",
+      downloaded_at: "2026-04-04T10:30:00.000Z",
+    });
+    await writeBinaryDownloadRecord(db as unknown as D1Database, {
+      download_id: crypto.randomUUID(),
+      binary_name: "riot",
+      object_key: "riot/riot-v0.1.0-aarch64-apple-darwin.tar.gz",
+      riot_agent: "riot-cli@0.0.5",
       downloaded_at: "2026-04-04T11:00:00.000Z",
     });
 

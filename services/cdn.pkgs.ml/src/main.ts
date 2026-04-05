@@ -19,9 +19,6 @@ export interface Env {
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const RIOT_AGENT_HEADER = "x-riot-agent";
-const INTERNAL_RIOT_AGENT_PREFIXES = [
-  "riot-docs-pipeline@",
-];
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -75,8 +72,8 @@ async function handleRequest(
 
   if (request.method === "GET" && response.status === 200) {
     const riotAgent = extractRiotAgent(request);
-    const access = classifyAccess(key, riotAgent);
-    if (access !== null && !isInternalRiotAgent(riotAgent)) {
+    const access = riotAgent === undefined ? null : classifyAccess(key, riotAgent);
+    if (access !== null) {
       ctx.waitUntil(recordAccess(env, access));
     }
   }
@@ -193,23 +190,23 @@ async function respondWithJsonDocument(
 }
 
 type AccessEvent =
-  | { kind: "index_read"; documentKey: string; packageName?: string; riotAgent?: string }
+  | { kind: "index_read"; documentKey: string; packageName?: string; riotAgent: string }
   | {
       kind: "package_download";
       packageName: string;
       packageVersion: string;
       artifactSha256: string;
       sourceArchiveKey: string;
-      riotAgent?: string;
+      riotAgent: string;
     }
   | {
       kind: "binary_download";
       binaryName: "riot" | "ocaml";
       objectKey: string;
-      riotAgent?: string;
+      riotAgent: string;
     };
 
-function classifyAccess(key: string, riotAgent?: string): AccessEvent | null {
+function classifyAccess(key: string, riotAgent: string): AccessEvent | null {
   if (key === "index/v1/config.json") {
     return {
       kind: "index_read",
@@ -304,14 +301,6 @@ function extractRiotAgent(request: Request): string | undefined {
   }
 
   return value.slice(0, 128);
-}
-
-function isInternalRiotAgent(riotAgent?: string): boolean {
-  if (riotAgent === undefined) {
-    return false;
-  }
-
-  return INTERNAL_RIOT_AGENT_PREFIXES.some((prefix) => riotAgent.startsWith(prefix));
 }
 
 function isIndexDocumentKey(key: string): boolean {

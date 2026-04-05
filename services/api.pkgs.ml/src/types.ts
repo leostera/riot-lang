@@ -164,7 +164,7 @@ export interface IndexReadRecord {
   read_id: string;
   document_key: string;
   package_name?: string;
-  riot_agent?: string;
+  riot_agent: string;
   read_at: string;
 }
 
@@ -174,7 +174,7 @@ export interface PackageDownloadRecord {
   package_version: string;
   artifact_sha256: string;
   source_archive_key: string;
-  riot_agent?: string;
+  riot_agent: string;
   downloaded_at: string;
 }
 
@@ -184,7 +184,7 @@ export interface BinaryDownloadRecord {
   download_id: string;
   binary_name: BinaryDownloadName;
   object_key: string;
-  riot_agent?: string;
+  riot_agent: string;
   downloaded_at: string;
 }
 

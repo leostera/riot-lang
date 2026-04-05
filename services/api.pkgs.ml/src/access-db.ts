@@ -11,7 +11,7 @@ export async function writeIndexReadRecord(
     readId: record.read_id,
     documentKey: record.document_key,
     packageName: record.package_name ?? null,
-    riotAgent: record.riot_agent ?? null,
+    riotAgent: record.riot_agent,
     readAt: record.read_at,
   });
 }
@@ -27,7 +27,7 @@ export async function writePackageDownloadRecord(
     packageVersion: record.package_version,
     artifactSha256: record.artifact_sha256,
     sourceArchiveKey: record.source_archive_key,
-    riotAgent: record.riot_agent ?? null,
+    riotAgent: record.riot_agent,
     downloadedAt: record.downloaded_at,
   });
 }
@@ -41,7 +41,7 @@ export async function writeBinaryDownloadRecord(
     downloadId: record.download_id,
     binaryName: record.binary_name,
     objectKey: record.object_key,
-    riotAgent: record.riot_agent ?? null,
+    riotAgent: record.riot_agent,
     downloadedAt: record.downloaded_at,
   });
 }

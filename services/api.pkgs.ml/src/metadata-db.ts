@@ -51,6 +51,10 @@ import {
   users,
 } from "./schema.ts";
 
+const INTERNAL_RIOT_AGENT_PREFIXES = [
+  "riot-docs-pipeline@",
+];
+
 export async function applyMetadataMigrations(db: D1Database): Promise<void> {
   void db;
 }
@@ -767,7 +771,7 @@ export async function readPackageDownloadsDocument(
   const [totalRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(packageDownloads)
-    .where(eq(packageDownloads.packageName, packageName));
+    .where(and(eq(packageDownloads.packageName, packageName), countedRiotAgentSql(packageDownloads.riotAgent)));
 
   const versionCountRows = await database
     .select({
@@ -775,7 +779,7 @@ export async function readPackageDownloadsDocument(
       count: sql<number>`count(*)`,
     })
     .from(packageDownloads)
-    .where(eq(packageDownloads.packageName, packageName))
+    .where(and(eq(packageDownloads.packageName, packageName), countedRiotAgentSql(packageDownloads.riotAgent)))
     .groupBy(packageDownloads.packageVersion);
   const versionCounts = new Map<string, number>();
   for (const row of versionCountRows) {
@@ -793,7 +797,13 @@ export async function readPackageDownloadsDocument(
       count: sql<number>`count(*)`,
     })
     .from(packageDownloads)
-    .where(and(eq(packageDownloads.packageName, packageName), gte(packageDownloads.downloadedAt, startIso)))
+    .where(
+      and(
+        eq(packageDownloads.packageName, packageName),
+        gte(packageDownloads.downloadedAt, startIso),
+        countedRiotAgentSql(packageDownloads.riotAgent),
+      ),
+    )
     .groupBy(bucket, packageDownloads.packageVersion)
     .orderBy(asc(bucket), asc(packageDownloads.packageVersion));
   const versionDailyCounts = new Map<string, Map<string, number>>();
@@ -810,7 +820,13 @@ export async function readPackageDownloadsDocument(
       count: sql<number>`count(*)`,
     })
     .from(packageDownloads)
-    .where(and(eq(packageDownloads.packageName, packageName), gte(packageDownloads.downloadedAt, startIso)))
+    .where(
+      and(
+        eq(packageDownloads.packageName, packageName),
+        gte(packageDownloads.downloadedAt, startIso),
+        countedRiotAgentSql(packageDownloads.riotAgent),
+      ),
+    )
     .groupBy(bucket)
     .orderBy(asc(bucket));
   const dailyCounts = toDateCountMap(dailyRows);
@@ -1013,15 +1029,16 @@ export async function readRegistryStatsSummaryDocument(
   const database = registryDb(db);
   const [packageDownloadsRow] = await database
     .select({ count: sql<number>`count(*)` })
-    .from(packageDownloads);
+    .from(packageDownloads)
+    .where(countedRiotAgentSql(packageDownloads.riotAgent));
   const [riotDownloadsRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(binaryDownloads)
-    .where(eq(binaryDownloads.binaryName, "riot"));
+    .where(and(eq(binaryDownloads.binaryName, "riot"), countedRiotAgentSql(binaryDownloads.riotAgent)));
   const [ocamlDownloadsRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(binaryDownloads)
-    .where(eq(binaryDownloads.binaryName, "ocaml"));
+    .where(and(eq(binaryDownloads.binaryName, "ocaml"), countedRiotAgentSql(binaryDownloads.riotAgent)));
   const [packagesRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(packages);
@@ -1052,7 +1069,8 @@ export async function readRegistryStatsDashboardDocument(
   const summary = await readRegistryStatsSummaryDocument(db);
   const [indexReadsRow] = await database
     .select({ count: sql<number>`count(*)` })
-    .from(indexReads);
+    .from(indexReads)
+    .where(countedRiotAgentSql(indexReads.riotAgent));
   const windowConfig = await resolveStatsWindow(db, window);
   const activity = await listRegistryStatsActivity(db, windowConfig);
 
@@ -1164,7 +1182,7 @@ async function readPackageDownloadCount(db: D1Database, packageName: string): Pr
   const [row] = await database
     .select({ count: sql<number>`count(*)` })
     .from(packageDownloads)
-    .where(eq(packageDownloads.packageName, packageName));
+    .where(and(eq(packageDownloads.packageName, packageName), countedRiotAgentSql(packageDownloads.riotAgent)));
 
   return toCount(row?.count);
 }
@@ -1188,7 +1206,7 @@ async function listRegistryStatsActivity(
         count: sql<number>`count(*)`,
       })
       .from(packageDownloads)
-      .where(gte(packageDownloads.downloadedAt, startIso))
+      .where(and(gte(packageDownloads.downloadedAt, startIso), countedRiotAgentSql(packageDownloads.riotAgent)))
       .groupBy(packageBucket)
       .orderBy(asc(packageBucket)),
     database
@@ -1197,7 +1215,13 @@ async function listRegistryStatsActivity(
         count: sql<number>`count(*)`,
       })
       .from(binaryDownloads)
-      .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "riot")))
+      .where(
+        and(
+          gte(binaryDownloads.downloadedAt, startIso),
+          eq(binaryDownloads.binaryName, "riot"),
+          countedRiotAgentSql(binaryDownloads.riotAgent),
+        ),
+      )
       .groupBy(binaryBucket)
       .orderBy(asc(binaryBucket)),
     database
@@ -1206,7 +1230,13 @@ async function listRegistryStatsActivity(
         count: sql<number>`count(*)`,
       })
       .from(binaryDownloads)
-      .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "ocaml")))
+      .where(
+        and(
+          gte(binaryDownloads.downloadedAt, startIso),
+          eq(binaryDownloads.binaryName, "ocaml"),
+          countedRiotAgentSql(binaryDownloads.riotAgent),
+        ),
+      )
       .groupBy(binaryBucket)
       .orderBy(asc(binaryBucket)),
     database
@@ -1215,7 +1245,7 @@ async function listRegistryStatsActivity(
         count: sql<number>`count(*)`,
       })
       .from(indexReads)
-      .where(gte(indexReads.readAt, startIso))
+      .where(and(gte(indexReads.readAt, startIso), countedRiotAgentSql(indexReads.riotAgent)))
       .groupBy(indexBucket)
       .orderBy(asc(indexBucket)),
     database
@@ -1263,6 +1293,7 @@ async function listTopDownloadedPackages(
     })
     .from(packageDownloads)
     .leftJoin(packages, eq(packageDownloads.packageName, packages.packageName))
+    .where(countedRiotAgentSql(packageDownloads.riotAgent))
     .groupBy(packageDownloads.packageName, packages.latestVersion, packages.description)
     .orderBy(desc(totalDownloads), asc(packageDownloads.packageName))
     .limit(limit);
@@ -1441,9 +1472,15 @@ async function resolveStatsWindow(
 async function readEarliestStatsTimestamp(db: D1Database): Promise<Date | null> {
   const database = registryDb(db);
   const [packageRow, binaryRow, indexRow, releaseRow] = await Promise.all([
-    database.select({ value: sql<string | null>`min(${packageDownloads.downloadedAt})` }).from(packageDownloads),
-    database.select({ value: sql<string | null>`min(${binaryDownloads.downloadedAt})` }).from(binaryDownloads),
-    database.select({ value: sql<string | null>`min(${indexReads.readAt})` }).from(indexReads),
+    database.select({ value: sql<string | null>`min(${packageDownloads.downloadedAt})` })
+      .from(packageDownloads)
+      .where(countedRiotAgentSql(packageDownloads.riotAgent)),
+    database.select({ value: sql<string | null>`min(${binaryDownloads.downloadedAt})` })
+      .from(binaryDownloads)
+      .where(countedRiotAgentSql(binaryDownloads.riotAgent)),
+    database.select({ value: sql<string | null>`min(${indexReads.readAt})` })
+      .from(indexReads)
+      .where(countedRiotAgentSql(indexReads.riotAgent)),
     database.select({ value: sql<string | null>`min(${publishedReleases.publishedAt})` }).from(publishedReleases),
   ]);
 
@@ -1595,6 +1632,15 @@ function toCount(value: unknown): number {
   }
 
   return 0;
+}
+
+function countedRiotAgentSql(column: unknown) {
+  const exclusions = INTERNAL_RIOT_AGENT_PREFIXES.map((prefix) => sql`${column} NOT LIKE ${`${prefix}%`}`);
+  if (exclusions.length === 0) {
+    return sql`1 = 1`;
+  }
+
+  return sql`(${column} IS NOT NULL AND ${sql.join(exclusions, sql` AND `)})`;
 }
 
 function normalizeDependencies(dependenciesJson: string): PackageRelationDependency[] {

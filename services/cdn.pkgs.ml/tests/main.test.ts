@@ -23,7 +23,11 @@ describe("riot cdn worker", () => {
     };
 
     const response = await worker.fetch(
-      new Request("https://cdn.pkgs.ml/index/v1/config.json"),
+      new Request("https://cdn.pkgs.ml/index/v1/config.json", {
+        headers: {
+          "X-Riot-Agent": "riot-cli@0.0.5",
+        },
+      }),
       env,
       ctx,
     );
@@ -112,7 +116,7 @@ describe("riot cdn worker", () => {
     ]);
   });
 
-  test("does not count internal riot-agent package downloads", async () => {
+  test("records internal riot-agent package downloads with the agent attached", async () => {
     const bucket = new FakeR2Bucket();
     const db = new FakeD1Database();
     const ctx = new FakeExecutionContext();
@@ -141,10 +145,14 @@ describe("riot cdn worker", () => {
     expect(response.status).toBe(200);
 
     const downloads = await db
-      .prepare("SELECT COUNT(*) AS count FROM package_downloads")
-      .first<{ count: number }>();
+      .prepare("SELECT riot_agent FROM package_downloads")
+      .all<{ riot_agent: string | null }>();
 
-    expect(downloads?.count).toBe(0);
+    expect(downloads.results).toEqual([
+      {
+        riot_agent: "riot-docs-pipeline@1.0",
+      },
+    ]);
   });
 
   test("does not expose private pipeline request objects", async () => {
@@ -202,7 +210,11 @@ describe("riot cdn worker", () => {
       ctx,
     );
     const ocamlResponse = await worker.fetch(
-      new Request("https://cdn.pkgs.ml/ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz"),
+      new Request("https://cdn.pkgs.ml/ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz", {
+        headers: {
+          "X-Riot-Agent": "riot-cli@0.0.5",
+        },
+      }),
       env,
       ctx,
     );
@@ -219,7 +231,7 @@ describe("riot cdn worker", () => {
       {
         binary_name: "ocaml",
         object_key: "ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz",
-        riot_agent: null,
+        riot_agent: "riot-cli@0.0.5",
       },
       {
         binary_name: "riot",
@@ -278,7 +290,11 @@ describe("riot cdn worker", () => {
     );
 
     const response = await worker.fetch(
-      new Request("https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json"),
+      new Request("https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json", {
+        headers: {
+          "X-Riot-Agent": "riot-cli@0.0.5",
+        },
+      }),
       env,
       ctx,
     );
@@ -334,5 +350,44 @@ describe("riot cdn worker", () => {
         package_name: "kernel",
       },
     ]);
+  });
+
+  test("does not record access analytics when x-riot-agent is missing", async () => {
+    const bucket = new FakeR2Bucket();
+    const db = new FakeD1Database();
+    const ctx = new FakeExecutionContext();
+    const env: Env = {
+      ML_PKGS_CDN: bucket as unknown as R2Bucket,
+      SEARCH_DB: db as unknown as D1Database,
+    };
+
+    await bucket.put("sources/kernel/0.0.1/deadbeef.tar.gz", "archive", {
+      httpMetadata: {
+        contentType: "application/gzip",
+      },
+    });
+
+    const response = await worker.fetch(
+      new Request("https://cdn.pkgs.ml/sources/kernel/0.0.1/deadbeef.tar.gz"),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(200);
+
+    const packageDownloads = await db
+      .prepare("SELECT COUNT(*) AS count FROM package_downloads")
+      .first<{ count: number }>();
+    const binaryDownloads = await db
+      .prepare("SELECT COUNT(*) AS count FROM binary_downloads")
+      .first<{ count: number }>();
+    const indexReads = await db
+      .prepare("SELECT COUNT(*) AS count FROM index_reads")
+      .first<{ count: number }>();
+
+    expect(packageDownloads?.count).toBe(0);
+    expect(binaryDownloads?.count).toBe(0);
+    expect(indexReads?.count).toBe(0);
   });
 });
