@@ -160,23 +160,28 @@ but only within the label rules of the language.
 
 ### Pseudocode
 
-```text
-match_apply_args(fun_ty, source_args):
-  remaining = source_args
-  applied = []
-  while next parameter exists in fun_ty:
-    param = next_parameter(fun_ty)
-    arg = find_matching_argument(param.label, remaining)
-    if arg exists:
-      applied.push(check_argument(param, arg))
-      remaining = remove(arg, remaining)
-      fun_ty = param.result_ty
-    else if param is optional:
-      applied.push(mark_omitted(param))
-      fun_ty = param.result_ty
-    else:
-      break or report_label_error()
-  return applied, rebuild_remaining_function_type(fun_ty, applied)
+```ocaml
+let rec match_apply_args fun_ty source_args =
+  match next_parameter fun_ty with
+  | None ->
+      [], rebuild_remaining_function_type fun_ty []
+  | Some param -> (
+      match find_matching_argument param.label source_args with
+      | Some arg ->
+          let checked = check_argument param arg in
+          let rest_args = remove_argument arg source_args in
+          let applied, result_ty =
+            match_apply_args param.result_ty rest_args
+          in
+          checked :: applied, result_ty
+      | None when is_optional param.label ->
+          let omitted = mark_omitted param in
+          let applied, result_ty =
+            match_apply_args param.result_ty source_args
+          in
+          omitted :: applied, result_ty
+      | None ->
+          raise (Wrong_label_or_arity (param.label, source_args)) )
 ```
 
 ## 6. Omitted Optional Arguments

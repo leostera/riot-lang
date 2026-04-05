@@ -130,15 +130,15 @@ accept useful recursive groups without pretending the cycle disappears.
 
 ### Pseudocode
 
-```text
-check_recursive_modules(group):
-  decls = approximate_declared_interfaces(group)
-  env1 = bind_approximations(decls)
-  checked_ifaces = elaborate_declared_interfaces(env1, group)
-  env2 = bind_checked_interfaces(checked_ifaces)
-  bodies = check_bodies(env2, group)
-  require recursive_inclusion_ok(checked_ifaces, bodies)
-  return export_recursive_group(checked_ifaces, bodies)
+```ocaml
+let check_recursive_modules group =
+  let decls = approximate_declared_interfaces group in
+  let env1 = bind_approximations decls in
+  let checked_ifaces = elaborate_declared_interfaces env1 group in
+  let env2 = bind_checked_interfaces checked_ifaces in
+  let bodies = check_bodies env2 group in
+  require (recursive_inclusion_ok checked_ifaces bodies);
+  export_recursive_group checked_ifaces bodies
 ```
 
 ## 7. Export Boundary

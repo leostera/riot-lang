@@ -145,14 +145,15 @@ nonexpansive means safe to use as the unrestricted generalization case.
 
 ### Pseudocode
 
-```text
-generalize_binding(Gamma, e, tau):
-  local_vars = ftv(tau) - ftv(Gamma)
-  if is_nonexpansive(e):
-    quantifiers = local_vars
-  else:
-    quantifiers = safe_generalizable_subset(local_vars, tau)
-  return Forall(quantifiers). tau
+```ocaml
+let generalize_binding gamma expr ty =
+  let local_vars = ftv ty - ftv gamma in
+  let quantifiers =
+    if is_nonexpansive expr
+    then local_vars
+    else safe_generalizable_subset local_vars ty
+  in
+  Forall (quantifiers, ty)
 ```
 
 ## 6. Value Restriction
@@ -223,13 +224,16 @@ already known."
 
 ### Pseudocode
 
-```text
-infer_letrec(Gamma, f, e1, e2):
-  alpha = fresh()
-  (S1, tau1) = infer(Gamma[f -> alpha], e1)
-  U = unify(S1(alpha), tau1)
-  sigma = generalize_binding(U(S1(Gamma)), e1, U(tau1))
-  return infer(U(S1(Gamma))[f -> sigma], e2)
+```ocaml
+let infer_letrec gamma f expr body =
+  let alpha = fresh () in
+  let s1, ty1 = infer (Env.add_mono gamma f alpha) expr in
+  let u = unify (Subst.apply_ty s1 alpha) ty1 in
+  let gamma' = Subst.apply_env (Subst.compose u s1) gamma in
+  let sigma =
+    generalize_binding gamma' expr (Subst.apply_ty u ty1)
+  in
+  infer (Env.add_scheme gamma' f sigma) body
 ```
 
 ## 8. Modules And Exports

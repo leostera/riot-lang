@@ -206,12 +206,12 @@ That means interfaces are not comments. They are semantic export constraints.
 
 ### Pseudocode
 
-```text
-check_implementation(structure, interface):
-  Sigma_impl = elaborate_structure(structure)
-  Sigma_intf = elaborate_signature(interface)
-  require include(Sigma_impl, Sigma_intf)
-  return export_view(Sigma_intf)
+```ocaml
+let check_implementation structure interface =
+  let sigma_impl = elaborate_structure structure in
+  let sigma_intf = elaborate_signature interface in
+  require (include_signature sigma_impl sigma_intf);
+  export_view sigma_intf
 ```
 
 ### Diagram

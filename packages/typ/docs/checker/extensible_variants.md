@@ -93,13 +93,13 @@ the right layer.
 
 ### Pseudocode
 
-```text
-extend_type(type_path, ext_decl):
-  require type_path refers to an open nominal family
-  require arity and variance match the family head
-  ext = elaborate_extension_constructor(type_path, ext_decl)
-  add ext to constructor environment
-  return ext
+```ocaml
+let extend_type type_path ext_decl =
+  require (is_open_nominal_family type_path);
+  require (arity_and_variance_match type_path ext_decl);
+  let ext = elaborate_extension_constructor type_path ext_decl in
+  Constructor_env.add ext;
+  ext
 ```
 
 ## 5. Rebinding

@@ -167,14 +167,13 @@ That keeps diagnostics useful for both humans and tools.
 
 ### Pseudocode
 
-```text
-analyze_match(cases, scrutinee_ty):
-  typed_cases = type_cases(cases, scrutinee_ty)
-  matrix = build_pattern_matrix(typed_cases)
-  matrix = minimize(matrix)
-  partiality = check_exhaustive(matrix)
-  redundancy = check_redundant(matrix)
-  return { partiality; redundancy }
+```ocaml
+let analyze_match cases scrutinee_ty =
+  let typed_cases = type_cases cases scrutinee_ty in
+  let matrix = build_pattern_matrix typed_cases |> minimize in
+  let partiality = check_exhaustive matrix in
+  let redundancy = check_redundant matrix in
+  { partiality; redundancy }
 ```
 
 ## 8. Fragile Matches

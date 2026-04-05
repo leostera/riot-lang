@@ -129,15 +129,15 @@ continuation-pattern shapes with a dedicated structured diagnostic.
 
 ### Pseudocode
 
-```text
-type_effect_case(result_ty, payload_pat, cont_pat, body):
-  eff = fresh_local_abstract_type()
-  payload_ty = effect_payload_type(eff)
-  cont_ty = continuation_type(eff, result_ty)
-  payload = type_pattern(payload_pat, payload_ty)
-  cont = type_continuation_pattern(cont_pat, cont_ty)
-  body = type_expression(body, result_ty)
-  return EffectCase(payload, cont, body)
+```ocaml
+let type_effect_case result_ty payload_pat cont_pat body =
+  let eff = fresh_local_abstract_type () in
+  let payload_ty = effect_payload_type eff in
+  let cont_ty = continuation_type eff result_ty in
+  let payload = type_pattern payload_pat payload_ty in
+  let cont = type_continuation_pattern cont_pat cont_ty in
+  let body = type_expression body result_ty in
+  EffectCase (payload, cont, body)
 ```
 
 ## 7. Match And Try
