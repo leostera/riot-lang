@@ -1,16 +1,18 @@
 [package]
-name = "riot-planner"
+name = "riot-doc"
 version = "0.0.5"
-description = "Dependency graph construction and build planning"
+description = "Generate documentation for OCaml packages"
 license = "Apache-2.0"
 public = false
 
 [lib]
-path = "src/Riot_planner.ml"
+path = "src/riot_doc.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }
 riot-model = { path = "../riot-model", version = "*" }
 riot-store = { path = "../riot-store", version = "*" }
+riot-deps = { path = "../riot-deps", version = "*" }
+riot-planner = { path = "../riot-planner", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }
 syn = { path = "../syn", version = "*" }

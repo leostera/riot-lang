@@ -2,7 +2,7 @@
 name = "actors"
 license = "Apache-2.0"
 description = "The multicore actor runtime that powers Riot"
-version = "0.0.4"
+version = "0.0.5"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
 public = true
