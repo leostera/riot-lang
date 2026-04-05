@@ -93,7 +93,29 @@ To do this today, Riot will:
    * promote new artifacts for the next module to find them
 4. rewrite diagnostic paths for presentation, or wrap it in a json object
 
-<add mermaid swimlane diagram for the above flow>
+```mermaid
+flowchart LR
+  subgraph Build["Riot build"]
+    B1[find package sources]
+    B2[compute module order]
+    B3[prepare next module build]
+    B4[rewrite diagnostics and continue]
+  end
+
+  subgraph Sandbox["sandbox / filesystem"]
+    S1[copy source files]
+    S2[copy dependency .cm* artifacts]
+    S3[promote fresh artifacts for next module]
+  end
+
+  subgraph Compiler["ocamlc"]
+    C1[compile one module]
+    C2[emit .cmi / .cmt / diagnostics]
+  end
+
+  B1 --> B2 --> B3
+  B3 --> S1 --> S2 --> C1 --> C2 --> S3 --> B4
+```
 
 So most of the work of the build system is on moving files around, and working
 around the `ocamlc` outputs.
@@ -135,7 +157,30 @@ let summary = Typ.Query.module_summary snapshot source_id in
 Ok {summary;diags}
 ```
 
-<add simplified swimlane diagram>
+```mermaid
+flowchart LR
+  subgraph Host["Riot build / riot check / LSP"]
+    H1[find source file]
+    H2[call Typ.check]
+    H3[receive diagnostics + ModuleSummary]
+  end
+
+  subgraph Typ["typ"]
+    T1[derive config from store-backed inputs]
+    T2[create session and source]
+    T3[prepare snapshot]
+    T4[run parse + lower + infer]
+    T5[build ModuleSummary]
+  end
+
+  subgraph Store["content-addressable store"]
+    S1[load dependency summaries]
+    S2[persist fresh module summary]
+  end
+
+  H1 --> H2 --> T1
+  T1 --> S1 --> T2 --> T3 --> T4 --> T5 --> S2 --> H3
+```
 
 The heavy-lifting here is done by 2 parts:
 1. the `~store` is an immutable content-addressable cache that `Typ` uses to
@@ -197,721 +242,567 @@ So the same session can answer:
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## 1. Package boundaries
+## 1. Package boundary
 
-This RFD introduces one new public package:
+We will have a new public package called `typ` that will be published to the registry too.
 
-- `packages/typ`
+This package will:
+- parse a file/string through `syn` or receive a concrete syntax tree
+- discover dependencies
+- type-check one rooted set of sources against a universe built of module summaries of the dependencies
+- answer queries over the resulting typed world
+- produce one canonical reusable type summary per module
 
-The intended dependency shape is:
+`typ` owns:
 
-```mermaid
-flowchart LR
-  A[std] --> B[syn]
-  A --> C[typ]
-  B --> C
-  C --> D[riot-build]
-  C --> E[future riot-lsp]
-  C --> F[future macro]
-```
-
-The responsibility split is:
-
-- `syn`
-  owns parsing, CST shape, syntax recovery, parser diagnostics, and syntax
-  traversal
-- `typ`
-  owns lowering, semantic IDs, source maps, name resolution, type inference,
-  typed views, exports, query indexes, and type diagnostics
-- `riot-build`
-  owns package and workspace orchestration plus dependency-aware scheduling
-- future LSP
-  owns editor protocol, document lifecycle, overlays, and presentation
-- future macro
-  owns macro ABI, expansion lifecycle, and generated-source orchestration
+- lowering from `Syn.Cst` into semantic forms (the `SemanticTree`)
+- name resolution
+- type inference
+- structured diagnostics
+- query indexes
+- source origins and source-backed definition metadata
+- canonical per-module reusable typing artifacts
 
 `typ` does not own:
 
-- filesystem traversal
+- filesystem walking
 - workspace loading
 - CLI rendering
-- language server protocol details
-- macro transport or plugin loading
+- LSP protocol handling
+- macro transport
+- store orchestration at the workspace level
 
-## 2. Scope
+The point is that `typ` is a library. Build, LSP, and macros call into it. It
+does not become a second build system.
 
-The first scope is the functional subset of OCaml.
+## 2. Supported language
 
-Included:
+The target language is the functional subset of OCaml, including:
 
-- literals, identifiers, tuples, lists, arrays, records, and variants
+- literals and identifiers
+- tuples, lists, arrays, and other built-in types
+- user defined records, variants, polymorphic variants and GADTs
 - `let`, `let rec`, `fun`, `function`, application, sequencing, and conditionals
 - pattern typing and match analysis
-- user-defined algebraic data types and record types
 - type annotations and generalization
-- interfaces and exported value/type summaries needed for cross-file typing
-- fragment-oriented checking for expressions, patterns, and type expressions
+- the module-level behavior needed to type-check across files and consume
+  module summaries
 
-Out of scope in the first milestone:
+We leave out of scope the entirety of the object system, including anonymous
+objects and classes.
 
-- objects
-- classes
-- methods
-- instance variables
-- the object type system
+All unsupported syntax must not be silently dropped, it must become explicit
+recovery plus structured diagnostics.
 
-Unsupported syntax in those families should still lower into explicit recovery
-forms. The inference engine operates on supported IR plus recovery nodes, not
-on the full surface grammar.
+## 3. Core contract
 
-Module support is phased:
-
-- `v0` module support is limited to the subset whose item structure is already
-  reified by `syn` at the file shell
-- nested `struct ... end`, `sig ... end`, and functor bodies lower to explicit
-  recovery in `v0`
-- deeper module-language support only becomes supported once `syn` exposes the
-  needed nested item structure directly
-
-This restriction comes from the current CST surface:
-
-- `ModuleType.Signature` still preserves only a raw `signature_syntax_node`
-  instead of nested lifted items
-  ([cst.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst.mli#L640))
-- `ModuleExpression.Structure` still preserves `item_syntax_nodes` rather than
-  a nested typed item tree
-  ([cst.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/syn/src/cst.mli#L3009))
-
-## 3. Core invariants
-
-These are the architectural invariants:
-
-- `typ` never infers directly on `Syn.Cst`
-- all persistent checker state is explicit and externalized
-- query-local inference may use private mutation, but it must not escape the
-  query boundary
-- long-lived state is keyed by stable semantic IDs and source IDs
+- `typ` does not infer directly on `Syn.Cst`, it lowers to `SemanticTree`
+- all persistent checker state is explicit
+- query-local mutation is allowed, but it does not escape the query boundary
 - source spans and CST nodes are origin data, not semantic identity
-- the checker can emit partial results after non-fatal failures
-- diagnostics always map back to source origins
-- exports are first-class results with an explicit trust model
-- the public API is query-first
-- raw CST and rich typed trees are derived views, not the primary incremental
-  store
+- diagnostics are structured and span-backed
+- the canonical reusable artifact is one `ModuleSummary` per module
+- queries run against prepared immutable snapshots, not against a mutating
+  session
 
-This is how the RFD answers the "no global mutable state" constraint while
-still leaving room for efficient local implementations inside one inference
-query.
+There may be richer in-memory analysis records inside `typ`. That is fine. But
+the reusable boundary across runs is the module summary, not some hidden
+checker state.
 
-## 4. Semantic IDs and source maps
+## 4. Semantic model, concretely
 
-The core identity model looks roughly like this:
+The semantic flow is:
 
-```ocaml
-module Source_id : sig
-  type t
-end
-
-module Item_id : sig
-  type t
-end
-
-module Expr_id : sig
-  type t
-end
-
-module Pat_id : sig
-  type t
-end
-
-module Origin_id : sig
-  type t
-end
+```text
+source text
+  -> parse
+  -> Syn.Cst
+  -> dependency discovery
+  -> snapshot preparation
+  -> lower to semantic tree
+  -> name resolution
+  -> type inference
+  -> query indexes + diagnostics + ModuleSummary
 ```
 
-`Source_id` identifies a source unit abstractly. It is not just a path. It must
-be able to represent:
+The semantic tree is not a prettier CST, and it will lower all syntax it can
+while presreving semantics. So similar syntax gets collapsed based on semantic
+equivalence classes.
 
-- on-disk files
-- unsaved buffers
-- generated macro outputs
-- fragments
+At minimum, the semantic model needs:
 
-Its lifecycle is part of the contract:
-
-- one logical source gets one stable `Source_id`
-- text updates preserve that `Source_id`
-- removing a source invalidates future queries for that ID in later snapshots
-- snapshots keep earlier revisions queryable without mutating their view
-
-`OriginMap` relates semantic IDs back to source syntax for one specific
-snapshot:
-
-- semantic ID -> origin ID
-- origin ID -> source span
-- origin ID -> CST node lookup when a source snapshot is available
-
-This keeps source mapping precise without making syntax-tree identity the main
-cache key.
-
-### ID stability tiers
-
-Not all IDs need the same stability guarantee.
-
-- `Source_id`
-  - strong stability
-  - stable for the lifetime of one logical source across text updates
-- top-level `Item_id`
-  - strong stability
-  - stable across sibling insertions and unrelated body edits when the owning
-    declaration identity survives lowering unchanged
-- `Expr_id` and `Pat_id`
-  - best-effort stability
-  - stable within the same owning item and normalized body shape when the
-    corresponding lowered node still matches
-- synthetic recovery-only nodes
-  - no long-term stability guarantee
-
-The implementation and the tests should reflect this tiering. `typ` should not
-pretend that every local node ID is as durable as top-level item identity.
-
-## 5. Lowered IR and summaries
-
-The semantic middle layer needs three distinct concepts, not one blurred one.
-
-### `ItemTree`
-
-`ItemTree` is the syntax-lowered, body-stable item skeleton for one source.
-
-It owns:
-
-- value declarations and heads
-- type declarations and type heads
-- imported names, opens, and includes
-- module-level shells needed for export computation
-- semantically meaningful declaration attributes
-
-It should stay stable across many body-local edits.
-
-### `BodyArena`
-
-`BodyArena` owns normalized local structure:
-
-- expressions
-- patterns
-- local binders
-- normalized parameter forms
+- stable source identities
+- stable item identities
+- best-effort stable expression and pattern identities
+- normalized top-level item structure
+- normalized body structure
+- explicit source origins
 - explicit recovery nodes
 
-This is where:
+When lowering, if two bits of surface syntax mean the same thing for typing and
+queries, they should lower to the same semantic form. If we still care about
+the original spelling, we keep that in origin data.
 
-- local name resolution
-- body inference
-- local diagnostics
-
-should primarily happen.
-
-The invalidation rule is:
-
-- editing one body must not invalidate unrelated file-level summaries
-
-### `FileSummary`
-
-`FileSummary` is the name-resolved, export-facing summary derived from:
-
-- `ItemTree`
-- dependency inputs
-- builtin and prelude environment
-- any summary-level diagnostics
-
-It owns:
-
-- resolved item names
-- visible exported names
-- trusted versus errored export state
-- summary-level dependency effects
-
-`FileSummary` is not `ItemTree` with extra fields. It is a different semantic
-artifact.
-
-### Persisted module export artifacts
-
-After a module finishes checking, its export-facing summary crosses a persisted
-boundary before downstream work reuses it.
-
-OCaml already makes this conceptual split:
-
-- `.cmi` stores reusable interface information
-  ([vendor/ocaml/file_formats/cmi_format.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/file_formats/cmi_format.mli#L16))
-- `.cmt` and `.cmti` store richer typed annotations
-  ([vendor/ocaml/file_formats/cmt_format.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/file_formats/cmt_format.mli#L16))
-
-`typ` should adopt the same separation even if the first serialization format
-is just JSON.
-
-The minimum persisted artifact split is:
-
-- `PersistedSummary`
-  - a `.cmi`-like reusable export payload
-  - contains the exported typing environment, trust state, and the minimum
-    dependency-facing metadata needed for reuse
-- `ModuleSummary`
-  - a host-facing wrapper around `PersistedSummary`
-  - adds module identity, source or input hash, and provenance needed for
-    store lookup and package-level manifests
-
-Later work may add a richer `.cmti`-like artifact that persists:
-
-- typed views
-- origin maps
-- documentation-facing information
-- richer query indexes
-
-Build-side type reuse should depend only on the smaller persisted export
-artifact, not on the richer analysis artifact.
-
-### Lowering contract
-
-Lowering must normalize source syntax into semantic forms explicitly rather
-than letting later analysis depend on surface shape by accident.
-
-The rule for every CST family must be one of:
-
-- survives semantically
-- normalized away into a canonical IR form
-- preserved only in `OriginMap`
-- lowered to explicit recovery
-
-The contract should be explicit for the current `Syn.Cst` surface.
-
-| `Syn.Cst` family | Lowering policy | Notes |
-| --- | --- | --- |
-| `LetBinding` plus `parameters` sugar | Normalized away into item head plus body-local lambda shape | Original parameter spelling stays in `OriginMap` |
-| `Expression.Fun` | Survives semantically | Represents explicit parameterized function shape |
-| `Expression.Function` | Survives semantically | Represents case-list function shape and must not be collapsed into ordinary `fun` |
-| `Expression.Apply` chains | Normalized into canonical callee plus argument list form | Application associativity becomes semantic structure rather than CST nesting accidents |
-| `Expression.Parenthesized` and most delimiter shells | Origin-only | Preserve for source mapping and diagnostics, not semantic identity |
-| `Expression.TypeAscription` | Survives semantically | Carries checking expectations and explicit user constraints |
-| `Pattern.Parenthesized` and punctuation-only pattern shells | Origin-only | No semantic identity of their own |
-| `StructureItem.Comment`, `StructureItem.Docstring`, `SignatureItem.Comment`, `SignatureItem.Docstring` | Origin-only | Not part of semantic IR |
-| Trivia, separators, and token ownership details | Origin-only | Never used as semantic identity |
-| `ModuleExpression.Structure` with raw `item_syntax_nodes` | Recovery in `v0` | No nested semantic lowering in `v0` because nested item tree is not yet reified |
-| `ModuleType.Signature` with raw `signature_syntax_node` | Recovery in `v0` | Same restriction as nested `struct` bodies |
-| Object/class families | Recovery in `v0` | Outside first checker subset |
-
-This normalization policy is part of the architecture, not formatter cleanup.
-
-## 6. Name resolution and exports
-
-Lowering is followed by explicit name-resolution and export phases.
-
-Exports are not an accidental byproduct of building a typed tree. They are
-their own durable result.
-
-This RFD proposes three export result states:
-
-- `Trusted_export`
-- `Errored_export`
-- `No_export`
-
-The intended rules are:
-
-- explicitly annotated values or signature items may still produce a
-  `Trusted_export` even if their bodies have local errors, provided the exposed
-  interface is independently checkable
-- an unannotated binding whose inference failed must not export a generalized
-  scheme for downstream typing
-- unresolved opens, includes, or other summary-level failures may downgrade a
-  file from `Trusted_export` to `Errored_export` or `No_export`
-- editor-facing local information may still exist even when the package-facing
-  export is not trusted
-
-This trust model is what keeps build reuse and editor leniency from fighting
-each other.
-
-Dependency inputs must also be keyed and provenance-carrying. `typ` should not
-accept an unstructured bag of exports. At minimum, dependency-facing inputs
-need:
-
-- dependency identity
-- visible-name or import-path provenance
-- export payload
-- revision or fingerprint
-
-That is the minimum contract for reliable invalidation.
-
-### Package and module graph algorithm
-
-The host algorithm for reusable type exports should deliberately mirror Riot's
-existing planner and executor flow instead of inventing a second orchestration
-model.
-
-The flow is:
-
-0. build the scoped package graph for the requested lane
-1. identify the package or packages whose exports are needed
-2. compute or load dependency package export bundles first
-3. build the package's module graph
-4. fetch persisted module exports by hash from the store when available
-5. typecheck only the missing modules in dependency order
-6. persist fresh module exports back to the store
-7. persist a package-level type bundle that maps module names to the stored
-   module export artifacts
-
-More concretely:
-
-1. Build the package graph using the same dependency and scope rules as
-   `riot-planner`.
-   This includes normal, dev, and build scopes where appropriate.
-2. For each package node, compute a package type-input hash.
-   That hash should include:
-   - checker artifact version
-   - package identity and relevant typechecking config
-   - source hashes for the package's modules and interfaces
-   - fingerprints of dependency package export bundles
-3. Use that package hash to probe the store for a package-level type bundle.
-   The bundle is a small manifest that records:
-   - package identity
-   - module names
-   - per-module export hashes
-   - any package-level export or trust metadata the host needs
-4. On a package-bundle miss, build the module graph for that package using the
-   same module discovery and dependency wiring rules as the build planner, or a
-   sibling planner with the same graph semantics.
-5. For each module node in topological order, compute a module type-input hash.
-   That hash should include:
-   - checker artifact version
-   - module identity and kind (`.ml` or `.mli`)
-   - source text hash
-   - fingerprints of the imported module export artifacts
-   - any relevant package-level typing configuration
-6. Probe the store for that module export artifact by hash.
-   On a hit, decode the stored `ModuleSummary` and load it into the current
-   typechecking session as a dependency input.
-7. On a miss, recursively ensure imported packages and imported modules have
-   their persisted exports available, then typecheck the module with those
-   loaded summaries, and persist the resulting `ModuleSummary`.
-8. After the package's modules have been processed, persist the package-level
-   type bundle so later runs can skip module-graph traversal when nothing
-   relevant changed.
-
-Riot-specific resolution rules stay explicit:
-
-- package-level dependency discovery happens through the package graph
-- intra-package dependency discovery happens through the module graph
-- when a required top-level module corresponds to a Riot package root, package
-  identity resolves through Riot's package naming convention
-
-The first host that needs this flow may simply copy the existing planner or
-executor loop. That is acceptable.
-
-The longer-term shape is better:
-
-- `riot-planner` grows a type-export planning stage alongside build planning
-- `riot-executor` or a sibling runtime materializes type-export artifacts in
-  the normal cache lane
-- `riot build` naturally emits type exports as part of package execution
-- `riot check` and the future LSP then reuse those artifacts instead of running
-  a bespoke dependency walker
-
-## 7. Inference model
-
-The internal type language needs:
-
-- rigid and flexible variables
-- quantified schemes
-- named constructors
-- function, tuple, record, and variant types
-- recovery and hole forms
-
-The inference engine accepts lowered IR, not surface CST. At minimum:
+For example, these should lower to the same semantic form:
 
 ```ocaml
-type infer_ctx
-
-val infer_expr :
-  infer_ctx -> Expr_id.t -> infer_ctx * Typ_view.expression
+let f x = x
+let f = fun x -> x
+let f = function | x -> x
 ```
 
-Inside one query, the implementation may use private mutation for:
+Surface syntax can then survive in exactly four ways:
 
-- local union-find
-- fresh-variable supply
-- worklists
-- query-local diagnostic accumulation
+- it survives semantically
+  for example:
+  - `fun x -> body`
+  - `function | A -> x | B -> y`
+  - `expr : ty`
+- it gets normalized into a canonical semantic form
+  for example:
+  - `let f x y = body` becomes one binding plus normalized parameters or
+    nested lambdas
+  - `f a b c` becomes one callee plus a canonical argument list
+  - extra paren shells around simple expressions disappear
+- it survives only as origin data
+  for example:
+  - comments and docstrings
+  - trivia and separators
+  - punctuation-only wrappers like redundant parens that we still need for
+    spans and precise diagnostics
+- it becomes explicit recovery
+  for example:
+  - objects and classes
+  - unsupported module forms
+  - anything else outside the currently supported subset
 
-Once a query returns, its observable outputs are frozen into explicit results.
+## 5. Canonical module summary
 
-The rule is:
+A `ModuleSummary` is our canonical reusable typing artifact per module. It gets
+serialized, stored, loaded into future sessions, and used for cross-module
+typing.
 
-- persistent state is explicit, revisioned, and snapshot-friendly
-- query-local mutation is allowed and private
+This is the thing that gets serialized, stored, loaded into future sessions,
+and used for cross-module typing.
 
-## 8. Typed views
+It is okay if the final concrete record shape changes later. What is not okay
+is being vague about what it must contain.
 
-`Typ.Tst` may exist as a typed view over lowered semantic structures plus
-source origins.
+At minimum, a `ModuleSummary` must contain:
 
-It should preserve:
+- module identity
+- a stable input fingerprint for the summarized module
+- dependency fingerprints or provenance for every imported summary it depends on
+- trust state for the exported interface
+- exported values and their schemes
+- exported type declarations
+- exported constructors
+- exported record labels
+- enough definition metadata to answer cross-module `definition_at`
+- exact source origins for exported symbols, including spans
 
-- semantic IDs
-- inferred types
-- source origins
-- recovery state
+Conceptually it should look roughly like this:
 
-It should not be the canonical store of:
+```ocaml
+type export_status =
+  | Trusted
+  | Errored
+  | No_export
 
-- incremental identity
-- export summaries
-- all environment information
+type symbol_origin = {
+  module_name: string;
+  source: Source_ref.t;
+  span: Span.t;
+}
 
-The checker should avoid storing a full environment on every node the way the
-OCaml compiler stores `exp_env` on typed expressions
-([vendor/ocaml/typing/typedtree.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/typing/typedtree.mli#L162)).
-Instead, `typ` builds compact queryable indexes and scope summaries.
+type value_export = {
+  name: string;
+  scheme: Type_scheme.t;
+  defined_at: symbol_origin;
+}
 
-## 9. Public API
+type type_export = {
+  name: string;
+  params: string list;
+  manifest: Type_expr.t option;
+  defined_at: symbol_origin;
+}
 
-The stable public API is query-first, not tree-first.
+type constructor_export = {
+  name: string;
+  scheme: Type_scheme.t;
+  parent_type: string;
+  defined_at: symbol_origin;
+}
+
+type label_export = {
+  name: string;
+  scheme: Type_scheme.t;
+  parent_type: string;
+  defined_at: symbol_origin;
+}
+
+type module_summary = {
+  module_name: string;
+  module_fingerprint: Fingerprint.t;
+  dependency_fingerprints: (string * Fingerprint.t) list;
+  export_status: export_status;
+  values: value_export list;
+  types: type_export list;
+  constructors: constructor_export list;
+  labels: label_export list;
+}
+```
+
+This is intentionally approximate. The exact encoding can move. The semantic
+payload cannot.
+
+One more rule:
+
+- `ModuleSummary` is the canonical reusable artifact
+- package-level manifests are optional host-side conveniences
+
+In other words, package bundles may exist for faster lookup. They are not the
+semantic contract.
+
+## 6. Store contract
+
+`typ` works with an immutable content-addressable store.
+
+The store must be able to:
+
+- load a `ModuleSummary` by fingerprint
+- persist a `ModuleSummary` by fingerprint
+- optionally keep hotter summaries in an in-memory cache without changing the
+  semantics
+
+The store must not be the home for:
+
+- mutable sessions
+- immutable snapshots
+- raw CSTs
+- transient query caches
+- local unification state
+- any hidden global checker state
+
+The summary key must be derived from the typing inputs, not from arbitrary host
+paths.
+
+At minimum, that fingerprint must account for:
+
+- checker artifact version
+- module identity
+- source text hash
+- interface text hash, when relevant
+- fingerprints of imported module summaries
+- typing-relevant host configuration
+
+If any of those change, the old summary is no longer valid.
+
+## 7. Sessions and prepared snapshots
+
+There are two top-level runtime objects:
+
+- `Session`
+- `Snapshot`
+
+A session is the mutable host-owned world.
+
+It contains:
+
+- source texts
+- stable source identities
+- host configuration
+
+A session may contain many sources. That is fine. The session is the long-lived
+object for build and for the LSP.
+
+A prepared snapshot is different:
+
+- it is immutable
+- it is revision-bound
+- it is rooted at one source or a small root set
+- it is fully hydrated with all dependency summaries needed for those roots
+
+That last point matters.
+
+If a snapshot exists, it means `typ` already has all the type information
+required to answer queries for those roots. Queries do not discover missing
+dependencies later.
+
+If the user edits a file and that edit introduces a new dependency, that means:
+
+- the session gets a new revision
+- the old snapshot stays valid for the old revision
+- the host prepares a new snapshot for the new revision
+
+So yes, snapshots get recreated. That is the contract. The thing that makes
+that cheap is reuse of already-available module summaries.
+
+## 8. Preparing a snapshot
+
+Preparing a snapshot is its own algorithm.
+
+The host gives `typ`:
+
+- a session
+- a root source or root source set
+
+`typ` then:
+
+1. parses the roots
+2. builds `Syn.Cst`
+3. discovers module dependencies from the syntax
+4. resolves those dependencies to module identities
+5. attempts to hydrate the required `ModuleSummary` values from hot cache or
+   store
+6. if anything is missing, bails early with `Missing_requirements`
+7. otherwise returns a prepared immutable snapshot
+
+This means syntactic dependency discovery is part of the contract.
+
+The baseline dependency-discovery source is exactly the same kind of
+information Riot already uses today for module and package graph ordering:
+
+- text
+- parse
+- CST
+- dependency extraction
+
+The point here is to bail out as early as possible.
+
+If the required summaries are not available, we want to know that before doing
+full lowering and inference work.
 
 Conceptually:
 
 ```ocaml
-module Typ : sig
-  module Session : sig
-    type t
-    type snapshot
-
-    val empty : config:Config.t -> t
-
-    val create_source :
-      t ->
-      kind:[ `File | `Fragment | `Generated ] ->
-      origin:[ `path of Path.t | `virtual_ of string ] ->
-      text:string ->
-      t * Source_id.t
-
-    val update_source_text :
-      t -> Source_id.t -> text:string -> t
-
-    val set_dependency_export :
-      t ->
-      dep:Dependency_id.t ->
-      visible_as:Import_path.t option ->
-      fingerprint:Export_fingerprint.t ->
-      export:Export.t ->
-      t
-
-    val snapshot : t -> snapshot
-  end
-
-  module Query : sig
-    val diagnostics : Session.snapshot -> Source_id.t -> Diagnostic.t list
-    val export_of : Session.snapshot -> Source_id.t -> export_result
-    val type_at : Session.snapshot -> Source_id.t -> Position.t -> Ty.t option
-    val definition_of :
-      Session.snapshot -> Source_id.t -> Position.t -> Definition.t option
-    val scope_at : Session.snapshot -> Source_id.t -> Position.t -> Scope.t option
-    val signature_of_item :
-      Session.snapshot -> Item_id.t -> Signature.t option
-    val typed_view_of_source :
-      Session.snapshot -> Source_id.t -> Tst.source_file option
-  end
-end
+val snapshot :
+  Session.t ->
+  roots:Source_id.t list ->
+  (Snapshot.t, Missing_requirements.t) result
 ```
 
-This does not freeze exact names. It freezes the shape:
+Once a `Snapshot` exists, all snapshot queries are total over that
+prepared world.
 
-- sessions and snapshots
-- opaque source identities
-- query results
-- typed views as optional derived artifacts
-- host-loaded persisted module summaries as the reuse boundary for dependency
-  typing
+## 9. Type-checking algorithm
 
-`Session.snapshot` returns an immutable revision view. Queries against one
-snapshot observe one coherent semantic world even if the outer host session
-keeps receiving updates.
+< insert logic heavy explanation of the exact algorithm used by OCaml >
 
-## 10. Fragment checking
+## 10. Query contract
 
-Fragment checking needs more than `env`.
+The query API runs over a prepared snapshot.
 
-Use an explicit `Fragment_context`:
+That is important enough to repeat:
 
-```ocaml
-module Fragment_context : sig
-  type t = {
-    source_id : Source_id.t;
-    owner_scope : Scope_id.t option;
-    opened_modules : Module_ref.t list;
-    type_params_in_scope : Type_param.t list;
-    value_env : Value_binding.t list;
-    expected : Ty.t option;
-    origin_anchor : Origin_id.t option;
-  }
-end
-```
+- no query is defined over a mutable session
+- no query discovers missing requirements
+- no query mutates the prepared world
 
-That gives macros and LSP features enough structure to compose with caching,
-diagnostics, and source maps.
+Lazy forcing inside the snapshot is fine. It is an implementation detail. The
+semantic contract is that a prepared snapshot is one coherent typed world.
 
-## 11. Dirty-input lane
+At minimum, the query surface must support:
 
-The library acknowledges two lanes explicitly.
+- `diagnostics`
+- `module_summary_of`
+- `type_at`
+- `definition_at`
+- `scope_at`
 
-### `v0` build/compiler lane
+### `diagnostics`
 
-- input requires clean `Syn.Cst`
-- main goal is deterministic file and package typing
-- outputs include diagnostics, exports, and queries over trusted syntax
-- module support is limited to the subset whose nested item structure is
-  already reified by `syn` at the file shell
+`diagnostics snapshot root` returns the structured diagnostics for that root in
+that prepared world.
 
-### later editor lane
+This includes, when relevant:
 
-- input may come from parse-recovered syntax or a lowered partial surface below
-  clean `Syn.Cst`
-- lowering should still produce partial IR with recovery nodes
-- editor queries should continue to return best-effort local results
+- parse diagnostics
+- lowering diagnostics
+- typing diagnostics
 
-This keeps the build milestone honest without pretending that clean-CST-only is
-already an LSP-complete boundary.
+### `module_summary_of`
+
+`module_summary_of snapshot root` returns the canonical reusable
+`ModuleSummary` for that root.
+
+If the module has local errors but still produced an interface, the returned
+summary must say so in its trust state.
+
+### `type_at`
+
+`type_at snapshot root position` returns the smallest semantic expression that
+contains `position`, and the inferred type of that expression.
+
+If no semantic expression covers the position, it returns no result.
+
+### `definition_at`
+
+`definition_at snapshot root position` resolves the symbol at `position` to the
+exact origin span where it is defined.
+
+This includes cross-module definitions.
+
+That is why `ModuleSummary` must carry precise definition origins for exported
+symbols. Cross-module `definition_at` must not require reopening source text or
+re-running full typing on dependencies.
+
+### `scope_at`
+
+`scope_at snapshot root position` returns the names visible at `position`,
+together with the best type or scheme information available for those names.
+
+This is an ordinary typing query, not a best-effort string dump.
+
+## 11. Source identities and origins
+
+Sources need stable identities across edits.
+
+That means:
+
+- one logical source gets one stable `SourceId`
+- text updates preserve that `SourceId`
+- snapshots are tied to a session revision, not to unstable offsets
+
+Semantic nodes also need identities, but not all with the same strength.
+
+The stability tiers are:
+
+- `SourceId`
+  - strong stability
+- top-level item ids
+  - strong stability when the declaration still matches
+- local expression and pattern ids
+  - best-effort stability
+- synthetic recovery nodes
+  - no long-term guarantee
+
+Origins are separate from semantic identity.
+
+An origin map must be able to take a semantic thing and recover:
+
+- the source it came from
+- the exact span it came from
+- the CST node, when source-backed tooling needs that
+
+That is how diagnostics and definition queries stay source-precise without
+making the CST the semantic store.
 
 ## 12. Diagnostics
 
-`typ` diagnostics should remain separate from parser diagnostics, just as Riot
-already keeps parse diagnostics separate from later analysis diagnostics in
-`riot-fix`
-([packages/riot-fix/src/pipeline.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/riot-fix/src/pipeline.mli#L4)).
+Diagnostics are first-class structured values.
 
-Each diagnostic supports:
+They are not strings with metadata bolted on afterward.
 
-- one primary source origin
-- zero or more secondary labels
-- notes
+Every diagnostic must carry enough structured information for multiple
+presentations later:
+
+- human CLI output
+- JSON output
+- editor surfaces
+- later tooling or lint passes
+
+At minimum, each diagnostic must support:
+
+- one primary origin
+- zero or more related origins
 - machine-readable code
-- optional mismatch or expectation trace
+- severity
+- structured payload specific to that diagnostic kind
 
-At minimum, the checker models these families explicitly:
+At minimum, the checker must model diagnostics for:
 
-- unbound value
-- unbound type constructor
-- type mismatch
-- invalid recursive binding
-- non-exhaustive pattern match
-- redundant match case
-- unsupported syntax in the current checker subset
+- unbound names
+- unbound type constructors
+- type mismatches
+- invalid recursive bindings
+- non-exhaustive matches
+- redundant cases
+- unsupported syntax
+- missing requirements during snapshot preparation
 
-Pattern exhaustiveness and redundancy analysis remain a distinct subsystem,
-even if they live under the same package.
+`UnsupportedSyntax` is the catch-all while the supported subset grows. It is
+fine to split it into more specific kinds later. It is not fine to drop the
+structure and fall back to ad-hoc strings.
 
 ## 13. Parallelism
 
-The checker should be parallel-friendly without becoming actor-shaped at its
-core.
+The library is parallel-friendly by construction.
 
-The split is:
+That does not mean the core checker becomes actor-shaped. It means:
 
-- core lowering and inference for one query stay deterministic and explicit
-- batch surfaces expose independent work units and mergeable outputs
-- build-oriented callers may schedule those units with `Std.WorkerPool`
-  ([packages/std/src/worker_pool/worker_pool.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/std/src/worker_pool/worker_pool.mli#L1))
+- the host can parallelize independent roots
+- the host can parallelize independent modules in a dependency layer
+- summary hydration can be parallelized
+- store interaction can be parallelized
 
-Potential parallel units include:
+The core local inference algorithm does not need internal parallelism as part
+of the contract.
 
-- independent files in a dependency layer
-- imported interface decoding
-- export recomputation for already-lowered dependencies
+The point is to avoid per-file process overhead, not to force every internal
+step into concurrency.
 
-This RFD does not require parallelism inside unification or local inference.
+## 14. Testing and conformance
 
-## 14. Testing strategy
+This reference section should become the test plan later.
 
-`typ` should be snapshot-tested from the beginning with:
+That means the checker must be validated with tests that directly correspond to
+the spec:
 
-- `Std.Test.FixtureRunner`
-- `Std.Test.Snapshot`
+- module summary snapshots
+- diagnostics snapshots
+- `type_at` fixtures
+- `definition_at` fixtures
+- `scope_at` fixtures
+- missing-requirements preparation tests
+- cache hit and cache miss tests
+- source identity stability tests
+- snapshot immutability tests
 
-([packages/std/src/test/fixture_runner.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/std/src/test/fixture_runner.mli#L1),
-[packages/std/src/test/snapshot.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/std/src/test/snapshot.mli#L1))
+Architecture tests are not optional.
 
-The first fixture families snapshot:
+At minimum, they must prove:
 
-- `ItemTree`
-- lowered bodies
-- `FileSummary`
-- typed views
-- diagnostics
-- exports
-- selected query results
+- whitespace-only edits do not change module summaries
+- changing one body does not invalidate unrelated summaries
+- inserting sibling items does not renumber unrelated stable ids
+- editing a source creates a new revision and requires a new prepared snapshot
+- a prepared snapshot is queryable without further dependency discovery
+- unchanged dependency fingerprints hit the store
+- changed dependency fingerprints invalidate exactly what they should
 
-Architecture tests are also required. `typ` should lock down invalidation and
-identity behavior with tests such as:
+## 15. Appendix: theory subset
 
-- whitespace-only edit does not change exports
-- editing inside one body does not invalidate unrelated file summaries
-- inserting a sibling item does not renumber stable IDs for unrelated items
-- updating a source preserves `Source_id`
-- stale snapshots do not corrupt the current session
-- one unresolved name recovers locally instead of causing a diagnostic cascade
-- unchanged module inputs hit the persisted export cache and skip rechecking
-- changing one module invalidates only its export artifact and downstream
-  dependents, not unrelated package summaries
-- package-level type bundles round-trip through the chosen persistence format
+The type-theoretic subset being implemented should be documented explicitly.
 
-These are architectural invariants, not implementation afterthoughts.
+This appendix is where we say, in detail, which OCaml typing rules we are
+adopting and which we are not.
 
-## 15. V0 support matrix
+At minimum, it should cover:
 
-The table below makes the `v0` lowering policy explicit.
+- let-polymorphism
+- the value restriction
+- recursive bindings
+- algebraic data types
+- records
+- pattern typing
+- match typing and exhaustiveness
+- labeled and optional arguments, when supported
+- module-summary style interface reuse
 
-| Syntax family | `v0` lowering status | `v0` diagnostic expectation | `v0` export effect |
-| --- | --- | --- | --- |
-| Top-level `let`, `type`, `exception`, `external`, `val` | Supported | ordinary typing diagnostics | trusted or errored depending on item result |
-| Top-level `open` and `include` with supported targets | Supported | unresolved/import diagnostics as needed | may downgrade file summary if unresolved |
-| Function bodies, patterns, matches, ADTs, records | Supported | ordinary body and match diagnostics | body-local failures do not automatically poison unrelated items |
-| Parameter sugar such as `let f x = ...` | Normalized | none beyond ordinary typing diagnostics | same as normalized item |
-| Comments, docstrings, trivia, separator ownership | Origin-only | none from lowering alone | no export effect |
-| Objects, classes, methods, instance variables | Recovery-only | unsupported-syntax diagnostic | no trusted export from affected constructs |
-| Local modules, first-class modules, functors | Recovery-only in `v0` | unsupported-syntax diagnostic | no trusted export from affected constructs |
-| Nested `struct ... end` and `sig ... end` bodies | Recovery-only in `v0` | unsupported-syntax diagnostic | no trusted export from affected constructs |
-| Parse-recovered dirty syntax for the editor lane | Not part of clean-CST `v0` | parser diagnostics plus future partial-lowering diagnostics | not trusted for build exports |
+The OCaml compiler remains the main theory reference for this subset, especially:
 
-This matrix should be revised only by changing the underlying architectural
-support and tests, not by silently broadening behavior in implementation code.
+- `Types`
+- `Btype`
+- `Ctype`
+- `Typecore`
+- `Typedtree`
 
-## 16. Proposed phased rollout
+But this appendix should not just say "see OCaml."
 
-### Phase 0
-
-- create `packages/typ`
-- define source IDs, semantic IDs, `ItemTree`, `BodyArena`, `FileSummary`, and
-  origin maps
-- add fixture-backed snapshots for lowering and diagnostics
-- support the clean-CST build/compiler lane for the functional subset
-
-### Phase 1
-
-- add name resolution and export trust states
-- add query-first session and snapshot APIs
-- add body inference and typed views
-
-### Phase 2
-
-- add broader cross-file checking for ordinary Riot package builds
-- add type-at, definition-of, and scope-at query surfaces
-- add architecture tests for invalidation and stable IDs
-- add persisted per-module export artifacts plus package-level type bundles
-- mirror Riot's package-planner loop for store-backed export fetch or compute
-
-### Phase 3
-
-- add the editor lane for dirty inputs and partial lowering
-- integrate the same session and query model into LSP and macro workflows
-- broaden supported module-language features where needed
-- integrate type-export planning and persistence into the regular
-  planner/executor pipeline so builds emit reusable type exports automatically
+It should extract the exact subset Riot is implementing, in Riot terms, so the
+tests and the implementation have something precise to conform to.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
