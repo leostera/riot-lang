@@ -35,7 +35,7 @@ let empty = {
   initialized = false;
   shutdown_requested = false;
   documents = [];
-  workspace_manager = Riot_model.Workspace_manager.create ();
+  workspace_manager = Riot_model.Workspace_manager.create ()
 }
 
 let uri_equal = fun left ->
@@ -71,8 +71,7 @@ let filename_of_uri = fun uri ->
 let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
-let dedupe_paths = fun paths ->
-  paths |> List.sort_uniq compare_paths
+let dedupe_paths = fun paths -> paths |> List.sort_uniq compare_paths
 
 let document_path_key = fun (document: document) ->
   match document.path with
@@ -111,10 +110,7 @@ let package_scope_for_file = fun state path ->
     )
 
 let package_source_files = fun (pkg: Riot_model.Package.t) ->
-  pkg.sources.src
-  @ pkg.sources.tests
-  @ pkg.sources.examples
-  @ pkg.sources.bench
+  pkg.sources.src @ pkg.sources.tests @ pkg.sources.examples @ pkg.sources.bench
   |> List.map (fun relative -> Path.(pkg.path / relative))
   |> dedupe_paths
 
@@ -127,11 +123,9 @@ let typ_target_files = fun state ->
         | Some pkg -> (
             let package_root = pkg.path in
             let package_files = package_source_files pkg in
-            let open_documents =
-              state.documents
-              |> List.filter (document_in_root package_root)
-              |> List.filter_map (fun document -> document.path)
-            in
+            let open_documents = state.documents
+            |> List.filter (document_in_root package_root)
+            |> List.filter_map (fun document -> document.path) in
             dedupe_paths (package_files @ open_documents @ [ path ])
           )
         | None -> [ path ]
@@ -139,12 +133,11 @@ let typ_target_files = fun state ->
 
 let text_for_path = fun state path ->
   let key = Path.normalize path |> Path.to_string in
-  state.documents
-  |> List.find_opt (fun document ->
-    match document_path_key document with
-    | Some candidate -> String.equal candidate key
-    | None -> false)
-  |> function
+  state.documents |> List.find_opt
+    (fun document ->
+      match document_path_key document with
+      | Some candidate -> String.equal candidate key
+      | None -> false) |> function
   | Some document -> Some document.text
   | None -> (
       match Fs.read path with
@@ -167,12 +160,15 @@ let typ_session_for_document = fun state ->
           match text_for_path state path with
           | None -> (session, current_source_id)
           | Some text ->
-              let (session, source_id) =
-                Typ.Session.create_source session ~kind:Typ.Source.File ~origin:(Typ.Source.Path path) ~text
-              in
+              let (session, source_id) = Typ.Session.create_source
+                session
+                ~kind:Typ.Source.File
+                ~origin:(Typ.Source.Path path)
+                ~text in
               let current_source_id =
                 match current_key with
-                | Some key when String.equal key (Path.normalize path |> Path.to_string) -> Some source_id
+                | Some key when String.equal key
+                  (Path.normalize path |> Path.to_string) -> Some source_id
                 | _ -> current_source_id
               in
               (session, current_source_id))
@@ -182,13 +178,11 @@ let typ_session_for_document = fun state ->
     match from_paths with
     | (session, Some source_id) -> Some (Typ.Session.snapshot session, source_id)
     | (session, None) ->
-        let (session, source_id) =
-          Typ.Session.create_source
-            session
-            ~kind:Typ.Source.File
-            ~origin:(typ_source_origin_of_document document)
-            ~text:document.text
-        in
+        let (session, source_id) = Typ.Session.create_source
+          session
+          ~kind:Typ.Source.File
+          ~origin:(typ_source_origin_of_document document)
+          ~text:document.text in
         Some (Typ.Session.snapshot session, source_id)
 
 let diagnostic_to_lsp = fun text ->
@@ -363,25 +357,26 @@ let typ_diagnostics = fun state ->
     match typ_session_for_document state document with
     | None -> []
     | Some (snapshot, source_id) ->
-        Typ.Query.diagnostics snapshot source_id
-        |> List.filter_map (function
-          | Typ.Query.Parse _ -> None
-          | Typ.Query.Lowering diagnostic
-          | Typ.Query.Typing diagnostic ->
-              Some (typ_diagnostic_to_lsp document.text diagnostic))
+        Typ.Query.diagnostics snapshot source_id |> List.filter_map
+          (
+            function
+            | Typ.Query.Parse _ -> None
+            | Typ.Query.Lowering diagnostic
+            | Typ.Query.Typing diagnostic -> Some (typ_diagnostic_to_lsp document.text diagnostic)
+          )
 
 let publish_diagnostics = fun state ->
   fun document ->
-  let result = analyze_document document in
-  let diagnostics = List.map (diagnostic_to_lsp document.text) result.parse_diagnostics
-  @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics
-  @ typ_diagnostics state document in
-  let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
-    uri = document.uri;
-    version = Some document.version;
-    diagnostics
-  } in
-  Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
+    let result = analyze_document document in
+    let diagnostics = List.map (diagnostic_to_lsp document.text) result.parse_diagnostics
+    @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics
+    @ typ_diagnostics state document in
+    let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
+      uri = document.uri;
+      version = Some document.version;
+      diagnostics
+    } in
+    Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
 
 let clear_diagnostics = fun uri ->
   let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
@@ -641,7 +636,7 @@ let handle_did_open = fun state ->
               uri = params.text_document.uri;
               version = params.text_document.version;
               text = params.text_document.text;
-              path = existing.path;
+              path = existing.path
             } in
             let state = upsert_document state document in
             ok state [ publish_diagnostics state document ]
@@ -654,7 +649,8 @@ let handle_did_open = fun state ->
                 match Lsp.Uri.to_path params.text_document.uri with
                 | Ok path -> Some path
                 | Error _ -> None;
-            } in
+            }
+            in
             let state = upsert_document state document in
             ok state [ publish_diagnostics state document ]
       )
@@ -674,7 +670,7 @@ let handle_did_change = fun state ->
                   uri = document.uri;
                   version = params.text_document.version;
                   text;
-                  path = document.path;
+                  path = document.path
                 } in
                 let state = upsert_document state document in
                 ok state [ publish_diagnostics state document ]

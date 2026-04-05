@@ -32,10 +32,12 @@ let replace_all = fun text ->
         let rec loop offset =
           if offset >= String.length text then
             ()
-          else if starts_with_pattern offset then (
-            IO.Buffer.add_string buffer with_;
-            loop (offset + pattern_len)
-          ) else (
+          else if starts_with_pattern offset then
+            (
+              IO.Buffer.add_string buffer with_;
+              loop (offset + pattern_len)
+            )
+          else (
             IO.Buffer.add_char buffer text.[offset];
             loop (offset + 1)
           )
@@ -44,9 +46,7 @@ let replace_all = fun text ->
         IO.Buffer.contents buffer
 
 let substitute_fixture_tokens = fun line ->
-  let repo_root =
-    Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".")
-  in
+  let repo_root = Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".") in
   line
   |> replace_all ~pattern:"__REPO_ROOT_URI__" ~with_:(Lsp.Uri.to_string (Lsp.Uri.of_path repo_root))
   |> replace_all ~pattern:"__REPO_ROOT__" ~with_:(Path.to_string repo_root)
