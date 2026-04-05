@@ -11,7 +11,7 @@ description: "Riot Request for Discussion · presented"
 
 - Feature Name: `riot_workspace_operational_config`
 - Start Date: `2026-04-05`
-- Status: `presented`
+- Status: `implemented`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 

@@ -2,7 +2,7 @@
 
 - Feature Name: `ocaml_code_driven_doc_generation`
 - Start Date: `2026-04-04`
-- Status: `presented`
+- Status: `implemented`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 

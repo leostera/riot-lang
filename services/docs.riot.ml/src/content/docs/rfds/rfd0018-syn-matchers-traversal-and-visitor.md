@@ -9,7 +9,7 @@ description: "Riot Request for Discussion · presented"
 
 - Feature Name: `syn_matchers_and_visitor`
 - Start Date: `2026-03-23`
-- Status: `presented`
+- Status: `implemented`
 - RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
 - Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 

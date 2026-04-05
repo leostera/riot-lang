@@ -12,19 +12,8 @@ RFDs use a small lifecycle vocabulary:
 These are the RFDs that are still only `presented` and therefore the most obvious candidates for follow-up work:
 
 - `RFD0008` - Macro
-- `RFD0010` - Actors Multicore Work-Stealing Runtime
-- `RFD0011` - Actors Pinned and Blocking Spawn
-- `RFD0012` - Simplify Riot Around Action-Level Caching
-- `RFD0018` - Syn Matchers, Traversal, and Visitor
-- `RFD0019` - Riot Fix Syntax-Directed Rewrites
-- `RFD0028` - Local Artifact Publishing
-- `RFD0030` - Typ Incremental Library-First Typechecker
-- `RFD0032` - Riot Cache and GC
 - `RFD0033` - Remote Source Install and Run
-- `RFD0034` - Syn Syntactic Dependency Extraction
 - `RFD0035` - New Test, Bench, and Example Target Layout
-- `RFD0036` - LSP Protocol Package and Riot Language Server
-- `RFD0038` - Riot Workspace Operational Config
 
 ## Rejected
 
@@ -39,6 +28,9 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0005` - Kernel and Std Snapshot
 - `RFD0006` - Ceibo and Syn Snapshot
 - `RFD0007` - Riot Fix
+- `RFD0010` - Actors Multicore Work-Stealing Runtime
+- `RFD0011` - Actors Pinned and Blocking Spawn
+- `RFD0012` - Simplify Riot Around Action-Level Caching
 - `RFD0009` - Testing System Snapshot
 - `RFD0009` - Riot Toolchain System Snapshot
 - `RFD0013` - Riot Fix Package-Provided Rules
@@ -46,6 +38,8 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0015` - Syn Faithful CST
 - `RFD0016` - Riot Foreign Dependency Model Snapshot
 - `RFD0017` - OCaml Cross-Compilation Snapshot
+- `RFD0018` - Syn Matchers, Traversal, and Visitor
+- `RFD0019` - Riot Fix Syntax-Directed Rewrites
 - `RFD0020` - Krasny Pretty Printer
 - `RFD0021` - Docker Stack Snapshot
 - `RFD0022` - Riot Package Registry
@@ -54,7 +48,14 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0025` - Snapshot Testing for Riot
 - `RFD0026` - Riot Package Management
 - `RFD0027` - Toolchain Manifest Contract
+- `RFD0028` - Local Artifact Publishing
 - `RFD0029` - Std Archive and Compression Support
+- `RFD0030` - Typ Incremental Library-First Typechecker
+- `RFD0032` - Riot Cache and GC
+- `RFD0034` - Syn Syntactic Dependency Extraction
+- `RFD0036` - LSP Protocol Package and Riot Language Server
+- `RFD0037` - Code-Driven OCaml Documentation Generator
+- `RFD0038` - Riot Workspace Operational Config
 
 ## Notes
 
