@@ -3,19 +3,15 @@ open Riot_model
 
 let command =
   let open ArgParser in
-  let open Arg in
-  command "clean"
-  |> about "Run build cache GC or remove the build root"
-  |> args [
-    flag "json"
-    |> long "json"
-    |> help "Emit machine-readable JSONL events";
-    flag "force"
-    |> long "force"
-    |> help "Remove the entire build root instead of running policy-aware cache GC";
-  ]
+    let open Arg in command "clean"
+    |> about "Run build cache GC or remove the build root"
+    |> args
+      [
+        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+        flag "force" |> long "force" |> help "Remove the entire build root instead of running policy-aware cache GC";
+      ]
 
-let run = fun ~(workspace: Riot_model.Workspace.t) matches ->
+let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let mode =
     if ArgParser.get_flag matches "json" then
       Build.Json

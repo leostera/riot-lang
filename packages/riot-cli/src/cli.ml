@@ -363,12 +363,11 @@ let run = fun ~args ->
                   None
               in
               Riot_fmt.run ?workspace fmt_matches
-          | Some ("clean", clean_matches) ->
-              (
-                match require_clean_workspace (get_workspace_scan ()) with
-                | Error _ as e -> e
-                | Ok workspace -> Clean.run ~workspace clean_matches
-              )
+          | Some ("clean", clean_matches) -> (
+              match require_clean_workspace (get_workspace_scan ()) with
+              | Error _ as e -> e
+              | Ok workspace -> Clean.run ~workspace clean_matches
+            )
           | Some ("doc", doc_matches) ->
               let workspace =
                 match get_workspace_scan () with

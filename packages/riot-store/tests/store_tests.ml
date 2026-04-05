@@ -27,10 +27,12 @@ let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
     Path.(riot_dir / Path.v "config.toml")
   |> Result.expect ~msg:"write .riot/config.toml should succeed"
 
-let make_hash = fun ch -> String.make 64 ch
+let make_hash = fun ch ->
+  String.make 64 ch
 
-let write_cache_entry = fun ~(workspace: Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
-  let entry_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
+let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
+  let entry_dir =
+    Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
   let payload = Path.(entry_dir / Path.v "artifact.bin") in
   let _ = Fs.create_dir_all entry_dir |> Result.expect ~msg:"create cache entry should succeed" in
   let _ = Fs.write (String.make size 'x') payload |> Result.expect ~msg:"write cache payload should succeed" in
@@ -457,35 +459,38 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
         write_workspace_cache_config tmpdir ~keep_generations:1 ~max_size:"10 GiB";
         let hash_a = make_hash 'a' in
         let hash_b = make_hash 'b' in
-        let entry_a = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_a ~size:16 in
-        let entry_b = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_b ~size:16 in
-        let _ =
-          Riot_store.Cache_gc.record_successful_build
-            ~workspace
-            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
-          |> Result.expect ~msg:"first generation should record"
-        in
+        let entry_a = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:16 in
+        let entry_b = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_b
+          ~size:16 in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"first generation should record" in
         let summary =
-          let _ =
-            Riot_store.Cache_gc.record_successful_build
-              ~workspace
-              ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
-              ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
-            |> Result.expect ~msg:"second generation should record"
-          in
-          Riot_store.Cache_gc.clean
+          let _ = Riot_store.Cache_gc.record_successful_build
             ~workspace
-          |> Result.expect ~msg:"clean should enforce generation retention"
+            ~lanes:[
+              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] }
+            ]
+            ~new_entries:[
+              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b }
+            ]
+          |> Result.expect ~msg:"second generation should record" in
+          Riot_store.Cache_gc.clean ~workspace |> Result.expect ~msg:"clean should enforce generation retention"
         in
         let entry_a_exists = Fs.exists entry_a |> Result.unwrap_or ~default:false in
         let entry_b_exists = Fs.exists entry_b |> Result.unwrap_or ~default:false in
-        if
-          summary.ran_gc
-          && summary.deleted_entries = 1
-          && not entry_a_exists
-          && entry_b_exists
-        then
+        if summary.ran_gc && summary.deleted_entries = 1 && not entry_a_exists && entry_b_exists then
           Ok ()
         else
           Error "expected generation overflow GC to keep only the newest live cache entry")
@@ -502,34 +507,45 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
         let hash_a = make_hash 'a' in
         let hash_b = make_hash 'b' in
         let hash_c = make_hash 'c' in
-        let entry_a = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_a ~size:64 in
-        let _ =
-          Riot_store.Cache_gc.record_successful_build
-            ~workspace
-            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
-          |> Result.expect ~msg:"generation A should record"
-        in
-        let entry_b = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_b ~size:64 in
-        let _ =
-          Riot_store.Cache_gc.record_successful_build
-            ~workspace
-            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
-            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
-          |> Result.expect ~msg:"generation B should record"
-        in
-        let entry_c = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_c ~size:64 in
+        let entry_a = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:64 in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"generation A should record" in
+        let entry_b = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_b
+          ~size:64 in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+        |> Result.expect ~msg:"generation B should record" in
+        let entry_c = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_c
+          ~size:64 in
         let summary =
-          let _ =
-            Riot_store.Cache_gc.record_successful_build
-              ~workspace
-              ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_c ] } ]
-              ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_c } ]
-            |> Result.expect ~msg:"generation C should record"
-          in
-          Riot_store.Cache_gc.clean
+          let _ = Riot_store.Cache_gc.record_successful_build
             ~workspace
-          |> Result.expect ~msg:"clean should enforce max_size policy"
+            ~lanes:[
+              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_c ] }
+            ]
+            ~new_entries:[
+              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_c }
+            ]
+          |> Result.expect ~msg:"generation C should record" in
+          Riot_store.Cache_gc.clean ~workspace |> Result.expect ~msg:"clean should enforce max_size policy"
         in
         let entry_a_exists = Fs.exists entry_a |> Result.unwrap_or ~default:false in
         let entry_b_exists = Fs.exists entry_b |> Result.unwrap_or ~default:false in
@@ -563,10 +579,8 @@ let tests =
     case "materialize package exports from action artifacts" test_materialize_package_exports_from_action_artifact;
     case "materialize package exports fails when source missing" test_materialize_package_exports_fails_when_source_missing;
     case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
-    case "cache GC drops unreferenced entries after generation overflow"
-      test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
-    case "cache GC shrinks retained generations to meet max_size"
-      test_cache_gc_shrinks_retained_generations_to_meet_max_size;
+    case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
+    case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;
   ]
 
 let name = "Riot Store Tests"

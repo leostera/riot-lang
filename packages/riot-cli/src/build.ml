@@ -225,10 +225,10 @@ let scaled_size_string = fun bytes divisor suffix ->
   Int64.to_string whole ^ "." ^ Int64.to_string fraction ^ " " ^ suffix
 
 let size_to_string = fun size_bytes ->
-  let kib = 1024L in
-  let mib = Int64.mul kib 1024L in
-  let gib = Int64.mul mib 1024L in
-  let tib = Int64.mul gib 1024L in
+  let kib = 1_024L in
+  let mib = Int64.mul kib 1_024L in
+  let gib = Int64.mul mib 1_024L in
+  let tib = Int64.mul gib 1_024L in
   if Int64.compare size_bytes tib >= 0 then
     scaled_size_string size_bytes tib "TiB"
   else if Int64.compare size_bytes gib >= 0 then
@@ -255,22 +255,22 @@ let write_cache_gc_event = fun ~mode event ->
   | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
   | Human -> (
       match event with
-      | Riot_store.Cache_gc.GcStarted _ ->
-          ()
-      | Riot_store.Cache_gc.GcSkipped { trigger = Post_build; _ } ->
-          ()
-      | Riot_store.Cache_gc.GcSkipped { summary; _ } ->
-          out ("    Cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ ")")
-      | Riot_store.Cache_gc.GcCompleted { summary; _ } ->
-          out ("    \027[1;32mCleaning\027[0m " ^ format_cache_gc_cleanup summary)
-      | Riot_store.Cache_gc.GcFailed { error; _ } ->
-          out ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
-      | Riot_store.Cache_gc.ForceCleanStarted _ ->
-          ()
-      | Riot_store.Cache_gc.ForceCleanCompleted { build_root } ->
-          out ("    \027[1;32mCleaning\027[0m removed build root " ^ Path.to_string build_root)
-      | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } ->
-          out ("\027[1;31mError\027[0m: failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error)
+      | Riot_store.Cache_gc.GcStarted _ -> ()
+      | Riot_store.Cache_gc.GcSkipped { trigger=Post_build; _ } -> ()
+      | Riot_store.Cache_gc.GcSkipped { summary; _ } -> out
+        ("    Cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ ")")
+      | Riot_store.Cache_gc.GcCompleted { summary; _ } -> out
+        ("    \027[1;32mCleaning\027[0m " ^ format_cache_gc_cleanup summary)
+      | Riot_store.Cache_gc.GcFailed { error; _ } -> out
+        ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
+      | Riot_store.Cache_gc.ForceCleanStarted _ -> ()
+      | Riot_store.Cache_gc.ForceCleanCompleted { build_root } -> out
+        ("    \027[1;32mCleaning\027[0m removed build root " ^ Path.to_string build_root)
+      | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } -> out
+        ("\027[1;31mError\027[0m: failed to remove build root "
+        ^ Path.to_string build_root
+        ^ ": "
+        ^ error)
     )
 
 let write_streaming_event = fun ~mode ~displayed_packages ~progress event ->

@@ -60,8 +60,8 @@ let module_summary_jsons = fun snapshot ->
 let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
   | Ok snapshot -> Ok snapshot
-  | Error missing ->
-      Error ("unexpected missing requirements: " ^ Data.Json.to_string (MissingRequirements.to_json missing))
+  | Error missing -> Error ("unexpected missing requirements: "
+  ^ Data.Json.to_string (MissingRequirements.to_json missing))
 
 let test_source_id_stays_stable_across_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -261,7 +261,8 @@ let test_prepare_snapshot_is_rooted = fun _ctx ->
       let root_ids = Snapshot.roots snapshot in
       let demo_has_unbound_name = has_unbound_name snapshot demo_source_id in
       let demo_analysis_exists = Option.is_some (Query.analysis_of_source snapshot demo_source_id) in
-      let colors_analysis_exists = Option.is_some (Query.analysis_of_source snapshot colors_source_id) in
+      let colors_analysis_exists = Option.is_some
+        (Query.analysis_of_source snapshot colors_source_id) in
       let midpoint_type = inferred_type_at snapshot demo_source_id 34 in
       let label_type = inferred_type_at snapshot demo_source_id 58 in
       let () = Test.assert_equal ~expected:[ demo_source_id ] ~actual:root_ids in

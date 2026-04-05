@@ -51,13 +51,17 @@ let prepare_snapshot = fun session ~roots ->
     roots
     |> List.filter
       (fun root_id ->
-        session.sources
-        |> List.exists (fun (source: Source.t) -> SourceId.equal source.source_id root_id)
-        |> not)
+        session.sources |> List.exists
+          (fun (source: Source.t) ->
+            SourceId.equal source.source_id root_id) |> not)
     |> List.map (fun source_id -> MissingRequirements.MissingRootSource { source_id })
   in
   if MissingRequirements.(missing_roots |> of_list |> is_empty) then
-    Ok (Snapshot.make ~revision:session.next_revision ~roots ~config:session.config ~sources:session.sources)
+    Ok (Snapshot.make
+      ~revision:session.next_revision
+      ~roots
+      ~config:session.config
+      ~sources:session.sources)
   else
     Error (MissingRequirements.of_list missing_roots)
 

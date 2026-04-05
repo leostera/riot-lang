@@ -308,11 +308,7 @@ let render_dependency_section = fun dependencies ->
         ~snippet:""
         ~docstring:None
         ~anchor:None) in
-  render_kind_section
-    ~section_id:"dependencies"
-    ~title:"Dependencies"
-    ~note:""
-    rows
+  render_kind_section ~section_id:"dependencies" ~title:"Dependencies" ~note:"" rows
 
 let render_module_rows = fun ~from_module modules ->
   modules |> List.map

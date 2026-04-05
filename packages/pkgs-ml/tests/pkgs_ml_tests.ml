@@ -946,99 +946,8 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
   | Ok result -> result
 
 let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun _ctx ->
-  with_riot_agent (Some "riot-cli@test") (fun () ->
-    let cache = Pkgs_ml.Registry_cache.create
-      ~riot_home:(Path.v "/tmp/.riot")
-      ~registry_name:"pkgs.ml"
-      ()
-    |> Result.expect ~msg:"expected registry cache to be created" in
-    let artifact = "fake-tarball-bytes" in
-    let fetch, requests =
-      make_fetch_recorder
-        ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-          Ok {
-            Pkgs_ml.Registry.status_code = 200;
-            body =
-              {|{
-  "package_name": "minttea",
-  "package_version": "0.4.2",
-  "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
-  "manifest": {
-    "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
-    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
-  },
-  "source_archive": {
-    "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
-    "url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
-  },
-  "claim": {
-    "key": "claims/minttea.json",
-    "created": true
-  },
-  "release": {
-    "key": "releases/minttea/0.4.2.json",
-    "created": true
-  },
-  "materialization": {
-    "manifest": false,
-    "source": false
-  }
-}|};
-          })
-        (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-    in
-    let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-    match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
-    | Error err -> Error err
-    | Ok published ->
-        let requested = List.rev !requests in
-        match requested with
-        | [ request ] ->
-            let has_header name value =
-              List.exists
-                (fun (header_name, header_value) ->
-                  String.equal header_name name && String.equal header_value value)
-                request.headers
-            in
-            if
-              String.equal request.method_ "POST"
-              && String.equal request.url "https://api.pkgs.ml/v1/publish"
-              && request.body = Some artifact
-              && has_header "authorization" "Bearer root-secret"
-              && has_header "content-type" "application/gzip"
-              && has_header "X-Riot-Agent" "riot-cli@test"
-              && String.equal published.artifact_sha256 "0123456789abcdef0123456789abcdef01234567"
-              && String.equal published.package_name "minttea"
-              && String.equal published.package_version "0.4.2"
-            then
-              Ok ()
-            else
-              Error "unexpected artifact publish request or response"
-        | _ -> Error "expected exactly one publish request")
-
-let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun _ctx ->
-  let cache = Pkgs_ml.Registry_cache.create
-    ~riot_home:(Path.v "/tmp/.riot")
-    ~registry_name:"pkgs.ml"
-    ()
-  |> Result.expect ~msg:"expected registry cache to be created" in
-  let fetch, _requests =
-    make_fetch_recorder
-      ~post_handler:(fun _uri ~headers:_ ~body:_ -> raise (Failure "SSL_write error"))
-      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-  in
-  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact:"tarball" with
-  | Ok _ -> Error "expected publish artifact to return the transport exception as an error"
-  | Error err ->
-      if String.equal err "SSL_write error" then
-        Ok ()
-      else
-        Error ("unexpected publish artifact transport error: " ^ err)
-
-let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
-  with_riot_agent (Some "riot-cli@default") (fun () ->
-    with_env_var "RIOT_AGENT_HEADER" (Some "riot-docs-pipeline@1.0") (fun () ->
+  with_riot_agent (Some "riot-cli@test")
+    (fun () ->
       let cache = Pkgs_ml.Registry_cache.create
         ~riot_home:(Path.v "/tmp/.riot")
         ~registry_name:"pkgs.ml"
@@ -1082,18 +991,115 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
       | Error err -> Error err
-      | Ok _ -> (
-          match List.rev !requests with
+      | Ok published ->
+          let requested = List.rev !requests in
+          match requested with
           | [ request ] ->
-              let header =
-                List.find_opt (fun (name, _value) -> String.equal name "X-Riot-Agent") request.headers
+              let has_header name value =
+                List.exists
+                  (fun (header_name, header_value) ->
+                    String.equal header_name name && String.equal header_value value)
+                  request.headers
               in
-              if header = Some ("X-Riot-Agent", "riot-docs-pipeline@1.0") then
+              if
+                String.equal request.method_ "POST"
+                && String.equal request.url "https://api.pkgs.ml/v1/publish"
+                && request.body = Some artifact
+                && has_header "authorization" "Bearer root-secret"
+                && has_header "content-type" "application/gzip"
+                && has_header "X-Riot-Agent" "riot-cli@test"
+                && String.equal published.artifact_sha256 "0123456789abcdef0123456789abcdef01234567"
+                && String.equal published.package_name "minttea"
+                && String.equal published.package_version "0.4.2"
+              then
                 Ok ()
               else
-                Error "expected RIOT_AGENT_HEADER override to win over default agent"
-          | _ -> Error "expected exactly one publish request"
-        )))
+                Error "unexpected artifact publish request or response"
+          | _ -> Error "expected exactly one publish request")
+
+let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun _ctx ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~riot_home:(Path.v "/tmp/.riot")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let fetch, _requests =
+    make_fetch_recorder
+      ~post_handler:(fun _uri ~headers:_ ~body:_ -> raise (Failure "SSL_write error"))
+      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+  in
+  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+  match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact:"tarball" with
+  | Ok _ -> Error "expected publish artifact to return the transport exception as an error"
+  | Error err ->
+      if String.equal err "SSL_write error" then
+        Ok ()
+      else
+        Error ("unexpected publish artifact transport error: " ^ err)
+
+let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
+  with_riot_agent (Some "riot-cli@default")
+    (fun () ->
+      with_env_var "RIOT_AGENT_HEADER" (Some "riot-docs-pipeline@1.0")
+        (fun () ->
+          let cache = Pkgs_ml.Registry_cache.create
+            ~riot_home:(Path.v "/tmp/.riot")
+            ~registry_name:"pkgs.ml"
+            ()
+          |> Result.expect ~msg:"expected registry cache to be created" in
+          let artifact = "fake-tarball-bytes" in
+          let fetch, requests =
+            make_fetch_recorder
+              ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+                Ok {
+                  Pkgs_ml.Registry.status_code = 200;
+                  body =
+                    {|{
+  "package_name": "minttea",
+  "package_version": "0.4.2",
+  "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
+  "manifest": {
+    "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
+    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
+    "url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
+  },
+  "claim": {
+    "key": "claims/minttea.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/minttea/0.4.2.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+                })
+              (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          in
+          let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+          match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
+          | Error err -> Error err
+          | Ok _ -> (
+              match List.rev !requests with
+              | [ request ] ->
+                  let header =
+                    List.find_opt
+                      (fun (name, _value) ->
+                        String.equal name "X-Riot-Agent")
+                      request.headers
+                  in
+                  if header = Some ("X-Riot-Agent", "riot-docs-pipeline@1.0") then
+                    Ok ()
+                  else
+                    Error "expected RIOT_AGENT_HEADER override to win over default agent"
+              | _ -> Error "expected exactly one publish request"
+            )))
 
 let tests =
   Test.[

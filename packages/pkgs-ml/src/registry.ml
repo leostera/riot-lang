@@ -116,16 +116,15 @@ let normalize_riot_agent = function
       else
         Some trimmed
 
-let set_riot_agent = fun value ->
-  configured_riot_agent := normalize_riot_agent value
+let set_riot_agent = fun value -> configured_riot_agent := normalize_riot_agent value
 
-let riot_agent_override = fun () ->
-  Env.var Env.String ~name:"RIOT_AGENT_HEADER" |> normalize_riot_agent
+let riot_agent_override = fun () -> Env.var Env.String ~name:"RIOT_AGENT_HEADER" |> normalize_riot_agent
 
 let default_http_headers = fun headers ->
   let has_riot_agent =
     List.exists
-      (fun (name, _value) -> String.equal (String.lowercase_ascii name) "x-riot-agent")
+      (fun (name, _value) ->
+        String.equal (String.lowercase_ascii name) "x-riot-agent")
       headers
   in
   if has_riot_agent then

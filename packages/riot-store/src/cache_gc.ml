@@ -67,17 +67,14 @@ let ( let* ) = Result.and_then
 
 let no_event: event -> unit = fun _ -> ()
 
-let cache_root = fun ~(workspace: Workspace.t) ->
-  Path.(workspace.target_dir_root / Path.v "cache")
+let cache_root = fun ~(workspace:Workspace.t) -> Path.(workspace.target_dir_root / Path.v "cache")
 
-let generations_root = fun ~(workspace: Workspace.t) ->
+let generations_root = fun ~(workspace:Workspace.t) ->
   Path.(cache_root ~workspace / Path.v "generations")
 
-let state_path = fun ~(workspace: Workspace.t) ->
-  Path.(cache_root ~workspace / Path.v "state.json")
+let state_path = fun ~(workspace:Workspace.t) -> Path.(cache_root ~workspace / Path.v "state.json")
 
-let created_at_now = fun () ->
-  Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos
+let created_at_now = fun () -> Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos
 
 let left_pad_zeros = fun ~width value ->
   let padding = width - String.length value in
@@ -89,10 +86,10 @@ let left_pad_zeros = fun ~width value ->
 let receipt_filename = fun created_at_ns ->
   left_pad_zeros ~width:20 (Int64.to_string created_at_ns) ^ ".json"
 
-let receipt_path = fun ~(workspace: Workspace.t) created_at_ns ->
+let receipt_path = fun ~(workspace:Workspace.t) created_at_ns ->
   Path.(generations_root ~workspace / Path.v (receipt_filename created_at_ns))
 
-let temp_receipt_path = fun ~(workspace: Workspace.t) created_at_ns ->
+let temp_receipt_path = fun ~(workspace:Workspace.t) created_at_ns ->
   Path.(generations_root ~workspace / Path.v (receipt_filename created_at_ns ^ ".tmp"))
 
 let scaled_size_string = fun bytes divisor suffix ->
@@ -102,10 +99,10 @@ let scaled_size_string = fun bytes divisor suffix ->
   Int64.to_string whole ^ "." ^ Int64.to_string fraction ^ " " ^ suffix
 
 let size_to_string = fun size_bytes ->
-  let kib = 1024L in
-  let mib = Int64.mul kib 1024L in
-  let gib = Int64.mul mib 1024L in
-  let tib = Int64.mul gib 1024L in
+  let kib = 1_024L in
+  let mib = Int64.mul kib 1_024L in
+  let gib = Int64.mul mib 1_024L in
+  let tib = Int64.mul gib 1_024L in
   if Int64.compare size_bytes tib >= 0 then
     scaled_size_string size_bytes tib "TiB"
   else if Int64.compare size_bytes gib >= 0 then
@@ -146,61 +143,50 @@ let summary_to_json = fun summary ->
   ]
 
 let event_message = function
-  | GcStarted { trigger } ->
-      "starting cache GC (" ^ trigger_to_string trigger ^ ")"
-  | GcSkipped { summary; _ } ->
-      summary_message summary
-  | GcCompleted { summary; _ } ->
-      summary_message summary
-  | GcFailed { error; _ } ->
-      error
-  | ForceCleanStarted { build_root } ->
-      "removing build root " ^ Path.to_string build_root
-  | ForceCleanCompleted { build_root } ->
-      "removed build root " ^ Path.to_string build_root
-  | ForceCleanFailed { build_root; error } ->
-      "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error
+  | GcStarted { trigger } -> "starting cache GC (" ^ trigger_to_string trigger ^ ")"
+  | GcSkipped { summary; _ } -> summary_message summary
+  | GcCompleted { summary; _ } -> summary_message summary
+  | GcFailed { error; _ } -> error
+  | ForceCleanStarted { build_root } -> "removing build root " ^ Path.to_string build_root
+  | ForceCleanCompleted { build_root } -> "removed build root " ^ Path.to_string build_root
+  | ForceCleanFailed { build_root; error } -> "failed to remove build root "
+  ^ Path.to_string build_root
+  ^ ": "
+  ^ error
 
 let event_to_json = function
-  | GcStarted { trigger } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "CacheGcStarted");
-        ("trigger", Data.Json.String (trigger_to_string trigger));
-      ]
-  | GcSkipped { trigger; summary } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "CacheGcSkipped");
-        ("trigger", Data.Json.String (trigger_to_string trigger));
-        ("summary", summary_to_json summary);
-      ]
-  | GcCompleted { trigger; summary } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "CacheGcCompleted");
-        ("trigger", Data.Json.String (trigger_to_string trigger));
-        ("summary", summary_to_json summary);
-      ]
-  | GcFailed { trigger; error } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "CacheGcFailed");
-        ("trigger", Data.Json.String (trigger_to_string trigger));
-        ("error", Data.Json.String error);
-      ]
-  | ForceCleanStarted { build_root } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "ForceCleanStarted");
-        ("build_root", Data.Json.String (Path.to_string build_root));
-      ]
-  | ForceCleanCompleted { build_root } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "ForceCleanCompleted");
-        ("build_root", Data.Json.String (Path.to_string build_root));
-      ]
-  | ForceCleanFailed { build_root; error } ->
-      Data.Json.Object [
-        ("type", Data.Json.String "ForceCleanFailed");
-        ("build_root", Data.Json.String (Path.to_string build_root));
-        ("error", Data.Json.String error);
-      ]
+  | GcStarted { trigger } -> Data.Json.Object [
+    ("type", Data.Json.String "CacheGcStarted");
+    ("trigger", Data.Json.String (trigger_to_string trigger));
+  ]
+  | GcSkipped { trigger; summary } -> Data.Json.Object [
+    ("type", Data.Json.String "CacheGcSkipped");
+    ("trigger", Data.Json.String (trigger_to_string trigger));
+    ("summary", summary_to_json summary);
+  ]
+  | GcCompleted { trigger; summary } -> Data.Json.Object [
+    ("type", Data.Json.String "CacheGcCompleted");
+    ("trigger", Data.Json.String (trigger_to_string trigger));
+    ("summary", summary_to_json summary);
+  ]
+  | GcFailed { trigger; error } -> Data.Json.Object [
+    ("type", Data.Json.String "CacheGcFailed");
+    ("trigger", Data.Json.String (trigger_to_string trigger));
+    ("error", Data.Json.String error);
+  ]
+  | ForceCleanStarted { build_root } -> Data.Json.Object [
+    ("type", Data.Json.String "ForceCleanStarted");
+    ("build_root", Data.Json.String (Path.to_string build_root));
+  ]
+  | ForceCleanCompleted { build_root } -> Data.Json.Object [
+    ("type", Data.Json.String "ForceCleanCompleted");
+    ("build_root", Data.Json.String (Path.to_string build_root));
+  ]
+  | ForceCleanFailed { build_root; error } -> Data.Json.Object [
+    ("type", Data.Json.String "ForceCleanFailed");
+    ("build_root", Data.Json.String (Path.to_string build_root));
+    ("error", Data.Json.String error);
+  ]
 
 let sort_uniq_strings = fun values ->
   let rec dedupe acc = function
@@ -218,13 +204,11 @@ let normalize_lane = fun (lane: generation_lane) ->
   { lane with hashes = sort_uniq_strings lane.hashes }
 
 let receipt_to_json = fun receipt ->
-  let lane_to_json (lane: generation_lane) =
-    Data.Json.Object [
-      ("profile", Data.Json.String lane.profile);
-      ("target", Data.Json.String lane.target);
-      ("hashes", Data.Json.Array (List.map Data.Json.string lane.hashes));
-    ]
-  in
+  let lane_to_json (lane: generation_lane) = Data.Json.Object [
+    ("profile", Data.Json.String lane.profile);
+    ("target", Data.Json.String lane.target);
+    ("hashes", Data.Json.Array (List.map Data.Json.string lane.hashes));
+  ] in
   Data.Json.Object [
     ("schema_version", Data.Json.Int 1);
     ("created_at_ns", Data.Json.String receipt.created_at_ns);
@@ -321,11 +305,9 @@ let list_children = fun dir ->
   else
     match Fs.read_dir dir with
     | Error _ -> []
-    | Ok reader ->
-        Std.Iter.MutIterator.to_list reader |> List.map (Path.join dir)
+    | Ok reader -> Std.Iter.MutIterator.to_list reader |> List.map (Path.join dir)
 
-let list_subdirectories = fun dir ->
-  list_children dir |> List.filter path_is_directory
+let list_subdirectories = fun dir -> list_children dir |> List.filter path_is_directory
 
 let is_json_file = fun path ->
   String.ends_with ~suffix:".json" (Path.basename path) && not (path_is_directory path)
@@ -348,54 +330,48 @@ let is_hash_dir_name = fun name ->
   in
   len = 64 && loop 0
 
-let receipt_paths_desc = fun ~(workspace: Workspace.t) ->
-  list_children (generations_root ~workspace)
-  |> List.filter is_json_file
-  |> List.sort (fun left right -> String.compare (Path.basename right) (Path.basename left))
+let receipt_paths_desc = fun ~(workspace:Workspace.t) ->
+  list_children (generations_root ~workspace) |> List.filter is_json_file |> List.sort
+    (fun left right ->
+      String.compare (Path.basename right) (Path.basename left))
 
-let count_receipts = fun ~(workspace: Workspace.t) ->
-  List.length (receipt_paths_desc ~workspace)
+let count_receipts = fun ~(workspace:Workspace.t) -> List.length (receipt_paths_desc ~workspace)
 
-let ensure_cache_root = fun ~(workspace: Workspace.t) ->
+let ensure_cache_root = fun ~(workspace:Workspace.t) ->
   Fs.create_dir_all (cache_root ~workspace)
-  |> Result.map_error (fun err -> "failed to create workspace cache directory: " ^ IO.error_message err)
+  |> Result.map_error
+    (fun err -> "failed to create workspace cache directory: " ^ IO.error_message err)
 
-let ensure_generations_root = fun ~(workspace: Workspace.t) ->
+let ensure_generations_root = fun ~(workspace:Workspace.t) ->
   Fs.create_dir_all (generations_root ~workspace)
   |> Result.map_error
     (fun err -> "failed to create generation receipt directory: " ^ IO.error_message err)
 
-let write_state = fun ~(workspace: Workspace.t) (state: cache_state) ->
+let write_state = fun ~(workspace:Workspace.t) (state: cache_state) ->
   let* () = ensure_cache_root ~workspace in
   Fs.write (Data.Json.to_string_pretty (cache_state_to_json state)) (state_path ~workspace)
   |> Result.map_error (fun err -> "failed to write cache state: " ^ IO.error_message err)
 
-let read_state = fun ~(workspace: Workspace.t) ->
+let read_state = fun ~(workspace:Workspace.t) ->
   let path = state_path ~workspace in
   if not (path_exists path) then
     Ok None
   else
-    let* content =
-      Fs.read_to_string path
-      |> Result.map_error (fun err -> "failed to read cache state: " ^ IO.error_message err)
-    in
-    let* json =
-      Data.Json.of_string content
-      |> Result.map_error (fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err)
-    in
+    let* content = Fs.read_to_string path
+    |> Result.map_error (fun err -> "failed to read cache state: " ^ IO.error_message err) in
+    let* json = Data.Json.of_string content
+    |> Result.map_error
+      (fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err) in
     let* state = cache_state_of_json json in
     Ok (Some state)
 
-let write_receipt = fun ~(workspace: Workspace.t) receipt ->
+let write_receipt = fun ~(workspace:Workspace.t) receipt ->
   let* () = ensure_generations_root ~workspace in
   let created_at_ns = Int64.of_string receipt.created_at_ns in
   let temp_path = temp_receipt_path ~workspace created_at_ns in
   let final_path = receipt_path ~workspace created_at_ns in
-  let* () =
-    Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
-    |> Result.map_error
-      (fun err -> "failed to write generation receipt: " ^ IO.error_message err)
-  in
+  let* () = Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
+  |> Result.map_error (fun err -> "failed to write generation receipt: " ^ IO.error_message err) in
   match Fs.rename ~src:temp_path ~dst:final_path with
   | Ok () -> Ok ()
   | Error err ->
@@ -403,19 +379,15 @@ let write_receipt = fun ~(workspace: Workspace.t) receipt ->
       Error ("failed to commit generation receipt: " ^ IO.error_message err)
 
 let read_receipt_file = fun path ->
-  let* content =
-    Fs.read_to_string path
-    |> Result.map_error (fun err -> "failed to read generation receipt: " ^ IO.error_message err)
-  in
-  let* json =
-    Data.Json.of_string content
-    |> Result.map_error
-      (fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err)
-  in
+  let* content = Fs.read_to_string path
+  |> Result.map_error (fun err -> "failed to read generation receipt: " ^ IO.error_message err) in
+  let* json = Data.Json.of_string content
+  |> Result.map_error
+    (fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err) in
   let* receipt = receipt_of_json json in
   Ok { path; receipt }
 
-let load_receipts = fun ~(workspace: Workspace.t) ->
+let load_receipts = fun ~(workspace:Workspace.t) ->
   let paths = receipt_paths_desc ~workspace in
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
@@ -443,15 +415,11 @@ let path_size_bytes = fun root ->
         | Fs.Walker.Directory
         | Fs.Walker.Symlink
         | Fs.Walker.Other -> Fs.Walker.Continue)
-      ()
-    |> Result.map_error IO.error_message
-    |> Result.map (fun () -> !total)
+      () |> Result.map_error IO.error_message |> Result.map (fun () -> !total)
 
-let collect_cache_entries = fun ~(workspace: Workspace.t) ->
-  let profile_dirs =
-    list_subdirectories workspace.target_dir_root
-    |> List.filter (fun dir -> not (String.equal (Path.basename dir) "cache"))
-  in
+let collect_cache_entries = fun ~(workspace:Workspace.t) ->
+  let profile_dirs = list_subdirectories workspace.target_dir_root
+  |> List.filter (fun dir -> not (String.equal (Path.basename dir) "cache")) in
   let rec collect_profiles acc = function
     | [] -> Ok (List.rev acc)
     | profile_dir :: rest ->
@@ -462,10 +430,8 @@ let collect_cache_entries = fun ~(workspace: Workspace.t) ->
     | [] -> Ok acc
     | target_dir :: rest ->
         let cache_dir = Path.(target_dir / Path.v "cache") in
-        let hash_dirs =
-          list_subdirectories cache_dir
-          |> List.filter (fun dir -> is_hash_dir_name (Path.basename dir))
-        in
+        let hash_dirs = list_subdirectories cache_dir
+        |> List.filter (fun dir -> is_hash_dir_name (Path.basename dir)) in
         let* acc =
           List.fold_left
             (fun acc_result dir ->
@@ -480,17 +446,22 @@ let collect_cache_entries = fun ~(workspace: Workspace.t) ->
   collect_profiles [] profile_dirs
 
 let total_size = fun entries ->
-  List.fold_left (fun acc (entry: cache_entry) -> Int64.add acc entry.size_bytes) 0L entries
+  List.fold_left
+    (fun acc (entry: cache_entry) ->
+      Int64.add acc entry.size_bytes)
+    0L
+    entries
 
-let load_or_rebuild_tracked_size = fun ~(workspace: Workspace.t) ->
+let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
   match read_state ~workspace with
-  | Ok (Some state) ->
-      Ok ({ tracked_size_bytes = state.tracked_size_bytes; rebuilt = false }: tracked_size_snapshot)
+  | Ok (Some state) -> Ok (
+    { tracked_size_bytes = state.tracked_size_bytes; rebuilt = false }: tracked_size_snapshot
+  )
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
-      let* () = write_state ~workspace ({ tracked_size_bytes }: cache_state) in
+      let* () = write_state ~workspace (({ tracked_size_bytes }: cache_state)) in
       Ok ({ tracked_size_bytes; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
@@ -528,7 +499,10 @@ let evaluate_retention = fun ~policy receipts entries ->
   let rec loop kept =
     let live = live_hashes kept in
     let retained_entries =
-      List.filter (fun (entry: cache_entry) -> HashSet.contains live entry.hash) entries
+      List.filter
+        (fun (entry: cache_entry) ->
+          HashSet.contains live entry.hash)
+        entries
     in
     let retained_size = total_size retained_entries in
     if Int64.compare retained_size policy.max_size_bytes <= 0 || kept = [] then
@@ -550,23 +524,21 @@ let delete_path = fun path ~kind ->
     |> Result.map_error
       (fun err -> "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
 
-let run_gc = fun ~(workspace: Workspace.t) ~policy ->
+let run_gc = fun ~(workspace:Workspace.t) ~policy ->
   let* receipts = load_receipts ~workspace in
   let* entries = collect_cache_entries ~workspace in
   let size_before_bytes = total_size entries in
   let kept_receipts, live, size_after_bytes = evaluate_retention ~policy receipts entries in
   let kept_paths = HashSet.create () in
   List.iter
-    (fun (receipt: receipt_file) ->
-      ignore (HashSet.insert kept_paths (Path.to_string receipt.path)))
+    (fun (receipt: receipt_file) -> ignore (HashSet.insert kept_paths (Path.to_string receipt.path)))
     kept_receipts;
   let deleted_entries =
     List.filter (fun (entry: cache_entry) -> not (HashSet.contains live entry.hash)) entries
   in
   let deleted_receipts =
     List.filter
-      (fun (receipt: receipt_file) ->
-        not (HashSet.contains kept_paths (Path.to_string receipt.path)))
+      (fun (receipt: receipt_file) -> not (HashSet.contains kept_paths (Path.to_string receipt.path)))
       receipts
   in
   let* () =
@@ -585,7 +557,7 @@ let run_gc = fun ~(workspace: Workspace.t) ~policy ->
       (Ok ())
       deleted_receipts
   in
-  let* () = write_state ~workspace ({ tracked_size_bytes = size_after_bytes }: cache_state) in
+  let* () = write_state ~workspace (({ tracked_size_bytes = size_after_bytes }: cache_state)) in
   Ok {
     ran_gc = true;
     kept_generations = List.length kept_receipts;
@@ -595,7 +567,7 @@ let run_gc = fun ~(workspace: Workspace.t) ~policy ->
     size_after_bytes;
   }
 
-let load_policy = fun ~(workspace: Workspace.t) ->
+let load_policy = fun ~(workspace:Workspace.t) ->
   Riot_model.Workspace_operational_config.load ~workspace_root:workspace.root
   |> Result.map (fun config -> config.Riot_model.Workspace_operational_config.cache)
   |> Result.map_error Riot_model.Workspace_operational_config.message
@@ -604,7 +576,7 @@ let should_run_gc = fun ~receipt_count ~policy ~tracked_size_bytes ->
   receipt_count > policy.Riot_model.Workspace_operational_config.keep_generations
   || Int64.compare tracked_size_bytes policy.max_size_bytes > 0
 
-let clean_with_events = fun ~(workspace: Workspace.t) ~on_event ->
+let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
   let trigger = Manual in
   let report_error error =
     on_event (GcFailed { trigger; error });
@@ -630,25 +602,24 @@ let clean_with_events = fun ~(workspace: Workspace.t) ~on_event ->
       deleted_entries = 0;
       size_before_bytes = tracked_size_bytes;
       size_after_bytes = tracked_size_bytes;
-    } in
+    }
+    in
     on_event (GcSkipped { trigger; summary });
     Ok summary
-  else
-    (
-      on_event (GcStarted { trigger });
-      match run_gc ~workspace ~policy with
-      | Ok summary ->
-          on_event (GcCompleted { trigger; summary });
-          Ok summary
-      | Error error ->
-          on_event (GcFailed { trigger; error });
-          Error error
-    )
+  else (
+    on_event (GcStarted { trigger });
+    match run_gc ~workspace ~policy with
+    | Ok summary ->
+        on_event (GcCompleted { trigger; summary });
+        Ok summary
+    | Error error ->
+        on_event (GcFailed { trigger; error });
+        Error error
+  )
 
-let clean = fun ~(workspace: Workspace.t) ->
-  clean_with_events ~workspace ~on_event:no_event
+let clean = fun ~(workspace:Workspace.t) -> clean_with_events ~workspace ~on_event:no_event
 
-let force_clean_with_events = fun ~(workspace: Workspace.t) ~on_event ->
+let force_clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
   let build_root = workspace.target_dir_root in
   on_event (ForceCleanStarted { build_root });
   if not (path_exists build_root) then
@@ -662,24 +633,23 @@ let force_clean_with_events = fun ~(workspace: Workspace.t) ~on_event ->
         on_event (ForceCleanCompleted { build_root });
         Ok ()
     | Error err ->
-        let error =
-          "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ IO.error_message err
-        in
+        let error = "failed to remove build root "
+        ^ Path.to_string build_root
+        ^ ": "
+        ^ IO.error_message err in
         on_event (ForceCleanFailed { build_root; error });
         Error error
 
-let force_clean = fun ~(workspace: Workspace.t) ->
-  force_clean_with_events ~workspace ~on_event:no_event
+let force_clean = fun ~(workspace:Workspace.t) -> force_clean_with_events ~workspace ~on_event:no_event
 
-let new_entry_dir = fun ~(workspace: Workspace.t) (entry: new_cache_entry) ->
-  Path.(
-    workspace.target_dir_root
-    / Path.v entry.profile
-    / Path.v entry.target
-    / Path.v "cache"
-    / Path.v entry.hash)
+let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
+  Path.(workspace.target_dir_root
+  / Path.v entry.profile
+  / Path.v entry.target
+  / Path.v "cache"
+  / Path.v entry.hash)
 
-let added_size_for_new_entries = fun ~(workspace: Workspace.t) new_entries ->
+let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
   let seen = HashSet.create () in
   List.fold_left
     (fun acc_result (entry: new_cache_entry) ->
@@ -695,13 +665,10 @@ let added_size_for_new_entries = fun ~(workspace: Workspace.t) new_entries ->
     (Ok 0L)
     new_entries
 
-let record_successful_build_with_events = fun ~(workspace: Workspace.t) ~on_event ~lanes ~new_entries ->
+let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
   let lanes = List.map normalize_lane lanes in
-  let receipt = {
-    created_at_ns = Int64.to_string (created_at_now ());
-    lanes;
-  } in
-  let report_error = fun error ->
+  let receipt = { created_at_ns = Int64.to_string (created_at_now ()); lanes } in
+  let report_error error =
     on_event (GcFailed { trigger = Post_build; error });
     Error error
   in
@@ -720,7 +687,7 @@ let record_successful_build_with_events = fun ~(workspace: Workspace.t) ~on_even
   in
   let tracked_size_bytes = Int64.add tracked_size.tracked_size_bytes added_size_bytes in
   let* () =
-    match write_state ~workspace ({ tracked_size_bytes }: cache_state) with
+    match write_state ~workspace (({ tracked_size_bytes }: cache_state)) with
     | Ok () -> Ok ()
     | Error error -> report_error error
   in
@@ -739,5 +706,5 @@ let record_successful_build_with_events = fun ~(workspace: Workspace.t) ~on_even
     size_after_bytes = tracked_size_bytes;
   }
 
-let record_successful_build = fun ~(workspace: Workspace.t) ~lanes ~new_entries ->
+let record_successful_build = fun ~(workspace:Workspace.t) ~lanes ~new_entries ->
   record_successful_build_with_events ~workspace ~on_event:no_event ~lanes ~new_entries

@@ -15,20 +15,20 @@ type error =
   | ParseFailed of { path: Path.t; error: string }
   | InvalidConfig of { path: Path.t; error: string }
 
-let default_cache_policy = {
-  keep_generations = 10;
-  max_size_bytes = Int64.mul 50L 1_073_741_824L;
-}
+let default_cache_policy = { keep_generations = 10; max_size_bytes = Int64.mul 50L 1_073_741_824L }
 
 let default = { cache = default_cache_policy }
 
 let message = function
-  | ReadFailed { path; error } ->
-      "failed to read workspace config '" ^ Path.to_string path ^ "': " ^ error
-  | ParseFailed { path; error } ->
-      "failed to parse workspace config '" ^ Path.to_string path ^ "': " ^ error
-  | InvalidConfig { path; error } ->
-      "invalid workspace config '" ^ Path.to_string path ^ "': " ^ error
+  | ReadFailed { path; error } -> "failed to read workspace config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ error
+  | ParseFailed { path; error } -> "failed to parse workspace config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ error
+  | InvalidConfig { path; error } -> "invalid workspace config '" ^ Path.to_string path ^ "': " ^ error
 
 let normalize_size = fun raw ->
   raw
@@ -45,7 +45,7 @@ let unit_multiplier = function
   | "b" -> Some 1L
   | "k"
   | "kb"
-  | "kib" -> Some 1024L
+  | "kib" -> Some 1_024L
   | "m"
   | "mb"
   | "mib" -> Some 1_048_576L
@@ -67,11 +67,7 @@ let parse_max_size = fun raw ->
       match normalized.[idx] with
       | '0' .. '9'
       | '.' -> split (idx + 1)
-      | _ ->
-          (
-            String.sub normalized 0 idx,
-            String.sub normalized idx (len - idx)
-          )
+      | _ -> (String.sub normalized 0 idx, String.sub normalized idx (len - idx))
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
@@ -110,33 +106,34 @@ let parse_cache_policy = fun ~path fields ->
   in
   match keep_generations, max_size_bytes with
   | Ok keep_generations, Ok max_size_bytes -> Ok { keep_generations; max_size_bytes }
-  | Error error, _
-  | _, Error error -> Error (InvalidConfig { path; error })
+  | (Error error, _)
+  | (_, Error error) -> Error (InvalidConfig { path; error })
 
 let of_toml = fun ~path toml ->
   match toml with
   | Toml.Table fields -> (
       match List.assoc_opt "riot" fields with
-      | None -> Ok default
+      | None ->
+          Ok default
       | Some (Toml.Table riot_fields) -> (
           match List.assoc_opt "cache" riot_fields with
           | None -> Ok default
-          | Some (Toml.Table cache_fields) ->
-              parse_cache_policy ~path cache_fields |> Result.map (fun cache -> { cache })
-          | Some _ ->
-              Error (InvalidConfig { path; error = "top-level [riot.cache] must be a table" })
+          | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
+          |> Result.map (fun cache -> { cache })
+          | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.cache] must be a table" })
         )
       | Some _ ->
           Error (InvalidConfig { path; error = "top-level [riot] must be a table" })
     )
-  | _ ->
-      Error (InvalidConfig { path; error = "workspace config must be a TOML table" })
+  | _ -> Error (InvalidConfig { path; error = "workspace config must be a TOML table" })
 
 let load = fun ~workspace_root ->
   let path = Riot_dirs.workspace_operational_config_path ~workspace_root in
   match Fs.exists path with
-  | Ok false -> Ok default
-  | Error err -> Error (ReadFailed { path; error = IO.error_message err })
+  | Ok false ->
+      Ok default
+  | Error err ->
+      Error (ReadFailed { path; error = IO.error_message err })
   | Ok true -> (
       match Fs.read_to_string path with
       | Error err -> Error (ReadFailed { path; error = IO.error_message err })

@@ -28,34 +28,25 @@ type event =
   | PackageGenerationCompleted of generation
 
 let generation_to_json = fun (summary: generation) ->
-  Data.Json.Object
-    [
-      ("package", Data.Json.String summary.package);
-      ("version", Data.Json.String summary.version);
-      ("output_dir", Data.Json.String (Path.to_string summary.output_dir));
-      ("cache_hit", Data.Json.Bool summary.cache_hit);
-      ("cache_key", Data.Json.String summary.cache_key);
-    ]
+  Data.Json.Object [
+    ("package", Data.Json.String summary.package);
+    ("version", Data.Json.String summary.version);
+    ("output_dir", Data.Json.String (Path.to_string summary.output_dir));
+    ("cache_hit", Data.Json.Bool summary.cache_hit);
+    ("cache_key", Data.Json.String summary.cache_key);
+  ]
 
 let event_to_json = function
-  | PackageGenerationStarted { package; version; output_dir } ->
-      Some (
-        Data.Json.Object
-          [
-            ("type", Data.Json.String "doc.package_generation_started");
-            ("package", Data.Json.String package);
-            ("version", Data.Json.String version);
-            ("output_dir", Data.Json.String (Path.to_string output_dir));
-          ]
-      )
-  | PackageGenerationCompleted summary ->
-      Some (
-        Data.Json.Object
-          [
-            ("type", Data.Json.String "doc.package_generation_completed");
-            ("summary", generation_to_json summary);
-          ]
-      )
+  | PackageGenerationStarted { package; version; output_dir } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "doc.package_generation_started");
+    ("package", Data.Json.String package);
+    ("version", Data.Json.String version);
+    ("output_dir", Data.Json.String (Path.to_string output_dir));
+  ])
+  | PackageGenerationCompleted summary -> Some (Data.Json.Object [
+    ("type", Data.Json.String "doc.package_generation_completed");
+    ("summary", generation_to_json summary);
+  ])
 
 let resolve_profile = fun release ->
   if release then
@@ -96,21 +87,23 @@ let workspace_release_versions = fun (workspace: Riot_model.Workspace.t) ->
       | Some version -> Some (pkg.name, Version.to_string version)
       | None -> None)
 
-let find_lock_package = fun ~(package: Riot_model.Package.t) (lockfile: Riot_model.Lockfile.t) ->
+let find_lock_package = fun ~(package:Riot_model.Package.t) (lockfile: Riot_model.Lockfile.t) ->
   let release_version = package.publish.version |> Option.map Version.to_string in
   let matching_name =
-    lockfile.packages |> List.filter
+    lockfile.packages
+    |> List.filter
       (fun (lock_package: Riot_model.Lockfile.package) ->
         String.equal lock_package.id.name package.name)
   in
   match release_version with
   | Some version ->
-      let exact_match = List.find_opt
-        (fun (lock_package: Riot_model.Lockfile.package) ->
-          match lock_package.id.version with
-          | Some lock_version -> String.equal lock_version version
-          | None -> false)
-        matching_name
+      let exact_match =
+        List.find_opt
+          (fun (lock_package: Riot_model.Lockfile.package) ->
+            match lock_package.id.version with
+            | Some lock_version -> String.equal lock_version version
+            | None -> false)
+          matching_name
       in
       (
         match exact_match, matching_name with
@@ -123,35 +116,36 @@ let find_lock_package = fun ~(package: Riot_model.Package.t) (lockfile: Riot_mod
       | [] -> None
       | lock_package :: _ -> Some lock_package
 
-let locked_dependency_versions = fun ~(workspace: Riot_model.Workspace.t) ~(package: Riot_model.Package.t) lockfile_opt ->
+let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(package:Riot_model.Package.t) lockfile_opt ->
   if not (Package.is_workspace_member package) then
     Ok []
   else
     let workspace_versions = workspace_release_versions workspace in
     match lockfile_opt with
-    | None ->
-        Error ("--release requires a lockfile to resolve documentation dependency versions for " ^ package.name)
+    | None -> Error ("--release requires a lockfile to resolve documentation dependency versions for "
+    ^ package.name)
     | Some lockfile -> (
         match find_lock_package ~package lockfile with
-        | None ->
-            Error ("--release could not find a lockfile entry for package " ^ package.name)
+        | None -> Error ("--release could not find a lockfile entry for package " ^ package.name)
         | Some lock_package ->
             let resolved =
-              lock_package.dependencies |> List.filter_map
+              lock_package.dependencies
+              |> List.filter_map
                 (fun (dependency: Riot_model.Lockfile.dependency) ->
                   match dependency.package.version with
                   | Some version -> Some (dependency.name, version)
-                  | None ->
-                      List.assoc_opt dependency.name workspace_versions
-                      |> Option.map (fun version -> (dependency.name, version)))
+                  | None -> List.assoc_opt dependency.name workspace_versions
+                  |> Option.map (fun version -> (dependency.name, version)))
             in
             let resolved =
-              resolved |> List.sort_uniq
+              resolved
+              |> List.sort_uniq
                 (fun (left_name, _) (right_name, _) ->
                   String.compare left_name right_name)
             in
             let missing =
-              package.dependencies |> List.filter_map
+              package.dependencies
+              |> List.filter_map
                 (fun (dependency: Riot_model.Package.dependency) ->
                   match List.assoc_opt dependency.name resolved with
                   | Some _ -> None
@@ -159,30 +153,23 @@ let locked_dependency_versions = fun ~(workspace: Riot_model.Workspace.t) ~(pack
             in
             match missing with
             | [] -> Ok resolved
-            | names ->
-                Error ("--release could not resolve locked versions for dependencies of "
-                ^ package.name
-                ^ ": "
-                ^ String.concat ", " names)
+            | names -> Error ("--release could not resolve locked versions for dependencies of "
+            ^ package.name
+            ^ ": "
+            ^ String.concat ", " names)
       )
 
 let dependency_link_for = fun ~release dependency_map dependency ->
   if release then
     match List.assoc_opt dependency dependency_map with
-    | Some version ->
-        Ok {
-          Doctree.name = dependency;
-          version = Some version;
-          url = "../../" ^ dependency ^ "/" ^ version ^ "/index.html"
-        }
-    | None ->
-        Error ("--release could not resolve a versioned documentation link for dependency " ^ dependency)
-  else
-    Ok {
+    | Some version -> Ok {
       Doctree.name = dependency;
-      version = None;
-      url = "../../" ^ dependency ^ "/dev/index.html"
+      version = Some version;
+      url = "../../" ^ dependency ^ "/" ^ version ^ "/index.html"
     }
+    | None -> Error ("--release could not resolve a versioned documentation link for dependency " ^ dependency)
+  else
+    Ok { Doctree.name = dependency; version = None; url = "../../" ^ dependency ^ "/dev/index.html" }
 
 let map_dependencies = fun ~release ~(dependency_map:(string * string) list) (
   package: Riot_model.Package.t

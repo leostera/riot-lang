@@ -91,8 +91,7 @@ let revision = fun snapshot -> snapshot.revision
 
 let roots = fun snapshot -> snapshot.roots
 
-let is_root = fun snapshot source_id ->
-  snapshot.roots |> List.exists (SourceId.equal source_id)
+let is_root = fun snapshot source_id -> snapshot.roots |> List.exists (SourceId.equal source_id)
 
 let analyses = fun snapshot ->
   snapshot.analyses

@@ -40,7 +40,10 @@ let parse_binary_target = fun ?package_filter name ->
   | _ -> Ok (package_filter, name)
 
 let json_requested_for_child = fun args ->
-  List.exists (fun arg -> String.equal arg "--json") args
+  List.exists
+    (fun arg ->
+      String.equal arg "--json")
+    args
 
 let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
@@ -49,54 +52,45 @@ let write_json_event = fun (json: Data.Json.t) ->
 let run_error_to_json = fun (err: Riot_build.run_error) ->
   let details =
     match err with
-    | Riot_build.BinaryNotFound { binary_name } ->
-        [
-          ("kind", Data.Json.String "binary_not_found");
-          ("binary_name", Data.Json.String binary_name);
-        ]
-    | Riot_build.BinaryNotFoundInPackage { package_name; binary_name } ->
-        [
-          ("kind", Data.Json.String "binary_not_found_in_package");
-          ("package_name", Data.Json.String package_name);
-          ("binary_name", Data.Json.String binary_name);
-        ]
-    | Riot_build.BuildFailed build_error ->
-        [
-          ("kind", Data.Json.String "build_failed");
-          ("message", Data.Json.String (Riot_build.build_error_message build_error));
-        ]
-    | Riot_build.ArtifactNotFound { package_name; binary_name; reason } ->
-        [
-          ("kind", Data.Json.String "artifact_not_found");
-          ("package_name", Data.Json.String package_name);
-          ("binary_name", Data.Json.String binary_name);
-          ("reason", Data.Json.String reason);
-        ]
-    | Riot_build.ProcessExited status ->
-        [
-          ("kind", Data.Json.String "process_exited");
-          ("status", Data.Json.String (Int.to_string status));
-        ]
-    | Riot_build.SystemError reason ->
-        [
-          ("kind", Data.Json.String "system_error");
-          ("reason", Data.Json.String reason);
-        ]
-    | Riot_build.ClientError client_error ->
-        [
-          ("kind", Data.Json.String "client_error");
-          ("message", Data.Json.String (Riot_build.Client.error_message client_error));
-        ]
+    | Riot_build.BinaryNotFound { binary_name } -> [
+      ("kind", Data.Json.String "binary_not_found");
+      ("binary_name", Data.Json.String binary_name);
+    ]
+    | Riot_build.BinaryNotFoundInPackage { package_name; binary_name } -> [
+      ("kind", Data.Json.String "binary_not_found_in_package");
+      ("package_name", Data.Json.String package_name);
+      ("binary_name", Data.Json.String binary_name);
+    ]
+    | Riot_build.BuildFailed build_error -> [
+      ("kind", Data.Json.String "build_failed");
+      ("message", Data.Json.String (Riot_build.build_error_message build_error));
+    ]
+    | Riot_build.ArtifactNotFound { package_name; binary_name; reason } -> [
+      ("kind", Data.Json.String "artifact_not_found");
+      ("package_name", Data.Json.String package_name);
+      ("binary_name", Data.Json.String binary_name);
+      ("reason", Data.Json.String reason);
+    ]
+    | Riot_build.ProcessExited status -> [
+      ("kind", Data.Json.String "process_exited");
+      ("status", Data.Json.String (Int.to_string status));
+    ]
+    | Riot_build.SystemError reason -> [
+      ("kind", Data.Json.String "system_error");
+      ("reason", Data.Json.String reason);
+    ]
+    | Riot_build.ClientError client_error -> [
+      ("kind", Data.Json.String "client_error");
+      ("message", Data.Json.String (Riot_build.Client.error_message client_error));
+    ]
   in
-  Data.Json.Object
-    (("type", Data.Json.String "run.error")
-    :: ("message", Data.Json.String (Riot_build.run_error_message err))
-    :: details)
+  Data.Json.Object (("type", Data.Json.String "run.error")
+  :: ("message", Data.Json.String (Riot_build.run_error_message err))
+  :: details)
 
 let write_run_event = fun ~mode (event: Riot_build.run_event) ->
   match mode with
-  | Build.Json ->
-      Riot_build.run_event_to_json event |> Option.iter write_json_event
+  | Build.Json -> Riot_build.run_event_to_json event |> Option.iter write_json_event
   | Build.Human -> (
       match event with
       | Riot_build.Build _ -> ()
@@ -147,9 +141,7 @@ let run = fun ~workspace matches ->
                   ~mode:output_mode
                   ~target
                   ~host
-                | Riot_build.CacheGc event -> Build.write_cache_gc_event
-                  ~mode:output_mode
-                  event
+                | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
                 | Riot_build.Streaming streaming_event -> Build.write_streaming_event
                   ~mode:output_mode
                   ~displayed_packages

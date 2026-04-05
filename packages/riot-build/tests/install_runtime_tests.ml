@@ -26,15 +26,13 @@ let test_install_error_message_names_missing_binary = fun _ctx ->
 let test_install_error_message_names_promotion_failure = fun _ctx ->
   Test.assert_equal
     ~expected:"failed to promote demo to /tmp/demo: permission denied"
-    ~actual:(
-      Riot_build.install_error_message
-        (Riot_build.PromotionFailed {
-          binary_name = "demo";
-          destination = Path.v "/tmp/demo";
-          global = false;
-          reason = "permission denied"
-        })
-    );
+    ~actual:(Riot_build.install_error_message
+      (Riot_build.PromotionFailed {
+        binary_name = "demo";
+        destination = Path.v "/tmp/demo";
+        global = false;
+        reason = "permission denied"
+      }));
   Ok ()
 
 let tests =

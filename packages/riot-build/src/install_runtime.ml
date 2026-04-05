@@ -139,13 +139,12 @@ let promote_binary = fun ~on_event ~src ~dst ~binary ~global ->
   | Ok () ->
       on_event (PromotedBinary { binary; destination = dst; global });
       Ok ()
-  | Error reason ->
-      Error (PromotionFailed {
-        binary_name = binary;
-        destination = dst;
-        global;
-        reason = IO.error_message reason
-      })
+  | Error reason -> Error (PromotionFailed {
+    binary_name = binary;
+    destination = dst;
+    global;
+    reason = IO.error_message reason
+  })
 
 let install = fun ?(on_event = no_event) (request: install_request) ->
   let started_at = Time.Instant.now () in
@@ -160,10 +159,9 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
             Error (BinaryNotFound { binary_name = request.binary_name })
         | Ok (Some (package_name, _binary)) -> (
             on_event (InstallingBinary { package = package_name; binary = request.binary_name });
-                match
-              Build_runtime.build
-                ~record_cache_generation:false
-                ~on_event:(fun event -> on_event (Build event))
+            match
+              Build_runtime.build ~record_cache_generation:false ~on_event:(fun event ->
+                on_event (Build event))
                 {
                   workspace = request.workspace;
                   packages = [ package_name ];
@@ -206,13 +204,12 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                             | Ok () -> Ok (Some global_path)
                             | Error _ as err -> err
                           )
-                        | Error reason ->
-                            Error (PromotionFailed {
-                              binary_name = request.binary_name;
-                              destination = riot_bin_dir;
-                              global = true;
-                              reason = IO.error_message reason
-                            })
+                        | Error reason -> Error (PromotionFailed {
+                          binary_name = request.binary_name;
+                          destination = riot_bin_dir;
+                          global = true;
+                          reason = IO.error_message reason
+                        })
                     in
                     let* global_destination = global_destination in
                     let duration = Time.Instant.duration_since
