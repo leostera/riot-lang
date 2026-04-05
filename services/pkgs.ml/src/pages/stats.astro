@@ -87,39 +87,64 @@ const summaryCards = [
               dashboard.top_packages.length === 0 ? (
                 <p class="px-4 py-4 text-base text-muted-foreground">No package downloads have been recorded yet.</p>
               ) : (
-                <div class="overflow-x-auto">
-                  <table class="w-full min-w-[520px] text-left text-sm">
-                    <thead class="border-b border-border text-muted-foreground">
-                      <tr>
-                        <th class="px-4 py-2 font-medium">Package</th>
-                        <th class="px-4 py-2 font-medium">Latest</th>
-                        <th class="px-4 py-2 font-medium">Installs</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {
-                        dashboard.top_packages.map((item: StatsTopPackage) => (
-                          <tr class="border-b border-border/70 last:border-b-0">
-                            <td class="px-4 py-3 align-top">
-                              <div class="grid gap-1">
-                                <a href={item.package_path} class="font-medium text-foreground hover:text-primary">
-                                  {item.package_name}
-                                </a>
-                                <p class="text-muted-foreground">
-                                  {item.description ?? "Published OCaml package"}
-                                </p>
-                              </div>
-                            </td>
-                            <td class="px-4 py-3 align-top text-foreground">v{item.latest_version}</td>
-                            <td class="px-4 py-3 align-top text-foreground">
-                              {integer.format(item.download_count)}
-                            </td>
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div class="grid gap-0 md:hidden">
+                    {
+                      dashboard.top_packages.map((item: StatsTopPackage) => (
+                        <article class="grid gap-2 border-b border-border/70 px-4 py-3 last:border-b-0">
+                          <div class="flex items-start justify-between gap-3">
+                            <div class="grid gap-1">
+                              <a href={item.package_path} class="font-medium text-foreground hover:text-primary">
+                                {item.package_name}
+                              </a>
+                              <p class="text-sm text-muted-foreground">
+                                {item.description ?? "Published OCaml package"}
+                              </p>
+                            </div>
+                            <span class="shrink-0 text-sm text-muted-foreground">v{item.latest_version}</span>
+                          </div>
+                          <div class="text-sm text-muted-foreground">
+                            {integer.format(item.download_count)} installs
+                          </div>
+                        </article>
+                      ))
+                    }
+                  </div>
+
+                  <div class="hidden overflow-x-auto md:block">
+                    <table class="w-full min-w-[520px] text-left text-sm">
+                      <thead class="border-b border-border text-muted-foreground">
+                        <tr>
+                          <th class="px-4 py-2 font-medium">Package</th>
+                          <th class="px-4 py-2 font-medium">Latest</th>
+                          <th class="px-4 py-2 font-medium">Installs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {
+                          dashboard.top_packages.map((item: StatsTopPackage) => (
+                            <tr class="border-b border-border/70 last:border-b-0">
+                              <td class="px-4 py-3 align-top">
+                                <div class="grid gap-1">
+                                  <a href={item.package_path} class="font-medium text-foreground hover:text-primary">
+                                    {item.package_name}
+                                  </a>
+                                  <p class="text-muted-foreground">
+                                    {item.description ?? "Published OCaml package"}
+                                  </p>
+                                </div>
+                              </td>
+                              <td class="px-4 py-3 align-top text-foreground">v{item.latest_version}</td>
+                              <td class="px-4 py-3 align-top text-foreground">
+                                {integer.format(item.download_count)}
+                              </td>
+                            </tr>
+                          ))
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )
             }
           </CardContent>

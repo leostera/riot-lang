@@ -24,13 +24,15 @@ export default function StatsDashboard({ initialDashboards }: Props) {
         </div>
 
         <Tabs value={selectedWindow} onValueChange={(value) => setSelectedWindow(value as RegistryStatsWindowKey)}>
-          <TabsList variant="line" className="flex flex-wrap gap-1">
-            {dashboard.available_windows.map((option) => (
-              <TabsTrigger key={option.key} value={option.key} className="px-2.5 py-1 text-xs sm:text-sm">
-                {option.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="-mx-1 overflow-x-auto px-1">
+            <TabsList variant="line" className="flex w-max min-w-full flex-nowrap gap-1">
+              {dashboard.available_windows.map((option) => (
+                <TabsTrigger key={option.key} value={option.key} className="shrink-0 px-2.5 py-1 text-xs sm:text-sm">
+                  {option.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
         </Tabs>
       </div>
 

@@ -123,6 +123,41 @@ const docsHref = `https://docs.pkgs.ml/p/${encodeURIComponent(document.name)}/${
 const playgroundHref = packagePlaygroundHref(document.name, selectedVersion, document.latest);
 const readmeHtml = readme?.readme_markdown ? await renderReadmeMarkdown(readme.readme_markdown) : null;
 const hasReadme = Boolean(readmeHtml);
+const categories = overview?.categories ?? [];
+const examplesList = examples?.examples ?? [];
+const summaryDescription =
+  release.description || "A published OCaml package with indexed metadata and source-backed releases.";
+
+const summaryFacts = [
+  {
+    label: "Last release",
+    value: formatDate(release.published_at),
+  },
+  ...(release.license
+    ? [
+        {
+          label: "License",
+          value: release.license,
+        },
+      ]
+    : []),
+  {
+    label: "Dependencies",
+    value: String(overview?.dependency_count ?? release.dependencies.length),
+  },
+  {
+    label: "Dependents",
+    value: String(overview?.dependent_count ?? 0),
+  },
+  {
+    label: "Installs",
+    value: String(overview?.download_count ?? 0),
+  },
+  {
+    label: "Published versions",
+    value: String(overview?.release_count ?? document.releases.length),
+  },
+] as const;
 
 const installFact = facts.find((fact) => fact.label === "Install");
 const tomlFact = facts.find((fact) => fact.label === "riot.toml");
@@ -154,6 +189,114 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
     </nav>
 
     <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:flex lg:items-start lg:gap-4">
+      {
+        hasReadme ? (
+          <div class="grid gap-4 lg:hidden">
+            <div class="grid gap-3 border-b border-border pb-4">
+              <div class="grid gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h1 class="text-xl font-semibold tracking-tight text-foreground">{document.name}</h1>
+                  <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    v{selectedVersion}
+                  </span>
+                </div>
+
+                <p class="text-base leading-7 text-muted-foreground">
+                  {summaryDescription}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <a href={release.repo_url} target="_blank" rel="noreferrer" class="hover:text-foreground">Repository</a>
+                <a href={docsHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open docs</a>
+                <a href={playgroundHref} target="_blank" rel="noreferrer" class="hover:text-foreground">Open in playground</a>
+                {
+                  release.homepage ? (
+                    <a href={release.homepage} target="_blank" rel="noreferrer" class="hover:text-foreground">Homepage</a>
+                  ) : null
+                }
+              </div>
+
+              <div class="grid gap-2">
+                <div class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Install
+                </div>
+                <div class="grid gap-2">
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">{installFact?.label}</div>
+                    <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-sm text-foreground">
+                      {installFact?.value}
+                    </code>
+                  </div>
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">{tomlFact?.label}</div>
+                    <code class="overflow-x-auto rounded-sm border border-border bg-muted px-2 py-1 text-sm text-foreground">
+                      {tomlFact?.value}
+                    </code>
+                  </div>
+                </div>
+              </div>
+
+              <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                {summaryFacts.map((fact) => (
+                  <div class="grid gap-1">
+                    <dt class="text-sm text-muted-foreground">{fact.label}</dt>
+                    <dd class="text-foreground">{fact.value}</dd>
+                  </div>
+                ))}
+
+                <div class="grid gap-1">
+                  <dt class="text-sm text-muted-foreground">Owner</dt>
+                  <dd>
+                    <GitHubAvatar
+                      login={owner}
+                      avatarUrl={ownerAvatarUrl}
+                      href={`/u/${owner}`}
+                      size="sm"
+                    />
+                  </dd>
+                </div>
+              </dl>
+
+              {
+                categories.length > 0 ? (
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">Categories</div>
+                    <div class="flex flex-wrap gap-1">
+                      {categories.map((category) => (
+                        <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              }
+
+              {
+                examplesList.length > 0 ? (
+                  <details class="rounded-sm border border-border bg-muted/40 p-3">
+                    <summary class="cursor-pointer text-sm font-medium text-foreground">
+                      Examples ({examplesList.length})
+                    </summary>
+                    <div class="mt-3 grid gap-1">
+                      {examplesList.map((example) => (
+                        <a
+                          href={packageExamplePlayHref(document.name, selectedVersion, example.path)}
+                          class="text-sm text-primary hover:text-foreground"
+                        >
+                          {packageExampleLabel(example.path)}
+                        </a>
+                      ))}
+                    </div>
+                  </details>
+                ) : null
+              }
+            </div>
+          </div>
+        ) : null
+      }
+
       <div class="grid min-w-0 gap-4 lg:min-w-0 lg:flex-1">
         {
           hasReadme ? (
@@ -189,7 +332,7 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
               </div>
 
               <p class="max-w-3xl text-base leading-7 text-muted-foreground">
-                {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+                {summaryDescription}
               </p>
 
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -207,7 +350,10 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
         }
       </div>
 
-      <aside class="grid gap-3 border-t border-border pt-3 lg:w-[360px] lg:flex-none lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+      <aside class:list={[
+        "grid gap-3 border-t border-border pt-3 lg:w-[360px] lg:flex-none lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0",
+        hasReadme ? "hidden lg:grid" : "",
+      ]}>
         {
           hasReadme ? (
             <div class="grid gap-3 border-b border-border pb-3">
@@ -220,7 +366,7 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
                 </div>
 
                 <p class="text-base leading-7 text-muted-foreground">
-                  {release.description || "A published OCaml package with indexed metadata and source-backed releases."}
+                  {summaryDescription}
                 </p>
               </div>
 
@@ -259,19 +405,12 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
         </div>
 
         <dl class="grid gap-y-3 text-sm">
-          <div class="grid gap-1">
-            <dt class="text-sm text-muted-foreground">Last release</dt>
-            <dd class="text-foreground">{formatDate(release.published_at)}</dd>
-          </div>
-
-          {
-            release.license ? (
-              <div class="grid gap-1">
-                <dt class="text-sm text-muted-foreground">License</dt>
-                <dd class="text-foreground">{release.license}</dd>
-              </div>
-            ) : null
-          }
+          {summaryFacts.map((fact) => (
+            <div class="grid gap-1">
+              <dt class="text-sm text-muted-foreground">{fact.label}</dt>
+              <dd class="text-foreground">{fact.value}</dd>
+            </div>
+          ))}
 
           <div class="grid gap-1">
             <dt class="text-sm text-muted-foreground">Owner</dt>
@@ -285,32 +424,12 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
             </dd>
           </div>
 
-          <div class="grid gap-1">
-            <dt class="text-sm text-muted-foreground">Dependencies</dt>
-            <dd class="text-foreground">{overview?.dependency_count ?? release.dependencies.length}</dd>
-          </div>
-
-          <div class="grid gap-1">
-            <dt class="text-sm text-muted-foreground">Dependents</dt>
-            <dd class="text-foreground">{overview?.dependent_count ?? 0}</dd>
-          </div>
-
-          <div class="grid gap-1">
-            <dt class="text-sm text-muted-foreground">Installs</dt>
-            <dd class="text-foreground">{overview?.download_count ?? 0}</dd>
-          </div>
-
-          <div class="grid gap-1">
-            <dt class="text-sm text-muted-foreground">Published versions</dt>
-            <dd class="text-foreground">{overview?.release_count ?? document.releases.length}</dd>
-          </div>
-
           {
-            (overview?.categories.length ?? 0) > 0 ? (
+            categories.length > 0 ? (
               <div class="grid gap-1">
                 <dt class="text-sm text-muted-foreground">Categories</dt>
                 <dd class="flex flex-wrap gap-1">
-                  {overview?.categories.map((category) => (
+                  {categories.map((category) => (
                     <span class="rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                       {category}
                     </span>
@@ -321,11 +440,11 @@ const tomlFact = facts.find((fact) => fact.label === "riot.toml");
           }
 
           {
-            (examples?.examples.length ?? 0) > 0 ? (
+            examplesList.length > 0 ? (
               <div class="grid gap-1">
                 <dt class="text-sm text-muted-foreground">Examples</dt>
                 <dd class="grid gap-1">
-                  {examples?.examples.map((example) => (
+                  {examplesList.map((example) => (
                     <a
                       href={packageExamplePlayHref(document.name, selectedVersion, example.path)}
                       class="text-sm text-primary hover:text-foreground"

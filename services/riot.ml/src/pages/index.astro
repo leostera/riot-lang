@@ -25,7 +25,7 @@ const introCastUrl = "/riot.cast";
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
   </nav>
 
-  <main class="mx-auto w-full px-2 py-16 md:py-24 flex flex-col items-center">
+  <main class="mx-auto flex w-full flex-col items-center px-3 py-14 md:py-24">
     <section class="pt-12 w-full text-center md:pt-16">
       <img
         src="/logo.svg"
@@ -42,12 +42,12 @@ const introCastUrl = "/riot.cast";
         <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
       </div>
 
-      <div class="mx-auto mt-8 max-w-xl flex flex-row justify-center">
-        <div class="mt-0 w-fit overflow-x-auto rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-6 py-2 shadow-[0_18px_50px_rgba(0,0,0,0.28)] flex flex-row items-center gap-4">
-          <pre class="m-0 text-left text-[0.95rem] text-slate-200"><code>{installCommand}</code></pre>
+      <div class="mx-auto mt-8 flex w-full max-w-xl justify-center">
+        <div class="mt-0 flex w-full flex-col gap-3 rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:w-fit sm:flex-row sm:items-center sm:gap-4 sm:px-6 sm:py-2">
+          <pre class="m-0 overflow-x-auto text-left text-[0.95rem] text-slate-200"><code>{installCommand}</code></pre>
           <button
             type="button"
-            class="rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+            class="rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8] sm:shrink-0"
             data-copy={installCommand}
           >
             copy
@@ -58,9 +58,9 @@ const introCastUrl = "/riot.cast";
       <HeroAsciinemaPlayer castUrl={introCastUrl} />
     </section>
 
-    <section id="what-is-riot" class="pt-20 pb-10 px-5 w-fit max-w-[42rem] flex flex-col gap-3 items-start">
+    <section id="what-is-riot" class="flex w-full max-w-[42rem] flex-col items-start gap-3 px-5 pb-10 pt-20">
       <p class="text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">what is riot?</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Riot is my stack and tooling for building applications in OCaml. It
           is heavily opinionated, and designed from the ground up to get out of
@@ -74,47 +74,45 @@ const introCastUrl = "/riot.cast";
         </p>
       </div>
 
-      <div class="mt-3 flex flex-row justify-start w-full">
+      <div class="mt-3 flex w-full flex-col justify-start gap-3 sm:flex-row">
         <a
           href="https://docs.riot.ml"
-          class="rounded-md cursor-pointer w-fit border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
         >
           Read the Docs
         </a>
       </div>
     </section>
 
-    <section id="a-single-tool" class="py-10 px-5 w-fit max-w-[42rem]">
+    <section id="a-single-tool" class="w-full max-w-[42rem] px-5 py-10">
       <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">A Single Tool</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Riot is also a tool: <code>riot</code> &mdash; and it's the only tool you need in this stack.
         </p>
-        <p>
-          It ships:
-          <ul class="list-disc pl-5 flex flex-col gap-2">
-            <li><b>automatic toolchain management</b> &mdash; specify what version of OCaml you want, and what targets you want to compile to, and Riot does the rest</li>
-            <li><b>zero-config formatter</b> optimized for readability and minimizing diffs </li>
-            <li>an <b>extensible linter</b> with support for automatic fixes, </li>
-            <li>a <b>procedural macros</b> system, </li>
-            <li>a unified <b>testing and benchmarking runner</b> with support for unit tests, property tests, and snapshot testing, </li>
-            <li>a brand new OCaml parser optimized for helpful diagnostics, </li>
-            <li> a new incremental, parallel typechecker and language server</li>
-            <li> ...and more! </li>
-          </ul>
-        </p>
+        <p>It ships:</p>
+        <ul class="flex list-disc flex-col gap-2 pl-5">
+          <li><b>automatic toolchain management</b> &mdash; specify what version of OCaml you want, and what targets you want to compile to, and Riot does the rest</li>
+          <li><b>zero-config formatter</b> optimized for readability and minimizing diffs</li>
+          <li>an <b>extensible linter</b> with support for automatic fixes</li>
+          <li>a <b>procedural macros</b> system</li>
+          <li>a unified <b>testing and benchmarking runner</b> with support for unit tests, property tests, and snapshot testing</li>
+          <li>a brand new OCaml parser optimized for helpful diagnostics</li>
+          <li>a new incremental, parallel typechecker and language server</li>
+          <li>...and more!</li>
+        </ul>
       </div>
     </section>
 
-    <section id="package-management" class="pt-10 px-5 w-fit max-w-[42rem]">
+    <section id="package-management" class="w-full max-w-[42rem] px-5 pt-10">
       <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Modern Package Management</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Riot ships with a modern package registry: <a href="https://pkgs.ml" class="text-[#f5344d] text-[20px]">pkgs.ml</a> &mdash; allowing you
           to publish a package in seconds.
         </p>
 
-<p>
+        <p>
           This registry is designed to be safe, fast and friendly, with Github
           login, and a simple API token system to publish new packages.
         </p>
@@ -125,45 +123,45 @@ const introCastUrl = "/riot.cast";
           discoverable via categories, and search.
         </p>
 
-      <div class="my-3 flex flex-row gap-4 justify-center w-full">
+      <div class="my-3 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
         <a
           href="https://pkgs.ml/"
-          class="rounded-md cursor-pointer w-fit border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
         >
           Search packages
         </a>
         <a
           href="https://pkgs.ml/stats"
-          class="rounded-md cursor-pointer w-fit border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
         >
           Open Analytics
         </a>
         <a
             href="https://pkgs.ml/p/std"
-          class="rounded-md cursor-pointer w-fit border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
         >
             See <code class="text-[10px]">std</code> package
         </a>
         <a
             href="https://pkgs.ml/u/leostera"
-          class="rounded-md cursor-pointer w-fit border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
         >
             See my packages
         </a>
       </div>
           
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
             You can also interact with it from your terminal.
             Call <code>riot add pkg</code> to add new dependencies, <code>riot update</code> to update your dependencies, or even search for packages:
-            <img src="/riot_search.png" />
+            <img src="/riot_search.png" class="mt-4 w-full rounded-xl border border-[#32242a]" />
         </p>
       </div>
     </section>
 
-    <section id="actors" class="py-10 px-5 w-fit max-w-[42rem]">
+    <section id="actors" class="w-full max-w-[42rem] px-5 py-10">
       <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Actors</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Riot runs on an <b>actor-model multi-core runtime for OCaml</b>
           (formerly known as riot!). Like Erlang and Elixir, you build software
@@ -188,9 +186,9 @@ const introCastUrl = "/riot.cast";
       </div>
     </section>
 
-    <section id="std" class="py-10 px-5 w-fit max-w-[42rem]">
+    <section id="std" class="w-full max-w-[42rem] px-5 py-10">
       <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Standard Library</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Riot also ships a modern, efficient, and comprehensive standard
           library designed for building _systems_.
@@ -212,9 +210,9 @@ const introCastUrl = "/riot.cast";
       </div>
     </section>
 
-    <section id="clankers" class="py-10 px-5 w-fit max-w-[42rem]">
+    <section id="clankers" class="w-full max-w-[42rem] px-5 py-10">
       <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Clanker-friendly</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
+      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
         <p>
           Everything in Riot is built to be friendly to agents. In fact, almost
           everything here has been built with agents! 

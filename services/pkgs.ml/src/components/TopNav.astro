@@ -120,6 +120,27 @@ const logoutUrl = buildLogoutUrl(currentUrl);
         )
       }
     </div>
+
+    <nav class="col-span-full -mx-1 flex items-center gap-2 overflow-x-auto px-1 text-sm text-muted-foreground md:hidden">
+      <a
+        href="/activity"
+        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
+      >
+        Activity
+      </a>
+      <a
+        href="/stats"
+        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
+      >
+        Stats
+      </a>
+      <a
+        href="/llms.txt"
+        class="shrink-0 rounded-full border border-border px-3 py-1.5 hover:text-foreground"
+      >
+        LLMs
+      </a>
+    </nav>
   </div>
 </header>
 
