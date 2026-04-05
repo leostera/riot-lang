@@ -19,6 +19,7 @@ module TypePrinter = TypePrinter
 module TypeIndex = TypeIndex
 module FileSummary = FileSummary
 module PersistedSummary = PersistedSummary
+module ModuleSummary = ModuleSummary
 module Config = TypConfig
 module Check_result = Check_result
 module Lower = Lower

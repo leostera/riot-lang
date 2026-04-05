@@ -5,7 +5,6 @@ open Std
     The checker itself emits structured diagnostics through {!Diagnostic}. This
     module is a separate, stable lookup table for explaining diagnostic ids on
     demand in CLI and editor-facing surfaces such as [riot check --explain]. *)
-
 (** One explanation entry for one diagnostic id. *)
 type t = {
   (** Stable diagnostic id such as ["TYP2001"]. *)

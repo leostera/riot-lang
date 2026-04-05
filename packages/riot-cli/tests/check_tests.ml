@@ -12,7 +12,8 @@ let write_file = fun path content ->
   | Ok () -> (
       match Fs.write content path with
       | Ok () -> Ok ()
-      | Error err -> Error (IO.error_message err))
+      | Error err -> Error (IO.error_message err)
+    )
 
 let make_capture_writer = fun () ->
   let chunks = ref [] in
@@ -30,11 +31,7 @@ let parse_check = fun args ->
   | Error err -> Error (ArgParser.error_message err)
 
 let make_package = fun ~name ~path ~relative_path ->
-  Riot_model.Package.make
-    ~name
-    ~path
-    ~relative_path
-    ()
+  Riot_model.Package.make ~name ~path ~relative_path ()
 
 let make_workspace = fun workspace_root packages ->
   Riot_model.Workspace.make ~root:workspace_root ~packages ()
@@ -76,7 +73,9 @@ let test_check_accepts_path_argument = fun _ctx ->
   | Error err -> Error ("expected check args to parse: " ^ err)
   | Ok matches ->
       let expected = Path.v "packages/app/src/app.ml" in
-      Test.assert_equal ~expected:[ expected ] ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
+      Test.assert_equal
+        ~expected:[ expected ]
+        ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
       Ok ()
 
 let test_check_accepts_multiple_paths = fun _ctx ->
@@ -84,14 +83,14 @@ let test_check_accepts_multiple_paths = fun _ctx ->
   | Error err -> Error ("expected check args to parse: " ^ err)
   | Ok matches ->
       let expected = [ Path.v "packages/app/src/app.ml"; Path.v "packages/kernel/src/kernel.ml" ] in
-      Test.assert_equal ~expected ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
+      Test.assert_equal ~expected ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
       Ok ()
 
 let test_check_accepts_no_path_without_explain = fun _ctx ->
   match parse_check [ "check" ] with
   | Error err -> Error ("expected check args to parse: " ^ err)
   | Ok matches ->
-      Test.assert_equal ~expected:[] ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
+      Test.assert_equal ~expected:[] ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
       Ok ()
 
 let test_check_json_streams_single_explicit_file_without_duplicates = fun _ctx ->
@@ -100,16 +99,14 @@ let test_check_json_streams_single_explicit_file_without_duplicates = fun _ctx -
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
       let package_root = Path.(workspace_root / Path.v "packages/demo") in
       let source_path = Path.(package_root / Path.v "src/broken.ml") in
-      let workspace = make_workspace workspace_root [
-        make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo")
-      ] in
+      let workspace = make_workspace
+        workspace_root
+        [ make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo") ] in
       match write_file source_path "let x = y\n" with
       | Error err -> Error err
       | Ok () ->
-          let matches =
-            parse_check [ "check"; "--json"; Path.to_string source_path ]
-            |> Result.expect ~msg:"parse check args"
-          in
+          let matches = parse_check [ "check"; "--json"; Path.to_string source_path ]
+          |> Result.expect ~msg:"parse check args" in
           let stdout, stdout_contents = make_capture_writer () in
           let stderr, stderr_contents = make_capture_writer () in
           (
@@ -156,16 +153,13 @@ let test_check_human_output_snapshot = fun ctx ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
       let package_root = Path.(workspace_root / Path.v "packages/demo") in
       let source_path = Path.(package_root / Path.v "src/broken.ml") in
-      let workspace = make_workspace workspace_root [
-        make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo")
-      ] in
+      let workspace = make_workspace
+        workspace_root
+        [ make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo") ] in
       match write_file source_path "let x = y\n" with
       | Error err -> Error err
       | Ok () ->
-          let matches =
-            parse_check [ "check"; Path.to_string source_path ]
-            |> Result.expect ~msg:"parse check args"
-          in
+          let matches = parse_check [ "check"; Path.to_string source_path ] |> Result.expect ~msg:"parse check args" in
           let stdout, stdout_contents = make_capture_writer () in
           let stderr, stderr_contents = make_capture_writer () in
           (
@@ -182,20 +176,16 @@ let test_check_success_is_silent = fun _ctx ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
       let package_root = Path.(workspace_root / Path.v "packages/demo") in
       let source_path = Path.(package_root / Path.v "src/ok.ml") in
-      let workspace = make_workspace workspace_root [
-        make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo")
-      ] in
+      let workspace = make_workspace
+        workspace_root
+        [ make_package ~name:"demo" ~path:package_root ~relative_path:(Path.v "packages/demo") ] in
       match write_file source_path "let id x = x\n" with
       | Error err -> Error err
       | Ok () ->
-          let matches =
-            parse_check [ "check"; Path.to_string source_path ]
-            |> Result.expect ~msg:"parse check args"
-          in
+          let matches = parse_check [ "check"; Path.to_string source_path ] |> Result.expect ~msg:"parse check args" in
           let stdout, stdout_contents = make_capture_writer () in
           let stderr, stderr_contents = make_capture_writer () in
-          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-          |> Result.expect ~msg:"check simple file";
+          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"check simple file";
           Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
           Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
           Ok ())
@@ -208,20 +198,19 @@ let test_check_package_filter_limits_workspace_scan = fun _ctx ->
       let tty_root = Path.(workspace_root / Path.v "packages/tty") in
       let colors_source = Path.(colors_root / Path.v "src/colors.ml") in
       let tty_source = Path.(tty_root / Path.v "src/tty.ml") in
-      let workspace = make_workspace workspace_root [
-        make_package ~name:"colors" ~path:colors_root ~relative_path:(Path.v "packages/colors");
-        make_package ~name:"tty" ~path:tty_root ~relative_path:(Path.v "packages/tty");
-      ] in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package ~name:"colors" ~path:colors_root ~relative_path:(Path.v "packages/colors");
+          make_package ~name:"tty" ~path:tty_root ~relative_path:(Path.v "packages/tty");
+        ] in
       match write_file colors_source "let color = missing_color\n" with
       | Error err -> Error err
       | Ok () -> (
           match write_file tty_source "let tty = missing_tty\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches =
-                parse_check [ "check"; "--json"; "-p"; "colors" ]
-                |> Result.expect ~msg:"parse check args"
-              in
+              let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
               let stdout, stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
               match Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches with
@@ -236,14 +225,16 @@ let test_check_package_filter_limits_workspace_scan = fun _ctx ->
                         | Some (Data.Json.String "check_file") -> (
                             match Data.Json.get_field "result" json with
                             | Some result_json -> Data.Json.get_field "path" result_json
-                            | None -> None)
+                            | None -> None
+                          )
                         | _ -> None)
                   in
                   Test.assert_equal
                     ~expected:[ Data.Json.String "packages/colors/src/colors.ml" ]
                     ~actual:file_paths;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
-                  Ok ()))
+                  Ok ()
+        ))
 
 let test_check_package_filter_uses_package_session_for_cross_file_exports = fun _ctx ->
   with_tempdir_result "riot_check_package_session"
@@ -253,9 +244,9 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
       let helper_source = Path.(colors_root / Path.v "src/helper.ml") in
       let colors_source = Path.(colors_root / Path.v "src/colors.ml") in
       let demo_source = Path.(colors_root / Path.v "examples/blend_demo.ml") in
-      let workspace = make_workspace workspace_root [
-        make_package ~name:"colors" ~path:colors_root ~relative_path:(Path.v "packages/colors")
-      ] in
+      let workspace = make_workspace
+        workspace_root
+        [ make_package ~name:"colors" ~path:colors_root ~relative_path:(Path.v "packages/colors") ] in
       match write_file helper_source "let twice x = x + x\n" with
       | Error err -> Error err
       | Ok () ->
@@ -265,14 +256,11 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
               match write_file demo_source "open Colors\nlet answer = id 21\n" with
               | Error err -> Error err
               | Ok () ->
-                  let matches =
-                    parse_check [ "check"; "--json"; "-p"; "colors" ]
-                    |> Result.expect ~msg:"parse check args"
-                  in
+                  let matches = parse_check [ "check"; "--json"; "-p"; "colors" ]
+                  |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should use sibling source exports";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use sibling source exports";
                   let events = parse_jsonl (stdout_contents ()) in
                   let file_events =
                     events
@@ -319,7 +307,9 @@ let test_check_rejects_package_filter_without_workspace = fun _ctx ->
     | Ok () -> Error "expected package-filtered check without workspace to fail"
     | Error _ ->
         Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
-        if String.contains (stderr_contents ()) "cannot use --package colors outside a riot workspace" then
+        if
+          String.contains (stderr_contents ()) "cannot use --package colors outside a riot workspace"
+        then
           Ok ()
         else
           Error ("unexpected stderr: " ^ stderr_contents ())
@@ -334,18 +324,12 @@ let tests =
     case "check: parse path argument" test_check_accepts_path_argument;
     case "check: parse multiple path arguments" test_check_accepts_multiple_paths;
     case "check: parse without path" test_check_accepts_no_path_without_explain;
-    case
-      "check: json streams a single explicit file without duplicates"
-      test_check_json_streams_single_explicit_file_without_duplicates;
+    case "check: json streams a single explicit file without duplicates" test_check_json_streams_single_explicit_file_without_duplicates;
     case "check: human output snapshot" test_check_human_output_snapshot;
     case "check: clean success is silent" test_check_success_is_silent;
     case "check: package filter limits workspace scan" test_check_package_filter_limits_workspace_scan;
-    case
-      "check: package filter uses sibling source exports during package scans"
-      test_check_package_filter_uses_package_session_for_cross_file_exports;
-    case
-      "check: package filter requires workspace"
-      test_check_rejects_package_filter_without_workspace;
+    case "check: package filter uses sibling source exports during package scans" test_check_package_filter_uses_package_session_for_cross_file_exports;
+    case "check: package filter requires workspace" test_check_rejects_package_filter_without_workspace;
   ]
 
 let name = "Riot CLI Check Tests"

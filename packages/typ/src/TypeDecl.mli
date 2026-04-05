@@ -7,7 +7,6 @@ type constructor = {
   (** Constructor scheme derived from the declaration payload. *)
   scheme: TypeScheme.t;
 }
-
 (** Lowered semantic summary for one type declaration item.
 
     The current prototype only consumes enough declaration detail to surface

@@ -162,6 +162,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -316,6 +320,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -397,6 +405,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -551,6 +563,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -632,6 +648,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -786,6 +806,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -867,6 +891,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1021,6 +1049,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1102,6 +1134,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1256,6 +1292,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1337,6 +1377,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1491,6 +1535,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1572,6 +1620,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1726,6 +1778,10 @@
         {
           "name": "String.to_seq",
           "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",

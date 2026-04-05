@@ -23,7 +23,7 @@ val source_id: t -> SourceId.t
 (** Extract the exported environment carried by the persisted value. *)
 val exports: t -> FileSummary.exports
 
-module Json : sig
+module Json: sig
   (** Encode a persisted summary as structured JSON.
 
       This is the current prototype serialization format. *)

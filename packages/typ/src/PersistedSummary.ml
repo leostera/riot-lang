@@ -4,7 +4,7 @@ type t = FileSummary.t
 
 let of_file_summary = fun (summary: FileSummary.t) -> summary
 
-let to_file_summary = fun (summary: t) -> (summary : FileSummary.t)
+let to_file_summary = fun (summary: t) -> (summary: FileSummary.t)
 
 let source_id = fun (summary: FileSummary.t) -> summary.source_id
 
@@ -107,8 +107,7 @@ let rec type_to_json = fun ty ->
     ("tag", Data.Json.String "var");
     ("id", Data.Json.Int id);
   ]
-  | TypeRepr.Var { link=Some linked; _ } ->
-      type_to_json linked
+  | TypeRepr.Var { link=Some linked; _ } -> type_to_json linked
   | TypeRepr.Hole id -> Data.Json.Object [
     ("tag", Data.Json.String "hole");
     ("id", Data.Json.Int id);
@@ -121,21 +120,18 @@ let scheme_to_json = fun (TypeScheme.Forall (quantified, body)) ->
   ]
 
 let exports_to_json = fun exports ->
-  Data.Json.Array (
-    exports
-    |> List.map
-      (fun (name, scheme) ->
-        Data.Json.Object [
-          ("name", Data.Json.String name);
-          ("scheme", scheme_to_json scheme);
-        ]))
+  Data.Json.Array (exports
+  |> List.map
+    (fun (name, scheme) ->
+      Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_to_json scheme); ]))
 
 let label_of_json = fun json ->
   let* fields = get_object json in
   let* tag_json = field "tag" fields in
   let* tag = get_string tag_json in
   match tag with
-  | "nolabel" -> Ok TypeRepr.Nolabel
+  | "nolabel" ->
+      Ok TypeRepr.Nolabel
   | "labeled" ->
       let* label_json = field "label" fields in
       let* label = get_string label_json in
@@ -152,12 +148,18 @@ let rec type_of_json = fun json ->
   let* tag_json = field "tag" fields in
   let* tag = get_string tag_json in
   match tag with
-  | "int" -> Ok TypeRepr.Int
-  | "float" -> Ok TypeRepr.Float
-  | "bool" -> Ok TypeRepr.Bool
-  | "string" -> Ok TypeRepr.String
-  | "char" -> Ok TypeRepr.Char
-  | "unit" -> Ok TypeRepr.Unit
+  | "int" ->
+      Ok TypeRepr.Int
+  | "float" ->
+      Ok TypeRepr.Float
+  | "bool" ->
+      Ok TypeRepr.Bool
+  | "string" ->
+      Ok TypeRepr.String
+  | "char" ->
+      Ok TypeRepr.Char
+  | "unit" ->
+      Ok TypeRepr.Unit
   | "option" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
@@ -229,21 +231,19 @@ let scheme_of_json = function
       | (Some (Data.Json.Array quantified_json), Some body_json) ->
           let rec parse_quantified acc = function
             | [] -> Ok (List.rev acc)
-            | Data.Json.Int id :: rest ->
-                parse_quantified (id :: acc) rest
-            | other :: _ ->
-                Error ("expected quantified type variable id int but got " ^ json_type_name other)
+            | Data.Json.Int id :: rest -> parse_quantified (id :: acc) rest
+            | other :: _ -> Error ("expected quantified type variable id int but got "
+            ^ json_type_name other)
           in
-          begin match parse_quantified [] quantified_json, type_of_json body_json with
-          | Ok quantified, Ok body -> Ok (TypeScheme.Forall (quantified, body))
-          | Error err, _ -> Error err
-          | _, Error err -> Error err
+          begin
+            match parse_quantified [] quantified_json, type_of_json body_json with
+            | Ok quantified, Ok body -> Ok (TypeScheme.Forall (quantified, body))
+            | Error err, _ -> Error err
+            | _, Error err -> Error err
           end
-      | _ ->
-          Error "expected persisted type scheme object with quantified and body fields"
+      | _ -> Error "expected persisted type scheme object with quantified and body fields"
     )
-  | other ->
-      Error ("expected persisted type scheme object but got " ^ json_type_name other)
+  | other -> Error ("expected persisted type scheme object but got " ^ json_type_name other)
 
 let exports_of_json = fun json ->
   let* values = get_array json in
@@ -299,8 +299,5 @@ module Json = struct
       | other -> Error ("unknown persisted export_result tag " ^ other)
     in
     let* export_result = export_result in
-    Ok {
-      FileSummary.source_id = SourceId.of_int source_id;
-      export_result;
-    }
+    Ok { FileSummary.source_id = SourceId.of_int source_id; export_result }
 end

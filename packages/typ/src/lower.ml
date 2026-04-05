@@ -46,8 +46,10 @@ let rec module_path_segments_of_expr = function
             Some (segments @ [ field_name ])
           else
             None
-      | None -> None)
-  | _ -> None
+      | None -> None
+    )
+  | _ ->
+      None
 
 let binding_name_of_pattern =
   let rec loop = function
@@ -59,13 +61,11 @@ let binding_name_of_pattern =
   loop
 
 let type_param_bindings = fun (declaration: Cst.TypeDeclaration.t) ->
-  declaration
-  |> Cst.TypeDeclaration.type_params
-  |> List.filter_map (fun parameter ->
-    match Cst.TypeParameter.type_variable parameter with
-    | Some type_variable -> Some (Cst.TypeVariable.name type_variable)
-    | None -> None)
-  |> List.mapi (fun index name -> (name, index))
+  declaration |> Cst.TypeDeclaration.type_params |> List.filter_map
+    (fun parameter ->
+      match Cst.TypeParameter.type_variable parameter with
+      | Some type_variable -> Some (Cst.TypeVariable.name type_variable)
+      | None -> None) |> List.mapi (fun index name -> (name, index))
 
 let builtin_type_of_name = fun name arguments ->
   match (name, arguments) with
@@ -76,7 +76,7 @@ let builtin_type_of_name = fun name arguments ->
   | ("char", []) -> Some TypeRepr.Char
   | ("unit", []) -> Some TypeRepr.Unit
   | ("option", [ argument ]) -> Some (TypeRepr.Option argument)
-  | ("result", [ ok_ty; error_ty ]) -> Some (TypeRepr.Result (ok_ty, error_ty))
+  | ("result", [ok_ty;error_ty]) -> Some (TypeRepr.Result (ok_ty, error_ty))
   | ("array", [ argument ]) -> Some (TypeRepr.Array argument)
   | ("list", [ argument ]) -> Some (TypeRepr.List argument)
   | ("Seq.t", [ argument ])
@@ -86,8 +86,8 @@ let builtin_type_of_name = fun name arguments ->
 let rec lower_core_type = fun scope_path type_params core_type ->
   match core_type with
   | Cst.CoreType.Parenthesized { inner; _ }
-  | Cst.CoreType.Attribute { type_ = inner; _ }
-  | Cst.CoreType.Alias { type_ = inner; _ } ->
+  | Cst.CoreType.Attribute { type_=inner; _ }
+  | Cst.CoreType.Alias { type_=inner; _ } ->
       lower_core_type scope_path type_params inner
   | Cst.CoreType.Var { name_token; _ } -> (
       match List.assoc_opt (Cst.Token.text name_token) type_params with
@@ -97,16 +97,17 @@ let rec lower_core_type = fun scope_path type_params core_type ->
   | Cst.CoreType.Constr { constructor_path; arguments; _ } ->
       let name = path_text constructor_path in
       let arguments = List.map (lower_core_type scope_path type_params) arguments in
-      begin match builtin_type_of_name name arguments with
-      | Some builtin -> builtin
-      | None ->
-          let segments = Cst.Ident.segments constructor_path in
-          let name =
-            match segments with
-            | [ _ ] -> qualify_scoped_name scope_path name
-            | _ -> name
-          in
-          TypeRepr.Named { name; arguments }
+      begin
+        match builtin_type_of_name name arguments with
+        | Some builtin -> builtin
+        | None ->
+            let segments = Cst.Ident.segments constructor_path in
+            let name =
+              match segments with
+              | [ _ ] -> qualify_scoped_name scope_path name
+              | _ -> name
+            in
+            TypeRepr.Named { name; arguments }
       end
   | Cst.CoreType.Tuple { elements; _ } ->
       TypeRepr.Tuple (List.map (lower_core_type scope_path type_params) elements)
@@ -116,7 +117,11 @@ let rec lower_core_type = fun scope_path type_params core_type ->
 let constructor_scheme = fun ~params ~result_type payload_type ->
   let body =
     match payload_type with
-    | Some payload_type -> TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = payload_type; rhs = result_type }
+    | Some payload_type -> TypeRepr.Arrow {
+      label = TypeRepr.Nolabel;
+      lhs = payload_type;
+      rhs = result_type
+    }
     | None -> result_type
   in
   TypeScheme.Forall (List.map snd params, body)
@@ -125,9 +130,10 @@ let variant_constructor_payload = fun scope_path type_params (constructor: Cst.V
   match Cst.VariantConstructor.arguments constructor with
   | Some (Cst.ConstructorArguments.Tuple members) ->
       let members = List.map (lower_core_type scope_path type_params) members in
-      begin match members with
-      | [ member ] -> Some member
-      | members -> Some (TypeRepr.Tuple members)
+      begin
+        match members with
+        | [ member ] -> Some member
+        | members -> Some (TypeRepr.Tuple members)
       end
   | Some (Cst.ConstructorArguments.Record _) ->
       Some (TypeRepr.Hole (-102))
@@ -236,20 +242,22 @@ let add_item = fun (state: state) ~syntax_node item ->
       scope_path = state.scope_path;
       declaration
     }
-    | `Exception (exception_name, scheme) -> ItemTree.Exception {
-      item_id;
-      origin_id;
-      scope_path = state.scope_path;
-      exception_name;
-      scheme
-    }
-    | `Value (binding_ids, recursive) -> ItemTree.Value {
-      item_id;
-      origin_id;
-      scope_path = state.scope_path;
-      binding_ids;
-      recursive
-    }
+    | `Exception (exception_name, scheme) ->
+        ItemTree.Exception {
+          item_id;
+          origin_id;
+          scope_path = state.scope_path;
+          exception_name;
+          scheme;
+        }
+    | `Value (binding_ids, recursive) ->
+        ItemTree.Value {
+          item_id;
+          origin_id;
+          scope_path = state.scope_path;
+          binding_ids;
+          recursive;
+        }
     | `Open module_path -> ItemTree.Open {
       item_id;
       origin_id;
@@ -271,61 +279,49 @@ let add_item = fun (state: state) ~syntax_node item ->
 let lower_variant_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
   let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
   let params = type_param_bindings declaration in
-  let result_type =
-    TypeRepr.Named {
-      name = qualify_scoped_name state.scope_path type_name;
-      arguments = params |> List.map (fun (_, id) -> TypeRepr.Var { id; link = None });
-    }
-  in
+  let result_type = TypeRepr.Named {
+    name = qualify_scoped_name state.scope_path type_name;
+    arguments = params |> List.map (fun (_, id) -> TypeRepr.Var { id; link = None })
+  } in
   match Cst.TypeDeclaration.type_definition declaration with
   | Cst.TypeDefinition.Variant { constructors; _ } ->
       let lowered_declaration = {
         TypeDecl.type_name = type_name;
         constructors =
-          constructors
-          |> List.map
+          constructors |> List.map
             (fun (constructor: Cst.VariantConstructor.t) ->
               let payload_type = variant_constructor_payload state.scope_path params constructor in
               {
                 TypeDecl.name = Cst.VariantConstructor.name constructor;
-                scheme = constructor_scheme ~params ~result_type payload_type;
-              })
+                scheme = constructor_scheme ~params ~result_type payload_type
+              });
       }
       in
-      let _ =
-        add_item
-          state
-          ~syntax_node:(Cst.TypeDeclaration.syntax_node declaration)
-          (`Type lowered_declaration)
-      in
+      let _ = add_item
+        state
+        ~syntax_node:(Cst.TypeDeclaration.syntax_node declaration)
+        (`Type lowered_declaration) in
       ()
-  | _ ->
-      ()
+  | _ -> ()
 
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
   let exn_type = TypeRepr.Named { name = "exn"; arguments = [] } in
   let payload_type =
     match declaration.rhs with
-    | Some (Cst.Payload { payload_type; _ }) ->
-        Some (lower_core_type state.scope_path [] payload_type)
+    | Some (Cst.Payload { payload_type; _ }) -> Some (lower_core_type state.scope_path [] payload_type)
     | Some (Cst.Alias _)
-    | None ->
-        None
+    | None -> None
   in
   let scheme =
     match payload_type with
-    | Some payload_type ->
-        TypeScheme.Forall ([], TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = payload_type; rhs = exn_type })
-    | None ->
-        TypeScheme.Forall ([], exn_type)
+    | Some payload_type -> TypeScheme.Forall (
+      [],
+      TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = payload_type; rhs = exn_type }
+    )
+    | None -> TypeScheme.Forall ([], exn_type)
   in
-  let _ =
-    add_item
-      state
-      ~syntax_node:declaration.syntax_node
-      (`Exception (exception_name, scheme))
-  in
+  let _ = add_item state ~syntax_node:declaration.syntax_node (`Exception (exception_name, scheme)) in
   ()
 
 let fresh_synthetic_name = fun (state: state) prefix ->
@@ -501,11 +497,7 @@ let recovered_parameter_pattern = fun (state: state) syntax_node ~label paramete
   | Some pattern -> lower_pattern state pattern
   | None -> (
       match Cst.Parameter.name parameter with
-      | Some name -> add_pattern
-        state
-        ~syntax_node
-        ~label
-        (BodyArena.PVar name)
+      | Some name -> add_pattern state ~syntax_node ~label (BodyArena.PVar name)
       | None -> add_pattern state ~syntax_node ~label:"unsupported_parameter" BodyArena.PWildcard
     )
 
@@ -523,22 +515,18 @@ let rec lower_parameter = fun (state: state) parameter ->
   | Cst.Parameter.Positional { pattern; _ } ->
       positional_function_parameter (lower_pattern state pattern)
   | Cst.Parameter.Labeled labeled ->
-      let pattern_id =
-        recovered_parameter_pattern
-          state
-          labeled.syntax_node
-          ~label:"labeled_parameter_pattern"
-          parameter
-      in
+      let pattern_id = recovered_parameter_pattern
+        state
+        labeled.syntax_node
+        ~label:"labeled_parameter_pattern"
+        parameter in
       labeled_function_parameter (Cst.Token.text labeled.label_token) pattern_id
   | Cst.Parameter.Optional optional ->
-      let pattern_id =
-        recovered_parameter_pattern
-          state
-          optional.syntax_node
-          ~label:"optional_parameter_pattern"
-          parameter
-      in
+      let pattern_id = recovered_parameter_pattern
+        state
+        optional.syntax_node
+        ~label:"optional_parameter_pattern"
+        parameter in
       optional_function_parameter (Cst.Token.text optional.label_token) pattern_id
   | parameter ->
       let syntax_node = Cst.Parameter.syntax_node parameter in
@@ -662,32 +650,30 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
 and lower_apply = fun (state: state) expression ->
   let lower_argument = function
     | Cst.Positional argument ->
-        ({ BodyArena.label = BodyArena.Positional; value_id = lower_expr state argument }:
-          BodyArena.apply_argument)
+        (
+          { BodyArena.label = BodyArena.Positional; value_id = lower_expr state argument }:
+            BodyArena.apply_argument
+        )
     | Cst.Labeled { syntax_node; label_token; value; _ } ->
         let value_id =
           match value with
-          | Some value ->
-              lower_expr state value
-          | None ->
-              add_expr
-                state
-                ~syntax_node
-                ~label:"implicit_labeled_argument"
-                (BodyArena.EVar (Cst.Token.text label_token))
+          | Some value -> lower_expr state value
+          | None -> add_expr
+            state
+            ~syntax_node
+            ~label:"implicit_labeled_argument"
+            (BodyArena.EVar (Cst.Token.text label_token))
         in
         { BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token); value_id }
     | Cst.Optional { syntax_node; label_token; value; _ } ->
         let value_id =
           match value with
-          | Some value ->
-              lower_expr state value
-          | None ->
-              add_expr
-                state
-                ~syntax_node
-                ~label:"implicit_optional_argument"
-                (BodyArena.EVar (Cst.Token.text label_token))
+          | Some value -> lower_expr state value
+          | None -> add_expr
+            state
+            ~syntax_node
+            ~label:"implicit_optional_argument"
+            (BodyArena.EVar (Cst.Token.text label_token))
         in
         { BodyArena.label = BodyArena.Optional (Cst.Token.text label_token); value_id }
   in
@@ -725,6 +711,33 @@ and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
       ]
     ))
 
+and lower_list_expression = fun (state: state) (list_expression: Cst.list_expression) ->
+  let nil_id = add_expr
+    state
+    ~syntax_node:list_expression.syntax_node
+    ~label:"list_nil_expression"
+    (BodyArena.EVar "[]") in
+  list_expression.elements |> List.rev |> List.fold_left
+    (fun tail_id element ->
+      let cons_id = add_expr
+        state
+        ~syntax_node:list_expression.syntax_node
+        ~label:"list_cons_expression"
+        (BodyArena.EVar "::") in
+      let head_id = lower_expr state element in
+      add_expr
+        state
+        ~syntax_node:list_expression.syntax_node
+        ~label:"list_literal_apply"
+        (BodyArena.EApply (
+          cons_id,
+          [
+            { BodyArena.label = BodyArena.Positional; value_id = head_id };
+            { BodyArena.label = BodyArena.Positional; value_id = tail_id };
+          ]
+        )))
+    nil_id
+
 and lower_expr = fun (state: state) expression ->
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
@@ -732,12 +745,11 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.Constructor { syntax_node; constructor_path; payload; _ } -> (
       let constructor_name = path_text constructor_path in
       match payload with
-      | None ->
-          add_expr
-            state
-            ~syntax_node
-            ~label:"constructor_expression"
-            (BodyArena.EVar constructor_name)
+      | None -> add_expr
+        state
+        ~syntax_node
+        ~label:"constructor_expression"
+        (BodyArena.EVar constructor_name)
       | Some payload ->
           let callee_id = add_expr
             state
@@ -757,19 +769,17 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
       match module_path_segments_of_expr receiver with
       | Some module_segments ->
-          let qualified_name =
-            String.concat "." (module_segments @ [ Cst.Token.text field_name ])
-          in
+          let qualified_name = String.concat "." (module_segments @ [ Cst.Token.text field_name ]) in
           add_expr
             state
             ~syntax_node
             ~label:"qualified_path_expression"
             (BodyArena.EVar qualified_name)
-      | None ->
-          lower_unsupported_expr
-            state
-            expression
-            (unsupported_syntax_kind (Cst.Expression.syntax_node expression)))
+      | None -> lower_unsupported_expr
+        state
+        expression
+        (unsupported_syntax_kind (Cst.Expression.syntax_node expression))
+    )
   | Cst.Expression.Operator { syntax_node; operator_tokens; _ } ->
       let operator = operator_tokens |> List.map Cst.Token.text |> String.concat "" in
       add_expr state ~syntax_node ~label:"operator_expression" (BodyArena.EVar operator)
@@ -809,6 +819,8 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.Tuple { syntax_node; elements; _ } ->
       let element_ids = List.map (lower_expr state) elements in
       add_expr state ~syntax_node ~label:"tuple_expression" (BodyArena.ETuple element_ids)
+  | Cst.Expression.List list_expression ->
+      lower_list_expression state list_expression
   | Cst.Expression.Array { syntax_node; elements; _ } ->
       let element_ids = List.map (lower_expr state) elements in
       add_expr state ~syntax_node ~label:"array_expression" (BodyArena.EArray element_ids)
@@ -842,7 +854,11 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.Index { syntax_node; collection; index; _ } ->
       let collection_id = lower_expr state collection in
       let index_id = lower_expr state index in
-      add_expr state ~syntax_node ~label:"index_expression" (BodyArena.EIndex (collection_id, index_id))
+      add_expr
+        state
+        ~syntax_node
+        ~label:"index_expression"
+        (BodyArena.EIndex (collection_id, index_id))
   | Cst.Expression.Infix infix ->
       lower_infix state infix
   | Cst.Expression.If {
@@ -952,12 +968,10 @@ let rec lower_structure_item = fun (state: state) item ->
   | Cst.StructureItem.OpenStatement open_statement -> (
       match Cst.OpenStatement.module_path open_statement with
       | Some module_path ->
-          let _ =
-            add_item
-              state
-              ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
-              (`Open (path_text module_path))
-          in
+          let _ = add_item
+            state
+            ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
+            (`Open (path_text module_path)) in
           ()
       | None -> ()
     )
@@ -993,7 +1007,10 @@ let rec lower_structure_item = fun (state: state) item ->
 
 and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStructure.t) ->
   let syntax_node = Cst.ModuleStructure.syntax_node declaration in
-  if Cst.ModuleStructure.is_recursive declaration || Option.is_some (Cst.ModuleStructure.next_and_declaration declaration) then
+  if
+    Cst.ModuleStructure.is_recursive declaration
+    || Option.is_some (Cst.ModuleStructure.next_and_declaration declaration)
+  then
     let syntax_kind = Cst.syntax_kind syntax_node in
     let summary = SyntaxKind.to_string syntax_kind in
     let () = add_diagnostic state
@@ -1012,13 +1029,15 @@ and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStruct
   else
     let nested_scope_path = state.scope_path @ [ Cst.ModuleStructure.name declaration ] in
     let module_expression = Cst.ModuleStructure.module_expression declaration in
-    with_scope state nested_scope_path (fun () ->
-      match CstBuilder.structure_items_of_module_expression module_expression with
-      | Ok items ->
-          let _ = List.map (lower_structure_item state) items in
-          ()
-      | Error builder_error ->
-          add_diagnostic state (Typ_diagnostic.CstBuilderError { builder_error }))
+    with_scope state nested_scope_path
+      (fun () ->
+        match CstBuilder.structure_items_of_module_expression module_expression with
+        | Ok items ->
+            let _ = List.map (lower_structure_item state) items in
+            ()
+        | Error builder_error -> add_diagnostic
+          state
+          (Typ_diagnostic.CstBuilderError { builder_error }))
 
 let lower_source_file = fun ~source source_file ->
   let state = make_state source in
@@ -1027,8 +1046,7 @@ let lower_source_file = fun ~source source_file ->
     | Cst.Implementation implementation ->
         let _items = implementation.items |> List.map (lower_structure_item state) in
         ()
-    | Cst.Interface _ ->
-        ()
+    | Cst.Interface _ -> ()
   in
   {
     SemanticTree.item_tree = ItemTree.of_list (List.rev state.items);

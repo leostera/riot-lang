@@ -6,8 +6,7 @@ let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
 
 let var = fun id -> TypeRepr.Var { id; link = None }
 
-let arrow = fun ?(label=TypeRepr.Nolabel) lhs rhs ->
-  TypeRepr.Arrow { label; lhs; rhs }
+let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.Arrow { label; lhs; rhs }
 
 let polymorphic_eq =
   let lhs = var 0 in
@@ -22,14 +21,11 @@ let polymorphic_pipe =
   let output = var 1 in
   TypeScheme.Forall ([ 0; 1 ], arrow input (arrow (arrow input output) output))
 
-let int_binop =
-  monomorphic (arrow TypeRepr.Int (arrow TypeRepr.Int TypeRepr.Int))
+let int_binop = monomorphic (arrow TypeRepr.Int (arrow TypeRepr.Int TypeRepr.Int))
 
-let float_binop =
-  monomorphic (arrow TypeRepr.Float (arrow TypeRepr.Float TypeRepr.Float))
+let float_binop = monomorphic (arrow TypeRepr.Float (arrow TypeRepr.Float TypeRepr.Float))
 
-let bool_binop =
-  monomorphic (arrow TypeRepr.Bool (arrow TypeRepr.Bool TypeRepr.Bool))
+let bool_binop = monomorphic (arrow TypeRepr.Bool (arrow TypeRepr.Bool TypeRepr.Bool))
 
 let list_nil =
   let element = var 0 in
@@ -37,10 +33,7 @@ let list_nil =
 
 let list_cons =
   let element = var 0 in
-  TypeScheme.Forall (
-    [ 0 ],
-    arrow element (arrow (TypeRepr.List element) (TypeRepr.List element))
-  )
+  TypeScheme.Forall ([ 0 ], arrow element (arrow (TypeRepr.List element) (TypeRepr.List element)))
 
 let option_none =
   let element = var 0 in
@@ -53,29 +46,20 @@ let option_some =
 let result_ok =
   let ok_ty = var 0 in
   let err_ty = var 1 in
-  TypeScheme.Forall (
-    [ 1; 0 ],
-    arrow ok_ty (TypeRepr.Result (ok_ty, err_ty))
-  )
+  TypeScheme.Forall ([ 1; 0 ], arrow ok_ty (TypeRepr.Result (ok_ty, err_ty)))
 
 let result_error =
   let ok_ty = var 0 in
   let err_ty = var 1 in
-  TypeScheme.Forall (
-    [ 1; 0 ],
-    arrow err_ty (TypeRepr.Result (ok_ty, err_ty))
-  )
+  TypeScheme.Forall ([ 1; 0 ], arrow err_ty (TypeRepr.Result (ok_ty, err_ty)))
 
-let failure_constructor =
-  monomorphic (arrow TypeRepr.String (TypeRepr.Named { name = "exn"; arguments = [] }))
+let failure_constructor = monomorphic
+  (arrow TypeRepr.String (TypeRepr.Named { name = "exn"; arguments = [] }))
 
-let raise_fn =
-  TypeScheme.Forall (
-    [ 0 ],
-    arrow
-      (TypeRepr.Named { name = "exn"; arguments = [] })
-      (var 0)
-  )
+let raise_fn = TypeScheme.Forall (
+  [ 0 ],
+  arrow (TypeRepr.Named { name = "exn"; arguments = [] }) (var 0)
+)
 
 let bindings = [
   ("[]", list_nil);

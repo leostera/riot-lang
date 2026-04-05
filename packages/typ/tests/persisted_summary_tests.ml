@@ -19,37 +19,30 @@ let assert_roundtrip = fun ~ctx source ->
   | Ok summary ->
       let persisted = PersistedSummary.of_file_summary summary in
       let actual_json = PersistedSummary.Json.to_json persisted in
-      begin match PersistedSummary.Json.of_json actual_json with
-      | Error _ as err -> err
-      | Ok decoded ->
-          let roundtripped_summary = PersistedSummary.to_file_summary decoded in
-          let roundtripped_json = FileSummary.to_json roundtripped_summary in
-          let original_json = FileSummary.to_json summary in
-          if not (original_json = roundtripped_json) then
-            Error (
-              "persisted summary roundtrip changed file summary\noriginal:\n"
+      begin
+        match PersistedSummary.Json.of_json actual_json with
+        | Error _ as err -> err
+        | Ok decoded ->
+            let roundtripped_summary = PersistedSummary.to_file_summary decoded in
+            let roundtripped_json = FileSummary.to_json roundtripped_summary in
+            let original_json = FileSummary.to_json summary in
+            if not (original_json = roundtripped_json) then
+              Error ("persisted summary roundtrip changed file summary\noriginal:\n"
               ^ Data.Json.to_string_pretty original_json
               ^ "\nroundtripped:\n"
-              ^ Data.Json.to_string_pretty roundtripped_json
-            )
-          else
-            Test.Snapshot.assert_json
-              ~ctx
-              ~actual:(Data.Json.Object [
-                ("persisted", actual_json);
-                ("file_summary", original_json);
-              ])
+              ^ Data.Json.to_string_pretty roundtripped_json)
+            else
+              Test.Snapshot.assert_json
+                ~ctx
+                ~actual:(Data.Json.Object [
+                  ("persisted", actual_json);
+                  ("file_summary", original_json);
+                ])
       end
 
-let test_trusted_summary_roundtrip = fun ctx ->
-  assert_roundtrip
-    ~ctx
-    "let id x = x\nlet const x _ = x\n"
+let test_trusted_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "let id x = x\nlet const x _ = x\n"
 
-let test_errored_summary_roundtrip = fun ctx ->
-  assert_roundtrip
-    ~ctx
-    "let broken = missing\n"
+let test_errored_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "let broken = missing\n"
 
 let () =
   Actors.run

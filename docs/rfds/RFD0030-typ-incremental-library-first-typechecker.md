@@ -9,313 +9,197 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes a new public `typ` package for Riot: an incremental,
-library-first typechecker for the functional subset of OCaml, built from
-`Syn.Cst` but semantically centered on lowered IR keyed by stable IDs.
+This RFD proposes `typ`, a new library for incremental type checking for the
+functional subset of OCaml (that is, no objects):
 
-The core architectural requirements are:
+* it produces structured, machine-readable diagnostics instead of compiler
+strings that Riot has to parse after the fact
 
-- `typ` must be usable as a library by `riot-build`, the future Riot LSP, and
-  the future Riot macro system
-- `typ` must not infer directly on `Syn.Cst`
-- `Syn.Cst` is the authoritative source syntax and origin anchor, but name
-  resolution and type inference operate on lowered semantic IR
-- the long-lived incremental store is position-independent IDs, `ItemTree`,
-  `BodyArena`, `FileSummary`, exports, and source maps, not raw CST nodes or
-  rich typed trees
-- `Typ.Tst` is a derived typed view over lowered semantic structures and source
-  origins, not the primary incremental store
-- all persistent checker state is explicit and externalized; query-local
-  inference may use private mutation, but that mutation must not escape the
-  query boundary
-- typechecking must be incremental and lenient, producing partial results and
-  structured diagnostics tied back to source origins
-- exports must have an explicit trust model suitable for build reuse
-- the public API should be query-first rather than tree-first
-- the initial scope excludes the OCaml object and class systems
+* it runs as a library inside Riot, so checking can be parallelized without
+spinning up one OS process per file
 
-In short:
+* it integrates directly with Riot's build graph and later analysis passes, so
+typed exports are available as values instead of only through opaque `.cmi`,
+`.cmti`, or `.cmt` files
 
-- `syn` owns source syntax
-- `typ` lowers syntax into `ItemTree`, `BodyArena`, and `FileSummary`
-- incremental state lives on stable semantic IDs and summaries
-- build, LSP, and macros consume a shared query facade
+* it's incremental, lenient, and query-first, so build, LSP, and macro
+workflows can share one typing engine instead of maintaining separate
+implementations
+
+* it deliberately aims for better code quality, maintainability, and
+extensibility than the upstream OCaml checker while keeping Riot free to
+restrict the language surface and experiment with features such as row
+polymorphism on records
+
 
 ## Motivation
 [motivation]: #motivation
 
-Riot now has the parser substrate needed for a real typechecker:
+Riot's current typechecking story depends on upstream OCaml tooling in ways
+that are workable, but fundamentally the wrong shape for Riot's needs.
 
-- `syn` exposes a faithful concrete syntax tree rooted at `Syn.Cst.SourceFile`
-- `syn` preserves exact source ownership, spans, tokens, trivia, and
-  attributes
-- `syn` exposes an explicit visitor layer over the CST
-- `syn` already treats diagnostics as structured data
+The problems are:
 
-That makes the next layer practical: type analysis built for Riot's own syntax
-surface instead of tunneled through the OCaml compiler's parsetree and
-typedtree.
+1. **structured diagnostics**: currently diagnostics from the compiler are
+   rendered as strings, which means we can't do much with them and they are
+considered presentation output instead. For further processing, or translating
+errors into other formats (JSON, HTML, etc), this is not ideal. A new
+typechecker should allow us to collect structured diagnostics that can be
+turned into the right presentation at the edge: JSON, human output, HTML, etc.
 
-This matters because Riot needs one typechecking engine for three different
-consumers:
+2. **parallel friendly**: the ocaml typechecker wasn't designed to work in parallel environments, so parallelism is achieved at the OS-process level by calling `ocamlc` many times. A new typechecker should be a multi-core ready library, and even make use of parallelism/concurrency internally.
 
-1. `riot-build`
-   needs deterministic file and package checking, exported interfaces, and
-   dependency-aware scheduling
-2. the future Riot LSP
-   needs partial results, type-at-node queries, and stable incremental
-   invalidation while a file is being edited
-3. the future Riot macro system
-   needs fragment-oriented checking and validation of generated syntax under an
-   explicit ambient typing context
+3. **simplified integration**: currently ocaml requires us to perform this file
+   dance where we move files around until just the right .cmi and .cma files
+are in the directory where we'd invoke ocamlc. A new typechecker should allow
+us to provide a configurable store to avoid this dance entirely, almost removing
+this entire aspect of build system artifact management.
 
-Those consumers do not want three different typecheckers. They want the same
-analysis engine exposed through different orchestration layers.
+4. **leniency and tooling friendliness**: today the lenient typechecker is
+   reimplemented separately in `merlin`, and so you have two entrypoints to the
+same system. A new typechecker should be designed for leniency and querying
+from day 1, to support LSP and other tooling use-cases without requiring a
+separate implementation.
 
-The OCaml compiler's `typing/` directory remains a useful technical reference.
-Its own `HACKING.adoc` points to `Types`, `Typedtree`, `Env`, `Btype`,
-`Ctype`, and `Typecore` as the heart of the typechecker
-([vendor/ocaml/typing/HACKING.adoc](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/typing/HACKING.adoc#L20)).
-But it also documents a shape Riot should avoid copying:
+5. **developer friendly**: ocaml is a scary difficult project to get into, despite being so lauded as a hackable compiler. Its typechecker implementation is written in an old imperative style with global mutable state, and its hard to read and get into. A new typechecker should be designed from day 1 to be easier to read, test, extend, profile, and reason about, to support our own type checking experiments.
 
-- global level and scope management in `Ctype`
-- mutable type nodes and abbreviation caches in `Types`
-- forward declarations through `ref` cells to break recursive module
-  dependencies
-- a design deeply coupled to parsetree/typedtree and the full OCaml object
-  system
-
-OCaml's own cleanup TODO names the core smells directly:
-
-- global mutable state
-- poor data representation
-- missing abstraction boundary between the type algebra and the checker
-- a desire for a more persistent representation around union-find and copying
-
-([vendor/ocaml/typing/TODO.md](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/typing/TODO.md#L27))
-
-That is not an argument against the OCaml compiler. It is a warning about what
-Riot should not inherit by accident.
-
-The most dangerous failure mode for this RFD would be:
-
-- infer directly on `Syn.Cst`
-- build a large `Typ.Tst`
-- cache that tree as the long-lived semantic state
-
-That would put source syntax at the center of the incremental model.
-It is the wrong center of gravity for something that must serve both a compiler
-and an LSP.
-
-`Syn.Cst` is intentionally source-faithful:
-
-- it preserves exact tokens and trivia
-- it preserves parameter sugar such as `let f x = ...`
-- it preserves source distinctions such as `fun` versus `function`
-- it keeps some regions intentionally raw or opaque
-
-That is excellent for parsing, rewriting, formatting, and source diagnostics.
-It is not the right permanent substrate for name resolution and inference.
-
-The design target is therefore:
-
-- learn from OCaml's type system and error-reporting ideas
-- learn from IDE-oriented architectures that separate syntax from semantic IR
-- keep CST as the source layer
-- make lowered IR, stable IDs, summaries, and source maps the long-lived core
+I believe these are reason enough to build a new checker.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Contributors should think of `typ` as a library with four layers:
+We'll explain this with two examples, building a package and editing a file.
 
-- source syntax
-  - `Syn.Cst`
-  - faithful, lossless, source-oriented
-- lowered semantic IR
-  - `ItemTree`
-  - `BodyArena`
-  - `OriginMap`
-- semantic summaries
-  - `FileSummary`
-  - `Export`
-- semantic analysis
-  - name resolution
-  - item signatures and exports
-  - body inference on demand
-- query facade
-  - build queries
-  - LSP queries
-  - macro queries
+## Building a package
 
-The key rule is:
+Suppose Riot is checking a package with 3 files:
 
-- `typ` never infers directly on `Syn.Cst`
+```text
+./colors.ml
+./rgb.ml
+./ansi_table.ml
+```
 
-### Long-lived state
+and `colors.ml` depends on the other two modules.
 
-The long-lived incremental state in `typ` should be:
+To do this today, Riot will:
 
-- stable semantic IDs
-- source IDs
-- `ItemTree`
-- lowered bodies
-- `FileSummary`
-- source maps and origin maps
-- exports and other derived semantic summaries
+1. find the source files in this package
+2. compute the dependency order between them
+3. then one module at a time:
+   * copy sources and dependency artifacts (.cm* files) into a new sanbdox
+   * call `ocamlc` in this sandbox and verify new output artifacts exist
+   * parse `ocamlc` output for use as a structure diagnostic later
+   * promote new artifacts for the next module to find them
+4. rewrite diagnostic paths for presentation, or wrap it in a json object
 
-Not:
+<add mermaid swimlane diagram for the above flow>
 
-- raw CST nodes
-- offsets and spans used as semantic identity
-- a giant typed tree used as the canonical cache
+So most of the work of the build system is on moving files around, and working
+around the `ocamlc` outputs.
 
-`Typ.Tst` may exist, but it is a derived view built from lowered IR plus source
-origins. It is not the semantic ground state.
+With `typ`, the integration fits much more naturally and avoids all the file
+shenanigans:
 
-### Lowering split
+1. find the source files in the package
+2. then parallely for each module:
+   * call `Typ.check ~store ~file`
+     * `typ` reads required type information from the store directly
+     * runs type checking
+     * stores any intermediate and final outputs in the store
+   * get missing requirements, or a typed result with structured diagnostics 
 
-The semantic IR should be split into at least two layers:
-
-- file-level items and declarations
-  - imports, opens, includes
-  - module, type, and value declarations
-  - type heads
-  - declaration-local attributes that matter semantically
-- bodies
-  - normalized expressions
-  - normalized patterns
-  - local binders
-  - explicit recovery nodes
-
-This split is the main incremental boundary.
-
-Changing the body of a value binding must not, by itself, invalidate unrelated
-file-level or package-level summaries. Recompute of exports and cross-file
-facts should be driven by summary changes, not arbitrary body edits.
-
-### Source origins, not CST back-pointers
-
-Typed results should not retain raw `Syn.Cst` nodes as their persistent
-identity.
-
-Instead, `typ` should use:
-
-- `Source_id`
-- `Item_id`
-- `Expr_id`
-- `Pat_id`
-- `Origin_id`
-
-and keep a source map:
-
-- semantic ID -> origin ID
-- origin ID -> CST node or span for a given source snapshot
-
-That gives precise source mapping without making every semantic artifact retain
-the whole CST.
-
-### Public API shape
-
-Contributors should think of the public `typ` API as query-first:
-
-- `type_at`
-- `definition_of`
-- `scope_at`
-- `diagnostics`
-- `export_of`
-- `signature_of_item`
-- later, `references_of` and `hover_of`
-
-`Typ.Tst` is a useful output, but it should not be the one surface every
-consumer is forced to depend on.
-
-### Session model
-
-The library should be session-oriented, but not path-oriented at its core.
-
-The semantic ground state should use opaque source identities so the same core
-can handle:
-
-- files on disk
-- unsaved editor buffers
-- generated macro fragments
-- temporary or synthetic sources
-
-`Source_id` must be stable for the lifetime of one logical source across text
-updates.
-
-That means:
-
-- creating a source mints a `Source_id`
-- editing that source updates its text while preserving the same `Source_id`
-- snapshots are immutable revision views
-- every query on one snapshot sees one coherent world
-
-The mental model should be:
+Internally `Typ.check` looks a  bit like:
 
 ```ocaml
-let session = Typ.Session.empty ~config:Typ.Config.default in
+let config = Session.config ~store () in
+let session = Session.empty ~config in
+
+(* create a source to type *)
 let session, source_id =
-  Typ.Session.create_source session
-    ~kind:`File
-    ~origin:(`path path)
+  Session.create_source session
+    ~kind:File
+    ~origin:(Path path)
     ~text
 in
 
-let session =
-  Typ.Session.update_source_text session source_id ~text:new_text
+(* freeze the session *)
+let snapshot = Typ.Session.snapshot session in
+
+(* extract all type diagnostics: here's where all the typing happens *)
+let diags = Typ.Query.diagnostics snapshot source_id in
+
+(* extract whole module summary for persistance *)
+let summary = Typ.Query.module_summary snapshot source_id in
+
+Ok {summary;diags}
+```
+
+<add simplified swimlane diagram>
+
+The heavy-lifting here is done by 2 parts:
+1. the `~store` is an immutable content-addressable cache that `Typ` uses to
+   read and store dependency type manifests. If something has been type-checked before, it will be present in there.
+2. the missing requirements allows us to reconstruct the dependency graph
+   without requiring an upfront dependency analysis.
+
+The important difference are that:
+* type information is now available as values and not as opaque files:
+* diagnostics can easily be formatted for human or machine consumption
+* later build passes, lints, and macros can consume those values directly
+* parallelism becomes cheap since Riot actors are cheap
+
+## Editing a file
+
+Suppose the user is editing `colors.ml` in the LSP and the file is temporarily
+broken. Today, the lenient and queryable behavior lives in separate
+tooling, so you must have `ocamllsp` installed and configured to find the right compiler artifacts. 
+
+With `typ`, the editor uses the same checker core:
+
+```ocaml
+open Type
+
+(* configure and create a new typing session *)
+let config = Session.config ~store () in
+let session = Session.empty ~config in
+
+(* find or create source files in this session *)
+let session, source_id =
+  Session.create_source session
+    ~kind:File
+    ~origin:(Path path)
+    ~text
 in
 
+(* on typing update the source text *)
+let session =
+  Typ.Session.update_source_text 
+    session 
+    source_id 
+    ~text:new_text
+in
+
+(* at query time, take a snapshot of the session *)
 let snapshot = Typ.Session.snapshot session in
 let diags = Typ.Query.diagnostics snapshot source_id in
 let ty = Typ.Query.type_at snapshot source_id position in
 ...
 ```
 
-### Dirty-input editor lane
+So the same session can answer:
 
-This RFD treats build and editor use cases as two lanes.
-
-- `v0` build/compiler lane
-  - clean `Syn.Cst` inputs only
-- later editor lane
-  - a lowerable partial surface below clean `Syn.Cst`, or a partial lowering
-    path from parse-recovered syntax
-
-The clean-CST-only lane is acceptable for an initial build milestone.
-It is not the whole editor architecture.
-
-### End-to-end model
-
-```mermaid
-flowchart TD
-  A[source text] --> B[parse]
-  B --> C[Syn.Cst]
-  C --> D[lower]
-  D --> E[ItemTree]
-  D --> F[BodyArena]
-  D --> G[OriginMap]
-  E --> H[FileSummary]
-  H --> I[item signatures / exports]
-  F --> J[body inference on demand]
-  G --> K[source-backed diagnostics and queries]
-  I --> L[build reuse]
-  J --> M[typed views]
-  K --> N[LSP / macro / build queries]
-```
-
-The single most important teaching point is this:
-
-- long-lived state is lowered IR, stable IDs, summaries, and source maps
-- raw CST and typed trees are derived views
+- structured diagnostics for the current text
+- `type_at` queries
+- definition and scope queries
+- export summaries when the file is sound enough to produce them
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 ## 1. Package boundaries
 
-This RFD introduces a new public package:
+This RFD introduces one new public package:
 
 - `packages/typ`
 
@@ -331,7 +215,7 @@ flowchart LR
   C --> F[future macro]
 ```
 
-The responsibility split should be:
+The responsibility split is:
 
 - `syn`
   owns parsing, CST shape, syntax recovery, parser diagnostics, and syntax
@@ -346,7 +230,7 @@ The responsibility split should be:
 - future macro
   owns macro ABI, expansion lifecycle, and generated-source orchestration
 
-`typ` should not own:
+`typ` does not own:
 
 - filesystem traversal
 - workspace loading
@@ -356,9 +240,9 @@ The responsibility split should be:
 
 ## 2. Scope
 
-The first design scope is the functional subset of OCaml.
+The first scope is the functional subset of OCaml.
 
-Included in the design target:
+Included:
 
 - literals, identifiers, tuples, lists, arrays, records, and variants
 - `let`, `let rec`, `fun`, `function`, application, sequencing, and conditionals
@@ -368,7 +252,7 @@ Included in the design target:
 - interfaces and exported value/type summaries needed for cross-file typing
 - fragment-oriented checking for expressions, patterns, and type expressions
 
-Explicitly out of scope for the first milestone:
+Out of scope in the first milestone:
 
 - objects
 - classes
@@ -376,9 +260,9 @@ Explicitly out of scope for the first milestone:
 - instance variables
 - the object type system
 
-Unsupported surface syntax in those families should still lower into explicit
-recovery forms. The inference engine should operate on supported IR plus
-recovery nodes, not on the full surface grammar.
+Unsupported syntax in those families should still lower into explicit recovery
+forms. The inference engine operates on supported IR plus recovery nodes, not
+on the full surface grammar.
 
 Module support is phased:
 
@@ -389,7 +273,7 @@ Module support is phased:
 - deeper module-language support only becomes supported once `syn` exposes the
   needed nested item structure directly
 
-This restriction is grounded in the current CST surface:
+This restriction comes from the current CST surface:
 
 - `ModuleType.Signature` still preserves only a raw `signature_syntax_node`
   instead of nested lifted items
@@ -400,7 +284,7 @@ This restriction is grounded in the current CST surface:
 
 ## 3. Core invariants
 
-The checker should satisfy these invariants:
+These are the architectural invariants:
 
 - `typ` never infers directly on `Syn.Cst`
 - all persistent checker state is explicit and externalized
@@ -415,13 +299,13 @@ The checker should satisfy these invariants:
 - raw CST and rich typed trees are derived views, not the primary incremental
   store
 
-These invariants are the architectural answer to the "no global mutable state"
-constraint. They still leave room for efficient local implementations inside a
-single inference query.
+This is how the RFD answers the "no global mutable state" constraint while
+still leaving room for efficient local implementations inside one inference
+query.
 
 ## 4. Semantic IDs and source maps
 
-The core identity model should look roughly like:
+The core identity model looks roughly like this:
 
 ```ocaml
 module Source_id : sig
@@ -445,34 +329,34 @@ module Origin_id : sig
 end
 ```
 
-`Source_id` should identify a source unit abstractly. It is not just a path.
-It must be able to represent:
+`Source_id` identifies a source unit abstractly. It is not just a path. It must
+be able to represent:
 
 - on-disk files
 - unsaved buffers
 - generated macro outputs
 - fragments
 
-`Source_id` lifecycle is part of the contract:
+Its lifecycle is part of the contract:
 
 - one logical source gets one stable `Source_id`
 - text updates preserve that `Source_id`
 - removing a source invalidates future queries for that ID in later snapshots
 - snapshots keep earlier revisions queryable without mutating their view
 
-`OriginMap` should relate semantic IDs back to source syntax for a specific
+`OriginMap` relates semantic IDs back to source syntax for one specific
 snapshot:
 
 - semantic ID -> origin ID
 - origin ID -> source span
 - origin ID -> CST node lookup when a source snapshot is available
 
-This keeps source mapping precise while avoiding syntax-tree identity as the
-main cache key.
+This keeps source mapping precise without making syntax-tree identity the main
+cache key.
 
 ### ID stability tiers
 
-Not all IDs need the same stability guarantees.
+Not all IDs need the same stability guarantee.
 
 - `Source_id`
   - strong stability
@@ -488,14 +372,12 @@ Not all IDs need the same stability guarantees.
 - synthetic recovery-only nodes
   - no long-term stability guarantee
 
-This tiering should be reflected in the implementation and in architectural
-tests. `typ` must not imply that every local node ID has the same durability as
-top-level item identity.
+The implementation and the tests should reflect this tiering. `typ` should not
+pretend that every local node ID is as durable as top-level item identity.
 
 ## 5. Lowered IR and summaries
 
-The semantic middle layer needs three distinct concepts, not one blurred
-summary.
+The semantic middle layer needs three distinct concepts, not one blurred one.
 
 ### `ItemTree`
 
@@ -509,11 +391,11 @@ It owns:
 - module-level shells needed for export computation
 - semantically meaningful declaration attributes
 
-It should be stable over many body-local edits.
+It should stay stable across many body-local edits.
 
 ### `BodyArena`
 
-This layer owns normalized local structure:
+`BodyArena` owns normalized local structure:
 
 - expressions
 - patterns
@@ -521,7 +403,7 @@ This layer owns normalized local structure:
 - normalized parameter forms
 - explicit recovery nodes
 
-The body layer is where:
+This is where:
 
 - local name resolution
 - body inference
@@ -529,7 +411,7 @@ The body layer is where:
 
 should primarily happen.
 
-The main invalidation rule is:
+The invalidation rule is:
 
 - editing one body must not invalidate unrelated file-level summaries
 
@@ -549,12 +431,49 @@ It owns:
 - trusted versus errored export state
 - summary-level dependency effects
 
-`FileSummary` is not interchangeable with `ItemTree`.
+`FileSummary` is not `ItemTree` with extra fields. It is a different semantic
+artifact.
+
+### Persisted module export artifacts
+
+After a module finishes checking, its export-facing summary crosses a persisted
+boundary before downstream work reuses it.
+
+OCaml already makes this conceptual split:
+
+- `.cmi` stores reusable interface information
+  ([vendor/ocaml/file_formats/cmi_format.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/file_formats/cmi_format.mli#L16))
+- `.cmt` and `.cmti` store richer typed annotations
+  ([vendor/ocaml/file_formats/cmt_format.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/file_formats/cmt_format.mli#L16))
+
+`typ` should adopt the same separation even if the first serialization format
+is just JSON.
+
+The minimum persisted artifact split is:
+
+- `PersistedSummary`
+  - a `.cmi`-like reusable export payload
+  - contains the exported typing environment, trust state, and the minimum
+    dependency-facing metadata needed for reuse
+- `ModuleSummary`
+  - a host-facing wrapper around `PersistedSummary`
+  - adds module identity, source or input hash, and provenance needed for
+    store lookup and package-level manifests
+
+Later work may add a richer `.cmti`-like artifact that persists:
+
+- typed views
+- origin maps
+- documentation-facing information
+- richer query indexes
+
+Build-side type reuse should depend only on the smaller persisted export
+artifact, not on the richer analysis artifact.
 
 ### Lowering contract
 
-Lowering must normalize source syntax into semantic forms explicitly instead of
-letting later analysis depend on surface shape by accident.
+Lowering must normalize source syntax into semantic forms explicitly rather
+than letting later analysis depend on surface shape by accident.
 
 The rule for every CST family must be one of:
 
@@ -580,15 +499,14 @@ The contract should be explicit for the current `Syn.Cst` surface.
 | `ModuleType.Signature` with raw `signature_syntax_node` | Recovery in `v0` | Same restriction as nested `struct` bodies |
 | Object/class families | Recovery in `v0` | Outside first checker subset |
 
-This normalization policy is part of the architecture, not formatter-level
-cleanup.
+This normalization policy is part of the architecture, not formatter cleanup.
 
 ## 6. Name resolution and exports
 
-Lowering must be followed by explicit name-resolution and export phases.
+Lowering is followed by explicit name-resolution and export phases.
 
-The checker should not treat exports as an accidental byproduct of building a
-typed tree. Exports should be their own durable result class.
+Exports are not an accidental byproduct of building a typed tree. They are
+their own durable result.
 
 This RFD proposes three export result states:
 
@@ -608,23 +526,97 @@ The intended rules are:
 - editor-facing local information may still exist even when the package-facing
   export is not trusted
 
-This trust model is necessary so build reuse and editor leniency do not fight
+This trust model is what keeps build reuse and editor leniency from fighting
 each other.
 
 Dependency inputs must also be keyed and provenance-carrying. `typ` should not
-accept an unstructured bag of exports. At minimum, dependency-facing semantic
-inputs need:
+accept an unstructured bag of exports. At minimum, dependency-facing inputs
+need:
 
 - dependency identity
 - visible-name or import-path provenance
 - export payload
 - revision or fingerprint
 
-That is the minimum needed for reliable invalidation.
+That is the minimum contract for reliable invalidation.
+
+### Package and module graph algorithm
+
+The host algorithm for reusable type exports should deliberately mirror Riot's
+existing planner and executor flow instead of inventing a second orchestration
+model.
+
+The flow is:
+
+0. build the scoped package graph for the requested lane
+1. identify the package or packages whose exports are needed
+2. compute or load dependency package export bundles first
+3. build the package's module graph
+4. fetch persisted module exports by hash from the store when available
+5. typecheck only the missing modules in dependency order
+6. persist fresh module exports back to the store
+7. persist a package-level type bundle that maps module names to the stored
+   module export artifacts
+
+More concretely:
+
+1. Build the package graph using the same dependency and scope rules as
+   `riot-planner`.
+   This includes normal, dev, and build scopes where appropriate.
+2. For each package node, compute a package type-input hash.
+   That hash should include:
+   - checker artifact version
+   - package identity and relevant typechecking config
+   - source hashes for the package's modules and interfaces
+   - fingerprints of dependency package export bundles
+3. Use that package hash to probe the store for a package-level type bundle.
+   The bundle is a small manifest that records:
+   - package identity
+   - module names
+   - per-module export hashes
+   - any package-level export or trust metadata the host needs
+4. On a package-bundle miss, build the module graph for that package using the
+   same module discovery and dependency wiring rules as the build planner, or a
+   sibling planner with the same graph semantics.
+5. For each module node in topological order, compute a module type-input hash.
+   That hash should include:
+   - checker artifact version
+   - module identity and kind (`.ml` or `.mli`)
+   - source text hash
+   - fingerprints of the imported module export artifacts
+   - any relevant package-level typing configuration
+6. Probe the store for that module export artifact by hash.
+   On a hit, decode the stored `ModuleSummary` and load it into the current
+   typechecking session as a dependency input.
+7. On a miss, recursively ensure imported packages and imported modules have
+   their persisted exports available, then typecheck the module with those
+   loaded summaries, and persist the resulting `ModuleSummary`.
+8. After the package's modules have been processed, persist the package-level
+   type bundle so later runs can skip module-graph traversal when nothing
+   relevant changed.
+
+Riot-specific resolution rules stay explicit:
+
+- package-level dependency discovery happens through the package graph
+- intra-package dependency discovery happens through the module graph
+- when a required top-level module corresponds to a Riot package root, package
+  identity resolves through Riot's package naming convention
+
+The first host that needs this flow may simply copy the existing planner or
+executor loop. That is acceptable.
+
+The longer-term shape is better:
+
+- `riot-planner` grows a type-export planning stage alongside build planning
+- `riot-executor` or a sibling runtime materializes type-export artifacts in
+  the normal cache lane
+- `riot build` naturally emits type exports as part of package execution
+- `riot check` and the future LSP then reuse those artifacts instead of running
+  a bespoke dependency walker
 
 ## 7. Inference model
 
-The internal type language should support:
+The internal type language needs:
 
 - rigid and flexible variables
 - quantified schemes
@@ -632,7 +624,7 @@ The internal type language should support:
 - function, tuple, record, and variant types
 - recovery and hole forms
 
-The inference engine should accept lowered IR, not surface CST. At minimum:
+The inference engine accepts lowered IR, not surface CST. At minimum:
 
 ```ocaml
 type infer_ctx
@@ -641,24 +633,23 @@ val infer_expr :
   infer_ctx -> Expr_id.t -> infer_ctx * Typ_view.expression
 ```
 
-The implementation may use private mutation inside one query for:
+Inside one query, the implementation may use private mutation for:
 
 - local union-find
 - fresh-variable supply
 - worklists
 - query-local diagnostic accumulation
 
-But once a query returns, its observable outputs must be frozen into explicit
-results.
+Once a query returns, its observable outputs are frozen into explicit results.
 
-This is the intended mutation rule:
+The rule is:
 
 - persistent state is explicit, revisioned, and snapshot-friendly
 - query-local mutation is allowed and private
 
 ## 8. Typed views
 
-`Typ.Tst` should exist as a typed view over lowered semantic structures plus
+`Typ.Tst` may exist as a typed view over lowered semantic structures plus
 source origins.
 
 It should preserve:
@@ -677,11 +668,11 @@ It should not be the canonical store of:
 The checker should avoid storing a full environment on every node the way the
 OCaml compiler stores `exp_env` on typed expressions
 ([vendor/ocaml/typing/typedtree.mli](/Users/leostera/Developer/github.com/leostera/riot/vendor/ocaml/typing/typedtree.mli#L162)).
-Instead, `typ` should build compact queryable indexes and scope summaries.
+Instead, `typ` builds compact queryable indexes and scope summaries.
 
 ## 9. Public API
 
-The stable public API should be query-first, not tree-first.
+The stable public API is query-first, not tree-first.
 
 Conceptually:
 
@@ -729,22 +720,24 @@ module Typ : sig
 end
 ```
 
-This does not freeze exact names. It freezes the direction:
+This does not freeze exact names. It freezes the shape:
 
 - sessions and snapshots
 - opaque source identities
 - query results
 - typed views as optional derived artifacts
+- host-loaded persisted module summaries as the reuse boundary for dependency
+  typing
 
-`Session.snapshot` should return an immutable revision view. Queries against one
-snapshot must observe one coherent semantic world even if the outer mutable host
-session continues receiving updates.
+`Session.snapshot` returns an immutable revision view. Queries against one
+snapshot observe one coherent semantic world even if the outer host session
+keeps receiving updates.
 
 ## 10. Fragment checking
 
 Fragment checking needs more than `env`.
 
-The public fragment API should use an explicit `Fragment_context`:
+Use an explicit `Fragment_context`:
 
 ```ocaml
 module Fragment_context : sig
@@ -765,7 +758,7 @@ diagnostics, and source maps.
 
 ## 11. Dirty-input lane
 
-The library should acknowledge two lanes explicitly.
+The library acknowledges two lanes explicitly.
 
 ### `v0` build/compiler lane
 
@@ -782,7 +775,7 @@ The library should acknowledge two lanes explicitly.
 - lowering should still produce partial IR with recovery nodes
 - editor queries should continue to return best-effort local results
 
-This makes the build milestone honest without pretending that clean-CST-only is
+This keeps the build milestone honest without pretending that clean-CST-only is
 already an LSP-complete boundary.
 
 ## 12. Diagnostics
@@ -792,7 +785,7 @@ already keeps parse diagnostics separate from later analysis diagnostics in
 `riot-fix`
 ([packages/riot-fix/src/pipeline.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/riot-fix/src/pipeline.mli#L4)).
 
-Each diagnostic should support:
+Each diagnostic supports:
 
 - one primary source origin
 - zero or more secondary labels
@@ -800,7 +793,7 @@ Each diagnostic should support:
 - machine-readable code
 - optional mismatch or expectation trace
 
-The checker should model at least these families explicitly:
+At minimum, the checker models these families explicitly:
 
 - unbound value
 - unbound type constructor
@@ -810,8 +803,8 @@ The checker should model at least these families explicitly:
 - redundant match case
 - unsupported syntax in the current checker subset
 
-Pattern exhaustiveness and redundancy analysis should remain a distinct
-subsystem, even if it lives under the same package.
+Pattern exhaustiveness and redundancy analysis remain a distinct subsystem,
+even if they live under the same package.
 
 ## 13. Parallelism
 
@@ -831,7 +824,7 @@ Potential parallel units include:
 - imported interface decoding
 - export recomputation for already-lowered dependencies
 
-The RFD does not require parallelism inside unification or local inference.
+This RFD does not require parallelism inside unification or local inference.
 
 ## 14. Testing strategy
 
@@ -843,7 +836,7 @@ The RFD does not require parallelism inside unification or local inference.
 ([packages/std/src/test/fixture_runner.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/std/src/test/fixture_runner.mli#L1),
 [packages/std/src/test/snapshot.mli](/Users/leostera/Developer/github.com/leostera/riot/packages/std/src/test/snapshot.mli#L1))
 
-The first fixture families should snapshot:
+The first fixture families snapshot:
 
 - `ItemTree`
 - lowered bodies
@@ -862,6 +855,10 @@ identity behavior with tests such as:
 - updating a source preserves `Source_id`
 - stale snapshots do not corrupt the current session
 - one unresolved name recovers locally instead of causing a diagnostic cascade
+- unchanged module inputs hit the persisted export cache and skip rechecking
+- changing one module invalidates only its export artifact and downstream
+  dependents, not unrelated package summaries
+- package-level type bundles round-trip through the chosen persistence format
 
 These are architectural invariants, not implementation afterthoughts.
 
@@ -905,32 +902,37 @@ support and tests, not by silently broadening behavior in implementation code.
 - add broader cross-file checking for ordinary Riot package builds
 - add type-at, definition-of, and scope-at query surfaces
 - add architecture tests for invalidation and stable IDs
+- add persisted per-module export artifacts plus package-level type bundles
+- mirror Riot's package-planner loop for store-backed export fetch or compute
 
 ### Phase 3
 
 - add the editor lane for dirty inputs and partial lowering
 - integrate the same session and query model into LSP and macro workflows
 - broaden supported module-language features where needed
+- integrate type-export planning and persistence into the regular
+  planner/executor pipeline so builds emit reusable type exports automatically
 
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-- This architecture is more opinionated than "just build a typed tree from the
-  CST".
-- Introducing a real lowering layer adds design work up front.
-- Stable IDs, source maps, and export trust states increase the number of core
-  concepts contributors must learn.
-- A query-first API may feel less direct to callers who just want a tree.
-- Supporting build, LSP, and macro use cases in one package increases the
-  number of constraints that must be balanced early.
+This design is more opinionated than "just build a typed tree from the CST."
+
+The costs are:
+
+- a real lowering layer adds design work up front
+- stable IDs, source maps, and export trust states add core concepts
+- a query-first API is less direct for callers that just want a tree
+- supporting build, LSP, and macros in one package means balancing more
+  constraints earlier
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
 ### Why this design
 
-This design is the best fit for Riot because it treats the typechecker as a
-shared semantic engine rather than a compiler-only phase.
+This is the best fit for Riot because it treats the typechecker as a shared
+semantic engine rather than a compiler-only phase.
 
 It matches:
 
@@ -973,7 +975,7 @@ library-first goals.
 
 Rejected.
 
-The real requirement is not "no mutation anywhere". It is:
+The real requirement is not "no mutation anywhere." It is:
 
 - no hidden global persistent mutation
 - explicit, revisioned cross-query state
@@ -1007,9 +1009,9 @@ It is also an important negative reference for:
 
 ### Lowered-IR-first analysis engines
 
-This RFD intentionally follows the general lesson from modern incremental
-analysis systems: keep syntax isolated, lower into more compact semantic
-representations, and make semantic identities position-independent.
+This RFD follows the general lesson from modern incremental analysis systems:
+keep syntax isolated, lower into more compact semantic representations, and
+make semantic identities position-independent.
 
 ### Incremental query systems
 
@@ -1022,31 +1024,35 @@ This RFD also follows the general lesson from incremental query systems:
 
 ### Incremental parsing under edits
 
-The editor lane in this RFD is motivated by the same general requirement as
-incremental parsing systems: useful answers under ongoing edits and syntax
-errors are a first-class tool requirement, not optional polish.
+The editor lane is motivated by the same requirement as incremental parsing:
+useful answers under ongoing edits and syntax errors are a first-class tool
+requirement, not optional polish.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should typed holes have source syntax in the first implementation, or only an
-  internal recovery representation?
+The main open questions are:
+
+- Should typed holes have surface syntax in the first implementation, or only
+  an internal recovery form?
 - What is the right stable-origin granularity for body-local constructs that
   come from sugared surface forms?
-- What exact declaration facts should participate in top-level `Item_id`
-  identity matching when sibling ordering changes?
+- Which declaration facts should participate in top-level `Item_id` matching
+  when sibling ordering changes?
 - Which typed views should be public and pattern-matchable, and which should
-  stay behind query helpers to preserve refactoring freedom?
+  stay behind query helpers?
 - What is the exact shape of `Scope_id`, `Definition`, and `Signature` in the
   query facade?
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-- Cross-file query APIs for references, hover, completion, and workspace-wide
+Later work could add:
+
+- cross-file query APIs for references, hover, completion, and workspace-wide
   symbol search
 - macro expansion validation that reuses `Typ.Session` directly
-- richer pedagogical mismatch traces for editor and CLI presentation
+- richer mismatch traces for editor and CLI presentation
 - broader module-language coverage beyond the first build-oriented subset
 - multiple typed-view projections over the same lowered semantic store for
   different consumers

@@ -40,39 +40,18 @@ let command =
       [
         flag "json" |> long "json" |> help "Emit machine-readable JSON output";
         flag "quiet" |> long "quiet" |> help "Suppress the final success summary when the check succeeds";
-        option "package"
-        |> short 'p'
-        |> long "package"
-        |> help "Typecheck sources from a specific workspace package";
+        option "package" |> short 'p' |> long "package" |> help "Typecheck sources from a specific workspace package";
         option "explain" |> long "explain" |> help "Explain a typ diagnostic id such as TYP2001";
-        positional "path"
-        |> required false
-        |> multiple
-        |> help
-          "OCaml file(s) or directory(ies) to typecheck (default: workspace packages or current directory)";
+        positional "path" |> required false |> multiple |> help "OCaml file(s) or directory(ies) to typecheck (default: workspace packages or current directory)";
       ]
 
 type checked_file =
-  | Typed of {
-      path: Path.t;
-      report: Typ.Check_result.t;
-      diagnostics: diagnostic list;
-    }
-  | Unreadable of {
-      path: Path.t;
-      reason: string;
-    }
+  | Typed of { path: Path.t; report: Typ.Check_result.t; diagnostics: diagnostic list }
+  | Unreadable of { path: Path.t; reason: string }
 
 type prepared_source =
-  | Readable_source of {
-      path: Path.t;
-      source: string;
-      source_id: Typ.SourceId.t;
-    }
-  | Unreadable_source of {
-      path: Path.t;
-      reason: string;
-    }
+  | Readable_source of { path: Path.t; source: string; source_id: Typ.SourceId.t }
+  | Unreadable_source of { path: Path.t; reason: string }
 
 type checked_summary = {
   checked_files: int;
@@ -113,29 +92,31 @@ let dedupe_paths = fun paths ->
         let key = Path.to_string head in
         if HashSet.contains seen key then
           loop acc tail
-        else (
-          let _ = HashSet.insert seen key in
-          loop (head :: acc) tail)
+        else
+          (
+            let _ = HashSet.insert seen key in
+            loop (head :: acc) tail
+          )
   in
   loop [] (List.sort compare_paths paths)
 
-let workspace_roots = fun (workspace : Workspace.t) ->
+let workspace_roots = fun (workspace: Workspace.t) ->
   workspace.packages
   |> List.filter Package.is_workspace_member
   |> List.map (fun (pkg: Package.t) -> pkg.path)
   |> dedupe_paths
 
-let workspace_roots_for_package = fun (workspace : Workspace.t) package_name ->
+let workspace_roots_for_package = fun (workspace: Workspace.t) package_name ->
   workspace.packages
   |> List.filter
-    (fun (pkg: Package.t) ->
-      Package.is_workspace_member pkg && String.equal pkg.name package_name)
+    (fun (pkg: Package.t) -> Package.is_workspace_member pkg && String.equal pkg.name package_name)
   |> List.map (fun (pkg: Package.t) -> pkg.path)
   |> dedupe_paths
 
 let is_supported_source_file = fun path ->
   match Path.extension path with
-  | Some ".ml" | Some ".mli" -> true
+  | Some ".ml"
+  | Some ".mli" -> true
   | _ -> false
 
 let relative_or_absolute = fun ~workspace_root path ->
@@ -150,51 +131,45 @@ let relative_or_absolute = fun ~workspace_root path ->
     )
   | None -> Path.to_string path
 
-let workspace_scope = fun (workspace : Workspace.t option) ->
+let workspace_scope = fun (workspace: Workspace.t option) ->
   let scope_of_path path =
     let package_toml = Path.(path / Path.v "riot.toml") in
-    {
-      package_root = path;
-      config = Fmt_config.load package_toml;
-    }
+    { package_root = path; config = Fmt_config.load package_toml }
   in
   match workspace with
   | Some workspace ->
       let workspace_toml = Path.(workspace.root / Path.v "riot.toml") in
-      Some
-        {
-          workspace_root = workspace.root;
-          workspace_config = Fmt_config.load workspace_toml;
-          packages =
-            workspace.packages |> List.map (fun (pkg: Package.t) -> scope_of_path pkg.path);
-        }
+      Some {
+        workspace_root = workspace.root;
+        workspace_config = Fmt_config.load workspace_toml;
+        packages = workspace.packages |> List.map (fun (pkg: Package.t) -> scope_of_path pkg.path)
+      }
   | None ->
       let cwd = Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".") in
       let toml_path = Path.(cwd / Path.v "riot.toml") in
       if Fs.exists toml_path |> Result.unwrap_or ~default:false then
-        Some
-          {
-            workspace_root = cwd;
-            workspace_config = Fmt_config.load toml_path;
-            packages = [];
-          }
+        Some { workspace_root = cwd; workspace_config = Fmt_config.load toml_path; packages = [] }
       else
         None
 
-let resolve_root = fun (workspace : Workspace.t option) ->
+let resolve_root = fun (workspace: Workspace.t option) ->
   match workspace with
   | Some workspace -> workspace.root
   | None -> Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".")
 
-let resolve_search_roots = fun ?package_filter (workspace : Workspace.t option) ->
+let resolve_search_roots = fun ?package_filter (workspace: Workspace.t option) ->
   match workspace, package_filter with
   | Some workspace, Some package_name -> (
       match workspace_roots_for_package workspace package_name with
       | [] -> Error (UnknownPackage { package_name })
-      | roots -> Ok roots)
-  | Some workspace, None -> Ok (workspace_roots workspace)
-  | None, Some package_name -> Error (PackageFilterRequiresWorkspace { package_name })
-  | None, None -> Ok [ resolve_root None ]
+      | roots -> Ok roots
+    )
+  | Some workspace, None ->
+      Ok (workspace_roots workspace)
+  | None, Some package_name ->
+      Error (PackageFilterRequiresWorkspace { package_name })
+  | None, None ->
+      Ok [ resolve_root None ]
 
 let matches_ignore_pattern = fun ~root pattern path ->
   let rel =
@@ -205,15 +180,13 @@ let matches_ignore_pattern = fun ~root pattern path ->
   String.contains rel pattern
 
 let find_package_scope = fun scope file ->
-  scope.packages
-  |> List.filter_map
+  scope.packages |> List.filter_map
     (fun package_scope ->
       match Path.strip_prefix file ~prefix:package_scope.package_root with
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-      | Error _ -> None)
-  |> List.sort (fun ((left_len, _) ) ((right_len, _)) -> Int.compare right_len left_len)
-  |> List.map snd
-  |> function
+      | Error _ -> None) |> List.sort
+    (fun ((left_len, _)) ((right_len, _)) ->
+      Int.compare right_len left_len) |> List.map snd |> function
   | package_scope :: _ -> Some package_scope
   | [] -> None
 
@@ -229,19 +202,16 @@ let should_ignore_file = fun scope file ->
         true
       else
         match find_package_scope scope file with
-        | Some package_scope ->
-            List.exists
-              (fun pattern -> matches_ignore_pattern ~root:package_scope.package_root pattern file)
-              package_scope.config.ignore_patterns
+        | Some package_scope -> List.exists
+          (fun pattern -> matches_ignore_pattern ~root:package_scope.package_root pattern file)
+          package_scope.config.ignore_patterns
         | None -> false
 
 let validate_explicit_target = fun path ->
   if not (Path.exists path) then
     Error (InvalidPath { path; reason = "path does not exist" })
   else if Path.is_file path && not (is_supported_source_file path) then
-    Error
-      (InvalidPath
-        { path; reason = "path is not an OCaml source file (.ml/.mli) or directory" })
+    Error (InvalidPath { path; reason = "path is not an OCaml source file (.ml/.mli) or directory" })
   else
     Ok path
 
@@ -252,13 +222,14 @@ let validate_explicit_targets = fun roots ->
     | head :: tail -> (
         match validate_explicit_target head with
         | Error _ as err -> err
-        | Ok root -> loop tail (root :: acc))
+        | Ok root -> loop tail (root :: acc)
+      )
   in
   loop roots []
 
 let resolve_targets = fun ?workspace ?package_filter paths ->
   let scope = workspace_scope workspace in
-  let collect_ordered_files = fun roots ->
+  let collect_ordered_files roots =
     let explicit_files, directory_roots =
       roots
       |> List.fold_left
@@ -269,16 +240,11 @@ let resolve_targets = fun ?workspace ?package_filter paths ->
             (files, root :: directories))
         ([], [])
     in
-    let walked_files =
-      directory_roots
-      |> List.concat_map
+    let walked_files = directory_roots
+    |> List.concat_map
       (fun root ->
-        Krasny.Runner.collect_ocaml_files
-          ~should_ignore:(should_ignore_file scope)
-          ~roots:[ root ]
-          ()
-        |> List.sort compare_paths)
-    in
+        Krasny.Runner.collect_ocaml_files ~should_ignore:(should_ignore_file scope) ~roots:[ root ] ()
+        |> List.sort compare_paths) in
     dedupe_paths (explicit_files @ walked_files)
   in
   let roots =
@@ -297,12 +263,12 @@ let resolve_targets = fun ?workspace ?package_filter paths ->
         Ok target_files
 
 let message = function
-  | ExplainAndPath { path } ->
-      "cannot use --explain together with a path (" ^ Path.to_string path ^ ")"
+  | ExplainAndPath { path } -> "cannot use --explain together with a path ("
+  ^ Path.to_string path
+  ^ ")"
   | InvalidPath { path; reason } -> "invalid check path " ^ Path.to_string path ^ ": " ^ reason
   | NoTargets -> "no OCaml files found"
-  | PackageFilterRequiresWorkspace { package_name } ->
-      "cannot use --package " ^ package_name ^ " outside a riot workspace"
+  | PackageFilterRequiresWorkspace { package_name } -> "cannot use --package " ^ package_name ^ " outside a riot workspace"
   | UnknownPackage { package_name } -> "unknown workspace package: " ^ package_name
   | UnknownDiagnosticId { diagnostic_id } -> "unknown typ diagnostic id: " ^ diagnostic_id
 
@@ -327,13 +293,16 @@ let diagnostics_of_report = fun (report: Typ.Check_result.t) ->
 
 let has_errors = fun diagnostics ->
   List.exists
-    (function
+    (
+      function
       | Parse _ -> true
       | Lowering diagnostic
       | Typing diagnostic -> (
           match Typ.Diagnostic.severity diagnostic with
           | Typ.Diagnostic.Error -> true
-          | Typ.Diagnostic.Warning -> false))
+          | Typ.Diagnostic.Warning -> false
+        )
+    )
     diagnostics
 
 let has_warning_diagnostic = function
@@ -342,9 +311,7 @@ let has_warning_diagnostic = function
   | Typing diagnostic -> (Typ.Diagnostic.severity diagnostic = Typ.Diagnostic.Warning)
 
 let has_warnings = fun diagnostics ->
-  List.exists
-    has_warning_diagnostic
-    diagnostics
+  List.exists has_warning_diagnostic diagnostics
 
 let update_checked_summary = fun summary checked_file ->
   match checked_file with
@@ -357,11 +324,7 @@ let update_checked_summary = fun summary checked_file ->
         has_error = true;
       }
   | Typed { diagnostics; _ } ->
-      let warning_count =
-        diagnostics
-        |> List.filter has_warning_diagnostic
-        |> List.length
-      in
+      let warning_count = diagnostics |> List.filter has_warning_diagnostic |> List.length in
       {
         checked_files = summary.checked_files + 1;
         read_failures = summary.read_failures;
@@ -422,7 +385,8 @@ let diagnostic_expected = function
       if String.length expected = 0 then
         None
       else
-        Some ("expected " ^ expected))
+        Some ("expected " ^ expected)
+    )
   | _ -> None
 
 let data_of_diagnostic = function
@@ -437,11 +401,16 @@ let diagnostic_to_json = fun diagnostic ->
     ("severity", Data.Json.String (severity_string_of_diagnostic diagnostic));
     ("code", Data.Json.String (code_of_diagnostic diagnostic));
     ("message", Data.Json.String (message_of_diagnostic diagnostic));
-    ("span", span_to_json
-      (match diagnostic with
-       | Parse diagnostic -> diagnostic.Syn.Diagnostic.span
-       | Lowering diagnostic
-       | Typing diagnostic -> Typ.Diagnostic.primary_span diagnostic));
+    (
+      "span",
+      span_to_json
+        (
+          match diagnostic with
+          | Parse diagnostic -> diagnostic.Syn.Diagnostic.span
+          | Lowering diagnostic
+          | Typing diagnostic -> Typ.Diagnostic.primary_span diagnostic
+        )
+    );
     ("data", data_of_diagnostic diagnostic);
   ]
 
@@ -477,11 +446,15 @@ let source_layout_line_for_pos = fun source_text (_, line_starts) pos ->
     (0, 0)
   else
     let last = Array.length line_starts - 1 in
-    let line_idx = loop 0 last 0 |> fun line_idx -> Int.min last (Int.max 0 line_idx) in
+    let line_idx =
+      loop 0 last 0
+      |> fun line_idx ->
+        Int.min last (Int.max 0 line_idx)
+    in
     let _line_start = line_starts.(line_idx) in
     (line_idx, Int.max 0 (position_of_offset source_text pos).character)
 
-let extract_snippet = fun source_layout source_text (span : Syn.Ceibo.Span.t) ->
+let extract_snippet = fun source_layout source_text (span: Syn.Ceibo.Span.t) ->
   if Array.length (fst source_layout) = 0 then
     None
   else
@@ -502,7 +475,7 @@ let extract_snippet = fun source_layout source_text (span : Syn.Ceibo.Span.t) ->
       Some (line_idx + 1, start_col, line_text, pointer_span)
 
 let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
-  let span : Syn.Ceibo.Span.t = span_of_diagnostic diagnostic in
+  let span: Syn.Ceibo.Span.t = span_of_diagnostic diagnostic in
   let start_position = position_of_offset source_text span.start in
   let line = start_position.line + 1 in
   let column = start_position.character + 1 in
@@ -529,14 +502,11 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
     match diagnostic with
     | Parse diagnostic ->
         let id = Syn.Diagnostic.id diagnostic in
-        "  For more information about this error, try `riot fmt --explain "
-        ^ id
-        ^ "`"
+        "  For more information about this error, try `riot fmt --explain " ^ id ^ "`"
     | Lowering _
-    | Typing _ ->
-        "  For more information about this error, try `riot check --explain "
-        ^ code_of_diagnostic diagnostic
-        ^ "`"
+    | Typing _ -> "  For more information about this error, try `riot check --explain "
+    ^ code_of_diagnostic diagnostic
+    ^ "`"
   in
   match extract_snippet source_layout source_text span with
   | None -> header
@@ -553,12 +523,7 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
       let fix_line =
         match diagnostic_fix diagnostic with
         | None -> ""
-        | Some msg ->
-            indent_prefix
-            ^ Style.styled fix_style "fix:"
-            ^ " "
-            ^ msg
-            ^ "\n\n"
+        | Some msg -> indent_prefix ^ Style.styled fix_style "fix:" ^ " " ^ msg ^ "\n\n"
       in
       header
       ^ "\n"
@@ -609,9 +574,10 @@ let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
   let (item_tree, body_arena, origin_map) =
     match analysis.semantic_tree with
     | Some semantic_tree -> (
-        Some semantic_tree.item_tree,
-        Some semantic_tree.body_arena,
-        Some semantic_tree.origin_map)
+      Some semantic_tree.item_tree,
+      Some semantic_tree.body_arena,
+      Some semantic_tree.origin_map
+    )
     | None -> (None, None, None)
   in
   {
@@ -639,10 +605,10 @@ let check_source_group = fun paths ->
     |> List.fold_left
       (fun (session, prepared_sources) path ->
         match Fs.read path with
-        | Error err ->
-            (
-              session,
-              prepared_sources @ [ Unreadable_source { path; reason = IO.error_message err } ])
+        | Error err -> (
+          session,
+          prepared_sources @ [ Unreadable_source { path; reason = IO.error_message err } ]
+        )
         | Ok source ->
             let (session, source_id) = Typ.Session.create_source
               session
@@ -653,9 +619,9 @@ let check_source_group = fun paths ->
       (session, [])
   in
   let snapshot = Typ.Session.snapshot session in
-  prepared_sources
-  |> List.map
-    (function
+  prepared_sources |> List.map
+    (
+      function
       | Unreadable_source { path; reason } -> Unreadable { path; reason }
       | Readable_source { path; source; source_id } -> (
           match Typ.Query.analysis_of_source snapshot source_id with
@@ -666,20 +632,20 @@ let check_source_group = fun paths ->
           | None ->
               let report = Typ.Batch.check_source ~filename:path source in
               let diagnostics = diagnostics_of_report report in
-              Typed { path; report; diagnostics }))
+              Typed { path; report; diagnostics }
+        )
+    )
 
 let package_root_for_target = fun (workspace: Workspace.t) path ->
-  workspace.packages
-  |> List.filter Package.is_workspace_member
-  |> List.sort
+  workspace.packages |> List.filter Package.is_workspace_member |> List.sort
     (fun (left: Package.t) (right: Package.t) ->
-      Int.compare (String.length (Path.to_string right.path)) (String.length (Path.to_string left.path)))
-  |> List.find_opt
+      Int.compare
+        (String.length (Path.to_string right.path))
+        (String.length (Path.to_string left.path))) |> List.find_opt
     (fun (pkg: Package.t) ->
       Path.equal path pkg.path || match Path.strip_prefix path ~prefix:pkg.path with
       | Ok _ -> true
-      | Error _ -> false)
-  |> Option.map (fun (pkg: Package.t) -> pkg.path)
+      | Error _ -> false) |> Option.map (fun (pkg: Package.t) -> pkg.path)
 
 let grouped_targets_for_session = fun ?workspace target_files ->
   let group_key_for path =
@@ -687,11 +653,11 @@ let grouped_targets_for_session = fun ?workspace target_files ->
     | Some workspace -> (
         match package_root_for_target workspace path with
         | Some package_root -> Path.to_string package_root
-        | None -> Path.to_string (Path.dirname path))
+        | None -> Path.to_string (Path.dirname path)
+      )
     | None -> "__riot-check-session__"
   in
-  target_files
-  |> List.fold_left
+  target_files |> List.fold_left
     (fun groups path ->
       let key = group_key_for path in
       let existing =
@@ -700,8 +666,7 @@ let grouped_targets_for_session = fun ?workspace target_files ->
         | None -> []
       in
       (key, existing @ [ path ]) :: List.remove_assoc key groups)
-    []
-  |> List.rev
+    [] |> List.rev
 
 let checked_file_path = function
   | Typed { path; _ }
@@ -713,20 +678,18 @@ let check_target_files = fun ?workspace ~scan_mode target_files ->
   if not scan_mode then
     target_files |> List.map check_source_file
   else
-    let checked_by_path =
-      grouped_targets_for_session ?workspace target_files
-      |> List.concat_map (fun (_, paths) -> check_source_group paths)
-      |> List.fold_left
-        (fun checked_by_path checked_file ->
-          (path_key (checked_file_path checked_file), checked_file) :: checked_by_path)
-        []
-    in
+    let checked_by_path = grouped_targets_for_session ?workspace target_files
+    |> List.concat_map (fun (_, paths) -> check_source_group paths)
+    |> List.fold_left
+      (fun checked_by_path checked_file ->
+        (path_key (checked_file_path checked_file), checked_file) :: checked_by_path)
+      [] in
     target_files
     |> List.map
       (fun path ->
         checked_by_path
         |> List.assoc_opt (path_key path)
-        |> Option.expect ~msg:("missing checked result for " ^ Path.to_string path))
+        |> Option.expect ~msg:(("missing checked result for " ^ Path.to_string path)))
 
 let start_to_json = fun ~workspace_root ~target_count ->
   let workspace_root_json =
@@ -781,36 +744,32 @@ let check_all = fun ?workspace ?package_filter ?on_start ?on_result paths ->
 
 let print_checked_file = fun ~stdout ~stderr ~workspace_root checked_file ->
   match checked_file with
-  | Unreadable { path; reason } ->
-      stderr (relative_or_absolute ~workspace_root path ^ ": " ^ reason ^ "\n")
+  | Unreadable { path; reason } -> stderr
+    (relative_or_absolute ~workspace_root path ^ ": " ^ reason ^ "\n")
   | Typed { path; report; diagnostics } ->
       if List.is_empty diagnostics then
         ()
-      else (
-        let source_layout = make_source_layout report.source in
-        let path_text = relative_or_absolute ~workspace_root path in
-        List.iter
-          (fun diagnostic ->
-            stdout
-              (format_diagnostic
-                ~path_text
-                ~source_layout
-                ~source_text:report.source
-                diagnostic))
-          diagnostics)
+      else
+        (
+          let source_layout = make_source_layout report.source in
+          let path_text = relative_or_absolute ~workspace_root path in
+          List.iter
+            (fun diagnostic ->
+              stdout
+                (format_diagnostic ~path_text ~source_layout ~source_text:report.source diagnostic))
+            diagnostics
+        )
 
 let checked_file_to_json = fun ~workspace_root checked_file ->
   match checked_file with
   | Typed { path; report } ->
       let diagnostics = diagnostics_of_report report in
-      let summary =
-        Data.Json.Object [
-          ("parse", Data.Json.Int (List.length report.parse_diagnostics));
-          ("lowering", Data.Json.Int (List.length report.lowering_diagnostics));
-          ("typing", Data.Json.Int (List.length report.typing_diagnostics));
-          ("total", Data.Json.Int (List.length diagnostics));
-        ]
-      in
+      let summary = Data.Json.Object [
+        ("parse", Data.Json.Int (List.length report.parse_diagnostics));
+        ("lowering", Data.Json.Int (List.length report.lowering_diagnostics));
+        ("typing", Data.Json.Int (List.length report.typing_diagnostics));
+        ("total", Data.Json.Int (List.length diagnostics));
+      ] in
       Data.Json.Object [
         ("path", Data.Json.String (relative_or_absolute ~workspace_root path));
         ("ok", Data.Json.Bool (not (has_errors diagnostics)));
@@ -821,8 +780,7 @@ let checked_file_to_json = fun ~workspace_root checked_file ->
 let checked_file_diagnostics_to_json = fun ~workspace_root path diagnostics ->
   let path_text = relative_or_absolute ~workspace_root path in
   let index = ref 0 in
-  diagnostics
-  |> List.map
+  diagnostics |> List.map
     (fun diagnostic ->
       let json = Data.Json.Object [
         ("type", Data.Json.String "check_diagnostic");
@@ -835,30 +793,24 @@ let checked_file_diagnostics_to_json = fun ~workspace_root path diagnostics ->
 
 let checked_file_events_to_json = fun ~workspace_root checked_file ->
   match checked_file with
-  | Unreadable _ ->
-      [
-        Data.Json.Object [
-        ("type", Data.Json.String "check_file");
-        ("result", checked_file_to_json ~workspace_root checked_file);
-      ]
-      ]
+  | Unreadable _ -> [
+    Data.Json.Object [
+      ("type", Data.Json.String "check_file");
+      ("result", checked_file_to_json ~workspace_root checked_file);
+    ]
+  ]
   | Typed { path; report; diagnostics } ->
-      let file_json =
-        Data.Json.Object [
-          ("type", Data.Json.String "check_file");
-          ("result", checked_file_to_json ~workspace_root (Typed { path; report; diagnostics }));
-        ]
-      in
+      let file_json = Data.Json.Object [
+        ("type", Data.Json.String "check_file");
+        ("result", checked_file_to_json ~workspace_root (Typed { path; report; diagnostics }));
+      ] in
       file_json :: checked_file_diagnostics_to_json ~workspace_root path diagnostics
 
 let print_json_lines = fun ~stdout events ->
-  events
-  |> List.iter (fun json -> stdout (Data.Json.to_string json ^ "\n"))
+  events |> List.iter (fun json -> stdout (Data.Json.to_string json ^ "\n"))
 
 let print_checked_file_json = fun ~stdout ~workspace_root checked_file ->
-  checked_file
-  |> checked_file_events_to_json ~workspace_root
-  |> print_json_lines ~stdout
+  checked_file |> checked_file_events_to_json ~workspace_root |> print_json_lines ~stdout
 
 let print_checked_files_summary = fun ~stdout checked_summary quiet ->
   if quiet then
@@ -874,10 +826,10 @@ let print_checked_files_summary = fun ~stdout checked_summary quiet ->
 
 let print_json_summary = fun ~stdout (summary: checked_summary) ->
   Data.Json.Object [
-      ("type", Data.Json.String "check_summary");
-      ("ok", Data.Json.Bool (not summary.has_error));
-      ("summary", checked_summary_to_json summary);
-    ]
+    ("type", Data.Json.String "check_summary");
+    ("ok", Data.Json.Bool (not summary.has_error));
+    ("summary", checked_summary_to_json summary);
+  ]
   |> Data.Json.to_string
   |> fun line -> stdout (line ^ "\n")
 
@@ -889,45 +841,44 @@ let run_explain = fun ?(stdout = default_stdout) ?(stderr = default_stderr) ~jso
         stdout (Data.Json.to_string (Typ.Explanations.to_json explanation) ^ "\n")
       else
         stdout (Typ.Explanations.format explanation ^ "\n");
-      Ok ()
+        Ok ()
 
 let run = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) matches ->
   match action_of_matches matches with
-  | Error err -> fail ~stderr err
-  | Ok (Explain { diagnostic_id; json }) -> run_explain ~stdout ~stderr ~json diagnostic_id
+  | Error err ->
+      fail ~stderr err
+  | Ok (Explain { diagnostic_id; json }) ->
+      run_explain ~stdout ~stderr ~json diagnostic_id
   | Ok (Check { paths; package_filter; json; quiet }) -> (
-      let workspace_root =
-        workspace_scope workspace |> Option.map (fun scope -> scope.workspace_root)
+      let workspace_root = workspace_scope workspace
+      |> Option.map (fun scope -> scope.workspace_root) in
+      let on_start target_count =
+        if json then
+          print_json_lines ~stdout [ start_to_json ~workspace_root ~target_count ]
       in
-      let on_start =
-        fun target_count ->
-          if json then
-            print_json_lines
-              ~stdout
-              [ start_to_json ~workspace_root ~target_count ]
-      in
-      let on_result =
-        fun checked_file ->
-          if json then
-            print_checked_file_json ~stdout ~workspace_root checked_file
-          else
-            print_checked_file ~stdout ~stderr ~workspace_root checked_file
+      let on_result checked_file =
+        if json then
+          print_checked_file_json ~stdout ~workspace_root checked_file
+        else
+          print_checked_file ~stdout ~stderr ~workspace_root checked_file
       in
       match check_all ?workspace ?package_filter ~on_start ~on_result paths with
       | Error err ->
           fail ~stderr
-            (match err with
-            | NoTargets -> NoTargets
-            | PackageFilterRequiresWorkspace _ as err -> err
-            | UnknownPackage _ as err -> err
-            | _ -> err)
+            (
+              match err with
+              | NoTargets -> NoTargets
+              | PackageFilterRequiresWorkspace _ as err -> err
+              | UnknownPackage _ as err -> err
+              | _ -> err
+            )
       | Ok { summary; _ } ->
           if json then
             print_json_summary ~stdout summary
           else
             print_checked_files_summary ~stdout summary quiet;
-          if summary.has_error then
-            Error (Failure "typecheck failed")
-          else
-            Ok ()
-      )
+            if summary.has_error then
+              Error (Failure "typecheck failed")
+            else
+              Ok ()
+    )

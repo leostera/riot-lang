@@ -11,7 +11,7 @@ type t = {
 let default = {
   prelude = LanguagePrelude.bindings;
   loaded_modules = BootstrapModules.summaries;
-  ambient = [];
+  ambient = []
 }
 
 let with_ambient = fun config ~ambient -> { config with ambient }

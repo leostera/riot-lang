@@ -13,51 +13,49 @@ let inferred_type_at = fun snapshot source_id offset ->
   | None -> None
 
 let has_unbound_name = fun snapshot source_id ->
-  Query.diagnostics snapshot source_id |> List.exists (
-    function
-    | Query.Typing (Diagnostic.UnboundName _) -> true
-    | _ -> false)
+  Query.diagnostics snapshot source_id |> List.exists
+    (
+      function
+      | Query.Typing (Diagnostic.UnboundName _) -> true
+      | _ -> false
+    )
 
 let diagnostic_strings = fun snapshot source_id ->
-  Query.diagnostics snapshot source_id |> List.map (
-    function
-    | Query.Parse diagnostic -> Syn.Diagnostic.to_string diagnostic
-    | Query.Lowering diagnostic
-    | Query.Typing diagnostic -> Diagnostic.to_string diagnostic)
+  Query.diagnostics snapshot source_id |> List.map
+    (
+      function
+      | Query.Parse diagnostic -> Syn.Diagnostic.to_string diagnostic
+      | Query.Lowering diagnostic
+      | Query.Typing diagnostic -> Diagnostic.to_string diagnostic
+    )
 
 let trace_debug = fun snapshot source_id ->
   match Query.analysis_of_source snapshot source_id with
   | None -> []
   | Some analysis ->
-      let item_lines =
-        analysis.item_traces
-        |> List.map
-          (fun (trace: Check_result.item_trace) ->
-            "item "
-            ^ ItemId.to_string trace.item_id
-            ^ " -> ["
-            ^ String.concat ", " (List.map fst trace.exports_after)
-            ^ "]")
-      in
-      let expr_lines =
-        analysis.expr_traces
-        |> List.map
-          (fun (trace: Check_result.expr_trace) ->
-            "expr "
-            ^ ExprId.to_string trace.expr_id
-            ^ " -> ["
-            ^ String.concat ", " (List.map fst trace.env_before)
-            ^ "]")
-      in
+      let item_lines = analysis.item_traces
+      |> List.map
+        (fun (trace: Check_result.item_trace) ->
+          "item "
+          ^ ItemId.to_string trace.item_id
+          ^ " -> ["
+          ^ String.concat ", " (List.map fst trace.exports_after)
+          ^ "]") in
+      let expr_lines = analysis.expr_traces
+      |> List.map
+        (fun (trace: Check_result.expr_trace) ->
+          "expr "
+          ^ ExprId.to_string trace.expr_id
+          ^ " -> ["
+          ^ String.concat ", " (List.map fst trace.env_before)
+          ^ "]") in
       item_lines @ expr_lines
 
 let persisted_summary_jsons = fun snapshot ->
-  Snapshot.persisted_summaries snapshot
-  |> List.map PersistedSummary.Json.to_json
+  Snapshot.persisted_summaries snapshot |> List.map PersistedSummary.Json.to_json
 
 let module_summary_jsons = fun snapshot ->
-  Snapshot.module_summaries snapshot
-  |> List.map ModuleSummary.Json.to_json
+  Snapshot.module_summaries snapshot |> List.map ModuleSummary.Json.to_json
 
 let test_source_id_stays_stable_across_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -149,7 +147,8 @@ let test_snapshot_collects_persisted_summaries = fun _ctx ->
   let tags =
     summaries
     |> List.filter_map
-      (function
+      (
+        function
         | Data.Json.Object fields -> (
             match List.assoc_opt "export_result" fields with
             | Some (Data.Json.Object export_fields) -> (
@@ -159,7 +158,8 @@ let test_snapshot_collects_persisted_summaries = fun _ctx ->
               )
             | _ -> None
           )
-        | _ -> None)
+        | _ -> None
+      )
   in
   let () = Test.assert_equal ~expected:[ "trusted_export"; "errored_export" ] ~actual:tags in
   Ok ()
@@ -205,9 +205,7 @@ let test_snapshot_uses_loaded_module_summaries = fun _ctx ->
     | Some summary -> summary
     | None -> panic "expected seed module summary"
   in
-  let config =
-    Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ]
-  in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ] in
   let session = Session.empty ~config in
   let (session, demo_source_id) = Session.create_source
     session
@@ -221,13 +219,15 @@ let test_snapshot_uses_loaded_module_summaries = fun _ctx ->
   let summary_modules =
     module_summary_jsons snapshot
     |> List.filter_map
-      (function
+      (
+        function
         | Data.Json.Object fields -> (
             match List.assoc_opt "module_name" fields with
             | Some (Data.Json.String module_name) -> Some module_name
             | _ -> None
           )
-        | _ -> None)
+        | _ -> None
+      )
   in
   let () = Test.assert_equal ~expected:[ "Blend_demo" ] ~actual:summary_modules in
   if demo_has_unbound_name then

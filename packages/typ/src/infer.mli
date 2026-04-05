@@ -14,6 +14,7 @@ type t = {
 
 (** Infer types for a semantic tree using the current prototype checker.
 
-    The host configuration supplies the ambient prelude so one-shot and
-    session-based callers share the same inference rules. *)
+    The host configuration supplies only the intrinsic prelude plus ambient
+    module summaries, so one-shot and session-based callers share the same
+    inference rules without hardcoding package/library APIs in the inferencer. *)
 val infer_file: config:TypConfig.t -> SemanticTree.file -> t

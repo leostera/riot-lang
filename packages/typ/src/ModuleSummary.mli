@@ -9,11 +9,7 @@ open Std
 type t
 
 (** Build one host-facing module summary. *)
-val make:
-  module_name:string ->
-  source_hash:Crypto.hash ->
-  summary:PersistedSummary.t ->
-  t
+val make: module_name:string -> source_hash:Crypto.hash -> summary:PersistedSummary.t -> t
 
 (** Recover the module name associated with this summary. *)
 val module_name: t -> string
@@ -27,7 +23,7 @@ val summary: t -> PersistedSummary.t
 (** Extract the exported environment from the underlying persisted summary. *)
 val exports: t -> FileSummary.exports
 
-module Json : sig
+module Json: sig
   (** Encode a module summary as structured JSON. *)
   val to_json: t -> Data.Json.t
 

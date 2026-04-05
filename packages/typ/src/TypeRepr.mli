@@ -8,7 +8,6 @@ type label =
   | Labelled of string
   (** Optional arrow parameter introduced with `?label:`. *)
   | Optional of string
-
 type var = {
   (** Stable inference-variable identity inside one query. *)
   id: int;

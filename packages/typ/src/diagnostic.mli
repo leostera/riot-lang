@@ -58,8 +58,8 @@ val name: t -> string
 val message: t -> string
 
 val severity: t -> severity
-(** Severity classification for rendering and command exit behavior. *)
 
+(** Severity classification for rendering and command exit behavior. *)
 val primary_span: t -> Syn.Ceibo.Span.t
 
 val severity_to_string: severity -> string

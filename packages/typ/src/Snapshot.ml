@@ -15,10 +15,18 @@ type t = {
 }
 
 let make = fun ~revision ~config ~sources ->
-  let analyses = sources
-  |> List.map
-    (fun (source: Source.t) ->
-      { source_id = source.source_id; source; config; base_analysis = None; analysis = None }) in
+  let analyses =
+    sources
+    |> List.map
+      (fun (source: Source.t) ->
+        {
+          source_id = source.source_id;
+          source;
+          config;
+          base_analysis = None;
+          analysis = None;
+        })
+  in
   { revision; analyses; qualified_summaries = None }
 
 let force_base_analysis = fun (slot: analysis_slot) ->
@@ -44,9 +52,7 @@ let qualified_summaries = fun (snapshot: t) ->
           (fun (slot: analysis_slot) ->
             let analysis = force_base_analysis slot in
             let module_name = Source.module_name slot.source in
-            let persisted_summary =
-              analysis.file_summary |> PersistedSummary.of_file_summary
-            in
+            let persisted_summary = analysis.file_summary |> PersistedSummary.of_file_summary in
             (slot.source_id, module_name, persisted_summary))
       in
       let () =
@@ -56,34 +62,24 @@ let qualified_summaries = fun (snapshot: t) ->
 
 let ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
   let current_module_name = Source.module_name slot.source in
-  let local_modules =
-  qualified_summaries snapshot
+  let local_modules = qualified_summaries snapshot
   |> List.filter
-    (fun (candidate_source_id, _, _) ->
-      not (SourceId.equal candidate_source_id slot.source_id))
+    (fun (candidate_source_id, _, _) -> not (SourceId.equal candidate_source_id slot.source_id))
   |> List.map
-    (fun (_, module_name, summary) ->
-      PersistedSummary.exports summary |> qualify_exports module_name)
-  in
-  let loaded_modules =
-    slot.config.loaded_modules
-    |> List.filter
-      (fun summary ->
-        not (String.equal (ModuleSummary.module_name summary) current_module_name))
-    |> List.map
-      (fun summary ->
-        ModuleSummary.exports summary
-        |> qualify_exports (ModuleSummary.module_name summary))
-  in
+    (fun (_, module_name, summary) -> PersistedSummary.exports summary |> qualify_exports module_name) in
+  let loaded_modules = slot.config.loaded_modules
+  |> List.filter
+    (fun summary -> not (String.equal (ModuleSummary.module_name summary) current_module_name))
+  |> List.map
+    (fun summary ->
+      ModuleSummary.exports summary |> qualify_exports (ModuleSummary.module_name summary)) in
   List.flatten (local_modules @ loaded_modules)
 
 let force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
   match slot.analysis with
   | Some analysis -> analysis
   | None ->
-      let config =
-        TypConfig.with_ambient slot.config ~ambient:(ambient_env_for snapshot slot)
-      in
+      let config = TypConfig.with_ambient slot.config ~ambient:(ambient_env_for snapshot slot) in
       let analysis = SourceAnalysis.analyze ~config slot.source in
       let () =
         slot.analysis <- Some analysis
@@ -97,8 +93,7 @@ let analyses = fun snapshot -> snapshot.analyses |> List.map (force_analysis sna
 let file_summaries = fun snapshot ->
   analyses snapshot |> List.map (fun (analysis: SourceAnalysis.t) -> analysis.file_summary)
 
-let persisted_summaries = fun snapshot ->
-  file_summaries snapshot |> List.map PersistedSummary.of_file_summary
+let persisted_summaries = fun snapshot -> file_summaries snapshot |> List.map PersistedSummary.of_file_summary
 
 let module_summaries = fun snapshot ->
   analyses snapshot
@@ -113,6 +108,6 @@ let find_analysis = fun snapshot source_id ->
   List.find_opt
     (fun (slot: analysis_slot) ->
       SourceId.equal slot.source_id source_id)
-  snapshot.analyses |> function
+    snapshot.analyses |> function
   | Some slot -> Some (force_analysis snapshot slot)
   | None -> None

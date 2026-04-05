@@ -185,8 +185,10 @@ let rec unify = fun (state: state) ~origin left right ->
       unify state ~origin left_element right_element
   | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
       unify state ~origin left_element right_element
-  | TypeRepr.Named { name = left_name; arguments = left_arguments },
-    TypeRepr.Named { name = right_name; arguments = right_arguments } ->
+  | TypeRepr.Named { name=left_name; arguments=left_arguments }, TypeRepr.Named {
+    name=right_name;
+    arguments=right_arguments
+  } ->
       if not (String.equal left_name right_name) then
         raise
           (Unify_error (Typ_diagnostic.ExpectedActual {
@@ -211,8 +213,11 @@ let rec unify = fun (state: state) ~origin left right ->
             right_arity = List.length right_members
           }));
       List.iter2 (unify state ~origin) left_members right_members
-  | TypeRepr.Arrow { label = left_label; lhs = left_arg; rhs = left_res },
-    TypeRepr.Arrow { label = right_label; lhs = right_arg; rhs = right_res } ->
+  | TypeRepr.Arrow { label=left_label; lhs=left_arg; rhs=left_res }, TypeRepr.Arrow {
+    label=right_label;
+    lhs=right_arg;
+    rhs=right_res
+  } ->
       if not (labels_match left_label right_label) then
         raise
           (Unify_error (Typ_diagnostic.ExpectedActual {
@@ -260,14 +265,16 @@ let has_prefix = fun ~prefix text ->
 
 let aliases_for_local_open = fun env module_path ->
   let prefix = module_path ^ "." in
-  env |> List.filter_map (fun (name, scheme) ->
-    if has_prefix ~prefix name then
-      let suffix =
-        String.sub name (String.length prefix) (String.length name - String.length prefix)
-      in
-      Some (suffix, scheme)
-    else
-      None)
+  env |> List.filter_map
+    (fun (name, scheme) ->
+      if has_prefix ~prefix name then
+        let suffix = String.sub
+          name
+          (String.length prefix)
+          (String.length name - String.length prefix) in
+        Some (suffix, scheme)
+      else
+        None)
 
 let env_with_local_open = fun env module_path ->
   let aliases = aliases_for_local_open env module_path in
@@ -283,11 +290,12 @@ let rec constructor_pattern_argument_types = fun (state: state) constructor_ty a
         state
         ~origin
         constructor_ty
-        (TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = argument_ty; rhs = result_ty })
-      in
-      let (rest_argument_types, final_result_ty) =
-        constructor_pattern_argument_types state result_ty rest origin
-      in
+        (TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = argument_ty; rhs = result_ty }) in
+      let (rest_argument_types, final_result_ty) = constructor_pattern_argument_types
+        state
+        result_ty
+        rest
+        origin in
       (argument_ty :: rest_argument_types, final_result_ty)
 
 let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
@@ -332,13 +340,17 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           | Some (_, scheme) ->
               let origin = origin_of_pattern state pat_id in
               let constructor_ty = instantiate state scheme in
-              let (argument_types, result_ty) =
-                constructor_pattern_argument_types state constructor_ty arguments origin
-              in
+              let (argument_types, result_ty) = constructor_pattern_argument_types
+                state
+                constructor_ty
+                arguments
+                origin in
               let () = try_unify state ~origin expected_ty result_ty in
               List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
           | None ->
-              let argument_types = List.map (fun _ -> fresh_var state) arguments in
+              let argument_types =
+                List.map (fun _ -> fresh_var state) arguments
+              in
               List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
         )
       | BodyArena.PList elements ->
@@ -347,8 +359,7 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
             state
             ~origin:(origin_of_pattern state pat_id)
             expected_ty
-            (TypeRepr.List element_ty)
-          in
+            (TypeRepr.List element_ty) in
           elements
           |> List.map (fun element_id -> bind_pattern state env element_id element_ty)
           |> List.flatten
@@ -430,8 +441,7 @@ let rec infer_expr = fun (state: state) env expr_id ->
           )
         | BodyArena.EFun (parameters, body_id) ->
             let rec lower_parameters env = function
-              | [] ->
-                  infer_expr state env body_id
+              | [] -> infer_expr state env body_id
               | (parameter: BodyArena.function_parameter) :: rest ->
                   let arg_ty = fresh_var state in
                   let bindings = bind_pattern state env parameter.pattern_id arg_ty in
@@ -466,22 +476,17 @@ let rec infer_expr = fun (state: state) env expr_id ->
             let collection_ty = infer_expr state env collection_id in
             let index_ty = infer_expr state env index_id in
             let element_ty = fresh_var state in
-            let () = try_unify
-              state
-              ~origin:(origin_of_expr state index_id)
-              index_ty
-              TypeRepr.Int in
-            begin match TypeRepr.prune collection_ty with
-            | TypeRepr.String ->
-                TypeRepr.Char
-            | _ ->
-                let () = try_unify
-                  state
-                  ~origin:(origin_of_expr state collection_id)
-                  collection_ty
-                  (TypeRepr.Array element_ty)
-                in
-                element_ty
+            let () = try_unify state ~origin:(origin_of_expr state index_id) index_ty TypeRepr.Int in
+            begin
+              match TypeRepr.prune collection_ty with
+              | TypeRepr.String -> TypeRepr.Char
+              | _ ->
+                  let () = try_unify
+                    state
+                    ~origin:(origin_of_expr state collection_id)
+                    collection_ty
+                    (TypeRepr.Array element_ty) in
+                  element_ty
             end
         | BodyArena.ELet (binding_ids, body_id) ->
             let env = infer_binding_group state env binding_ids in
@@ -622,7 +627,9 @@ let export_env = fun config env ->
 
 let introduced_entries = fun before after ->
   let introduced = introduced_names before after in
-  render_env after |> List.filter (fun (name, _) -> List.mem name introduced)
+  render_env after |> List.filter
+    (fun (name, _) ->
+      List.mem name introduced)
 
 let qualify_name = fun scope_path name ->
   match scope_path with
@@ -632,7 +639,8 @@ let qualify_name = fun scope_path name ->
 let qualify_entries = fun scope_path entries ->
   List.map (fun (name, scheme) -> (qualify_name scope_path name, scheme)) entries
 
-let scope_key = fun scope_path -> String.concat "." scope_path
+let scope_key = fun scope_path ->
+  String.concat "." scope_path
 
 let scope_prefix_keys = fun scope_path ->
   let rec loop acc current = function
@@ -696,13 +704,11 @@ let infer_file = fun ~config file ->
             let introduced = TypeDecl.constructor_entries type_item.declaration in
             let (export_state, scope_entries) =
               match type_item.scope_path with
-              | [] ->
-                  (bind_env export_state introduced, scope_entries)
-              | scope_path ->
-                  (
-                    bind_env export_state (qualify_entries scope_path introduced),
-                    update_scope_entries scope_entries scope_path introduced
-                  )
+              | [] -> (bind_env export_state introduced, scope_entries)
+              | scope_path -> (
+                bind_env export_state (qualify_entries scope_path introduced),
+                update_scope_entries scope_entries scope_path introduced
+              )
             in
             let exports_after = export_env config export_state in
             let binding_names = introduced_names visible_exports_before exports_after in
@@ -719,13 +725,11 @@ let infer_file = fun ~config file ->
             let introduced = [ (exception_item.exception_name, exception_item.scheme) ] in
             let (export_state, scope_entries) =
               match exception_item.scope_path with
-              | [] ->
-                  (bind_env export_state introduced, scope_entries)
-              | scope_path ->
-                  (
-                    bind_env export_state (qualify_entries scope_path introduced),
-                    update_scope_entries scope_entries scope_path introduced
-                  )
+              | [] -> (bind_env export_state introduced, scope_entries)
+              | scope_path -> (
+                bind_env export_state (qualify_entries scope_path introduced),
+                update_scope_entries scope_entries scope_path introduced
+              )
             in
             let exports_after = export_env config export_state in
             let binding_names = introduced_names visible_exports_before exports_after in
@@ -744,13 +748,11 @@ let infer_file = fun ~config file ->
             let introduced = introduced_entries item_env env_after_item in
             let (export_state, scope_entries) =
               match value_item.scope_path with
-              | [] ->
-                  (env_after_item, scope_entries)
-              | scope_path ->
-                  (
-                    bind_env export_state (qualify_entries scope_path introduced),
-                    update_scope_entries scope_entries scope_path introduced
-                  )
+              | [] -> (env_after_item, scope_entries)
+              | scope_path -> (
+                bind_env export_state (qualify_entries scope_path introduced),
+                update_scope_entries scope_entries scope_path introduced
+              )
             in
             let exports_after = export_env config export_state in
             let binding_names = introduced_names visible_exports_before exports_after in
@@ -767,11 +769,7 @@ let infer_file = fun ~config file ->
             let exports_after = export_env config export_state in
             let () =
               state.item_traces <- (
-                {
-                  Check_result.item_id = open_item.item_id;
-                  binding_names = [];
-                  exports_after
-                }:
+                { Check_result.item_id = open_item.item_id; binding_names = []; exports_after }:
                   Check_result.item_trace
               )
               :: state.item_traces
@@ -790,10 +788,10 @@ let infer_file = fun ~config file ->
               )
               :: state.item_traces
             in
-            loop export_state scope_entries scope_opens rest)
+            loop export_state scope_entries scope_opens rest
+      )
   in
-  let exports = loop initial_env [] [] (ItemTree.items file.item_tree)
-  in
+  let exports = loop initial_env [] [] (ItemTree.items file.item_tree) in
   {
     exports = export_env config exports;
     item_traces = List.rev state.item_traces;

@@ -60,13 +60,11 @@ let rec render_type = fun state ~nested ty ->
       else
         text
   | TypeRepr.Result (ok_ty, error_ty) ->
-      let text =
-        "("
-        ^ render_type state ~nested:false ok_ty
-        ^ ", "
-        ^ render_type state ~nested:false error_ty
-        ^ ") result"
-      in
+      let text = "("
+      ^ render_type state ~nested:false ok_ty
+      ^ ", "
+      ^ render_type state ~nested:false error_ty
+      ^ ") result" in
       if nested then
         "(" ^ text ^ ")"
       else
@@ -89,17 +87,15 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
-  | TypeRepr.Named { name; arguments } ->
-      (
-        match arguments with
-        | [] -> name
-        | [ argument ] -> render_type state ~nested:true argument ^ " " ^ name
-        | arguments ->
-            "("
-            ^ (arguments |> List.map (render_type state ~nested:false) |> String.concat ", ")
-            ^ ") "
-            ^ name
-      )
+  | TypeRepr.Named { name; arguments } -> (
+      match arguments with
+      | [] -> name
+      | [ argument ] -> render_type state ~nested:true argument ^ " " ^ name
+      | arguments -> "("
+      ^ (arguments |> List.map (render_type state ~nested:false) |> String.concat ", ")
+      ^ ") "
+      ^ name
+    )
   | TypeRepr.Tuple members ->
       members |> List.map (render_type state ~nested:true) |> String.concat " * " |> fun text ->
         if nested then
@@ -107,12 +103,10 @@ let rec render_type = fun state ~nested ty ->
         else
           text
   | TypeRepr.Arrow { label; lhs; rhs } ->
-      let text =
-        render_arrow_label label
-        ^ render_type state ~nested:true lhs
-        ^ " -> "
-        ^ render_type state ~nested:false rhs
-      in
+      let text = render_arrow_label label
+      ^ render_type state ~nested:true lhs
+      ^ " -> "
+      ^ render_type state ~nested:false rhs in
       if nested then
         "(" ^ text ^ ")"
       else

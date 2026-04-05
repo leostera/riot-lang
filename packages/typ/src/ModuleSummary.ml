@@ -6,8 +6,7 @@ type t = {
   summary: PersistedSummary.t;
 }
 
-let make = fun ~module_name ~source_hash ~summary ->
-  { module_name; source_hash; summary }
+let make = fun ~module_name ~source_hash ~summary -> { module_name; source_hash; summary }
 
 let module_name = fun summary -> summary.module_name
 
@@ -50,8 +49,7 @@ let ( let* ) result f =
 let hash_of_hex = fun hex ->
   match Encoding.Hex.decode_bytes hex with
   | Ok bytes -> Ok (Crypto.Hash.of_bytes bytes)
-  | Error `Invalid_base16 ->
-      Error ("invalid source_hash hex digest " ^ hex)
+  | Error `Invalid_base16 -> Error ("invalid source_hash hex digest " ^ hex)
 
 module Json = struct
   let to_json = fun summary ->

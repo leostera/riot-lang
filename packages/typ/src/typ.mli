@@ -31,6 +31,8 @@ open Std
       export-facing result with an explicit trust state
     - `PersistedSummary`
       host-facing `.cmi`-like persistence seam for reusable exports
+    - `ModuleSummary`
+      persisted export summaries paired with module identity and input hashes
     - `TypeIndex`
       a query-oriented expression-type index used by `Query.type_at`
 
@@ -46,7 +48,7 @@ open Std
     - `Typ.Session.snapshot`
     - `Typ.Query.diagnostics`
     - `Typ.Query.type_at`
-    - `Typ.Query.persisted_summary_of`
+    - `Typ.Query.module_summary_of`
 
     Existing tests and batch-oriented tools can still use:
 
@@ -95,6 +97,8 @@ module TypeIndex: module type of TypeIndex
 module FileSummary: module type of FileSummary
 
 module PersistedSummary: module type of PersistedSummary
+
+module ModuleSummary: module type of ModuleSummary
 
 module Config: module type of TypConfig
 

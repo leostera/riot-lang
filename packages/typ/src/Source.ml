@@ -29,17 +29,19 @@ let make = fun ~source_id ~kind ~origin ~revision ~text ->
 let update_text = fun source ~revision ~text -> { source with revision; text }
 
 let sanitize_module_name = fun name ->
-  String.map (fun ch -> if ch = '-' then '_' else ch) name
+  String.map
+    (fun ch ->
+      if ch = '-' then
+        '_'
+      else
+        ch)
+    name
 
 let module_name = fun source ->
   let raw_name =
     match source.origin with
     | Path path -> Path.remove_extension path |> Path.basename
-    | Label label ->
-        label
-        |> Path.v
-        |> Path.remove_extension
-        |> Path.basename
+    | Label label -> label |> Path.v |> Path.remove_extension |> Path.basename
   in
   sanitize_module_name raw_name |> String.capitalize_ascii
 

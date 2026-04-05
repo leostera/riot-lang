@@ -129,15 +129,24 @@ let render_apply_argument = fun (argument: apply_argument) ->
   render_label argument.label ^ ":" ^ ExprId.to_string argument.value_id
 
 let render_pattern_desc = function
-  | PVar name -> "var " ^ name
-  | PWildcard -> "_"
-  | PInt digits -> "int " ^ digits
-  | PFloat digits -> "float " ^ digits
-  | PBool value -> "bool " ^ Bool.to_string value
-  | PString value -> "string \"" ^ String.escaped value ^ "\""
-  | PChar value -> "char '" ^ String.escaped value ^ "'"
-  | PUnit -> "unit"
-  | PTuple elements -> "tuple [" ^ render_ids PatId.to_string elements ^ "]"
+  | PVar name ->
+      "var " ^ name
+  | PWildcard ->
+      "_"
+  | PInt digits ->
+      "int " ^ digits
+  | PFloat digits ->
+      "float " ^ digits
+  | PBool value ->
+      "bool " ^ Bool.to_string value
+  | PString value ->
+      "string \"" ^ String.escaped value ^ "\""
+  | PChar value ->
+      "char '" ^ String.escaped value ^ "'"
+  | PUnit ->
+      "unit"
+  | PTuple elements ->
+      "tuple [" ^ render_ids PatId.to_string elements ^ "]"
   | PConstructor { constructor; arguments } ->
       "constructor " ^ constructor ^ " [" ^ render_ids PatId.to_string arguments ^ "]"
   | PList elements ->
@@ -149,7 +158,8 @@ let render_pattern_desc = function
       | Some pattern_id -> "poly_variant `" ^ tag ^ " " ^ PatId.to_string pattern_id
       | None -> "poly_variant `" ^ tag
     )
-  | PUnsupported summary -> "unsupported(" ^ summary ^ ")"
+  | PUnsupported summary ->
+      "unsupported(" ^ summary ^ ")"
 
 let render_expr_desc = function
   | EVar name ->
@@ -276,16 +286,17 @@ let pattern_desc_to_json = function
     ("pattern_id", Data.Json.Int (PatId.to_int pattern_id));
     ("alias", Data.Json.String alias)
   ]
-  | PPolyVariant { tag; payload } -> Data.Json.Object [
-    ("tag", Data.Json.String "poly_variant");
-    ("variant_tag", Data.Json.String tag);
-    (
-      "payload",
-      match payload with
-      | Some pattern_id -> Data.Json.Int (PatId.to_int pattern_id)
-      | None -> Data.Json.Null
-    );
-  ]
+  | PPolyVariant { tag; payload } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "poly_variant");
+        ("variant_tag", Data.Json.String tag);
+        (
+          "payload",
+          match payload with
+          | Some pattern_id -> Data.Json.Int (PatId.to_int pattern_id)
+          | None -> Data.Json.Null
+        );
+      ]
   | PBool value -> Data.Json.Object [
     ("tag", Data.Json.String "bool");
     ("value", Data.Json.Bool value)
@@ -389,10 +400,7 @@ let expr_desc_to_json = function
   ]
   | EFun (parameters, body_id) -> Data.Json.Object [
     ("tag", Data.Json.String "fun");
-    (
-      "parameters",
-      Data.Json.Array (List.map function_parameter_to_json parameters)
-    );
+    ("parameters", Data.Json.Array (List.map function_parameter_to_json parameters));
     ("body_id", Data.Json.Int (ExprId.to_int body_id));
   ]
   | EApply (callee_id, arguments) -> Data.Json.Object [
@@ -429,16 +437,17 @@ let expr_desc_to_json = function
     ("body_id", Data.Json.Int (ExprId.to_int body_id));
     ("cases", Data.Json.Array (List.map match_case_to_json cases));
   ]
-  | EPolyVariant { tag; payload } -> Data.Json.Object [
-    ("tag", Data.Json.String "poly_variant");
-    ("variant_tag", Data.Json.String tag);
-    (
-      "payload",
-      match payload with
-      | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
-      | None -> Data.Json.Null
-    );
-  ]
+  | EPolyVariant { tag; payload } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "poly_variant");
+        ("variant_tag", Data.Json.String tag);
+        (
+          "payload",
+          match payload with
+          | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+          | None -> Data.Json.Null
+        );
+      ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
     ("module_path", Data.Json.String module_path);

@@ -11,7 +11,8 @@ type t = {
 }
 
 let constructor_entries = fun decl ->
-  decl.constructors |> List.map (fun (constructor: constructor) -> (constructor.name, constructor.scheme))
+  decl.constructors
+  |> List.map (fun (constructor: constructor) -> (constructor.name, constructor.scheme))
 
 let constructor_to_json = fun (constructor: constructor) ->
   Data.Json.Object [
@@ -29,11 +30,10 @@ let to_string = fun decl ->
   let constructors =
     match decl.constructors with
     | [] -> "none"
-    | constructors ->
-        constructors
-        |> List.map
-          (fun (constructor: constructor) ->
-            constructor.name ^ " : " ^ TypePrinter.scheme_to_string constructor.scheme)
-        |> String.concat ", "
+    | constructors -> constructors
+    |> List.map
+      (fun (constructor: constructor) ->
+        constructor.name ^ " : " ^ TypePrinter.scheme_to_string constructor.scheme)
+    |> String.concat ", "
   in
   decl.type_name ^ " { " ^ constructors ^ " }"

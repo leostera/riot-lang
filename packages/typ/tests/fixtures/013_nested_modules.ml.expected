@@ -333,6 +333,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -489,6 +493,10 @@
           "scheme": "string -> char Seq.t"
         },
         {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -562,6 +570,10 @@
         {
           "name": "/.",
           "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
         },
         {
           "name": "<",
@@ -722,6 +734,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -803,6 +819,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -961,6 +981,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1042,6 +1066,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1200,6 +1228,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1281,6 +1313,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1439,6 +1475,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -1520,6 +1560,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1680,6 +1724,10 @@
           "scheme": "int"
         },
         {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1753,6 +1801,10 @@
         {
           "name": "/.",
           "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
         },
         {
           "name": "<",
@@ -1917,6 +1969,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -2002,6 +2058,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -2164,6 +2224,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -2249,6 +2313,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -2411,6 +2479,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -2496,6 +2568,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -2658,6 +2734,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -2743,6 +2823,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -2905,6 +2989,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -2990,6 +3078,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -3152,6 +3244,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -3233,6 +3329,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -3399,6 +3499,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -3476,6 +3580,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -3642,6 +3750,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
@@ -3719,6 +3831,10 @@
           "scheme": "float -> float -> float"
         },
         {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
           "name": "<",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -3885,6 +4001,10 @@
         {
           "name": "White_reference.d65",
           "scheme": "int"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
         },
         {
           "name": "^",
