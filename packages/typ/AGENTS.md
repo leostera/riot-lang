@@ -2,6 +2,21 @@
 
 `typ` is the experimental type-analysis package for Riot.
 
+## Specs
+
+The docs under `packages/typ/docs` are the current normative spec stack for
+`typ`.
+
+Start with:
+
+- `packages/typ/docs/README.md`
+- `packages/typ/docs/checker.md`
+- `packages/typ/docs/solver.md`
+- `packages/typ/docs/lowering.md`
+- `packages/typ/docs/engine.md`
+
+Then use the feature slices that match the work you are doing.
+
 ## Rules
 
 1. Keep semantic work centered on the semantic tree, not raw `Syn.Cst`.
