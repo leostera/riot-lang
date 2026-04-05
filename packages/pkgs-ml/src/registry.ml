@@ -119,6 +119,9 @@ let normalize_riot_agent = function
 let set_riot_agent = fun value ->
   configured_riot_agent := normalize_riot_agent value
 
+let riot_agent_override = fun () ->
+  Env.var Env.String ~name:"RIOT_AGENT_HEADER" |> normalize_riot_agent
+
 let default_http_headers = fun headers ->
   let has_riot_agent =
     List.exists
@@ -128,9 +131,13 @@ let default_http_headers = fun headers ->
   if has_riot_agent then
     headers
   else
-    match !configured_riot_agent with
+    match riot_agent_override () with
     | Some value -> ("X-Riot-Agent", value) :: headers
-    | None -> headers
+    | None -> (
+        match !configured_riot_agent with
+        | Some value -> ("X-Riot-Agent", value) :: headers
+        | None -> headers
+      )
 
 let make_fetch = fun ~get ?post () ->
   let post =

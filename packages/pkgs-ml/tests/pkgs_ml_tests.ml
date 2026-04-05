@@ -178,6 +178,27 @@ let with_riot_agent = fun value f ->
       let _ = Pkgs_ml.Registry.set_riot_agent None in
       raise exn
 
+let with_env_var = fun name value_opt f ->
+  let restore_value = Env.var Env.String ~name in
+  let restore () =
+    match restore_value with
+    | Some value -> Kernel.Env.putenv name value
+    | None -> Kernel.Env.unsetenv name
+  in
+  let () =
+    match value_opt with
+    | Some value -> Kernel.Env.putenv name value
+    | None -> Kernel.Env.unsetenv name
+  in
+  try
+    let result = f () in
+    restore ();
+    result
+  with
+  | exn ->
+      restore ();
+      raise exn
+
 let set_old_mtime = fun path ->
   match Command.make "touch" ~args:[ "-t"; "200001010000"; Path.to_string path ] |> Command.output with
   | Error (Command.SystemError err) -> Error ("failed to spawn touch: " ^ err)
@@ -1015,6 +1036,65 @@ let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun 
       else
         Error ("unexpected publish artifact transport error: " ^ err)
 
+let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
+  with_riot_agent (Some "riot-cli@default") (fun () ->
+    with_env_var "RIOT_AGENT_HEADER" (Some "riot-docs-pipeline@1.0") (fun () ->
+      let cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:(Path.v "/tmp/.riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to be created" in
+      let artifact = "fake-tarball-bytes" in
+      let fetch, requests =
+        make_fetch_recorder
+          ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+            Ok {
+              Pkgs_ml.Registry.status_code = 200;
+              body =
+                {|{
+  "package_name": "minttea",
+  "package_version": "0.4.2",
+  "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
+  "manifest": {
+    "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
+    "url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
+    "url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
+  },
+  "claim": {
+    "key": "claims/minttea.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/minttea/0.4.2.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+            })
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+      in
+      let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+      match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
+      | Error err -> Error err
+      | Ok _ -> (
+          match List.rev !requests with
+          | [ request ] ->
+              let header =
+                List.find_opt (fun (name, _value) -> String.equal name "X-Riot-Agent") request.headers
+              in
+              if header = Some ("X-Riot-Agent", "riot-docs-pipeline@1.0") then
+                Ok ()
+              else
+                Error "expected RIOT_AGENT_HEADER override to win over default agent"
+          | _ -> Error "expected exactly one publish request"
+        )))
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
@@ -1035,6 +1115,7 @@ let tests =
     case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
     case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
     case "registry: publish artifact bubbles transport exceptions as errors" test_registry_publish_artifact_bubbles_transport_exceptions_as_errors;
+    case "registry: env riot agent override wins over default agent" test_registry_riot_agent_env_override_wins_over_default_agent;
   ]
 
 let name = "pkgs-ml Tests"

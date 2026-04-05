@@ -13,7 +13,7 @@ Riot-specific workflow policy.
 5. Use Riot-owned archive and compression APIs for source materialization instead of shelling out to external `tar` commands.
 6. Materialization must validate that `src/<pkg>/<version>/riot.toml` exists before treating a package as present. Legacy repo-snapshot archives should be normalized to package-root layout during extraction instead of leaking nested repo roots into the cache.
 7. Build package download URLs only from sparse-index `artifact_base_url` plus `source_key`. Do not hardcode `cdn.pkgs.ml` or reconstruct artifact paths outside the index contract.
-8. Keep Riot-agent transport metadata explicit and in-process. `pkgs-ml` may expose a small setter for the default `X-Riot-Agent` header, but it should not depend on process environment tricks or hardwire Riot CLI policy into normal request construction.
+8. Keep Riot-agent transport metadata explicit. `pkgs-ml` may expose a small setter for the default `X-Riot-Agent` header, but it should also honor `RIOT_AGENT_HEADER` as a higher-priority override for automation that shells out to `riot` and needs a distinct identity.
 
 ## Validate
 
