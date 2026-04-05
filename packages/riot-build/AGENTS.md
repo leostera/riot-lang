@@ -15,6 +15,8 @@
 9. Test-suite discovery narrowing belongs here. When the CLI parses `package:suite`, carry the suite filter through typed test requests and apply it before building/running binaries instead of forwarding the whole selector as a per-test query string.
 10. `build` returns per-package build results. `run`/`install`/`test`/`bench` should consume those returned outputs directly instead of round-tripping through the server/store to rediscover artifacts by name.
 11. Prepared workspaces are a valid input to the local build runtime. When a caller has already run dependency preparation and needs to append synthetic packages for the same build lane, reuse that prepared workspace instead of forcing a second `ensure_workspace` pass.
+12. Successful builds now record workspace cache generations through `riot-store`. Keep that hook lightweight and best-effort: build success should not turn into command failure just because cache bookkeeping had a problem. Recorded generations must include the full reachable cache closure needed to keep a warm rebuild warm, including exported action-artifact hashes referenced by cached package artifacts.
+13. `install` promotion failures are fatal. Do not downgrade failed project-root or `~/.riot/bin` promotion into warnings or synthetic success.
 
 ## Validate
 

@@ -1,25 +1,33 @@
 open Std
 open Riot_model
 
-let command = let open ArgParser in command "clean" |> about "Clean build artifacts"
+let command =
+  let open ArgParser in
+  let open Arg in
+  command "clean"
+  |> about "Run build cache GC or remove the build root"
+  |> args [
+    flag "json"
+    |> long "json"
+    |> help "Emit machine-readable JSONL events";
+    flag "force"
+    |> long "force"
+    |> help "Remove the entire build root instead of running policy-aware cache GC";
+  ]
 
-let run = fun _matches ->
-  let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  let workspace_manager = Workspace_manager.create () in
-  let (workspace, _load_errors) = Workspace_manager.scan workspace_manager cwd
-  |> Result.expect ~msg:"Failed to scan workspace. Is this a valid riot project?" in
-  let build_dir = Riot_dirs.build_dir_root ~workspace_root:workspace.root in
-  println ("🧹 Cleaning build artifacts in " ^ Path.to_string build_dir ^ "...");
-  match Fs.exists build_dir with
-  | Ok false ->
-      println "Nothing to clean.";
-      Ok ()
-  | Ok true -> (
-      match Fs.remove_dir_all build_dir with
-      | Ok () ->
-          println "Build artifacts cleaned!";
-          Ok ()
-      | Error _ -> Error (Failure "Failed to clean build artifacts")
-    )
-  | Error _ ->
-      Error (Failure "Failed to check build directory")
+let run = fun ~(workspace: Riot_model.Workspace.t) matches ->
+  let mode =
+    if ArgParser.get_flag matches "json" then
+      Build.Json
+    else
+      Build.Human
+  in
+  let on_event event = Build.write_cache_gc_event ~mode event in
+  if ArgParser.get_flag matches "force" then
+    match Riot_store.Cache_gc.force_clean_with_events ~workspace ~on_event with
+    | Ok () -> Ok ()
+    | Error error -> Error (Failure error)
+  else
+    match Riot_store.Cache_gc.clean_with_events ~workspace ~on_event with
+    | Ok _ -> Ok ()
+    | Error error -> Error (Failure error)

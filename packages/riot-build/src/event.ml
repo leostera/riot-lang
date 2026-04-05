@@ -3,6 +3,7 @@ open Std
 type t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
+  | CacheGc of Riot_store.Cache_gc.event
   | Streaming of Client.streaming_event
 
 let telemetry_event_to_json = fun event ->
@@ -65,6 +66,8 @@ let to_json = function
         ("target", Data.Json.String target);
         ("host", Data.Json.Bool host);
       ])
+  | CacheGc event ->
+      Some (Riot_store.Cache_gc.event_to_json event)
   | Streaming event -> (
       match event with
       | Client.BuildStarted _ -> None

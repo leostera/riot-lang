@@ -151,24 +151,49 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
   in
   Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings; exports }
 
+let export_source_path = fun store (entry: export_entry) ->
+  if Path.is_absolute entry.path then
+    None
+  else
+    Some Path.(store.root_dir / Path.v entry.action_hash / entry.path)
+
 let load_manifest = fun store ~hash ->
   match Manifest.load ~path:(manifest_path (get_hash_dir store hash)) with
   | Ok manifest -> Some manifest
   | Error _ -> None
 
+let path_exists = fun path -> Fs.exists path |> Result.unwrap_or ~default:false
+
+let manifest_files_exist = fun store ~hash (manifest: Manifest.t) ->
+  let hash_dir = get_hash_dir store hash in
+  List.for_all
+    (fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
+    manifest.files
+
+let manifest_exports_exist = fun store (manifest: Manifest.t) ->
+  List.for_all
+    (fun (entry: Manifest.export_entry) ->
+      match export_source_path store entry with
+      | Some path -> path_exists path
+      | None -> false)
+    manifest.exports
+
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
   match load_manifest store ~hash with
   | Some manifest ->
-      let files =
-        List.map (fun (entry: Manifest.file_entry) -> entry.path) manifest.files
-      in
-      Some Artifact.{
-        hash;
-        files;
-        ocamlc_warnings = manifest.ocamlc_warnings;
-        exports = manifest.exports
-      }
+      if manifest_files_exist store ~hash manifest && manifest_exports_exist store manifest then
+        let files =
+          List.map (fun (entry: Manifest.file_entry) -> entry.path) manifest.files
+        in
+        Some Artifact.{
+          hash;
+          files;
+          ocamlc_warnings = manifest.ocamlc_warnings;
+          exports = manifest.exports
+        }
+      else
+        None
   | None -> None
 
 (** Save build outputs to the store *)
@@ -232,12 +257,6 @@ let load_plan_bundle = fun store ~hash ->
       | Error _ -> None
     )
   | Error _ -> None
-
-let export_source_path = fun store (entry: export_entry) ->
-  if Path.is_absolute entry.path then
-    None
-  else
-    Some Path.(store.root_dir / Path.v entry.action_hash / entry.path)
 
 let materialize_package_exports = fun store ~exports ~target_dir ->
   Fs.create_dir_all target_dir

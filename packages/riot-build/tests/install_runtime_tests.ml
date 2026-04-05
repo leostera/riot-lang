@@ -23,10 +23,25 @@ let test_install_error_message_names_missing_binary = fun _ctx ->
     ~actual:(Riot_build.install_error_message (Riot_build.BinaryNotFound { binary_name = "demo" }));
   Ok ()
 
+let test_install_error_message_names_promotion_failure = fun _ctx ->
+  Test.assert_equal
+    ~expected:"failed to promote demo to /tmp/demo: permission denied"
+    ~actual:(
+      Riot_build.install_error_message
+        (Riot_build.PromotionFailed {
+          binary_name = "demo";
+          destination = Path.v "/tmp/demo";
+          global = false;
+          reason = "permission denied"
+        })
+    );
+  Ok ()
+
 let tests =
   let open Test in [
     case "install runtime: promoted binary event json" test_install_event_to_json_serializes_promoted_binary;
     case "install runtime: missing binary message" test_install_error_message_names_missing_binary;
+    case "install runtime: promotion failure message" test_install_error_message_names_promotion_failure;
   ]
 
 let name = "Riot Build Install Runtime Tests"

@@ -19,11 +19,12 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0019` - Riot Fix Syntax-Directed Rewrites
 - `RFD0028` - Local Artifact Publishing
 - `RFD0030` - Typ Incremental Library-First Typechecker
-- `RFD0032` - Workspace Operational Config and Build Cache GC
+- `RFD0032` - Riot Cache and GC
 - `RFD0033` - Remote Source Install and Run
 - `RFD0034` - Syn Syntactic Dependency Extraction
 - `RFD0035` - New Test, Bench, and Example Target Layout
 - `RFD0036` - LSP Protocol Package and Riot Language Server
+- `RFD0038` - Riot Workspace Operational Config
 
 ## Rejected
 

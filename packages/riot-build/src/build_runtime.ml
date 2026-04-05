@@ -20,6 +20,7 @@ type build_request = {
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
+  | CacheGc of Riot_store.Cache_gc.event
   | Streaming of Client.streaming_event
 
 type build_error =
@@ -124,7 +125,77 @@ let client_target = fun packages ->
   | [ package ] -> Client.BuildPackage package
   | packages -> Client.BuildPackages packages
 
-let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager request ->
+let sort_uniq_strings = fun values ->
+  let rec dedupe acc = function
+    | [] -> List.rev acc
+    | [ value ] -> List.rev (value :: acc)
+    | left :: ((right :: _) as rest) ->
+        if String.equal left right then
+          dedupe acc rest
+        else
+          dedupe (left :: acc) rest
+  in
+  values |> List.sort String.compare |> dedupe []
+
+let referenced_hashes_of_artifact = fun (artifact: Riot_store.Artifact.t) ->
+  Std.Crypto.Digest.hex artifact.hash
+  :: List.map
+    (fun (entry: Riot_store.Manifest.export_entry) -> entry.action_hash)
+    artifact.exports
+  |> sort_uniq_strings
+
+let generation_lane_of_results = fun ~profile ~target results ->
+  let hashes =
+    List.concat_map
+      (fun (result: Riot_executor.Package_builder.build_result) ->
+        match result.status with
+        | Riot_executor.Package_builder.Built artifact
+        | Riot_executor.Package_builder.Cached artifact ->
+            referenced_hashes_of_artifact artifact
+        | Riot_executor.Package_builder.Skipped _
+        | Riot_executor.Package_builder.Failed _ -> [])
+      results
+    |> sort_uniq_strings
+  in
+  Riot_store.Cache_gc.{ profile; target; hashes }
+
+let new_entries_of_results = fun ~profile ~target results ->
+  List.filter_map
+    (fun (result: Riot_executor.Package_builder.build_result) ->
+      match result.status with
+      | Riot_executor.Package_builder.Built artifact ->
+          Some Riot_store.Cache_gc.{
+            profile;
+            target;
+            hash = Std.Crypto.Digest.hex artifact.Riot_store.Artifact.hash;
+          }
+      | Riot_executor.Package_builder.Cached _
+      | Riot_executor.Package_builder.Skipped _
+      | Riot_executor.Package_builder.Failed _ -> None)
+    results
+
+let record_successful_build_cache_generation = fun request lane_results ->
+  let lanes =
+    List.map
+      (fun (target, results) ->
+        generation_lane_of_results ~profile:request.profile ~target results)
+      lane_results
+  in
+  let new_entries =
+    List.map
+      (fun (target, results) ->
+        new_entries_of_results ~profile:request.profile ~target results)
+      lane_results
+    |> List.concat
+  in
+  match Riot_store.Cache_gc.record_successful_build
+    ~workspace:request.workspace
+    ~lanes
+    ~new_entries with
+  | Ok _ -> Ok ()
+  | Error _ -> Ok ()
+
+let build_with_connect = fun connect ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   match resolve_targets request with
   | Error _ as err -> err
   | Ok targets -> (
@@ -141,7 +212,7 @@ let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager r
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
                     let rec loop acc = function
-                      | [] -> Ok (List.rev acc |> List.concat)
+                      | [] -> Ok (List.rev acc)
                       | target :: rest ->
                           on_event (BuildingTarget { target; host = String.equal target host });
                           let target_arch =
@@ -157,13 +228,24 @@ let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager r
                             ~profile:request.profile
                             ?target_arch
                             (fun event -> on_event (Streaming event)) with
-                          | Ok (Client.BuildCompleted { results; _ }) -> loop (results :: acc) rest
+                          | Ok (Client.BuildCompleted { results; _ }) -> loop ((target, results) :: acc) rest
                           | Ok _ -> loop acc rest
                           | Error err -> Error (ClientError err)
                     in
                     let result = loop [] targets in
                     Client.close client;
-                    result
+                    (
+                      match result with
+                      | Ok lane_results ->
+                          let _ =
+                            if record_cache_generation then
+                              record_successful_build_cache_generation request lane_results
+                            else
+                              Ok ()
+                          in
+                          Ok (List.map snd lane_results |> List.concat)
+                      | Error _ as err -> err
+                    )
                   with
                   | exn ->
                       Client.close client;
@@ -172,9 +254,10 @@ let build_with_connect = fun connect ?(on_event = no_event) ?workspace_manager r
         )
     )
 
-let build = fun ?(on_event = no_event) ?workspace_manager request ->
+let build = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   let pm_session_id = Riot_model.Session_id.make () in
   build_with_connect
+    ~record_cache_generation
     (fun ?workspace_manager ~workspace () ->
       Client.connect_local
         ?workspace_manager
@@ -187,8 +270,9 @@ let build = fun ?(on_event = no_event) ?workspace_manager request ->
     ?workspace_manager
     request
 
-let build_prepared = fun ?(on_event = no_event) ?workspace_manager request ->
+let build_prepared = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   build_with_connect
+    ~record_cache_generation
     (fun ?workspace_manager ~workspace () ->
       Client.connect_local_prepared ?workspace_manager ~workspace ())
     ~on_event

@@ -147,6 +147,9 @@ let run = fun ~workspace matches ->
                   ~mode:output_mode
                   ~target
                   ~host
+                | Riot_build.CacheGc event -> Build.write_cache_gc_event
+                  ~mode:output_mode
+                  event
                 | Riot_build.Streaming streaming_event -> Build.write_streaming_event
                   ~mode:output_mode
                   ~displayed_packages

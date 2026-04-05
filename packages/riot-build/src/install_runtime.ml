@@ -10,14 +10,16 @@ type install_event =
   | Build of Build_runtime.build_event
   | InstallingBinary of { package: string; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
-  | PromotionWarning of { binary: string; destination: Path.t; global: bool; reason: string }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BuildFailed of Build_runtime.build_error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ClientError of Client.error
+
+let ( let* ) = Result.and_then
 
 let no_event: install_event -> unit = fun _ -> ()
 
@@ -32,6 +34,12 @@ let install_error_message = function
   ^ "' was not produced by package '"
   ^ package_name
   ^ "': "
+  ^ reason
+  | PromotionFailed { binary_name; destination; reason; _ } -> "failed to promote "
+  ^ binary_name
+  ^ " to "
+  ^ Path.to_string destination
+  ^ ": "
   ^ reason
   | ClientError err -> Client.error_message err
 
@@ -49,13 +57,6 @@ let install_event_to_json = function
     ("binary", Data.Json.String binary);
     ("destination", path_json destination);
     ("global", Data.Json.Bool global);
-  ])
-  | PromotionWarning { binary; destination; global; reason } -> Some (Data.Json.Object [
-    ("type", Data.Json.String "PromotionWarning");
-    ("binary", Data.Json.String binary);
-    ("destination", path_json destination);
-    ("global", Data.Json.Bool global);
-    ("reason", Data.Json.String reason);
   ])
   | InstalledBinary { binary; duration_ms; global_destination } ->
       Some (
@@ -137,11 +138,14 @@ let promote_binary = fun ~on_event ~src ~dst ~binary ~global ->
   match install_binary_atomically ~src ~dst ~permissions:Fs.Permissions.executable with
   | Ok () ->
       on_event (PromotedBinary { binary; destination = dst; global });
-      Ok true
+      Ok ()
   | Error reason ->
-      on_event
-        (PromotionWarning { binary; destination = dst; global; reason = IO.error_message reason });
-      Ok false
+      Error (PromotionFailed {
+        binary_name = binary;
+        destination = dst;
+        global;
+        reason = IO.error_message reason
+      })
 
 let install = fun ?(on_event = no_event) (request: install_request) ->
   let started_at = Time.Instant.now () in
@@ -156,8 +160,10 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
             Error (BinaryNotFound { binary_name = request.binary_name })
         | Ok (Some (package_name, _binary)) -> (
             on_event (InstallingBinary { package = package_name; binary = request.binary_name });
-            match
-              Build_runtime.build ~on_event:(fun event -> on_event (Build event))
+                match
+              Build_runtime.build
+                ~record_cache_generation:false
+                ~on_event:(fun event -> on_event (Build event))
                 {
                   workspace = request.workspace;
                   packages = [ package_name ];
@@ -177,7 +183,7 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                 | Ok binary_path ->
                     let workspace_root = request.workspace.root in
                     let project_binary = Path.(workspace_root / Path.v request.binary_name) in
-                    let _ = promote_binary
+                    let* () = promote_binary
                       ~on_event
                       ~src:binary_path
                       ~dst:project_binary
@@ -185,33 +191,30 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                       ~global:false in
                     let global_destination =
                       if request.local_only then
-                        None
+                        Ok None
                       else
                         let riot_bin_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "bin") in
                         let global_path = Path.(riot_bin_dir / Path.v request.binary_name) in
-                        let promoted =
-                          match Fs.create_dir_all riot_bin_dir with
-                          | Ok () -> promote_binary
-                            ~on_event
-                            ~src:binary_path
-                            ~dst:global_path
-                            ~binary:request.binary_name
-                            ~global:true
-                          | Error reason ->
-                              on_event
-                                (PromotionWarning {
-                                  binary = request.binary_name;
-                                  destination = riot_bin_dir;
-                                  global = true;
-                                  reason = IO.error_message reason
-                                });
-                              Ok false
-                        in
-                        match promoted with
-                        | Ok true -> Some global_path
-                        | Ok false -> None
-                        | Error _ -> None
+                        match Fs.create_dir_all riot_bin_dir with
+                        | Ok () -> (
+                            match promote_binary
+                              ~on_event
+                              ~src:binary_path
+                              ~dst:global_path
+                              ~binary:request.binary_name
+                              ~global:true with
+                            | Ok () -> Ok (Some global_path)
+                            | Error _ as err -> err
+                          )
+                        | Error reason ->
+                            Error (PromotionFailed {
+                              binary_name = request.binary_name;
+                              destination = riot_bin_dir;
+                              global = true;
+                              reason = IO.error_message reason
+                            })
                     in
+                    let* global_destination = global_destination in
                     let duration = Time.Instant.duration_since
                       ~earlier:started_at
                       (Time.Instant.now ()) in

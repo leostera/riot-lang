@@ -10,6 +10,11 @@ let dot_riot =
 
 let config_path = fun () -> Path.(dot_riot / Path.v "config.toml")
 
+let workspace_riot_dir = fun ~workspace_root -> Path.(workspace_root / Path.v ".riot")
+
+let workspace_operational_config_path = fun ~workspace_root ->
+  Path.(workspace_riot_dir ~workspace_root / Path.v "config.toml")
+
 let registry_dir = fun () ->
   match Env.var Env.String ~name:"RIOT_REGISTRY_DIR" with
   | Some path -> Path.v path

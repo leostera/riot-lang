@@ -4,6 +4,10 @@ val dot_riot: Path.t
 
 val config_path: unit -> Path.t
 
+val workspace_riot_dir: workspace_root:Path.t -> Path.t
+
+val workspace_operational_config_path: workspace_root:Path.t -> Path.t
+
 val registry_dir: unit -> Path.t
 
 val git_registry_host_dir: host:string -> Path.t

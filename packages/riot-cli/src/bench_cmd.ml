@@ -79,6 +79,7 @@ let run = fun ~workspace matches ->
           ~mode:Build.Human
           ~target
           ~host
+        | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
         | Riot_build.Streaming streaming_event -> Build.write_streaming_event
           ~mode:Build.Human
           ~displayed_packages

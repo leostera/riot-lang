@@ -29,6 +29,7 @@ type build_request = Build_runtime.build_request = {
 type build_event = Build_runtime.build_event =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
+  | CacheGc of Riot_store.Cache_gc.event
   | Streaming of Client.streaming_event
 
 type build_error = Build_runtime.build_error =
@@ -69,9 +70,11 @@ let run_event_to_json = Run_runtime.run_event_to_json
 
 let start_local = Internal_server.start_local
 
-let build = Build_runtime.build
+let build = fun ?on_event ?workspace_manager request ->
+  Build_runtime.build ?on_event ?workspace_manager request
 
-let build_prepared = Build_runtime.build_prepared
+let build_prepared = fun ?on_event ?workspace_manager request ->
+  Build_runtime.build_prepared ?on_event ?workspace_manager request
 
 let run = Run_runtime.run
 
@@ -149,13 +152,13 @@ type install_event = Install_runtime.install_event =
   | Build of build_event
   | InstallingBinary of { package: string; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
-  | PromotionWarning of { binary: string; destination: Path.t; global: bool; reason: string }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 
 type install_error = Install_runtime.install_error =
   | BinaryNotFound of { binary_name: string }
   | BuildFailed of build_error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ClientError of Client.error
 
 let install_error_message = Install_runtime.install_error_message

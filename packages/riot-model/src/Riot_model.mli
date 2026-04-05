@@ -44,6 +44,8 @@ module Toolchain_config = Toolchain_config
 
 module User_config = User_config
 
+module Workspace_operational_config = Workspace_operational_config
+
 module Worker_id = Worker_id
 
 module Riot_dirs = Riot_dirs

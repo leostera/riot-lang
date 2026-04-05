@@ -15,6 +15,27 @@ let make_test_workspace = fun tmpdir ->
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 
+let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
+  let riot_dir = Path.(tmpdir / Path.v ".riot") in
+  let _ = Fs.create_dir_all riot_dir |> Result.expect ~msg:"create .riot should succeed" in
+  Fs.write
+    ("[riot.cache]\nkeep_generations = "
+    ^ Int.to_string keep_generations
+    ^ "\nmax_size = \""
+    ^ max_size
+    ^ "\"\n")
+    Path.(riot_dir / Path.v "config.toml")
+  |> Result.expect ~msg:"write .riot/config.toml should succeed"
+
+let make_hash = fun ch -> String.make 64 ch
+
+let write_cache_entry = fun ~(workspace: Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
+  let entry_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
+  let payload = Path.(entry_dir / Path.v "artifact.bin") in
+  let _ = Fs.create_dir_all entry_dir |> Result.expect ~msg:"create cache entry should succeed" in
+  let _ = Fs.write (String.make size 'x') payload |> Result.expect ~msg:"write cache payload should succeed" in
+  entry_dir
+
 let test_save_and_promote_nested_outputs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"store_nested_test"
@@ -385,6 +406,148 @@ let test_materialize_package_exports_fails_when_source_missing = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_get_returns_none_when_export_source_missing = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_missing_export_cache_hit_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let action_hash = Crypto.hash_string "stale-export-action" in
+        let package_hash = Crypto.hash_string "stale-export-package" in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all Path.(sandbox / Path.v "bin") |> Result.expect ~msg:"create bin dir should succeed" in
+        let output = Path.(sandbox / Path.v "bin" / Path.v "tool") in
+        let _ = Fs.write "tool-binary" output |> Result.expect ~msg:"write output should succeed" in
+        let _ = Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~hash:action_hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save action artifact should succeed" in
+        let exports = [
+          Riot_store.Store.{
+            name = "tool";
+            path = Path.v "bin/tool";
+            action_hash = Crypto.Digest.hex action_hash
+          };
+        ] in
+        let _ = Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~exports
+          ~hash:package_hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save package artifact should succeed" in
+        let action_dir = Riot_store.Store.hash_dir_of store action_hash in
+        let _ = Fs.remove_dir_all action_dir |> Result.expect ~msg:"remove action dir should succeed" in
+        match Riot_store.Store.get store package_hash with
+        | None -> Ok ()
+        | Some _ -> Error "expected stale package cache hit to be rejected when export source is missing")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_generation_overflow_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:1 ~max_size:"10 GiB";
+        let hash_a = make_hash 'a' in
+        let hash_b = make_hash 'b' in
+        let entry_a = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_a ~size:16 in
+        let entry_b = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_b ~size:16 in
+        let _ =
+          Riot_store.Cache_gc.record_successful_build
+            ~workspace
+            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          |> Result.expect ~msg:"first generation should record"
+        in
+        let summary =
+          let _ =
+            Riot_store.Cache_gc.record_successful_build
+              ~workspace
+              ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+              ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+            |> Result.expect ~msg:"second generation should record"
+          in
+          Riot_store.Cache_gc.clean
+            ~workspace
+          |> Result.expect ~msg:"clean should enforce generation retention"
+        in
+        let entry_a_exists = Fs.exists entry_a |> Result.unwrap_or ~default:false in
+        let entry_b_exists = Fs.exists entry_b |> Result.unwrap_or ~default:false in
+        if
+          summary.ran_gc
+          && summary.deleted_entries = 1
+          && not entry_a_exists
+          && entry_b_exists
+        then
+          Ok ()
+        else
+          Error "expected generation overflow GC to keep only the newest live cache entry")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_max_size_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:3 ~max_size:"80 B";
+        let hash_a = make_hash 'a' in
+        let hash_b = make_hash 'b' in
+        let hash_c = make_hash 'c' in
+        let entry_a = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_a ~size:64 in
+        let _ =
+          Riot_store.Cache_gc.record_successful_build
+            ~workspace
+            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          |> Result.expect ~msg:"generation A should record"
+        in
+        let entry_b = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_b ~size:64 in
+        let _ =
+          Riot_store.Cache_gc.record_successful_build
+            ~workspace
+            ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+            ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+          |> Result.expect ~msg:"generation B should record"
+        in
+        let entry_c = write_cache_entry ~workspace ~profile:"debug" ~target:"host" ~hash:hash_c ~size:64 in
+        let summary =
+          let _ =
+            Riot_store.Cache_gc.record_successful_build
+              ~workspace
+              ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_c ] } ]
+              ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_c } ]
+            |> Result.expect ~msg:"generation C should record"
+          in
+          Riot_store.Cache_gc.clean
+            ~workspace
+          |> Result.expect ~msg:"clean should enforce max_size policy"
+        in
+        let entry_a_exists = Fs.exists entry_a |> Result.unwrap_or ~default:false in
+        let entry_b_exists = Fs.exists entry_b |> Result.unwrap_or ~default:false in
+        let entry_c_exists = Fs.exists entry_c |> Result.unwrap_or ~default:false in
+        if
+          summary.ran_gc
+          && summary.kept_generations = 1
+          && not entry_a_exists
+          && not entry_b_exists
+          && entry_c_exists
+        then
+          Ok ()
+        else
+          Error "expected max_size GC to drop older retained generations until the cache fits")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let tests =
   Test.[
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
@@ -399,6 +562,11 @@ let tests =
     case "load manifest returns none for malformed payload" test_load_manifest_returns_none_for_malformed_payload;
     case "materialize package exports from action artifacts" test_materialize_package_exports_from_action_artifact;
     case "materialize package exports fails when source missing" test_materialize_package_exports_fails_when_source_missing;
+    case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
+    case "cache GC drops unreferenced entries after generation overflow"
+      test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
+    case "cache GC shrinks retained generations to meet max_size"
+      test_cache_gc_shrinks_retained_generations_to_meet_max_size;
   ]
 
 let name = "Riot Store Tests"

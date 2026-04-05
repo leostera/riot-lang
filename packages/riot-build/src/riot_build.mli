@@ -30,6 +30,7 @@ type build_request = {
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
+  | CacheGc of Riot_store.Cache_gc.event
   | Streaming of Client.streaming_event
 type build_error =
   | NoTargetsMatched of { pattern: string; available_targets: string list }
@@ -152,12 +153,12 @@ type install_event =
   | Build of build_event
   | InstallingBinary of { package: string; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
-  | PromotionWarning of { binary: string; destination: Path.t; global: bool; reason: string }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BuildFailed of build_error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ClientError of Client.error
 val install_error_message: install_error -> string
 

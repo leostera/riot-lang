@@ -1,0 +1,291 @@
+# RFD0032 - Riot Cache and GC
+
+- Feature Name: `riot_cache_and_gc`
+- Start Date: `2026-04-03`
+- Status: `presented`
+- RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
+- Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
+
+## Summary
+[summary]: #summary
+
+This RFD proposes a build-cache retention model and command surface changes for
+build-cache maintenance.
+
+It gives `riot build` the ability to detect and trigger a cache clean up based
+on an explicit policy in `.riot/config.toml`, to make sure the `_build` folder
+doesn't grow forever.
+
+The cache policy lives under:
+
+```toml
+[riot.cache]
+keep_generations = 10
+max_size = "50 GiB"
+```
+
+Each successful build saves a receipt of the hashes it used, and Riot uses
+those receipts to decide which cache entries are still live.
+
+It also gives us a policy-aware `riot clean`, and a destructive `riot clean
+--force`.
+
+## Motivation
+[motivation]: #motivation
+
+Because Riot uses a content-addressable cache for built artifacts, the more you
+build the more your build cache grows. This means:
+
+1. old, stale artifacts quickly use up your disk space, forcing full manual cache deletions
+2. rehydrating large caches of useless artifacts slows down your CI unnecessarily
+
+A generational and size-bound clean-up policy for the build cache that trims
+down the cache automatically leaving only the most recent active artifacts
+would mean you can forget about this problem entirely.
+
+## Guide-level explanation
+[guide-level-explanation]: #guide-level-explanation
+
+The Riot monorepo regularly runs builds for several targets. A single macOS
+native build puts your `_build` folder at ~375MB. If you make a change in
+Kernel or Std, that triggers a whole new workspace-wide build: another ~350MB
+into the cache. Within a days of work you can accumulate several dozen
+gigabytes, especially if working with a few agents that use `riot build` in
+their feedback loop.
+
+The current workflow will have you run `riot clean` periodically, which is easy
+to do locally. However on CI, typically caches have a caching key that isn't
+always as easy to break, sometimes requiring manual action on a web ui.
+
+The new workflow makes it so that `riot build` makes a check on the build
+cache, and decides whether to do a selective clean up or not, effectively
+making riot self-manage its cache.
+
+So if we have a `.riot/config.toml` configuring the cache like this:
+
+```toml
+[riot.cache]
+keep_generations = 10
+max_size = "50 GiB"
+```
+
+Then effectively every 10th successful builds (that's 10 generations) Riot will
+do a check for the cache size, and trigger a clean up if its over 50 GiB.
+
+To make sure that we always preserve _live_ artifacts, every successful build
+saves a manifest of the artifacts it used. In this case, we'd go over the last
+10 manifests, and make sure the set of artifacts used by them (our _live_
+artifacts), are preserved. Everything else can be deleted.
+
+This way locally and on CI, calling `riot build` makes sure that only live
+artifacts are preserved.
+
+
+## Reference-level explanation
+[reference-level-explanation]: #reference-level-explanation
+
+### Cache scope
+
+The first rollout should treat the persistent build cache as a workspace-wide
+operational unit, not as a collection of independently managed lanes.
+
+The important on-disk distinction is:
+
+- `sandbox/` is disposable execution state
+- `out/` is promoted convenience output
+- `cache/` is the persistent hash-addressed artifact store
+
+GC is about that persistent cache.
+
+### Workspace generation receipts
+
+Each successful build should write one workspace-level receipt describing the
+cache entries reachable from that build state.
+
+For example:
+
+```text
+_build/cache/generations/<timestamp>.json
+```
+
+The receipt should record the cache entries needed to preserve the warm state
+of the workspace at that point, including whatever lane information is needed
+to map those entries back to the underlying cache roots.
+
+The first rollout should not require separate receipts per lane.
+
+### Automatic GC triggers
+
+Automatic GC should run when it is triggered by policy.
+
+That means the successful-build flow is:
+
+1. write the new workspace generation receipt
+2. once retained receipts reach `keep_generations`, evaluate whether a GC pass
+   is needed
+3. if the workspace cache is over `max_size`, or if retaining the current
+   generation set would exceed `keep_generations`, run GC
+4. otherwise, do nothing further
+
+With `keep_generations = 10`, this means Riot effectively re-evaluates the
+cache around every 10 successful builds, while still allowing size-triggered GC
+when the workspace cache grows too large sooner than that.
+
+### Generational algorithm
+
+When GC runs, Riot should:
+
+1. keep the newest `keep_generations` receipts
+2. compute the live set as the union of hashes referenced by those receipts
+3. delete cache entries across all lanes that are not in the live set
+4. measure the remaining workspace cache size
+5. if the workspace still exceeds `max_size`, drop the oldest retained receipt
+   and repeat
+
+This gives Riot:
+
+- deterministic retention
+- no per-hit timestamp mutation
+- no LRU bookkeeping in the hot path
+- one coherent retention policy for multi-target workspaces
+- retention based on the sets of hashes actually used by successful builds
+
+### Manual clean behavior
+
+`riot clean` should run the same workspace-wide GC evaluation manually.
+
+So:
+
+- it is policy-respecting
+- it is not destructive by default
+- it may be a no-op if the workspace is already under limits
+
+`riot clean --force` is the explicit destructive variant:
+
+- it removes the build root
+- it discards all warm cache state
+
+This keeps the command contract honest:
+
+- `clean` means "do the normal maintenance pass"
+- `--force` means "throw everything away"
+
+### Default policy
+
+The initial built-in defaults should be:
+
+```toml
+[riot.cache]
+keep_generations = 10
+max_size = "50 GiB"
+```
+
+Those defaults should apply even if the repository does not override them.
+
+### Deliberate non-goals
+
+This RFD deliberately does **not** include:
+
+- LRU policy selection
+- cache-hit timestamps
+- per-lane receipts in the first rollout
+- a separate `riot cache gc` or `riot cache stats` command family
+- moving unrelated formatter or fixer settings in the same change
+
+## Drawbacks
+[drawbacks]: #drawbacks
+
+- Riot gains more lifecycle behavior around successful builds and cleanup
+- workspace receipts add bookkeeping and schema design work
+- the chosen defaults may not fit every repository perfectly
+- a workspace-wide policy may eventually be too coarse for some very large
+  multi-lane workspaces
+
+## Rationale and alternatives
+[rationale-and-alternatives]: #rationale-and-alternatives
+
+### Why use generational GC instead of LRU?
+
+Because LRU optimizes the wrong thing for Riot's cache shape.
+
+In a content-addressed build cache:
+
+- recent churn is often noisy
+- older stable generations are often the ones that are most reusable
+
+And in Riot, a generation is not just "artifacts produced around the same
+time." It is the set of hashes referenced by a successful build receipt.
+
+Generational retention therefore matches the thing Riot actually wants to keep
+warm: successful reusable build states, not merely recently touched entries.
+
+### Why make `riot clean` non-destructive?
+
+Because Riot needs two different operations:
+
+- routine cache maintenance
+- explicit cold reset
+
+If `riot clean` defaults to deleting `_build`, then the ordinary command is the
+most destructive one. That is the wrong default.
+
+### Why use one workspace receipt first?
+
+Because the first problem to solve is bounded retention for the workspace as a
+whole.
+
+Per-lane receipts might become useful later, but they also add more complexity
+to the initial rollout:
+
+- more metadata
+- more edge cases around cross-lane retention
+- more contributor-visible concepts
+
+One workspace receipt is the simpler first operational unit.
+
+### Why not add `riot cache gc` immediately?
+
+Because the command model is simpler if:
+
+- routine maintenance is `riot clean`
+- destructive reset is `riot clean --force`
+
+A dedicated `riot cache` family can be added later if the workflow actually
+needs more explicit cache introspection or operator-only commands.
+
+### What if Riot does nothing?
+
+Then `_build` remains effectively unbounded unless developers and CI resort to
+manual deletion, and `riot clean` remains ambiguous or blunt.
+
+## Prior art
+[prior-art]: #prior-art
+
+- Generational garbage collectors
+  - The core retention idea maps well to successful build generations.
+- Build tools that distinguish reusable cache state from disposable workdirs
+  - Riot already trends this way with `cache/`, `out/`, and `sandbox/`.
+- Tools that separate ordinary cleanup from destructive reset
+  - The command-naming lesson matters here: a routine `clean` command should
+    not silently mean "nuke the full cache."
+
+## Unresolved questions
+[unresolved-questions]: #unresolved-questions
+
+- What exact receipt schema should Riot use for workspace generations once
+  action-level caches become more numerous?
+- Should `riot clean --force` remove only the build root, or should it also
+  remove future repository-local Riot operational files under `.riot/`?
+- What human and JSON reporting should `riot clean` expose for reclaimed size,
+  dropped generations, and no-op runs?
+
+## Future possibilities
+[future-possibilities]: #future-possibilities
+
+- add explicit `riot cache gc` and `riot cache stats` commands later if the
+  workflow needs dedicated cache operations
+- evolve from workspace-wide receipts to lane-aware retention if future cache
+  scale makes that necessary
+- teach CI docs to cache only the valuable persistent parts of `_build`
+- further separate persistent build cache and disposable build state on disk if
+  that simplifies retention

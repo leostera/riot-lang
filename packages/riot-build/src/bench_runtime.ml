@@ -134,7 +134,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
     )
   else
     match
-      Build_runtime.build ~on_event:(fun event -> on_event (Build event))
+      Build_runtime.build ~record_cache_generation:false ~on_event:(fun event -> on_event (Build event))
         {
           workspace = request.workspace;
           packages = requested_packages suites;

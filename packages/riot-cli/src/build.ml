@@ -218,6 +218,61 @@ let write_building_target_event = fun ~mode ~target ~host ->
       if not host then
         out ("🔨 Cross-compiling for " ^ target)
 
+let scaled_size_string = fun bytes divisor suffix ->
+  let whole = Int64.div bytes divisor in
+  let remainder = Int64.rem bytes divisor in
+  let fraction = Int64.div (Int64.mul remainder 10L) divisor in
+  Int64.to_string whole ^ "." ^ Int64.to_string fraction ^ " " ^ suffix
+
+let size_to_string = fun size_bytes ->
+  let kib = 1024L in
+  let mib = Int64.mul kib 1024L in
+  let gib = Int64.mul mib 1024L in
+  let tib = Int64.mul gib 1024L in
+  if Int64.compare size_bytes tib >= 0 then
+    scaled_size_string size_bytes tib "TiB"
+  else if Int64.compare size_bytes gib >= 0 then
+    scaled_size_string size_bytes gib "GiB"
+  else if Int64.compare size_bytes mib >= 0 then
+    scaled_size_string size_bytes mib "MiB"
+  else if Int64.compare size_bytes kib >= 0 then
+    scaled_size_string size_bytes kib "KiB"
+  else
+    Int64.to_string size_bytes ^ " B"
+
+let format_cache_gc_cleanup = fun (summary: Riot_store.Cache_gc.summary) ->
+  Int.to_string summary.deleted_entries
+  ^ " cache entries and "
+  ^ Int.to_string summary.deleted_generations
+  ^ " generations ("
+  ^ size_to_string summary.size_before_bytes
+  ^ " -> "
+  ^ size_to_string summary.size_after_bytes
+  ^ ")"
+
+let write_cache_gc_event = fun ~mode event ->
+  match mode with
+  | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
+  | Human -> (
+      match event with
+      | Riot_store.Cache_gc.GcStarted _ ->
+          ()
+      | Riot_store.Cache_gc.GcSkipped { trigger = Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcSkipped { summary; _ } ->
+          out ("    Cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ ")")
+      | Riot_store.Cache_gc.GcCompleted { summary; _ } ->
+          out ("    \027[1;32mCleaning\027[0m " ^ format_cache_gc_cleanup summary)
+      | Riot_store.Cache_gc.GcFailed { error; _ } ->
+          out ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
+      | Riot_store.Cache_gc.ForceCleanStarted _ ->
+          ()
+      | Riot_store.Cache_gc.ForceCleanCompleted { build_root } ->
+          out ("    \027[1;32mCleaning\027[0m removed build root " ^ Path.to_string build_root)
+      | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } ->
+          out ("\027[1;31mError\027[0m: failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error)
+    )
+
 let write_streaming_event = fun ~mode ~displayed_packages ~progress event ->
   trace_build ("streaming event: " ^ streaming_event_label event);
   match mode with
@@ -397,6 +452,9 @@ let run_request = fun (request: request) ->
         | Riot_build.BuildingTarget { target; host } ->
             attempted_build := true;
             write_building_target_event ~mode:request.output_mode ~target ~host
+        | Riot_build.CacheGc event ->
+            attempted_build := true;
+            write_cache_gc_event ~mode:request.output_mode event
         | Riot_build.Streaming event ->
             attempted_build := true;
             write_streaming_event ~mode:request.output_mode ~displayed_packages ~progress event;

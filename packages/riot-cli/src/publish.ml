@@ -216,6 +216,9 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
     ~mode:Build.Human
     ~target
     ~host
+  | Riot_publish.Build (Riot_build.CacheGc event) -> Build.write_cache_gc_event
+    ~mode:Build.Human
+    event
   | Riot_publish.Build (Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.CompilationStarted _))) -> ()
   | Riot_publish.Build (Riot_build.Streaming event) -> Build.write_streaming_event
     ~mode:Build.Human

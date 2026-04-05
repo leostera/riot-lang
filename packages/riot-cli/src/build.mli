@@ -25,6 +25,8 @@ val write_pm_event:
 
 val write_building_target_event: mode:output_mode -> target:string -> host:bool -> unit
 
+val write_cache_gc_event: mode:output_mode -> Riot_store.Cache_gc.event -> unit
+
 val write_streaming_event:
   mode:output_mode ->
   displayed_packages:string Std.Collections.HashSet.t ->

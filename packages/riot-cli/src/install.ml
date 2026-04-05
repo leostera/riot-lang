@@ -40,12 +40,6 @@ let write_install_event = fun ~workspace_root (event: Riot_build.install_event) 
   | Riot_build.PromotedBinary { binary; destination; _ } ->
       out
         ("    \027[1;32mPromoted\027[0m " ^ binary ^ " to " ^ display_path ~workspace_root destination)
-  | Riot_build.PromotionWarning { binary; destination; reason=_; _ } ->
-      out
-        ("\027[1;33mWarning\027[0m: failed to promote "
-        ^ binary
-        ^ " to "
-        ^ display_path ~workspace_root destination)
   | Riot_build.InstalledBinary { binary; duration_ms; global_destination } ->
       let duration = Time.Duration.from_millis duration_ms
       |> Time.Duration.to_secs_string ~precision:2 in
@@ -75,6 +69,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             ~mode:Build.Human
             ~target
             ~host
+          | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
           | Riot_build.Streaming streaming_event -> Build.write_streaming_event
             ~mode:Build.Human
             ~displayed_packages
