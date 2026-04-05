@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+let ( let* ) = Result.and_then
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   Riot_model.Package.{
@@ -53,6 +54,11 @@ let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
   | Error _ -> Error "Tempdir creation failed"
+
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
+  | Path.SystemError error -> error
 
 let test_build_scope_drops_commands_and_runtime_outputs = fun _ctx ->
   let pkg = make_package () in
@@ -635,6 +641,78 @@ std = { path = "../std", version = "*" }
             Test.assert_equal ~expected:[ "app" ] ~actual:names;
             Ok ())
 
+let test_workspace_manager_synthesizes_single_package_workspace = fun _ctx ->
+  let root = Path.v
+    ("/tmp/riot_model_single_package_workspace_"
+    ^ Int.to_string (System.OsProcess.current_pid ())
+    ^ "_"
+    ^ Int.to_string (Random.bits ())) in
+  let cleanup () =
+    match Fs.remove_dir_all root with
+    | Ok () -> ()
+    | Error _ -> ()
+  in
+  let original_dir = Env.current_dir () in
+  let result =
+    let* () = Fs.create_dir_all root |> Result.map_error IO.error_message in
+    let src_dir = Path.(root / Path.v "src") in
+    let* () = Fs.create_dir_all src_dir |> Result.map_error IO.error_message in
+    let* () = Fs.write
+      {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+
+[[bin]]
+name = "main"
+path = "src/demo.ml"
+|}
+      Path.(root / Path.v "riot.toml")
+    |> Result.map_error IO.error_message in
+    let* () = Fs.write "let () = print_endline \"demo\"\n" Path.(src_dir / Path.v "demo.ml")
+    |> Result.map_error IO.error_message in
+    let* () = Env.set_current_dir root |> Result.map_error path_error_message in
+    let workspace_manager = Riot_model.Workspace_manager.create () in
+    match Riot_model.Workspace_manager.scan workspace_manager (Path.v ".") with
+    | Error err -> Error err
+    | Ok (workspace, errors) ->
+        if not (List.is_empty errors) then
+          Error ("expected no standalone package load errors, got: "
+          ^ String.concat "; " (List.map Riot_model.Workspace_manager.load_error_to_string errors))
+        else
+          match workspace.Riot_model.Workspace.packages with
+          | [ package ] ->
+              if
+                String.equal package.Riot_model.Package.name "demo"
+                && Path.equal package.Riot_model.Package.relative_path (Path.v ".")
+              then
+                Ok ()
+              else
+                Error ("expected detached package scan to synthesize a one-package workspace, got root="
+                ^ Path.to_string workspace.root
+                ^ " package="
+                ^ package.Riot_model.Package.name
+                ^ " relative="
+                ^ Path.to_string package.Riot_model.Package.relative_path)
+          | packages ->
+              Error ("expected one package, got "
+              ^ Int.to_string (List.length packages)
+              ^ " root="
+              ^ Path.to_string workspace.root
+              ^ " names="
+              ^ String.concat ", " (List.map (fun (pkg:Riot_model.Package.t) -> pkg.name) packages))
+  in
+  let _ =
+    match original_dir with
+    | Ok dir -> Env.set_current_dir dir
+    | Error _ -> Ok ()
+  in
+  cleanup ();
+  result
+
 let test_user_config_parses_registry_api_token = fun _ctx ->
   let toml =
     Std.Data.Toml.parse
@@ -827,6 +905,7 @@ let tests =
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
     case "workspace manager: missing path+version deps defer to external resolution" test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback;
+    case "workspace manager: standalone package scan synthesizes workspace" test_workspace_manager_synthesizes_single_package_workspace;
     case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;
     case "user config: parses registry urls" test_user_config_parses_registry_urls;
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;

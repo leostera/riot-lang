@@ -17,10 +17,14 @@ val load_riot_toml: t -> Path.t -> (Std.Data.Toml.value, string) result
 *)
 val find_workspace_root: t -> Path.t -> Path.t option
 
-(** Scan for a workspace starting from the given path. Walks up to find the
-    workspace root, loads the workspace manifest, discovers all member packages
-    and external dependencies, and returns a fully populated Workspace.t along with
-    any errors encountered while loading external packages. *)
+(** Scan from the given path.
+
+    If a workspace root is found, load the full workspace. Otherwise, if a
+    standalone package [riot.toml] is found while walking upward, synthesize a
+    one-package workspace rooted at that package directory.
+
+    Returns the populated workspace and any package load errors encountered
+    while loading external path dependencies. *)
 val scan: t -> Path.t -> ((Workspace.t * load_error list), string) result
 
 (** Alias for scan *)

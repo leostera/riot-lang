@@ -82,6 +82,34 @@ let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
       let _ = HashMap.insert t.workspace_roots key result in
       result
 
+let rec find_scan_roots: t -> Path.t -> package_root:Path.t option -> (Path.t option * Path.t option)
+  = fun t start_dir ~package_root ->
+  let manifest_path = Path.(start_dir / riot_toml) in
+  let next package_root =
+    match Path.parent start_dir with
+    | Some parent when parent != start_dir -> find_scan_roots t parent ~package_root
+    | _ -> (None, package_root)
+  in
+  match Fs.exists manifest_path with
+  | Ok true -> (
+      match load_riot_toml t manifest_path with
+      | Ok (Data.Toml.Table items) ->
+          let package_root =
+            if Option.is_none package_root && List.assoc_opt "package" items != None then
+              Some start_dir
+            else
+              package_root
+          in
+          if List.assoc_opt "workspace" items != None then
+            (Some start_dir, package_root)
+          else
+            next package_root
+      | Ok _
+      | Error _ -> next package_root
+    )
+  | Ok false
+  | Error _ -> next package_root
+
 let load_member_package:
   t ->
   Path.t ->
@@ -292,32 +320,81 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     all_errors
   )
 
+let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error list, string) result =
+  fun t package_root ->
+  let manifest_path = Path.(package_root / riot_toml) in
+  match load_riot_toml t manifest_path with
+  | Error err when String.starts_with ~prefix:"failed to read" err ->
+      Error "Failed to read package TOML"
+  | Error err ->
+      Error ("Failed to parse package TOML: " ^ err)
+  | Ok toml -> (
+      match Package.from_toml
+        toml
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:package_root
+        ~relative_path:(Path.v ".") with
+      | Error err -> Error ("Failed to parse package manifest: " ^ err)
+      | Ok package ->
+          let seen = Cell.create [ package.name ] in
+          let external_results =
+            List.map
+              (load_external_package
+                t
+                package_root
+                ~declared_from:package_root
+                ~seen
+                ~workspace_deps:[]
+                ~workspace_dev_deps:[]
+                ~workspace_build_deps:[]
+                ~dependant:(Some package.name))
+              (Package.all_dependencies package)
+          in
+          let external_packages = List.concat_map fst external_results in
+          let external_errors = List.concat_map snd external_results in
+          Ok (Workspace.make ~root:package_root ~packages:(package :: external_packages) (), external_errors)
+    )
+
 let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun t path ->
   try
-    match find_workspace_root t path with
-    | None -> Error "No workspace root found"
-    | Some workspace_root ->
+    match find_scan_roots t path ~package_root:None with
+    | Some workspace_root, _ ->
         let key = path_key workspace_root in
-        match HashMap.get t.scans key with
-        | Some result -> result
-        | None ->
-            let toml_path = Path.(workspace_root / riot_toml) in
-            let result =
-              match load_riot_toml t toml_path with
-              | Error err when String.starts_with ~prefix:"failed to read" err ->
-                  Error "Failed to read workspace TOML"
-              | Error err ->
-                  Error ("Failed to parse workspace TOML: " ^ err)
-              | Ok toml -> (
-                  match Workspace.of_toml toml with
-                  | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
-                  | Ok workspace_manifest ->
-                      let (workspace, errors) = build_workspace t workspace_root workspace_manifest in
-                      Ok (workspace, errors)
-                )
-            in
-            let _ = HashMap.insert t.scans key result in
-            result
+        (
+          match HashMap.get t.scans key with
+          | Some result -> result
+          | None ->
+              let toml_path = Path.(workspace_root / riot_toml) in
+              let result =
+                match load_riot_toml t toml_path with
+                | Error err when String.starts_with ~prefix:"failed to read" err ->
+                    Error "Failed to read workspace TOML"
+                | Error err ->
+                    Error ("Failed to parse workspace TOML: " ^ err)
+                | Ok toml -> (
+                    match Workspace.of_toml toml with
+                    | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
+                    | Ok workspace_manifest ->
+                        let (workspace, errors) = build_workspace t workspace_root workspace_manifest in
+                        Ok (workspace, errors)
+                  )
+              in
+              let _ = HashMap.insert t.scans key result in
+              result
+        )
+    | None, Some package_root ->
+        let key = path_key package_root in
+        (
+          match HashMap.get t.scans key with
+          | Some result -> result
+          | None ->
+              let result = build_single_package_workspace t package_root in
+              let _ = HashMap.insert t.scans key result in
+              result
+        )
+    | None, None -> Error "No workspace root found"
   with
   | exn -> Error ("Scan failed: " ^ Exception.to_string exn)
 
