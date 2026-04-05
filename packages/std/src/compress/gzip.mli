@@ -14,7 +14,7 @@ type 'read_err read_error =
   (** The upstream compressed source reader failed. *)
   | Gzip_error of error
 (** The gzip payload was malformed or incomplete. *)
-(** Errors returned by streaming decompression into a writer. *)
+(** Errors returned by streaming compression or decompression into a writer. *)
 type ('read_err, 'write_err) stream_error =
   | Stream_source_error of 'read_err
   (** The compressed source reader failed. *)
@@ -22,7 +22,7 @@ type ('read_err, 'write_err) stream_error =
   (** The destination writer failed. *)
   | Stream_gzip_error of error
 (** The gzip engine rejected the payload or output stream. *)
-(** Errors returned by file-based decompression helpers. *)
+(** Errors returned by file-based compression helpers. *)
 type file_error =
   | File_io_error of Fs.error
   (** Opening, reading, writing, or closing a file failed. *)

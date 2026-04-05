@@ -172,10 +172,8 @@ type t =
   | NetworkAuthenticationRequired
   (** 511 - Network authentication required *)
   (* Extension *)
+  (** Custom or non-standard status code. *)
   | Extension of int
-
-(** Custom/non-standard status codes *)
-val of_int: int -> t
 
 (** Creates status code from integer value.
 
@@ -183,7 +181,7 @@ val of_int: int -> t
 
     ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
     Status.of_int 999 (* Extension 999 *) ``` *)
-val to_int: t -> int
+val of_int: int -> t
 
 (** Converts status code to integer value.
 
@@ -191,9 +189,7 @@ val to_int: t -> int
 
     ```ocaml Status.to_int Status.Ok (* 200 *) Status.to_int Status.NotFound (*
     404 *) ``` *)
-val of_string: string -> (t, [
-    `InvalidStatus
-  ]) result
+val to_int: t -> int
 
 (** Parses status code from string representation.
 
@@ -201,7 +197,9 @@ val of_string: string -> (t, [
 
     ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
     (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` *)
-val to_string: t -> string
+val of_string: string -> (t, [
+    `InvalidStatus
+  ]) result
 
 (** Converts status code to string representation of the integer.
 
@@ -209,7 +207,7 @@ val to_string: t -> string
 
     ```ocaml Status.to_string Status.Ok (* "200" *) Status.to_string
     Status.NotFound (* "404" *) ``` *)
-val reason_phrase: t -> string
+val to_string: t -> string
 
 (** Returns the standard reason phrase for a status code.
 
@@ -218,7 +216,7 @@ val reason_phrase: t -> string
     ```ocaml Status.reason_phrase Status.Ok (* "OK" *) Status.reason_phrase
     Status.NotFound (* "Not Found" *) Status.reason_phrase
     Status.InternalServerError (* "Internal Server Error" *) ``` *)
-val is_informational: t -> bool
+val reason_phrase: t -> string
 
 (** Returns [true] if status code is in 1xx range (informational).
 
@@ -226,7 +224,7 @@ val is_informational: t -> bool
 
     ```ocaml Status.is_informational Status.Continue (* true *)
     Status.is_informational Status.Ok (* false *) ``` *)
-val is_success: t -> bool
+val is_informational: t -> bool
 
 (** Returns [true] if status code is in 2xx range (success).
 
@@ -235,7 +233,7 @@ val is_success: t -> bool
     ```ocaml Status.is_success Status.Ok (* true *) Status.is_success
     Status.Created (* true *) Status.is_success Status.NotFound (* false *) ```
 *)
-val is_redirection: t -> bool
+val is_success: t -> bool
 
 (** Returns [true] if status code is in 3xx range (redirection).
 
@@ -244,7 +242,7 @@ val is_redirection: t -> bool
     ```ocaml Status.is_redirection Status.MovedPermanently (* true *)
     Status.is_redirection Status.Found (* true *) Status.is_redirection
     Status.Ok (* false *) ``` *)
-val is_client_error: t -> bool
+val is_redirection: t -> bool
 
 (** Returns [true] if status code is in 4xx range (client error).
 
@@ -253,7 +251,7 @@ val is_client_error: t -> bool
     ```ocaml Status.is_client_error Status.BadRequest (* true *)
     Status.is_client_error Status.NotFound (* true *) Status.is_client_error
     Status.InternalServerError (* false *) ``` *)
-val is_server_error: t -> bool
+val is_client_error: t -> bool
 
 (** Returns [true] if status code is in 5xx range (server error).
 
@@ -262,7 +260,7 @@ val is_server_error: t -> bool
     ```ocaml Status.is_server_error Status.InternalServerError (* true *)
     Status.is_server_error Status.NotImplemented (* true *)
     Status.is_server_error Status.NotFound (* false *) ``` *)
-val compare: t -> t -> int
+val is_server_error: t -> bool
 
 (** Compares two status codes by their integer values.
 
@@ -270,7 +268,7 @@ val compare: t -> t -> int
 
     ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
     ``` *)
-val equal: t -> t -> bool
+val compare: t -> t -> int
 
 (** Checks if two status codes are equal.
 
@@ -278,3 +276,4 @@ val equal: t -> t -> bool
 
     ```ocaml Status.equal Status.Ok Status.Ok (* true *) Status.equal Status.Ok
     Status.NotFound (* false *) ``` *)
+val equal: t -> t -> bool

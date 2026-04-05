@@ -80,36 +80,36 @@
 open Global
 
 (** Year in the Gregorian calendar. Cannot be abbreviated (93 means year 93, not 1993). *)
-(** Month: 1..12 *)
 type year = int
-(** Day of month: 1..31 *)
+(** Month: 1..12 *)
 type month = int
-(** Hour: 0..23 *)
+(** Day of month: 1..31 *)
 type day = int
-(** Minute: 0..59 *)
+(** Hour: 0..23 *)
 type hour = int
-(** Second: 0..59 *)
+(** Minute: 0..59 *)
 type minute = int
-(** Day of week: 1 (Monday) .. 7 (Sunday), following ISO 8601 *)
+(** Second: 0..59 *)
 type second = int
-(** Last day of month: 28 | 29 | 30 | 31 *)
+(** Day of week: 1 (Monday) .. 7 (Sunday), following ISO 8601 *)
 type day_number = int
-(** Week number: 1..53 *)
+(** Last day of month: 28 | 29 | 30 | 31 *)
 type last_day_of_month = int
-(** A date without timezone information *)
+(** Week number: 1..53 *)
 type week_number = int
-(** A time without date or timezone *)
+(** A date without timezone information *)
 type date = {
   year: year;
   month: month;
   day: day;
 }
-(** Year and ISO week number *)
+(** A time without date or timezone *)
 type time = {
   hour: hour;
   minute: minute;
   second: second;
 }
+(** Year and ISO week number *)
 type year_and_week = {
   year: year;
   week: week_number;

@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "14d024a6bd9b42e4"
+dependency_hash = "aa2559e5019d9223"
 
 [[packages]]
 name = "blink"
@@ -246,7 +246,7 @@ dev_dependencies = []
 name = "riot-cli"
 root = "packages/riot-cli"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-executor", package = { name = "riot-executor" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "riot-fmt", package = { name = "riot-fmt" } }, { name = "riot-init", package = { name = "riot-init" } }, { name = "riot-lsp", package = { name = "riot-lsp" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-publish", package = { name = "riot-publish" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }, { name = "typ", package = { name = "typ" } }]
+dependencies = [{ name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-doc", package = { name = "riot-doc" } }, { name = "riot-executor", package = { name = "riot-executor" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "riot-fmt", package = { name = "riot-fmt" } }, { name = "riot-init", package = { name = "riot-init" } }, { name = "riot-lsp", package = { name = "riot-lsp" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-publish", package = { name = "riot-publish" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }, { name = "typ", package = { name = "typ" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -350,7 +350,7 @@ dev_dependencies = []
 name = "riot-lsp"
 root = "packages/riot-lsp"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "jsonrpc", package = { name = "jsonrpc" } }, { name = "krasny", package = { name = "krasny" } }, { name = "lsp", package = { name = "lsp" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }, { name = "typ", package = { name = "typ" } }]
+dependencies = [{ name = "jsonrpc", package = { name = "jsonrpc" } }, { name = "krasny", package = { name = "krasny" } }, { name = "lsp", package = { name = "lsp" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }, { name = "typ", package = { name = "typ" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -367,6 +367,14 @@ name = "riot-toolchain"
 root = "packages/riot-toolchain"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "riot-model", package = { name = "riot-model" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-doc"
+root = "packages/riot-doc"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
 dev_dependencies = []
 

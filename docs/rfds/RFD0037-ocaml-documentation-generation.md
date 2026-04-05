@@ -9,8 +9,13 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes a new `riot doc` command and a `riot-doc` code-generation pipeline that build modern, static documentation sites for OCaml packages from source AST/types, then uploads them to
-`docs.pkgs.ml/p/<package>/<version>/` in the shape expected by the docs service.
+This RFD proposes a new `riot doc` command and a `riot-doc` code-generation pipeline that build modern, static documentation sites for OCaml packages from source AST/types.
+
+The local default output is:
+
+- `_build/doc/<package>/<version>/...`
+
+Generated assets are then published by the docs service into `docs.pkgs.ml/p/<package>/<version>/`.
 
 The proposal mirrors docs.rs assumptions for isolation and reproducibility:
 
@@ -40,7 +45,7 @@ Roughly:
 - `riot doc` becomes a first-class command.
 - It discovers a target package and its public surface.
 - It renders a static docs site from parsed docs/signatures and type information.
-- It writes HTML/CSS/JS to `target/docs/<package>/` locally.
+- It writes HTML/CSS/JS to `_build/doc/<package>/<version>/` locally.
 - CI/registry runners upload that output under
   `docs/<package>/<version>/` so `docs.pkgs.ml` can serve it at
   `/p/<package>/<version>/`.
@@ -50,9 +55,9 @@ Roughly:
 ```sh
 riot doc
 riot doc --package std
-riot doc --open
 riot doc --all
-riot doc --format html --output ./dist/docs
+riot doc --output ./dist/docs
+riot docs --release -p colors
 ```
 
 ### Contract by assumption
@@ -60,6 +65,7 @@ riot doc --format html --output ./dist/docs
 - If package `foo` depends on `bar@0.0.1`, generated docs for `foo` may link to `bar` using:
   `https://docs.pkgs.ml/p/bar/0.0.1/`.
 - If that dependency docs payload is not available yet, links can remain as dead links temporarily. This is explicit and acceptable for now.
+- `riot doc` does not enforce strict link validation; dependency docs missing at generation time must not fail the build (`--strict-links` is intentionally not a required flag).
 - If package sources and lockfile hashes are unchanged, docs and cross-package links should be re-used from cache for a zero-work rebuild.
 - This enables **isolated package docs generation** and **later stitching** when dependencies become available.
 
@@ -78,26 +84,23 @@ Riot can adopt this model without waiting for a monolithic external toolchain.
 
 ### 1) CLI contract
 
-`packages/riot-cli` currently exposes `doc` in the command table but has no command module.
+`riot doc` is wired from `packages/riot-cli` to `Riot_doc` with a dedicated parser module.
 
-`riot doc` should be wired to:
-
-- parse flags
-- resolve workspace/package context
-- call a new `Riot_doc` API
-- return progress on `stderr` and generated artifact paths on `stdout`.
+- parse workspace/package selection flags
+- build release/debug output paths
+- support cache controls (`--force`, `--no-cache`)
+- print generated package paths and cache status to stdout
 
 Suggested flags:
 
 - `--package <name>`: select root package
 - `--all`: document all publishable packages in workspace
 - `--output <dir>`: override output directory (default from target dir)
-- `--open`: open index file locally
-- `--no-deps`: skip docs-link map generation for dependencies
-- `--format html` (initially only HTML is required)
-- `--clean`: clear previous docs output before generation
+- `--release`: write release docs to `docs/<package>/<version>`
 - `--force`: force rebuild and write through cache even if key exists
 - `--no-cache`: skip cache read/write for this invocation
+
+`riot docs` is accepted as an alias for `riot doc` to support release-runner style invocation.
 
 ### 2) New package split
 
@@ -117,7 +120,7 @@ Use `syn` as the source of structural truth (including docstrings/comments) and 
 Use a deterministic output tree under package docs root:
 
 ```text
-docs-root/
+_build/doc/<package>/<version>/
   index.html
   search.json
   modules/
@@ -132,7 +135,7 @@ docs-root/
     app.js
 ```
 
-For package publish staging, command output should be uploaded under
+For package publish staging, command output from `_build/doc/<package>/<version>/` should be uploaded under
 `docs/<package>/<version>/` so route resolution in `services/docs.pkgs.ml` remains unchanged:
 
 - `docs/<name>/<version>/index.html`
@@ -156,7 +159,7 @@ The link map is derived from resolved dependency metadata (`package` + locked ve
   - `output_prefix: docs/<package>/<version>/`
 - Implement `riot doc` so this stage becomes real:
   - it must read workspace/package context from unpacked publish artifact
-  - it must write docs to a directory discoverable by a runner uploader
+  - it must write docs to `_build/doc/<package>/<version>/` by default
   - it must fail fast and clearly if package declaration is incomplete.
 
 No docs router behavior changes are needed immediately in `services/docs.pkgs.ml`.
@@ -201,7 +204,7 @@ A practical first implementation should run in this order:
 
 Define and pin behavior before code generation:
 
-1. confirm docs output root and URL contract is exactly `docs/<package>/<version>/...` and that `index.html` is default at package root.
+1. confirm local docs output root and URL contract is exactly `_build/doc/<package>/<version>/...` and that `docs/<package>/<version>/` is the publish contract used by the docs service. `index.html` is the default package root.
 2. define `riot doc` exit semantics: nonzero on any root package hard failure, zero with warnings only if all required packages rendered.
 3. define one supported format initially: HTML with optional `--format html` alias.
 4. define dependency link policy: docs links may point to `https://docs.pkgs.ml/p/<dep>/<version>/` even when dependency docs are absent; this is not a hard failure in MVP.
@@ -220,7 +223,7 @@ Define and pin behavior before code generation:
 1. add `packages/riot-doc` crate/package with a single public entrypoint module `Doc` that accepts a normalized request object.
 2. implement `type cli_options`, `type request`, and `type result_summary` in `packages/riot-doc/src/doc.mli`.
 3. update `packages/riot-cli` command registry to wire `riot doc` to `Riot_doc`.
-4. implement `packages/riot-cli/src/doc.ml` parsing for `--package`, `--all`, `--open`, `--output`, `--format`, `--no-deps`, `--clean`, `--force`, and `--no-cache`.
+4. implement `packages/riot-cli/src/doc.ml` parsing for `--package`, `--all`, `--output`, `--release`, `--force`, and `--no-cache`.
 5. keep command output deterministic by emitting a structured line per package, printing final generated paths on stdout, and printing diagnostics on stderr.
 6. emit cache trace metadata (`cache_key`, `hit`/`miss`) in summary output and optionally emit debug details when cache is disabled.
 
@@ -268,7 +271,7 @@ Define and pin behavior before code generation:
 
 ### Phase 7 - Docs pipeline integration
 
-1. ensure command writes output at path consumed by `services/docs.pkgs.ml` runner (`docs/<package>/<version>/` for staging).
+1. ensure command writes output at path consumed by `services/docs.pkgs.ml` runner (`_build/doc/<package>/<version>/` for local build output, `docs/<package>/<version>/` for staging).
 2. preserve existing `DocsBuildRequest` schema and do not require service-side contract changes.
 3. update `services/docs.pkgs.ml/src/main.ts` docs service docs to include concrete `riot doc` requirements (artifact name, root file, exit expectations).
 4. add an execution contract for runner behavior: command working directory points at unpacked package source, generated output lives under configured `output_root`, and runner uploads only successful `index.html` plus tracked generated assets.
@@ -303,8 +306,8 @@ Proposed implementation touch list:
 
 ### Acceptance criteria for MVP
 
-1. `riot doc` works on a simple package and prints generated root path.
-2. docs are emitted under a deterministic path and include `index.html` and `search.json`.
+1. `riot doc` works on a simple package and prints generated root path under `_build/doc/<package>/<version>/`.
+2. docs are emitted under a deterministic path under `_build/doc/<package>/<version>/` and include `index.html` and `search.json`.
 3. public pages link dependencies to `docs.pkgs.ml/p/<dep>/<version>/`.
 4. generated docs are publishable by docs service using existing `output_prefix` rule.
 5. when dependency docs are absent, build still succeeds and link placeholders are visible.

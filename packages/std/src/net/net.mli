@@ -65,26 +65,25 @@ type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
-
-(** Network addresses *)
 module Uri = Uri
 
-(** TCP stream for connected sockets *)
+(** Network addresses. *)
 module Addr: module type of Addr
 
-(** TCP listener for accepting connections *)
+(** TCP stream for connected sockets. *)
 module TcpStream: module type of Tcp_stream
 
-(** TCP server that manages a listener and handles line-based protocols *)
+(** TCP listener for accepting connections. *)
 module TcpListener: module type of Tcp_listener
 
-(** TCP client for line-based protocols *)
+(** TCP server that manages a listener and handles line-based protocols. *)
 module TcpServer: module type of Tcp_server
 
-(** TLS stream for encrypted connections *)
+(** TCP client for line-based protocols. *)
 module TcpClient: module type of Tcp_client
 
-(** HTTP types and utilities *)
+(** TLS stream for encrypted connections. *)
 module TlsStream: module type of Tls_stream
 
+(** HTTP types and utilities. *)
 module Http: module type of Http

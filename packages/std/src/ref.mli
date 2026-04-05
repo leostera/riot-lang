@@ -64,6 +64,8 @@ open Global
 
 (** A unique identifier for a type ['a]. Each call to [make] creates a fresh
     identifier that is distinct from all others. *)
+type 'a t
+
 (** Creates a new unique reference identifier.
 
     Each call returns a fresh identifier that is guaranteed to be different from
@@ -81,7 +83,6 @@ open Global
 
     Use this to create witness types that prove ownership or capability at
     runtime. *)
-type 'a t
 val make: unit -> 'a t
 
 (** Checks if two references are the same, regardless of their type parameters.

@@ -22,12 +22,14 @@ open Global
 
 (** The client connection type. Contains the TCP stream and internal buffers. *)
 type t
-(** [connect ~host ~port] establishes a TCP connection to the given host and
-    port. Returns [Error] if the connection cannot be established. *)
+(** Errors returned by client operations. *)
 type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
+
+(** [connect ~host ~port] establishes a TCP connection to the given host and
+    port. Returns [Error] if the connection cannot be established. *)
 val connect: host:string -> port:int -> (t, error) result
 
 (** [send client data] sends the string data to the server. The string should

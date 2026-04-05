@@ -75,30 +75,29 @@ open Global
 
 (** {1 Types} *)
 
-(** A CSV row is a list of field values *)
-(** A CSV document is a list of rows *)
+(** A CSV row is a list of field values. *)
 type row = string list
-(** Configuration for CSV parsing and serialization:
+(** A CSV document is a list of rows. *)
+type t = row list
+(** Configuration for CSV parsing and serialization.
+
     - [delimiter]: Character separating fields (default: ',')
     - [quote]: Character for quoting fields (default: '"')
     - [escape]: Character for escaping quotes (default: '"')
-    - [trim_fields]: Whether to trim whitespace from fields (default: false) *)
-type t = row list
+    - [trim_fields]: Whether to trim whitespace from fields (default: false). *)
 type config = {
   delimiter: char;
   quote: char;
   escape: char;
   trim_fields: bool;
 }
+(** CSV parsing errors with position information. *)
 type error =
   | Unterminated_quote of { line: int; column: int }
   | Invalid_escape_sequence of { line: int; column: int }
   | Empty_input
   | Unknown_error of string
-
-(** CSV parsing errors with position information *)
 (** {1 Configuration} *)
-
 (** Default CSV configuration:
     - delimiter: ','
     - quote: '"'

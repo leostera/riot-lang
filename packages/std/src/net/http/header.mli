@@ -47,43 +47,40 @@
 
 open Global
 
-type name = string
 (** Header name (case-insensitive) *)
-type value = string
+type name = string
 (** Header value *)
-type t
-
+type value = string
 (** Collection of HTTP headers *)
+type t
 (** {1 Construction} *)
-
-val empty: t
-
 (** Creates an empty header collection.
 
     ## Examples
 
     ```ocaml let headers = Header.empty in assert (Header.is_empty headers) ```
 *)
-val of_list: (name * value) list -> t
+val empty: t
 
 (** Creates headers from a list of name-value pairs.
 
     ## Examples
 
     ```ocaml let headers = Header.of_list
-    [ ("Content-Type", "text/html"); ("Accept", "text/html") ] ``` *)
-val to_list: t -> (name * value) list
+    [ ("Content-Type", "text/html"); ("Accept", "text/html") ] ```
+*)
+val of_list: (name * value) list -> t
 
 (** Converts headers to a list of name-value pairs.
 
     ## Examples
 
     ```ocaml let headers = Header.of_list [("Host", "example.com")] in
-    Header.to_list headers (* [("host", "example.com")] *) ``` *)
+    Header.to_list headers (* [("host", "example.com")] *) ```
+*)
+val to_list: t -> (name * value) list
+
 (** {1 Modification} *)
-
-val add: t -> name -> value -> t
-
 (** Adds a header, allowing multiple values for the same name.
 
     ## Examples
@@ -94,7 +91,7 @@ val add: t -> name -> value -> t
 
     Header.get_all headers "Accept" (* ["text/html"; "application/json"] *) ```
 *)
-val set: t -> name -> value -> t
+val add: t -> name -> value -> t
 
 (** Sets a header, replacing any existing values for that name.
 
@@ -103,8 +100,9 @@ val set: t -> name -> value -> t
     ```ocaml let headers = Header.empty in let headers = Header.set headers
     "Host" "old.com" in let headers = Header.set headers "Host" "new.com" in
 
-    Header.get headers "Host" (* Some "new.com" *) ``` *)
-val remove: t -> name -> t
+    Header.get headers "Host" (* Some "new.com" *) ```
+*)
+val set: t -> name -> value -> t
 
 (** Removes all headers with the given name.
 
@@ -113,11 +111,11 @@ val remove: t -> name -> t
     ```ocaml let headers = Header.set Header.empty "Host" "example.com" in let
     headers = Header.remove headers "Host" in
 
-    Header.has headers "Host" (* false *) ``` *)
+    Header.has headers "Host" (* false *) ```
+*)
+val remove: t -> name -> t
+
 (** {1 Access} *)
-
-val get: t -> name -> value option
-
 (** Returns the first value for the given header name.
 
     ## Examples
@@ -127,7 +125,7 @@ val get: t -> name -> value option
 
     (* Case-insensitive *) Header.get headers "content-type" (* Some "text/html"
     *) ``` *)
-val get_all: t -> name -> value list
+val get: t -> name -> value option
 
 (** Returns all values for the given header name.
 
@@ -138,25 +136,25 @@ val get_all: t -> name -> value list
 
     Header.get_all headers "Accept" (* ["text/html"; "application/json"] *) ```
 *)
-val has: t -> name -> bool
+val get_all: t -> name -> value list
 
 (** Checks if a header with the given name exists.
 
     ## Examples
 
     ```ocaml Header.has headers "Content-Type" (* true *) Header.has headers
-    "Missing" (* false *) ``` *)
+    "Missing" (* false *) ```
+*)
+val has: t -> name -> bool
+
 (** {1 Iteration} *)
-
-val iter: (name -> value -> unit) -> t -> unit
-
 (** Applies function to each header name-value pair.
 
     ## Examples
 
     ```ocaml Header.iter (fun name value -> Printf.printf "%s: %s\n" name value
     ) headers ``` *)
-val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
+val iter: (name -> value -> unit) -> t -> unit
 
 (** Folds over all header name-value pairs.
 
@@ -164,10 +162,9 @@ val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
 
     ```ocaml let count = Header.fold (fun _ _ acc -> acc + 1) headers 0 in ```
 *)
+val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
+
 (** {1 Properties} *)
-
-val length: t -> int
-
 (** Returns the number of header entries (including duplicates).
 
     ## Examples
@@ -176,13 +173,16 @@ val length: t -> int
     Header.add "Accept" "application/json" in
 
     Header.length headers (* 2 *) ``` *)
-val is_empty: t -> bool
+val length: t -> int
 
 (** Checks if headers collection is empty.
 
     ## Examples
 
-    ```ocaml Header.is_empty Header.empty (* true *) ``` *)
+    ```ocaml Header.is_empty Header.empty (* true *) ```
+*)
+val is_empty: t -> bool
+
 (** {1 Common Header Names} *)
 
 module Name: sig

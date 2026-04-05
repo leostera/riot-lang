@@ -1,13 +1,15 @@
-(** TCP stream for connected sockets *)
+(** TCP stream for connected sockets. *)
 open Global
 
 type t = Kernel.Net.Tcp_stream.t
-(** Connect to a TCP endpoint. This will suspend the process until the
-    connection is established. *)
+(** Errors returned by stream operations. *)
 type error =
   | Connection_refused
   | Closed
   | System_error of IO.error
+
+(** Connect to a TCP endpoint. This will suspend the process until the
+    connection is established. *)
 val connect: Kernel.Net.Addr.stream_addr -> (t, error) result
 
 (** Read data from the stream. This will suspend the process until data is
@@ -21,7 +23,7 @@ val read: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit
     ready for writing. Returns the number of bytes written. *)
 val write: t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
 
-(** Close the stream *)
+(** Close the stream. *)
 val close: t -> unit
 
 (** [to_reader stream] creates a Reader from the TCP stream.

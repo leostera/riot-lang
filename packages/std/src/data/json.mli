@@ -80,6 +80,8 @@ open Global
 
 (** {1 Types} *)
 
+(** JSON value representation. Supports all standard JSON types: null,
+    booleans, numbers (int/float), strings, arrays, and objects. *)
 type t =
   | Null
   | Bool of bool
@@ -88,8 +90,7 @@ type t =
   | String of string
   | Array of t list
   | Object of (string * t) list
-(** JSON value representation. Supports all standard JSON types: null,
-          booleans, numbers (int/float), strings, arrays, and objects. *)
+(** JSON parsing errors with position information for debugging. *)
 type error =
   | Unterminated_string of { position: int }
   | Invalid_literal of { expected: string; position: int; found: string }
@@ -101,10 +102,7 @@ type error =
   | Unexpected_character of { position: int; character: char; expected: string }
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
-
-(** JSON parsing errors with position information for debugging. *)
 (** {1 Parsing and Serialization} *)
-
 (** Parses a JSON string into a [t] value.
     
     ## Examples
@@ -139,8 +137,6 @@ val of_string: string -> (t, error) result
 *)
 val to_string: t -> string
 
-val to_string_pretty: ?depth:int -> t -> string
-
 (** Serializes a JSON value with stable two-space indentation.
 
     This preserves array/object field order from the input value, unlike any
@@ -166,6 +162,7 @@ val to_string_pretty: ?depth:int -> t -> string
        } *)
     ```
 *)
+val to_string_pretty: ?depth:int -> t -> string
 
 (** Converts a parse error to a human-readable error message.
 

@@ -22,10 +22,9 @@ module Config: sig
   val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t
 end
 
+(** Create a configuration with optional parameters *)
 val config:
   ?render_mode:Config.render_mode -> ?fps:int -> ?output:Config.output_target -> unit -> Config.t
-
-(** Create a configuration with optional parameters *)
 
 (** Terminal events *)
 module Event: sig
@@ -137,6 +136,7 @@ end
 
 module Component = Component
 
+(** Create a new application *)
 val app:
   init:('model -> 'model * Command.t) ->
   update:(Event.t -> 'model -> 'model * Command.t) ->
@@ -144,10 +144,8 @@ val app:
   unit ->
   'model App.t
 
-(** Create a new application *)
+(** Run the application *)
 val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reason) result
 
-(** Run the application *)
-val start: ?config:Config.t -> 'model App.t -> 'model -> unit
-
 (** Start the application with Actors runtime *)
+val start: ?config:Config.t -> 'model App.t -> 'model -> unit

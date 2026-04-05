@@ -1,74 +1,100 @@
 open Global
 
-(** # Data.Toml - TOML configuration file parser
+(** # Data.Toml - TOML parsing and serialization
 
-    A TOML (Tom's Obvious Minimal Language) parser for configuration files.
-    Focuses on simplicity and common use cases for application configuration.
+    A small TOML parser for configuration text. It supports strings, integers,
+    booleans, arrays, tables, and inline tables.
 
     ## Examples
 
-    Parsing a TOML configuration file:
+    Parsing TOML source text:
 
-    ```ocaml open Std.Data
+    ```ocaml
+    open Std.Data
 
-    (* config.toml: name = "my-app" version = "1.0.0" debug = true
+    let source =
+      {|
+      name = "my-app"
+      version = 1
+      debug = true
 
-    [server] host = "localhost" port = 8080 *)
-
-    match Toml.parse "config.toml" with | Ok root -> (* Extract simple values *)
-    let name = Toml.get_string root |> Option.unwrap in
-
-    (* Navigate to nested tables *) let server = Toml.get_table root |>
-    Option.and_then (List.assoc_opt "server") |> Option.and_then Toml.get_table
+      [server]
+      host = "localhost"
+      port = 8080
+      |}
     in
 
-    (match server with | Some fields -> let host = List.assoc_opt "host" fields
-    |> Option.and_then Toml.get_string in Printf.printf "Server: %s\n"
-    (Option.unwrap host) | None -> ())
-
-    | Error err -> Log.error "TOML parse error: %s" (Toml.error_to_string err)
+    match Toml.parse source with
+    | Ok root ->
+        let server =
+          Toml.get_table root
+          |> Option.and_then (List.assoc_opt "server")
+          |> Option.and_then Toml.get_table
+        in
+        (match server with
+        | Some fields ->
+            let host = List.assoc_opt "host" fields |> Option.and_then Toml.get_string in
+            Printf.printf "Server: %s\n" (Option.unwrap host)
+        | None -> ())
+    | Error err ->
+        Log.error "TOML parse error: %s" (Toml.error_to_string err)
     ```
 
     Working with arrays:
 
-    ```ocaml (* config.toml: dependencies = ["foo", "bar", "baz"] *)
+    ```ocaml
+    let source = {|dependencies = ["foo", "bar", "baz"]|} in
 
-    match Toml.parse_file "config.toml" with | Ok root -> let deps =
-    Toml.get_table root |> Option.and_then (List.assoc_opt "dependencies") |>
-    Option.and_then Toml.get_array in
-
-    (match deps with | Some items -> List.iter (fun item -> match
-    Toml.get_string item with | Some dep -> Printf.printf "Dep: %s\n" dep | None
-    -> () ) items | None -> ()) | Error err -> () ```
+    match Toml.parse source with
+    | Ok root ->
+        let deps =
+          Toml.get_table root
+          |> Option.and_then (List.assoc_opt "dependencies")
+          |> Option.and_then Toml.get_array
+        in
+        (match deps with
+        | Some items ->
+            List.iter
+              (fun item ->
+                match Toml.get_string item with
+                | Some dep -> Printf.printf "Dep: %s\n" dep
+                | None -> ())
+              items
+        | None -> ())
+    | Error _ ->
+        ()
+    ```
 
     ## Supported TOML Features
 
     - Strings
+    - Integers
     - Booleans
     - Arrays
     - Tables (sections)
+    - Inline tables
 
     ## Limitations
 
     This is a minimal TOML parser focused on common configuration needs. Not all
     TOML 1.0 features are supported:
-    - No integers or floats (use strings and convert)
+    - No floats
     - No dates/times
-    - No inline tables
     - No array of tables
 
     For full TOML 1.0 support, consider using a more complete parser. *)
 
 (** {1 Types} *)
 
+(** TOML value representation supporting strings, integers, booleans, arrays,
+    and tables. *)
 type value =
   | String of string
   | Int of int
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
-(** TOML value representation supporting strings, integers, booleans, arrays, and
-          tables. *)
+(** TOML parsing errors with position information for debugging. *)
 type error =
   | Invalid_path of { path: string }
   | File_read_error of { path: string; reason: string }
@@ -76,21 +102,16 @@ type error =
   | Unterminated_string of { position: int }
   | Unterminated_array of { position: int }
   | Unexpected_char of { position: int; found: char; expected: string }
-
-(** TOML parsing errors with position information for debugging. *)
 (** {1 Parsing} *)
-
-(** Parses a string into TOML and returns the root table.
+(** Parses TOML source text and returns the root table.
     
     ## Examples
     
     ```ocaml
-    match Toml.parse "<toml ...>" with
+    match Toml.parse {|name = "my-app"|} with
     | Ok root ->
         (* Extract configuration *)
         ()
-    | Error (File_read_error { path; reason }) ->
-        Printf.printf "Cannot read %s: %s\n" path reason
     | Error (Parse_error { position; reason; _ }) ->
         Printf.printf "Parse error at position %d: %s\n" position reason
     | Error err ->
@@ -99,11 +120,8 @@ type error =
     
     ## Error Cases
     
-    Returns [Error] for:
-    - File not found or not readable
-    - Invalid TOML syntax
-    - Unterminated strings or arrays
-    - Unexpected characters
+    Returns [Error] for invalid TOML syntax, unterminated strings or arrays,
+    and unexpected characters.
 *)
 val parse: string -> (value, error) result
 
