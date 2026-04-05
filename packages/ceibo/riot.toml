@@ -1,6 +1,6 @@
 [package]
 name = "ceibo"
-version = "0.0.5"
+version = "0.0.11"
 description = "Red-green syntax trees for incremental parsers"
 license = "Apache-2.0"
 public = true

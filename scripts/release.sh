@@ -151,6 +151,8 @@ Do exactly these steps:
 5. Commit the release prep changes with the conventional commit message:
    - \`chore(release): prepare <next-version>\`
 
+   Use --no-verify if needed
+
 6. Create an annotated git tag:
    - name: \`<next-version>\`
    - message: \`<next-version>\`
