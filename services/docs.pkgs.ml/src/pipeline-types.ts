@@ -4,6 +4,8 @@ export interface PackagePipelineProcessRequest {
   artifact_sha256: string;
   source_archive_key: string;
   source_archive_url: string;
+  riot_install_url?: string;
+  riot_release_metadata_url?: string;
   generate_docs: boolean;
   verify_build: boolean;
 }

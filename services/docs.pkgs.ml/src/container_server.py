@@ -9,7 +9,6 @@ import subprocess
 import tarfile
 import tempfile
 import time
-import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,7 +17,7 @@ PORT = int(os.environ.get("PORT", "8080"))
 DEFAULT_TOOLCHAIN_VERSION = "5.5.0-riot.2"
 DEFAULT_TARGET = "x86_64-unknown-linux-gnu"
 RIOT_BIN = Path.home() / ".riot" / "bin" / "riot"
-RIOT_INSTALL_COMMAND = "curl -sSL https://get.riot.ml | sh -"
+DEFAULT_RIOT_INSTALL_URL = "https://get.riot.ml"
 
 
 def json_bytes(payload):
@@ -36,6 +35,23 @@ def ensure_toolchain_toml(workspace_dir: Path) -> None:
                 "[toolchain]",
                 f'version = "{DEFAULT_TOOLCHAIN_VERSION}"',
                 'targets = ["x86_64-unknown-linux-gnu"]',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def ensure_workspace_manifest(workspace_root: Path, package_name: str) -> None:
+    manifest_path = workspace_root / "riot.toml"
+    if manifest_path.exists():
+        return
+
+    manifest_path.write_text(
+        "\n".join(
+            [
+                "[workspace]",
+                f'members = ["packages/{package_name}"]',
                 "",
             ]
         ),
@@ -65,6 +81,26 @@ def run_command(command: list[str], cwd: Path) -> dict[str, object]:
     }
 
 
+def run_command_checked(
+    command: list[str],
+    cwd: Path,
+    failure_prefix: str,
+) -> dict[str, object]:
+    result = run_command(command, cwd)
+    if result["success"]:
+        return result
+
+    details = []
+    if result["stderr"].strip():
+        details.append(result["stderr"].strip())
+    if result["stdout"].strip():
+        details.append(result["stdout"].strip())
+    detail = "\n".join(details)
+    if detail:
+        raise RuntimeError(f"{failure_prefix}: {detail}")
+    raise RuntimeError(f"{failure_prefix}: exit code {result['exit_code']}")
+
+
 def collect_output_files(root: Path) -> list[dict[str, object]]:
     files: list[dict[str, object]] = []
     for path in sorted(root.rglob("*")):
@@ -83,6 +119,28 @@ def collect_output_files(root: Path) -> list[dict[str, object]]:
     return files
 
 
+def read_text_if_exists(path: Path) -> str | None:
+    if not path.exists() or not path.is_file():
+        return None
+    return path.read_text(encoding="utf-8")
+
+
+def describe_workspace(workspace_root: Path, package_dir: Path) -> str:
+    root_manifest = read_text_if_exists(workspace_root / "riot.toml")
+    package_manifest = read_text_if_exists(package_dir / "riot.toml")
+    root_entries = sorted(path.name for path in workspace_root.iterdir()) if workspace_root.exists() else []
+    package_entries = sorted(path.name for path in package_dir.iterdir()) if package_dir.exists() else []
+    sections = [
+        f"workspace_root={workspace_root}",
+        f"workspace_entries={root_entries}",
+        f"package_dir={package_dir}",
+        f"package_entries={package_entries}",
+        f"workspace_riot_toml={(root_manifest or '<missing>').strip()}",
+        f"package_riot_toml={(package_manifest or '<missing>').strip()}",
+    ]
+    return "\n".join(sections)
+
+
 def command_env() -> dict[str, str]:
     env = os.environ.copy()
     riot_bin_dir = str(RIOT_BIN.parent)
@@ -91,12 +149,33 @@ def command_env() -> dict[str, str]:
     return env
 
 
-def ensure_riot_installed() -> None:
+def download_file(url: str, destination: Path, cwd: Path) -> None:
+    run_command_checked(
+        [
+            "curl",
+            "-fsSL",
+            "--retry",
+            "3",
+            "--retry-delay",
+            "1",
+            "-A",
+            "riot-docs-pipeline/1.0",
+            "-o",
+            str(destination),
+            url,
+        ],
+        cwd,
+        f"failed to download {url}",
+    )
+
+
+def ensure_riot_installed(install_url: str) -> None:
     if RIOT_BIN.exists():
         return
 
+    command = f"curl -sSL {install_url} | sh -"
     process = subprocess.run(
-        ["sh", "-c", RIOT_INSTALL_COMMAND],
+        ["sh", "-c", command],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -107,7 +186,7 @@ def ensure_riot_installed() -> None:
         details = process.stderr.strip()
         if process.stdout.strip():
             details = details + ("\n" if details else "") + process.stdout.strip()
-        raise RuntimeError(f"failed to install riot: {details}")
+        raise RuntimeError(f"failed to install riot from {install_url}: {details}")
 
     if not RIOT_BIN.exists():
         raise RuntimeError("riot install completed without producing ~/.riot/bin/riot")
@@ -148,21 +227,22 @@ def process_release(payload: dict[str, object]) -> dict[str, object]:
     package_name = str(payload["package_name"])
     package_version = str(payload["package_version"])
     source_archive_url = str(payload["source_archive_url"])
+    riot_install_url = str(payload.get("riot_install_url") or DEFAULT_RIOT_INSTALL_URL)
     generate_docs = bool(payload.get("generate_docs", True))
     verify_build = bool(payload.get("verify_build", True))
 
     workspace_root = Path(tempfile.mkdtemp(prefix=f"riot_pipeline_{package_name}_"))
     artifact_path = workspace_root / "package.tar.gz"
     project_dir = workspace_root / "workspace"
-    project_dir.mkdir(parents=True, exist_ok=True)
+    package_dir = project_dir / "packages" / package_name
+    package_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        with urllib.request.urlopen(source_archive_url) as response:
-            artifact_path.write_bytes(response.read())
-
-        extract_archive(artifact_path, project_dir)
+        download_file(source_archive_url, artifact_path, workspace_root)
+        extract_archive(artifact_path, package_dir)
+        ensure_workspace_manifest(project_dir, package_name)
         ensure_toolchain_toml(project_dir)
-        ensure_riot_installed()
+        ensure_riot_installed(riot_install_url)
 
         result: dict[str, object] = {}
 
@@ -171,6 +251,9 @@ def process_release(payload: dict[str, object]) -> dict[str, object]:
                 ["riot", "doc", "--release", "-p", package_name],
                 project_dir,
             )
+            if not docs_result["success"]:
+                diagnostics = describe_workspace(project_dir, package_dir)
+                docs_result["stderr"] = f"{docs_result['stderr']}\n\n[workspace diagnostics]\n{diagnostics}".strip()
             if docs_result["success"]:
                 docs_dir = resolve_docs_dir(project_dir, package_name, package_version)
                 docs_result["output_dir"] = str(docs_dir)
@@ -178,10 +261,14 @@ def process_release(payload: dict[str, object]) -> dict[str, object]:
             result["docs"] = docs_result
 
         if verify_build:
-            result["build"] = run_command(
-                ["riot", "build", "-p", package_name],
+            build_result = run_command(
+                ["riot", "build", package_name],
                 project_dir,
             )
+            if not build_result["success"]:
+                diagnostics = describe_workspace(project_dir, package_dir)
+                build_result["stderr"] = f"{build_result['stderr']}\n\n[workspace diagnostics]\n{diagnostics}".strip()
+            result["build"] = build_result
 
         return result
     finally:

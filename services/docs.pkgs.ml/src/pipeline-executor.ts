@@ -72,8 +72,10 @@ export class ContainerPackagePipelineExecutor implements PackagePipelineExecutor
   }
 }
 
+const RUNNER_REVISION = "v3";
+
 function buildRunnerId(packageName: string, packageVersion: string, artifactSha256: string): string {
-  const identity = `${packageName}-${packageVersion}-${artifactSha256.slice(0, 12)}`;
+  const identity = `${RUNNER_REVISION}-${packageName}-${packageVersion}-${artifactSha256.slice(0, 12)}`;
   return identity
     .toLowerCase()
     .replaceAll(/[^a-z0-9-]+/g, "-")

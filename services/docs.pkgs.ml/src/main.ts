@@ -383,7 +383,7 @@ function buildBuildRunContext(
       riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
       result_key: resultKey,
       logs_key: logsKey,
-      command: ["riot", "build", "-p", event.package_name],
+      command: ["riot", "build", event.package_name],
       runner: {
         kind: "cloudflare-container",
         status: "pending_runner",
@@ -404,7 +404,7 @@ function buildBuildRunContext(
         },
         {
           kind: "build-package",
-          detail: "Run `riot build -p <package>` in the unpacked package workspace to verify the published artifact builds in isolation.",
+          detail: "Run `riot build <package>` in the unpacked package workspace to verify the published artifact builds in isolation.",
         },
         {
           kind: "upload-report",
@@ -667,6 +667,8 @@ async function processQueuedReleases(env: Env): Promise<void> {
         artifact_sha256: event.artifact_sha256,
         source_archive_key: event.source_archive_key,
         source_archive_url: `${CDN_BASE_URL}/${event.source_archive_key}`,
+        riot_install_url: RIOT_INSTALL_SCRIPT_URL,
+        riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
         generate_docs: shouldGenerateDocs,
         verify_build: shouldVerifyBuild,
       });
