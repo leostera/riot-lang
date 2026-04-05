@@ -39,8 +39,8 @@ type color = [
   | uv
 ]
 
-let to_string = fun t ->
-  match t with
+let to_string = fun value ->
+  match value with
   | `ansi i -> "ANSI(" ^ Int.to_string i ^ ")"
   | `rgb (r, g, b) -> "RGB(" ^ Int.to_string r ^ "," ^ Int.to_string g ^ "," ^ Int.to_string b ^ ")"
   | `lrgb (r, g, b) -> "LinearRGB("

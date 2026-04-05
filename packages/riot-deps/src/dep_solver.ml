@@ -673,19 +673,18 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             rest
       | { path=Some path; _ } -> (
           match path_dependency_resolution ~declared_from dep with
-          | Some PreferLocalPath ->
-              (
-                match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
-                | Error _ as err -> err
-                | Ok (resolved, state) -> resolve_manifest_dependencies
-                  ~ctx
-                  ~state
-                  ~required_by
-                  ~declared_from
-                  (List.rev_append resolved.packages acc_packages)
-                  (resolved.dependency :: acc_dependencies)
-                  rest
-              )
+          | Some PreferLocalPath -> (
+              match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
+              | Error _ as err -> err
+              | Ok (resolved, state) -> resolve_manifest_dependencies
+                ~ctx
+                ~state
+                ~required_by
+                ~declared_from
+                (List.rev_append resolved.packages acc_packages)
+                (resolved.dependency :: acc_dependencies)
+                rest
+            )
           | Some FallbackToSource -> (
               match resolve_source_dependency ~ctx ~state dep with
               | Error _ as err -> err
@@ -1053,7 +1052,9 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
       | Some PreferLocalPath ->
           let package_root = resolve_dependency_root ~declared_from path in
           (
-            match find_workspace_package_by_root ~workspace_packages:catalog.ctx.workspace.packages ~package_root with
+            match find_workspace_package_by_root
+              ~workspace_packages:catalog.ctx.workspace.packages
+              ~package_root with
             | Some workspace_pkg -> Ok (Some workspace_pkg.name)
             | None ->
                 let* pkg = load_path_dependency_package ~declared_from ~dependency_name:dep.name path in
@@ -1129,15 +1130,13 @@ let provider_dependency_of_manifest_dependency = fun (catalog: catalog) ~declare
         | { path=Some _; _ } -> (
             match path_dependency_resolution ~declared_from dep with
             | Some PreferLocalPath
-            | Some FallbackToSource ->
-                true
+            | Some FallbackToSource -> true
             | Some FallbackToRegistry
-            | None ->
-                (
-                  match HashMap.get catalog.local_by_name target_name with
-                  | Some _ -> true
-                  | None -> false
-                )
+            | None -> (
+                match HashMap.get catalog.local_by_name target_name with
+                | Some _ -> true
+                | None -> false
+              )
           )
         | { builtin=true; _ } ->
             false

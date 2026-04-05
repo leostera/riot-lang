@@ -916,7 +916,10 @@ let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun 
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = source ~path:(Path.v "../../vendor/std") ~version:Std.Version.any () }
+          {
+            name = "std";
+            source = source ~path:(Path.v "../../vendor/std") ~version:Std.Version.any ()
+          }
         ]
         () in
       let registry = make_registry
@@ -928,9 +931,8 @@ let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun 
             ();
         ] in
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-      | Error err ->
-          Error ("expected missing path+version dependency to fall back to registry: "
-          ^ pm_error_message err)
+      | Error err -> Error ("expected missing path+version dependency to fall back to registry: "
+      ^ pm_error_message err)
       | Ok lockfile -> (
           let app_lock =
             List.find_opt (fun (pkg: Riot_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -943,8 +945,7 @@ let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun 
           in
           let local_std =
             List.find_opt
-              (fun (pkg: Riot_model.Lockfile.package) ->
-                pkg.id.name = "std" && pkg.id.registry = None)
+              (fun (pkg: Riot_model.Lockfile.package) -> pkg.id.name = "std" && pkg.id.registry = None)
               lockfile.packages
           in
           match app_lock, registry_std, local_std with

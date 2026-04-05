@@ -18,17 +18,9 @@
 
 * implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
-* Public stats panel for pkgs.ml with stats for pkgs, downloads, users, etc 
-
 # Next
 
-* `riot toolchain list-available` queries cdn.pkgs.ml/ocaml/ to get all the available toolchain versions
-
 * support single-package / non-workspace layouts
-
-* docs.pkgs.ml -- setup as worker that forwards static sites deployed to cdn.pkgs.ml/docs/pkg/vsn/...
-
-* riot doc -- generates documentation for your package and (optionally) for your dependencies and generates a static site (this is the command that docs.pkgs.ml uses to build the docs for you)
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
@@ -37,7 +29,6 @@
 * enforce examples/binaries have a `val main : ~args:string list -> result` function
 
 * --release flag should also be usable in riot test and riot run
-
 
 * RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 

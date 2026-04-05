@@ -165,65 +165,66 @@ let rec load_external_package:
   | { path=Some dep_path; _ } ->
       if List.mem dep.name !seen then
         ([], [])
-      else (
-        let abs_path = resolve_dependency_root ~declared_from dep_path in
-        let toml_path = Path.(abs_path / riot_toml) in
-        let path_str = Path.to_string dep_path in
-        match Fs.exists toml_path with
-        | Ok false when dependency_has_external_fallback dep ->
-            ([], [])
-        | Ok true -> (
-            seen := dep.name :: !seen;
-            match load_riot_toml t toml_path with
-            | Error err when String.starts_with ~prefix:"failed to read" err ->
-                ([], [ PackageTomlReadFailed { package = dep.name; path = path_str } ])
-            | Error _ ->
-                ([], [ PackageTomlParseFailed { package = dep.name; path = path_str } ])
-            | Ok toml -> (
-                let rel_path =
-                  let abs_str = Path.to_string abs_path in
-                  let root_str = Path.to_string workspace_root in
-                  if String.starts_with ~prefix:root_str abs_str then
-                    String.sub
+      else
+        (
+          let abs_path = resolve_dependency_root ~declared_from dep_path in
+          let toml_path = Path.(abs_path / riot_toml) in
+          let path_str = Path.to_string dep_path in
+          match Fs.exists toml_path with
+          | Ok false when dependency_has_external_fallback dep ->
+              ([], [])
+          | Ok true -> (
+              seen := dep.name :: !seen;
+              match load_riot_toml t toml_path with
+              | Error err when String.starts_with ~prefix:"failed to read" err ->
+                  ([], [ PackageTomlReadFailed { package = dep.name; path = path_str } ])
+              | Error _ ->
+                  ([], [ PackageTomlParseFailed { package = dep.name; path = path_str } ])
+              | Ok toml -> (
+                  let rel_path =
+                    let abs_str = Path.to_string abs_path in
+                    let root_str = Path.to_string workspace_root in
+                    if String.starts_with ~prefix:root_str abs_str then
+                      String.sub
+                        abs_str
+                        (String.length root_str + 1)
+                        (String.length abs_str - String.length root_str - 1)
+                    else
                       abs_str
-                      (String.length root_str + 1)
-                      (String.length abs_str - String.length root_str - 1)
-                  else
-                    abs_str
-                in
-                let relative_path = Path.v rel_path in
-                match Package.from_toml
-                  toml
-                  ~workspace_deps
-                  ~workspace_dev_deps
-                  ~workspace_build_deps
-                  ~path:abs_path
-                  ~relative_path with
-                | Ok pkg ->
-                    let transitive_results = List.map
-                      (load_external_package
-                        t
-                        workspace_root
-                        ~declared_from:abs_path
-                        ~seen
-                        ~workspace_deps
-                        ~workspace_dev_deps
-                        ~workspace_build_deps
-                        ~dependant:(Some pkg.name))
-                      (Package.all_dependencies pkg) in
-                    let transitive_pkgs = List.concat_map fst transitive_results in
-                    let transitive_errs = List.concat_map snd transitive_results in
-                    (pkg :: transitive_pkgs, transitive_errs)
-                | Error error -> (
-                  [],
-                  [ PackageFromTomlFailed { package = dep.name; path = path_str; error } ]
+                  in
+                  let relative_path = Path.v rel_path in
+                  match Package.from_toml
+                    toml
+                    ~workspace_deps
+                    ~workspace_dev_deps
+                    ~workspace_build_deps
+                    ~path:abs_path
+                    ~relative_path with
+                  | Ok pkg ->
+                      let transitive_results = List.map
+                        (load_external_package
+                          t
+                          workspace_root
+                          ~declared_from:abs_path
+                          ~seen
+                          ~workspace_deps
+                          ~workspace_dev_deps
+                          ~workspace_build_deps
+                          ~dependant:(Some pkg.name))
+                        (Package.all_dependencies pkg) in
+                      let transitive_pkgs = List.concat_map fst transitive_results in
+                      let transitive_errs = List.concat_map snd transitive_results in
+                      (pkg :: transitive_pkgs, transitive_errs)
+                  | Error error -> (
+                    [],
+                    [ PackageFromTomlFailed { package = dep.name; path = path_str; error } ]
+                  )
                 )
-              )
-          )
-        | _ ->
-            seen := dep.name :: !seen;
-            ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
-      )
+            )
+          | _ ->
+              seen := dep.name :: !seen;
+              ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
+        )
 
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
   let member_results =
