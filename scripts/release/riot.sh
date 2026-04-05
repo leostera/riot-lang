@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="$REPO_ROOT/.env"
+RIOT_CLI_MANIFEST_PATH="$REPO_ROOT/packages/riot-cli/riot.toml"
 
 load_env_file() {
   local env_file="$1"
@@ -27,11 +28,21 @@ load_env_file "$ENV_FILE"
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/release/riot.sh <target>
+Usage: ./scripts/release/riot.sh <target|all>
 
 Build, package, and upload a riot binary plus install.sh.
 
-Everything except the target comes from the environment.
+The release version comes from ./packages/riot-cli/riot.toml.
+If riot/manifest.json already contains that version, the script aborts before
+building so an old release is not republished accidentally.
+
+When <target> is "all", the script releases every enabled target from
+./ocaml-toolchain.toml. If that file is missing, it falls back to the host
+target plus any matching vendor/ocaml cross targets for that host.
+
+Examples:
+  ./scripts/release/riot.sh aarch64-apple-darwin
+  ./scripts/release/riot.sh all
 
 Important environment:
   RIOT_CDN_BUCKET
@@ -40,7 +51,6 @@ Important environment:
   RIOT_CDN_SECRET_ACCESS_KEY
 
 Optional environment:
-  VERSION                 default: git short SHA
   BUILD_SHA               default: git short SHA (12 chars)
   OUTPUT_DIR              default: dist/riot
   INSTALL_SCRIPT_PATH     default: scripts/install.sh
@@ -65,13 +75,51 @@ Optional environment:
 EOF
 }
 
-if [ $# -ne 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+read_riot_cli_version() {
+  local manifest_path="${1:-$RIOT_CLI_MANIFEST_PATH}"
+
+  if [ ! -f "$manifest_path" ]; then
+    echo "error: riot-cli manifest not found at $manifest_path" >&2
+    exit 1
+  fi
+
+  python3 - <<'PY' "$manifest_path"
+import sys
+
+manifest_path = sys.argv[1]
+
+try:
+    import tomllib
+except Exception as exc:
+    raise SystemExit(f"error: python tomllib is required to read {manifest_path}: {exc}")
+
+with open(manifest_path, "rb") as manifest_file:
+    data = tomllib.load(manifest_file)
+
+package = data.get("package")
+if not isinstance(package, dict):
+    raise SystemExit(f"error: missing [package] table in {manifest_path}")
+
+version = package.get("version")
+if not isinstance(version, str) or not version:
+    raise SystemExit(f"error: missing package.version in {manifest_path}")
+
+print(version, end="")
+PY
+}
+
+if [ $# -lt 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
   usage
   [ $# -eq 1 ] && exit 0
   exit 1
 fi
 
-TARGET="$1"
+if [ $# -ne 1 ]; then
+  usage >&2
+  exit 1
+fi
+
+REQUESTED_TARGET="$1"
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist/riot}"
 CDN_BASE_URL="https://cdn.pkgs.ml"
 PUBLIC_BASE_URL="${CDN_BASE_URL}/riot"
@@ -84,7 +132,7 @@ AWS_SECRET_ACCESS_KEY="${RIOT_CDN_SECRET_ACCESS_KEY:-}"
 AWS_SESSION_TOKEN="${RIOT_CDN_SESSION_TOKEN:-}"
 AWS_REGION_VALUE="${RIOT_CDN_REGION:-}"
 INSTALL_SCRIPT_PATH="${INSTALL_SCRIPT_PATH:-$REPO_ROOT/scripts/install.sh}"
-VERSION="${VERSION:-$(git rev-parse --short HEAD)}"
+VERSION="$(read_riot_cli_version)"
 BUILD_SHA="${BUILD_SHA:-$(git rev-parse --short=12 HEAD)}"
 UPLOAD_ARTIFACTS="${RIOT_RELEASE_UPLOAD:-1}"
 PUBLISH_LATEST="${RIOT_RELEASE_PUBLISH_LATEST:-1}"
@@ -222,6 +270,189 @@ path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 }
 
+list_bucket_objects_json() {
+  local output_path="$1"
+  local prefix
+  local aws_args
+
+  prefix="${BUCKET_PREFIX%/}/"
+  aws_args=(s3api list-objects-v2 --bucket "$BUCKET" --prefix "$prefix" --output json)
+  if [ -n "$ENDPOINT_URL" ]; then
+    aws_args+=(--endpoint-url "$ENDPOINT_URL")
+  fi
+
+  printf '+'
+  printf ' %q' aws "${aws_args[@]}"
+  printf ' > %q\n' "$output_path"
+
+  aws "${aws_args[@]}" > "$output_path"
+}
+
+generate_remote_manifest_json() {
+  local output_path="$1"
+  local listing_path="${2:-}"
+  local cleanup_listing=0
+
+  if [ -z "$listing_path" ]; then
+    listing_path="$(mktemp "/tmp/riot-release-objects.XXXXXX")"
+    cleanup_listing=1
+    list_bucket_objects_json "$listing_path"
+  fi
+
+  printf '+'
+  printf ' %q' python3 - "$listing_path" "$output_path" "$PUBLIC_BASE_URL" "$BUCKET_PREFIX"
+  printf '\n'
+
+  python3 - "$listing_path" "$output_path" "$PUBLIC_BASE_URL" "$BUCKET_PREFIX" <<'PY'
+import json
+import re
+import sys
+from datetime import datetime, timezone
+
+listing_path, output_path, public_base_url, bucket_prefix = sys.argv[1:]
+
+with open(listing_path, "r", encoding="utf-8") as listing_file:
+    listing = json.load(listing_file)
+
+contents = listing.get("Contents") or []
+target_re = re.compile(
+    r"(?P<target>"
+    r"(?:aarch64|x86_64)-apple-darwin|"
+    r"(?:aarch64|x86_64)-unknown-linux-(?:gnu|musl)|"
+    r"(?:aarch64|x86_64)-w64-mingw32"
+    r")$"
+)
+
+def parse_release(entry):
+    key = entry.get("Key", "")
+    if not key.startswith(f"{bucket_prefix}/"):
+      return None
+
+    artifact = key.split("/", 1)[1]
+    if not artifact.startswith("riot-") or not artifact.endswith(".tar.gz"):
+      return None
+    if artifact.startswith("riot-latest-"):
+      return None
+
+    base = artifact[:-len(".tar.gz")]
+    match = target_re.search(base)
+    if match is None:
+      return None
+
+    target = match.group("target")
+    prefix = f"riot-"
+    version_end = len(base) - len(target) - 1
+    version = base[len(prefix):version_end]
+    if not version:
+      return None
+
+    return {
+      "version": version,
+      "target": target,
+      "artifact": artifact,
+      "artifact_url": f"{public_base_url.rstrip('/')}/{artifact}",
+      "checksum_url": f"{public_base_url.rstrip('/')}/{artifact}.sha256",
+      "metadata_url": f"{public_base_url.rstrip('/')}/riot-{version}.json",
+      "size_bytes": entry.get("Size"),
+      "last_modified": entry.get("LastModified"),
+    }
+
+releases = {}
+seen_artifacts = set()
+for entry in contents:
+    parsed = parse_release(entry)
+    if parsed is None:
+        continue
+    artifact_name = parsed["artifact"]
+    if artifact_name in seen_artifacts:
+        continue
+    seen_artifacts.add(artifact_name)
+    version = parsed["version"]
+    releases.setdefault(version, {
+        "version": version,
+        "metadata_url": parsed["metadata_url"],
+        "targets": [],
+    })["targets"].append({
+        "target": parsed["target"],
+        "artifact": parsed["artifact"],
+        "artifact_url": parsed["artifact_url"],
+        "checksum_url": parsed["checksum_url"],
+        "size_bytes": parsed["size_bytes"],
+        "last_modified": parsed["last_modified"],
+    })
+
+for release in releases.values():
+    release["targets"].sort(key=lambda item: item["target"])
+
+manifest = {
+    "schema_version": 1,
+    "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "base_url": public_base_url.rstrip("/"),
+    "versions": sorted(releases),
+    "releases": [releases[version] for version in sorted(releases)],
+}
+
+with open(output_path, "w", encoding="utf-8") as output_file:
+    json.dump(manifest, output_file, indent=2)
+    output_file.write("\n")
+PY
+
+  if [ "$cleanup_listing" = "1" ]; then
+    rm -f "$listing_path"
+  fi
+}
+
+remote_manifest_has_version() {
+  local manifest_path="$1"
+  local version="$2"
+
+  python3 - "$manifest_path" "$version" <<'PY'
+import json
+import sys
+
+manifest_path, version = sys.argv[1:]
+
+with open(manifest_path, "r", encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
+
+versions = manifest.get("versions")
+if not isinstance(versions, list):
+    print("0", end="")
+    raise SystemExit(0)
+
+print("1" if version in versions else "0", end="")
+PY
+}
+
+ensure_release_version_is_new() {
+  local listing_path
+  local manifest_path
+  local exists
+
+  listing_path="$(mktemp "/tmp/riot-release-objects.XXXXXX")"
+  manifest_path="$(mktemp "/tmp/riot-release-manifest.XXXXXX")"
+
+  list_bucket_objects_json "$listing_path"
+  generate_remote_manifest_json "$manifest_path" "$listing_path"
+  exists="$(remote_manifest_has_version "$manifest_path" "$VERSION")"
+
+  rm -f "$listing_path" "$manifest_path"
+
+  if [ "$exists" = "1" ]; then
+    die "release version $VERSION already exists in ${PUBLIC_BASE_URL%/}/manifest.json"
+  fi
+}
+
+publish_remote_manifest() {
+  local manifest_path
+
+  manifest_path="$(mktemp "/tmp/riot-release-manifest.XXXXXX")"
+  generate_remote_manifest_json "$manifest_path"
+  upload_object "$manifest_path" "$(join_object_key "$BUCKET_PREFIX" "manifest.json")" --content-type "application/json"
+  echo "  manifest: ${PUBLIC_BASE_URL%/}/manifest.json"
+  rm -f "$manifest_path"
+}
+
 write_sha256_file() {
   local artifact_path="$1"
   local checksum_path="$2"
@@ -283,6 +514,83 @@ detect_host_triple() {
   esac
 }
 
+toolchain_config_targets() {
+  local config_path="$REPO_ROOT/ocaml-toolchain.toml"
+
+  [ -f "$config_path" ] || return 0
+
+  python3 - <<'PY' "$config_path"
+import sys
+
+config_path = sys.argv[1]
+
+try:
+    import tomllib
+except Exception:
+    sys.exit(0)
+
+try:
+    with open(config_path, "rb") as f:
+        data = tomllib.load(f)
+except Exception:
+    sys.exit(0)
+
+toolchain = data.get("toolchain")
+if not isinstance(toolchain, dict):
+    sys.exit(0)
+
+targets = toolchain.get("targets")
+if not isinstance(targets, list):
+    sys.exit(0)
+
+for target in targets:
+    if isinstance(target, str) and target:
+        print(target)
+PY
+}
+
+release_targets_for_host() {
+  local host_target="$1"
+  local configured_targets=()
+  local fallback_targets=()
+  local target=""
+  local target_file=""
+  local seen=0
+
+  configured_targets+=("$host_target")
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    configured_targets+=("$target")
+  done < <(toolchain_config_targets)
+
+  if [ "${#configured_targets[@]}" -gt 1 ]; then
+    for target in "${configured_targets[@]}"; do
+      seen=0
+      for existing in "${fallback_targets[@]:-}"; do
+        if [ "$existing" = "$target" ]; then
+          seen=1
+          break
+        fi
+      done
+      if [ "$seen" = "0" ]; then
+        fallback_targets+=("$target")
+      fi
+    done
+    printf '%s\n' "${fallback_targets[@]}"
+    return 0
+  fi
+
+  fallback_targets=("$host_target")
+  while IFS= read -r target_file; do
+    [ -n "$target_file" ] || continue
+    target="$(basename "$target_file" .sh)"
+    target="${target#${host_target}-x-}"
+    fallback_targets+=("$target")
+  done < <(find "$REPO_ROOT/vendor/ocaml/cross/targets" -maxdepth 1 -type f -name "${host_target}-x-*.sh" | sort)
+
+  printf '%s\n' "${fallback_targets[@]}"
+}
+
 upload_object() {
   local source_path="$1"
   local object_key="$2"
@@ -310,6 +618,7 @@ if [ "$UPLOAD_ARTIFACTS" != "0" ]; then
   [ -n "$AWS_ACCESS_KEY_ID" ] || die "RIOT_CDN_ACCESS_KEY_ID is required"
   [ -n "$AWS_SECRET_ACCESS_KEY" ] || die "RIOT_CDN_SECRET_ACCESS_KEY is required"
   configure_aws_env
+  ensure_release_version_is_new
 fi
 
 cd "$REPO_ROOT"
@@ -317,21 +626,25 @@ run_cmd mkdir -p "$OUTPUT_DIR"
 derive_release_urls
 
 HOST_TARGET="$(detect_host_triple)"
+TARGETS=()
+if [ "$REQUESTED_TARGET" = "all" ]; then
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    TARGETS+=("$target")
+  done < <(release_targets_for_host "$HOST_TARGET")
+else
+  TARGETS=("$REQUESTED_TARGET")
+fi
+
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  die "no releasable targets found for host $HOST_TARGET"
+fi
+
 RELEASE_RIOT="$REPO_ROOT/riot"
 [ -x "$RELEASE_RIOT" ] || die "expected release driver at $RELEASE_RIOT"
 
-if [ "$TARGET" = "$HOST_TARGET" ]; then
-  run_cmd "$RELEASE_RIOT" build --release riot-cli
-else
-  run_cmd "$RELEASE_RIOT" build --release -x "$TARGET" riot-cli
-fi
-
-BINARY_PATH="$REPO_ROOT/_build/release/$TARGET/out/riot-cli/riot"
-VERSIONED_TARBALL="$OUTPUT_DIR/riot-${VERSION}-${TARGET}.tar.gz"
-LATEST_TARBALL="$OUTPUT_DIR/riot-latest-${TARGET}.tar.gz"
 VERSIONED_METADATA="$OUTPUT_DIR/riot-${VERSION}.json"
 LATEST_METADATA="$OUTPUT_DIR/latest.json"
-STAGING_DIR="$OUTPUT_DIR/.pkg-$TARGET"
 
 write_release_metadata "$VERSIONED_METADATA"
 if [ "$PUBLISH_LATEST" != "0" ]; then
@@ -342,47 +655,66 @@ if [ "$PUBLISH_LATEST" != "0" ]; then
   fi
 fi
 
-if [ "$DRY_RUN" = "1" ]; then
-  run_cmd mkdir -p "$STAGING_DIR"
-  run_cmd cp "$BINARY_PATH" "$STAGING_DIR/riot"
-  run_cmd cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
-  run_cmd chmod +x "$STAGING_DIR/riot"
-  run_cmd tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
-  if [ "$PUBLISH_LATEST" != "0" ]; then
-    run_cmd cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
+for TARGET in "${TARGETS[@]}"; do
+  if [ "$TARGET" = "$HOST_TARGET" ]; then
+    run_cmd "$RELEASE_RIOT" build --release riot-cli
+  else
+    run_cmd "$RELEASE_RIOT" build --release -x "$TARGET" riot-cli
   fi
-else
-  [ -f "$BINARY_PATH" ] || die "expected built binary at $BINARY_PATH"
-  rm -rf "$STAGING_DIR"
-  mkdir -p "$STAGING_DIR"
-  cp "$BINARY_PATH" "$STAGING_DIR/riot"
-  cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
-  chmod +x "$STAGING_DIR/riot"
-  tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
-  write_sha256_file "$VERSIONED_TARBALL" "$VERSIONED_TARBALL.sha256"
-  if [ "$PUBLISH_LATEST" != "0" ]; then
-    cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
-    cp "$VERSIONED_TARBALL.sha256" "$LATEST_TARBALL.sha256"
+
+  BINARY_PATH="$REPO_ROOT/_build/release/$TARGET/out/riot-cli/riot"
+  VERSIONED_TARBALL="$OUTPUT_DIR/riot-${VERSION}-${TARGET}.tar.gz"
+  LATEST_TARBALL="$OUTPUT_DIR/riot-latest-${TARGET}.tar.gz"
+  STAGING_DIR="$OUTPUT_DIR/.pkg-$TARGET"
+
+  if [ "$DRY_RUN" = "1" ]; then
+    run_cmd mkdir -p "$STAGING_DIR"
+    run_cmd cp "$BINARY_PATH" "$STAGING_DIR/riot"
+    run_cmd cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
+    run_cmd chmod +x "$STAGING_DIR/riot"
+    run_cmd tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
+    if [ "$PUBLISH_LATEST" != "0" ]; then
+      run_cmd cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
+    fi
+  else
+    [ -f "$BINARY_PATH" ] || die "expected built binary at $BINARY_PATH"
+    rm -rf "$STAGING_DIR"
+    mkdir -p "$STAGING_DIR"
+    cp "$BINARY_PATH" "$STAGING_DIR/riot"
+    cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
+    chmod +x "$STAGING_DIR/riot"
+    tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
+    write_sha256_file "$VERSIONED_TARBALL" "$VERSIONED_TARBALL.sha256"
+    if [ "$PUBLISH_LATEST" != "0" ]; then
+      cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
+      cp "$VERSIONED_TARBALL.sha256" "$LATEST_TARBALL.sha256"
+    fi
+    rm -rf "$STAGING_DIR"
   fi
-  rm -rf "$STAGING_DIR"
-fi
+
+  if [ "$UPLOAD_ARTIFACTS" != "0" ]; then
+    upload_object "$VERSIONED_TARBALL" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$VERSIONED_TARBALL")")"
+    upload_object "$VERSIONED_TARBALL.sha256" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$VERSIONED_TARBALL").sha256")"
+    echo "  published: ${PUBLIC_BASE_URL%/}/$(basename "$VERSIONED_TARBALL")"
+
+    if [ "$PUBLISH_LATEST" != "0" ]; then
+      upload_object "$LATEST_TARBALL" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_TARBALL")")"
+      upload_object "$LATEST_TARBALL.sha256" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_TARBALL").sha256")"
+      echo "  alias: ${PUBLIC_BASE_URL%/}/$(basename "$LATEST_TARBALL")"
+    fi
+  fi
+done
 
 if [ "$UPLOAD_ARTIFACTS" = "0" ]; then
   echo "Artifacts kept locally in: $OUTPUT_DIR"
   exit 0
 fi
 
-upload_object "$VERSIONED_TARBALL" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$VERSIONED_TARBALL")")"
-upload_object "$VERSIONED_TARBALL.sha256" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$VERSIONED_TARBALL").sha256")"
 upload_object "$VERSIONED_METADATA" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$VERSIONED_METADATA")")" --content-type "application/json"
-echo "  published: ${PUBLIC_BASE_URL%/}/$(basename "$VERSIONED_TARBALL")"
 echo "  metadata: ${PUBLIC_BASE_URL%/}/$(basename "$VERSIONED_METADATA")"
 
 if [ "$PUBLISH_LATEST" != "0" ]; then
-  upload_object "$LATEST_TARBALL" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_TARBALL")")"
-  upload_object "$LATEST_TARBALL.sha256" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_TARBALL").sha256")"
   upload_object "$LATEST_METADATA" "$(join_object_key "$BUCKET_PREFIX" "$(basename "$LATEST_METADATA")")" --content-type "application/json"
-  echo "  alias: ${PUBLIC_BASE_URL%/}/$(basename "$LATEST_TARBALL")"
   echo "  latest: ${METADATA_BASE_URL%/}/riot/$(basename "$LATEST_METADATA")"
 fi
 
@@ -390,3 +722,5 @@ if [ "$UPLOAD_INSTALL_SCRIPT" != "0" ]; then
   upload_object "$INSTALL_SCRIPT_PATH" "$INSTALL_SCRIPT_KEY" --content-type "text/x-shellscript"
   echo "  install: ${PUBLIC_BASE_URL%/}/install.sh"
 fi
+
+publish_remote_manifest
