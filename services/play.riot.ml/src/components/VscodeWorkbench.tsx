@@ -98,6 +98,20 @@ export default function VscodeWorkbench({ files, activePath, authenticated = fal
     };
   }, []);
 
+  const handleCompactBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (document.referrer.trim().length > 0) {
+      window.location.assign(document.referrer);
+      return;
+    }
+
+    window.location.assign("https://riot.ml");
+  };
+
   useEffect(() => {
     const container = containerRef.current;
     if (container === null) {
@@ -165,12 +179,13 @@ export default function VscodeWorkbench({ files, activePath, authenticated = fal
               >
                 Continue anyway
               </button>
-              <a
-                href="https://riot.ml"
+              <button
+                type="button"
+                onClick={handleCompactBack}
                 className="rounded-md border border-white/10 px-4 py-2 text-center text-sm text-[#d8dee8] transition hover:border-[#f5344d]"
               >
                 Back to Riot
-              </a>
+              </button>
             </div>
           </div>
         </div>
