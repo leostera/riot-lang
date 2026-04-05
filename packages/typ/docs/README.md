@@ -25,15 +25,29 @@ Then read the feature slices:
 
 - [nominal_data.md](./nominal_data.md)
   ordinary type declarations, records, ordinary variants
+- [generalization.md](./generalization.md)
+  generalization boundaries, nonexpansiveness, and value restriction
+- [labeled_args.md](./labeled_args.md)
+  labeled and optional parameters, application matching, and defaults
 - [modules.md](./modules.md)
   the module calculus: structures, signatures, functors, inclusion,
   strengthening
+- [signatures.md](./signatures.md)
+  signature elaboration, `with`-constraints, and implementation checking
 - [first_class_modules.md](./first_class_modules.md)
   the bridge between the core calculus and the module calculus
+- [recursive_modules.md](./recursive_modules.md)
+  recursive-module approximation, explicit signatures, and inclusion checks
 - [gadts.md](./gadts.md)
   constructor result annotations, refinement, existentials, local equalities
+- [extensible_variants.md](./extensible_variants.md)
+  open variants, extension constructors, rebinding, and exceptions
 - [polyvariants.md](./polyvariants.md)
   row-typed variants, row unification, pressure, and finalization
+- [pattern_analysis.md](./pattern_analysis.md)
+  exhaustiveness, redundancy, refutation, and fragile matches
+- [effects.md](./effects.md)
+  effect handlers, effect cases, and continuation typing
 - [diagnostics.md](./diagnostics.md)
   structured diagnostics as a first-class machine-facing contract
 
@@ -50,6 +64,21 @@ These docs are meant to have clear ownership boundaries.
 - `engine.md`
   owns sessions, rooted snapshots, `ModuleSummary`, store hydration, and query
   semantics
+- `generalization.md`
+  owns value restriction, nonexpansiveness, and generalization boundaries
+- `labeled_args.md`
+  owns labeled arrows, optional defaults, and application matching rules
+- `signatures.md`
+  owns interfaces, signature elaboration, `with`-constraints, and
+  implementation checking
+- `recursive_modules.md`
+  owns recursive-module approximation and acceptance rules
+- `extensible_variants.md`
+  owns open variants, extension constructors, and exceptions
+- `pattern_analysis.md`
+  owns exhaustiveness, redundancy, refutation, and fragile-pattern behavior
+- `effects.md`
+  owns effect-case typing and the core/effect bridge
 - feature docs
   own the extra semantic rules for each language fragment
 - `diagnostics.md`
