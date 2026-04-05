@@ -9,7 +9,11 @@ import type {
   CategorySummary,
   RegistryStatsActivityPoint,
   RegistryStatsDashboardDocument,
+  RegistryStatsMetricKey,
+  RegistryStatsMetricSeries,
   RegistryStatsSummaryDocument,
+  RegistryStatsWindowKey,
+  RegistryStatsWindowOption,
   OAuthStateRecord,
   OwnerPackagesDocument,
   PackageDownloadsDocument,
@@ -1042,18 +1046,23 @@ export async function readRegistryStatsSummaryDocument(
 
 export async function readRegistryStatsDashboardDocument(
   db: D1Database,
-  windowDays = 30,
+  window: RegistryStatsWindowKey = "30d",
 ): Promise<RegistryStatsDashboardDocument> {
   const database = registryDb(db);
   const summary = await readRegistryStatsSummaryDocument(db);
   const [indexReadsRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(indexReads);
+  const windowConfig = await resolveStatsWindow(db, window);
+  const activity = await listRegistryStatsActivity(db, windowConfig);
 
   return {
     schema_version: 1,
     generated_at: summary.generated_at,
-    window_days: windowDays,
+    window,
+    window_label: windowConfig.label,
+    window_days: windowConfig.windowDays,
+    available_windows: STATS_WINDOW_OPTIONS,
     summary: {
       ...summary,
       total_index_reads: toCount(indexReadsRow?.count),
@@ -1061,7 +1070,8 @@ export async function readRegistryStatsDashboardDocument(
         ? 0
         : summary.total_package_downloads / summary.total_packages,
     },
-    daily_activity: await listRegistryStatsActivity(db, windowDays),
+    daily_activity: activity,
+    metrics: buildRegistryStatsMetricSeries(activity),
     top_packages: await listTopDownloadedPackages(db, 10),
     latest_releases: await listLatestPublishedReleases(db, 10),
   };
@@ -1161,16 +1171,15 @@ async function readPackageDownloadCount(db: D1Database, packageName: string): Pr
 
 async function listRegistryStatsActivity(
   db: D1Database,
-  windowDays: number,
+  window: ResolvedStatsWindow,
 ): Promise<RegistryStatsActivityPoint[]> {
   const database = registryDb(db);
-  const startDate = startOfUtcDay(addUtcDays(new Date(), -(windowDays - 1)));
-  const startIso = startDate.toISOString();
+  const startIso = window.start.toISOString();
 
-  const packageBucket = sql<string>`substr(${packageDownloads.downloadedAt}, 1, 10)`;
-  const riotBucket = sql<string>`substr(${binaryDownloads.downloadedAt}, 1, 10)`;
-  const indexBucket = sql<string>`substr(${indexReads.readAt}, 1, 10)`;
-  const releaseBucket = sql<string>`substr(${publishedReleases.publishedAt}, 1, 10)`;
+  const packageBucket = statsBucketSql(packageDownloads.downloadedAt, window.granularity);
+  const binaryBucket = statsBucketSql(binaryDownloads.downloadedAt, window.granularity);
+  const indexBucket = statsBucketSql(indexReads.readAt, window.granularity);
+  const releaseBucket = statsBucketSql(publishedReleases.publishedAt, window.granularity);
 
   const [packageRows, riotRows, ocamlRows, indexRows, releaseRows] = await Promise.all([
     database
@@ -1184,22 +1193,22 @@ async function listRegistryStatsActivity(
       .orderBy(asc(packageBucket)),
     database
       .select({
-        date: riotBucket,
+        date: binaryBucket,
         count: sql<number>`count(*)`,
       })
       .from(binaryDownloads)
       .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "riot")))
-      .groupBy(riotBucket)
-      .orderBy(asc(riotBucket)),
+      .groupBy(binaryBucket)
+      .orderBy(asc(binaryBucket)),
     database
       .select({
-        date: riotBucket,
+        date: binaryBucket,
         count: sql<number>`count(*)`,
       })
       .from(binaryDownloads)
       .where(and(gte(binaryDownloads.downloadedAt, startIso), eq(binaryDownloads.binaryName, "ocaml")))
-      .groupBy(riotBucket)
-      .orderBy(asc(riotBucket)),
+      .groupBy(binaryBucket)
+      .orderBy(asc(binaryBucket)),
     database
       .select({
         date: indexBucket,
@@ -1226,15 +1235,14 @@ async function listRegistryStatsActivity(
   const indexCounts = toDateCountMap(indexRows);
   const releaseCounts = toDateCountMap(releaseRows);
 
-  return [...Array(windowDays)].map((_, index) => {
-    const day = addUtcDays(startDate, index).toISOString().slice(0, 10);
+  return window.buckets.map((bucket) => {
     return {
-      date: day,
-      package_downloads: packageCounts.get(day) ?? 0,
-      riot_downloads: riotCounts.get(day) ?? 0,
-      ocaml_downloads: ocamlCounts.get(day) ?? 0,
-      index_reads: indexCounts.get(day) ?? 0,
-      releases_published: releaseCounts.get(day) ?? 0,
+      date: bucket,
+      package_downloads: packageCounts.get(bucket) ?? 0,
+      riot_downloads: riotCounts.get(bucket) ?? 0,
+      ocaml_downloads: ocamlCounts.get(bucket) ?? 0,
+      index_reads: indexCounts.get(bucket) ?? 0,
+      releases_published: releaseCounts.get(bucket) ?? 0,
     } satisfies RegistryStatsActivityPoint;
   });
 }
@@ -1340,6 +1348,148 @@ function toDateCountMap(rows: Array<{ date: string; count: number }>): Map<strin
   }
 
   return values;
+}
+
+const STATS_WINDOW_OPTIONS: RegistryStatsWindowOption[] = [
+  { key: "all", label: "All time" },
+  { key: "year", label: "This year" },
+  { key: "30d", label: "Last 30 days" },
+  { key: "7d", label: "This week" },
+];
+
+const STATS_METRICS: Array<{
+  key: RegistryStatsMetricKey;
+  label: string;
+  color: string;
+}> = [
+  { key: "package_downloads", label: "Package installs", color: "var(--chart-3)" },
+  { key: "riot_downloads", label: "Riot installs", color: "var(--chart-1)" },
+  { key: "ocaml_downloads", label: "OCaml installs", color: "var(--chart-2)" },
+  { key: "index_reads", label: "Index refreshes", color: "var(--chart-5)" },
+  { key: "releases_published", label: "Releases published", color: "var(--chart-4)" },
+];
+
+type StatsGranularity = "hour" | "day";
+
+interface ResolvedStatsWindow {
+  key: RegistryStatsWindowKey;
+  label: string;
+  start: Date;
+  windowDays: number;
+  granularity: StatsGranularity;
+  buckets: string[];
+}
+
+async function resolveStatsWindow(
+  db: D1Database,
+  window: RegistryStatsWindowKey,
+): Promise<ResolvedStatsWindow> {
+  const now = new Date();
+  const todayStart = startOfUtcDay(now);
+  const label = STATS_WINDOW_OPTIONS.find((option) => option.key === window)?.label ?? "Last 30 days";
+
+  switch (window) {
+    case "7d": {
+      const start = startOfUtcDay(addUtcDays(todayStart, -6));
+      return {
+        key: window,
+        label,
+        start,
+        windowDays: 7,
+        granularity: "day",
+        buckets: buildDailyBuckets(start, todayStart),
+      };
+    }
+    case "year": {
+      const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+      return {
+        key: window,
+        label,
+        start,
+        windowDays: diffUtcDays(start, todayStart) + 1,
+        granularity: "day",
+        buckets: buildDailyBuckets(start, todayStart),
+      };
+    }
+    case "all": {
+      const earliest = await readEarliestStatsTimestamp(db);
+      const start = startOfUtcDay(earliest ?? todayStart);
+      return {
+        key: window,
+        label,
+        start,
+        windowDays: diffUtcDays(start, todayStart) + 1,
+        granularity: "day",
+        buckets: buildDailyBuckets(start, todayStart),
+      };
+    }
+    case "30d":
+    default: {
+      const start = startOfUtcDay(addUtcDays(todayStart, -29));
+      return {
+        key: "30d",
+        label,
+        start,
+        windowDays: 30,
+        granularity: "day",
+        buckets: buildDailyBuckets(start, todayStart),
+      };
+    }
+  }
+}
+
+async function readEarliestStatsTimestamp(db: D1Database): Promise<Date | null> {
+  const database = registryDb(db);
+  const [packageRow, binaryRow, indexRow, releaseRow] = await Promise.all([
+    database.select({ value: sql<string | null>`min(${packageDownloads.downloadedAt})` }).from(packageDownloads),
+    database.select({ value: sql<string | null>`min(${binaryDownloads.downloadedAt})` }).from(binaryDownloads),
+    database.select({ value: sql<string | null>`min(${indexReads.readAt})` }).from(indexReads),
+    database.select({ value: sql<string | null>`min(${publishedReleases.publishedAt})` }).from(publishedReleases),
+  ]);
+
+  const values = [packageRow[0]?.value, binaryRow[0]?.value, indexRow[0]?.value, releaseRow[0]?.value]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .sort();
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  const earliest = values[0];
+  if (earliest === undefined) {
+    return null;
+  }
+
+  return new Date(earliest);
+}
+
+function buildDailyBuckets(start: Date, end: Date): string[] {
+  const days = diffUtcDays(start, end) + 1;
+  return [...Array(days)].map((_, index) => addUtcDays(start, index).toISOString().slice(0, 10));
+}
+
+function diffUtcDays(start: Date, end: Date): number {
+  return Math.floor((startOfUtcDay(end).getTime() - startOfUtcDay(start).getTime()) / 86_400_000);
+}
+
+function statsBucketSql(column: unknown, granularity: StatsGranularity) {
+  if (granularity === "hour") {
+    return sql<string>`substr(${column}, 1, 13) || ':00:00Z'`;
+  }
+
+  return sql<string>`substr(${column}, 1, 10)`;
+}
+
+function buildRegistryStatsMetricSeries(
+  points: RegistryStatsActivityPoint[],
+): RegistryStatsMetricSeries[] {
+  return STATS_METRICS.map((metric) => ({
+    key: metric.key,
+    label: metric.label,
+    color: metric.color,
+    total: points.reduce((sum, point) => sum + point[metric.key], 0),
+    points,
+  }));
 }
 
 function startOfUtcDay(value: Date): Date {

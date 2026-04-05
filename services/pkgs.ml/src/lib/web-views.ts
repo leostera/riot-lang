@@ -10,6 +10,7 @@ import type {
   PopularPackagesDocument,
   RegistryServiceRootDocument,
   RegistryStatsDashboardDocument,
+  RegistryStatsWindowKey,
   RecentPackagesDocument,
   RegistryStatsSummaryDocument,
   RegistryEventsDocument,
@@ -130,9 +131,11 @@ export async function fetchRegistryStatsSummary(): Promise<RegistryStatsSummaryD
   return (await response.json()) as RegistryStatsSummaryDocument;
 }
 
-export async function fetchRegistryStatsDashboard(): Promise<RegistryStatsDashboardDocument> {
+export async function fetchRegistryStatsDashboard(
+  window: RegistryStatsWindowKey = "30d",
+): Promise<RegistryStatsDashboardDocument> {
   const config = getConfig();
-  const response = await fetch(`${config.registryBaseUrl}/v1/views/stats/dashboard`, {
+  const response = await fetch(`${config.registryBaseUrl}/v1/views/stats/dashboard?window=${encodeURIComponent(window)}`, {
     headers: {
       accept: "application/json",
     },

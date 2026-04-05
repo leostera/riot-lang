@@ -284,6 +284,28 @@ export interface RegistryStatsActivityPoint {
   releases_published: number;
 }
 
+export type RegistryStatsWindowKey = "all" | "year" | "30d" | "7d";
+
+export interface RegistryStatsWindowOption {
+  key: RegistryStatsWindowKey;
+  label: string;
+}
+
+export type RegistryStatsMetricKey =
+  | "package_downloads"
+  | "riot_downloads"
+  | "ocaml_downloads"
+  | "index_reads"
+  | "releases_published";
+
+export interface RegistryStatsMetricSeries {
+  key: RegistryStatsMetricKey;
+  label: string;
+  total: number;
+  color: string;
+  points: RegistryStatsActivityPoint[];
+}
+
 export interface StatsTopPackage {
   package_name: string;
   latest_version: string;
@@ -302,12 +324,16 @@ export interface StatsLatestRelease {
 export interface RegistryStatsDashboardDocument {
   schema_version: 1;
   generated_at: string;
+  window: RegistryStatsWindowKey;
+  window_label: string;
   window_days: number;
+  available_windows: RegistryStatsWindowOption[];
   summary: RegistryStatsSummaryDocument & {
     total_index_reads: number;
     mean_package_downloads_per_package: number;
   };
   daily_activity: RegistryStatsActivityPoint[];
+  metrics: RegistryStatsMetricSeries[];
   top_packages: StatsTopPackage[];
   latest_releases: StatsLatestRelease[];
 }
@@ -321,6 +347,7 @@ export type RegistryEventType =
   | "package.processing.queued"
   | "package.processing.started"
   | "package.processing.requeued"
+  | "package.processing.blocked"
   | "package.processing.finished"
   | "package.docs.staged"
   | "package.docs.generated"

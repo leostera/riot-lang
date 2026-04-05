@@ -2,6 +2,7 @@ import {
   claimPackageReleaseToProcess,
   enqueuePackageReleaseToProcess,
   listDuePackageReleasesToProcess,
+  markPackageReleaseToProcessBlocked,
   markPackageReleaseToProcessFinished,
   readLatestPackageReleaseToProcess,
   readLatestPackagePipelineRun,
@@ -59,6 +60,7 @@ const RIOT_RELEASE_METADATA_URL = `${CDN_BASE_URL}/riot/latest.json`;
 const RELEASE_PROCESSING_BATCH_SIZE = 10;
 const RELEASE_PROCESSING_LEASE_MS = 5 * 60 * 1000;
 const RELEASE_PROCESSING_RETRY_DELAY_MS = 5 * 60 * 1000;
+const RELEASE_PROCESSING_MAX_ATTEMPTS = 3;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -845,22 +847,40 @@ async function processQueuedReleases(env: Env): Promise<void> {
       );
     } catch (error) {
       const failedAt = new Date().toISOString();
-      const nextAttemptAt = toIso(failedAt, RELEASE_PROCESSING_RETRY_DELAY_MS);
-      await reschedulePackageReleaseToProcess(
-        env.SEARCH_DB,
-        claimed.release_id,
-        failedAt,
-        nextAttemptAt,
-        normalizePipelineError(error),
-      );
-      await writeRegistryEvent(
-        env.SEARCH_DB,
-        makePipelineEvent("package.processing.requeued", failedAt, event, {
-          status: "pending",
-          next_attempt_at: nextAttemptAt,
-          error: error instanceof Error ? error.message : "unknown_error",
-        }),
-      );
+      if (claimed.attempt_count >= RELEASE_PROCESSING_MAX_ATTEMPTS) {
+        await markPackageReleaseToProcessBlocked(
+          env.SEARCH_DB,
+          claimed.release_id,
+          failedAt,
+          normalizeBlockedPipelineError(error),
+        );
+        await writeRegistryEvent(
+          env.SEARCH_DB,
+          makePipelineEvent("package.processing.blocked", failedAt, event, {
+            status: "blocked",
+            attempt_count: claimed.attempt_count,
+            error: error instanceof Error ? error.message : "unknown_error",
+          }),
+        );
+      } else {
+        const nextAttemptAt = toIso(failedAt, RELEASE_PROCESSING_RETRY_DELAY_MS);
+        await reschedulePackageReleaseToProcess(
+          env.SEARCH_DB,
+          claimed.release_id,
+          failedAt,
+          nextAttemptAt,
+          normalizePipelineError(error),
+        );
+        await writeRegistryEvent(
+          env.SEARCH_DB,
+          makePipelineEvent("package.processing.requeued", failedAt, event, {
+            status: "pending",
+            attempt_count: claimed.attempt_count,
+            next_attempt_at: nextAttemptAt,
+            error: error instanceof Error ? error.message : "unknown_error",
+          }),
+        );
+      }
     }
   }
 }
@@ -871,6 +891,14 @@ function normalizePipelineError(error: unknown): string {
   }
 
   return "Release processing failed and was requeued for another timer pass.";
+}
+
+function normalizeBlockedPipelineError(error: unknown): string {
+  if (error instanceof Error) {
+    return `Release processing failed three times and is now blocked: ${error.message}`;
+  }
+
+  return "Release processing failed three times and is now blocked.";
 }
 
 function toIso(baseIso: string, deltaMs: number): string {

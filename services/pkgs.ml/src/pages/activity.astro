@@ -25,6 +25,8 @@ function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
       return "Processing";
     case "package.processing.requeued":
       return "Requeued";
+    case "package.processing.blocked":
+      return "Blocked";
     case "package.processing.finished":
       return "Processed";
     case "package.docs.staged":
@@ -60,6 +62,8 @@ function eventTone(eventType: RegistryEventRecord["event_type"]): string {
       return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
     case "package.processing.requeued":
       return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
+    case "package.processing.blocked":
+      return "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200";
     case "package.processing.finished":
       return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
     case "package.docs.staged":
@@ -273,6 +277,8 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "Processing";
       case "package.processing.requeued":
         return "Requeued";
+      case "package.processing.blocked":
+        return "Blocked";
       case "package.processing.finished":
         return "Processed";
       case "package.docs.staged":
@@ -310,6 +316,8 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
       case "package.processing.requeued":
         return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
+      case "package.processing.blocked":
+        return "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200";
       case "package.processing.finished":
         return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
       case "package.docs.staged":

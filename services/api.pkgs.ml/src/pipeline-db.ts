@@ -93,35 +93,35 @@ export async function enqueuePackageReleaseToProcess(
         updatedAt: now,
         nextAttemptAt: sql`
           CASE
-            WHEN ${packageReleasesToProcess.status} = 'finished'
+            WHEN ${packageReleasesToProcess.status} IN ('finished', 'blocked')
             THEN ${packageReleasesToProcess.nextAttemptAt}
             ELSE ${now}
           END
         `,
         leaseExpiresAt: sql`
           CASE
-            WHEN ${packageReleasesToProcess.status} = 'finished'
+            WHEN ${packageReleasesToProcess.status} IN ('finished', 'blocked')
             THEN ${packageReleasesToProcess.leaseExpiresAt}
             ELSE NULL
           END
         `,
         finishedAt: sql`
           CASE
-            WHEN ${packageReleasesToProcess.status} = 'finished'
+            WHEN ${packageReleasesToProcess.status} IN ('finished', 'blocked')
             THEN ${packageReleasesToProcess.finishedAt}
             ELSE NULL
           END
         `,
         status: sql`
           CASE
-            WHEN ${packageReleasesToProcess.status} = 'finished'
+            WHEN ${packageReleasesToProcess.status} IN ('finished', 'blocked')
             THEN ${packageReleasesToProcess.status}
             ELSE 'pending'
           END
         `,
         statusMessage: sql`
           CASE
-            WHEN ${packageReleasesToProcess.status} = 'finished'
+            WHEN ${packageReleasesToProcess.status} IN ('finished', 'blocked')
             THEN ${packageReleasesToProcess.statusMessage}
             ELSE 'Queued for package post-publish processing.'
           END
@@ -262,6 +262,25 @@ export async function reschedulePackageReleaseToProcess(
       status: "pending",
       updatedAt: now,
       nextAttemptAt,
+      leaseExpiresAt: null,
+      statusMessage,
+    })
+    .where(eq(packageReleasesToProcess.releaseId, releaseId));
+}
+
+export async function markPackageReleaseToProcessBlocked(
+  db: D1Database,
+  releaseId: string,
+  now: string,
+  statusMessage: string,
+): Promise<void> {
+  const database = registryDb(db);
+  await database
+    .update(packageReleasesToProcess)
+    .set({
+      status: "blocked",
+      updatedAt: now,
+      finishedAt: now,
       leaseExpiresAt: null,
       statusMessage,
     })

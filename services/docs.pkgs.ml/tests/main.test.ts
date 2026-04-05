@@ -263,6 +263,70 @@ describe("docs.pkgs worker", () => {
     ]);
   });
 
+  test("scheduled processing blocks a release after the third failure", async () => {
+    const env = makeEnv({
+      PIPELINE_EXECUTOR: new FakePipelineExecutor({
+        docs: {
+          success: false,
+          exit_code: 1,
+          stdout: "",
+          stderr: "riot doc exploded",
+          duration_ms: 50,
+          command: ["riot", "doc", "--release", "-p", "std"],
+          output_dir: "/tmp/workspace/_build/doc/std/0.1.0",
+          files: [],
+        },
+      }),
+    });
+    const db = env.SEARCH_DB as unknown as FakeD1Database;
+    const ctx = new FakeExecutionContext();
+
+    await enqueuePublishedRelease(env, ctx);
+    await runScheduled(env, ctx);
+    await db.exec("UPDATE package_releases_to_process SET next_attempt_at = '1970-01-01T00:00:00.000Z'");
+    await runScheduled(env, ctx);
+    await db.exec("UPDATE package_releases_to_process SET next_attempt_at = '1970-01-01T00:00:00.000Z'");
+    await runScheduled(env, ctx);
+
+    const release = await db
+      .prepare(
+        "SELECT status, attempt_count, finished_at, status_message FROM package_releases_to_process WHERE package_name = ? AND package_version = ?",
+      )
+      .bind("std", "0.1.0")
+      .first<{
+        status: string;
+        attempt_count: number;
+        finished_at: string | null;
+        status_message: string;
+      }>();
+
+    expect(release).not.toBeNull();
+    expect(release?.status).toBe("blocked");
+    expect(release?.attempt_count).toBe(3);
+    expect(release?.finished_at).not.toBeNull();
+    expect(release?.status_message).toContain("failed three times and is now blocked");
+
+    const events = await db
+      .prepare(
+        "SELECT event_type FROM registry_events WHERE package_name = ? AND package_version = ? ORDER BY sequence_id",
+      )
+      .bind("std", "0.1.0")
+      .all<{ event_type: string }>();
+
+    expect(events.results.map((row) => row.event_type)).toEqual([
+      "package.processing.queued",
+      "package.processing.started",
+      "package.docs.failed",
+      "package.processing.requeued",
+      "package.processing.started",
+      "package.docs.failed",
+      "package.processing.requeued",
+      "package.processing.started",
+      "package.docs.failed",
+      "package.processing.blocked",
+    ]);
+  });
+
   test("missing docs route surfaces queued pipeline status", async () => {
     const env = makeEnv();
     const ctx = new FakeExecutionContext();

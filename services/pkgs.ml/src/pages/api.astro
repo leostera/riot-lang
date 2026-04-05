@@ -269,7 +269,7 @@ const schemaSections: SchemaSection[] = [
       { name: "limit", type: "number | undefined", notes: "Requested page size." },
       { name: "after", type: "string | undefined", notes: "Cursor-style event id for polling newer events." },
       { name: "events", type: "RegistryEventRecord[]", notes: "Newest-first event list." },
-      { name: "events[].event_type", type: "string", notes: "One of package.submitted, package.verified, package.published, package.indexed, package.searchable, package.processing.queued, package.processing.started, package.processing.requeued, package.processing.finished, package.docs.staged, package.docs.generated, package.docs.failed, package.build.staged, package.build.verified, package.build.failed." },
+      { name: "events[].event_type", type: "string", notes: "One of package.submitted, package.verified, package.published, package.indexed, package.searchable, package.processing.queued, package.processing.started, package.processing.requeued, package.processing.blocked, package.processing.finished, package.docs.staged, package.docs.generated, package.docs.failed, package.build.staged, package.build.verified, package.build.failed." },
       { name: "events[].payload", type: "object", notes: "Small event-specific payload used by the activity UIs." },
     ],
     example: pretty({

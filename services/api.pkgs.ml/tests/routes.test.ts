@@ -1023,45 +1023,78 @@ describe("riot package registry routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await readJson(response)).toMatchObject({
-      window_days: 30,
+    const payload = await readJson(response) as {
+      window: string;
+      window_label: string;
+      window_days: number;
+      available_windows: Array<{ key: string; label: string }>;
       summary: {
-        total_package_downloads: 3,
-        total_riot_downloads: 1,
-        total_ocaml_downloads: 0,
-        total_packages: 2,
-        total_versions: 2,
-        total_users: 0,
-        total_index_reads: 0,
-        mean_package_downloads_per_package: 1.5,
-      },
-      top_packages: [
-        {
-          package_name: "kernel",
-          latest_version: "0.0.1",
-          download_count: 2,
-          package_path: "/p/kernel",
-        },
-        {
-          package_name: "std",
-          latest_version: "0.1.0",
-          download_count: 1,
-          package_path: "/p/std",
-        },
-      ],
-      latest_releases: [
-        {
-          package_name: "std",
-          package_version: "0.1.0",
-          package_path: "/p/std/0.1.0",
-        },
-        {
-          package_name: "kernel",
-          package_version: "0.0.1",
-          package_path: "/p/kernel/0.0.1",
-        },
-      ],
+        total_package_downloads: number;
+        total_riot_downloads: number;
+        total_ocaml_downloads: number;
+        total_packages: number;
+        total_versions: number;
+        total_users: number;
+        total_index_reads: number;
+        mean_package_downloads_per_package: number;
+      };
+      metrics: Array<{ key: string; total: number }>;
+      top_packages: unknown[];
+      latest_releases: unknown[];
+    };
+
+    expect(payload.window).toBe("30d");
+    expect(payload.window_label).toBe("Last 30 days");
+    expect(payload.window_days).toBe(30);
+    expect(payload.available_windows).toEqual([
+      { key: "all", label: "All time" },
+      { key: "year", label: "This year" },
+      { key: "30d", label: "Last 30 days" },
+      { key: "7d", label: "This week" },
+    ]);
+    expect(payload.summary).toMatchObject({
+      total_package_downloads: 3,
+      total_riot_downloads: 1,
+      total_ocaml_downloads: 0,
+      total_packages: 2,
+      total_versions: 2,
+      total_users: 0,
+      total_index_reads: 0,
+      mean_package_downloads_per_package: 1.5,
     });
+    expect(payload.metrics.map((metric: { key: string; total: number }) => [metric.key, metric.total])).toEqual([
+      ["package_downloads", 3],
+      ["riot_downloads", 1],
+      ["ocaml_downloads", 0],
+      ["index_reads", 0],
+      ["releases_published", 2],
+    ]);
+    expect(payload.top_packages).toMatchObject([
+      {
+        package_name: "kernel",
+        latest_version: "0.0.1",
+        download_count: 2,
+        package_path: "/p/kernel",
+      },
+      {
+        package_name: "std",
+        latest_version: "0.1.0",
+        download_count: 1,
+        package_path: "/p/std",
+      },
+    ]);
+    expect(payload.latest_releases).toMatchObject([
+      {
+        package_name: "std",
+        package_version: "0.1.0",
+        package_path: "/p/std/0.1.0",
+      },
+      {
+        package_name: "kernel",
+        package_version: "0.0.1",
+        package_path: "/p/kernel/0.0.1",
+      },
+    ]);
   });
 
   test("artifact publish accepts built-in OCaml dependencies without registry lookup", async () => {
@@ -1193,6 +1226,6 @@ async function makePackageArtifact(options: MakePackageArtifactOptions): Promise
   }, "");
 }
 
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(response: Response): Promise<any> {
   return JSON.parse(await response.text());
 }

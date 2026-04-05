@@ -54,6 +54,7 @@ import type {
   IndexedPackageRelease,
   PackageIndexDocument,
   PublishedPackageRelease,
+  RegistryStatsWindowKey,
 } from "./types.ts";
 
 export async function handleRequest(
@@ -608,7 +609,21 @@ async function handleViewDocument(
     case "stats_summary":
       return json(await readRegistryStatsSummaryDocument(env.SEARCH_DB));
     case "stats_dashboard":
-      return json(await readRegistryStatsDashboardDocument(env.SEARCH_DB));
+      return json(await readRegistryStatsDashboardDocument(env.SEARCH_DB, parseStatsWindow(url)));
+  }
+}
+
+function parseStatsWindow(url: URL): RegistryStatsWindowKey {
+  const value = url.searchParams.get("window");
+
+  switch (value) {
+    case "all":
+    case "year":
+    case "30d":
+    case "7d":
+      return value;
+    default:
+      return "30d";
   }
 }
 

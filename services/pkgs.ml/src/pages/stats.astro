@@ -1,5 +1,5 @@
 ---
-import StatsTimelineChart from "@/components/StatsTimelineChart";
+import StatsDashboard from "@/components/StatsDashboard";
 import {
   Card,
   CardContent,
@@ -9,8 +9,15 @@ import {
 } from "@/components/ui/card";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchRegistryStatsDashboard } from "@/lib/web-views";
+import type { StatsLatestRelease, StatsTopPackage } from "@/lib/types";
 
-const dashboard = await fetchRegistryStatsDashboard();
+const windows = ["all", "year", "30d", "7d"] as const;
+const dashboards = Object.fromEntries(
+  await Promise.all(
+    windows.map(async (window) => [window, await fetchRegistryStatsDashboard(window)]),
+  ),
+);
+const dashboard = dashboards["30d"];
 const integer = new Intl.NumberFormat("en-US");
 const decimal = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
@@ -67,17 +74,7 @@ const summaryCards = [
         }
       </div>
 
-      <Card size="sm" className="rounded-md shadow-none">
-        <CardHeader className="border-b border-border">
-          <CardTitle className="text-base">Last {dashboard.window_days} days</CardTitle>
-          <CardDescription>
-            Installs, releases, and index refreshes by day.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-3 py-3 sm:px-4">
-          <StatsTimelineChart client:load data={dashboard.daily_activity} />
-        </CardContent>
-      </Card>
+      <StatsDashboard client:load initialDashboards={dashboards} />
 
       <div class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <Card size="sm" className="rounded-md shadow-none">
@@ -101,7 +98,7 @@ const summaryCards = [
                     </thead>
                     <tbody>
                       {
-                        dashboard.top_packages.map((item) => (
+                        dashboard.top_packages.map((item: StatsTopPackage) => (
                           <tr class="border-b border-border/70 last:border-b-0">
                             <td class="px-4 py-3 align-top">
                               <div class="grid gap-1">
@@ -138,7 +135,7 @@ const summaryCards = [
               dashboard.latest_releases.length === 0 ? (
                 <p class="px-4 py-4 text-base text-muted-foreground">No releases have been published yet.</p>
               ) : (
-                dashboard.latest_releases.map((release) => (
+                dashboard.latest_releases.map((release: StatsLatestRelease) => (
                   <article class="grid gap-1 border-b border-border/70 px-4 py-3 last:border-b-0">
                     <div class="flex items-start justify-between gap-3">
                       <a href={release.package_path} class="font-medium text-foreground hover:text-primary">
