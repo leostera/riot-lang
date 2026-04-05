@@ -149,8 +149,7 @@ module ComponentProcess = struct
             render = C.render;
             registry = HandlerRegistry.create ();
             handler_pid;
-          };
-        Ok ())
+          })
 end
 
 (** Create a Channel.Handler for a LiveView component *)
