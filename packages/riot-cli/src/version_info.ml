@@ -158,3 +158,8 @@ let version_string = fun () ->
   match read_installed () with
   | Some metadata -> version_string_of metadata
   | None -> "riot dev (build unknown)"
+
+let agent_string = fun () ->
+  match read_installed () with
+  | Some metadata -> "riot-cli@" ^ metadata.release_id
+  | None -> "riot-cli@dev"

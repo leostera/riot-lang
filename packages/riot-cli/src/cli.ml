@@ -200,6 +200,7 @@ let is_lsp_invocation = fun args ->
   | [] -> false
 
 let run = fun ~args ->
+  let _ = Env.set_var ~name:"RIOT_AGENT_HEADER" ~value:(Version_info.agent_string ()) in
   let normalized_args =
     match args with
     | executable :: "docs" :: rest -> executable :: "doc" :: rest
@@ -363,7 +364,11 @@ let run = fun ~args ->
               in
               Riot_fmt.run ?workspace fmt_matches
           | Some ("clean", clean_matches) ->
-              Clean.run clean_matches
+              (
+                match require_clean_workspace (get_workspace_scan ()) with
+                | Error _ as e -> e
+                | Ok workspace -> Clean.run ~workspace clean_matches
+              )
           | Some ("doc", doc_matches) ->
               let workspace =
                 match get_workspace_scan () with

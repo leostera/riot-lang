@@ -36,6 +36,7 @@
 30. `riot toolchain list-available` stays workspace-free and should render data from `Riot_toolchain.list_available_toolchains` without scanning the workspace first.
 31. `riot clean` is the normal workspace-wide cache-GC entrypoint and `riot clean --force` is the destructive build-root wipe. Keep the command thin: resolve the workspace at the CLI boundary once and delegate the maintenance policy to `riot-store`.
 32. `riot doc --json` should emit JSONL payloads on stdout only. When `riot run` launches a child command with `--json` in its forwarded args, the wrapper should switch its own build/run progress output to JSON too so the combined stream stays machine-readable.
+33. `Riot_cli.Cli.run` should stamp the process-level `RIOT_AGENT_HEADER` early so downstream registry and CDN clients can emit `X-Riot-Agent` consistently without threading CLI-specific dependencies through library packages.
 
 ## Validate
 

@@ -18,6 +18,10 @@ export interface Env {
 }
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+const RIOT_AGENT_HEADER = "x-riot-agent";
+const INTERNAL_RIOT_AGENT_PREFIXES = [
+  "riot-docs-pipeline@",
+];
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -70,8 +74,9 @@ async function handleRequest(
     : await handleObject(request, env, key);
 
   if (request.method === "GET" && response.status === 200) {
-    const access = classifyAccess(key);
-    if (access !== null) {
+    const riotAgent = extractRiotAgent(request);
+    const access = classifyAccess(key, riotAgent);
+    if (access !== null && !isInternalRiotAgent(riotAgent)) {
       ctx.waitUntil(recordAccess(env, access));
     }
   }
@@ -188,25 +193,28 @@ async function respondWithJsonDocument(
 }
 
 type AccessEvent =
-  | { kind: "index_read"; documentKey: string; packageName?: string }
+  | { kind: "index_read"; documentKey: string; packageName?: string; riotAgent?: string }
   | {
       kind: "package_download";
       packageName: string;
       packageVersion: string;
       artifactSha256: string;
       sourceArchiveKey: string;
+      riotAgent?: string;
     }
   | {
       kind: "binary_download";
       binaryName: "riot" | "ocaml";
       objectKey: string;
+      riotAgent?: string;
     };
 
-function classifyAccess(key: string): AccessEvent | null {
+function classifyAccess(key: string, riotAgent?: string): AccessEvent | null {
   if (key === "index/v1/config.json") {
     return {
       kind: "index_read",
       documentKey: key,
+      riotAgent,
     };
   }
 
@@ -216,6 +224,7 @@ function classifyAccess(key: string): AccessEvent | null {
       kind: "index_read",
       documentKey: key,
       packageName: decodeURIComponent(indexMatch[1] ?? ""),
+      riotAgent,
     };
   }
 
@@ -227,6 +236,7 @@ function classifyAccess(key: string): AccessEvent | null {
       packageVersion: decodeURIComponent(sourceMatch[2] ?? ""),
       artifactSha256: decodeURIComponent(sourceMatch[3] ?? ""),
       sourceArchiveKey: key,
+      riotAgent,
     };
   }
 
@@ -235,6 +245,7 @@ function classifyAccess(key: string): AccessEvent | null {
       kind: "binary_download",
       binaryName: "riot",
       objectKey: key,
+      riotAgent,
     };
   }
 
@@ -243,6 +254,7 @@ function classifyAccess(key: string): AccessEvent | null {
       kind: "binary_download",
       binaryName: "ocaml",
       objectKey: key,
+      riotAgent,
     };
   }
 
@@ -258,6 +270,7 @@ async function recordAccess(env: Env, access: AccessEvent): Promise<void> {
         read_id: crypto.randomUUID(),
         document_key: access.documentKey,
         package_name: access.packageName,
+        riot_agent: access.riotAgent,
         read_at: now,
       });
       return;
@@ -268,6 +281,7 @@ async function recordAccess(env: Env, access: AccessEvent): Promise<void> {
         package_version: access.packageVersion,
         artifact_sha256: access.artifactSha256,
         source_archive_key: access.sourceArchiveKey,
+        riot_agent: access.riotAgent,
         downloaded_at: now,
       });
       return;
@@ -276,10 +290,28 @@ async function recordAccess(env: Env, access: AccessEvent): Promise<void> {
         download_id: crypto.randomUUID(),
         binary_name: access.binaryName,
         object_key: access.objectKey,
+        riot_agent: access.riotAgent,
         downloaded_at: now,
       });
       return;
   }
+}
+
+function extractRiotAgent(request: Request): string | undefined {
+  const value = request.headers.get(RIOT_AGENT_HEADER)?.trim();
+  if (value === undefined || value.length === 0) {
+    return undefined;
+  }
+
+  return value.slice(0, 128);
+}
+
+function isInternalRiotAgent(riotAgent?: string): boolean {
+  if (riotAgent === undefined) {
+    return false;
+  }
+
+  return INTERNAL_RIOT_AGENT_PREFIXES.some((prefix) => riotAgent.startsWith(prefix));
 }
 
 function isIndexDocumentKey(key: string): boolean {

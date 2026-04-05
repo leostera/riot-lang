@@ -157,6 +157,7 @@ export const indexReads = sqliteTable(
     readId: text("read_id").primaryKey(),
     documentKey: text("document_key").notNull(),
     packageName: text("package_name"),
+    riotAgent: text("riot_agent"),
     readAt: text("read_at").notNull(),
   },
   (table) => ({
@@ -174,6 +175,7 @@ export const packageDownloads = sqliteTable(
     packageVersion: text("package_version").notNull(),
     artifactSha256: text("artifact_sha256").notNull(),
     sourceArchiveKey: text("source_archive_key").notNull(),
+    riotAgent: text("riot_agent"),
     downloadedAt: text("downloaded_at").notNull(),
   },
   (table) => ({
@@ -193,6 +195,7 @@ export const binaryDownloads = sqliteTable(
     downloadId: text("download_id").primaryKey(),
     binaryName: text("binary_name").notNull(),
     objectKey: text("object_key").notNull(),
+    riotAgent: text("riot_agent"),
     downloadedAt: text("downloaded_at").notNull(),
   },
   (table) => ({

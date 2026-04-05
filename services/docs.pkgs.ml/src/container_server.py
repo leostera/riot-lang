@@ -18,6 +18,7 @@ DEFAULT_TOOLCHAIN_VERSION = "5.5.0-riot.2"
 DEFAULT_TARGET = "x86_64-unknown-linux-gnu"
 RIOT_BIN = Path.home() / ".riot" / "bin" / "riot"
 DEFAULT_RIOT_INSTALL_URL = "https://get.riot.ml"
+DOCS_PIPELINE_AGENT = "riot-docs-pipeline@1.0"
 
 
 def json_bytes(payload):
@@ -146,6 +147,7 @@ def command_env() -> dict[str, str]:
     riot_bin_dir = str(RIOT_BIN.parent)
     env["PATH"] = riot_bin_dir + os.pathsep + env.get("PATH", "")
     env.setdefault("HOME", str(Path.home()))
+    env.setdefault("RIOT_AGENT_HEADER", DOCS_PIPELINE_AGENT)
     return env
 
 
@@ -160,6 +162,8 @@ def download_file(url: str, destination: Path, cwd: Path) -> None:
             "1",
             "-A",
             "riot-docs-pipeline/1.0",
+            "-H",
+            f"X-Riot-Agent: {DOCS_PIPELINE_AGENT}",
             "-o",
             str(destination),
             url,

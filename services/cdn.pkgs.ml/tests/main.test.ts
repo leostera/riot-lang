@@ -75,7 +75,11 @@ describe("riot cdn worker", () => {
     });
 
     const response = await worker.fetch(
-      new Request("https://cdn.pkgs.ml/sources/kernel/0.0.1/deadbeef.tar.gz"),
+      new Request("https://cdn.pkgs.ml/sources/kernel/0.0.1/deadbeef.tar.gz", {
+        headers: {
+          "X-Riot-Agent": "riot-cli@0.0.5",
+        },
+      }),
       env,
       ctx,
     );
@@ -87,13 +91,14 @@ describe("riot cdn worker", () => {
 
     const downloads = await db
       .prepare(
-        "SELECT package_name, package_version, artifact_sha256, source_archive_key FROM package_downloads",
+        "SELECT package_name, package_version, artifact_sha256, source_archive_key, riot_agent FROM package_downloads",
       )
       .all<{
         package_name: string;
         package_version: string;
         artifact_sha256: string;
         source_archive_key: string;
+        riot_agent: string | null;
       }>();
 
     expect(downloads.results).toEqual([
@@ -102,8 +107,44 @@ describe("riot cdn worker", () => {
         package_version: "0.0.1",
         artifact_sha256: "deadbeef",
         source_archive_key: "sources/kernel/0.0.1/deadbeef.tar.gz",
+        riot_agent: "riot-cli@0.0.5",
       },
     ]);
+  });
+
+  test("does not count internal riot-agent package downloads", async () => {
+    const bucket = new FakeR2Bucket();
+    const db = new FakeD1Database();
+    const ctx = new FakeExecutionContext();
+    const env: Env = {
+      ML_PKGS_CDN: bucket as unknown as R2Bucket,
+      SEARCH_DB: db as unknown as D1Database,
+    };
+
+    await bucket.put("sources/kernel/0.0.1/deadbeef.tar.gz", "archive", {
+      httpMetadata: {
+        contentType: "application/gzip",
+      },
+    });
+
+    const response = await worker.fetch(
+      new Request("https://cdn.pkgs.ml/sources/kernel/0.0.1/deadbeef.tar.gz", {
+        headers: {
+          "X-Riot-Agent": "riot-docs-pipeline@1.0",
+        },
+      }),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(200);
+
+    const downloads = await db
+      .prepare("SELECT COUNT(*) AS count FROM package_downloads")
+      .first<{ count: number }>();
+
+    expect(downloads?.count).toBe(0);
   });
 
   test("does not expose private pipeline request objects", async () => {
@@ -152,7 +193,11 @@ describe("riot cdn worker", () => {
     });
 
     const riotResponse = await worker.fetch(
-      new Request("https://cdn.pkgs.ml/riot/riot-latest-aarch64-apple-darwin.tar.gz"),
+      new Request("https://cdn.pkgs.ml/riot/riot-latest-aarch64-apple-darwin.tar.gz", {
+        headers: {
+          "X-Riot-Agent": "riot-cli@0.0.5",
+        },
+      }),
       env,
       ctx,
     );
@@ -167,17 +212,19 @@ describe("riot cdn worker", () => {
     expect(ocamlResponse.status).toBe(200);
 
     const downloads = await db
-      .prepare("SELECT binary_name, object_key FROM binary_downloads ORDER BY binary_name ASC")
-      .all<{ binary_name: string; object_key: string }>();
+      .prepare("SELECT binary_name, object_key, riot_agent FROM binary_downloads ORDER BY binary_name ASC")
+      .all<{ binary_name: string; object_key: string; riot_agent: string | null }>();
 
     expect(downloads.results).toEqual([
       {
         binary_name: "ocaml",
         object_key: "ocaml/ocaml-5.3.0-aarch64-apple-darwin.tar.gz",
+        riot_agent: null,
       },
       {
         binary_name: "riot",
         object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
+        riot_agent: "riot-cli@0.0.5",
       },
     ]);
   });

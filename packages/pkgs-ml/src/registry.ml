@@ -113,8 +113,24 @@ let exn_message = function
   | Failure message -> message
   | exn -> Exception.to_string exn
 
+let default_http_headers = fun headers ->
+  let has_riot_agent =
+    List.exists
+      (fun (name, _value) -> String.equal (String.lowercase_ascii name) "x-riot-agent")
+      headers
+  in
+  if has_riot_agent then
+    headers
+  else
+    match Env.var Env.String ~name:"RIOT_AGENT_HEADER" with
+    | Some value when not (String.equal (String.trim value) "") ->
+        ("X-Riot-Agent", String.trim value) :: headers
+    | Some _
+    | None -> headers
+
 let default_fetch =
   let run method_ uri ~headers ?body () =
+    let headers = default_http_headers headers in
     try
       match Blink.connect uri with
       | Error err -> Error (blink_error_message err)

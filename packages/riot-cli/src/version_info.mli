@@ -28,3 +28,5 @@ val version_string_of: t -> string
 val version_string: unit -> string
 
 val release_label: t -> string
+
+val agent_string: unit -> string
