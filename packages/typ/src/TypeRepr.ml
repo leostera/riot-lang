@@ -15,10 +15,14 @@ and t =
   | Float
   | Bool
   | String
+  | Char
   | Unit
   | Option of t
   | Result of t * t
   | Array of t
+  | List of t
+  | Seq of t
+  | Named of { name: string; arguments: t list }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
@@ -50,6 +54,7 @@ let rec free_vars = function
   | Float
   | Bool
   | String
+  | Char
   | Unit
   | Hole _ ->
       []
@@ -59,6 +64,12 @@ let rec free_vars = function
       union (free_vars (prune ok_ty)) (free_vars (prune error_ty))
   | Array element ->
       free_vars (prune element)
+  | List element ->
+      free_vars (prune element)
+  | Seq element ->
+      free_vars (prune element)
+  | Named { arguments; _ } ->
+      List.fold_left (fun acc argument -> union acc (free_vars (prune argument))) [] arguments
   | Tuple members ->
       List.fold_left (fun acc member -> union acc (free_vars (prune member))) [] members
   | Arrow { lhs; rhs; _ } ->
@@ -75,6 +86,7 @@ let rec occurs = fun needle ty ->
   | Float
   | Bool
   | String
+  | Char
   | Unit
   | Hole _ ->
       false
@@ -84,6 +96,12 @@ let rec occurs = fun needle ty ->
       occurs needle ok_ty || occurs needle error_ty
   | Array element ->
       occurs needle element
+  | List element ->
+      occurs needle element
+  | Seq element ->
+      occurs needle element
+  | Named { arguments; _ } ->
+      List.exists (occurs needle) arguments
   | Tuple members ->
       List.exists (occurs needle) members
   | Arrow { lhs; rhs; _ } ->

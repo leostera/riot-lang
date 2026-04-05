@@ -14,10 +14,28 @@ let diagnostics = fun snapshot source_id ->
   @ (analysis.lowering_diagnostics |> List.map (fun diagnostic -> Lowering diagnostic))
   @ (analysis.typing_diagnostics |> List.map (fun diagnostic -> Typing diagnostic))
 
-let export_of = fun snapshot source_id ->
+let file_summary_of = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with
-  | Some analysis -> Some analysis.file_summary.export_result
+  | Some analysis -> Some analysis.file_summary
   | None -> None
+
+let persisted_summary_of = fun snapshot source_id ->
+  file_summary_of snapshot source_id |> Option.map PersistedSummary.of_file_summary
+
+let module_summary_of = fun snapshot source_id ->
+  match analysis_of_source snapshot source_id with
+  | None -> None
+  | Some analysis ->
+      Some (
+        ModuleSummary.make
+          ~module_name:(Source.module_name analysis.source)
+          ~source_hash:(Source.input_hash analysis.source)
+          ~summary:(PersistedSummary.of_file_summary analysis.file_summary)
+      )
+
+let export_of = fun snapshot source_id ->
+  file_summary_of snapshot source_id
+  |> Option.map (fun summary -> summary.FileSummary.export_result)
 
 let semantic_tree_of_source = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with

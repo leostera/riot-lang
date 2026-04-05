@@ -15,6 +15,7 @@ type supported_literal =
   | FloatLiteral
   | BoolLiteral
   | StringLiteral
+  | CharLiteral
   | UnitLiteral
 type unsupported_reason =
   | LiteralOutsideSupportedSubset of { supported_literals: supported_literal list }

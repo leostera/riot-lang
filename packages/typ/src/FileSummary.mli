@@ -1,6 +1,11 @@
 open Std
 
-(** Export-facing summary for one analyzed source. *)
+(** In-memory export-facing summary for one analyzed source.
+
+    Once a source finishes checking, the reusable type environment it exports
+    is captured here. Hosts should persist or reload that boundary through
+    {!PersistedSummary} rather than adding serialization concerns to the core
+    semantic layers. *)
 type exports = (string * TypeScheme.t) list
 type export_result =
   (** Exports are safe enough for downstream reuse. *)

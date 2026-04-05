@@ -1,0 +1,81 @@
+{
+  "file_summary": {
+    "export_result": {
+      "exports": [
+        {
+          "name": "const",
+          "scheme": "'a 'b. 'b -> 'a -> 'b"
+        },
+        {
+          "name": "id",
+          "scheme": "'a. 'a -> 'a"
+        }
+      ],
+      "tag": "trusted_export"
+    },
+    "source_id": 0
+  },
+  "persisted": {
+    "export_result": {
+      "exports": [
+        {
+          "name": "const",
+          "scheme": {
+            "body": {
+              "label": {
+                "tag": "nolabel"
+              },
+              "lhs": {
+                "id": 1,
+                "tag": "var"
+              },
+              "rhs": {
+                "label": {
+                  "tag": "nolabel"
+                },
+                "lhs": {
+                  "id": 2,
+                  "tag": "var"
+                },
+                "rhs": {
+                  "id": 1,
+                  "tag": "var"
+                },
+                "tag": "arrow"
+              },
+              "tag": "arrow"
+            },
+            "quantified": [
+              1,
+              2
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "scheme": {
+            "body": {
+              "label": {
+                "tag": "nolabel"
+              },
+              "lhs": {
+                "id": 0,
+                "tag": "var"
+              },
+              "rhs": {
+                "id": 0,
+                "tag": "var"
+              },
+              "tag": "arrow"
+            },
+            "quantified": [
+              0
+            ]
+          }
+        }
+      ],
+      "tag": "trusted_export"
+    },
+    "source_id": 0
+  }
+}

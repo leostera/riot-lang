@@ -1,5 +1,20 @@
 open Std
 
+type type_item = {
+  item_id: ItemId.t;
+  origin_id: OriginId.t;
+  scope_path: string list;
+  declaration: TypeDecl.t;
+}
+
+type exception_item = {
+  item_id: ItemId.t;
+  origin_id: OriginId.t;
+  scope_path: string list;
+  exception_name: string;
+  scheme: TypeScheme.t;
+}
+
 type value_item = {
   item_id: ItemId.t;
   origin_id: OriginId.t;
@@ -23,6 +38,8 @@ type open_item = {
 }
 
 type item =
+  | Type of type_item
+  | Exception of exception_item
   | Value of value_item
   | Open of open_item
   | Unsupported of unsupported_item
@@ -39,6 +56,8 @@ let find_item = fun items item_id ->
   List.find_opt
     (
       function
+      | Type (item: type_item) -> ItemId.equal item.item_id item_id
+      | Exception (item: exception_item) -> ItemId.equal item.item_id item_id
       | Value (item: value_item) -> ItemId.equal item.item_id item_id
       | Open (item: open_item) -> ItemId.equal item.item_id item_id
       | Unsupported (item: unsupported_item) -> ItemId.equal item.item_id item_id
@@ -46,6 +65,27 @@ let find_item = fun items item_id ->
     items
 
 let item_to_json = function
+  | Type (item: type_item) -> Data.Json.Object [
+    ("tag", Data.Json.String "type");
+    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) item.scope_path)
+    );
+    ("declaration", TypeDecl.to_json item.declaration);
+  ]
+  | Exception (item: exception_item) -> Data.Json.Object [
+    ("tag", Data.Json.String "exception");
+    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) item.scope_path)
+    );
+    ("exception_name", Data.Json.String item.exception_name);
+    ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
+  ]
   | Value (item: value_item) -> Data.Json.Object [
     ("tag", Data.Json.String "value");
     ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
@@ -92,6 +132,34 @@ let to_string = fun items ->
       items |> List.map
         (
           function
+          | Type (item: type_item) ->
+              let scope_prefix =
+                match item.scope_path with
+                | [] -> ""
+                | scope_path -> String.concat "." scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " type "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " "
+              ^ TypeDecl.to_string item.declaration
+          | Exception (item: exception_item) ->
+              let scope_prefix =
+                match item.scope_path with
+                | [] -> ""
+                | scope_path -> String.concat "." scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " exception "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " "
+              ^ item.exception_name
+              ^ " : "
+              ^ TypePrinter.scheme_to_string item.scheme
           | Value (item: value_item) ->
               let scope_prefix =
                 match item.scope_path with

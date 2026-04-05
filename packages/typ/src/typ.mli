@@ -29,6 +29,8 @@ open Std
       source-backed origins for semantic IDs in one source revision
     - `FileSummary`
       export-facing result with an explicit trust state
+    - `PersistedSummary`
+      host-facing `.cmi`-like persistence seam for reusable exports
     - `TypeIndex`
       a query-oriented expression-type index used by `Query.type_at`
 
@@ -44,7 +46,7 @@ open Std
     - `Typ.Session.snapshot`
     - `Typ.Query.diagnostics`
     - `Typ.Query.type_at`
-    - `Typ.Query.export_of`
+    - `Typ.Query.persisted_summary_of`
 
     Existing tests and batch-oriented tools can still use:
 
@@ -80,6 +82,8 @@ module BodyArena: module type of BodyArena
 
 module SemanticTree: module type of SemanticTree
 
+module TypeDecl: module type of TypeDecl
+
 module TypeRepr: module type of TypeRepr
 
 module TypeScheme: module type of TypeScheme
@@ -89,6 +93,8 @@ module TypePrinter: module type of TypePrinter
 module TypeIndex: module type of TypeIndex
 
 module FileSummary: module type of FileSummary
+
+module PersistedSummary: module type of PersistedSummary
 
 module Config: module type of TypConfig
 

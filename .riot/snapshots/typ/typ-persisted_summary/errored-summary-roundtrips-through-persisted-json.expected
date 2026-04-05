@@ -1,0 +1,32 @@
+{
+  "file_summary": {
+    "export_result": {
+      "exports": [
+        {
+          "name": "broken",
+          "scheme": "_?0"
+        }
+      ],
+      "tag": "errored_export"
+    },
+    "source_id": 0
+  },
+  "persisted": {
+    "export_result": {
+      "exports": [
+        {
+          "name": "broken",
+          "scheme": {
+            "body": {
+              "id": 0,
+              "tag": "hole"
+            },
+            "quantified": []
+          }
+        }
+      ],
+      "tag": "errored_export"
+    },
+    "source_id": 0
+  }
+}

@@ -32,5 +32,15 @@ val make: source_id:SourceId.t -> kind:kind -> origin:origin -> revision:int -> 
 (** Replace the source text while preserving [source_id]. *)
 val update_text: t -> revision:int -> text:string -> t
 
+(** Derive the implicit module name for this logical source. *)
+val module_name: t -> string
+
+(** Compute a stable content hash for cacheing the source's exported summary.
+
+    The hash is based on the source kind, derived module name, and current text,
+    but not on [source_id] or [revision], so equivalent logical sources can
+    reuse cached summaries across sessions. *)
+val input_hash: t -> Crypto.hash
+
 (** Render the best available human-facing label for this source. *)
 val display_name: t -> string

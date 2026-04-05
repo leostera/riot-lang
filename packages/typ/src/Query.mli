@@ -15,6 +15,15 @@ val analysis_of_source: Snapshot.t -> SourceId.t -> SourceAnalysis.t option
 (** Gather parse, lowering, and typing diagnostics for one source. *)
 val diagnostics: Snapshot.t -> SourceId.t -> diagnostic list
 
+(** Fetch the full export-facing summary for one source, when present. *)
+val file_summary_of: Snapshot.t -> SourceId.t -> FileSummary.t option
+
+(** Fetch the host-facing persisted summary for one source, when present. *)
+val persisted_summary_of: Snapshot.t -> SourceId.t -> PersistedSummary.t option
+
+(** Fetch the host-facing module summary for one source, when present. *)
+val module_summary_of: Snapshot.t -> SourceId.t -> ModuleSummary.t option
+
 (** Fetch the export trust result for one source, when present. *)
 val export_of: Snapshot.t -> SourceId.t -> FileSummary.export_result option
 

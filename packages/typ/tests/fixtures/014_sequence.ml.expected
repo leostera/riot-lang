@@ -126,6 +126,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -186,8 +190,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -226,8 +246,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -250,6 +286,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -258,12 +326,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 0,
@@ -285,6 +361,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -345,8 +425,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -385,8 +481,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -409,6 +521,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -417,12 +561,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 1,
@@ -444,6 +596,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -504,8 +660,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -544,8 +716,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -568,6 +756,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -576,12 +796,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 2,
@@ -603,6 +831,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -663,8 +895,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -703,8 +951,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -727,6 +991,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -735,12 +1031,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 3,
@@ -762,6 +1066,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -822,8 +1130,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -862,8 +1186,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -886,6 +1226,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -894,12 +1266,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 4,
@@ -921,6 +1301,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -981,8 +1365,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -1021,8 +1421,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -1045,6 +1461,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1053,12 +1501,20 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "value",
           "scheme": "int"
         },
         {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 5,
@@ -1080,6 +1536,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
           "name": "*",
           "scheme": "int -> int -> int"
         },
@@ -1140,8 +1600,24 @@
           "scheme": "(_?-1 array) -> int"
         },
         {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
           "name": "Error",
           "scheme": "'a 'b. 'b -> ('a, 'b) result"
+        },
+        {
+          "name": "Failure",
+          "scheme": "string -> exn"
         },
         {
           "name": "Float.cbrt",
@@ -1180,8 +1656,24 @@
           "scheme": "int -> int -> int"
         },
         {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
           "name": "Int.to_string",
           "scheme": "int -> string"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
         },
         {
           "name": "None",
@@ -1204,6 +1696,38 @@
           "scheme": "string -> unit"
         },
         {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.contains",
+          "scheme": "string -> char -> bool"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
           "name": "^",
           "scheme": "string -> string -> string"
         },
@@ -1212,8 +1736,16 @@
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "|>",
           "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
         }
       ],
       "expr_id": 6,

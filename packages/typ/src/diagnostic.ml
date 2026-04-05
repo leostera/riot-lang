@@ -9,6 +9,7 @@ type supported_literal =
   | FloatLiteral
   | BoolLiteral
   | StringLiteral
+  | CharLiteral
   | UnitLiteral
 
 type unsupported_reason =
@@ -119,6 +120,7 @@ let supported_literal_to_string = function
   | FloatLiteral -> "float"
   | BoolLiteral -> "bool"
   | StringLiteral -> "string"
+  | CharLiteral -> "char"
   | UnitLiteral -> "unit"
 
 let unsupported_context_tag = function

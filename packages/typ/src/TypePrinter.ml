@@ -45,6 +45,8 @@ let rec render_type = fun state ~nested ty ->
       "bool"
   | TypeRepr.String ->
       "string"
+  | TypeRepr.Char ->
+      "char"
   | TypeRepr.Unit ->
       "unit"
   | TypeRepr.Hole hole_id ->
@@ -75,6 +77,29 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
+  | TypeRepr.List element ->
+      let text = render_type state ~nested:true element ^ " list" in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
+  | TypeRepr.Seq element ->
+      let text = render_type state ~nested:true element ^ " Seq.t" in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
+  | TypeRepr.Named { name; arguments } ->
+      (
+        match arguments with
+        | [] -> name
+        | [ argument ] -> render_type state ~nested:true argument ^ " " ^ name
+        | arguments ->
+            "("
+            ^ (arguments |> List.map (render_type state ~nested:false) |> String.concat ", ")
+            ^ ") "
+            ^ name
+      )
   | TypeRepr.Tuple members ->
       members |> List.map (render_type state ~nested:true) |> String.concat " * " |> fun text ->
         if nested then

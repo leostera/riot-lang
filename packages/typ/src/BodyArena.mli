@@ -14,10 +14,16 @@ type pattern_desc =
   | PBool of bool
   (** String literal pattern. *)
   | PString of string
+  (** Character literal pattern. *)
+  | PChar of string
   (** Unit pattern. *)
   | PUnit
   (** Tuple pattern with child pattern IDs. *)
   | PTuple of PatId.t list
+  (** Constructor pattern with a stable constructor name and lowered payloads. *)
+  | PConstructor of { constructor: string; arguments: PatId.t list }
+  (** List pattern with lowered element patterns. *)
+  | PList of PatId.t list
   (** Alias pattern that binds the matched value under an extra name. *)
   | PAlias of { pattern_id: PatId.t; alias: string }
   (** Lenient polymorphic-variant pattern with an optional payload pattern. *)
@@ -68,6 +74,8 @@ type expr_desc =
   | EBool of bool
   (** String literal expression. *)
   | EString of string
+  (** Character literal expression. *)
+  | EChar of string
   (** Unit expression. *)
   | EUnit
   (** Tuple expression with child expression IDs. *)
@@ -88,6 +96,8 @@ type expr_desc =
   | EIf of ExprId.t * ExprId.t * ExprId.t
   (** Match expression with normalized cases. *)
   | EMatch of ExprId.t * match_case list
+  (** Try-expression with normalized exception handler cases. *)
+  | ETry of ExprId.t * match_case list
   (** Lenient polymorphic-variant expression with an optional payload. *)
   | EPolyVariant of { tag: string; payload: ExprId.t option }
   (** Local module open expression with the lowered body expression. *)

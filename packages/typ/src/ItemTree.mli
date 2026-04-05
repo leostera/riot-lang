@@ -1,5 +1,29 @@
 open Std
 
+(** Constructor entries exported by a lowered type declaration. *)
+type type_item = {
+  (** Stable item identity. *)
+  item_id: ItemId.t;
+  (** Source origin for this item shell. *)
+  origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: string list;
+  (** Lowered declaration summary used to populate constructor environments. *)
+  declaration: TypeDecl.t;
+}
+(** One exception declaration exported as a term-level constructor. *)
+type exception_item = {
+  (** Stable item identity. *)
+  item_id: ItemId.t;
+  (** Source origin for this item shell. *)
+  origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: string list;
+  (** Declared exception constructor name. *)
+  exception_name: string;
+  (** Constructor scheme used by expressions, patterns, and [raise]. *)
+  scheme: TypeScheme.t;
+}
 (** Body-stable item skeleton for one lowered source. *)
 type value_item = {
   (** Stable item identity. *)
@@ -34,6 +58,10 @@ type open_item = {
   module_path: string;
 }
 type item =
+  (** Type declaration with exported constructor schemes. *)
+  | Type of type_item
+  (** Exception declaration exported as a constructor. *)
+  | Exception of exception_item
   (** Value-bearing top-level item. *)
   | Value of value_item
   (** File- or module-scope open statement. *)

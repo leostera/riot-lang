@@ -91,6 +91,8 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
         TypeRepr.Bool
     | TypeRepr.String ->
         TypeRepr.String
+    | TypeRepr.Char ->
+        TypeRepr.Char
     | TypeRepr.Unit ->
         TypeRepr.Unit
     | TypeRepr.Option element ->
@@ -99,6 +101,12 @@ let instantiate = fun (state: state) (TypeScheme.Forall (quantified, body)) ->
         TypeRepr.Result (loop ok_ty, loop error_ty)
     | TypeRepr.Array element ->
         TypeRepr.Array (loop element)
+    | TypeRepr.List element ->
+        TypeRepr.List (loop element)
+    | TypeRepr.Seq element ->
+        TypeRepr.Seq (loop element)
+    | TypeRepr.Named { name; arguments } ->
+        TypeRepr.Named { name; arguments = List.map loop arguments }
     | TypeRepr.Hole hole_id ->
         TypeRepr.Hole hole_id
     | TypeRepr.Tuple members ->
@@ -160,6 +168,7 @@ let rec unify = fun (state: state) ~origin left right ->
   | (TypeRepr.Float, TypeRepr.Float)
   | (TypeRepr.Bool, TypeRepr.Bool)
   | (TypeRepr.String, TypeRepr.String)
+  | (TypeRepr.Char, TypeRepr.Char)
   | (TypeRepr.Unit, TypeRepr.Unit) ->
       ()
   | TypeRepr.Option left_element, TypeRepr.Option right_element ->
@@ -172,6 +181,26 @@ let rec unify = fun (state: state) ~origin left right ->
       ()
   | TypeRepr.Array left_element, TypeRepr.Array right_element ->
       unify state ~origin left_element right_element
+  | TypeRepr.List left_element, TypeRepr.List right_element ->
+      unify state ~origin left_element right_element
+  | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
+      unify state ~origin left_element right_element
+  | TypeRepr.Named { name = left_name; arguments = left_arguments },
+    TypeRepr.Named { name = right_name; arguments = right_arguments } ->
+      if not (String.equal left_name right_name) then
+        raise
+          (Unify_error (Typ_diagnostic.ExpectedActual {
+            expected = TypePrinter.type_to_string left;
+            actual = TypePrinter.type_to_string right
+          }))
+      else if List.length left_arguments != List.length right_arguments then
+        raise
+          (Unify_error (Typ_diagnostic.ExpectedActual {
+            expected = TypePrinter.type_to_string left;
+            actual = TypePrinter.type_to_string right
+          }))
+      else
+        List.iter2 (unify state ~origin) left_arguments right_arguments
   | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
       if List.length left_members != List.length right_members then
         raise
@@ -244,7 +273,24 @@ let env_with_local_open = fun env module_path ->
   let aliases = aliases_for_local_open env module_path in
   bind_env env aliases
 
-let rec bind_pattern = fun (state: state) pat_id expected_ty ->
+let rec constructor_pattern_argument_types = fun (state: state) constructor_ty arguments origin ->
+  match arguments with
+  | [] -> ([], constructor_ty)
+  | _ :: rest ->
+      let argument_ty = fresh_var state in
+      let result_ty = fresh_var state in
+      let () = try_unify
+        state
+        ~origin
+        constructor_ty
+        (TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = argument_ty; rhs = result_ty })
+      in
+      let (rest_argument_types, final_result_ty) =
+        constructor_pattern_argument_types state result_ty rest origin
+      in
+      (argument_ty :: rest_argument_types, final_result_ty)
+
+let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
   match SemanticTree.find_pattern state.file pat_id with
   | None -> []
   | Some pattern -> (
@@ -265,6 +311,9 @@ let rec bind_pattern = fun (state: state) pat_id expected_ty ->
       | BodyArena.PString _ ->
           let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.String in
           []
+      | BodyArena.PChar _ ->
+          let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.Char in
+          []
       | BodyArena.PUnit ->
           let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.Unit in
           []
@@ -277,13 +326,38 @@ let rec bind_pattern = fun (state: state) pat_id expected_ty ->
             ~origin:(origin_of_pattern state pat_id)
             expected_ty
             (TypeRepr.Tuple element_types) in
-          List.map2 (bind_pattern state) elements element_types |> List.flatten
+          List.map2 (bind_pattern state env) elements element_types |> List.flatten
+      | BodyArena.PConstructor { constructor; arguments } -> (
+          match env_lookup env constructor with
+          | Some (_, scheme) ->
+              let origin = origin_of_pattern state pat_id in
+              let constructor_ty = instantiate state scheme in
+              let (argument_types, result_ty) =
+                constructor_pattern_argument_types state constructor_ty arguments origin
+              in
+              let () = try_unify state ~origin expected_ty result_ty in
+              List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
+          | None ->
+              let argument_types = List.map (fun _ -> fresh_var state) arguments in
+              List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
+        )
+      | BodyArena.PList elements ->
+          let element_ty = fresh_var state in
+          let () = try_unify
+            state
+            ~origin:(origin_of_pattern state pat_id)
+            expected_ty
+            (TypeRepr.List element_ty)
+          in
+          elements
+          |> List.map (fun element_id -> bind_pattern state env element_id element_ty)
+          |> List.flatten
       | BodyArena.PAlias { pattern_id; alias } ->
-          let bindings = bind_pattern state pattern_id expected_ty in
+          let bindings = bind_pattern state env pattern_id expected_ty in
           (alias, TypeScheme.Forall ([], expected_ty)) :: bindings
       | BodyArena.PPolyVariant { payload; _ } -> (
           match payload with
-          | Some payload_id -> bind_pattern state payload_id (fresh_hole state)
+          | Some payload_id -> bind_pattern state env payload_id (fresh_hole state)
           | None -> []
         )
       | BodyArena.PUnsupported _ ->
@@ -324,6 +398,8 @@ let rec infer_expr = fun (state: state) env expr_id ->
             TypeRepr.Bool
         | BodyArena.EString _ ->
             TypeRepr.String
+        | BodyArena.EChar _ ->
+            TypeRepr.Char
         | BodyArena.EUnit ->
             TypeRepr.Unit
         | BodyArena.ETuple elements ->
@@ -358,7 +434,7 @@ let rec infer_expr = fun (state: state) env expr_id ->
                   infer_expr state env body_id
               | (parameter: BodyArena.function_parameter) :: rest ->
                   let arg_ty = fresh_var state in
-                  let bindings = bind_pattern state parameter.pattern_id arg_ty in
+                  let bindings = bind_pattern state env parameter.pattern_id arg_ty in
                   let body_ty = lower_parameters (bind_env env bindings) rest in
                   TypeRepr.Arrow {
                     label = type_label_of_body_label parameter.label;
@@ -395,12 +471,18 @@ let rec infer_expr = fun (state: state) env expr_id ->
               ~origin:(origin_of_expr state index_id)
               index_ty
               TypeRepr.Int in
-            let () = try_unify
-              state
-              ~origin:(origin_of_expr state collection_id)
-              collection_ty
-              (TypeRepr.Array element_ty) in
-            element_ty
+            begin match TypeRepr.prune collection_ty with
+            | TypeRepr.String ->
+                TypeRepr.Char
+            | _ ->
+                let () = try_unify
+                  state
+                  ~origin:(origin_of_expr state collection_id)
+                  collection_ty
+                  (TypeRepr.Array element_ty)
+                in
+                element_ty
+            end
         | BodyArena.ELet (binding_ids, body_id) ->
             let env = infer_binding_group state env binding_ids in
             infer_expr state env body_id
@@ -421,7 +503,21 @@ let rec infer_expr = fun (state: state) env expr_id ->
             let () =
               List.iter
                 (fun (case: BodyArena.match_case) ->
-                  let bindings = bind_pattern state case.pattern_id scrutinee_ty in
+                  let bindings = bind_pattern state env case.pattern_id scrutinee_ty in
+                  let case_ty = infer_expr state (bind_env env bindings) case.body_id in
+                  try_unify state ~origin:(origin_of_expr state case.body_id) result_ty case_ty)
+                cases
+            in
+            result_ty
+        | BodyArena.ETry (body_id, cases) ->
+            let body_ty = infer_expr state env body_id in
+            let exn_ty = TypeRepr.Named { name = "exn"; arguments = [] } in
+            let result_ty = fresh_var state in
+            let () = try_unify state ~origin:(origin_of_expr state body_id) result_ty body_ty in
+            let () =
+              List.iter
+                (fun (case: BodyArena.match_case) ->
+                  let bindings = bind_pattern state env case.pattern_id exn_ty in
                   let case_ty = infer_expr state (bind_env env bindings) case.body_id in
                   try_unify state ~origin:(origin_of_expr state case.body_id) result_ty case_ty)
                 cases
@@ -470,7 +566,7 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
     List.map
       (fun (binding: BodyArena.binding) ->
         let value_ty = infer_expr state env binding.value_id in
-        let bound_entries = bind_pattern state binding.pattern_id value_ty in
+        let bound_entries = bind_pattern state env binding.pattern_id value_ty in
         let generalized = bound_entries
         |> List.map (fun (name, TypeScheme.Forall (_, ty)) -> (name, generalize env ty)) in
         (binding, generalized))
@@ -595,6 +691,52 @@ let infer_file = fun ~config file ->
     | [] -> export_state
     | item :: rest -> (
         match item with
+        | ItemTree.Type type_item ->
+            let visible_exports_before = export_env config export_state in
+            let introduced = TypeDecl.constructor_entries type_item.declaration in
+            let (export_state, scope_entries) =
+              match type_item.scope_path with
+              | [] ->
+                  (bind_env export_state introduced, scope_entries)
+              | scope_path ->
+                  (
+                    bind_env export_state (qualify_entries scope_path introduced),
+                    update_scope_entries scope_entries scope_path introduced
+                  )
+            in
+            let exports_after = export_env config export_state in
+            let binding_names = introduced_names visible_exports_before exports_after in
+            let () =
+              state.item_traces <- (
+                { Check_result.item_id = type_item.item_id; binding_names; exports_after }:
+                  Check_result.item_trace
+              )
+              :: state.item_traces
+            in
+            loop export_state scope_entries scope_opens rest
+        | ItemTree.Exception exception_item ->
+            let visible_exports_before = export_env config export_state in
+            let introduced = [ (exception_item.exception_name, exception_item.scheme) ] in
+            let (export_state, scope_entries) =
+              match exception_item.scope_path with
+              | [] ->
+                  (bind_env export_state introduced, scope_entries)
+              | scope_path ->
+                  (
+                    bind_env export_state (qualify_entries scope_path introduced),
+                    update_scope_entries scope_entries scope_path introduced
+                  )
+            in
+            let exports_after = export_env config export_state in
+            let binding_names = introduced_names visible_exports_before exports_after in
+            let () =
+              state.item_traces <- (
+                { Check_result.item_id = exception_item.item_id; binding_names; exports_after }:
+                  Check_result.item_trace
+              )
+              :: state.item_traces
+            in
+            loop export_state scope_entries scope_opens rest
         | ItemTree.Value value_item ->
             let visible_exports_before = export_env config export_state in
             let item_env = env_for_item_scope export_state scope_entries scope_opens value_item.scope_path in

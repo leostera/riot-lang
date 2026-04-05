@@ -51,6 +51,14 @@ let trace_debug = fun snapshot source_id ->
       in
       item_lines @ expr_lines
 
+let persisted_summary_jsons = fun snapshot ->
+  Snapshot.persisted_summaries snapshot
+  |> List.map PersistedSummary.Json.to_json
+
+let module_summary_jsons = fun snapshot ->
+  Snapshot.module_summaries snapshot
+  |> List.map ModuleSummary.Json.to_json
+
 let test_source_id_stays_stable_across_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let (session, source_id) = Session.create_source
@@ -124,6 +132,111 @@ let test_snapshot_exposes_implicit_file_modules = fun _ctx ->
     let () = Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type in
     Ok ()
 
+let test_snapshot_collects_persisted_summaries = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _) = Session.create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "alpha.ml")
+    ~text:"let id x = x\n" in
+  let (session, _) = Session.create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "beta.ml")
+    ~text:"let broken = missing\n" in
+  let snapshot = Session.snapshot session in
+  let summaries = persisted_summary_jsons snapshot in
+  let tags =
+    summaries
+    |> List.filter_map
+      (function
+        | Data.Json.Object fields -> (
+            match List.assoc_opt "export_result" fields with
+            | Some (Data.Json.Object export_fields) -> (
+                match List.assoc_opt "tag" export_fields with
+                | Some (Data.Json.String tag) -> Some tag
+                | _ -> None
+              )
+            | _ -> None
+          )
+        | _ -> None)
+  in
+  let () = Test.assert_equal ~expected:[ "trusted_export"; "errored_export" ] ~actual:tags in
+  Ok ()
+
+let test_source_input_hash_ignores_source_id_and_revision = fun _ctx ->
+  let source_a = Source.make
+    ~source_id:(SourceId.of_int 0)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:1
+    ~text:"let id x = x\n" in
+  let source_b = Source.make
+    ~source_id:(SourceId.of_int 99)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:42
+    ~text:"let id x = x\n" in
+  let source_c = Source.make
+    ~source_id:(SourceId.of_int 99)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:43
+    ~text:"let id x = (x, x)\n" in
+  let hash_a = Source.input_hash source_a |> Crypto.Digest.hex in
+  let hash_b = Source.input_hash source_b |> Crypto.Digest.hex in
+  let hash_c = Source.input_hash source_c |> Crypto.Digest.hex in
+  let () = Test.assert_equal ~expected:hash_a ~actual:hash_b in
+  if String.equal hash_a hash_c then
+    Error "expected source input hash to change when source text changes"
+  else
+    Ok ()
+
+let test_snapshot_uses_loaded_module_summaries = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, colors_source_id) = Session.create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~text:"module RGB = struct let blend x y = x end\nlet to_string value = value\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_colors =
+    match Query.module_summary_of seed_snapshot colors_source_id with
+    | Some summary -> summary
+    | None -> panic "expected seed module summary"
+  in
+  let config =
+    Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ]
+  in
+  let session = Session.empty ~config in
+  let (session, demo_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "blend_demo.ml")
+    ~text:"open Colors\nlet midpoint = RGB.blend 1 2\nlet label = to_string \"ok\"\n" in
+  let snapshot = Session.snapshot session in
+  let demo_has_unbound_name = has_unbound_name snapshot demo_source_id in
+  let midpoint_type = inferred_type_at snapshot demo_source_id 34 in
+  let label_type = inferred_type_at snapshot demo_source_id 58 in
+  let summary_modules =
+    module_summary_jsons snapshot
+    |> List.filter_map
+      (function
+        | Data.Json.Object fields -> (
+            match List.assoc_opt "module_name" fields with
+            | Some (Data.Json.String module_name) -> Some module_name
+            | _ -> None
+          )
+        | _ -> None)
+  in
+  let () = Test.assert_equal ~expected:[ "Blend_demo" ] ~actual:summary_modules in
+  if demo_has_unbound_name then
+    Error (String.concat "\n" (diagnostic_strings snapshot demo_source_id))
+  else
+    let () = Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type in
+    let () = Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type in
+    Ok ()
+
 let () =
   Actors.run
     ~main:(fun ~args ->
@@ -132,6 +245,9 @@ let () =
         Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
         Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
+        Test.case "snapshot collects persisted summaries" test_snapshot_collects_persisted_summaries;
+        Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
+        Test.case "snapshot uses loaded module summaries" test_snapshot_uses_loaded_module_summaries;
       ] in
       Test.Cli.main ~name:"typ:session" ~tests ~args)
     ~args:Env.args

@@ -1,5 +1,5 @@
 name = "pkgs-docs"
-main = "src/main.ts"
+main = "worker.ts"
 compatibility_date = "2026-04-04"
 compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
@@ -7,6 +7,16 @@ workers_dev = false
 [[routes]]
 pattern = "docs.pkgs.ml"
 custom_domain = true
+
+[[containers]]
+class_name = "DocsPipelineContainer"
+image = "./Dockerfile"
+instance_type = "basic"
+max_instances = 4
+
+[[durable_objects.bindings]]
+name = "DOCS_PIPELINE_CONTAINER"
+class_name = "DocsPipelineContainer"
 
 [assets]
 binding = "ASSETS"
@@ -28,6 +38,10 @@ queue = "riot-package-published"
 
 [triggers]
 crons = ["* * * * *"]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DocsPipelineContainer"]
 
 [observability]
 enabled = true
