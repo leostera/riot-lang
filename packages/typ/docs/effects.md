@@ -65,6 +65,18 @@ bind both:
 
 and those two pieces are typed together.
 
+### Example
+
+```ocaml
+match run () with
+| v -> v
+| effect Read_line k -> continue k "hello"
+```
+
+The effect clause binds both the effect payload pattern and the continuation
+pattern. That is why it needs its own typing rule instead of borrowing plain
+constructor-pattern typing unchanged.
+
 ## 4. Local Abstract Effect Type
 
 Typing a handler should introduce a fresh local abstract effect type for that
@@ -79,6 +91,16 @@ Conceptually:
 
 This keeps the handler self-contained and avoids leaking ad hoc equalities into
 the surrounding environment.
+
+### Diagram
+
+```mermaid
+flowchart TD
+  A[Handler block] --> B[Create fresh local effect type eff]
+  B --> C[Type payload pattern against eff payload]
+  C --> D[Type continuation against continuation eff result]
+  D --> E[Type handler body]
+```
 
 ## 5. Payload Typing
 
@@ -104,6 +126,19 @@ This is not the same thing as an arbitrary function parameter.
 
 So `typ` should keep continuation patterns explicit and reject invalid
 continuation-pattern shapes with a dedicated structured diagnostic.
+
+### Pseudocode
+
+```text
+type_effect_case(result_ty, payload_pat, cont_pat, body):
+  eff = fresh_local_abstract_type()
+  payload_ty = effect_payload_type(eff)
+  cont_ty = continuation_type(eff, result_ty)
+  payload = type_pattern(payload_pat, payload_ty)
+  cont = type_continuation_pattern(cont_pat, cont_ty)
+  body = type_expression(body, result_ty)
+  return EffectCase(payload, cont, body)
+```
 
 ## 7. Match And Try
 

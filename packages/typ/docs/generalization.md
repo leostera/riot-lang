@@ -90,6 +90,22 @@ unconstrained by the surrounding environment once the binding finishes.
 That is the behavioral contract behind upstream OCaml's level and pool
 machinery.
 
+### Example
+
+```ocaml
+let id = fun x -> x
+let answer = id 42
+```
+
+`id` is nonexpansive, so it should generalize to:
+
+```text
+Forall(a). a -> a
+```
+
+`answer` is an application result, so it does not become a fresh polymorphic
+scheme of its own just because it came from a polymorphic value.
+
 ## 5. Nonexpansiveness
 
 `typ` should distinguish nonexpansive expressions from expansive ones.
@@ -127,6 +143,18 @@ These are expansive:
 This list should expand as features land, but the meaning should stay stable:
 nonexpansive means safe to use as the unrestricted generalization case.
 
+### Pseudocode
+
+```text
+generalize_binding(Gamma, e, tau):
+  local_vars = ftv(tau) - ftv(Gamma)
+  if is_nonexpansive(e):
+    quantifiers = local_vars
+  else:
+    quantifiers = safe_generalizable_subset(local_vars, tau)
+  return Forall(quantifiers). tau
+```
+
 ## 6. Value Restriction
 
 The value restriction is the rule that decides how much polymorphism an
@@ -160,6 +188,18 @@ let r = ref []    (* does not generalize unsafely *)
 The exact supported examples depend on which surface features `typ` supports at
 that moment. The contract does not.
 
+### Example
+
+```ocaml
+let xs = []
+let cell = ref []
+```
+
+The first binding should generalize in the ordinary ML way.
+
+The second should not gain unsound polymorphism just because the empty list on
+the right-hand side looks generic before the reference is considered.
+
 ## 7. Recursive Bindings
 
 Recursive bindings are not typed the same way as ordinary `let`.
@@ -180,6 +220,17 @@ The important rule is:
 
 recursive typing is approximation-first, not "pretend the final scheme is
 already known."
+
+### Pseudocode
+
+```text
+infer_letrec(Gamma, f, e1, e2):
+  alpha = fresh()
+  (S1, tau1) = infer(Gamma[f -> alpha], e1)
+  U = unify(S1(alpha), tau1)
+  sigma = generalize_binding(U(S1(Gamma)), e1, U(tau1))
+  return infer(U(S1(Gamma))[f -> sigma], e2)
+```
 
 ## 8. Modules And Exports
 

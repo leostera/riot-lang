@@ -115,6 +115,21 @@ The intended loop is:
 
 That keeps the docs as specs instead of post-hoc changelogs.
 
+## Writing Style
+
+These docs should stay implementation-agnostic, but they should not be vague.
+
+That means a good spec doc should usually include:
+
+- the semantic rule in plain language
+- at least one small concrete example when the rule is user-visible
+- pseudocode when the control flow matters more than the exact data
+- a graph or diagram when the flow is easier to understand visually than in
+  paragraphs
+
+Not every doc needs every one of those, but "all prose, no examples, no
+algorithm sketch" is usually a sign the contract is still too soft.
+
 ## Validation
 
 These docs should be treated like code.
@@ -144,3 +159,43 @@ The spec stack says `typ` is:
 - structured-diagnostic-first from parse through typing
 
 That is the checker and engine we are building.
+
+## Coverage Matrix
+
+This is the current status of the spec set.
+
+### Specified
+
+- core HM-ish calculus
+- solver and unification layer
+- lowering and origin contract
+- generalization and value restriction
+- labeled and optional arguments
+- nominal type declarations
+- ordinary records
+- ordinary variants
+- signatures and interfaces
+- module calculus and functors
+- recursive modules
+- first-class modules
+- extensible variants and exceptions
+- GADTs
+- polymorphic variants
+- pattern analysis
+- effect handlers
+- diagnostics
+- session/snapshot/store/query engine contract
+
+### Intentionally Out
+
+- objects
+- classes
+- the object system's row calculus
+- a user-visible full effect-row system on ordinary function types
+
+### Still Meant To Evolve
+
+- the exact canonical payload shape of `ModuleSummary`
+- the exact public query surface once more implementation slices land
+- any future experimental extensions Riot may want to add on top of the
+  functional OCaml subset

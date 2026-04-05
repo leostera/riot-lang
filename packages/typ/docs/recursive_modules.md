@@ -57,6 +57,20 @@ Conceptually:
 This is the module-language analogue of recursive-value approximation in the
 core calculus.
 
+### Example
+
+```ocaml
+module rec A : sig val x : int end = struct
+  let x = B.y
+end
+and B : sig val y : int end = struct
+  let y = A.x
+end
+```
+
+The checker cannot type either body by pretending the final fully-elaborated
+module type is already known everywhere. It needs the approximation step first.
+
 ## 4. Two Worlds
 
 Recursive-module checking needs two related environments:
@@ -68,6 +82,19 @@ The exact representation can vary. The contract should not.
 
 Without this split, recursive manifest types and strengthened paths become too
 easy to make circular in the wrong way.
+
+### Diagram
+
+```mermaid
+flowchart TD
+  A[Declared recursive module types] --> B[Approximate declarations]
+  B --> C[Approximate environment]
+  C --> D[Elaborate declared interfaces]
+  D --> E[Check module bodies]
+  E --> F[Recursive inclusion check]
+  F -->|ok| G[Export recursive modules]
+  F -->|error| H[Structured recursive-module diagnostic]
+```
 
 ## 5. Body Checking
 
@@ -100,6 +127,19 @@ So the contract should be:
 The exact implementation may mirror upstream `check_recmodule_inclusion` or use
 another equivalent formulation. The observable behavior should stay the same:
 accept useful recursive groups without pretending the cycle disappears.
+
+### Pseudocode
+
+```text
+check_recursive_modules(group):
+  decls = approximate_declared_interfaces(group)
+  env1 = bind_approximations(decls)
+  checked_ifaces = elaborate_declared_interfaces(env1, group)
+  env2 = bind_checked_interfaces(checked_ifaces)
+  bodies = check_bodies(env2, group)
+  require recursive_inclusion_ok(checked_ifaces, bodies)
+  return export_recursive_group(checked_ifaces, bodies)
+```
 
 ## 7. Export Boundary
 

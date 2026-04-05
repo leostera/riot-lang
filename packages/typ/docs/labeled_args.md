@@ -82,6 +82,24 @@ The important rule is:
 function typing is label-aware from the start. Labels are not bolted on after
 ordinary arrow typing succeeds.
 
+### Example
+
+```ocaml
+let connect ~host ~port = ...
+```
+
+should preserve the labeled spine:
+
+```text
+~host:string -> ~port:int -> connection
+```
+
+not flatten it into:
+
+```text
+string -> int -> connection
+```
+
 ## 4. Optional Parameters
 
 Optional parameters have two views:
@@ -108,6 +126,22 @@ That means the checker should treat optional-default parameters as having:
 This is not a cosmetic distinction. It affects pattern typing, body typing, and
 the final function type.
 
+### Example
+
+```ocaml
+let read ?timeout:(seconds = 30) file = ...
+```
+
+Externally, `timeout` is optional.
+
+Inside the body, `seconds` should already have the payload type:
+
+```text
+int
+```
+
+not an unresolved optional wrapper.
+
 ## 5. Application Matching
 
 Call-site typing does not just "zip parameters with arguments from left to
@@ -123,6 +157,27 @@ The algorithm should:
 
 This means argument order at the source level may differ from parameter order,
 but only within the label rules of the language.
+
+### Pseudocode
+
+```text
+match_apply_args(fun_ty, source_args):
+  remaining = source_args
+  applied = []
+  while next parameter exists in fun_ty:
+    param = next_parameter(fun_ty)
+    arg = find_matching_argument(param.label, remaining)
+    if arg exists:
+      applied.push(check_argument(param, arg))
+      remaining = remove(arg, remaining)
+      fun_ty = param.result_ty
+    else if param is optional:
+      applied.push(mark_omitted(param))
+      fun_ty = param.result_ty
+    else:
+      break or report_label_error()
+  return applied, rebuild_remaining_function_type(fun_ty, applied)
+```
 
 ## 6. Omitted Optional Arguments
 
@@ -165,6 +220,22 @@ This slice requires structured diagnostics for:
 
 These should remain structured even if the human reporter later renders them as
 friendly prose.
+
+### Example
+
+```ocaml
+f ~port:8080 "localhost"
+```
+
+against:
+
+```ocaml
+f : ~host:string -> ~port:int -> unit
+```
+
+should not collapse into a generic unification failure. The checker should know
+that the unlabeled argument is in the wrong place relative to the labeled
+parameter spine.
 
 ## 8. Defaults
 

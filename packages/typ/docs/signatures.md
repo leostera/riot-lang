@@ -66,6 +66,21 @@ That means a later item may refer to:
 This matters for manifest types, nested module signatures, includes, and
 `with`-constraints.
 
+### Example
+
+```ocaml
+sig
+  type t
+  val make : t
+  module M : sig
+    val id : t -> t
+  end
+end
+```
+
+The inner `module M` item is elaborated in an environment where `t` and `make`
+are already known.
+
 ## 4. Signature Items
 
 At minimum, `typ` should support these item families:
@@ -129,6 +144,20 @@ For this slice, `typ` should cover:
 
 The exact concrete AST can vary. The behavior should not.
 
+### Example
+
+```ocaml
+module type S = sig
+  type t
+  val x : t
+end
+
+module type S_int = S with type t = int
+```
+
+After refinement, downstream users should see `x : int`, not `x : t` with an
+unexplained abstract `t`.
+
 ## 7. Destructive Substitution
 
 Destructive substitution is not just refinement. It also removes or replaces
@@ -174,6 +203,28 @@ what escapes the module is the interface-approved shape, not every internal
 fact inferred while checking the implementation.
 
 That means interfaces are not comments. They are semantic export constraints.
+
+### Pseudocode
+
+```text
+check_implementation(structure, interface):
+  Sigma_impl = elaborate_structure(structure)
+  Sigma_intf = elaborate_signature(interface)
+  require include(Sigma_impl, Sigma_intf)
+  return export_view(Sigma_intf)
+```
+
+### Diagram
+
+```mermaid
+flowchart TD
+  A[Structure] --> B[Elaborate Sigma_impl]
+  C[Interface] --> D[Elaborate Sigma_intf]
+  B --> E[Inclusion check]
+  D --> E
+  E -->|ok| F[Export interface-shaped summary]
+  E -->|error| G[Structured inclusion diagnostic]
+```
 
 ## 10. Inclusion
 

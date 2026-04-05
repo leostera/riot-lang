@@ -75,6 +75,18 @@ The operational rule should still be pattern-matrix based:
 This keeps the checker close to upstream `parmatch` without tying it to the
 exact implementation details.
 
+### Example
+
+```ocaml
+match x with
+| Some y -> y
+```
+
+is partial because `None` remains uncovered.
+
+The important point is that this judgment happens after the patterns are typed,
+so the witness is attached to the real scrutinee type, not just to raw syntax.
+
 ## 4. Guards
 
 Guards do not make a case unavailable for typing, but they do weaken
@@ -107,6 +119,17 @@ So the checker should analyze cases left to right and report:
 
 These are not the same warning, and `typ` should keep them distinct in
 structured diagnostics.
+
+### Example
+
+```ocaml
+match x with
+| _ -> 0
+| Some y -> y
+```
+
+The second clause is redundant because the first clause already covers the full
+space.
 
 ## 6. Refutation
 
@@ -141,6 +164,18 @@ pattern analysis should produce structured witness information when it can, not
 just a formatted string.
 
 That keeps diagnostics useful for both humans and tools.
+
+### Pseudocode
+
+```text
+analyze_match(cases, scrutinee_ty):
+  typed_cases = type_cases(cases, scrutinee_ty)
+  matrix = build_pattern_matrix(typed_cases)
+  matrix = minimize(matrix)
+  partiality = check_exhaustive(matrix)
+  redundancy = check_redundant(matrix)
+  return { partiality; redundancy }
+```
 
 ## 8. Fragile Matches
 

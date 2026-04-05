@@ -52,6 +52,17 @@ the constructor family is open, but still nominal.
 
 Constructors do not float free. They extend one specific nominal type path.
 
+### Example
+
+```ocaml
+type message = ..
+type message += Ping
+type message += Data of string
+```
+
+`Ping` and `Data` belong to the `message` family specifically. They are not
+just globally-scoped constructors with similar names.
+
 ## 3. Extension Constructors
 
 Each extension constructor should elaborate to a semantic constructor
@@ -79,6 +90,17 @@ At minimum, `typ` should reject:
 
 This is one place where the declaration checker, not the expression checker, is
 the right layer.
+
+### Pseudocode
+
+```text
+extend_type(type_path, ext_decl):
+  require type_path refers to an open nominal family
+  require arity and variance match the family head
+  ext = elaborate_extension_constructor(type_path, ext_decl)
+  add ext to constructor environment
+  return ext
+```
 
 ## 5. Rebinding
 
@@ -108,6 +130,16 @@ extensions:
 
 There is no need for `typ` to invent a completely separate semantic subsystem
 for exceptions if the extension-constructor subsystem already exists.
+
+### Example
+
+```ocaml
+exception Timeout
+exception Error of string
+```
+
+should be treated as additions to the open `exn` family, with the same
+constructor-style lookup and export rules as any other extensible family.
 
 ## 7. Constructor Use
 
