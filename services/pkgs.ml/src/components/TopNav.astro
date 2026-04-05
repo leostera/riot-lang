@@ -24,13 +24,14 @@ const logoutUrl = buildLogoutUrl(currentUrl);
 
 <header class="border-b border-border bg-background/95">
   <div class="mx-auto grid w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_auto]">
-    <a href="/" class="text-sm font-semibold tracking-tight text-foreground">
-      📦 pkgs.ml
+    <a href="/" class="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+      <span aria-hidden="true">📦</span>
+      <span>pkgs.ml</span>
     </a>
 
     {
       showSearch ? (
-        <div class="flex min-w-0 items-center gap-4 md:justify-self-center md:w-full">
+        <div class="hidden min-w-0 items-center gap-4 md:flex md:justify-self-center md:w-full">
           <div class="min-w-0 md:max-w-[400px] md:w-full">
             <SearchForm
               query={searchQuery}
@@ -57,14 +58,40 @@ const logoutUrl = buildLogoutUrl(currentUrl);
         <summary
           class:list={[
             buttonVariants({ variant: "outline", size: "sm" }),
-            "list-none rounded-md px-3 [&::-webkit-details-marker]:hidden cursor-pointer",
+            "list-none rounded-md px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
+            session.authenticated && session.user ? "h-9 w-9 p-0" : "",
           ]}
+          aria-label={session.authenticated && session.user ? "Open account menu" : "Open navigation menu"}
         >
-          Menu
+          {
+            session.authenticated && session.user ? (
+              <GitHubAvatar
+                login={session.user.github_login}
+                avatarUrl={session.user.github_avatar_url}
+                size="sm"
+              />
+            ) : (
+              <span aria-hidden="true" class="text-base leading-none">☰</span>
+            )
+          }
         </summary>
 
-        <div class="absolute right-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
+        <div class="absolute right-0 top-full z-50 mt-2 min-w-[260px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
           <div class="grid text-sm">
+            {
+              showSearch ? (
+                <div class="border-b border-border px-3 py-3">
+                  <SearchForm
+                    query={searchQuery}
+                    placeholder="Search packages..."
+                  />
+                </div>
+              ) : (
+                <a href="/" class="px-3 py-2 text-foreground hover:bg-muted">
+                  Search
+                </a>
+              )
+            }
             <a href="/activity" class="px-3 py-2 text-foreground hover:bg-muted">
               Activity
             </a>
@@ -74,92 +101,143 @@ const logoutUrl = buildLogoutUrl(currentUrl);
             <a href="/llms.txt" class="px-3 py-2 text-foreground hover:bg-muted">
               LLMs
             </a>
+            {
+              session.authenticated && session.user ? (
+                <>
+                  <div class="border-t border-border" />
+                  <a
+                    href={`/u/${session.user.github_login}`}
+                    class="px-3 py-2 text-foreground hover:bg-muted"
+                  >
+                    My Profile
+                  </a>
+                  <a
+                    href={`/u/${session.user.github_login}/tokens`}
+                    class="px-3 py-2 text-foreground hover:bg-muted"
+                  >
+                    API Tokens
+                  </a>
+                  <button
+                    type="button"
+                    class="px-3 py-2 text-left text-foreground hover:bg-muted"
+                    data-theme-toggle
+                  >
+                    Toggle theme
+                  </button>
+                  <form action={logoutUrl} method="post" class="border-t border-border">
+                    <button
+                      type="submit"
+                      class="block w-full px-3 py-2 text-left text-foreground hover:bg-muted"
+                    >
+                      Logout
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    class="border-t border-border px-3 py-2 text-left text-foreground hover:bg-muted"
+                    data-theme-toggle
+                  >
+                    Toggle theme
+                  </button>
+                  <a href={loginUrl} class="border-t border-border px-3 py-2 text-foreground hover:bg-muted">
+                    Login with GitHub
+                  </a>
+                </>
+              )
+            }
           </div>
         </div>
       </details>
 
-      <button
-        type="button"
-        class:list={[
-          buttonVariants({ variant: "outline", size: "icon-sm" }),
-          "rounded-md text-muted-foreground",
-        ]}
-        aria-label="Toggle light and dark theme"
-        id="theme-toggle"
-      >
-        <span aria-hidden="true">☼</span>
-        <span class="sr-only">Toggle theme</span>
-      </button>
+      <div class="hidden items-center gap-2 md:flex">
+        <button
+          type="button"
+          class:list={[
+            buttonVariants({ variant: "outline", size: "icon-sm" }),
+            "rounded-md text-muted-foreground",
+          ]}
+          aria-label="Toggle light and dark theme"
+          data-theme-toggle
+        >
+          <span aria-hidden="true">☼</span>
+          <span class="sr-only">Toggle theme</span>
+        </button>
 
-      {
-        session.authenticated && session.user ? (
-          <details class="relative">
-            <summary
+        {
+          session.authenticated && session.user ? (
+            <details class="relative">
+              <summary
+                class:list={[
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "list-none rounded-md gap-2 px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
+                ]}
+              >
+                <GitHubAvatar
+                  login={session.user.github_login}
+                  avatarUrl={session.user.github_avatar_url}
+                  size="sm"
+                />
+              </summary>
+
+              <div class="absolute right-0 top-full z-50 mt-2 min-w-[192px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
+                <div class="grid text-sm">
+                  <a
+                    href={`/u/${session.user.github_login}`}
+                    class="px-3 py-2 text-foreground hover:bg-muted"
+                  >
+                    My Profile
+                  </a>
+                  <a
+                    href={`/u/${session.user.github_login}/tokens`}
+                    class="px-3 py-2 text-foreground hover:bg-muted"
+                  >
+                    API Tokens
+                  </a>
+                  <form action={logoutUrl} method="post" class="border-t border-border">
+                    <button
+                      type="submit"
+                      class="block w-full px-3 py-2 text-left text-foreground hover:bg-muted"
+                    >
+                      Logout
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </details>
+          ) : (
+            <a
+              href={loginUrl}
               class:list={[
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "list-none rounded-md gap-2 px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
+                buttonVariants({ variant: "default", size: "sm" }),
+                "rounded-md",
               ]}
             >
-              <GitHubAvatar
-                login={session.user.github_login}
-                avatarUrl={session.user.github_avatar_url}
-                size="sm"
-              />
-            </summary>
-
-            <div class="absolute right-0 top-full z-50 mt-2 min-w-[192px] overflow-hidden rounded-md border border-border bg-background shadow-sm">
-              <div class="grid text-sm">
-                <a
-                  href={`/u/${session.user.github_login}`}
-                  class="px-3 py-2 text-foreground hover:bg-muted"
-                >
-                  My Profile
-                </a>
-                <a
-                  href={`/u/${session.user.github_login}/tokens`}
-                  class="px-3 py-2 text-foreground hover:bg-muted"
-                >
-                  API Tokens
-                </a>
-                <form action={logoutUrl} method="post" class="border-t border-border">
-                  <button
-                    type="submit"
-                    class="block w-full px-3 py-2 text-left text-foreground hover:bg-muted"
-                  >
-                    Logout
-                  </button>
-                </form>
-              </div>
-            </div>
-          </details>
-        ) : (
-          <a
-            href={loginUrl}
-            class:list={[
-              buttonVariants({ variant: "default", size: "sm" }),
-              "rounded-md",
-            ]}
-          >
-            Login with GitHub
-          </a>
-        )
-      }
+              Login with GitHub
+            </a>
+          )
+        }
+      </div>
     </div>
   </div>
 </header>
 
 <script is:inline>
   const root = document.documentElement;
-  const button = document.getElementById("theme-toggle");
+  const buttons = Array.from(document.querySelectorAll("[data-theme-toggle]"));
 
   const applyTheme = (theme) => {
     root.classList.toggle("dark", theme === "dark");
     root.style.colorScheme = theme;
     localStorage.setItem("pkgs-theme", theme);
 
-    const icon = button?.querySelector("span[aria-hidden='true']");
-    if (icon) {
-      icon.textContent = theme === "dark" ? "☾" : "☼";
+    for (const button of buttons) {
+      const icon = button.querySelector("span[aria-hidden='true']");
+      if (icon) {
+        icon.textContent = theme === "dark" ? "☾" : "☼";
+      }
     }
   };
 
@@ -169,7 +247,13 @@ const logoutUrl = buildLogoutUrl(currentUrl);
 
   applyTheme(initialTheme);
 
-  button?.addEventListener("click", () => {
-    applyTheme(root.classList.contains("dark") ? "light" : "dark");
-  });
+  for (const button of buttons) {
+    button.addEventListener("click", () => {
+      applyTheme(root.classList.contains("dark") ? "light" : "dark");
+      const details = button.closest("details");
+      if (details instanceof HTMLDetailsElement) {
+        details.open = false;
+      }
+    });
+  }
 </script>
