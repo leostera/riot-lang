@@ -143,7 +143,11 @@ export type RegistryEventType =
   | "package.processing.requeued"
   | "package.processing.finished"
   | "package.docs.staged"
-  | "package.build.staged";
+  | "package.docs.generated"
+  | "package.docs.failed"
+  | "package.build.staged"
+  | "package.build.verified"
+  | "package.build.failed";
 
 export interface RegistryEventRecord {
   event_id: string;

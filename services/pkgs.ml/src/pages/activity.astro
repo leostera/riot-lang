@@ -29,8 +29,16 @@ function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
       return "Processed";
     case "package.docs.staged":
       return "Docs Staged";
+    case "package.docs.generated":
+      return "Docs Ready";
+    case "package.docs.failed":
+      return "Docs Failed";
     case "package.build.staged":
       return "Build Staged";
+    case "package.build.verified":
+      return "Build Verified";
+    case "package.build.failed":
+      return "Build Failed";
   }
 }
 
@@ -56,8 +64,16 @@ function eventTone(eventType: RegistryEventRecord["event_type"]): string {
       return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
     case "package.docs.staged":
       return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
+    case "package.docs.generated":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.docs.failed":
+      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
     case "package.build.staged":
       return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
+    case "package.build.verified":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.build.failed":
+      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
   }
 }
 
@@ -261,8 +277,16 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "Processed";
       case "package.docs.staged":
         return "Docs Staged";
+      case "package.docs.generated":
+        return "Docs Ready";
+      case "package.docs.failed":
+        return "Docs Failed";
       case "package.build.staged":
         return "Build Staged";
+      case "package.build.verified":
+        return "Build Verified";
+      case "package.build.failed":
+        return "Build Failed";
       default:
         return eventType;
     }
@@ -290,8 +314,16 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
         return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
       case "package.docs.staged":
         return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300";
+      case "package.docs.generated":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+      case "package.docs.failed":
+        return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
       case "package.build.staged":
         return "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300";
+      case "package.build.verified":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+      case "package.build.failed":
+        return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300";
       default:
         return "border-slate-200 bg-slate-50 text-slate-700";
     }
