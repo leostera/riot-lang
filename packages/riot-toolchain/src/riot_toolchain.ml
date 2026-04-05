@@ -591,6 +591,23 @@ type toolchain_info = {
   status: toolchain_status;
 }
 
+type available_toolchain_kind =
+  | Native
+  | Cross
+
+type available_toolchain = {
+  version: string;
+  host: string;
+  target: string;
+  artifact_target: string;
+  kind: available_toolchain_kind;
+  artifact: string;
+  artifact_url: string;
+  checksum_url: string;
+  size_bytes: int option;
+  last_modified: string option;
+}
+
 let check_toolchain_status = fun ~version ~target ->
   let toolchain_path = get_toolchain_path_for_target version target in
   let source =
@@ -706,3 +723,161 @@ let install_all_toolchains = fun ~config ->
       |> List.length
     in
     Ok (installed, skipped)
+
+let fetch_url = fun url ->
+  let cmd = Command.make ~args:[ "-fsSL"; url ] "curl" in
+  match Command.output cmd with
+  | Error (Command.SystemError msg) ->
+      Error ("Failed to fetch " ^ url ^ ": " ^ msg)
+  | Ok output when output.Command.status != 0 ->
+      let details =
+        let stderr = String.trim output.Command.stderr in
+        if String.equal stderr "" then
+          "curl exited with " ^ Int.to_string output.Command.status
+        else
+          stderr
+      in
+      Error ("Failed to fetch " ^ url ^ ": " ^ details)
+  | Ok output ->
+      Ok output.Command.stdout
+
+let require_json_field = fun name json ->
+  match Data.Json.get_field name json with
+  | Some value -> Ok value
+  | None -> Error ("Toolchain manifest is missing field '" ^ name ^ "'")
+
+let require_json_string_field = fun name json ->
+  match require_json_field name json with
+  | Error _ as err -> err
+  | Ok value -> (
+      match Data.Json.get_string value with
+      | Some string -> Ok string
+      | None -> Error ("Toolchain manifest field '" ^ name ^ "' must be a string")
+    )
+
+let optional_json_string_field = fun name json ->
+  match Data.Json.get_field name json with
+  | None
+  | Some Data.Json.Null -> Ok None
+  | Some value -> (
+      match Data.Json.get_string value with
+      | Some string -> Ok (Some string)
+      | None -> Error ("Toolchain manifest field '" ^ name ^ "' must be a string")
+    )
+
+let optional_json_int_field = fun name json ->
+  match Data.Json.get_field name json with
+  | None
+  | Some Data.Json.Null -> Ok None
+  | Some value -> (
+      match Data.Json.get_int value with
+      | Some int -> Ok (Some int)
+      | None -> Error ("Toolchain manifest field '" ^ name ^ "' must be an int")
+    )
+
+let parse_available_toolchain_kind = function
+  | "native" -> Ok Native
+  | "cross" -> Ok Cross
+  | other -> Error ("Unknown toolchain manifest kind '" ^ other ^ "'")
+
+let parse_available_toolchain = fun json ->
+  match require_json_string_field "version" json with
+  | Error _ as err -> err
+  | Ok version -> (
+      match require_json_string_field "host" json with
+      | Error _ as err -> err
+      | Ok host -> (
+          match require_json_string_field "target" json with
+          | Error _ as err -> err
+          | Ok target -> (
+              match require_json_string_field "artifact_target" json with
+              | Error _ as err -> err
+              | Ok artifact_target -> (
+                  match require_json_string_field "kind" json with
+                  | Error _ as err -> err
+                  | Ok kind_string -> (
+                      match parse_available_toolchain_kind kind_string with
+                      | Error _ as err -> err
+                      | Ok kind -> (
+                          match require_json_string_field "artifact" json with
+                          | Error _ as err -> err
+                          | Ok artifact -> (
+                              match require_json_string_field "artifact_url" json with
+                              | Error _ as err -> err
+                              | Ok artifact_url -> (
+                                  match require_json_string_field "checksum_url" json with
+                                  | Error _ as err -> err
+                                  | Ok checksum_url -> (
+                                      match optional_json_int_field "size_bytes" json with
+                                      | Error _ as err -> err
+                                      | Ok size_bytes -> (
+                                          match optional_json_string_field "last_modified" json with
+                                          | Error _ as err -> err
+                                          | Ok last_modified ->
+                                              Ok {
+                                                version;
+                                                host;
+                                                target;
+                                                artifact_target;
+                                                kind;
+                                                artifact;
+                                                artifact_url;
+                                                checksum_url;
+                                                size_bytes;
+                                                last_modified;
+                                              }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+let parse_available_toolchains_manifest = fun raw ->
+  match Data.Json.of_string raw with
+  | Error err -> Error ("Failed to parse toolchain manifest JSON: " ^ Data.Json.error_to_string err)
+  | Ok json -> (
+      match require_json_field "toolchains" json with
+      | Error _ as err -> err
+      | Ok toolchains_json -> (
+          match Data.Json.get_array toolchains_json with
+          | None -> Error "Toolchain manifest field 'toolchains' must be an array"
+          | Some entries ->
+              let rec loop acc = function
+                | [] ->
+                    Ok (
+                      List.rev acc |> List.sort
+                        (fun left right ->
+                          let by_version = String.compare left.version right.version in
+                          if not (Int.equal by_version 0) then
+                            by_version
+                          else
+                            let by_host = String.compare left.host right.host in
+                            if not (Int.equal by_host 0) then
+                              by_host
+                            else
+                              let by_target = String.compare left.target right.target in
+                              if not (Int.equal by_target 0) then
+                                by_target
+                              else
+                                String.compare left.artifact_target right.artifact_target)
+                    )
+                | entry :: rest -> (
+                    match parse_available_toolchain entry with
+                    | Ok toolchain -> loop (toolchain :: acc) rest
+                    | Error msg -> Error msg
+                  )
+              in
+              loop [] entries
+        )
+    )
+
+let list_available_toolchains = fun () ->
+  let manifest_url = ocaml_download_base_url () ^ "/manifest.json" in
+  match fetch_url manifest_url with
+  | Error _ as err -> err
+  | Ok raw -> parse_available_toolchains_manifest raw

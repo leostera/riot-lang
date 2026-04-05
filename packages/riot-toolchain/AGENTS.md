@@ -17,6 +17,7 @@
 11. Dev-only source trees (`tests/`, `examples/`, `bench/`) may use numbered filenames for fixtures and demos. Keep warning 24 (`bad-module-name`) disabled for those source paths, but do not widen that suppression to normal library/runtime compilation.
 12. Parse OCaml compiler stderr into structured diagnostics here; higher layers may rewrite diagnostic paths, but coarse compiler-output parsing belongs in `Ocamlc`.
 13. Reuse `Riot_model.Ocaml_compiler` for shared warning/flag vocabulary and string parsing/rendering. Do not shadow OCaml flag codecs locally in `riot-toolchain`.
+14. Published toolchain discovery should come from the shared CDN `ocaml/manifest.json`; keep availability parsing in `riot-toolchain`, not in CLI code.
 
 ## Validate
 

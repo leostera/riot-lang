@@ -150,6 +150,8 @@ _riot() {
         'logout:Remove saved pkgs.ml API token'
         'new:Create new package'
         'search:Search registry packages'
+        'toolchain:Manage OCaml toolchains'
+        'toolchains:Manage OCaml toolchains'
         'completions:Generate shell completions'
         'doc:Generate documentation'
         'docs:Generate documentation'
@@ -297,6 +299,11 @@ _riot() {
                 '--json[Emit machine-readable JSON results]' \
                 '(-n --limit)'{-n,--limit}'[Maximum number of results to return]:limit:' \
                 ':query:'
+            ;;
+        toolchain|toolchains)
+            if [[ $CURRENT -eq 3 ]]; then
+                compadd list install list-available
+            fi
             ;;
         completions)
             if [[ $CURRENT -eq 3 ]]; then

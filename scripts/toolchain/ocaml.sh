@@ -677,6 +677,155 @@ publish_target() {
   echo "  checksum: ${PUBLIC_BASE_URL%/}/$(basename "$checksum_path")"
 }
 
+list_bucket_objects_json() {
+  local output_path="$1"
+  local prefix
+  local aws_args
+
+  prefix="${BUCKET_PREFIX%/}/"
+  aws_args=(s3api list-objects-v2 --bucket "$BUCKET" --prefix "$prefix" --output json)
+  if [ -n "$ENDPOINT_URL" ]; then
+    aws_args+=(--endpoint-url "$ENDPOINT_URL")
+  fi
+
+  printf '+'
+  printf ' %q' aws "${aws_args[@]}"
+  printf ' > %q\n' "$output_path"
+
+  if [ "$DRY_RUN" = "0" ]; then
+    aws "${aws_args[@]}" > "$output_path"
+  fi
+}
+
+generate_remote_manifest_json() {
+  local output_path="$1"
+  local listing_path
+  local targets_path
+
+  listing_path="$(mktemp "/tmp/riot-ocaml-objects.XXXXXX")"
+  targets_path="$(mktemp "/tmp/riot-ocaml-targets.XXXXXX")"
+
+  list_bucket_objects_json "$listing_path"
+  supported_targets > "$targets_path"
+
+  printf '+'
+  printf ' %q' python3 - "$listing_path" "$targets_path" "$output_path" "$PUBLIC_BASE_URL" "$BUCKET_PREFIX"
+  printf '\n'
+
+  if [ "$DRY_RUN" = "0" ]; then
+    python3 - "$listing_path" "$targets_path" "$output_path" "$PUBLIC_BASE_URL" "$BUCKET_PREFIX" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+
+listing_path, targets_path, output_path, public_base_url, bucket_prefix = sys.argv[1:]
+
+with open(listing_path, "r", encoding="utf-8") as listing_file:
+    listing = json.load(listing_file)
+
+with open(targets_path, "r", encoding="utf-8") as targets_file:
+    supported_targets = [line.strip() for line in targets_file if line.strip()]
+
+supported_targets.sort(key=len, reverse=True)
+contents = listing.get("Contents") or []
+
+def parse_toolchain(entry):
+    key = entry.get("Key", "")
+    if not key.startswith(f"{bucket_prefix}/"):
+        return None
+
+    artifact = key.split("/", 1)[1]
+    if not artifact.startswith("ocaml-") or not artifact.endswith(".tar.gz"):
+        return None
+
+    artifact_target = None
+    for candidate in supported_targets:
+        suffix = f"-{candidate}.tar.gz"
+        if artifact.endswith(suffix):
+            artifact_target = candidate
+            break
+
+    if artifact_target is None:
+        return None
+
+    version_end = len(artifact) - len(f"-{artifact_target}.tar.gz")
+    version = artifact[len("ocaml-"):version_end]
+    if not version:
+        return None
+
+    if "-x-" in artifact_target:
+        host, target = artifact_target.split("-x-", 1)
+        kind = "cross"
+    else:
+        host = artifact_target
+        target = artifact_target
+        kind = "native"
+
+    return {
+        "version": version,
+        "host": host,
+        "target": target,
+        "artifact_target": artifact_target,
+        "kind": kind,
+        "artifact": artifact,
+        "artifact_url": f"{public_base_url.rstrip('/')}/{artifact}",
+        "checksum_url": f"{public_base_url.rstrip('/')}/{artifact}.sha256",
+        "size_bytes": entry.get("Size"),
+        "last_modified": entry.get("LastModified"),
+    }
+
+toolchains = []
+seen_artifacts = set()
+for entry in contents:
+    parsed = parse_toolchain(entry)
+    if parsed is None:
+        continue
+    artifact_name = parsed["artifact"]
+    if artifact_name in seen_artifacts:
+        continue
+    seen_artifacts.add(artifact_name)
+    toolchains.append(parsed)
+
+toolchains.sort(key=lambda item: (item["version"], item["host"], item["target"], item["artifact_target"]))
+
+hosts = {}
+for toolchain in toolchains:
+    hosts.setdefault(toolchain["host"], set()).add(toolchain["target"])
+
+manifest = {
+    "schema_version": 1,
+    "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "base_url": public_base_url.rstrip("/"),
+    "versions": sorted({toolchain["version"] for toolchain in toolchains}),
+    "hosts": [
+        {
+            "host": host,
+            "targets": sorted(targets),
+        }
+        for host, targets in sorted(hosts.items())
+    ],
+    "toolchains": toolchains,
+}
+
+with open(output_path, "w", encoding="utf-8") as output_file:
+    json.dump(manifest, output_file, indent=2)
+    output_file.write("\n")
+PY
+  fi
+
+  rm -f "$listing_path" "$targets_path"
+}
+
+publish_remote_manifest() {
+  local manifest_path
+
+  manifest_path="$(mktemp "/tmp/riot-ocaml-manifest.XXXXXX")"
+  generate_remote_manifest_json "$manifest_path"
+  upload_object "$manifest_path" "$(join_object_key "$BUCKET_PREFIX" "manifest.json")"
+  echo "  manifest: ${PUBLIC_BASE_URL%/}/manifest.json"
+  rm -f "$manifest_path"
+}
+
 ensure_artifact_exists() {
   local target="$1"
   local output_dir="$2"
@@ -819,3 +968,11 @@ for target in "${TARGETS[@]}"; do
 
   echo
 done
+
+if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ "$DRY_RUN" = "0" ]; then
+  echo "======================================"
+  echo " Publishing Toolchain Manifest"
+  echo "======================================"
+  publish_remote_manifest
+  echo
+fi

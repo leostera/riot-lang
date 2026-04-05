@@ -27,7 +27,7 @@ let build_cli = fun () ->
         Toolchain_cmd.command;
         Upgrade.command;
         Update_cmd.command;
-        command "doc" |> about "Generate documentation";
+        Doc.command;
         Lsp_cmd.command;
         command "version" |> about "Show riot version";
       ]
@@ -200,6 +200,12 @@ let is_lsp_invocation = fun args ->
   | [] -> false
 
 let run = fun ~args ->
+  let normalized_args =
+    match args with
+    | executable :: "docs" :: rest -> executable :: "doc" :: rest
+    | executable :: "toolchains" :: rest -> executable :: "toolchain" :: rest
+    | _ -> args
+  in
   let workspace_scan_cache = ref None in
   let get_workspace_scan () =
     match !workspace_scan_cache with
@@ -218,7 +224,7 @@ let run = fun ~args ->
     | ScanFailed _ -> None
   in
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
-  match args with
+  match normalized_args with
   | _ :: "completions" :: "install" :: rest ->
       Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
@@ -228,7 +234,7 @@ let run = fun ~args ->
       | None ->
           (* Not a valid package command, fall through to normal parsing *)
           let cli = build_cli () in
-          match ArgParser.get_matches cli args with
+          match ArgParser.get_matches cli normalized_args with
           | Error err ->
               ArgParser.print_error err;
               Error (Failure "Argument parsing failed")
@@ -239,7 +245,7 @@ let run = fun ~args ->
   | _ ->
       (* Normal command parsing *)
       let cli = build_cli () in
-      match ArgParser.get_matches cli args with
+      match ArgParser.get_matches cli normalized_args with
       | Error err ->
           ArgParser.print_error err;
           Error (Failure "Argument parsing failed")
@@ -257,7 +263,12 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("check", check_matches) ->
-              Check_cmd.run check_matches
+              let workspace =
+                match get_workspace_scan () with
+                | Loaded (workspace, _) -> Some workspace
+                | _ -> None
+              in
+              Check_cmd.run ?workspace check_matches
           | Some ("run", run_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
@@ -353,6 +364,18 @@ let run = fun ~args ->
               Riot_fmt.run ?workspace fmt_matches
           | Some ("clean", clean_matches) ->
               Clean.run clean_matches
+          | Some ("doc", doc_matches) ->
+              let workspace =
+                match get_workspace_scan () with
+                | Loaded (workspace, _) -> Some workspace
+                | _ -> None
+              in
+              (
+                match workspace with
+                | Some workspace -> Doc.run ~workspace doc_matches
+                |> Result.map_error (fun err -> Failure err)
+                | None -> fail_not_in_workspace ()
+              )
           | Some ("completions", completions_matches) ->
               Completions.run completions_matches
           | Some ("fix", fix_matches) ->

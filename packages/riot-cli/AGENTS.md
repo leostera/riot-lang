@@ -33,6 +33,7 @@
 27. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON from `cdn.pkgs.ml/riot/latest.json` and `cdn.pkgs.ml/riot/riot-<version>.json`. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
 28. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
 29. `riot lsp` must stay a thin delegate into `riot-lsp`, and it must keep stdout protocol-only. Do not run the normal stdout logger/runtime bootstrap for that command.
+30. `riot toolchain list-available` stays workspace-free and should render data from `Riot_toolchain.list_available_toolchains` without scanning the workspace first.
 
 ## Validate
 

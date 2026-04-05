@@ -86,6 +86,21 @@ type toolchain_info = {
   is_host: bool;
   status: toolchain_status;
 }
+type available_toolchain_kind =
+  | Native
+  | Cross
+type available_toolchain = {
+  version: string;
+  host: string;
+  target: string;
+  artifact_target: string;
+  kind: available_toolchain_kind;
+  artifact: string;
+  artifact_url: string;
+  checksum_url: string;
+  size_bytes: int option;
+  last_modified: string option;
+}
 val list_toolchains: config:Riot_model.Toolchain_config.t -> toolchain_info list
 
 (** List all toolchains configured for this project with their status *)
@@ -97,3 +112,6 @@ val install_all_toolchains: config:Riot_model.Toolchain_config.t -> (int * int, 
 (** Install all missing toolchains from config.
     Returns Ok (installed_count, skipped_count) or Error msg.
     Prints progress during installation. *)
+val list_available_toolchains: unit -> (available_toolchain list, string) result
+
+(** Fetch and parse the published OCaml toolchain manifest. *)

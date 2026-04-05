@@ -23,6 +23,32 @@ let sample_colored_ocaml_warning = String.concat
     "\027[1;35mWarning\027[0m 26 [unused-var]: unused variable \027[1mdisplayed_packages\027[0m.";
   ]
 
+let with_temp_dir = fun label f ->
+  match Fs.with_tempdir ~prefix:(("riot_toolchain_" ^ label)) (fun dir -> f dir) with
+  | Ok result -> result
+  | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
+
+let with_env_var = fun name value_opt f ->
+  let restore_value = Env.var Env.String ~name in
+  let restore () =
+    match restore_value with
+    | Some value -> Kernel.Env.putenv name value
+    | None -> Kernel.Env.unsetenv name
+  in
+  let () =
+    match value_opt with
+    | Some value -> Kernel.Env.putenv name value
+    | None -> Kernel.Env.unsetenv name
+  in
+  try
+    let result = f () in
+    restore ();
+    result
+  with
+  | exn ->
+      restore ();
+      raise exn
+
 let test_compile_impl_disables_no_cmi_file_by_default = fun _ctx ->
   let ocamlc = Riot_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
   let invocation = Riot_toolchain.Ocamlc.compile_impl
@@ -165,6 +191,108 @@ let test_parse_colored_ocaml_warning_diagnostic = fun _ctx ->
   | diagnostics -> Error ("expected exactly one parsed colored warning block, got "
   ^ Int.to_string (List.length diagnostics))
 
+let test_list_available_toolchains_reads_manifest = fun _ctx ->
+  with_temp_dir "available_manifest"
+    (fun temp_dir ->
+      let manifest_path = Path.(temp_dir / Path.v "manifest.json") in
+      let manifest = Data.Json.to_string_pretty
+        (
+          Data.Json.obj
+            [
+              ("schema_version", Data.Json.int 1);
+              ("generated_at", Data.Json.string "2026-04-04T00:00:00Z");
+              ("base_url", Data.Json.string "https://cdn.pkgs.ml/ocaml");
+              (
+                "toolchains",
+                Data.Json.array
+                  [ Data.Json.obj
+                      [
+                        ("version", Data.Json.string "5.5.0-riot.2");
+                        ("host", Data.Json.string "aarch64-apple-darwin");
+                        ("target", Data.Json.string "aarch64-apple-darwin");
+                        ("artifact_target", Data.Json.string "aarch64-apple-darwin");
+                        ("kind", Data.Json.string "native");
+                        (
+                          "artifact",
+                          Data.Json.string "ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz"
+                        );
+                        (
+                          "artifact_url",
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz"
+                        );
+                        (
+                          "checksum_url",
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz.sha256"
+                        );
+                        ("size_bytes", Data.Json.int 123);
+                        ("last_modified", Data.Json.string "2026-04-04T00:00:00Z");
+                      ]; Data.Json.obj
+                      [
+                        ("version", Data.Json.string "5.5.0-riot.2");
+                        ("host", Data.Json.string "aarch64-apple-darwin");
+                        ("target", Data.Json.string "x86_64-unknown-linux-gnu");
+                        (
+                          "artifact_target",
+                          Data.Json.string "aarch64-apple-darwin-x-x86_64-unknown-linux-gnu"
+                        );
+                        ("kind", Data.Json.string "cross");
+                        (
+                          "artifact",
+                          Data.Json.string "ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
+                        );
+                        (
+                          "artifact_url",
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
+                        );
+                        (
+                          "checksum_url",
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz.sha256"
+                        );
+                        ("size_bytes", Data.Json.int 456);
+                        ("last_modified", Data.Json.string "2026-04-04T00:01:00Z");
+                      ]; ]
+              );
+            ]
+        )
+      in
+      match Fs.write manifest manifest_path with
+      | Error err -> Error ("failed to write manifest fixture: " ^ IO.error_message err)
+      | Ok () ->
+          with_env_var "RIOT_OCAML_CDN_URL" (Some ("file://" ^ Path.to_string temp_dir))
+            (fun () ->
+              match Riot_toolchain.list_available_toolchains () with
+              | Error msg -> Error ("expected manifest to parse, got: " ^ msg)
+              | Ok toolchains ->
+                  let find_toolchain ~host ~target =
+                    List.find_opt
+                      (fun (toolchain: Riot_toolchain.available_toolchain) ->
+                        String.equal toolchain.host host && String.equal toolchain.target target)
+                      toolchains
+                  in
+                  if not (Int.equal (List.length toolchains) 2) then
+                    Error ("expected 2 available toolchains, got "
+                    ^ Int.to_string (List.length toolchains))
+                  else
+                    match (
+                      find_toolchain ~host:"aarch64-apple-darwin" ~target:"aarch64-apple-darwin",
+                      find_toolchain ~host:"aarch64-apple-darwin" ~target:"x86_64-unknown-linux-gnu"
+                    ) with
+                    | Some native, Some cross -> (
+                        match (native.kind, cross.kind) with
+                        | Riot_toolchain.Native, Riot_toolchain.Cross ->
+                            if not (native.size_bytes = Some 123) then
+                              Error "expected native toolchain size to be parsed"
+                            else if
+                              not
+                                (String.equal cross.artifact_target "aarch64-apple-darwin-x-x86_64-unknown-linux-gnu")
+                            then
+                              Error "expected cross artifact target to be parsed"
+                            else
+                              Ok ()
+                        | _ -> Error "expected native and cross kinds to be parsed"
+                      )
+                    | _ -> Error "expected both native and cross toolchains to be present"))
+
 let tests =
   Test.[
     case "compile impl disables no-cmi-file by default" test_compile_impl_disables_no_cmi_file_by_default;
@@ -176,6 +304,7 @@ let tests =
     case "parse c error diagnostic" test_parse_c_error_diagnostic;
     case "unparseable c-like line falls back to raw" test_unparseable_c_like_line_falls_back_to_raw;
     case "parse colored ocaml warning diagnostic" test_parse_colored_ocaml_warning_diagnostic;
+    case "list available toolchains reads manifest" test_list_available_toolchains_reads_manifest;
   ]
 
 let () =

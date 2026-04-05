@@ -9,6 +9,7 @@ let command =
       [
         command "list" |> about "List toolchains for this project";
         command "install" |> about "Install all missing toolchains";
+        command "list-available" |> about "List published toolchains available for install";
       ]
 
 let print_toolchain_status = fun info ->
@@ -82,16 +83,105 @@ let run_install = fun workspace ->
       println ("❌ " ^ msg);
       Error (Failure msg)
 
+type available_toolchain_row = {
+  version: string;
+  host: string;
+  target: string;
+}
+
+let sort_available_toolchain_rows = fun rows ->
+  List.sort
+    (fun left right ->
+      let by_version = String.compare right.version left.version in
+      if not (Int.equal by_version 0) then
+        by_version
+      else
+        let by_host = String.compare left.host right.host in
+        if not (Int.equal by_host 0) then
+          by_host
+        else
+          String.compare left.target right.target)
+    rows
+
+let max_int = fun left right ->
+  if left > right then
+    left
+  else
+    right
+
+let pad_right = fun width value ->
+  let padding = max_int 0 (width - String.length value) in
+  value ^ String.make padding ' '
+
+let available_toolchain_rows = fun toolchains ->
+  toolchains
+  |> List.map
+    (fun (toolchain: Riot_toolchain.available_toolchain) ->
+      { version = toolchain.version; host = toolchain.host; target = toolchain.target })
+  |> sort_available_toolchain_rows
+
+let table_widths = fun rows ->
+  List.fold_left
+    (fun (version_width, host_width, target_width) row ->
+      (
+        max_int version_width (String.length row.version),
+        max_int host_width (String.length row.host),
+        max_int target_width (String.length row.target)
+      ))
+    (String.length "version", String.length "host", String.length "target")
+    rows
+
+let print_available_toolchain_table = fun toolchains ->
+  let rows = available_toolchain_rows toolchains in
+  let (version_width, host_width, target_width) = table_widths rows in
+  let separator = String.make version_width '-'
+  ^ "  "
+  ^ String.make host_width '-'
+  ^ "  "
+  ^ String.make target_width '-' in
+  println
+    (pad_right version_width "version"
+    ^ "  "
+    ^ pad_right host_width "host"
+    ^ "  "
+    ^ pad_right target_width "target");
+  println separator;
+  List.iter
+    (fun row ->
+      println
+        (pad_right version_width row.version ^ "  " ^ pad_right host_width row.host ^ "  " ^ row.target))
+    rows
+
+let run_list_available = fun () ->
+  match Riot_toolchain.list_available_toolchains () with
+  | Ok [] ->
+      println "No published OCaml toolchains found.";
+      Ok ()
+  | Ok toolchains ->
+      println "";
+      println "Published OCaml toolchains:";
+      println "";
+      print_available_toolchain_table toolchains;
+      Ok ()
+  | Error msg ->
+      eprintln ("❌ " ^ msg);
+      Error (Failure msg)
+
 let run = fun matches ->
   let open ArgParser in
-    let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-    let workspace_manager = Workspace_manager.create () in
-    let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
     match get_subcommand matches with
+    | Some ("list-available", _) ->
+        run_list_available ()
     | Some ("list", _) ->
+        let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+        let workspace_manager = Workspace_manager.create () in
+        let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
         run_list workspace
     | Some ("install", _) ->
+        let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+        let workspace_manager = Workspace_manager.create () in
+        let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
         run_install workspace
     | _ ->
-        println "Usage: riot toolchain <list|install>";
+        println "Usage: riot toolchain <list|install|list-available>";
         Error (Failure "Unknown subcommand")
