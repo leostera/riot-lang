@@ -27,6 +27,36 @@ type event =
   | PackageGenerationStarted of { package: string; version: string; output_dir: Path.t }
   | PackageGenerationCompleted of generation
 
+let generation_to_json = fun (summary: generation) ->
+  Data.Json.Object
+    [
+      ("package", Data.Json.String summary.package);
+      ("version", Data.Json.String summary.version);
+      ("output_dir", Data.Json.String (Path.to_string summary.output_dir));
+      ("cache_hit", Data.Json.Bool summary.cache_hit);
+      ("cache_key", Data.Json.String summary.cache_key);
+    ]
+
+let event_to_json = function
+  | PackageGenerationStarted { package; version; output_dir } ->
+      Some (
+        Data.Json.Object
+          [
+            ("type", Data.Json.String "doc.package_generation_started");
+            ("package", Data.Json.String package);
+            ("version", Data.Json.String version);
+            ("output_dir", Data.Json.String (Path.to_string output_dir));
+          ]
+      )
+  | PackageGenerationCompleted summary ->
+      Some (
+        Data.Json.Object
+          [
+            ("type", Data.Json.String "doc.package_generation_completed");
+            ("summary", generation_to_json summary);
+          ]
+      )
+
 let resolve_profile = fun release ->
   if release then
     "release"
