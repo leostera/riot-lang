@@ -148,10 +148,12 @@ let create_process_registry = fun worker_count ->
   in
   { shards; size = Atomic.make 0 }
 
-let create_process_slot = fun proc ~owner_worker ->
+let create_process_slot = fun proc ~owner_worker ~placement ->
   {
     process = proc;
+    placement;
     owner_worker = Atomic.make owner_worker;
+    blocking_lane = None;
     queued = Atomic.make false;
     executing = Atomic.make false;
     pending = Atomic.make false;
@@ -161,10 +163,15 @@ let slot_process = fun slot -> slot.process
 
 let slot_pid = fun slot -> Process.pid slot.process
 
+let slot_placement = fun slot -> slot.placement
+
 let slot_owner_worker = fun slot -> Atomic.get slot.owner_worker
 
 let set_slot_owner_worker = fun slot worker_id ->
   Atomic.set slot.owner_worker worker_id
+
+let set_slot_blocking_lane = fun slot lane ->
+  slot.blocking_lane <- Some lane
 
 let mark_slot_dequeued = fun slot ->
   Atomic.set slot.queued false
@@ -219,6 +226,8 @@ let create = fun ~config ->
         reactor_lock = Mutex.create ();
         io_poll;
         timer_wheel;
+        blocking_lanes_lock = Mutex.create ();
+        blocking_lanes = [];
         config;
       }
   | Error err ->
@@ -292,7 +301,15 @@ let request_shutdown = fun t ~status ->
       Mutex.lock worker.lock;
       Condition.broadcast worker.cond;
       Mutex.unlock worker.lock)
-    t.workers
+    t.workers;
+  Mutex.lock t.blocking_lanes_lock;
+  List.iter
+    (fun (lane: blocking_lane) ->
+      Mutex.lock lane.lock;
+      Condition.broadcast lane.cond;
+      Mutex.unlock lane.lock)
+    t.blocking_lanes;
+  Mutex.unlock t.blocking_lanes_lock
 
 let shutdown = fun t ~status -> request_shutdown t ~status
 
@@ -317,15 +334,36 @@ let enqueue_on_worker = fun t worker_id slot ->
             [ "duplicate enqueue prevented pid="; Pid.to_string (slot_pid slot) ])
       )
 
+let enqueue_on_blocking_lane = fun t slot ->
+  if try_mark_slot_queued slot then
+    match slot.blocking_lane with
+    | None -> panic "blocking slot is missing its lane"
+    | Some lane ->
+        Mutex.lock lane.lock;
+        Condition.signal lane.cond;
+        Mutex.unlock lane.lock
+  else if Process.is_runnable (slot_process slot) then
+    (
+      increment t.counters.duplicate_enqueue_races;
+      trace
+        (Kernel.String.concat
+          ""
+          [ "duplicate enqueue prevented pid="; Pid.to_string (slot_pid slot) ])
+    )
+
 let enqueue_owned_process = fun t slot ->
-  let owner = slot_owner_worker slot in
-  let worker_id =
-    if is_valid_worker_id t owner then
-      owner
-    else
-      Scheduler_id.zero
-  in
-  enqueue_on_worker t worker_id slot
+  match slot_placement slot with
+  | Blocking -> enqueue_on_blocking_lane t slot
+  | Normal
+  | Pinned ->
+      let owner = slot_owner_worker slot in
+      let worker_id =
+        if is_valid_worker_id t owner then
+          owner
+        else
+          Scheduler_id.zero
+      in
+      enqueue_on_worker t worker_id slot
 
 let current_worker_id_opt = fun () ->
   match Domain.DLS.get current_context with
@@ -448,17 +486,76 @@ let send_internal = fun t pid msg ->
 
 let send = fun pid msg -> send_internal (get_scheduler ()) pid msg
 
-let spawn_on_worker = fun t ~worker_id fn ->
+let spawn_on_worker_with_placement = fun t ~worker_id ~placement fn ->
   let proc = Process.make fn in
-  let slot = create_process_slot proc ~owner_worker:worker_id in
+  let slot = create_process_slot proc ~owner_worker:worker_id ~placement in
   let pid = slot_pid slot in
   add_process_slot t slot;
-  enqueue_on_worker t worker_id slot;
+  (
+    match placement with
+    | Blocking -> enqueue_on_blocking_lane t slot
+    | Normal
+    | Pinned -> enqueue_on_worker t worker_id slot
+  );
   pid
+
+let spawn_on_worker = fun t ~worker_id fn ->
+  spawn_on_worker_with_placement t ~worker_id ~placement:Normal fn
 
 let spawn = fun t fn ->
   let worker_id = pick_spawn_worker t in
   spawn_on_worker t ~worker_id fn
+
+let spawn_pinned = fun ?worker_id t fn ->
+  let worker_id =
+    match worker_id with
+    | Some worker_id ->
+        if is_valid_worker_id t worker_id then
+          worker_id
+        else
+          panic "spawn_pinned got an invalid scheduler id"
+    | None -> (
+        match current_worker_id_opt () with
+        | Some worker_id -> worker_id
+        | None -> pick_spawn_worker t
+      )
+  in
+  spawn_on_worker_with_placement t ~worker_id ~placement:Pinned fn
+
+let with_blocking_lanes_lock = fun t f ->
+  Mutex.lock t.blocking_lanes_lock;
+  try
+    let result = f () in
+    Mutex.unlock t.blocking_lanes_lock;
+    result
+  with
+  | exn ->
+      Mutex.unlock t.blocking_lanes_lock;
+      raise exn
+
+let add_blocking_lane = fun t lane ->
+  with_blocking_lanes_lock t (fun () -> t.blocking_lanes <- lane :: t.blocking_lanes)
+
+let wait_for_blocking_work = fun t slot ->
+  match slot.blocking_lane with
+  | None -> None
+  | Some lane ->
+      let proc = slot_process slot in
+      Mutex.lock lane.lock;
+      while
+        (not (Atomic.get t.stop))
+        && Process.is_alive proc
+        && not (Atomic.get slot.queued)
+      do
+        Condition.wait lane.cond lane.lock
+      done;
+      Mutex.unlock lane.lock;
+      if Atomic.get t.stop || not (Process.is_alive proc) then
+        None
+      else if Atomic.compare_and_set slot.queued true false then
+        Some slot
+      else
+        None
 
 let get_current_process = fun () ->
   let ctx = get_context () in
@@ -809,6 +906,38 @@ let step_process = fun t ctx slot ->
       else
         mark_slot_pending slot
 
+let spawn_blocked = fun t fn ->
+  let proc = Process.make fn in
+  let slot = create_process_slot proc ~owner_worker:Scheduler_id.zero ~placement:Blocking in
+  let lane = {
+    lock = Mutex.create ();
+    cond = Condition.create ();
+    domain = None;
+  } in
+  let ctx = { scheduler = t; worker_id = None; current_process = None } in
+  let rec blocking_loop () =
+    Domain.DLS.set current_context (Some ctx);
+    step_process t ctx slot;
+    let rec loop () =
+      if Atomic.get t.stop || not (Process.is_alive proc) then
+        ()
+      else
+        match wait_for_blocking_work t slot with
+        | None -> ()
+        | Some slot ->
+            step_process t ctx slot;
+            loop ()
+    in
+    loop ();
+    ctx.current_process <- None
+  in
+  set_slot_blocking_lane slot lane;
+  add_process_slot t slot;
+  let domain = Domain.spawn blocking_loop in
+  lane.domain <- Some domain;
+  add_blocking_lane t lane;
+  slot_pid slot
+
 let pop_local = fun (worker: worker) ->
   Mutex.lock worker.lock;
   let slot = Queue.pop worker.queue in
@@ -840,16 +969,23 @@ let wait_for_local_work = fun t (worker: worker) ->
 let steal_batch = fun (victim: worker) ->
   Mutex.lock victim.lock;
   let available = Queue.len victim.queue in
-  let steal_count = min 32 (available / 2) in
-  let rec steal n acc =
-    if n = 0 then
-      List.rev acc
+  let steal_goal = min 32 (available / 2) in
+  let rec scan remaining wanted stolen kept =
+    if remaining = 0 then
+      (List.rev stolen, List.rev kept)
     else
       match Queue.pop victim.queue with
-      | None -> List.rev acc
-      | Some proc -> steal (n - 1) (proc :: acc)
+      | None -> (List.rev stolen, List.rev kept)
+      | Some slot -> (
+          match slot_placement slot with
+          | Normal when wanted > 0 ->
+              scan (remaining - 1) (wanted - 1) (slot :: stolen) kept
+          | _ ->
+              scan (remaining - 1) wanted stolen (slot :: kept)
+        )
   in
-  let batch = steal steal_count [] in
+  let batch, kept = scan available steal_goal [] [] in
+  List.iter (Queue.push victim.queue) kept;
   Mutex.unlock victim.lock;
   batch
 
@@ -1022,12 +1158,24 @@ module Worker = struct
     Scheduler_worker.loop ~pop_local ~step_process ~attempt_steal ~wait_for_local_work scheduler worker
 end
 
+let join_blocking_lanes = fun t ->
+  let lanes =
+    with_blocking_lanes_lock t (fun () -> t.blocking_lanes)
+  in
+  List.iter
+    (fun (lane: blocking_lane) ->
+      match lane.domain with
+      | None -> ()
+      | Some domain -> Domain.join domain)
+    lanes
+
 let runtime_deps: Scheduler_runtime.deps = {
   ensure_can_run_once;
   create;
   spawn_on_worker;
   worker_loop = Worker.loop;
   reactor_loop = Reactor.loop;
+  join_blocking_lanes;
 }
 
 let run = fun ~config ~main -> Scheduler_runtime.run runtime_deps ~config ~main

@@ -81,12 +81,25 @@ let shutdown = fun ~status -> Scheduler.shutdown (Scheduler.get_scheduler ()) ~s
 let spawn = fun fn ->
   Scheduler.spawn (Scheduler.get_scheduler ()) fn
 
+let spawn_pinned = fun ?scheduler fn ->
+  let scheduler =
+    match scheduler with
+    | None -> None
+    | Some scheduler -> Some (Scheduler_id.of_int scheduler)
+  in
+  Scheduler.spawn_pinned ?worker_id:scheduler (Scheduler.get_scheduler ()) fn
+
+let spawn_blocked = fun fn ->
+  Scheduler.spawn_blocked (Scheduler.get_scheduler ()) fn
+
 let spawn_link = fun fn ->
   let pid = spawn fn in
   Process.link pid;
   pid
 
 let self = fun () -> Scheduler.self ()
+
+let current_scheduler_id = fun () -> Scheduler.current_worker_id_opt ()
 
 let send = fun pid msg ->
   Scheduler.send pid msg

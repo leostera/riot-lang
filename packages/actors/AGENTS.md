@@ -10,6 +10,7 @@
 4. Keep the public runtime surface small. Push convenience APIs up into `std`.
 5. Keep cooperative yielding process-local: manual `Actors.yield` calls and `Proc_state.run` effect stepping should spend the same process-owned reduction budget instead of separate domain-local counters.
 6. `actors` owns its package-provided `riot-fix` rules under `fix/`; keep those diagnostics aligned with scheduler fairness and cooperative yielding semantics.
+7. Placement classes now matter: `spawn` remains the normal migratable path, `spawn_pinned` must stay scheduler-sticky and non-stealable, and `spawn_blocked` must stay isolated from the normal worker pool.
 
 ## Validate
 

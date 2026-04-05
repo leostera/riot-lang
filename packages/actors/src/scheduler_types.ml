@@ -2,13 +2,26 @@ open Kernel
 open Kernel.Collections
 open Kernel.Sync
 
+type placement =
+  | Normal
+  | Pinned
+  | Blocking
+
+type blocking_lane = {
+  lock: Mutex.t;
+  cond: Condition.t;
+  mutable domain: unit Domain.t option;
+}
+
 type process_slot = {
   process: Process.t;
   (* Runtime-owned scheduling metadata.
      Process continuations/mailboxes live on [Process.t], while ownership and
      queue membership live here so workers can transfer slots without mutating
      process internals. *)
+  placement: placement;
   owner_worker: Scheduler_id.t Atomic.t;
+  mutable blocking_lane: blocking_lane option;
   queued: bool Atomic.t;
   (* A slot can be requested again while a worker is already stepping its
      continuation. Preserve that wakeup so it can be re-enqueued once the
@@ -75,6 +88,8 @@ type t = {
   reactor_lock: Mutex.t;
   io_poll: Async.Poll.t;
   timer_wheel: Timer_wheel.t;
+  blocking_lanes_lock: Mutex.t;
+  mutable blocking_lanes: blocking_lane list;
   config: Config.t;
 }
 

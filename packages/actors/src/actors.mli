@@ -131,7 +131,24 @@ val self: unit -> Pid.t
 
 val spawn: (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
+(** Spawn an actor pinned to one normal scheduler. When [scheduler] is omitted,
+    the runtime prefers the current normal scheduler and otherwise falls back to
+    normal placement policy. Pinned actors are not work-stolen. *)
+val spawn_pinned:
+  ?scheduler:int ->
+  (unit -> (unit, Process.exit_reason) result) ->
+  Pid.t
+
+(** Spawn an actor on a dedicated blocking lane outside the normal
+    work-stealing scheduler pool. *)
+val spawn_blocked: (unit -> (unit, Process.exit_reason) result) -> Pid.t
+
 val spawn_link: (unit -> (unit, Process.exit_reason) result) -> Pid.t
+
+(** Return the current normal scheduler identifier, or [None] when the caller
+    is not running on a normal scheduler worker. Blocking actors therefore
+    report [None]. *)
+val current_scheduler_id: unit -> Scheduler_id.t option
 
 val send: Pid.t -> Message.t -> unit
 

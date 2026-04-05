@@ -23,9 +23,24 @@ val get_scheduler: unit -> t
 val spawn: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn a process on a scheduler chosen by runtime placement policy. *)
+val spawn_pinned:
+  ?worker_id:Scheduler_id.t ->
+  t ->
+  (unit -> (unit, Process.exit_reason) result) ->
+  Pid.t
+
+(** Spawn a process pinned to a single normal scheduler. *)
+val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
+
+(** Spawn a process on a dedicated blocking lane outside the normal
+    work-stealing scheduler pool. *)
 val self: unit -> Pid.t
 
 (** Return the PID of the currently running process in this domain context. *)
+val current_worker_id_opt: unit -> Scheduler_id.t option
+
+(** Return the current normal scheduler identifier, or [None] when not running
+    on a normal scheduler worker. *)
 val send: Pid.t -> Message.t -> unit
 
 (** Send a message by PID through the runtime-wide process registry. *)

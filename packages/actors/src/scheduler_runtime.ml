@@ -10,6 +10,7 @@ type deps = {
     t -> worker_id:Scheduler_id.t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t;
   worker_loop: t -> worker -> unit;
   reactor_loop: t -> unit;
+  join_blocking_lanes: t -> unit;
 }
 
 let run = fun deps ~config ~main ->
@@ -30,4 +31,5 @@ let run = fun deps ~config ~main ->
   deps.worker_loop t t.workers.(0);
   Array.iter Domain.join worker_domains;
   Domain.join reactor_domain;
+  deps.join_blocking_lanes t;
   Atomic.get t.status
