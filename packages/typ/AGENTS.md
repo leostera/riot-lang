@@ -9,11 +9,12 @@ The docs under `packages/typ/docs` are the current normative spec stack for
 
 Start with:
 
-- `packages/typ/docs/README.md`
-- `packages/typ/docs/checker.md`
-- `packages/typ/docs/solver.md`
-- `packages/typ/docs/lowering.md`
-- `packages/typ/docs/engine.md`
+- `packages/typ/docs/index.md`
+- `packages/typ/docs/checker/index.md`
+- `packages/typ/docs/checker/checker.md`
+- `packages/typ/docs/checker/solver.md`
+- `packages/typ/docs/checker/lowering.md`
+- `packages/typ/docs/checker/engine.md`
 
 Then use the feature slices that match the work you are doing.
 
