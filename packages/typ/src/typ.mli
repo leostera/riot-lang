@@ -45,7 +45,7 @@ open Std
 
     - `Typ.Session.empty`
     - `Typ.Session.create_source`
-    - `Typ.Session.snapshot`
+    - `Typ.Session.prepare_snapshot`
     - `Typ.Query.diagnostics`
     - `Typ.Query.type_at`
     - `Typ.Query.module_summary_of`
@@ -71,6 +71,8 @@ module OriginId: module type of OriginId
 module Position: module type of Position
 
 module Source: module type of Source
+
+module MissingRequirements: module type of MissingRequirements
 
 module Diagnostic: module type of Diagnostic
 

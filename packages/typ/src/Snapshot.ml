@@ -10,11 +10,12 @@ type analysis_slot = {
 
 type t = {
   revision: int;
+  roots: SourceId.t list;
   analyses: analysis_slot list;
   mutable qualified_summaries: (SourceId.t * string * PersistedSummary.t) list option;
 }
 
-let make = fun ~revision ~config ~sources ->
+let make = fun ~revision ~roots ~config ~sources ->
   let analyses =
     sources
     |> List.map
@@ -27,7 +28,7 @@ let make = fun ~revision ~config ~sources ->
           analysis = None;
         })
   in
-  { revision; analyses; qualified_summaries = None }
+  { revision; roots; analyses; qualified_summaries = None }
 
 let force_base_analysis = fun (slot: analysis_slot) ->
   match slot.base_analysis with
@@ -88,7 +89,15 @@ let force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
 
 let revision = fun snapshot -> snapshot.revision
 
-let analyses = fun snapshot -> snapshot.analyses |> List.map (force_analysis snapshot)
+let roots = fun snapshot -> snapshot.roots
+
+let is_root = fun snapshot source_id ->
+  snapshot.roots |> List.exists (SourceId.equal source_id)
+
+let analyses = fun snapshot ->
+  snapshot.analyses
+  |> List.filter (fun (slot: analysis_slot) -> is_root snapshot slot.source_id)
+  |> List.map (force_analysis snapshot)
 
 let file_summaries = fun snapshot ->
   analyses snapshot |> List.map (fun (analysis: SourceAnalysis.t) -> analysis.file_summary)
@@ -105,9 +114,12 @@ let module_summaries = fun snapshot ->
         ~summary:(PersistedSummary.of_file_summary analysis.file_summary))
 
 let find_analysis = fun snapshot source_id ->
-  List.find_opt
-    (fun (slot: analysis_slot) ->
-      SourceId.equal slot.source_id source_id)
-    snapshot.analyses |> function
-  | Some slot -> Some (force_analysis snapshot slot)
-  | None -> None
+  if not (is_root snapshot source_id) then
+    None
+  else
+    List.find_opt
+      (fun (slot: analysis_slot) ->
+        SourceId.equal slot.source_id source_id)
+      snapshot.analyses |> function
+    | Some slot -> Some (force_analysis snapshot slot)
+    | None -> None

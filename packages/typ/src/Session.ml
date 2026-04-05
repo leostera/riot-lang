@@ -46,5 +46,23 @@ let remove_source = fun session source_id ->
       session.sources
   }
 
+let prepare_snapshot = fun session ~roots ->
+  let missing_roots =
+    roots
+    |> List.filter
+      (fun root_id ->
+        session.sources
+        |> List.exists (fun (source: Source.t) -> SourceId.equal source.source_id root_id)
+        |> not)
+    |> List.map (fun source_id -> MissingRequirements.MissingRootSource { source_id })
+  in
+  if MissingRequirements.(missing_roots |> of_list |> is_empty) then
+    Ok (Snapshot.make ~revision:session.next_revision ~roots ~config:session.config ~sources:session.sources)
+  else
+    Error (MissingRequirements.of_list missing_roots)
+
 let snapshot = fun session ->
-  Snapshot.make ~revision:session.next_revision ~config:session.config ~sources:session.sources
+  let roots = session.sources |> List.map (fun (source: Source.t) -> source.source_id) in
+  match prepare_snapshot session ~roots with
+  | Ok snapshot -> snapshot
+  | Error _ -> panic "Session.snapshot: current session sources should always prepare successfully"

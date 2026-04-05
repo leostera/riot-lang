@@ -6,6 +6,7 @@ module PatId = PatId
 module OriginId = OriginId
 module Position = Position
 module Source = Source
+module MissingRequirements = MissingRequirements
 module Diagnostic = Diagnostic
 module Explanations = Explanations
 module OriginMap = OriginMap
