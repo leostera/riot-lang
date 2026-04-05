@@ -1,6 +1,6 @@
 [package]
 name = "riot-cli"
-version = "0.0.3"
+version = "0.0.5"
 description = "Command-line interface for Riot"
 license = "Apache-2.0"
 public = false
@@ -24,6 +24,7 @@ riot-toolchain = { path = "../riot-toolchain", version = "*" }
 riot-lsp = { path = "../riot-lsp", version = "*" }
 riot-fix = { path = "../riot-fix", version = "*" }
 riot-fmt = { path = "../riot-fmt", version = "*" }
+riot-doc = { path = "../riot-doc", version = "*" }
 typ = { path = "../typ", version = "*" }
 riot-deps = { path = "../riot-deps", version = "*" }
 riot-publish = { path = "../riot-publish", version = "*" }
