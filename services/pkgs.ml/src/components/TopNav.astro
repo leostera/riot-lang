@@ -114,16 +114,9 @@ const logoutUrl = buildLogoutUrl(currentUrl);
                   <a
                     href={`/u/${session.user.github_login}/tokens`}
                     class="px-3 py-2 text-foreground hover:bg-muted"
-                  >
-                    API Tokens
+                >
+                  API Tokens
                   </a>
-                  <button
-                    type="button"
-                    class="px-3 py-2 text-left text-foreground hover:bg-muted"
-                    data-theme-toggle
-                  >
-                    Toggle theme
-                  </button>
                   <form action={logoutUrl} method="post" class="border-t border-border">
                     <button
                       type="submit"
@@ -135,13 +128,6 @@ const logoutUrl = buildLogoutUrl(currentUrl);
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    class="border-t border-border px-3 py-2 text-left text-foreground hover:bg-muted"
-                    data-theme-toggle
-                  >
-                    Toggle theme
-                  </button>
                   <a href={loginUrl} class="border-t border-border px-3 py-2 text-foreground hover:bg-muted">
                     Login with GitHub
                   </a>
