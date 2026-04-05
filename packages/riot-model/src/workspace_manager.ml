@@ -141,6 +141,9 @@ let resolve_dependency_root = fun ~declared_from dep_path ->
   else
     Path.(declared_from / dep_path)
 
+let dependency_has_external_fallback = fun (dep: Package.dependency) ->
+  Option.is_some dep.source.source_locator || Option.is_some dep.source.version
+
 let rec load_external_package:
   t ->
   Path.t ->
@@ -163,12 +166,14 @@ let rec load_external_package:
       if List.mem dep.name !seen then
         ([], [])
       else (
-        seen := dep.name :: !seen;
         let abs_path = resolve_dependency_root ~declared_from dep_path in
         let toml_path = Path.(abs_path / riot_toml) in
         let path_str = Path.to_string dep_path in
         match Fs.exists toml_path with
+        | Ok false when dependency_has_external_fallback dep ->
+            ([], [])
         | Ok true -> (
+            seen := dep.name :: !seen;
             match load_riot_toml t toml_path with
             | Error err when String.starts_with ~prefix:"failed to read" err ->
                 ([], [ PackageTomlReadFailed { package = dep.name; path = path_str } ])
@@ -215,7 +220,9 @@ let rec load_external_package:
                 )
               )
           )
-        | _ -> ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
+        | _ ->
+            seen := dep.name :: !seen;
+            ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
       )
 
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->

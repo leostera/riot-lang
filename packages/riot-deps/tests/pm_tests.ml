@@ -909,6 +909,56 @@ version = "2.0.0"
           | _ -> Error "expected both foo and bar lock packages"
         ))
 
+let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun _ctx ->
+  with_tempdir "riot_deps_missing_path_registry_fallback"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[
+          { name = "std"; source = source ~path:(Path.v "../../vendor/std") ~version:Std.Version.any () }
+        ]
+        () in
+      let registry = make_registry
+        [
+          make_registry_document
+            ~name:"std"
+            ~latest:"0.2.0"
+            ~releases:[ make_release ~version:"0.2.0" () ]
+            ();
+        ] in
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err ->
+          Error ("expected missing path+version dependency to fall back to registry: "
+          ^ pm_error_message err)
+      | Ok lockfile -> (
+          let app_lock =
+            List.find_opt (fun (pkg: Riot_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
+          in
+          let registry_std =
+            List.find_opt
+              (fun (pkg: Riot_model.Lockfile.package) ->
+                pkg.id.name = "std" && pkg.id.registry = Some "pkgs.ml")
+              lockfile.packages
+          in
+          let local_std =
+            List.find_opt
+              (fun (pkg: Riot_model.Lockfile.package) ->
+                pkg.id.name = "std" && pkg.id.registry = None)
+              lockfile.packages
+          in
+          match app_lock, registry_std, local_std with
+          | Some app_lock, Some registry_std, None ->
+              if
+                List.length lockfile.packages = 2
+                && (List.hd app_lock.dependencies).package = registry_std.id
+              then
+                Ok ()
+              else
+                Error "expected app to lock against the registry release when the local path is absent"
+          | _ -> Error "expected only the registry std package to appear in the lockfile"
+        ))
+
 let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -2436,6 +2486,7 @@ let tests =
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
     case "dep solver: resolves path dependencies" test_lock_deps_resolves_path_dependencies;
     case "dep solver: resolves transitive path dependencies" test_lock_deps_resolves_transitive_path_dependencies;
+    case "dep solver: missing path+version deps fall back to registry resolution" test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing;
     case "dep solver: collapses workspace path dependencies" test_lock_deps_collapses_workspace_path_dependencies;
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
     case "dep solver: reports missing registry packages with required-by context" test_lock_deps_reports_missing_registry_package_with_required_by;

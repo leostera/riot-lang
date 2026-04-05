@@ -599,6 +599,42 @@ minttea = "not-a-version"
           | _ -> Error "expected invalid member manifest to surface as a workspace load error"
         ))
 
+let test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback = fun _ctx ->
+  with_tempdir "riot_model_workspace_missing_path_fallback"
+    (fun root ->
+      let write path content = Fs.write content path
+      |> Result.expect ~msg:(("expected write to succeed: " ^ Path.to_string path)) in
+      let mkdir path = Fs.create_dir_all path
+      |> Result.expect ~msg:(("expected mkdir to succeed: " ^ Path.to_string path)) in
+      mkdir Path.(root / Path.v "packages/app/src");
+      write Path.(root / Path.v "riot.toml")
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write Path.(root / Path.v "packages/app/riot.toml")
+        {|
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+|};
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.scan workspace_manager root with
+      | Error err -> Error err
+      | Ok (workspace, errors) ->
+          if not (List.is_empty errors) then
+            Error ("expected missing path+version dependency to defer to later resolution, got: "
+            ^ String.concat "; " (List.map Riot_model.Workspace_manager.load_error_to_string errors))
+          else
+            let names = workspace.Riot_model.Workspace.packages
+            |> List.map (fun p -> p.Riot_model.Package.name)
+            |> List.sort String.compare in
+            Test.assert_equal ~expected:[ "app" ] ~actual:names;
+            Ok ())
+
 let test_user_config_parses_registry_api_token = fun _ctx ->
   let toml =
     Std.Data.Toml.parse
@@ -749,6 +785,7 @@ let tests =
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
+    case "workspace manager: missing path+version deps defer to external resolution" test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback;
     case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;
     case "user config: parses registry urls" test_user_config_parses_registry_urls;
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;

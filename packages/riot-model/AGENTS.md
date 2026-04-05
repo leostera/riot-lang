@@ -20,6 +20,7 @@
 14. `Package.t` is a private record. Read fields freely, but construct synthetic packages through `Package.synthetic` and keep new package creation logic inside `Package`.
 15. Keep `Package` values canonicalized at construction time. Hash-relevant lists such as dependencies, binaries, source buckets, fix providers, and override tables should be sorted or deduped when a `Package.t` is created or scope-adjusted, not re-sorted inside `Package.hash`.
 16. Package-management progress belongs on the shared `Event.kind` surface. When `riot add` / `riot rm` / `riot update` need new lifecycle reporting, add structured PM events here instead of inventing a parallel event type in `riot-deps` or `riot-cli`.
+17. `Workspace_manager.scan` should still surface real member and local-package manifest failures, but it must not raise load errors for missing external `path` dependencies when that dependency also carries a publishable fallback (`version` or `source`). Those are resolved later by `riot-deps`.
 
 ## Validate
 

@@ -107,6 +107,24 @@ let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path 
   |> Result.map_error
     (fun err -> Error.PathDependencyDecodeFailed { dependency_name; manifest_path; error = err })
 
+let path_dependency_has_external_fallback = fun (dep: Riot_model.Package.dependency) ->
+  Option.is_some dep.source.source_locator || Option.is_some dep.source.version
+
+type path_dependency_resolution =
+  | PreferLocalPath
+  | FallbackToSource
+  | FallbackToRegistry
+
+let path_dependency_resolution = fun ~declared_from (dep: Riot_model.Package.dependency) ->
+  match dep.source.path with
+  | None -> None
+  | Some dep_path ->
+      let manifest_path = Path.(resolve_dependency_root ~declared_from dep_path / Path.v "riot.toml") in
+      match Fs.exists manifest_path with
+      | Ok false when Option.is_some dep.source.source_locator -> Some FallbackToSource
+      | Ok false when path_dependency_has_external_fallback dep -> Some FallbackToRegistry
+      | _ -> Some PreferLocalPath
+
 let load_source_dependency_package = fun ~dependency_name ~source_locator ~ref_ ->
   let* materialized = Git_dependency.materialize ~source_locator ~ref_ ()
   |> Result.map_error
@@ -654,16 +672,69 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             acc_dependencies
             rest
       | { path=Some path; _ } -> (
-          match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
-          | Error _ as err -> err
-          | Ok (resolved, state) -> resolve_manifest_dependencies
-            ~ctx
-            ~state
-            ~required_by
-            ~declared_from
-            (List.rev_append resolved.packages acc_packages)
-            (resolved.dependency :: acc_dependencies)
-            rest
+          match path_dependency_resolution ~declared_from dep with
+          | Some PreferLocalPath ->
+              (
+                match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
+                | Error _ as err -> err
+                | Ok (resolved, state) -> resolve_manifest_dependencies
+                  ~ctx
+                  ~state
+                  ~required_by
+                  ~declared_from
+                  (List.rev_append resolved.packages acc_packages)
+                  (resolved.dependency :: acc_dependencies)
+                  rest
+              )
+          | Some FallbackToSource -> (
+              match resolve_source_dependency ~ctx ~state dep with
+              | Error _ as err -> err
+              | Ok (resolved, state) -> resolve_manifest_dependencies
+                ~ctx
+                ~state
+                ~required_by
+                ~declared_from
+                (List.rev_append resolved.packages acc_packages)
+                (resolved.dependency :: acc_dependencies)
+                rest
+            )
+          | Some FallbackToRegistry
+          | None -> (
+              match find_workspace_package_by_name
+                ~workspace_packages:ctx.workspace.packages
+                ~package_name:dep.name with
+              | Some _ -> resolve_manifest_dependencies
+                ~ctx
+                ~state
+                ~required_by
+                ~declared_from
+                acc_packages
+                (lock_dependency_of_local_dependency dep :: acc_dependencies)
+                rest
+              | None -> (
+                  match find_local_package_id_in_state ~state ~package_name:dep.name with
+                  | Some package_id -> resolve_manifest_dependencies
+                    ~ctx
+                    ~state
+                    ~required_by
+                    ~declared_from
+                    acc_packages
+                    (Riot_model.Lockfile.{ name = dep.name; package = package_id } :: acc_dependencies)
+                    rest
+                  | None -> (
+                      match resolve_registry_dependency ~ctx ~state ~required_by dep with
+                      | Error _ as err -> err
+                      | Ok (resolved, state) -> resolve_manifest_dependencies
+                        ~ctx
+                        ~state
+                        ~required_by
+                        ~declared_from
+                        (List.rev_append resolved.packages acc_packages)
+                        (resolved.dependency :: acc_dependencies)
+                        rest
+                    )
+                )
+            )
         )
       | { source_locator=Some _; _ } -> (
           match resolve_source_dependency ~ctx ~state dep with
@@ -977,25 +1048,53 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
       Ok None
   | { workspace=true; _ } ->
       Ok (Some dep.name)
-  | { path=Some path; _ } ->
-      let package_root = resolve_dependency_root ~declared_from path in
-      (
-        match find_workspace_package_by_root ~workspace_packages:catalog.ctx.workspace.packages ~package_root with
-        | Some workspace_pkg -> Ok (Some workspace_pkg.name)
-        | None ->
-            let* pkg = load_path_dependency_package ~declared_from ~dependency_name:dep.name path in
-            (
-              match find_workspace_package_by_name
-                ~workspace_packages:catalog.ctx.workspace.packages
-                ~package_name:pkg.name with
-              | Some workspace_pkg -> Ok (Some workspace_pkg.name)
-              | None ->
-                  let* () = register_local_entry
-                    catalog
-                    { package = pkg; provenance = Riot_model.Lockfile.Path path } in
-                  Ok (Some pkg.name)
-            )
-      )
+  | { path=Some path; _ } -> (
+      match path_dependency_resolution ~declared_from dep with
+      | Some PreferLocalPath ->
+          let package_root = resolve_dependency_root ~declared_from path in
+          (
+            match find_workspace_package_by_root ~workspace_packages:catalog.ctx.workspace.packages ~package_root with
+            | Some workspace_pkg -> Ok (Some workspace_pkg.name)
+            | None ->
+                let* pkg = load_path_dependency_package ~declared_from ~dependency_name:dep.name path in
+                (
+                  match find_workspace_package_by_name
+                    ~workspace_packages:catalog.ctx.workspace.packages
+                    ~package_name:pkg.name with
+                  | Some workspace_pkg -> Ok (Some workspace_pkg.name)
+                  | None ->
+                      let* () = register_local_entry
+                        catalog
+                        { package = pkg; provenance = Riot_model.Lockfile.Path path } in
+                      Ok (Some pkg.name)
+                )
+          )
+      | Some FallbackToSource -> (
+          let source_locator =
+            match dep.source.source_locator with
+            | Some source_locator -> source_locator
+            | None -> panic "path dependency source fallback requires a source locator"
+          in
+          let* pkg = load_source_dependency_package
+            ~dependency_name:dep.name
+            ~source_locator
+            ~ref_:dep.source.ref_ in
+          let* () = validate_source_requirement ~dependency_name:dep.name ~source_locator dep pkg in
+          let* () = register_local_entry
+            catalog
+            {
+              package = pkg;
+              provenance = Riot_model.Lockfile.Source {
+                locator = source_locator;
+                ref_ = dep.source.ref_
+              }
+            } in
+          Ok (Some pkg.name)
+        )
+      | Some FallbackToRegistry
+      | None ->
+          Ok (Some dep.name)
+    )
   | { source_locator=Some source_locator; _ } ->
       let* pkg = load_source_dependency_package
         ~dependency_name:dep.name
@@ -1025,9 +1124,21 @@ let provider_dependency_of_manifest_dependency = fun (catalog: catalog) ~declare
       let is_local =
         match dep.source with
         | { workspace=true; _ }
-        | { path=Some _; _ }
         | { source_locator=Some _; _ } ->
             true
+        | { path=Some _; _ } -> (
+            match path_dependency_resolution ~declared_from dep with
+            | Some PreferLocalPath
+            | Some FallbackToSource ->
+                true
+            | Some FallbackToRegistry
+            | None ->
+                (
+                  match HashMap.get catalog.local_by_name target_name with
+                  | Some _ -> true
+                  | None -> false
+                )
+          )
         | { builtin=true; _ } ->
             false
         | _ ->
