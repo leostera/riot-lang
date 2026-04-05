@@ -1,3 +1,5 @@
+FROM ubuntu:24.04
+
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /workspace
 
@@ -13,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     libzstd-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY services/docs.pkgs.ml/src/container_server.py /usr/local/bin/docs-pipeline-server
+COPY src/container_server.py /usr/local/bin/docs-pipeline-server
 
 RUN chmod +x /usr/local/bin/docs-pipeline-server
 
