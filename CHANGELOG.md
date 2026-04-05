@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.12 - 2026-04-06
+
+### Added
+
+- Added `Actors.spawn_pinned`, `Actors.spawn_blocked`, and scheduler support for pinned and blocking actor placement.
+- Added detached single-package build support so `riot build` now works from a standalone package root with only a package-level `riot.toml`.
+- Added `./scripts/release.sh` to automate version bumps, changelog updates, tagging, and Riot release orchestration.
+
+### Changed
+
+- `riot` CLI workspace resolution now scans upward once, preferring an enclosing workspace manifest and otherwise synthesizing a one-package workspace from the nearest package manifest.
+- Riot release automation now supports manifest-aware all-target releases from `./scripts/release/riot.sh all`.
+
+### Docs
+
+- Marked implemented RFDs as `implemented`, including the pinned/blocking actor runtime work.
+
 ## 0.0.10 - 2026-04-06
 
 ### Added
