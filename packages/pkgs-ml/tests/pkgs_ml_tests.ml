@@ -167,6 +167,17 @@ let make_fetch_recorder = fun ?post_handler get_handler ->
   in
   (fetch, requests)
 
+let with_riot_agent = fun value f ->
+  Pkgs_ml.Registry.set_riot_agent value;
+  try
+    let result = f () in
+    let _ = Pkgs_ml.Registry.set_riot_agent None in
+    result
+  with
+  | exn ->
+      let _ = Pkgs_ml.Registry.set_riot_agent None in
+      raise exn
+
 let set_old_mtime = fun path ->
   match Command.make "touch" ~args:[ "-t"; "200001010000"; Path.to_string path ] |> Command.output with
   | Error (Command.SystemError err) -> Error ("failed to spawn touch: " ^ err)
@@ -914,19 +925,20 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
   | Ok result -> result
 
 let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun _ctx ->
-  let cache = Pkgs_ml.Registry_cache.create
-    ~riot_home:(Path.v "/tmp/.riot")
-    ~registry_name:"pkgs.ml"
-    ()
-  |> Result.expect ~msg:"expected registry cache to be created" in
-  let artifact = "fake-tarball-bytes" in
-  let fetch, requests =
-    make_fetch_recorder
-      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-        Ok {
-          Pkgs_ml.Registry.status_code = 200;
-          body =
-            {|{
+  with_riot_agent (Some "riot-cli@test") (fun () ->
+    let cache = Pkgs_ml.Registry_cache.create
+      ~riot_home:(Path.v "/tmp/.riot")
+      ~registry_name:"pkgs.ml"
+      ()
+    |> Result.expect ~msg:"expected registry cache to be created" in
+    let artifact = "fake-tarball-bytes" in
+    let fetch, requests =
+      make_fetch_recorder
+        ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+          Ok {
+            Pkgs_ml.Registry.status_code = 200;
+            body =
+              {|{
   "package_name": "minttea",
   "package_version": "0.4.2",
   "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
@@ -951,36 +963,37 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
     "source": false
   }
 }|};
-        })
-      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-  in
-  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
-  | Error err -> Error err
-  | Ok published ->
-      let requested = List.rev !requests in
-      match requested with
-      | [ request ] ->
-          let has_header name value =
-            List.exists
-              (fun (header_name, header_value) ->
-                String.equal header_name name && String.equal header_value value)
-              request.headers
-          in
-          if
-            String.equal request.method_ "POST"
-            && String.equal request.url "https://api.pkgs.ml/v1/publish"
-            && request.body = Some artifact
-            && has_header "authorization" "Bearer root-secret"
-            && has_header "content-type" "application/gzip"
-            && String.equal published.artifact_sha256 "0123456789abcdef0123456789abcdef01234567"
-            && String.equal published.package_name "minttea"
-            && String.equal published.package_version "0.4.2"
-          then
-            Ok ()
-          else
-            Error "unexpected artifact publish request or response"
-      | _ -> Error "expected exactly one publish request"
+          })
+        (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+    in
+    let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+    match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
+    | Error err -> Error err
+    | Ok published ->
+        let requested = List.rev !requests in
+        match requested with
+        | [ request ] ->
+            let has_header name value =
+              List.exists
+                (fun (header_name, header_value) ->
+                  String.equal header_name name && String.equal header_value value)
+                request.headers
+            in
+            if
+              String.equal request.method_ "POST"
+              && String.equal request.url "https://api.pkgs.ml/v1/publish"
+              && request.body = Some artifact
+              && has_header "authorization" "Bearer root-secret"
+              && has_header "content-type" "application/gzip"
+              && has_header "X-Riot-Agent" "riot-cli@test"
+              && String.equal published.artifact_sha256 "0123456789abcdef0123456789abcdef01234567"
+              && String.equal published.package_name "minttea"
+              && String.equal published.package_version "0.4.2"
+            then
+              Ok ()
+            else
+              Error "unexpected artifact publish request or response"
+        | _ -> Error "expected exactly one publish request")
 
 let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create

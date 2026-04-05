@@ -200,7 +200,7 @@ let is_lsp_invocation = fun args ->
   | [] -> false
 
 let run = fun ~args ->
-  let _ = Env.set_var ~name:"RIOT_AGENT_HEADER" ~value:(Version_info.agent_string ()) in
+  let () = Pkgs_ml.Registry.set_riot_agent (Some (Version_info.agent_string ())) in
   let normalized_args =
     match args with
     | executable :: "docs" :: rest -> executable :: "doc" :: rest

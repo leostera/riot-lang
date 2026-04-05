@@ -54,6 +54,8 @@ val make_fetch:
   unit ->
   fetch
 
+val set_riot_agent: string option -> unit
+
 val create_filesystem:
   ?fetch:fetch -> registry_name:string -> ?riot_home:Path.t -> unit -> (t, string) result
 

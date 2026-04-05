@@ -76,14 +76,6 @@ type t = {
   source: source;
 }
 
-let make_fetch = fun ~get ?post () ->
-  let post =
-    match post with
-    | Some post -> post
-    | None -> fun _ ~headers:_ ~body:_ -> Error "POST fetch is not configured"
-  in
-  { get; post }
-
 let tcp_stream_error_message = function
   | Net.TcpStream.Connection_refused -> "connection refused"
   | Net.TcpStream.Closed -> "connection closed"
@@ -113,6 +105,20 @@ let exn_message = function
   | Failure message -> message
   | exn -> Exception.to_string exn
 
+let configured_riot_agent = ref None
+
+let normalize_riot_agent = function
+  | None -> None
+  | Some value ->
+      let trimmed = String.trim value in
+      if String.equal trimmed "" then
+        None
+      else
+        Some trimmed
+
+let set_riot_agent = fun value ->
+  configured_riot_agent := normalize_riot_agent value
+
 let default_http_headers = fun headers ->
   let has_riot_agent =
     List.exists
@@ -122,11 +128,17 @@ let default_http_headers = fun headers ->
   if has_riot_agent then
     headers
   else
-    match Env.var Env.String ~name:"RIOT_AGENT_HEADER" with
-    | Some value when not (String.equal (String.trim value) "") ->
-        ("X-Riot-Agent", String.trim value) :: headers
-    | Some _
+    match !configured_riot_agent with
+    | Some value -> ("X-Riot-Agent", value) :: headers
     | None -> headers
+
+let make_fetch = fun ~get ?post () ->
+  let post =
+    match post with
+    | Some post -> fun uri ~headers ~body -> post uri ~headers:(default_http_headers headers) ~body
+    | None -> fun _ ~headers:_ ~body:_ -> Error "POST fetch is not configured"
+  in
+  { get; post }
 
 let default_fetch =
   let run method_ uri ~headers ?body () =
