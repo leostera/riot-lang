@@ -34,6 +34,8 @@
 28. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
 29. `riot lsp` must stay a thin delegate into `riot-lsp`, and it must keep stdout protocol-only. Do not run the normal stdout logger/runtime bootstrap for that command.
 30. `riot toolchain list-available` stays workspace-free and should render data from `Riot_toolchain.list_available_toolchains` without scanning the workspace first.
+31. `riot clean` is the normal workspace-wide cache-GC entrypoint and `riot clean --force` is the destructive build-root wipe. Keep the command thin: resolve the workspace at the CLI boundary once and delegate the maintenance policy to `riot-store`.
+32. `riot doc --json` should emit JSONL payloads on stdout only. When `riot run` launches a child command with `--json` in its forwarded args, the wrapper should switch its own build/run progress output to JSON too so the combined stream stays machine-readable.
 
 ## Validate
 
