@@ -1,5 +1,9 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Model
+open Typ.Session
 
 let inferred_type_at = fun snapshot source_id offset ->
   Query.type_at snapshot source_id (Position.make ~offset) |> function

@@ -1,4 +1,5 @@
 open Std
+open Model
 
 type requirement =
   | MissingRootSource of { source_id: SourceId.t }

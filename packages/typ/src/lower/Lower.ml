@@ -1,4 +1,5 @@
 open Std
+open Model
 module Typ_diagnostic = Diagnostic
 open Syn
 

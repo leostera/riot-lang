@@ -1,7 +1,8 @@
 open Std
+module Typ_check_result = Typ.Analysis.Check_result
 
 type checked_file =
-  | Typed of { path: Path.t; report: Typ.Check_result.t; diagnostics: Diagnostic.t list }
+  | Typed of { path: Path.t; report: Typ_check_result.t; diagnostics: Diagnostic.t list }
   | Unreadable of { path: Path.t; reason: string }
 
 type checked_summary = {

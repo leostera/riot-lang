@@ -1,4 +1,11 @@
 open Std
+open Model
+
+module Snapshot: module type of Snapshot
+
+module SourceAnalysis: module type of SourceAnalysis
+
+module MissingRequirements: module type of MissingRequirements
 
 (** Mutable host-owned set of logical sources. *)
 type t

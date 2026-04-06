@@ -1,4 +1,5 @@
 open Std
+open Model
 
 let check_source = fun ~filename source ->
   let config = TypConfig.default in
@@ -20,7 +21,7 @@ let check_source = fun ~filename source ->
     ~source_hash:(Source.hash_text ~kind:Source.File ~origin:(Source.Path filename) ~text:source)
     ~parse_result
     ~cst in
-  let fallback_analysis = SourceAnalysis.analyze ~config source in
+  let fallback_analysis = Session.SourceAnalysis.analyze ~config source in
   let analysis =
     match Session.prepare_snapshot session ~roots:[ source_id ] with
     | Ok snapshot -> (
@@ -40,7 +41,7 @@ let check_source = fun ~filename source ->
     | None -> (None, None, None)
   in
   {
-    Check_result.source_id;
+    Analysis.Check_result.source_id;
     filename;
     parse_diagnostics = analysis.parse_diagnostics;
     item_tree;
@@ -51,7 +52,7 @@ let check_source = fun ~filename source ->
     typing_diagnostics = analysis.typing_diagnostics;
     file_summary = analysis.file_summary;
     type_index = analysis.type_index;
-    exports = SourceAnalysis.exports analysis;
+    exports = Session.SourceAnalysis.exports analysis;
     item_traces = analysis.item_traces;
     expr_traces = analysis.expr_traces;
   }

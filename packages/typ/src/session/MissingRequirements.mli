@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Structured requirements that prevented a rooted snapshot from being
     prepared. *)

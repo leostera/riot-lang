@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Catalog of human-oriented explanations for prototype [typ] diagnostic ids.
 

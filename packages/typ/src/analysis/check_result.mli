@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Shared output types for a single prototype type-check run. *)
 type env = (string * TypeScheme.t) list

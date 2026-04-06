@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Host-supplied configuration for one [Session]. *)
 type env = (string * TypeScheme.t) list

@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Seeded module typings used by the prototype host configuration.
 

@@ -1,4 +1,5 @@
 open Std
+open Model
 
 let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
 

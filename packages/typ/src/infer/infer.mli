@@ -1,4 +1,9 @@
 open Std
+open Analysis
+open Diagnostics
+open Model
+
+module Region: module type of Region
 
 (** Result of inferring types for one semantic tree. *)
 type t = {

@@ -1,4 +1,9 @@
 open Std
+open Analysis
+open Diagnostics
+open Infer
+open Lower
+open Model
 module Typ_diagnostic = Diagnostic
 open Syn
 

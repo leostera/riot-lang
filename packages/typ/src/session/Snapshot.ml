@@ -1,4 +1,6 @@
 open Std
+open Infer
+open Model
 
 type analysis_slot = {
   source_id: SourceId.t;

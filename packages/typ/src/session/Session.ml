@@ -1,4 +1,8 @@
 open Std
+open Model
+module Snapshot = Snapshot
+module SourceAnalysis = SourceAnalysis
+module MissingRequirements = MissingRequirements
 
 type t = {
   config: TypConfig.t;

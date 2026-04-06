@@ -1,4 +1,5 @@
 open Std
+open Model
 
 type env = (string * TypeScheme.t) list
 

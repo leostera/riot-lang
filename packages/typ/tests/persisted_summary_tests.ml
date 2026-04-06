@@ -1,5 +1,9 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Model
+open Typ.Session
 
 let file_summary_for = fun source ->
   let session = Session.empty ~config:Config.default in

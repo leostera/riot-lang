@@ -1,11 +1,13 @@
 open Std
+module Typ_check_result = Typ.Analysis.Check_result
+module Typ_diagnostic = Typ.Model.Diagnostic
 
 type t =
   | Parse of Syn.Diagnostic.t
-  | Lowering of Typ.Diagnostic.t
-  | Typing of Typ.Diagnostic.t
+  | Lowering of Typ_diagnostic.t
+  | Typing of Typ_diagnostic.t
 
-let of_report = fun (report: Typ.Check_result.t) ->
+let of_report = fun (report: Typ_check_result.t) ->
   List.concat
     [
       report.parse_diagnostics |> List.map (fun diagnostic -> Parse diagnostic);
@@ -20,9 +22,9 @@ let has_errors = fun diagnostics ->
       | Parse _ -> true
       | Lowering diagnostic
       | Typing diagnostic -> (
-          match Typ.Diagnostic.severity diagnostic with
-          | Typ.Diagnostic.Error -> true
-          | Typ.Diagnostic.Warning -> false
+          match Typ_diagnostic.severity diagnostic with
+          | Typ_diagnostic.Error -> true
+          | Typ_diagnostic.Warning -> false
         )
     )
     diagnostics
@@ -30,7 +32,7 @@ let has_errors = fun diagnostics ->
 let has_warning_diagnostic = function
   | Parse _ -> false
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.severity diagnostic = Typ.Diagnostic.Warning
+  | Typing diagnostic -> Typ_diagnostic.severity diagnostic = Typ_diagnostic.Warning
 
 let has_warnings = fun diagnostics ->
   List.exists has_warning_diagnostic diagnostics
@@ -38,12 +40,12 @@ let has_warnings = fun diagnostics ->
 let severity = function
   | Parse _ -> "error"
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.severity_to_string (Typ.Diagnostic.severity diagnostic)
+  | Typing diagnostic -> Typ_diagnostic.severity_to_string (Typ_diagnostic.severity diagnostic)
 
 let code = function
   | Parse diagnostic -> Syn.Diagnostic.id diagnostic
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.code diagnostic
+  | Typing diagnostic -> Typ_diagnostic.code diagnostic
 
 let message = function
   | Parse diagnostic ->
@@ -54,7 +56,7 @@ let message = function
       else
         main_message
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.message diagnostic
+  | Typing diagnostic -> Typ_diagnostic.message diagnostic
 
 let phase = function
   | Parse _ -> "parse"
@@ -83,12 +85,12 @@ let expected = function
 let data = function
   | Parse diagnostic -> Syn.Diagnostic.to_json diagnostic
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.to_json diagnostic
+  | Typing diagnostic -> Typ_diagnostic.to_json diagnostic
 
 let span = function
   | Parse diagnostic -> diagnostic.Syn.Diagnostic.span
   | Lowering diagnostic
-  | Typing diagnostic -> Typ.Diagnostic.primary_span diagnostic
+  | Typing diagnostic -> Typ_diagnostic.primary_span diagnostic
 
 let span_to_json = fun (span: Ceibo.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]

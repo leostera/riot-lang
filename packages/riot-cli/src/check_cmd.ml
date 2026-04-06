@@ -40,7 +40,7 @@ let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
       | None -> ()
     )
   | Check.Event.Explanation { explanation } ->
-      stdout (Typ.Explanations.format explanation ^ "\n")
+      stdout (Typ.Diagnostics.Explanations.format explanation ^ "\n")
 
 let run = fun ~(workspace:Riot_model.Workspace.t) ?(stdout = default_stdout) ?(stderr = default_stderr) matches ->
   let json = ArgParser.get_flag matches "json" in

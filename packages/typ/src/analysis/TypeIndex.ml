@@ -1,4 +1,5 @@
 open Std
+open Model
 
 type entry = {
   expr_id: ExprId.t;

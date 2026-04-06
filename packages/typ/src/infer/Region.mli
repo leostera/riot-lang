@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Query-local region bookkeeping for inference-variable levels. *)
 type t

@@ -1,4 +1,6 @@
 open Std
+open Analysis
+open Model
 open Std.Data
 
 let env_to_json = fun env ->

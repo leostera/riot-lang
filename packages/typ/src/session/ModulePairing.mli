@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Paired module result for one logical module name.
 

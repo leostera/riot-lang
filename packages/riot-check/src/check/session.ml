@@ -2,28 +2,36 @@ open Std
 open Std.Collections
 module Check_error = Error
 open Riot_model
+module Typ_check_result = Typ.Analysis.Check_result
+module Typ_diagnostic = Typ.Model.Diagnostic
+module Typ_file_summary = Typ.Model.FileSummary
+module Typ_module_typings = Typ.Model.ModuleTypings
+module Typ_source = Typ.Model.Source
+module Typ_source_id = Typ.Model.SourceId
+module Typ_snapshot = Typ.Session.Snapshot
+module Typ_source_analysis = Typ.Session.SourceAnalysis
 
 type prepared_source =
-  | Readable_source of { path: Path.t; source_id: Typ.SourceId.t; typ_source: Typ.Source.t }
+  | Readable_source of { path: Path.t; source_id: Typ_source_id.t; typ_source: Typ_source.t }
   | Unreadable_source of { path: Path.t; reason: string }
 
 type readable_typ_source = {
   path: Path.t;
-  source_id: Typ.SourceId.t;
-  source: Typ.Source.t;
+  source_id: Typ_source_id.t;
+  source: Typ_source.t;
 }
 
 type package_typ_source = {
   internal_module_name: string;
   public_module_name: string option;
   display_path: Path.t;
-  source_id: Typ.SourceId.t;
-  source: Typ.Source.t;
+  source_id: Typ_source_id.t;
+  source: Typ_source.t;
 }
 
 type checked_group = {
   checked_files: State.checked_file list;
-  module_typings: Typ.ModuleTypings.t list;
+  module_typings: Typ_module_typings.t list;
 }
 
 let default_registry_name = "pkgs.ml"
@@ -58,7 +66,7 @@ let prepare_workspace = fun (workspace: Workspace.t) ->
           error = Riot_model.Pm_error.message error
         })
 
-let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
+let report_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
   let (item_tree, body_arena, origin_map) =
     match analysis.semantic_tree with
     | Some semantic_tree -> (
@@ -69,7 +77,7 @@ let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
     | None -> (None, None, None)
   in
   {
-    Typ.Check_result.source_id = analysis.source.source_id;
+    Typ_check_result.source_id = analysis.source.source_id;
     filename = path;
     parse_diagnostics = analysis.parse_diagnostics;
     item_tree;
@@ -80,12 +88,12 @@ let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
     typing_diagnostics = analysis.typing_diagnostics;
     file_summary = analysis.file_summary;
     type_index = analysis.type_index;
-    exports = Typ.SourceAnalysis.exports analysis;
+    exports = Typ_source_analysis.exports analysis;
     item_traces = analysis.item_traces;
     expr_traces = analysis.expr_traces;
   }
 
-let checked_file_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
+let checked_file_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
   let report = report_of_analysis path analysis in
   let diagnostics = Diagnostic.of_report report in
   State.Typed { path; report; diagnostics }
@@ -141,14 +149,14 @@ let merge_module_exports = fun preferred fallback ->
   in
   loop [] [] (preferred @ fallback)
 
-let type_decl_key = fun (type_decl: Typ.FileSummary.type_decl) ->
+let type_decl_key = fun (type_decl: Typ_file_summary.type_decl) ->
   String.concat "." (type_decl.scope_path @ [ type_decl.declaration.type_name ])
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =
     match remaining with
     | [] -> List.rev acc
-    | ((type_decl: Typ.FileSummary.type_decl) as candidate) :: tail ->
+    | ((type_decl: Typ_file_summary.type_decl) as candidate) :: tail ->
         let key = type_decl_key candidate in
         if List.mem key seen then
           loop seen acc tail
@@ -158,37 +166,45 @@ let merge_module_type_decls = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let typings_with_payload = fun template ~source_hash ~exports ~type_decls ->
-  let module_name = Typ.ModuleTypings.module_name template in
-  match Typ.ModuleTypings.export_result template, exports with
-  | Typ.FileSummary.TrustedExport _, _ -> Typ.ModuleTypings.trusted
+  let module_name = Typ_module_typings.module_name template in
+  match Typ_module_typings.export_result template, exports with
+  | Typ_file_summary.TrustedExport _, _ -> Typ_module_typings.trusted
     ~module_name
     ~source_hash
     ~type_decls
     exports
-  | Typ.FileSummary.ErroredExport _, _ -> Typ.ModuleTypings.errored
+  | Typ_file_summary.ErroredExport _, _ -> Typ_module_typings.errored
     ~module_name
     ~source_hash
     ~type_decls
     exports
-  | Typ.FileSummary.NoExport, [] -> Typ.ModuleTypings.missing ~module_name ~source_hash ~type_decls ()
-  | Typ.FileSummary.NoExport, _ -> Typ.ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
+  | Typ_file_summary.NoExport, [] -> Typ_module_typings.missing
+    ~module_name
+    ~source_hash
+    ~type_decls
+    ()
+  | Typ_file_summary.NoExport, _ -> Typ_module_typings.errored
+    ~module_name
+    ~source_hash
+    ~type_decls
+    exports
 
 let merge_module_typings = fun preferred fallback ->
-  let module_name = Typ.ModuleTypings.module_name preferred in
+  let module_name = Typ_module_typings.module_name preferred in
   let exports = merge_module_exports
-    (Typ.ModuleTypings.exports preferred)
-    (Typ.ModuleTypings.exports fallback) in
+    (Typ_module_typings.exports preferred)
+    (Typ_module_typings.exports fallback) in
   let type_decls = merge_module_type_decls
-    (Typ.ModuleTypings.type_decls preferred)
-    (Typ.ModuleTypings.type_decls fallback) in
+    (Typ_module_typings.type_decls preferred)
+    (Typ_module_typings.type_decls fallback) in
   let template =
-    match Typ.ModuleTypings.export_result preferred, exports with
-    | Typ.FileSummary.NoExport, _ :: _ -> fallback
+    match Typ_module_typings.export_result preferred, exports with
+    | Typ_file_summary.NoExport, _ :: _ -> fallback
     | _ -> preferred
   in
-  let source_hash = Typ.ModuleTypings.synthetic_source_hash
+  let source_hash = Typ_module_typings.synthetic_source_hash
     ~module_name
-    ~export_result:(Typ.ModuleTypings.export_result template)
+    ~export_result:(Typ_module_typings.export_result template)
     ~type_decls in
   typings_with_payload template ~source_hash ~exports ~type_decls
 
@@ -200,7 +216,7 @@ let merge_loaded_module_typings = fun preferred fallback ->
           (fun module_name ->
             List.assoc_opt module_name merged)
     | summary :: tail ->
-        let module_name = Typ.ModuleTypings.module_name summary in
+        let module_name = Typ_module_typings.module_name summary in
         let order, merged =
           match List.assoc_opt module_name merged with
           | None -> (module_name :: order, (module_name, summary) :: merged)
@@ -309,16 +325,16 @@ let package_typ_sources_from_planner = fun ~(workspace:Workspace.t) ~(pkg:Packag
                       match HashMap.get analyzed_modules node.id with
                       | None -> None
                       | Some analyzed ->
-                          let source_id = Typ.SourceId.of_int
+                          let source_id = Typ_source_id.of_int
                             (Std.Graph.SimpleGraph.Node_id.to_int node.id) in
                           let source =
-                            Typ.Source.make_prepared ~source_id
+                            Typ_source.make_prepared ~source_id
                               ~kind:((
                                 match node.value.file with
-                                | Riot_planner.Module_node.Generated _ -> Typ.Source.Generated
-                                | Riot_planner.Module_node.Concrete _ -> Typ.Source.File
+                                | Riot_planner.Module_node.Generated _ -> Typ_source.Generated
+                                | Riot_planner.Module_node.Concrete _ -> Typ_source.File
                               ))
-                              ~origin:(Typ.Source.Path (source_origin_path_for_module mod_))
+                              ~origin:(Typ_source.Path (source_origin_path_for_module mod_))
                               ~revision:0
                               ~source_hash:analyzed.source_hash
                               ~parse_result:analyzed.parse_result
@@ -348,9 +364,9 @@ let qualify_typings_exports = fun module_name exports ->
 
 let qualify_typings_type_decls = fun module_name type_decls ->
   List.map
-    (fun (type_decl: Typ.FileSummary.type_decl) ->
+    (fun (type_decl: Typ_file_summary.type_decl) ->
       {
-        Typ.FileSummary.scope_path = module_name :: type_decl.scope_path;
+        Typ_file_summary.scope_path = module_name :: type_decl.scope_path;
         declaration = type_decl.declaration
       })
     type_decls
@@ -358,23 +374,23 @@ let qualify_typings_type_decls = fun module_name type_decls ->
 let ambient_env_for_loaded_modules = fun current_module_name loaded_modules ->
   loaded_modules
   |> List.filter
-    (fun typings -> not (String.equal current_module_name (Typ.ModuleTypings.module_name typings)))
+    (fun typings -> not (String.equal current_module_name (Typ_module_typings.module_name typings)))
   |> List.map
     (fun typings ->
       qualify_typings_exports
-        (Typ.ModuleTypings.module_name typings)
-        (Typ.ModuleTypings.exports typings))
+        (Typ_module_typings.module_name typings)
+        (Typ_module_typings.exports typings))
   |> List.flatten
 
 let ambient_type_decls_for_loaded_modules = fun current_module_name loaded_modules ->
   loaded_modules
   |> List.filter
-    (fun typings -> not (String.equal current_module_name (Typ.ModuleTypings.module_name typings)))
+    (fun typings -> not (String.equal current_module_name (Typ_module_typings.module_name typings)))
   |> List.map
     (fun typings ->
       qualify_typings_type_decls
-        (Typ.ModuleTypings.module_name typings)
-        (Typ.ModuleTypings.type_decls typings))
+        (Typ_module_typings.module_name typings)
+        (Typ_module_typings.type_decls typings))
   |> List.flatten
 
 let readable_typ_source_of_prepared = function
@@ -396,22 +412,22 @@ let create_typ_session = fun config paths ->
             let cst = Syn.build_cst parse_result in
             let session, source_id = Typ.Session.create_prepared_source
               session
-              ~kind:Typ.Source.File
-              ~origin:(Typ.Source.Path path)
-              ~source_hash:(Typ.Source.hash_text
-                ~kind:Typ.Source.File
-                ~origin:(Typ.Source.Path path)
+              ~kind:Typ_source.File
+              ~origin:(Typ_source.Path path)
+              ~source_hash:(Typ_source.hash_text
+                ~kind:Typ_source.File
+                ~origin:(Typ_source.Path path)
                 ~text:source)
               ~parse_result
               ~cst in
-            let typ_source = Typ.Source.make_prepared
+            let typ_source = Typ_source.make_prepared
               ~source_id
-              ~kind:Typ.Source.File
-              ~origin:(Typ.Source.Path path)
+              ~kind:Typ_source.File
+              ~origin:(Typ_source.Path path)
               ~revision:0
-              ~source_hash:(Typ.Source.hash_text
-                ~kind:Typ.Source.File
-                ~origin:(Typ.Source.Path path)
+              ~source_hash:(Typ_source.hash_text
+                ~kind:Typ_source.File
+                ~origin:(Typ_source.Path path)
                 ~text:source)
               ~parse_result
               ~cst in
@@ -424,8 +440,7 @@ let source_id_of_prepared = function
   | Readable_source { source_id; _ } -> Some source_id
   | Unreadable_source _ -> None
 
-let missing_requirements_reason = fun missing ->
-  "missing type requirements: " ^ Data.Json.to_string (Typ.MissingRequirements.to_json missing)
+let missing_requirements_reason = fun missing -> "missing type requirements"
 
 let local_module_dependencies_for_source = fun local_module_names (source: readable_typ_source) ->
   match Syn.Deps.of_parse_result source.source.parse_result with
@@ -510,10 +525,10 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
           ~ambient:(ambient_env_for_loaded_modules source.internal_module_name loaded_modules)
         |> Typ.Config.with_ambient_type_decls
           ~ambient_type_decls:(ambient_type_decls_for_loaded_modules source.internal_module_name loaded_modules) in
-        let analysis = Typ.SourceAnalysis.analyze ~config source.source in
-        let typings = Typ.ModuleTypings.of_file_summary
+        let analysis = Typ_source_analysis.analyze ~config source.source in
+        let typings = Typ_module_typings.of_file_summary
           ~module_name:source.internal_module_name
-          ~source_hash:(Typ.Source.input_hash source.source)
+          ~source_hash:(Typ_source.input_hash source.source)
           analysis.file_summary in
         let () =
           match config.Typ.Config.store with
@@ -531,15 +546,15 @@ let package_module_typings_of_analyses = fun ordered_sources analyses ->
       match
         List.find_opt
           (fun (source: package_typ_source) ->
-            Typ.SourceId.equal source.source_id source_id)
+            Typ_source_id.equal source.source_id source_id)
           ordered_sources
       with
       | None -> None
       | Some { public_module_name=None; _ } -> None
-      | Some source -> Some (Typ.ModuleTypings.of_file_summary
+      | Some source -> Some (Typ_module_typings.of_file_summary
         ~module_name:(Option.expect ~msg:"public module name" source.public_module_name)
-        ~source_hash:(Typ.Source.input_hash source.source)
-        analysis.Typ.SourceAnalysis.file_summary)) |> merge_loaded_module_typings []
+        ~source_hash:(Typ_source.input_hash source.source)
+        analysis.Typ_source_analysis.file_summary)) |> merge_loaded_module_typings []
 
 let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
   Typ.Store.load_package_module_typings store ~package_name:pkg.name
@@ -614,7 +629,7 @@ let workspace_module_typings_for_package =
                       [] |> List.rev |> List.concat_map
                       (fun (_module_name, roots) ->
                         match Typ.Session.prepare_snapshot session ~roots with
-                        | Ok snapshot -> Typ.Snapshot.module_typings snapshot
+                        | Ok snapshot -> Typ_snapshot.module_typings snapshot
                         | Error _ -> [])
               in
               let () = persist_module_typings typ_store ~package_name:pkg.name typings in
@@ -683,7 +698,7 @@ let checked_group_for_session = fun config session prepared_by_path root_paths -
   | Ok snapshot ->
       let () =
         match config.Typ.Config.store with
-        | Some store -> persist_module_typings store (Typ.Snapshot.module_typings snapshot)
+        | Some store -> persist_module_typings store (Typ_snapshot.module_typings snapshot)
         | None -> ()
       in
       {
@@ -700,7 +715,7 @@ let checked_group_for_session = fun config session prepared_by_path root_paths -
                       State.Unreadable { path; reason }
                 )
             );
-        module_typings = Typ.Snapshot.module_typings snapshot;
+        module_typings = Typ_snapshot.module_typings snapshot;
       }
 
 let package_root_for_target = fun (workspace: Workspace.t) path ->

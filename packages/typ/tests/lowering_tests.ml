@@ -1,5 +1,9 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Model
+open Typ.Session
 
 let label_to_json = function
   | BodyArena.Positional -> Data.Json.String "positional"

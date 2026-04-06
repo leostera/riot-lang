@@ -1,5 +1,10 @@
 open Std
+open Analysis
+open Diagnostics
+open Model
 module Typ_diagnostic = Diagnostic
+module Region = Region
+open State
 
 type t = {
   exports: Check_result.env;
@@ -9,217 +14,67 @@ type t = {
   diagnostics: Typ_diagnostic.t list;
 }
 
-type record_type_decl = {
-  owner_name: string;
-  param_ids: int list;
-  labels: TypeDecl.label list;
-}
+type record_type_decl = State.record_type_decl
 
-type variance =
-  | Covariant
-  | Contravariant
-  | Invariant
+type variance = State.variance
 
-type state = {
-  file: SemanticTree.file;
-  config: TypConfig.t;
-  regions: Region.t;
-  mutable next_type_var_id: int;
-  mutable next_hole_id: int;
-  mutable diagnostics: Typ_diagnostic.t list;
-  mutable expr_traces: Check_result.expr_trace list;
-  mutable item_traces: Check_result.item_trace list;
-  mutable record_types: record_type_decl list;
-  mutable visible_type_decls: FileSummary.type_decl list;
-  visible_type_decl_index: (string, FileSummary.type_decl) Collections.HashMap.t;
-  declaration_variances: (string, variance list) Collections.HashMap.t;
-  mutable forced_export_names: string list;
-}
+type state = State.t
 
 let empty_span = Syn.Ceibo.Span.make ~start:0 ~end_:0
 
-let qualify_name = fun scope_path name ->
-  match scope_path with
-  | [] -> name
-  | _ -> String.concat "." scope_path ^ "." ^ name
+let qualify_name = State.qualify_name
 
-let record_type_of_summary_decl = fun (type_decl: FileSummary.type_decl) ->
-  match type_decl.declaration.labels with
-  | [] -> None
-  | labels -> Some {
-    owner_name = qualify_name type_decl.scope_path type_decl.declaration.type_name;
-    param_ids = type_decl.declaration.param_ids;
-    labels
-  }
+let bind_type_decls = State.bind_type_decls
 
-let unique_record_types = fun record_types ->
-  let seen = Collections.HashSet.with_capacity (List.length record_types) in
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | (record_decl: record_type_decl) :: rest ->
-        if Collections.HashSet.contains seen record_decl.owner_name then
-          loop acc rest
-        else
-          let () = Collections.HashSet.insert seen record_decl.owner_name |> ignore in
-          loop (record_decl :: acc) rest
-  in
-  loop [] record_types
+let type_decls_for_include = State.type_decls_for_include
 
-let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  qualify_name type_decl.scope_path type_decl.declaration.type_name
+let type_decls_for_module_alias = State.type_decls_for_module_alias
 
-let bind_type_decls = fun type_decls introduced ->
-  List.fold_left
-    (fun acc (type_decl: FileSummary.type_decl) ->
-      let key = type_decl_key type_decl in
-      let acc =
-        List.filter (fun candidate -> not (String.equal (type_decl_key candidate) key)) acc
-      in
-      acc @ [ type_decl ])
-    type_decls
-    introduced
+let make_state = State.make
 
-let split_module_path = fun module_path ->
-  if String.equal module_path "" then
-    []
-  else
-    String.split_on_char '.' module_path
+let fresh_var = State.fresh_var
 
-let rec strip_scope_prefix = fun prefix scope_path ->
-  match (prefix, scope_path) with
-  | [], rest -> Some rest
-  | prefix_segment :: prefix_rest, scope_segment :: scope_rest when String.equal prefix_segment scope_segment -> strip_scope_prefix
-    prefix_rest
-    scope_rest
-  | _ -> None
+let fresh_hole = State.fresh_hole
 
-let aliases_for_type_decls = fun type_decls module_path ->
-  let prefix = split_module_path module_path in
-  type_decls |> List.filter_map
-    (fun (type_decl: FileSummary.type_decl) ->
-      match strip_scope_prefix prefix type_decl.scope_path with
-      | Some scope_path -> Some { type_decl with scope_path }
-      | None -> None)
+let unique_env = Value_env.unique
 
-let prefix_type_decls = fun prefix type_decls ->
-  List.map
-    (fun (type_decl: FileSummary.type_decl) ->
-      { type_decl with scope_path = prefix @ type_decl.scope_path })
-    type_decls
+let render_env = Value_env.render
 
-let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
+let visible_env_entries = Value_env.visible_entries
 
-let type_decls_for_module_alias = fun type_decls ~alias_name ~module_path ->
-  if String.equal alias_name module_path then
-    []
-  else
-    aliases_for_type_decls type_decls module_path |> prefix_type_decls [ alias_name ]
+let env_lookup = Value_env.lookup
 
-let rebuild_visible_type_decl_index = fun (state: state) ->
-  let () = Collections.HashMap.clear state.visible_type_decl_index in
-  state.visible_type_decls |> List.iter
-    (fun (type_decl: FileSummary.type_decl) ->
-      let _ = Collections.HashMap.insert state.visible_type_decl_index (type_decl_key type_decl) type_decl in
-      ())
+let env_lookup_all = Value_env.lookup_all
 
-let reset_declaration_variances = fun (state: state) -> Collections.HashMap.clear state.declaration_variances
+let env_names = Value_env.names
 
-let make_state = fun ~config file ->
-  let state = {
-    file;
-    config;
-    regions = Region.create ();
-    next_type_var_id = 0;
-    next_hole_id = 0;
-    diagnostics = [];
-    expr_traces = [];
-    item_traces = [];
-    record_types = config.ambient_type_decls |> List.filter_map record_type_of_summary_decl |> unique_record_types;
-    visible_type_decls = config.ambient_type_decls;
-    visible_type_decl_index = Collections.HashMap.with_capacity 32;
-    declaration_variances = Collections.HashMap.with_capacity 32;
-    forced_export_names = [];
-  }
-  in
-  let () = rebuild_visible_type_decl_index state in
-  state
+let introduced_names = Value_env.introduced_names
 
-let unique_env = fun env ->
-  let seen = Collections.HashSet.with_capacity (List.length env) in
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | (name, scheme) :: rest ->
-        if Collections.HashSet.contains seen name then
-          loop acc rest
-        else
-          let () = Collections.HashSet.insert seen name |> ignore in
-          loop ((name, scheme) :: acc) rest
-  in
-  loop [] env
+let bind_env = Value_env.bind
 
-let render_env = fun env ->
-  env |> unique_env |> List.sort
-    (fun (left, _) (right, _) ->
-      String.compare left right)
+let env_with_local_open = Value_env.with_local_open
 
-let visible_env_entries = fun env ->
-  let seen = Collections.HashSet.with_capacity (List.length env) in
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | ((name, _) as entry) :: rest ->
-        if Collections.HashSet.contains seen name then
-          loop acc rest
-        else
-          let () = Collections.HashSet.insert seen name |> ignore in
-          loop (entry :: acc) rest
-  in
-  loop [] env
+let entries_for_include = Value_env.entries_for_include
 
-let env_lookup = fun env name ->
-  List.find_opt
-    (fun (candidate, _) ->
-      String.equal candidate name)
-    env
+let export_names_for_module_alias = Value_env.export_names_for_module_alias
 
-let env_lookup_all = fun env name ->
-  env |> List.filter_map
-    (fun (candidate, scheme) ->
-      if String.equal candidate name then
-        Some scheme
-      else
-        None)
+let entries_for_module_alias = Value_env.entries_for_module_alias
 
-let env_names = fun env -> render_env env |> List.map fst
+let export_env = Value_env.export
 
-let introduced_names = fun before after ->
-  let before_name_set =
-    visible_env_entries before
-    |> List.fold_left
-      (fun seen (name, _) ->
-        let () = Collections.HashSet.insert seen name |> ignore in
-        seen)
-      (Collections.HashSet.with_capacity (List.length before))
-  in
-  visible_env_entries after |> List.filter_map
-    (fun (name, _) ->
-      if Collections.HashSet.contains before_name_set name then
-        None
-      else
-        Some name)
+let export_env_with_forced_names = Value_env.export_with_forced_names
 
-let fresh_var = fun (state: state) ->
-  let id = state.next_type_var_id in
-  let () =
-    state.next_type_var_id <- state.next_type_var_id + 1
-  in
-  Region.fresh_var state.regions id
+let introduced_entries = Value_env.introduced_entries
 
-let fresh_hole = fun (state: state) ->
-  let hole_id = state.next_hole_id in
-  let () =
-    state.next_hole_id <- state.next_hole_id + 1
-  in
-  TypeRepr.Hole hole_id
+let qualify_entries = Value_env.qualify_entries
+
+let update_scope_entries = Value_env.update_scope_entries
+
+let update_scope_opens = Value_env.update_scope_opens
+
+let env_for_item_scope = Value_env.for_item_scope
+
+let set_visible_type_decls = State.set_visible_type_decls
 
 let instantiate_type = fun ty mapping ->
   let rec loop ty =
@@ -838,51 +693,6 @@ let try_unify = fun (state: state) ~origin left right ->
   | Unify_error mismatch -> add_diagnostic
     state
     (Typ_diagnostic.TypeMismatch { mismatch_span = diagnostic_span origin; mismatch })
-
-let bind_env = fun env bindings -> bindings @ env
-
-let has_prefix = fun ~prefix text ->
-  let prefix_length = String.length prefix in
-  if String.length text < prefix_length then
-    false
-  else
-    String.sub text 0 prefix_length = prefix
-
-let aliases_for_local_open = fun env module_path ->
-  let prefix = module_path ^ "." in
-  env |> List.filter_map
-    (fun (name, scheme) ->
-      if has_prefix ~prefix name then
-        let suffix = String.sub
-          name
-          (String.length prefix)
-          (String.length name - String.length prefix) in
-        Some (suffix, scheme)
-      else
-        None)
-
-let env_with_local_open = fun env module_path ->
-  let aliases = aliases_for_local_open env module_path in
-  bind_env env aliases
-
-let entries_for_include = fun env module_path ->
-  aliases_for_local_open env module_path |> unique_env |> render_env
-
-let prefix_entries = fun prefix entries ->
-  entries |> List.map (fun (name, scheme) -> (prefix ^ "." ^ name, scheme))
-
-let export_names_for_module_alias = fun env ~alias_name ~module_path ->
-  aliases_for_local_open env module_path
-  |> unique_env
-  |> render_env
-  |> prefix_entries alias_name
-  |> List.map fst
-
-let entries_for_module_alias = fun env ~alias_name ~module_path ->
-  if String.equal alias_name module_path then
-    []
-  else
-    aliases_for_local_open env module_path |> unique_env |> render_env |> prefix_entries alias_name
 
 let is_recursive_binding_supported = fun (state: state) (binding: BodyArena.binding) ->
   match binding.name with
@@ -1577,101 +1387,6 @@ and infer_recursive_group = fun (state: state) env bindings ->
         bind_env env bound_entries)
       env
       bindings
-
-let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
-
-let ambient_names = fun (config: TypConfig.t) -> config.ambient |> List.map fst
-
-let export_env = fun config env ->
-  let hidden_names = prelude_names config @ ambient_names config in
-  let hidden_name_set = Collections.HashSet.of_list hidden_names in
-  render_env env
-  |> List.filter (fun (name, _) -> not (Collections.HashSet.contains hidden_name_set name))
-
-let export_env_with_forced_names = fun (state: state) env ->
-  let hidden_names = prelude_names state.config @ ambient_names state.config in
-  let hidden_name_set = Collections.HashSet.of_list hidden_names in
-  let forced_name_set = Collections.HashSet.of_list state.forced_export_names in
-  render_env env
-  |> List.filter
-    (fun (name, _) ->
-      not (Collections.HashSet.contains hidden_name_set name)
-      || Collections.HashSet.contains forced_name_set name)
-
-let introduced_entries = fun before after ->
-  let before_name_set =
-    visible_env_entries before
-    |> List.fold_left
-      (fun seen (name, _) ->
-        let () = Collections.HashSet.insert seen name |> ignore in
-        seen)
-      (Collections.HashSet.with_capacity (List.length before))
-  in
-  visible_env_entries after
-  |> List.filter (fun (name, _) -> not (Collections.HashSet.contains before_name_set name))
-
-let qualify_entries = fun scope_path entries ->
-  List.map (fun (name, scheme) -> (qualify_name scope_path name, scheme)) entries
-
-let scope_key = fun scope_path ->
-  String.concat "." scope_path
-
-let scope_prefix_keys = fun scope_path ->
-  let rec loop acc current = function
-    | [] -> List.rev acc
-    | segment :: rest ->
-        let current = current @ [ segment ] in
-        loop (scope_key current :: acc) current rest
-  in
-  loop [ scope_key [] ] [] scope_path
-
-let scope_locals_for = fun scope_entries scope_path ->
-  scope_prefix_keys scope_path |> List.fold_left
-    (fun acc key ->
-      match List.assoc_opt key scope_entries with
-      | Some entries -> bind_env acc entries
-      | None -> acc)
-    []
-
-let update_scope_entries = fun scope_entries scope_path entries ->
-  let key = scope_key scope_path in
-  let existing =
-    match List.assoc_opt key scope_entries with
-    | Some entries -> entries
-    | None -> []
-  in
-  let updated = bind_env existing entries in
-  (key, updated) :: List.remove_assoc key scope_entries
-
-let scope_opens_for = fun scope_opens scope_path ->
-  scope_prefix_keys scope_path |> List.fold_left
-    (fun acc key ->
-      match List.assoc_opt key scope_opens with
-      | Some modules -> acc @ modules
-      | None -> acc)
-    []
-
-let update_scope_opens = fun scope_opens scope_path module_path ->
-  let key = scope_key scope_path in
-  let existing =
-    match List.assoc_opt key scope_opens with
-    | Some modules -> modules
-    | None -> []
-  in
-  let updated = existing @ [ module_path ] in
-  (key, updated) :: List.remove_assoc key scope_opens
-
-let env_for_item_scope = fun export_env scope_entries scope_opens scope_path ->
-  let locals = scope_locals_for scope_entries scope_path in
-  let base_env = bind_env export_env locals in
-  scope_opens_for scope_opens scope_path |> List.fold_left env_with_local_open base_env
-
-let set_visible_type_decls = fun (state: state) type_decls ->
-  let () =
-    state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls
-  in
-  let () = rebuild_visible_type_decl_index state in
-  reset_declaration_variances state
 
 let infer_file = fun ~config file ->
   let state = make_state ~config file in

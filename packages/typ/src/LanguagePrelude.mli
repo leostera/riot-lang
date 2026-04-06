@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Minimal language-level bindings visible in every typing query.
 

@@ -1,4 +1,6 @@
 open Std
+open Diagnostics
+open Model
 
 type t = {
   module_typings: ModuleTypings.t;

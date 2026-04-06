@@ -1,4 +1,6 @@
 open Std
+open Analysis
+open Model
 
 (** Encode a prototype check result as structured JSON. *)
 val to_json: Check_result.t -> Data.Json.t

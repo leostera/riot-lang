@@ -1,4 +1,6 @@
 open Std
+open Infer
+open Model
 
 (** Immutable analysis view over one [Session] revision. *)
 type t

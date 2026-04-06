@@ -1,5 +1,9 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Model
+open Typ.Session
 
 let fixtures_dir = Path.v "packages/typ/tests/fixtures"
 

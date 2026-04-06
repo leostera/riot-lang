@@ -1,4 +1,5 @@
 open Std
+open Model
 
 type t = {
   diagnostic_id: string;

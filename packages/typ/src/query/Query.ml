@@ -1,11 +1,12 @@
 open Std
+open Model
 
 type diagnostic =
   | Parse of Syn.Diagnostic.t
   | Lowering of Diagnostic.t
   | Typing of Diagnostic.t
 
-let analysis_of_source = Snapshot.find_analysis
+let analysis_of_source = Session.Snapshot.find_analysis
 
 let diagnostics = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with
@@ -19,7 +20,7 @@ let file_summary_of = fun snapshot source_id ->
   | Some analysis -> Some analysis.file_summary
   | None -> None
 
-let module_typings_of = Snapshot.find_module_typings
+let module_typings_of = Session.Snapshot.find_module_typings
 
 let export_of = fun snapshot source_id ->
   file_summary_of snapshot source_id |> Option.map (fun summary -> summary.FileSummary.export_result)
@@ -38,6 +39,6 @@ let type_at = fun snapshot source_id position ->
   match analysis_of_source snapshot source_id with
   | None -> None
   | Some analysis ->
-      TypeIndex.find_at analysis.type_index position |> function
+      Analysis.TypeIndex.find_at analysis.type_index position |> function
       | Some entry -> Some entry.inferred_type
       | None -> None

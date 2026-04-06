@@ -5,7 +5,7 @@ type t =
   | File of State.checked_file
   | Diagnostic of { path: Path.t; diagnostic_index: int; diagnostic: Diagnostic.t }
   | Summary of { summary: State.checked_summary }
-  | Explanation of { explanation: Typ.Explanations.t }
+  | Explanation of { explanation: Typ.Diagnostics.Explanations.t }
 
 let checked_summary_to_json = fun (summary: State.checked_summary) ->
   Data.Json.Object [
@@ -75,4 +75,4 @@ let to_json = fun ~workspace_root event ->
     ("ok", Data.Json.Bool (not summary.has_error));
     ("summary", checked_summary_to_json summary);
   ]
-  | Explanation { explanation } -> Typ.Explanations.to_json explanation
+  | Explanation { explanation } -> Typ.Diagnostics.Explanations.to_json explanation

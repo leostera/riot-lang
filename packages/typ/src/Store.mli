@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Semantic persistence layer for [typ] built on top of [Contentstore].
 

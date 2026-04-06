@@ -1,5 +1,10 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Infer
+open Typ.Model
+open Typ.Session
 
 let test_local_reachable_vars_include_nested_escaped_vars = fun _ctx ->
   let regions = Region.create () in

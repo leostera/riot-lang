@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Lower a clean [Syn.Cst] file into the prototype semantic layers.
 

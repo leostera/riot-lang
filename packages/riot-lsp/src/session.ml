@@ -1,5 +1,7 @@
 open Std
 open Std.Data
+open Typ.Model
+open Typ.Session
 
 let ( let* ) = Result.and_then
 
@@ -96,8 +98,8 @@ let filename_of_document = fun (document: document) ->
 
 let typ_source_origin_of_document = fun (document: document) ->
   match document.path with
-  | Some path -> Typ.Source.Path path
-  | None -> Typ.Source.Label (Lsp.Uri.to_string document.uri)
+  | Some path -> Source.Path path
+  | None -> Source.Label (Lsp.Uri.to_string document.uri)
 
 let package_scope_for_file = fun state path ->
   let start_dir = Path.dirname path in
@@ -208,14 +210,14 @@ let merge_module_exports = fun preferred fallback ->
   in
   loop [] [] (preferred @ fallback)
 
-let type_decl_key = fun (type_decl: Typ.FileSummary.type_decl) ->
+let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
   String.concat "." (type_decl.scope_path @ [ type_decl.declaration.type_name ])
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =
     match remaining with
     | [] -> List.rev acc
-    | ((type_decl: Typ.FileSummary.type_decl) as candidate) :: tail ->
+    | ((type_decl: FileSummary.type_decl) as candidate) :: tail ->
         let key = type_decl_key candidate in
         if List.mem key seen then
           loop seen acc tail
@@ -225,37 +227,29 @@ let merge_module_type_decls = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let typings_with_payload = fun template ~source_hash ~exports ~type_decls ->
-  let module_name = Typ.ModuleTypings.module_name template in
-  match Typ.ModuleTypings.export_result template, exports with
-  | Typ.FileSummary.TrustedExport _, _ -> Typ.ModuleTypings.trusted
-    ~module_name
-    ~source_hash
-    ~type_decls
-    exports
-  | Typ.FileSummary.ErroredExport _, _ -> Typ.ModuleTypings.errored
-    ~module_name
-    ~source_hash
-    ~type_decls
-    exports
-  | Typ.FileSummary.NoExport, [] -> Typ.ModuleTypings.missing ~module_name ~source_hash ~type_decls ()
-  | Typ.FileSummary.NoExport, _ -> Typ.ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
+  let module_name = ModuleTypings.module_name template in
+  match ModuleTypings.export_result template, exports with
+  | FileSummary.TrustedExport _, _ -> ModuleTypings.trusted ~module_name ~source_hash ~type_decls exports
+  | FileSummary.ErroredExport _, _ -> ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
+  | FileSummary.NoExport, [] -> ModuleTypings.missing ~module_name ~source_hash ~type_decls ()
+  | FileSummary.NoExport, _ -> ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
 
 let merge_module_typings = fun preferred fallback ->
-  let module_name = Typ.ModuleTypings.module_name preferred in
+  let module_name = ModuleTypings.module_name preferred in
   let exports = merge_module_exports
-    (Typ.ModuleTypings.exports preferred)
-    (Typ.ModuleTypings.exports fallback) in
+    (ModuleTypings.exports preferred)
+    (ModuleTypings.exports fallback) in
   let type_decls = merge_module_type_decls
-    (Typ.ModuleTypings.type_decls preferred)
-    (Typ.ModuleTypings.type_decls fallback) in
+    (ModuleTypings.type_decls preferred)
+    (ModuleTypings.type_decls fallback) in
   let template =
-    match Typ.ModuleTypings.export_result preferred, exports with
-    | Typ.FileSummary.NoExport, _ :: _ -> fallback
+    match ModuleTypings.export_result preferred, exports with
+    | FileSummary.NoExport, _ :: _ -> fallback
     | _ -> preferred
   in
-  let source_hash = Typ.ModuleTypings.synthetic_source_hash
+  let source_hash = ModuleTypings.synthetic_source_hash
     ~module_name
-    ~export_result:(Typ.ModuleTypings.export_result template)
+    ~export_result:(ModuleTypings.export_result template)
     ~type_decls in
   typings_with_payload template ~source_hash ~exports ~type_decls
 
@@ -267,7 +261,7 @@ let merge_loaded_module_typings = fun preferred fallback ->
           (fun module_name ->
             List.assoc_opt module_name merged)
     | summary :: tail ->
-        let module_name = Typ.ModuleTypings.module_name summary in
+        let module_name = ModuleTypings.module_name summary in
         let (order, merged) =
           match List.assoc_opt module_name merged with
           | None -> (module_name :: order, (module_name, summary) :: merged)
@@ -288,21 +282,18 @@ let typ_session_with_paths = fun ~config paths ->
       | Ok text ->
           let parse_result = Syn.parse ~filename:path text in
           let cst = Syn.build_cst parse_result in
-          let source_hash = Typ.Source.hash_text
-            ~kind:Typ.Source.File
-            ~origin:(Typ.Source.Path path)
-            ~text in
+          let source_hash = Source.hash_text ~kind:Source.File ~origin:(Source.Path path) ~text in
           let (session, source_id) = Typ.Session.create_prepared_source
             session
-            ~kind:Typ.Source.File
-            ~origin:(Typ.Source.Path path)
+            ~kind:Source.File
+            ~origin:(Source.Path path)
             ~source_hash
             ~parse_result
             ~cst in
-          let source = Typ.Source.make_prepared
+          let source = Source.make_prepared
             ~source_id
-            ~kind:Typ.Source.File
-            ~origin:(Typ.Source.Path path)
+            ~kind:Source.File
+            ~origin:(Source.Path path)
             ~revision:0
             ~source_hash
             ~parse_result
@@ -369,9 +360,9 @@ let workspace_module_typings_for_package =
               let typings =
                 let roots =
                   List.fold_left2
-                    (fun roots source_id (source: Typ.Source.t) ->
+                    (fun roots source_id (source: Source.t) ->
                       match source.origin with
-                      | Typ.Source.Path path when List.exists
+                      | Source.Path path when List.exists
                         (fun root_path ->
                           Path.equal root_path path)
                         root_paths -> roots @ [ source_id ]
@@ -478,14 +469,11 @@ let typ_analysis_for_document = fun state ->
           | Some text ->
               let parse_result = Syn.parse ~filename:path text in
               let cst = Syn.build_cst parse_result in
-              let source_hash = Typ.Source.hash_text
-                ~kind:Typ.Source.File
-                ~origin:(Typ.Source.Path path)
-                ~text in
+              let source_hash = Source.hash_text ~kind:Source.File ~origin:(Source.Path path) ~text in
               let (session, source_id) = Typ.Session.create_prepared_source
                 session
-                ~kind:Typ.Source.File
-                ~origin:(Typ.Source.Path path)
+                ~kind:Source.File
+                ~origin:(Source.Path path)
                 ~source_hash
                 ~parse_result
                 ~cst in
@@ -495,10 +483,10 @@ let typ_analysis_for_document = fun state ->
                   (Path.normalize path |> Path.to_string) -> document.version
                 | _ -> 0
               in
-              let source = Typ.Source.make_prepared
+              let source = Source.make_prepared
                 ~source_id
-                ~kind:Typ.Source.File
-                ~origin:(Typ.Source.Path path)
+                ~kind:Source.File
+                ~origin:(Source.Path path)
                 ~revision
                 ~source_hash
                 ~parse_result
@@ -524,7 +512,7 @@ let typ_analysis_for_document = fun state ->
             in
             Typ.Query.analysis_of_source snapshot source_id
         | Error _ ->
-            Typ.Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
+            Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
             |> fun snapshot ->
               Typ.Query.analysis_of_source snapshot source_id
       )
@@ -532,17 +520,17 @@ let typ_analysis_for_document = fun state ->
         let parse_result = Syn.parse ~filename:(filename_of_document document) document.text in
         let cst = Syn.build_cst parse_result in
         let origin = typ_source_origin_of_document document in
-        let source_hash = Typ.Source.hash_text ~kind:Typ.Source.File ~origin ~text:document.text in
+        let source_hash = Source.hash_text ~kind:Source.File ~origin ~text:document.text in
         let (session, source_id) = Typ.Session.create_prepared_source
           session
-          ~kind:Typ.Source.File
+          ~kind:Source.File
           ~origin
           ~source_hash
           ~parse_result
           ~cst in
-        let source = Typ.Source.make_prepared
+        let source = Source.make_prepared
           ~source_id
-          ~kind:Typ.Source.File
+          ~kind:Source.File
           ~origin
           ~revision:document.version
           ~source_hash
@@ -558,7 +546,7 @@ let typ_analysis_for_document = fun state ->
               in
               Typ.Query.analysis_of_source snapshot source_id
           | Error _ ->
-              Typ.Snapshot.make
+              Snapshot.make
                 ~revision:document.version
                 ~roots:[ source_id ]
                 ~config
@@ -607,23 +595,23 @@ let lint_diagnostic_to_lsp = fun text ->
 
 let typ_diagnostic_severity = fun severity ->
   match severity with
-  | Typ.Diagnostic.Error -> Lsp.Diagnostic.Error
-  | Typ.Diagnostic.Warning -> Lsp.Diagnostic.Warning
+  | Diagnostic.Error -> Lsp.Diagnostic.Error
+  | Diagnostic.Warning -> Lsp.Diagnostic.Warning
 
 let typ_diagnostic_to_lsp = fun text ->
-  fun (diagnostic: Typ.Diagnostic.t) ->
-    let span = Typ.Diagnostic.primary_span diagnostic in
+  fun (diagnostic: Diagnostic.t) ->
+    let span = Diagnostic.primary_span diagnostic in
     {
       Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets
         text
         ~start_offset:span.start
         ~end_offset:span.end_;
-      severity = Some (typ_diagnostic_severity (Typ.Diagnostic.severity diagnostic));
-      code = Some (Typ.Diagnostic.code diagnostic);
+      severity = Some (typ_diagnostic_severity (Diagnostic.severity diagnostic));
+      code = Some (Diagnostic.code diagnostic);
       source = Some "typ";
-      message = Typ.Diagnostic.message diagnostic;
+      message = Diagnostic.message diagnostic;
       tags = None;
-      data = Some (Typ.Diagnostic.to_json diagnostic);
+      data = Some (Diagnostic.to_json diagnostic);
     }
 
 let analyze_document = fun document ->
@@ -738,8 +726,7 @@ let typ_diagnostics = fun state ->
   fun document ->
     match typ_analysis_for_document state document with
     | None -> []
-    | Some analysis -> (analysis.Typ.SourceAnalysis.lowering_diagnostics
-    @ analysis.Typ.SourceAnalysis.typing_diagnostics)
+    | Some analysis -> (analysis.SourceAnalysis.lowering_diagnostics @ analysis.SourceAnalysis.typing_diagnostics)
     |> List.map (typ_diagnostic_to_lsp document.text)
 
 let publish_diagnostics = fun state ->

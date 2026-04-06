@@ -1,5 +1,9 @@
 open Std
 open Typ
+open Typ.Analysis
+open Typ.Diagnostics
+open Typ.Model
+open Typ.Session
 
 let export_names = function
   | Some (FileSummary.TrustedExport { exports })
@@ -95,7 +99,7 @@ let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
   | Ok snapshot -> Ok snapshot
   | Error missing -> Error ("unexpected missing requirements: "
-  ^ Data.Json.to_string (MissingRequirements.to_json missing))
+  ^ Data.Json.to_string (Session.MissingRequirements.to_json missing))
 
 let with_typ_store = fun f ->
   Fs.with_tempdir ~prefix:"typ-store"
@@ -507,7 +511,7 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
         ~text:"open Colors\nlet midpoint = RGB.blend 1 2\nlet label = to_string \"ok\"\n" in
       match Session.prepare_snapshot session ~roots:[ demo_source_id ] with
       | Error missing -> Error ("expected store-backed snapshot preparation to succeed, got "
-      ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
+      ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
       | Ok snapshot ->
           let diagnostics = diagnostic_strings snapshot demo_source_id in
           if not (List.is_empty diagnostics) then
@@ -534,7 +538,7 @@ let test_prepare_snapshot_includes_interface_sibling_dependencies = fun _ctx ->
   match Session.prepare_snapshot session ~roots:[ impl_source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to include sibling interface dependencies"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -911,7 +915,7 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
   else
     match Session.prepare_snapshot client_session ~roots:[ client_source_id ] with
     | Error missing -> Error ("missing requirements: "
-    ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
+    ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
     | Ok client_snapshot ->
         let client_diagnostics = diagnostic_strings client_snapshot client_source_id in
         if not (List.is_empty client_diagnostics) then
@@ -1002,7 +1006,7 @@ let test_prepare_snapshot_reports_missing_roots = fun _ctx ->
   match Session.prepare_snapshot session ~roots:[ missing_root ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report the missing root"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing in
+      let actual = Session.MissingRequirements.to_json missing in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_root_source");
@@ -1022,7 +1026,7 @@ let test_prepare_snapshot_reports_missing_module_summary = fun _ctx ->
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report missing module summaries"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -1051,7 +1055,7 @@ let test_prepare_snapshot_collects_transitive_missing_modules = fun _ctx ->
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report transitive missing module summaries"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -1075,7 +1079,7 @@ let test_prepare_snapshot_collects_missing_module_for_qualified_reference = fun 
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report missing module summaries for qualified access"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -1104,7 +1108,7 @@ let test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirem
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to keep sibling nested modules out of top-level module requirements"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -1141,7 +1145,7 @@ let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_re
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to keep loaded nested module exports out of top-level module requirements"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
@@ -1174,7 +1178,7 @@ let test_prepare_snapshot_canonicalizes_missing_requirements = fun _ctx ->
     ~roots:[ second_source_id; missing_root_a; first_source_id; second_source_id; missing_root_b ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report canonical missing requirements"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_root_source");
@@ -1217,7 +1221,7 @@ let test_prepare_snapshot_sorts_missing_modules_by_name = fun _ctx ->
   match Session.prepare_snapshot session ~roots:[ zed_source_id; alpha_source_id ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report sorted missing module summaries"
   | Error missing ->
-      let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
       let expected = Data.Json.Array [
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");

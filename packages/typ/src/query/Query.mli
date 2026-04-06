@@ -1,4 +1,7 @@
 open Std
+open Diagnostics
+open Model
+open Session
 
 (** Query-oriented API over one immutable [Snapshot]. *)
 type diagnostic =

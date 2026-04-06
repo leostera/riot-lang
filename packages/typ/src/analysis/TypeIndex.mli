@@ -1,4 +1,5 @@
 open Std
+open Model
 
 (** Query-oriented index of inferred expression types for one analyzed source. *)
 type entry = {

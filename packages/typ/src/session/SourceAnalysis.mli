@@ -1,4 +1,8 @@
 open Std
+open Analysis
+open Diagnostics
+open Infer
+open Model
 
 (** One source analyzed within one immutable snapshot. *)
 type t = {
