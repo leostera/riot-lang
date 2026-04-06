@@ -300,6 +300,9 @@ std = "*"
                     manifest_key = "manifests/std-0.2.0.json";
                     source_key = "sources/std-0.2.0.tar.gz";
                     dependencies = [];
+                    yanked = false;
+                    yanked_at = None;
+                    yanked_by_github_login = None;
                   }; ];
             }; ]
           ~releases:[ {
@@ -428,6 +431,9 @@ std = "*"
                     manifest_key = "manifests/std-0.2.0.json";
                     source_key = "sources/std-0.2.0.tar.gz";
                     dependencies = [];
+                    yanked = false;
+                    yanked_at = None;
+                    yanked_by_github_login = None;
                   }; ];
             }; ]
           ~releases:[ {
