@@ -29,7 +29,8 @@ let create = fun ~(workspace:Workspace.t) ->
   create_for_lane ~workspace ~profile:"debug" ~target:(Riot_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
-let get_hash_dir = fun store hash -> ContentStore.hash_dir_of store.content_store hash
+let get_hash_dir = fun store hash ->
+  ContentStore.hash_dir_of store.content_store hash
 
 let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
 
@@ -112,9 +113,7 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
     ~build_hash:(Std.Crypto.Digest.hex hash)
     ~files:(List.rev stored_files_with_sizes) in
   Manifest.save manifest ~path:(manifest_path temp_dir) |> Result.expect ~msg:"Failed to save manifest";
-  let commit_result =
-    ContentStore.commit_dir store.content_store ~hash ~source_dir:temp_dir
-  in
+  let commit_result = ContentStore.commit_dir store.content_store ~hash ~source_dir:temp_dir in
   (
     match commit_result with
     | Ok () -> ()
@@ -219,11 +218,7 @@ let get_artifact_dir = fun store artifact -> get_hash_dir store Artifact.(artifa
 let hash_dir_of = fun store hash -> get_hash_dir store hash
 
 let save_plan_bundle = fun store ~hash ~plan ->
-  ContentStore.save_json_bundle
-    store.content_store
-    ~namespace:"plans"
-    ~hash
-    ~json:plan
+  ContentStore.save_json_bundle store.content_store ~namespace:"plans" ~hash ~json:plan
 
 let load_plan_bundle = fun store ~hash ->
   ContentStore.load_json_bundle store.content_store ~namespace:"plans" ~hash

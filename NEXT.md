@@ -6,6 +6,10 @@
 
 # Next
 
+* riot fmt cache -- hash files after formatting them and save marks on the _build cache, if the file has been hashed-seen before, then it is a formatted file already!
+
+* Std.Test should be able to mark tests with size (small, large) and flakey, so the test runner konws about this and handles it well (flakey test runs up to .riot/config.toml [riot.test] flakey_max_retry = 3) and if a test is smarked as small it times out the tests after [riot.test] small_test_timeout = 500ms, long tests can run indefinitely) oh and `run test --small` `--flakey` and `--long` should be able to partition the tests set to only run tests with those configurations
+
 * riot/config.toml support a [target."str".runner] run command like `docker run -ti
 ubuntu` that can help us run cross-compiled binaries in a container so can configure
   [target.linux.runner]

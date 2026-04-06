@@ -19,6 +19,7 @@ riot-executor = { path = "../riot-executor", version = "*" }
 riot-model = { path = "../riot-model", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }
 riot-build = { path = "../riot-build", version = "*" }
+riot-check = { path = "../riot-check", version = "*" }
 riot-store = { path = "../riot-store", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }
 riot-lsp = { path = "../riot-lsp", version = "*" }

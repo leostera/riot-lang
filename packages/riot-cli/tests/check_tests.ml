@@ -90,12 +90,10 @@ let make_workspace = fun workspace_root packages ->
   Riot_model.Workspace.make ~root:workspace_root ~packages ()
 
 let workspace_typ_store = fun (workspace: Riot_model.Workspace.t) ->
-  let contentstore =
-    Contentstore.create
-      ~root:Path.(workspace.target_dir_root / Path.v "typ-cache")
-      ~policy:Contentstore.Policy.default
-      ()
-  in
+  let contentstore = Contentstore.create
+    ~root:Path.(workspace.target_dir_root / Path.v "typ-cache")
+    ~policy:Contentstore.Policy.default
+    () in
   Typ.Store.create contentstore ()
 
 let test_check_accepts_json_flag = fun _ctx ->
@@ -344,13 +342,12 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
                     |> List.sort compare
                   in
                   Test.assert_equal
-                    ~expected:(
-                      [
+                    ~expected:(([
                       Data.Json.String "packages/colors/examples/blend_demo.ml";
                       Data.Json.String "packages/colors/src/colors.ml";
                       Data.Json.String "packages/colors/src/helper.ml";
-                      ]
-                      |> List.sort compare)
+                    ]
+                    |> List.sort compare))
                     ~actual:file_paths;
                   let diagnostic_count =
                     events
@@ -380,18 +377,13 @@ let test_check_package_filter_uses_package_session_for_cross_file_record_types =
       match write_file colors_source "type point = { x: int; y: int }\n" with
       | Error err -> Error err
       | Ok () ->
-          match write_file
-            demo_source
-            "open Colors\nlet origin = { x = 0; y = 0 }\nlet total point = point.x + point.y\n"
-          with
+          match write_file demo_source "open Colors\nlet origin = { x = 0; y = 0 }\nlet total point = point.x + point.y\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches = parse_check [ "check"; "--json"; "-p"; "colors" ]
-              |> Result.expect ~msg:"parse check args" in
+              let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
               let stdout, stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
-              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-              |> Result.expect ~msg:"package check should use sibling source record types";
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use sibling source record types";
               let events = parse_jsonl (stdout_contents ()) in
               let diagnostic_count =
                 events
@@ -502,8 +494,7 @@ let test_check_package_filter_loads_external_dependency_summaries = fun _ctx ->
               let matches = parse_check [ "check"; "--json"; "-p"; "app" ] |> Result.expect ~msg:"parse check args" in
               let stdout, stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
-              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-              |> Result.expect ~msg:"package check should load external dependency summaries";
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should load external dependency summaries";
               let events = parse_jsonl (stdout_contents ()) in
               let file_paths =
                 events
@@ -562,14 +553,10 @@ let test_check_package_filter_persists_module_typings_to_store = fun _ctx ->
           match write_file tty_source "let answer = Std.twice 21\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches =
-                parse_check [ "check"; "--json"; "-p"; "tty" ]
-                |> Result.expect ~msg:"parse check args"
-              in
+              let matches = parse_check [ "check"; "--json"; "-p"; "tty" ] |> Result.expect ~msg:"parse check args" in
               let stdout, _stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
-              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-              |> Result.expect ~msg:"package check should succeed and persist module typings";
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed and persist module typings";
               let typ_store = workspace_typ_store workspace in
               let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
               let tty_typings = Typ.Store.load_module_typings typ_store ~module_name:"Tty" in
@@ -606,14 +593,10 @@ let test_check_package_filter_persists_interface_shaped_module_typings = fun _ct
           match write_file colors_intf "val answer : int\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches =
-                parse_check [ "check"; "--json"; "-p"; "colors" ]
-                |> Result.expect ~msg:"parse check args"
-              in
+              let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
               let stdout, _stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
-              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-              |> Result.expect ~msg:"package check should succeed and persist interface-shaped module typings";
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed and persist interface-shaped module typings";
               let typ_store = workspace_typ_store workspace in
               let colors_typings = Typ.Store.load_module_typings typ_store ~module_name:"Colors" in
               match colors_typings with
@@ -656,17 +639,10 @@ let test_populate_workspace_typings_persists_local_dependency_bundles = fun _ctx
           match write_file app_source "let answer = Std.twice 21\n" with
           | Error err -> Error err
           | Ok () ->
-              Riot_cli.Check_cmd.populate_workspace_typings
-                ~workspace
-                ~package_names:[ "app" ]
-                ();
+              Riot_cli.Check_cmd.populate_workspace_typings ~workspace ~package_names:[ "app" ] ();
               let typ_store = workspace_typ_store workspace in
-              let std_bundle =
-                Typ.Store.load_package_module_typings typ_store ~package_name:"std"
-              in
-              let app_bundle =
-                Typ.Store.load_package_module_typings typ_store ~package_name:"app"
-              in
+              let std_bundle = Typ.Store.load_package_module_typings typ_store ~package_name:"std" in
+              let app_bundle = Typ.Store.load_package_module_typings typ_store ~package_name:"app" in
               let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
               let app_typings = Typ.Store.load_module_typings typ_store ~module_name:"App" in
               if not (Option.is_some std_bundle) then
@@ -704,10 +680,7 @@ let test_check_package_filter_reports_signature_inclusion_errors = fun _ctx ->
           match write_file colors_intf "val answer : int\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches =
-                parse_check [ "check"; "--json"; "-p"; "colors" ]
-                |> Result.expect ~msg:"parse check args"
-              in
+              let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
               let stdout, stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
               (
@@ -837,8 +810,7 @@ let test_check_package_filter_persists_locally_built_dependency_modules = fun _c
                   |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should persist locally built dependency module typings";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should persist locally built dependency module typings";
                   let typ_store = workspace_typ_store workspace in
                   let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
                   let internal_typings = Typ.Store.load_module_typings typ_store ~module_name:"Internal" in
@@ -904,8 +876,7 @@ let test_check_package_filter_loads_dependency_library_reexports_from_sibling_so
                   |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should load dependency library reexports from sibling sources";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should load dependency library reexports from sibling sources";
                   let events = parse_jsonl (stdout_contents ()) in
                   let diagnostic_count =
                     events
@@ -954,18 +925,14 @@ let test_check_package_filter_uses_sibling_reexported_dependency_record_types = 
           match write_file proxy_source "include Support\nlet origin = { x = 0; y = 0 }\n" with
           | Error err -> Error err
           | Ok () ->
-              match write_file
-                app_source
-                "let total = Proxy.origin.x + Proxy.origin.y\n"
-              with
+              match write_file app_source "let total = Proxy.origin.x + Proxy.origin.y\n" with
               | Error err -> Error err
               | Ok () ->
                   let matches = parse_check [ "check"; "--json"; "-p"; "app" ]
                   |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should use sibling dependency record reexports";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use sibling dependency record reexports";
                   let events = parse_jsonl (stdout_contents ()) in
                   let diagnostic_count =
                     events
@@ -996,8 +963,8 @@ let test_check_package_filter_reexports_same_named_workspace_modules_via_alias =
             ~path:tty_root
             ~relative_path:(Path.v "packages/tty")
             ~sources:{
-              empty_sources with
-              src = [ Path.v "src/color.ml"; Path.v "src/style.ml"; Path.v "src/tty.ml" ]
+              empty_sources
+              with src = [ Path.v "src/color.ml"; Path.v "src/style.ml"; Path.v "src/tty.ml" ]
             }
             ();
         ] in
@@ -1007,17 +974,14 @@ let test_check_package_filter_reexports_same_named_workspace_modules_via_alias =
           match write_file style_source "let bold value = value\n" with
           | Error err -> Error err
           | Ok () -> (
-              match write_file
-                tty_source
-                "module Color = Color\nmodule Style = Style\nlet answer = Style.bold (Color.shade (Color.make 1))\n"
-              with
+              match write_file tty_source "module Color = Color\nmodule Style = Style\nlet answer = Style.bold (Color.shade (Color.make 1))\n" with
               | Error err -> Error err
               | Ok () ->
-                  let matches = parse_check [ "check"; "--json"; "-p"; "tty" ] |> Result.expect ~msg:"parse check args" in
+                  let matches = parse_check [ "check"; "--json"; "-p"; "tty" ]
+                  |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should reexport same-named workspace module summaries through aliases";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should reexport same-named workspace module summaries through aliases";
                   let events = parse_jsonl (stdout_contents ()) in
                   let file_paths =
                     events
@@ -1069,10 +1033,7 @@ let test_check_expansive_bindings_stay_monomorphic = fun _ctx ->
             ~sources:{ empty_sources with src = [ Path.v "src/demo.ml" ] }
             ();
         ] in
-      match write_file
-        source_path
-        "let id x = x\nlet alias = id id\nlet _ = alias 1\nlet _ = alias true\n"
-      with
+      match write_file source_path "let id x = x\nlet alias = id id\nlet _ = alias 1\nlet _ = alias true\n" with
       | Error err -> Error err
       | Ok () ->
           let matches = parse_check [ "check"; "--json"; "-p"; "demo" ] |> Result.expect ~msg:"parse check args" in
@@ -1099,9 +1060,7 @@ let test_check_expansive_bindings_stay_monomorphic = fun _ctx ->
                         )
                       | _ -> None)
                 in
-                Test.assert_equal
-                  ~expected:[ "type mismatch: expected int but got bool" ]
-                  ~actual:diagnostic_messages;
+                Test.assert_equal ~expected:[ "type mismatch: expected int but got bool" ] ~actual:diagnostic_messages;
                 Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                 Ok ()
           ))
@@ -1124,8 +1083,8 @@ let test_check_package_filter_preserves_nested_same_named_alias_reexports = fun 
             ~path:std_root
             ~relative_path:(Path.v "packages/std")
             ~sources:{
-              empty_sources with
-              src = [ Path.v "src/cell.ml"; Path.v "src/sync.ml"; Path.v "src/std.ml" ]
+              empty_sources
+              with src = [ Path.v "src/cell.ml"; Path.v "src/sync.ml"; Path.v "src/std.ml" ]
             }
             ();
           make_package
@@ -1202,17 +1161,13 @@ let test_check_relaxed_value_restriction_preserves_covariant_lists = fun _ctx ->
             ~sources:{ empty_sources with src = [ Path.v "src/demo.ml" ] }
             ();
         ] in
-      match write_file
-        source_path
-        "let make _ = []\nlet xs = make ()\nlet _ = 1 :: xs\nlet _ = true :: xs\n"
-      with
+      match write_file source_path "let make _ = []\nlet xs = make ()\nlet _ = 1 :: xs\nlet _ = true :: xs\n" with
       | Error err -> Error err
       | Ok () ->
           let matches = parse_check [ "check"; "--json"; "-p"; "demo" ] |> Result.expect ~msg:"parse check args" in
           let stdout, stdout_contents = make_capture_writer () in
           let stderr, stderr_contents = make_capture_writer () in
-          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-          |> Result.expect ~msg:"package check should keep covariant expansive list bindings polymorphic";
+          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should keep covariant expansive list bindings polymorphic";
           let events = parse_jsonl (stdout_contents ()) in
           let diagnostic_count =
             events
@@ -1243,18 +1198,13 @@ let test_check_relaxed_value_restriction_preserves_covariant_nominal_types = fun
             ~sources:{ empty_sources with src = [ Path.v "src/demo.ml" ] }
             ();
         ] in
-      match write_file
-        source_path
-        "type 'a box = Box of 'a list\nlet make _ = Box []\nlet boxed = make ()\nlet _ = match boxed with Box xs -> 1 :: xs\nlet _ = match boxed with Box xs -> true :: xs\n"
-      with
+      match write_file source_path "type 'a box = Box of 'a list\nlet make _ = Box []\nlet boxed = make ()\nlet _ = match boxed with Box xs -> 1 :: xs\nlet _ = match boxed with Box xs -> true :: xs\n" with
       | Error err -> Error err
       | Ok () ->
           let matches = parse_check [ "check"; "--json"; "-p"; "demo" ] |> Result.expect ~msg:"parse check args" in
           let stdout, stdout_contents = make_capture_writer () in
           let stderr, stderr_contents = make_capture_writer () in
-          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-          |> Result.expect
-            ~msg:"package check should keep covariant expansive nominal bindings polymorphic";
+          Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should keep covariant expansive nominal bindings polymorphic";
           let events = parse_jsonl (stdout_contents ()) in
           let diagnostic_count =
             events

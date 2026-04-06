@@ -9,8 +9,7 @@ let package_rule_id = Format.format Format.[ str package_name; char ':'; str rul
 
 let rule_description = "Prefer Kernel.Format fragments over manual string concatenation"
 
-let rule_explain =
-  {|
+let rule_explain = {|
 Repeated `^` chains make otherwise mechanical message rendering harder to read and
 harder to extend safely.
 
@@ -91,7 +90,9 @@ let is_kernel_source_path = fun path ->
 let rec expression_name = fun expr ->
   match unwrap_expression expr with
   | Syn.Cst.Expression.Path { path; _ } ->
-      Syn.Cst.Ident.segments path |> List.map Syn.Cst.Token.text |> String.concat "."
+      Syn.Cst.Ident.segments path
+      |> List.map Syn.Cst.Token.text
+      |> String.concat "."
       |> fun name -> Some name
   | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
       match expression_name receiver with
@@ -127,25 +128,28 @@ let is_string_literal = function
 let conversion_fragment = fun expr ->
   let head, arguments = flatten_apply expr in
   match expression_name head, positional_arguments arguments with
-  | Some ("string_of_int" | "Stdlib.string_of_int" | "Int.to_string" | "Stdlib.Int.to_string" | "Kernel.Int.to_string"), [ arg ] ->
-      Some (helper_fragment "int" arg)
-  | Some ("string_of_float" | "Stdlib.string_of_float" | "Float.to_string" | "Stdlib.Float.to_string" | "Kernel.Float.to_string"), [ arg ] ->
-      Some (helper_fragment "float" arg)
-  | Some ("string_of_bool" | "Stdlib.string_of_bool" | "Bool.to_string" | "Stdlib.Bool.to_string" | "Kernel.Bool.to_string"), [ arg ] ->
-      Some (helper_fragment "bool" arg)
-  | Some ("Int32.to_string" | "Stdlib.Int32.to_string" | "Kernel.Int32.to_string"), [ arg ] ->
-      Some (helper_fragment "int32" arg)
-  | Some ("Int64.to_string" | "Stdlib.Int64.to_string" | "Kernel.Int64.to_string"), [ arg ] ->
-      Some (helper_fragment "int64" arg)
-  | Some ("Bytes.to_string" | "Stdlib.Bytes.to_string"), [ arg ] ->
-      Some (helper_fragment "bytes" arg)
-  | _ ->
-      None
+  | Some ("string_of_int" | "Stdlib.string_of_int" | "Int.to_string" | "Stdlib.Int.to_string" | "Kernel.Int.to_string"), [
+    arg
+  ] -> Some (helper_fragment "int" arg)
+  | Some ("string_of_float" | "Stdlib.string_of_float" | "Float.to_string" | "Stdlib.Float.to_string" | "Kernel.Float.to_string"), [
+    arg
+  ] -> Some (helper_fragment "float" arg)
+  | Some ("string_of_bool" | "Stdlib.string_of_bool" | "Bool.to_string" | "Stdlib.Bool.to_string" | "Kernel.Bool.to_string"), [
+    arg
+  ] -> Some (helper_fragment "bool" arg)
+  | Some ("Int32.to_string" | "Stdlib.Int32.to_string" | "Kernel.Int32.to_string"), [ arg ] -> Some (helper_fragment
+    "int32"
+    arg)
+  | Some ("Int64.to_string" | "Stdlib.Int64.to_string" | "Kernel.Int64.to_string"), [ arg ] -> Some (helper_fragment
+    "int64"
+    arg)
+  | Some ("Bytes.to_string" | "Stdlib.Bytes.to_string"), [ arg ] -> Some (helper_fragment "bytes" arg)
+  | _ -> None
 
 let fragment_for_segment = fun expr ->
   match unwrap_expression expr with
-  | expr when is_string_literal expr ->
-      Some (Format.format Format.[ str "str "; str (expression_text expr) ])
+  | expr when is_string_literal expr -> Some (Format.format
+    Format.[ str "str "; str (expression_text expr) ])
   | expr -> (
       match conversion_fragment expr with
       | Some fragment -> Some fragment
@@ -154,9 +158,9 @@ let fragment_for_segment = fun expr ->
 
 let rec flatten_concat_chain = fun expr ->
   match unwrap_expression expr with
-  | Syn.Cst.Expression.Infix infix when String.equal (Syn.Cst.InfixExpression.operator infix) "^" ->
-      flatten_concat_chain (Syn.Cst.InfixExpression.left infix)
-      @ flatten_concat_chain (Syn.Cst.InfixExpression.right infix)
+  | Syn.Cst.Expression.Infix infix when String.equal (Syn.Cst.InfixExpression.operator infix) "^" -> flatten_concat_chain
+    (Syn.Cst.InfixExpression.left infix)
+  @ flatten_concat_chain (Syn.Cst.InfixExpression.right infix)
   | other -> [ other ]
 
 let is_concat_expression = fun expr ->
@@ -171,8 +175,7 @@ let contains_comments = fun expr ->
       | Syn.SyntaxKind.COMMENT
       | Syn.SyntaxKind.DOCSTRING -> true
       | _ -> false)
-    (Syn.Cst.Expression.syntax_node expr)
-  |> function
+    (Syn.Cst.Expression.syntax_node expr) |> function
   | [] -> false
   | _ -> true
 
@@ -183,8 +186,8 @@ let open_statement_brings_format = fun stmt ->
       | [ "Std" ]
       | [ "Kernel" ]
       | [ "Global" ]
-      | [ "Std"; "Global" ]
-      | [ "Kernel"; "Global" ] -> true
+      | ["Std";"Global"]
+      | ["Kernel";"Global"] -> true
       | _ -> false
     )
   | None -> false
@@ -199,9 +202,7 @@ let has_local_format_scope = fun (ctx: Api.Rule.context) expr ->
   structure_items ctx |> List.exists
     (fun item ->
       let item_span = Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.StructureItem.syntax_node item) in
-      item_span.end_ <= expr_start
-      &&
-      match item with
+      item_span.end_ <= expr_start && match item with
       | Syn.Cst.StructureItem.OpenStatement stmt -> open_statement_brings_format stmt
       | _ -> false)
 
@@ -217,25 +218,24 @@ let replacement_text = fun ctx expr ->
   let call_prefix, namespace = format_call_for_expression ctx expr in
   let fragments = flatten_concat_chain expr |> List.filter_map fragment_for_segment in
   Format.format
-    Format.
-      [
-        str (replacement_prefix expr);
-        str call_prefix;
-        char ' ';
-        str namespace;
-        str ".[ ";
-        str (String.concat "; " fragments);
-        str " ]";
-      ]
+    Format.[
+      str (replacement_prefix expr);
+      str call_prefix;
+      char ' ';
+      str namespace;
+      str ".[ ";
+      str (String.concat "; " fragments);
+      str " ]";
+    ]
 
 let make_fix = fun ctx expr ->
   Api.Fix.make
     ~title:"Rewrite string concatenation as Kernel.Format fragments"
-    ~operations:
-      [
-        Api.Fix.replace_node_with_text ~target:(Syn.Cst.Expression.syntax_node expr)
-          ~text:(replacement_text ctx expr);
-      ]
+    ~operations:[
+      Api.Fix.replace_node_with_text
+        ~target:(Syn.Cst.Expression.syntax_node expr)
+        ~text:(replacement_text ctx expr);
+    ]
 
 let make_diagnostic = fun ctx expr ->
   Api.Diagnostic.make
@@ -253,9 +253,7 @@ let should_rewrite_chain = fun expr ->
   && not (contains_comments expr)
 
 let concat_chain_roots = fun ctx ->
-  let expressions =
-    structure_items ctx |> List.concat_map Api.Traversal.expressions_of_structure_item
-  in
+  let expressions = structure_items ctx |> List.concat_map Api.Traversal.expressions_of_structure_item in
   let rec loop covered acc remaining =
     match remaining with
     | [] -> List.rev acc
@@ -272,9 +270,7 @@ let concat_chain_roots = fun ctx ->
   loop [] [] expressions
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->
-  concat_chain_roots ctx
-  |> List.filter should_rewrite_chain
-  |> List.map (make_diagnostic ctx)
+  concat_chain_roots ctx |> List.filter should_rewrite_chain |> List.map (make_diagnostic ctx)
 
 let rule = fun () ->
   Api.Rule.make

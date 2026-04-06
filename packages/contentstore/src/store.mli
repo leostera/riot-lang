@@ -1,10 +1,8 @@
 open Std
 
 type policy = Policy.t
-
 (** Generic content-addressable storage rooted at one filesystem directory. *)
 type t
-
 type error = string
 
 (** Create a content-addressable store rooted at [root]. *)

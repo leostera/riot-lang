@@ -252,14 +252,14 @@
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 15505,
+                "end": 15487,
                 "start": 9767
               }
             },
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 15505,
+                "end": 15487,
                 "start": 9767
               }
             },
@@ -289,7 +289,7 @@
         "syntax_node": {
           "kind": "MODULE_DECL",
           "span": {
-            "end": 15505,
+            "end": 15487,
             "start": 8964
           }
         }
@@ -301,16 +301,16 @@
         "docstring_token": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 16398,
-            "start": 15507
+            "end": 16380,
+            "start": 15489
           },
           "text": "(** # Builder\n\n    Convenient API for constructing green trees.\n\n    The builder provides two styles:\n\n    1. **Stack-based**: Use `create`, `start_node`, `token`,\n    `token_with_leading_trivia`, `finish_node`, `build`\n    2. **Direct**: Use `make_token`, `make_token_with_leading_trivia`, and\n    `make_node` helper functions\n\n    ## Stack-Based Example\n\n    ```ocaml let green = Builder.create () |> Builder.start_node ~kind:BIN_EXPR\n    |> Builder.token ~kind:INT ~text:\"1\" ~width:1 |> Builder.token ~kind:PLUS\n    ~text:\"+\" ~width:1 |> Builder.token ~kind:INT ~text:\"2\" ~width:1 |>\n    Builder.finish_node |> Builder.build ROOT ```\n\n    ## Direct Example\n\n    ```ocaml let green = Builder.make_node ~kind:BIN_EXPR\n    [ Builder.make_token ~kind:INT ~text:\"1\" ~width:1; Builder.make_token\n     ~kind:PLUS ~text:\"+\" ~width:1; Builder.make_token ~kind:INT ~text:\"2\"\n     ~width:1; ] ``` *)"
         },
         "syntax_node": {
           "kind": "DOCSTRING",
           "span": {
-            "end": 16398,
-            "start": 15507
+            "end": 16380,
+            "start": 15489
           }
         }
       },
@@ -324,15 +324,15 @@
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 18424,
-                "start": 16415
+                "end": 18406,
+                "start": 16397
               }
             },
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "end": 18424,
-                "start": 16415
+                "end": 18406,
+                "start": 16397
               }
             },
             "tag": "signature"
@@ -343,16 +343,16 @@
         "keyword_token": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 16406,
-            "start": 16400
+            "end": 16388,
+            "start": 16382
           },
           "text": "module"
         },
         "module_name": {
           "kind": "IDENT_EXPR",
           "span": {
-            "end": 16414,
-            "start": 16407
+            "end": 16396,
+            "start": 16389
           },
           "text": "Builder"
         },
@@ -361,8 +361,8 @@
         "syntax_node": {
           "kind": "MODULE_DECL",
           "span": {
-            "end": 18424,
-            "start": 15505
+            "end": 18406,
+            "start": 15487
           }
         }
       },
@@ -373,7 +373,7 @@
   "syntax_node": {
     "kind": "SOURCE_FILE",
     "span": {
-      "end": 18424,
+      "end": 18406,
       "start": 0
     }
   }
