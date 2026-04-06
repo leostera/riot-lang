@@ -20,7 +20,6 @@
 - [ ] packages/actors/src/scheduler.mli
 - [ ] packages/actors/src/proc_state.mli
 - [ ] packages/actors/src/effects.mli
-- [ ] packages/actors/src/pid.mli
 - [ ] packages/actors/src/process.mli
 - [ ] packages/actors/src/timer_wheel.mli
 - [ ] packages/blink/src/protocol.mli
