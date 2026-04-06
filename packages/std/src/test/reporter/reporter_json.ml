@@ -28,9 +28,7 @@ let finalize = fun (summary: Test_result.summary) ->
               ("examples", int examples)
             ]
           in
-          let timing_fields =
-            [ ("duration_us", int (duration_us r.duration)) ]
-          in
+          let timing_fields = [ ("duration_us", int (duration_us r.duration)) ] in
           let base_fields =
             match r.result with
             | Test_result.Passed -> [ ("name", string r.name); ("status", string "passed") ]
@@ -52,11 +50,12 @@ let finalize = fun (summary: Test_result.summary) ->
         ("skipped", int summary.skipped);
         ("duration_us", int (duration_us summary.duration));
       ] in
-    let output = obj [
-      ("tests", array test_results);
-      ("summary", summary_json);
-      ("started_at_us", int 0);
-      ("completed_at_us", int (duration_us suite_duration));
-      ("duration_us", int (duration_us suite_duration));
-    ] in
+    let output = obj
+      [
+        ("tests", array test_results);
+        ("summary", summary_json);
+        ("started_at_us", int 0);
+        ("completed_at_us", int (duration_us suite_duration));
+        ("duration_us", int (duration_us suite_duration));
+      ] in
     println (to_string output)

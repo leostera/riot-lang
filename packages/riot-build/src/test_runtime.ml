@@ -60,13 +60,7 @@ type test_event =
       duration_us: int option;
       summary: test_suite_summary
     }
-  | Summary of {
-      total: int;
-      passed: int;
-      failed: int;
-      skipped: int;
-      failed_tests: failed_test list
-    }
+  | Summary of { total: int; passed: int; failed: int; skipped: int; failed_tests: failed_test list }
 
 type test_error =
   | BuildFailed of Build_runtime.build_error
@@ -226,7 +220,13 @@ let test_result_of_json = fun index json ->
   let* test_type = test_type_of_json json in
   let* result = test_status_of_json json in
   let* duration_us = optional_int_field "duration_us" fields in
-  Ok { index; name; test_type; result; duration_us = Option.unwrap_or ~default:0 duration_us }
+  Ok {
+    index;
+    name;
+    test_type;
+    result;
+    duration_us = Option.unwrap_or ~default:0 duration_us;
+  }
 
 let test_summary_of_json = fun json ->
   let* fields = get_object json in
@@ -283,7 +283,8 @@ let empty_suite_summary = {
   results = [];
 }
 
-let is_blank = fun s -> String.equal (String.trim s) ""
+let is_blank = fun s ->
+  String.equal (String.trim s) ""
 
 let test_event_to_json = function
   | Build event ->
@@ -347,56 +348,62 @@ let test_event_to_json = function
             @ status_fields
             @ type_fields))
       in
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "SuiteCompleted");
-        ("package", Data.Json.String suite.package_name);
-        ("suite", Data.Json.String suite.suite_name);
-        ("status", Data.Json.Int status);
-        ("stdout", Data.Json.String stdout);
-        ("stderr", Data.Json.String stderr);
-        (
-          "started_at_us",
-          match started_at_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Null
-        );
-        (
-          "completed_at_us",
-          match completed_at_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Null
-        );
-        (
-          "duration_us",
-          match duration_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Int summary.duration_us
-        );
-        ("tests", Data.Json.Array test_results);
-        (
-          "summary",
-          Data.Json.Object [
-            ("total", Data.Json.Int summary.total);
-            ("passed", Data.Json.Int summary.passed);
-            ("failed", Data.Json.Int summary.failed);
-            ("skipped", Data.Json.Int summary.skipped);
-            ("duration_us", Data.Json.Int summary.duration_us);
-          ]
-        );
-      ])
-  | Summary { total; passed; failed; skipped; failed_tests } ->
-      let failed_tests =
-        failed_tests
-        |> List.map
-          (fun (failed_test: failed_test) ->
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "SuiteCompleted");
+          ("package", Data.Json.String suite.package_name);
+          ("suite", Data.Json.String suite.suite_name);
+          ("status", Data.Json.Int status);
+          ("stdout", Data.Json.String stdout);
+          ("stderr", Data.Json.String stderr);
+          (
+            "started_at_us",
+            match started_at_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Null
+          );
+          (
+            "completed_at_us",
+            match completed_at_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Null
+          );
+          (
+            "duration_us",
+            match duration_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Int summary.duration_us
+          );
+          ("tests", Data.Json.Array test_results);
+          (
+            "summary",
             Data.Json.Object [
-              ("package", Data.Json.String failed_test.suite.package_name);
-              ("suite", Data.Json.String failed_test.suite.suite_name);
-              ("name", Data.Json.String failed_test.name);
-              ("message", Data.Json.String failed_test.message);
-              ("duration_us", Data.Json.Int failed_test.duration_us);
-            ])
-      in
+              ("total", Data.Json.Int summary.total);
+              ("passed", Data.Json.Int summary.passed);
+              ("failed", Data.Json.Int summary.failed);
+              ("skipped", Data.Json.Int summary.skipped);
+              ("duration_us", Data.Json.Int summary.duration_us);
+            ]
+          );
+        ]
+      )
+  | Summary {
+    total;
+    passed;
+    failed;
+    skipped;
+    failed_tests
+  } ->
+      let failed_tests = failed_tests
+      |> List.map
+        (fun (failed_test: failed_test) ->
+          Data.Json.Object [
+            ("package", Data.Json.String failed_test.suite.package_name);
+            ("suite", Data.Json.String failed_test.suite.suite_name);
+            ("name", Data.Json.String failed_test.name);
+            ("message", Data.Json.String failed_test.message);
+            ("duration_us", Data.Json.Int failed_test.duration_us);
+          ]) in
       Some (Data.Json.Object [
         ("type", Data.Json.String "TestSummary");
         ("total", Data.Json.Int total);
@@ -489,13 +496,15 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         let rec loop = function
           | [] ->
               on_event
-                (Summary {
-                  total = !total;
-                  passed = !passed;
-                  failed = !failed;
-                  skipped = !skipped;
-                  failed_tests = List.rev !failed_tests;
-                });
+                (
+                  Summary {
+                    total = !total;
+                    passed = !passed;
+                    failed = !failed;
+                    skipped = !skipped;
+                    failed_tests = List.rev !failed_tests;
+                  }
+                );
               if !failed > 0 then
                 Error (SuitesFailed !failed)
               else
@@ -518,11 +527,9 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                       let parsed_output =
                         match parse_test_suite_output output.stdout with
                         | Ok parsed -> Ok parsed
-                        | Error reason when
-                            Int.equal output.status 0
-                            && is_blank output.stdout
-                            && is_blank output.stderr ->
-                            Ok ("", None, None, None, empty_suite_summary)
+                        | Error reason when Int.equal output.status 0
+                        && is_blank output.stdout
+                        && is_blank output.stderr -> Ok ("", None, None, None, empty_suite_summary)
                         | Error reason -> Error reason
                       in
                       match parsed_output with
@@ -538,22 +545,21 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                           passed := !passed + summary.passed;
                           failed := !failed + summary.failed;
                           skipped := !skipped + summary.skipped;
-                          failed_tests :=
-                            List.rev_append
-                              (summary.results
-                              |> List.filter_map
+                          failed_tests := List.rev_append
+                            (
+                              summary.results |> List.filter_map
                                 (fun (result: test_case_result) ->
                                   match result.result with
-                                  | Failed message ->
-                                      Some {
-                                        suite;
-                                        name = result.name;
-                                        message;
-                                        duration_us = result.duration_us;
-                                      }
+                                  | Failed message -> Some {
+                                    suite;
+                                    name = result.name;
+                                    message;
+                                    duration_us = result.duration_us
+                                  }
                                   | Passed
-                                  | Skipped -> None))
-                              !failed_tests;
+                                  | Skipped -> None)
+                            )
+                            !failed_tests;
                           on_event
                             (
                               SuiteCompleted {

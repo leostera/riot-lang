@@ -37,21 +37,25 @@ let test_collect_test_suites_filters_by_suite_name = fun _ctx ->
   Ok ()
 
 let test_test_event_to_json_serializes_summary = fun _ctx ->
-  match Riot_build.test_event_to_json
-    (Riot_build.Summary {
-      total = 3;
-      passed = 2;
-      failed = 1;
-      skipped = 4;
-      failed_tests = [
-        Riot_build.{
-          suite = { package_name = "demo"; suite_name = "alpha_tests" };
-          name = "alpha fails";
-          message = "boom";
-          duration_us = 42;
+  match
+    Riot_build.test_event_to_json
+      (
+        Riot_build.Summary {
+          total = 3;
+          passed = 2;
+          failed = 1;
+          skipped = 4;
+          failed_tests = [
+            Riot_build.{
+              suite = { package_name = "demo"; suite_name = "alpha_tests" };
+              name = "alpha fails";
+              message = "boom";
+              duration_us = 42
+            }
+          ];
         }
-      ];
-    }) with
+      )
+  with
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "TestSummary"))

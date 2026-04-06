@@ -16,8 +16,7 @@ let command =
                benchmarks."; option "package" |> short 'p' |> long "package" |> help "Run benchmarks from a specific package"; flag
             "json"
           |> long "json"
-          |> help "Emit machine-readable JSONL events"; flag
-            "verbose"
+          |> help "Emit machine-readable JSONL events"; flag "verbose"
           |> short 'v'
           |> long "verbose"
           |> help "Enable verbose output for benchmarks"
@@ -111,10 +110,14 @@ let json_int_field = fun name fields ->
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
-  let filtered = List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields in
+  let filtered =
+    List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields
+  in
   filtered @ [ (name, Data.Json.Int value) ]
 
-let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.bench_event) (json: Data.Json.t) ->
+let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.bench_event) (
+  json: Data.Json.t
+) ->
   match json with
   | Data.Json.Object fields ->
       let elapsed_us = event_elapsed_us ~command_started_at in
@@ -126,20 +129,15 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.b
       let fields = upsert_int_field "duration_us" duration_us fields in
       let fields =
         match event with
-        | Riot_build.RunningSuite _ ->
-            upsert_int_field "started_at_us" elapsed_us fields
-        | Riot_build.SuiteCompleted _ ->
-            fields
-            |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Riot_build.Summary _ ->
-            fields
-            |> upsert_int_field "started_at_us" 0
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Riot_build.NoSuitesFound _ ->
-            upsert_int_field "completed_at_us" elapsed_us fields
-        | Riot_build.Build _ ->
-            fields
+        | Riot_build.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
+        | Riot_build.SuiteCompleted _ -> fields
+        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Riot_build.Summary _ -> fields
+        |> upsert_int_field "started_at_us" 0
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Riot_build.NoSuitesFound _ -> upsert_int_field "completed_at_us" elapsed_us fields
+        | Riot_build.Build _ -> fields
       in
       Data.Json.Object fields
   | other -> other
@@ -192,11 +190,17 @@ let write_bench_error_json = fun ~command_started_at err ->
     ("message", Data.Json.String (Riot_build.bench_error_message err));
   ] in
   print
-    (Data.Json.to_string
-      (match event_json with
-      | Data.Json.Object fields ->
-          Data.Json.Object (upsert_int_field "completed_at_us" (event_elapsed_us ~command_started_at) fields)
-      | other -> other));
+    (
+      Data.Json.to_string
+        (
+          match event_json with
+          | Data.Json.Object fields -> Data.Json.Object (upsert_int_field
+            "completed_at_us"
+            (event_elapsed_us ~command_started_at)
+            fields)
+          | other -> other
+        )
+    );
   print "\n"
 
 let run = fun ~workspace matches ->
@@ -220,36 +224,34 @@ let run = fun ~workspace matches ->
     Build.reset_json_clock ~started_at:command_started_at;
   let on_event (event: Riot_build.bench_event) =
     match event with
-    | Riot_build.Build build_event ->
-        (
-          match output_mode with
-          | Build.Json -> Build.write_build_event_json build_event
-          | Build.Human -> (
-              match build_event with
-              | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
-              | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
-                ~mode:output_mode
-                ~target
-                ~host
-              | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-              | Riot_build.Streaming streaming_event -> Build.write_streaming_event
-                ~mode:output_mode
-                ~displayed_packages
-                ~progress
-                streaming_event
-            )
-        )
+    | Riot_build.Build build_event -> (
+        match output_mode with
+        | Build.Json -> Build.write_build_event_json build_event
+        | Build.Human -> (
+            match build_event with
+            | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+            | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+              ~mode:output_mode
+              ~target
+              ~host
+            | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+            | Riot_build.Streaming streaming_event -> Build.write_streaming_event
+              ~mode:output_mode
+              ~displayed_packages
+              ~progress
+              streaming_event
+          )
+      )
     | _ -> (
         match output_mode with
-        | Build.Json ->
-            Riot_build.bench_event_to_json event
-            |> Option.iter
-              (fun json ->
-                write_json_event
-                  ~command_started_at
-                  ~duration_us:(summary_duration_us ~command_started_at event)
-                  event
-                  json)
+        | Build.Json -> Riot_build.bench_event_to_json event
+        |> Option.iter
+          (fun json ->
+            write_json_event
+              ~command_started_at
+              ~duration_us:(summary_duration_us ~command_started_at event)
+              event
+              json)
         | Build.Human -> write_bench_event event
       )
   in

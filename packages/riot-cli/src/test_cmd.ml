@@ -15,9 +15,8 @@ let command =
                -p/--package to limit execution to one package. Omit to run all tests."; option "package"
           |> short 'p'
           |> long "package"
-          |> help "Run tests from a specific package"; flag "json"
-          |> long "json"
-          |> help "Emit machine-readable JSONL events"; flag "verbose"
+          |> help "Run tests from a specific package"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
+            "verbose"
           |> short 'v'
           |> long "verbose"
           |> help "Enable verbose output for tests"
@@ -64,12 +63,7 @@ type timing_summary = {
 }
 
 let empty_timing_summary = fun () ->
-  {
-    measured_duration_us = 0;
-    measured_test_count = 0;
-    slowest_tests = [];
-    failed_tests = [];
-  }
+  { measured_duration_us = 0; measured_test_count = 0; slowest_tests = []; failed_tests = [] }
 
 let take = fun limit values ->
   let rec loop remaining acc rest =
@@ -84,24 +78,20 @@ let format_duration_us = fun duration_us ->
   if duration_us < 1_000 then
     Int.to_string duration_us ^ "us"
   else if duration_us < 1_000_000 then
-    Float.to_string ~precision:2 (float_of_int duration_us /. 1_000.0) ^ "ms"
+    Float.to_string ~precision:2 (float_of_int duration_us /. 1000.0) ^ "ms"
   else
-    Float.to_string ~precision:2 (float_of_int duration_us /. 1_000_000.0) ^ "s"
+    Float.to_string ~precision:2 (float_of_int duration_us /. 1000000.0) ^ "s"
 
-let record_suite_timing = fun (timing: timing_summary) ~suite_label (summary: Riot_build.test_suite_summary) ->
+let record_suite_timing = fun (timing: timing_summary) ~suite_label (
+  summary: Riot_build.test_suite_summary
+) ->
   timing.measured_duration_us <- timing.measured_duration_us + summary.duration_us;
   timing.measured_test_count <- timing.measured_test_count + summary.total;
-  let slow_suite_tests : slow_test list =
-    summary.results
-    |> List.map
-      (fun (result: Riot_build.test_case_result) ->
-        ({
-          suite_label;
-          test_name = result.name;
-          duration_us = result.duration_us;
-        }: slow_test))
-  in
-  let slowest_tests : slow_test list =
+  let slow_suite_tests: slow_test list = summary.results
+  |> List.map
+    (fun (result: Riot_build.test_case_result) ->
+      ({ suite_label; test_name = result.name; duration_us = result.duration_us }: slow_test)) in
+  let slowest_tests: slow_test list =
     List.append timing.slowest_tests slow_suite_tests
     |> List.sort
       (fun (left: slow_test) (right: slow_test) ->
@@ -109,66 +99,65 @@ let record_suite_timing = fun (timing: timing_summary) ~suite_label (summary: Ri
     |> take 5
   in
   timing.slowest_tests <- slowest_tests;
-  timing.failed_tests <-
-    List.rev_append
-      (summary.results
-      |> List.filter_map
+  timing.failed_tests <- List.rev_append
+    (
+      summary.results |> List.filter_map
         (fun (result: Riot_build.test_case_result) ->
           match result.result with
-          | Riot_build.Failed message ->
-              Some ({
-                suite_label;
-                test_name = result.name;
-                message;
-                duration_us = result.duration_us;
-              }: failed_test)
+          | Riot_build.Failed message -> Some (
+            { suite_label; test_name = result.name; message; duration_us = result.duration_us }: failed_test
+          )
           | Riot_build.Passed
-          | Riot_build.Skipped -> None))
-      timing.failed_tests
+          | Riot_build.Skipped -> None)
+    )
+    timing.failed_tests
 
-let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing: timing_summary) ->
+let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing:timing_summary) ->
   println "";
   println label;
   println ("  Total test cases: " ^ Int.to_string total);
   println ("  Passed: " ^ Int.to_string passed);
   println ("  Failed: " ^ Int.to_string failed);
   println ("  Skipped: " ^ Int.to_string skipped);
-  if timing.measured_test_count > 0 then (
-    println ("  Measured test time: " ^ format_duration_us timing.measured_duration_us);
-    println
-      ("  Average per test: "
-      ^ format_duration_us (timing.measured_duration_us / timing.measured_test_count));
-    println "  Slowest tests:";
-    timing.slowest_tests |> List.iteri
-      (fun idx (test: slow_test) ->
-        println
-          ("    "
-          ^ Int.to_string (idx + 1)
-          ^ ". "
-          ^ test.suite_label
-          ^ " :: "
-          ^ test.test_name
-          ^ " ("
-          ^ format_duration_us test.duration_us
-          ^ ")"))
-  );
-  if not (List.is_empty timing.failed_tests) then (
-    println "  Failed tests:";
-    timing.failed_tests |> List.rev |> List.iteri
-      (fun idx (test: failed_test) ->
-        println
-          ("    "
-          ^ Int.to_string (idx + 1)
-          ^ ". "
-          ^ test.suite_label
-          ^ " :: "
-          ^ test.test_name
-          ^ " ("
-          ^ format_duration_us test.duration_us
-          ^ ")");
-        if not (String.equal test.message "") then
-          println ("       " ^ test.message))
-  )
+  if timing.measured_test_count > 0 then
+    (
+      println ("  Measured test time: " ^ format_duration_us timing.measured_duration_us);
+      println
+        ("  Average per test: "
+        ^ format_duration_us (timing.measured_duration_us / timing.measured_test_count));
+      println "  Slowest tests:";
+      timing.slowest_tests
+      |> List.iteri
+        (fun idx (test: slow_test) ->
+          println
+            ("    "
+            ^ Int.to_string (idx + 1)
+            ^ ". "
+            ^ test.suite_label
+            ^ " :: "
+            ^ test.test_name
+            ^ " ("
+            ^ format_duration_us test.duration_us
+            ^ ")"))
+    );
+  if not (List.is_empty timing.failed_tests) then
+    (
+      println "  Failed tests:";
+      timing.failed_tests |> List.rev |> List.iteri
+        (fun idx (test: failed_test) ->
+          println
+            ("    "
+            ^ Int.to_string (idx + 1)
+            ^ ". "
+            ^ test.suite_label
+            ^ " :: "
+            ^ test.test_name
+            ^ " ("
+            ^ format_duration_us test.duration_us
+            ^ ")");
+          if not (String.equal test.message "") then
+            println ("       " ^ test.message))
+    )
 
 let event_elapsed_us = fun ~command_started_at ->
   Time.Instant.elapsed command_started_at |> Time.Duration.to_micros
@@ -179,10 +168,14 @@ let json_int_field = fun name fields ->
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
-  let filtered = List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields in
+  let filtered =
+    List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields
+  in
   filtered @ [ (name, Data.Json.Int value) ]
 
-let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.test_event) (json: Data.Json.t) ->
+let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.test_event) (
+  json: Data.Json.t
+) ->
   match json with
   | Data.Json.Object fields ->
       let elapsed_us = event_elapsed_us ~command_started_at in
@@ -194,20 +187,15 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Riot_build.t
       let fields = upsert_int_field "duration_us" duration_us fields in
       let fields =
         match event with
-        | Riot_build.RunningSuite _ ->
-            upsert_int_field "started_at_us" elapsed_us fields
-        | Riot_build.SuiteCompleted _ ->
-            fields
-            |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Riot_build.Summary _ ->
-            fields
-            |> upsert_int_field "started_at_us" 0
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Riot_build.NoSuitesFound _ ->
-            upsert_int_field "completed_at_us" elapsed_us fields
-        | Riot_build.Build _ ->
-            fields
+        | Riot_build.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
+        | Riot_build.SuiteCompleted _ -> fields
+        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Riot_build.Summary _ -> fields
+        |> upsert_int_field "started_at_us" 0
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Riot_build.NoSuitesFound _ -> upsert_int_field "completed_at_us" elapsed_us fields
+        | Riot_build.Build _ -> fields
       in
       Data.Json.Object fields
   | other -> other
@@ -221,29 +209,36 @@ let summary_duration_us = fun ~command_started_at (event: Riot_build.test_event)
   | Riot_build.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
-let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (event: Riot_build.test_event) ->
+let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
+  event: Riot_build.test_event
+) ->
   match event with
   | Riot_build.RunningSuite suite ->
       Some (Some suite)
   | Riot_build.SuiteCompleted { summary; _ } ->
-      if summary.total > 0 then (
-        pending_suite
-        |> Option.iter (fun suite ->
-          Riot_build.test_event_to_json (Riot_build.RunningSuite suite)
+      if summary.total > 0 then
+        (
+          pending_suite
+          |> Option.iter
+            (fun suite ->
+              Riot_build.test_event_to_json (Riot_build.RunningSuite suite)
+              |> Option.iter
+                (fun json ->
+                  write_json_event
+                    ~command_started_at
+                    ~duration_us:None (Riot_build.RunningSuite suite)
+                    json));
+          Riot_build.test_event_to_json event
           |> Option.iter
             (fun json ->
-              write_json_event ~command_started_at ~duration_us:None (Riot_build.RunningSuite suite) json)
-        );
-        Riot_build.test_event_to_json event
-        |> Option.iter
-          (fun json ->
-            write_json_event
-              ~command_started_at
-              ~duration_us:(summary_duration_us ~command_started_at event)
-              event
-              json);
-        Some None
-      ) else
+              write_json_event
+                ~command_started_at
+                ~duration_us:(summary_duration_us ~command_started_at event)
+                event
+                json);
+          Some None
+        )
+      else
         Some None
   | _ ->
       Riot_build.test_event_to_json event
@@ -256,13 +251,11 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (eve
             json);
       Some None
 
-let find_suite_source_path = fun ~(workspace: Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
-  workspace.packages
-  |> List.find_map
+let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
+  workspace.packages |> List.find_map
     (fun (pkg: Riot_model.Package.t) ->
       if String.equal pkg.name suite.package_name then
-        pkg.binaries
-        |> List.find_map
+        pkg.binaries |> List.find_map
           (fun (bin: Riot_model.Package.binary) ->
             if String.equal bin.name suite.suite_name then
               Some Path.(pkg.path / bin.path)
@@ -271,7 +264,7 @@ let find_suite_source_path = fun ~(workspace: Riot_model.Workspace.t) (suite: Ri
       else
         None)
 
-let suite_source_label = fun ~(workspace: Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
+let suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
   match find_suite_source_path ~workspace suite with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -280,7 +273,7 @@ let suite_source_label = fun ~(workspace: Riot_model.Workspace.t) (suite: Riot_b
     )
   | None -> suite.package_name ^ "/" ^ suite.suite_name
 
-let print_suite_header = fun ~(workspace: Riot_model.Workspace.t) (suite: Riot_build.suite_binary) total ->
+let print_suite_header = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) total ->
   println "";
   println ("     Running " ^ suite_source_label ~workspace suite);
   println "";
@@ -326,23 +319,25 @@ let print_suite_footer = fun (summary: Riot_build.test_suite_summary) ->
     ^ Int.to_string summary.skipped
     ^ " skipped")
 
-let print_suite_results = fun ~(workspace: Riot_model.Workspace.t) ~verbose ~(suite: Riot_build.suite_binary) ~stdout ~stderr (summary: Riot_build.test_suite_summary) ->
-  if summary.total > 0 then (
-    print_suite_header ~workspace suite summary.total;
-    summary.results |> List.iter print_test_result;
-    print_suite_footer summary;
-    if verbose > 0 then
-      print_command_output Command.{ stdout; stderr; status = 0 }
-  )
+let print_suite_results = fun ~(workspace:Riot_model.Workspace.t) ~verbose ~(suite:Riot_build.suite_binary) ~stdout ~stderr (
+  summary: Riot_build.test_suite_summary
+) ->
+  if summary.total > 0 then
+    (
+      print_suite_header ~workspace suite summary.total;
+      summary.results |> List.iter print_test_result;
+      print_suite_footer summary;
+      if verbose > 0 then
+        print_command_output Command.{ stdout; stderr; status = 0 }
+    )
 
-let write_test_event = fun ~(workspace: Riot_model.Workspace.t) ~(timing: timing_summary) ~verbose (event: Riot_build.test_event) ->
+let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_summary) ~verbose (
+  event: Riot_build.test_event
+) ->
   match event with
-  | Riot_build.Build _ ->
-      ()
-  | Riot_build.NoSuitesFound { package_name; suite_name } ->
-      print_empty_hint package_name suite_name
-  | Riot_build.RunningSuite _ ->
-      ()
+  | Riot_build.Build _ -> ()
+  | Riot_build.NoSuitesFound { package_name; suite_name } -> print_empty_hint package_name suite_name
+  | Riot_build.RunningSuite _ -> ()
   | Riot_build.SuiteCompleted {
     suite;
     stdout;
@@ -353,8 +348,13 @@ let write_test_event = fun ~(workspace: Riot_model.Workspace.t) ~(timing: timing
       if summary.total > 0 then
         record_suite_timing timing ~suite_label:(suite_source_label ~workspace suite) summary;
       print_suite_results ~workspace ~verbose ~suite ~stdout ~stderr summary
-  | Riot_build.Summary { total; passed; failed; skipped; failed_tests = _ } ->
-      print_summary ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
+  | Riot_build.Summary {
+    total;
+    passed;
+    failed;
+    skipped;
+    failed_tests=_
+  } -> print_summary ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
 
 let write_test_error = fun err -> println ("error: " ^ Riot_build.test_error_message err)
 
@@ -364,11 +364,17 @@ let write_test_error_json = fun ~command_started_at err ->
     ("message", Data.Json.String (Riot_build.test_error_message err));
   ] in
   print
-    (Data.Json.to_string
-      (match event_json with
-      | Data.Json.Object fields ->
-          Data.Json.Object (upsert_int_field "completed_at_us" (event_elapsed_us ~command_started_at) fields)
-      | other -> other));
+    (
+      Data.Json.to_string
+        (
+          match event_json with
+          | Data.Json.Object fields -> Data.Json.Object (upsert_int_field
+            "completed_at_us"
+            (event_elapsed_us ~command_started_at)
+            fields)
+          | other -> other
+        )
+    );
   print "\n"
 
 let run = fun ~workspace matches ->
@@ -394,31 +400,31 @@ let run = fun ~workspace matches ->
     Build.reset_json_clock ~started_at:command_started_at;
   let on_event (event: Riot_build.test_event) =
     match event with
-    | Riot_build.Build build_event ->
-        (
-          match output_mode with
-          | Build.Json -> Build.write_build_event_json build_event
-          | Build.Human -> (
-              match build_event with
-              | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
-              | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
-                ~mode:output_mode
-                ~target
-                ~host
-              | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-              | Riot_build.Streaming streaming_event -> Build.write_streaming_event
-                ~mode:output_mode
-                ~displayed_packages
-                ~progress
-                streaming_event
-            )
-        )
+    | Riot_build.Build build_event -> (
+        match output_mode with
+        | Build.Json -> Build.write_build_event_json build_event
+        | Build.Human -> (
+            match build_event with
+            | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+            | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+              ~mode:output_mode
+              ~target
+              ~host
+            | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+            | Riot_build.Streaming streaming_event -> Build.write_streaming_event
+              ~mode:output_mode
+              ~displayed_packages
+              ~progress
+              streaming_event
+          )
+      )
     | _ -> (
         match output_mode with
-        | Build.Json ->
-            pending_json_suite :=
-              write_test_event_json ~command_started_at ~pending_suite:!pending_json_suite event
-              |> Option.unwrap_or ~default:None
+        | Build.Json -> pending_json_suite := write_test_event_json
+          ~command_started_at
+          ~pending_suite:!pending_json_suite
+          event
+        |> Option.unwrap_or ~default:None
         | Build.Human -> write_test_event ~workspace ~timing ~verbose event
       )
   in

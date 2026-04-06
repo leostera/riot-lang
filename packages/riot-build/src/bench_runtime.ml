@@ -404,43 +404,45 @@ let bench_event_to_json = function
             comparison.speedup_ratios)
         );
       ] in
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "BenchSuiteCompleted");
-        ("package", Data.Json.String suite.package_name);
-        ("suite", Data.Json.String suite.suite_name);
-        ("status", Data.Json.Int status);
-        ("stdout", Data.Json.String stdout);
-        ("stderr", Data.Json.String stderr);
-        (
-          "started_at_us",
-          match started_at_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Null
-        );
-        (
-          "completed_at_us",
-          match completed_at_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Null
-        );
-        (
-          "duration_us",
-          match duration_us with
-          | Some value -> Data.Json.Int value
-          | None -> Data.Json.Null
-        );
-        ("benchmarks", Data.Json.Array (List.map result_to_json results));
-        ("comparisons", Data.Json.Array (List.map comparison_to_json comparisons));
-        (
-          "summary",
-          Data.Json.Object [
-            ("total", Data.Json.Int summary.total);
-            ("completed", Data.Json.Int summary.completed);
-            ("skipped", Data.Json.Int summary.skipped);
-            ("failed", Data.Json.Int summary.failed);
-          ]
-        );
-      ])
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "BenchSuiteCompleted");
+          ("package", Data.Json.String suite.package_name);
+          ("suite", Data.Json.String suite.suite_name);
+          ("status", Data.Json.Int status);
+          ("stdout", Data.Json.String stdout);
+          ("stderr", Data.Json.String stderr);
+          (
+            "started_at_us",
+            match started_at_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Null
+          );
+          (
+            "completed_at_us",
+            match completed_at_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Null
+          );
+          (
+            "duration_us",
+            match duration_us with
+            | Some value -> Data.Json.Int value
+            | None -> Data.Json.Null
+          );
+          ("benchmarks", Data.Json.Array (List.map result_to_json results));
+          ("comparisons", Data.Json.Array (List.map comparison_to_json comparisons));
+          (
+            "summary",
+            Data.Json.Object [
+              ("total", Data.Json.Int summary.total);
+              ("completed", Data.Json.Int summary.completed);
+              ("skipped", Data.Json.Int summary.skipped);
+              ("failed", Data.Json.Int summary.failed);
+            ]
+          );
+        ]
+      )
   | Summary { total; completed; skipped; failed } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BenchSummary");

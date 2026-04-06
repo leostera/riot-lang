@@ -101,10 +101,9 @@ let test_run_tests_json_includes_timing_fields = fun _ctx ->
     in
     let tests_have_duration =
       match Data.Json.get_field "tests" json with
-      | Some (Data.Json.Array tests) ->
-          List.for_all
-            (fun test_json -> has_int_field "duration_us" test_json)
-            tests
+      | Some (Data.Json.Array tests) -> List.for_all
+        (fun test_json -> has_int_field "duration_us" test_json)
+        tests
       | _ -> false
     in
     let summary_has_duration =

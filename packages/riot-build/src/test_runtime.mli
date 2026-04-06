@@ -53,13 +53,7 @@ type test_event =
       duration_us: int option;
       summary: test_suite_summary
     }
-  | Summary of {
-      total: int;
-      passed: int;
-      failed: int;
-      skipped: int;
-      failed_tests: failed_test list
-    }
+  | Summary of { total: int; passed: int; failed: int; skipped: int; failed_tests: failed_test list }
 type test_error =
   | BuildFailed of Build_runtime.build_error
   | ClientError of Client.error

@@ -101,10 +101,10 @@ let hex_digit = fun value ->
 
 let add_unicode_escape = fun buffer code ->
   Buffer.add_string buffer "\\u";
-  Buffer.add_char buffer (hex_digit ((code lsr 12) land 0xF));
-  Buffer.add_char buffer (hex_digit ((code lsr 8) land 0xF));
-  Buffer.add_char buffer (hex_digit ((code lsr 4) land 0xF));
-  Buffer.add_char buffer (hex_digit (code land 0xF))
+  Buffer.add_char buffer (hex_digit ((code lsr 12) land 0xf));
+  Buffer.add_char buffer (hex_digit ((code lsr 8) land 0xf));
+  Buffer.add_char buffer (hex_digit ((code lsr 4) land 0xf));
+  Buffer.add_char buffer (hex_digit (code land 0xf))
 
 let escape_string = fun s ->
   let buffer = Buffer.create (String.length s * 2) in
@@ -232,34 +232,35 @@ let of_string = fun str ->
     advance ();
     (* skip opening quote *)
     let buffer = Buffer.create 16 in
-    let hex_value = fun c ->
+    let hex_value c =
       match c with
       | '0' .. '9' -> Some (Char.code c - Char.code '0')
       | 'a' .. 'f' -> Some (10 + Char.code c - Char.code 'a')
       | 'A' .. 'F' -> Some (10 + Char.code c - Char.code 'A')
       | _ -> None
     in
-    let parse_unicode_escape = fun () ->
+    let parse_unicode_escape () =
       if !pos + 4 >= len then
         raise_error (Unterminated_string { position = !pos })
       else
         let decode_at index =
           match hex_value str.[index] with
           | Some value -> value
-          | None ->
-              raise_error
-                (Unexpected_character {
-                  position = index;
-                  character = str.[index];
-                  expected = "hex digit"
-                })
+          | None -> raise_error
+            (Unexpected_character {
+              position = index;
+              character = str.[index];
+              expected = "hex digit"
+            })
         in
-        let code =
-          (decode_at (!pos + 1) lsl 12)
-          lor (decode_at (!pos + 2) lsl 8)
-          lor (decode_at (!pos + 3) lsl 4)
-          lor decode_at (!pos + 4)
-        in
+        let code = (decode_at (!pos + 1) lsl 12)
+          lor
+          (decode_at (!pos + 2) lsl 8)
+          lor
+          (decode_at (!pos + 3) lsl 4)
+          lor
+          decode_at
+          (!pos + 4) in
         advance ();
         advance ();
         advance ();
@@ -305,7 +306,8 @@ let of_string = fun str ->
               | 't' ->
                   Buffer.add_char buffer '\t';
                   advance ()
-              | 'u' -> parse_unicode_escape ()
+              | 'u' ->
+                  parse_unicode_escape ()
               | c ->
                   Buffer.add_char buffer c;
                   advance ()

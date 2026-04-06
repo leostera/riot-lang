@@ -62,12 +62,10 @@ let test_parse_string_with_escapes = fun _ctx ->
 
 let test_parse_string_with_unicode_escape = fun _ctx ->
   match Json.of_string {|"\u0000\t\u001F"|} with
-  | Ok (Json.String s) when
-      String.length s = 3
-      && Char.code s.[0] = 0
-      && Char.code s.[1] = 9
-      && Char.code s.[2] = 31 ->
-      Ok ()
+  | Ok (Json.String s) when String.length s = 3
+  && Char.code s.[0] = 0
+  && Char.code s.[1] = 9
+  && Char.code s.[2] = 31 -> Ok ()
   | _ -> Error "Failed to parse string with unicode escapes"
 
 let test_parse_empty_string = fun _ctx ->
@@ -145,7 +143,7 @@ let test_serialize_string = fun _ctx ->
     Error "Failed to serialize string"
 
 let test_serialize_string_escapes_control_characters = fun _ctx ->
-  let serialized = Json.to_string (Json.string ("\000\t\031")) in
+  let serialized = Json.to_string (Json.string "\000\t\031") in
   if String.equal serialized {|"\u0000\t\u001F"|} then
     Ok ()
   else
@@ -182,7 +180,7 @@ let test_roundtrip = fun _ctx ->
   | _ -> Error "Roundtrip failed"
 
 let test_roundtrip_control_characters = fun _ctx ->
-  let original = Json.obj [ ("stdout", Json.string ("\000\t\031")) ] in
+  let original = Json.obj [ ("stdout", Json.string "\000\t\031") ] in
   let serialized = Json.to_string original in
   match Json.of_string serialized with
   | Ok parsed when parsed = original -> Ok ()
