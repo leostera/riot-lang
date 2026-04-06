@@ -30,9 +30,6 @@ val run:
     packages and persists them under the workspace-local type cache rooted in
     the workspace target directory. When [package_names] is empty, all workspace
     member packages are warmed. Failures are intentionally swallowed so callers
-    such as [riot build] can keep this as a non-fatal post-build step. *)
-val populate_workspace_typings:
-  workspace:Workspace.t ->
-  package_names:string list ->
-  unit ->
-  unit
+    can keep this as a best-effort cache refresh instead of a fatal command
+    step. *)
+val populate_workspace_typings: workspace:Workspace.t -> package_names:string list -> unit -> unit
