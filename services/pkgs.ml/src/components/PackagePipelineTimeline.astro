@@ -94,7 +94,7 @@ const stageStates = stages.map((stage) => ({
                       ? "border border-border bg-background"
                       : "bg-emerald-600 dark:bg-emerald-500",
                   ]}
-                  aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                  aria-hidden="true"
                 />
                 {
                   index < stageStates.length - 1 ? (
@@ -145,7 +145,7 @@ const stageStates = stages.map((stage) => ({
                             ? "border border-border bg-background"
                             : "bg-emerald-600 dark:bg-emerald-500",
                         ]}
-                        aria-label={`${stage.label} ${stage.event === null ? "pending" : "completed"}`}
+                        aria-hidden="true"
                       />
 
                       <span

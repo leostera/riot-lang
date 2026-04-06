@@ -81,9 +81,14 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
                     </span>
                     {
                       targetHref ? (
-                        <a href={targetHref} class="min-w-0 text-sm font-medium text-foreground hover:text-primary">
-                          {packageLabel(event)}
-                        </a>
+                        <>
+                          <span class="min-w-0 text-sm font-medium text-foreground md:hidden">
+                            {packageLabel(event)}
+                          </span>
+                          <a href={targetHref} class="hidden min-w-0 text-sm font-medium text-foreground hover:text-primary md:inline-flex">
+                            {packageLabel(event)}
+                          </a>
+                        </>
                       ) : (
                         <span class="min-w-0 text-sm font-medium text-foreground">
                           {packageLabel(event)}
@@ -377,7 +382,7 @@ const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "
       ? `<div class="grid gap-2"><div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Facts</div><div class="flex flex-wrap gap-2 text-sm text-muted-foreground">${facts.map((fact) => `<span class="rounded-sm border border-border bg-muted px-2 py-0.5">${escapeHtml(fact)}</span>`).join("")}</div></div>`
       : "";
     const packageMarkup = href
-      ? `<a href="${escapeHtml(href)}" class="min-w-0 text-sm font-medium text-foreground hover:text-primary">${escapeHtml(packageLabel(event))}</a>`
+      ? `<span class="min-w-0 text-sm font-medium text-foreground md:hidden">${escapeHtml(packageLabel(event))}</span><a href="${escapeHtml(href)}" class="hidden min-w-0 text-sm font-medium text-foreground hover:text-primary md:inline-flex">${escapeHtml(packageLabel(event))}</a>`
       : `<span class="min-w-0 text-sm font-medium text-foreground">${escapeHtml(packageLabel(event))}</span>`;
     const inspectMarkup = href
       ? `<div class="grid gap-1 sm:col-span-2"><dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Inspect</dt><dd><a href="${escapeHtml(href)}" class="text-sm font-medium text-primary hover:text-foreground">Open package activity</a></dd></div>`

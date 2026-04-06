@@ -139,6 +139,9 @@ export function secondaryFacts(event: RegistryEventRecord): string[] {
   const latest = event.payload.latest;
   const attemptCount = event.payload.attempt_count;
   const runKind = event.payload.run_kind;
+  const exitCode = event.payload.exit_code;
+  const jsonEventCount = event.payload.json_event_count;
+  const lastJsonEventType = event.payload.last_json_event_type;
 
   if (typeof dependencyCount === "number" && Number.isFinite(dependencyCount)) {
     facts.push(`${dependencyCount} deps`);
@@ -150,6 +153,18 @@ export function secondaryFacts(event: RegistryEventRecord): string[] {
 
   if (typeof runKind === "string" && runKind.length > 0) {
     facts.push(runKind);
+  }
+
+  if (typeof exitCode === "number" && Number.isFinite(exitCode)) {
+    facts.push(`exit ${exitCode}`);
+  }
+
+  if (typeof jsonEventCount === "number" && Number.isFinite(jsonEventCount) && jsonEventCount > 0) {
+    facts.push(`${jsonEventCount} json`);
+  }
+
+  if (typeof lastJsonEventType === "string" && lastJsonEventType.length > 0) {
+    facts.push(lastJsonEventType);
   }
 
   if (typeof attemptCount === "number" && Number.isFinite(attemptCount)) {

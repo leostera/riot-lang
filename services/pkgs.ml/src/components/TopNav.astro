@@ -22,30 +22,30 @@ const loginUrl = buildGitHubLoginUrl(currentUrl);
 const logoutUrl = buildLogoutUrl(currentUrl);
 ---
 
-<header class="border-b border-border bg-background/95">
-  <div class="mx-auto grid w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_auto]">
-    <a href="/" class="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+<header class="relative z-40 border-b border-border bg-background/95">
+  <div class="mx-auto flex w-full max-w-6xl min-w-0 flex-nowrap items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
+    <a href="/" class="flex min-w-0 shrink items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
       <span aria-hidden="true">📦</span>
-      <span>pkgs.ml</span>
+      <span class="truncate">pkgs.ml</span>
     </a>
 
     {
       showSearch ? (
-        <div class="hidden min-w-0 items-center gap-4 md:flex md:justify-self-center md:w-full">
-          <div class="min-w-0 md:max-w-[400px] md:w-full">
+        <div class="hidden min-w-0 flex-1 items-center justify-center gap-4 lg:flex">
+          <div class="min-w-0 w-full max-w-xl">
             <SearchForm
               query={searchQuery}
               placeholder="Search packages, descriptions, owners, or repositories..."
             />
           </div>
-          <nav class="hidden items-center gap-3 text-sm text-muted-foreground lg:flex">
+          <nav class="hidden shrink-0 items-center gap-3 text-sm text-muted-foreground xl:flex">
             <a href="/activity" class="hover:text-foreground">Activity</a>
             <a href="/stats" class="hover:text-foreground">Stats</a>
             <a href="/llms.txt" class="hover:text-foreground">LLMs</a>
           </nav>
         </div>
       ) : (
-        <nav class="hidden items-center gap-3 text-sm text-muted-foreground md:flex md:justify-self-center">
+        <nav class="hidden min-w-0 flex-1 items-center justify-center gap-3 text-sm text-muted-foreground lg:flex">
           <a href="/activity" class="hover:text-foreground">Activity</a>
           <a href="/stats" class="hover:text-foreground">Stats</a>
           <a href="/llms.txt" class="hover:text-foreground">LLMs</a>
@@ -53,13 +53,12 @@ const logoutUrl = buildLogoutUrl(currentUrl);
       )
     }
 
-    <div class="ml-auto flex items-center gap-2">
-      <details class="relative md:hidden">
+    <details class="relative ml-auto shrink-0 lg:hidden">
         <summary
           class:list={[
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "list-none rounded-md px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer",
-            session.authenticated && session.user ? "h-9 w-9 p-0" : "",
+            session.authenticated && session.user
+              ? "flex h-9 w-9 list-none items-center justify-center overflow-hidden rounded-full p-0 text-foreground shadow-none outline-none transition-colors hover:opacity-90 [&::-webkit-details-marker]:hidden cursor-pointer"
+              : `${buttonVariants({ variant: "outline", size: "sm" })} list-none rounded-md px-2.5 [&::-webkit-details-marker]:hidden cursor-pointer`,
           ]}
           aria-label={session.authenticated && session.user ? "Open account menu" : "Open navigation menu"}
         >
@@ -68,7 +67,8 @@ const logoutUrl = buildLogoutUrl(currentUrl);
               <GitHubAvatar
                 login={session.user.github_login}
                 avatarUrl={session.user.github_avatar_url}
-                size="sm"
+                size="md"
+                showLogin={false}
               />
             ) : (
               <span aria-hidden="true" class="text-base leading-none">☰</span>
@@ -136,16 +136,16 @@ const logoutUrl = buildLogoutUrl(currentUrl);
             }
           </div>
         </div>
-      </details>
+    </details>
 
-      <div class="hidden items-center gap-2 md:flex">
+    <div class="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
         <button
           type="button"
           class:list={[
             buttonVariants({ variant: "outline", size: "icon-sm" }),
             "rounded-md text-muted-foreground",
           ]}
-          aria-label="Toggle light and dark theme"
+          aria-label="Toggle theme"
           data-theme-toggle
         >
           <span aria-hidden="true">☼</span>
@@ -164,7 +164,8 @@ const logoutUrl = buildLogoutUrl(currentUrl);
                 <GitHubAvatar
                   login={session.user.github_login}
                   avatarUrl={session.user.github_avatar_url}
-                  size="sm"
+                  size="md"
+                  showLogin={false}
                 />
               </summary>
 
@@ -205,7 +206,6 @@ const logoutUrl = buildLogoutUrl(currentUrl);
             </a>
           )
         }
-      </div>
     </div>
   </div>
 </header>

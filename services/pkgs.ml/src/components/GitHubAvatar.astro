@@ -17,29 +17,29 @@ const {
 
 const avatarClass =
   size === "sm"
-    ? "h-5 w-5 text-[10px]"
-    : "h-8 w-8 text-xs";
+    ? "size-5 text-[10px]"
+    : "size-8 text-xs";
 const labelClass = size === "sm" ? "text-xs" : "text-sm";
+const rootClass = showLogin ? "inline-flex items-center gap-2" : "inline-flex shrink-0 items-center";
+const imageClass = `${avatarClass} block shrink-0 rounded-full border border-border object-cover aspect-square`;
+const placeholderClass = `${avatarClass} inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-muted font-medium uppercase text-muted-foreground aspect-square`;
 ---
 
 {
   href ? (
-    <a href={href} class="inline-flex items-center gap-2 hover:text-primary">
+    <a href={href} class:list={[rootClass, "hover:text-primary"]}>
       {
         avatarUrl ? (
           <img
             src={avatarUrl}
             alt={`@${login}`}
-            class:list={[avatarClass, "rounded-full border border-border object-cover"]}
+            class={imageClass}
             loading="lazy"
             referrerpolicy="no-referrer"
           />
         ) : (
           <span
-            class:list={[
-              avatarClass,
-              "inline-flex items-center justify-center rounded-full border border-border bg-muted font-medium uppercase text-muted-foreground",
-            ]}
+            class={placeholderClass}
             aria-hidden="true"
           >
             {login.slice(0, 1)}
@@ -53,22 +53,19 @@ const labelClass = size === "sm" ? "text-xs" : "text-sm";
       }
     </a>
   ) : (
-    <span class="inline-flex items-center gap-2">
+    <span class={rootClass}>
       {
         avatarUrl ? (
           <img
             src={avatarUrl}
             alt={`@${login}`}
-            class:list={[avatarClass, "rounded-full border border-border object-cover"]}
+            class={imageClass}
             loading="lazy"
             referrerpolicy="no-referrer"
           />
         ) : (
           <span
-            class:list={[
-              avatarClass,
-              "inline-flex items-center justify-center rounded-full border border-border bg-muted font-medium uppercase text-muted-foreground",
-            ]}
+            class={placeholderClass}
             aria-hidden="true"
           >
             {login.slice(0, 1)}
