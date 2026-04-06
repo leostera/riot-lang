@@ -27,14 +27,22 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
   | Std.Data.Toml.Table fields -> (
       match List.assoc_opt section_name fields with
       | Some (Std.Data.Toml.Table _ as value) -> Ok (canonicalize_toml_value value)
-      | Some _ -> Error ("manifest dependency section '["
-      ^ section_name
-      ^ "]' in '"
-      ^ Path.to_string manifest_path
-      ^ "' must be a table")
+      | Some _ -> Error (format
+        Format.[
+          str "manifest dependency section '[";
+          str section_name;
+          str "]' in '";
+          str (Path.to_string manifest_path);
+          str "' must be a table";
+        ])
       | None -> Ok (Std.Data.Toml.Table [])
     )
-  | _ -> Error ("manifest '" ^ Path.to_string manifest_path ^ "' must decode to a TOML table")
+  | _ -> Error (format
+    Format.[
+      str "manifest '";
+      str (Path.to_string manifest_path);
+      str "' must decode to a TOML table";
+    ])
 
 let load_manifest_toml = fun ~workspace_manager manifest_path ->
   match workspace_manager with
@@ -43,14 +51,23 @@ let load_manifest_toml = fun ~workspace_manager manifest_path ->
       let* source = Fs.read_to_string manifest_path
       |> Result.map_error
         (fun err ->
-          "failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ IO.error_message err) in
+          format
+            Format.[
+              str "failed to read manifest '";
+              str (Path.to_string manifest_path);
+              str "': ";
+              str (IO.error_message err);
+            ]) in
       Std.Data.Toml.parse source
       |> Result.map_error
         (fun err ->
-          "failed to parse manifest '"
-          ^ Path.to_string manifest_path
-          ^ "': "
-          ^ Std.Data.Toml.error_to_string err)
+          format
+            Format.[
+              str "failed to parse manifest '";
+              str (Path.to_string manifest_path);
+              str "': ";
+              str (Std.Data.Toml.error_to_string err);
+            ])
 
 let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
   let* toml = load_manifest_toml ~workspace_manager manifest_path in

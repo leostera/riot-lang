@@ -38,7 +38,8 @@ let to_domain = fun addr ->
 let of_unix = fun sockaddr ->
   match sockaddr with
   | Unix.ADDR_INET (host, port) -> tcp (Ipaddr.of_unix host) port
-  | Unix.ADDR_UNIX addr -> panic ("unsupported unix addresses: " ^ addr)
+  | Unix.ADDR_UNIX addr -> panic
+    (Format.format Format.[ str "unsupported unix addresses: "; str addr ])
 
 let to_string = fun t -> t
 

@@ -9,14 +9,20 @@
 
     ```ocaml open Std
 
-    print "Hello, %s!" "world" (* Prints: Hello, world! *)
+    print "Hello, world!"
 
-    println "Value: %d" 42 (* Prints: Value: 42\n *) ```
+    println "Value: 42" ```
 
     String formatting:
 
-    ```ocaml let msg = format "Error at line %d: %s" 42 "syntax error" in (* msg
-    = "Error at line 42: syntax error" *) ```
+    ```ocaml
+    let msg = format Format.[
+      str "Error at line ";
+      int 42;
+      str ": syntax error";
+    ] in
+    (* msg = "Error at line 42: syntax error" *)
+    ```
 
     Development helpers:
 

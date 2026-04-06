@@ -49,13 +49,13 @@ let error_of_code = function
   | 2 -> Some Need_dictionary
   | 3 -> Some Buffer_error
   | 4 -> Some Out_of_memory
-  | code -> Some (Unknown_error ("unknown gzip error code " ^ Int.to_string code))
+  | code -> Some (Unknown_error (Format.format Format.[ str "unknown gzip error code "; int code ]))
 
 let status_of_code = function
   | 0 -> Need_input
   | 1 -> Need_output
   | 2 -> Finished
-  | code -> panic ("invalid gzip status code " ^ Int.to_string code)
+  | code -> panic (Format.format Format.[ str "invalid gzip status code "; int code ])
 
 let flush_to_code = function
   | No_flush -> 0
@@ -64,7 +64,7 @@ let flush_to_code = function
 
 let check_slice = fun label buffer ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buffer then
-    Stdlib.invalid_arg (label ^ ": invalid slice")
+    Stdlib.invalid_arg (Format.format Format.[ str label; str ": invalid slice" ])
 
 let create_encoder = fun ?(level = (-1)) () ->
   try Ok (_create_encoder level) with

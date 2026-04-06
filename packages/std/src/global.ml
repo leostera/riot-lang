@@ -75,6 +75,6 @@ let ( ! ) = Kernel.Sync.Cell.get
 
 let ( := ) = Kernel.Sync.Cell.set
 
-let todo = fun msg -> panic ("TODO: " ^ msg)
+let todo = fun msg -> panic (format Format.[ str "TODO: "; str msg ])
 
 let unimplemented = fun () -> panic "unimplemented"

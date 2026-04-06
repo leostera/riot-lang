@@ -25,6 +25,7 @@
 19. Keep `Std.Bench.Cli` aligned with `Std.Test.Cli` for machine output. `run-benchmarks --json` should emit one final JSON object that captures per-benchmark results plus the suite summary so higher layers can aggregate without scraping pretty text.
 20. `Std.Test` JSON output should include per-test `duration_us` and suite-level `started_at_us`, `completed_at_us`, and `duration_us`. Use `Std.Time.Instant` for these monotonic offsets and durations rather than wall-clock timestamps.
 21. `Std.Bench` JSON output should include suite-level `started_at_us`, `completed_at_us`, and `duration_us` alongside the existing per-benchmark statistics, measured from `Std.Time.Instant`.
+22. Prefer `format Format.[ ... ]` for small diagnostic strings that stitch together primitives in `std`. Keep larger renderers and structured text generators on their own domain-specific builders instead of forcing everything through `Kernel.Format`.
 
 ## Validate
 

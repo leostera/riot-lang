@@ -24,4 +24,4 @@ let compare = Int.compare
 
 let to_int = fun t -> t
 
-let to_string = fun t -> "pid<" ^ (Int.to_string t) ^ ">"
+let to_string = fun t -> format Format.[ str "pid<"; int t; char '>' ]

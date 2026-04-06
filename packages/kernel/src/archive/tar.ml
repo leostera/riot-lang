@@ -62,11 +62,11 @@ let error_of_code = function
   | 3 -> Some (Invalid_state "invalid tar reader state")
   | 4 -> Some Unexpected_eof
   | 5 -> Some Out_of_memory
-  | code -> Some (Unknown_error ("unknown tar error code " ^ Int.to_string code))
+  | code -> Some (Unknown_error (Format.format Format.[ str "unknown tar error code "; int code ]))
 
 let check_slice = fun label buffer ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buffer then
-    Stdlib.invalid_arg (label ^ ": invalid slice")
+    Stdlib.invalid_arg (Format.format Format.[ str label; str ": invalid slice" ])
 
 let entry_kind_of_raw = fun kind other ->
   match kind with
@@ -75,7 +75,7 @@ let entry_kind_of_raw = fun kind other ->
   | 2 -> Symlink
   | 3 -> Hardlink
   | 4 -> Other (Option.unwrap_or other ~default:"")
-  | code -> panic ("invalid tar entry kind code " ^ Int.to_string code)
+  | code -> panic (Format.format Format.[ str "invalid tar entry kind code "; int code ])
 
 let header_of_raw = fun (path, kind, other, size, mode, link_target) ->
   {

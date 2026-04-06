@@ -59,34 +59,42 @@ let error_message = function
   | StartupFailed { error } ->
       Internal_server.error_message error
   | PackageNotFound { package_name; _ } ->
-      "Package '" ^ package_name ^ "' not found"
+      format Format.[ str "Package '"; str package_name; str "' not found" ]
   | PackagesNotFound { package_names; _ } ->
-      "Packages not found: " ^ String.concat ", " package_names
+      format Format.[ str "Packages not found: "; str (String.concat ", " package_names) ]
   | BuildFailed { errors } ->
       let render_error (result: Riot_executor.Package_builder.build_result) =
         match result.status with
-        | Riot_executor.Package_builder.Failed err -> result.package.name
-        ^ ": "
-        ^ Riot_executor.Package_builder.package_error_to_string err
-        | Riot_executor.Package_builder.Skipped { reason } -> result.package.name
-        ^ ": skipped ("
-        ^ reason
-        ^ ")"
+        | Riot_executor.Package_builder.Failed err -> format
+          Format.[
+            str result.package.name;
+            str ": ";
+            str (Riot_executor.Package_builder.package_error_to_string err);
+          ]
+        | Riot_executor.Package_builder.Skipped { reason } -> format
+          Format.[ str result.package.name; str ": skipped ("; str reason; char ')'; ]
         | Riot_executor.Package_builder.Built _
-        | Riot_executor.Package_builder.Cached _ -> result.package.name ^ ": build failed"
+        | Riot_executor.Package_builder.Cached _ -> format
+          Format.[ str result.package.name; str ": build failed" ]
       in
       (
         match errors with
         | [] -> "build failed"
         | [ result ] -> render_error result
-        | results -> "build failed:\n" ^ String.concat "\n" (List.map render_error results)
+        | results -> format
+          Format.[ str "build failed:\n"; str (String.concat "\n" (List.map render_error results)); ]
       )
   | PlanningFailed { reason } ->
-      "planning failed: " ^ reason
+      format Format.[ str "planning failed: "; str reason ]
   | CycleDetected { cycle_nodes } ->
-      "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
+      format Format.[ str "cyclic dependency detected: "; str (String.concat " -> " cycle_nodes) ]
   | BuildAlreadyRunning { lock_path } ->
-      "another riot build is already running (" ^ Path.to_string lock_path ^ ")"
+      format
+        Format.[
+          str "another riot build is already running (";
+          str (Path.to_string lock_path);
+          char ')'
+        ]
   | UnexpectedEvent { reason } ->
       reason
 
@@ -141,7 +149,8 @@ module BuildLock = struct
     ()
 
   let lock_failure = fun action path ->
-    Failure ("Failed to " ^ action ^ " build lock file at " ^ Path.to_string path)
+    Failure (format
+      Format.[ str "Failed to "; str action; str " build lock file at "; str (Path.to_string path) ])
 
   let rec retry = fun ?(announced = false) t ->
     if not announced then

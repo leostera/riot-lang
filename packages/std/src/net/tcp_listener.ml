@@ -38,6 +38,7 @@ let accept = fun ?timeout t ->
 let local_addr = fun t ->
   match Kernel.Net.Tcp_listener.local_addr t with
   | Ok addr -> addr
-  | Error err -> panic ("TcpListener.local_addr failed: " ^ IO.error_message err)
+  | Error err -> panic
+    (format Format.[ str "TcpListener.local_addr failed: "; str (IO.error_message err) ])
 
 let close = Kernel.Net.Tcp_listener.close

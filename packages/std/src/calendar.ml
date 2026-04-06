@@ -80,7 +80,7 @@ let dm = function
   | 10 -> 273
   | 11 -> 304
   | 12 -> 334
-  | m -> panic ("dm: invalid month " ^ string_of_int m)
+  | m -> panic (format Format.[ str "dm: invalid month "; int m ])
 
 (** Leap year adjustment for months after February *)
 let df = fun year month ->
@@ -113,7 +113,7 @@ let last_day_of_month = fun ~year ~month ->
         29
       else
         28
-  | m -> panic ("last_day_of_month: invalid month " ^ string_of_int m)
+  | m -> panic (format Format.[ str "last_day_of_month: invalid month "; int m ])
 
 (** {1 Date Validation} *)
 
@@ -134,12 +134,15 @@ let valid_date = fun year month day -> is_valid_date { year; month; day }
 let date_to_gregorian_days = fun { year; month; day } ->
   if not (is_valid_date { year; month; day }) then
     panic
-      ("date_to_gregorian_days: invalid date "
-      ^ string_of_int year
-      ^ "-"
-      ^ string_of_int month
-      ^ "-"
-      ^ string_of_int day)
+      (format
+        Format.[
+          str "date_to_gregorian_days: invalid date ";
+          int year;
+          char '-';
+          int month;
+          char '-';
+          int day;
+        ])
   else
     dy year + dm month + df year month + day - 1
 
@@ -250,12 +253,15 @@ let gregorian_seconds_to_naive = fun secs ->
 let day_of_week = fun ({ year; month; day } as date) ->
   if not (is_valid_date date) then
     panic
-      ("day_of_week: invalid date "
-      ^ string_of_int year
-      ^ "-"
-      ^ string_of_int month
-      ^ "-"
-      ^ string_of_int day)
+      (format
+        Format.[
+          str "day_of_week: invalid date ";
+          int year;
+          char '-';
+          int month;
+          char '-';
+          int day;
+        ])
   else
     let days = date_to_gregorian_days date in
     ((days + 5) mod 7) + 1
@@ -278,12 +284,15 @@ let gregorian_days_of_iso_w01_1 = fun year ->
 let iso_week_number = fun ({ year; month; day } as date) ->
   if not (is_valid_date date) then
     panic
-      ("iso_week_number: invalid date "
-      ^ string_of_int year
-      ^ "-"
-      ^ string_of_int month
-      ^ "-"
-      ^ string_of_int day);
+      (format
+        Format.[
+          str "iso_week_number: invalid date ";
+          int year;
+          char '-';
+          int month;
+          char '-';
+          int day;
+        ]);
   let d = date_to_gregorian_days date in
   let w01_1_year = gregorian_days_of_iso_w01_1 year in
   let w01_1_next_year = gregorian_days_of_iso_w01_1 (year + 1) in
@@ -312,7 +321,7 @@ let time_to_seconds = fun { hour; minute; second } ->
 
 let seconds_to_time = fun secs ->
   if secs < 0 || secs >= seconds_per_day then
-    panic ("seconds_to_time: seconds must be 0-86399, got " ^ string_of_int secs);
+    panic (format Format.[ str "seconds_to_time: seconds must be 0-86399, got "; int secs ]);
   let hour = secs / seconds_per_hour in
   let remaining = secs mod seconds_per_hour in
   let minute = remaining / seconds_per_minute in

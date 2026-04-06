@@ -3,6 +3,12 @@
 
 include Global0
 
+module Format = Format
+
+type format = Format.t
+
+let format = Format.format
+
 open IO
 
 (** Async-safe write to stdout using Fs.File.write which handles Would_block *)
@@ -37,10 +43,10 @@ let write_stderr = fun str ->
 let print = write_stdout
 
 (** Async-safe print to stdout with newline - never raises Sys_blocked_io *)
-let println = fun str -> write_stdout (str ^ "\n")
+let println = fun message -> write_stdout (format Format.[ str message; char '\n' ])
 
 (** Async-safe print to stderr - never raises Sys_blocked_io *)
 let eprint = write_stderr
 
 (** Async-safe print to stderr with newline - never raises Sys_blocked_io *)
-let eprintln = fun str -> write_stderr (str ^ "\n")
+let eprintln = fun message -> write_stderr (format Format.[ str message; char '\n' ])

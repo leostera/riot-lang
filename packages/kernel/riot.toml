@@ -10,6 +10,9 @@ keywords = ["ffi", "io", "primitives"]
 [riot.fix]
 rules = [ "-no-stdlib" ]
 
+[riot.fix.provider]
+rules = [ "prefer-format-over-string-concat" ]
+
 [lib]
 path = "src/kernel.ml"
 
@@ -38,3 +41,9 @@ ld_flags = ["-lssl", "-lcrypto", "-lpcre2-8", "-luuid", "-lz"]
 stdlib = "*"
 dynlink = "*"
 unix = "*"
+
+[dev-dependencies]
+std = { path = "../std", version = "*" }
+
+[build-dependencies]
+fixme = { path = "../fixme", version = "*" }

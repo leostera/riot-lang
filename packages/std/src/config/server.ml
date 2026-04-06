@@ -15,10 +15,11 @@ type error =
   | Patch_failed of { message: string }
 
 let error_to_string = function
-  | App_not_found { app } -> "App not found: " ^ app
-  | Load_failed { message } -> "Failed to load config: " ^ message
-  | Validation_failed { app; message } -> "Validation failed for [" ^ app ^ "]: " ^ message
-  | Patch_failed { message } -> "Patch failed: " ^ message
+  | App_not_found { app } -> format Format.[ str "App not found: "; str app ]
+  | Load_failed { message } -> format Format.[ str "Failed to load config: "; str message ]
+  | Validation_failed { app; message } -> format
+    Format.[ str "Validation failed for ["; str app; str "]: "; str message ]
+  | Patch_failed { message } -> format Format.[ str "Patch failed: "; str message ]
 
 let error_to_json = function
   | App_not_found { app } -> Data.Json.Object [
@@ -44,7 +45,7 @@ let error_to_json = function
 let load_and_validate_all_specs = fun provider ->
   let root_toml =
     match Provider.load provider with
-    | Error msg -> panic ("Failed to load config: " ^ msg)
+    | Error msg -> panic (format Format.[ str "Failed to load config: "; str msg ])
     | Ok toml -> toml
   in
   let specs = Spec.all_specs () in
@@ -59,7 +60,8 @@ let load_and_validate_all_specs = fun provider ->
       | Ok app_toml ->
           let validated =
             match Validator.validate spec app_toml with
-            | Error err -> panic ("Validation error for [" ^ app_name ^ "]: " ^ err)
+            | Error err -> panic
+              (format Format.[ str "Validation error for ["; str app_name; str "]: "; str err ])
             | Ok v -> v
           in
           HashMap.insert configs app_name validated |> ignore)
