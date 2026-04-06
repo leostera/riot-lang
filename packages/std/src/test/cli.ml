@@ -28,6 +28,15 @@ let run_tests_cmd =
       |> possible_values [ "tap"; "json"; "junit"; "pretty"; "minimal" ];
       flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
       option "concurrency" |> long "concurrency" |> help "Number of concurrent workers" |> default "1";
+      flag "small" |> long "small" |> help "Run only tests marked small";
+      flag "long" |> long "long" |> help "Run only tests marked long";
+      flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
+      option "small-timeout-ms"
+      |> long "small-timeout-ms"
+      |> help "Timeout to apply to tests marked small";
+      option "flaky-max-retries"
+      |> long "flaky-max-retries"
+      |> help "Retry budget for tests marked flaky";
       option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
     ]
 
@@ -64,35 +73,60 @@ let main = fun ~name ~tests ~args ->
           | Ok reporter ->
               let shuffle = get_flag sub_matches "shuffle" in
               let concurrency = get_int sub_matches "concurrency" |> Option.unwrap_or ~default:1 in
+              let small_only = get_flag sub_matches "small" in
+              let long_only = get_flag sub_matches "long" in
+              let flaky_only = get_flag sub_matches "flaky" in
               let query =
                 match get_one sub_matches "query" with
                 | Some query -> Some query
                 | None -> get_one sub_matches "pattern"
               in
-              let target =
-                match query with
-                | None -> Runner.All
-                | Some query -> Runner.(FilterBySubstring query)
-              in
-              let mode =
-                if shuffle then
-                  Runner.Shuffle
-                else
-                  Runner.Sequential
-              in
-              let config =
-                Runner.{
-                  concurrency;
-                  reporter;
-                  mode;
-                  target;
-                  suite_info;
-                }
-              in
-              let summary = Runner.run_tests ~config tests in
-              if summary.failed > 0 then
-                exit 1;
-              Ok ()
+              if small_only && long_only then
+                Error (Failure "Cannot combine --small and --long")
+              else
+                let size_filter =
+                  if small_only then
+                    Runner.Only_small
+                  else if long_only then
+                    Runner.Only_long
+                  else
+                    Runner.All_sizes
+                in
+                let small_test_timeout =
+                  get_int sub_matches "small-timeout-ms"
+                  |> Option.map Time.Duration.from_millis
+                in
+                let flaky_max_retries =
+                  get_int sub_matches "flaky-max-retries"
+                  |> Option.unwrap_or ~default:0
+                in
+                let target =
+                  Runner.{
+                    query;
+                    size_filter;
+                    flaky_only;
+                  }
+                in
+                let mode =
+                  if shuffle then
+                    Runner.Shuffle
+                  else
+                    Runner.Sequential
+                in
+                let config =
+                  Runner.{
+                    concurrency;
+                    reporter;
+                    mode;
+                    target;
+                    policy = { small_test_timeout; flaky_max_retries };
+                    suite_info;
+                  }
+                in
+                let summary = Runner.run_tests ~config tests in
+                if summary.failed > 0 then
+                  exit 1;
+                Ok ()
         )
       | _ ->
           let reporter =
@@ -103,7 +137,12 @@ let main = fun ~name ~tests ~args ->
               concurrency = 1;
               reporter;
               mode = Sequential;
-              target = All;
+              target = {
+                query = None;
+                size_filter = All_sizes;
+                flaky_only = false;
+              };
+              policy = default_policy;
               suite_info;
             }
           in

@@ -56,6 +56,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0036` - LSP Protocol Package and Riot Language Server
 - `RFD0037` - Code-Driven OCaml Documentation Generator
 - `RFD0038` - Riot Workspace Operational Config
+- `RFD0039` - Test Size and Flaky Policy
 
 ## Notes
 

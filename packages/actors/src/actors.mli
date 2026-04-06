@@ -103,6 +103,9 @@ module Process: sig
   (** Stop monitoring a process *)
   val demonitor: Monitor.t -> unit
 
+  (** Request that a process exit at its next scheduler boundary. *)
+  val kill: Pid.t -> reason:exit_reason -> unit
+
   (** Set flags for the currently running process. *)
   val set_flags: flag list -> unit
 end

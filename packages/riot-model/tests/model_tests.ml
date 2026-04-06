@@ -857,10 +857,12 @@ let test_workspace_operational_config_defaults_when_missing = fun _ctx ->
           if
             config.cache.keep_generations = 10
             && Int64.equal config.cache.max_size_bytes (Int64.mul 50L 1_073_741_824L)
+            && Option.is_none config.test.small_test_timeout
+            && config.test.flaky_max_retries = 0
           then
             Ok ()
           else
-            Error "expected missing .riot/config.toml to use built-in cache defaults")
+            Error "expected missing .riot/config.toml to use built-in operational defaults")
 
 let test_workspace_operational_config_parses_riot_cache = fun _ctx ->
   with_tempdir "riot_model_workspace_operational_config_parse"
@@ -888,6 +890,33 @@ max_size = "2 GiB"
             Ok ()
           else
             Error "expected .riot/config.toml to override cache policy")
+
+let test_workspace_operational_config_parses_riot_test = fun _ctx ->
+  with_tempdir "riot_model_workspace_operational_config_test"
+    (fun tmpdir ->
+      let riot_dir = Path.(tmpdir / Path.v ".riot") in
+      Result.expect (Fs.create_dir_all riot_dir) ~msg:"Failed to create .riot directory";
+      Result.expect
+        (
+          Fs.write
+            {|
+[riot.test]
+small_test_timeout = "500ms"
+flakey_max_retry = 3
+|}
+            Path.(riot_dir / Path.v "config.toml")
+        )
+        ~msg:"Failed to write .riot/config.toml";
+      match Riot_model.Workspace_operational_config.load ~workspace_root:tmpdir with
+      | Error err -> Error (Riot_model.Workspace_operational_config.message err)
+      | Ok config ->
+          if
+            config.test.small_test_timeout = Some (Time.Duration.from_millis 500)
+            && config.test.flaky_max_retries = 3
+          then
+            Ok ()
+          else
+            Error "expected .riot/config.toml to parse riot.test policy")
 
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun _ctx ->
   let profile = Riot_model.Profile.debug in
@@ -953,6 +982,7 @@ let tests =
     case "user config: saves default registry config" test_user_config_save_roundtrips_default_registry_config;
     case "workspace operational config: defaults when missing" test_workspace_operational_config_defaults_when_missing;
     case "workspace operational config: parses riot.cache" test_workspace_operational_config_parses_riot_cache;
+    case "workspace operational config: parses riot.test" test_workspace_operational_config_parses_riot_test;
     case "profile: debug defaults to native with debug symbols" test_debug_profile_defaults_to_native_with_debug_symbols;
     case "profile: release defaults to strict native optimization" test_release_profile_defaults_to_strict_native_optimization;
   ]

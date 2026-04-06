@@ -11,6 +11,7 @@
 5. Keep cooperative yielding process-local: manual `Actors.yield` calls and `Proc_state.run` effect stepping should spend the same process-owned reduction budget instead of separate domain-local counters.
 6. `actors` owns its package-provided `riot-fix` rules under `fix/`; keep those diagnostics aligned with scheduler fairness and cooperative yielding semantics.
 7. Placement classes now matter: `spawn` remains the normal migratable path, `spawn_pinned` must stay scheduler-sticky and non-stealable, and `spawn_blocked` must stay isolated from the normal worker pool.
+8. `Process.kill` is cooperative runtime cancellation, not arbitrary async preemption. Keep it as a scheduler-delivered exit request that wakes blocked actors and takes effect at a runtime boundary.
 
 ## Validate
 

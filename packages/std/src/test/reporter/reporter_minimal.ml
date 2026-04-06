@@ -7,6 +7,7 @@ let on_result = fun _idx (result: Test_result.t) ->
   match result.result with
   | Test_result.Passed -> print "."
   | Test_result.Failed _ -> print "F"
+  | Test_result.Timed_out _ -> print "T"
   | Test_result.Skipped -> print "S"
 
 let finalize = fun (summary: Test_result.summary) ->

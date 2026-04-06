@@ -15,7 +15,13 @@ let command =
                -p/--package to limit execution to one package. Omit to run all tests."; option "package"
           |> short 'p'
           |> long "package"
-          |> help "Run tests from a specific package"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
+          |> help "Run tests from a specific package"; flag "small"
+          |> long "small"
+          |> help "Run only tests marked small"; flag "long"
+          |> long "long"
+          |> help "Run only tests marked long"; flag "flaky"
+          |> long "flaky"
+          |> help "Run only tests marked flaky"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
             "verbose"
           |> short 'v'
           |> long "verbose"
@@ -82,6 +88,23 @@ let format_duration_us = fun duration_us ->
   else
     Float.to_string ~precision:2 (float_of_int duration_us /. 1000000.0) ^ "s"
 
+let size_label = function
+  | Riot_build.Small -> "small"
+  | Riot_build.Long -> "long"
+
+let reliability_label = function
+  | Riot_build.Stable -> ""
+  | Riot_build.Flaky { retry_attempts } -> " flaky/" ^ Int.to_string retry_attempts
+
+let attempts_suffix = fun attempts ->
+  if attempts <= 1 then
+    ""
+  else
+    " after " ^ Int.to_string attempts ^ " attempts"
+
+let timeout_message = fun timeout_ms ->
+  "timed out after " ^ Int.to_string timeout_ms ^ "ms"
+
 let record_suite_timing = fun (timing: timing_summary) ~suite_label (
   summary: Riot_build.test_suite_summary
 ) ->
@@ -106,6 +129,14 @@ let record_suite_timing = fun (timing: timing_summary) ~suite_label (
           match result.result with
           | Riot_build.Failed message -> Some (
             { suite_label; test_name = result.name; message; duration_us = result.duration_us }: failed_test
+          )
+          | Riot_build.Timed_out { timeout_ms } -> Some (
+            {
+              suite_label;
+              test_name = result.name;
+              message = timeout_message timeout_ms;
+              duration_us = result.duration_us;
+            }: failed_test
           )
           | Riot_build.Passed
           | Riot_build.Skipped -> None)
@@ -285,6 +316,9 @@ let print_test_result = fun (result: Riot_build.test_case_result) ->
     | Riot_build.Test -> "test"
     | Riot_build.Property _ -> "prop"
   in
+  let metadata =
+    " [" ^ size_label result.size ^ reliability_label result.reliability ^ "]"
+  in
   match result.result with
   | Riot_build.Passed ->
       let suffix =
@@ -292,13 +326,22 @@ let print_test_result = fun (result: Riot_build.test_case_result) ->
         | Riot_build.Test -> "ok"
         | Riot_build.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println (prefix ^ " " ^ result.name ^ " ... " ^ suffix)
+      println (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Riot_build.Failed message ->
-      println (prefix ^ " " ^ result.name ^ " ... FAILED");
+      println (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       if not (String.equal message "") then
         println ("       " ^ message)
+  | Riot_build.Timed_out { timeout_ms } ->
+      println
+        (prefix
+        ^ " "
+        ^ result.name
+        ^ metadata
+        ^ " ... TIMED OUT "
+        ^ timeout_message timeout_ms
+        ^ attempts_suffix result.attempts)
   | Riot_build.Skipped ->
-      println (prefix ^ " " ^ result.name ^ " ... skipped")
+      println (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped")
 
 let print_suite_footer = fun (summary: Riot_build.test_suite_summary) ->
   println "";
@@ -377,11 +420,11 @@ let write_test_error_json = fun ~command_started_at err ->
     );
   print "\n"
 
-let run = fun ~workspace matches ->
+let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
   let displayed_packages = Collections.HashSet.create () in
   let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
-  let extra_args = trailing_args matches in
+  let trailing = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let output_mode =
@@ -390,59 +433,100 @@ let run = fun ~workspace matches ->
     else
       Build.Human
   in
+  let small_only = ArgParser.get_flag matches "small" in
+  let long_only = ArgParser.get_flag matches "long" in
+  let flaky_only = ArgParser.get_flag matches "flaky" in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
-  let request = Test_selection.parse_request ~pattern ~legacy_package in
-  let pending_json_suite = ref None in
-  let timing = empty_timing_summary () in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
     Build.reset_json_clock ~started_at:command_started_at;
-  let on_event (event: Riot_build.test_event) =
-    match event with
-    | Riot_build.Build build_event -> (
-        match output_mode with
-        | Build.Json -> Build.write_build_event_json build_event
-        | Build.Human -> (
-            match build_event with
-            | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
-            | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
-              ~mode:output_mode
-              ~target
-              ~host
-            | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-            | Riot_build.Streaming streaming_event -> Build.write_streaming_event
-              ~mode:output_mode
-              ~displayed_packages
-              ~progress
-              streaming_event
-          )
-      )
-    | _ -> (
-        match output_mode with
-        | Build.Json -> pending_json_suite := write_test_event_json
-          ~command_started_at
-          ~pending_suite:!pending_json_suite
-          event
-        |> Option.unwrap_or ~default:None
-        | Build.Human -> write_test_event ~workspace ~timing ~verbose event
-      )
-  in
-  match
-    Riot_build.test ~on_event
-      {
-        workspace;
-        package_filter = request.package_filter;
-        suite_filter = request.suite_filter;
-        query = request.query;
-        extra_args;
-      }
-  with
-  | Ok () -> Ok ()
-  | Error err ->
-      (
-        match output_mode with
-        | Build.Json -> write_test_error_json ~command_started_at err
-        | Build.Human -> write_test_error err
-      );
-      Error (Failure (Riot_build.test_error_message err))
+  if small_only && long_only then
+    Error (Failure "Cannot combine --small and --long")
+  else
+    match Riot_model.Workspace_operational_config.load ~workspace_root:workspace.root with
+    | Error err ->
+        let message = Riot_model.Workspace_operational_config.message err in
+        (
+          match output_mode with
+          | Build.Json ->
+              print
+                (Data.Json.to_string
+                  (Data.Json.Object [
+                    ("type", Data.Json.String "test.error");
+                    ("message", Data.Json.String message);
+                    ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
+                  ]));
+              print "\n"
+          | Build.Human -> println ("error: " ^ message)
+        );
+        Error (Failure message)
+    | Ok operational_config ->
+        let size_filter =
+          if small_only then
+            Test_selection.Small
+          else if long_only then
+            Test_selection.Long
+          else
+            Test_selection.All
+        in
+        let request = Test_selection.parse_request
+          ~pattern
+          ~legacy_package
+          ~size_filter
+          ~flaky_only in
+        let extra_args = Test_selection.extra_args
+          ~small_test_timeout:operational_config.test.small_test_timeout
+          ~flaky_max_retries:operational_config.test.flaky_max_retries
+          request
+          trailing in
+        let pending_json_suite = ref None in
+        let timing = empty_timing_summary () in
+        let on_event (event: Riot_build.test_event) =
+          match event with
+          | Riot_build.Build build_event -> (
+              match output_mode with
+              | Build.Json -> Build.write_build_event_json build_event
+              | Build.Human -> (
+                  match build_event with
+                  | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+                  | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+                    ~mode:output_mode
+                    ~target
+                    ~host
+                  | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+                  | Riot_build.Streaming streaming_event -> Build.write_streaming_event
+                    ~mode:output_mode
+                    ~displayed_packages
+                    ~progress
+                    streaming_event
+                )
+            )
+          | _ -> (
+              match output_mode with
+              | Build.Json -> pending_json_suite := write_test_event_json
+                ~command_started_at
+                ~pending_suite:!pending_json_suite
+                event
+              |> Option.unwrap_or ~default:None
+              | Build.Human -> write_test_event ~workspace ~timing ~verbose event
+            )
+        in
+        match
+          Riot_build.test ~on_event
+            {
+              workspace;
+              package_filter = request.package_filter;
+              suite_filter = request.suite_filter;
+              query = request.query;
+              extra_args;
+            }
+        with
+        | Ok () -> Ok ()
+        | Error err ->
+            (
+              match output_mode with
+              | Build.Json -> write_test_error_json ~command_started_at err
+              | Build.Human -> write_test_error err
+            );
+            Error (Failure (Riot_build.test_error_message err))

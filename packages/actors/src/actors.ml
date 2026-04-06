@@ -69,6 +69,9 @@ module Process = struct
             | None -> ()
             | Some target -> Proc.remove_monitored_by target (Proc.pid current) ref
           ))
+
+  let kill = fun pid ~reason ->
+    Scheduler.kill (Scheduler.get_scheduler ()) pid reason
 end
 
 let run = fun ~main ~args ?config () ->

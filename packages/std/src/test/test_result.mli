@@ -2,6 +2,7 @@
 type single_result =
   | Passed
   | Failed of string
+  | Timed_out of { timeout: Time.Duration.t }
   | Skipped
 (** A test result tagged with its index and name. *)
 type t = {
@@ -11,6 +12,12 @@ type t = {
   name: string;
   (** Test kind, such as unit or snapshot. *)
   test_type: Test_case.test_type;
+  (** Execution size bucket used for filtering and policy. *)
+  size: Test_case.size;
+  (** Reliability metadata used for retry policy. *)
+  reliability: Test_case.reliability;
+  (** Number of attempts made for this test. *)
+  attempts: int;
   (** Outcome for this test. *)
   result: single_result;
   (** Time spent executing this test case. *)

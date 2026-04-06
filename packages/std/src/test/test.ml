@@ -26,6 +26,14 @@ type test_type =
   | UnitTest
   | Property of { examples: int }
 
+type size = Test_case.size =
+  | Small
+  | Long
+
+type reliability = Test_case.reliability =
+  | Stable
+  | Flaky of { retry_attempts: int }
+
 type test_case = Test_case.t
 
 let case = Test_case.case

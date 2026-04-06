@@ -36,6 +36,7 @@ let default_reduction_budget = 100
 type t = {
   pid: Pid.t;
   state: state atomic_ref;
+  exit_request: (unit, exit_reason) result option atomic_ref;
   receive_timeout_fired: bool atomic_ref;
   syscall_timeout_fired: bool atomic_ref;
   lock: Mutex.t;
@@ -77,6 +78,7 @@ let make = fun fn ->
     cont = None;
     fn = Some fn;
     state = Sync.Atomic.make Uninitialized;
+    exit_request = Sync.Atomic.make None;
     receive_timeout_fired = Sync.Atomic.make false;
     syscall_timeout_fired = Sync.Atomic.make false;
     lock = Mutex.create ();
@@ -201,6 +203,13 @@ let mark_as_awaiting_message = fun t ->
 let mark_as_exited = fun t reason ->
   if not (is_exited t) then
     Sync.Atomic.set t.state (Exited reason)
+
+let request_exit = fun t reason ->
+  if is_alive t then
+    Sync.Atomic.set t.exit_request (Some reason)
+
+let take_exit_request = fun t ->
+  Sync.Atomic.exchange t.exit_request None
 
 let mark_as_finalized = fun t ->
   Sync.Atomic.set t.state Finalized

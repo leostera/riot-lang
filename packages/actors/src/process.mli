@@ -107,6 +107,12 @@ val mark_as_awaiting_message: t -> unit
 val mark_as_exited: t -> (unit, exit_reason) result -> unit
 
 (** Mark process as exited with given reason *)
+val request_exit: t -> (unit, exit_reason) result -> unit
+
+(** Request that the process exit at its next scheduler boundary. *)
+val take_exit_request: t -> (unit, exit_reason) result option
+
+(** Atomically read-and-clear a pending exit request. *)
 val mark_as_finalized: t -> unit
 
 (** Mark process as finalized *)

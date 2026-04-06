@@ -1,6 +1,8 @@
 open Global
 open Collections
 
+exception Test_timeout of Time.Duration.t
+
 let find_segment_index = fun segments needle ->
   let rec loop idx = function
     | [] -> None
@@ -73,19 +75,37 @@ type mode =
   Sequential
   | Shuffle
 
-type target =
-  All
-  | FilterBySubstring of string
+type size_filter =
+  | All_sizes
+  | Only_small
+  | Only_long
+
+type target = {
+  query: string option;
+  size_filter: size_filter;
+  flaky_only: bool;
+}
+
+type policy = {
+  small_test_timeout: Time.Duration.t option;
+  flaky_max_retries: int;
+}
 
 type config = {
   concurrency: int;
   reporter: (module Reporter.Intf);
   mode: mode;
   target: target;
+  policy: policy;
   suite_info: Reporter.suite_info;
 }
 
 type run_summary = Test_result.summary
+
+let default_policy = {
+  small_test_timeout = None;
+  flaky_max_retries = 0;
+}
 
 let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   let current_dir = Env.current_dir () |> Result.to_option in
@@ -101,13 +121,28 @@ let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) 
   }
 
 let filter_tests = fun target tests ->
-  match target with
-  | All -> tests
-  | FilterBySubstring query ->
-      List.filter
-        (fun (test: Test_case.t) ->
-          String.contains test.name query)
-        tests
+  let matches_query = fun (test: Test_case.t) ->
+    match target.query with
+    | None -> true
+    | Some query -> String.contains test.name query
+  in
+  let matches_size = fun (test: Test_case.t) ->
+    match (target.size_filter, test.size) with
+    | All_sizes, _
+    | Only_small, Test_case.Small
+    | Only_long, Test_case.Long -> true
+    | _ -> false
+  in
+  let matches_flaky = fun (test: Test_case.t) ->
+    not target.flaky_only
+    ||
+    match test.reliability with
+    | Test_case.Stable -> false
+    | Test_case.Flaky _ -> true
+  in
+  List.filter
+    (fun test -> matches_query test && matches_size test && matches_flaky test)
+    tests
 
 let shuffle_list = fun lst ->
   let arr = Array.of_list lst in
@@ -120,52 +155,123 @@ let shuffle_list = fun lst ->
   done;
   Array.to_list arr
 
-let run_single_test = fun reporter ~suite_info index (test: Test_case.t) ->
+let render_exception_failure = fun exn ->
+  let exn = Exception.to_string exn in
+  let bt = Exception.get_backtrace () in
+  exn ^ "\n\n" ^ bt
+
+let test_timeout_for = fun policy (test: Test_case.t) ->
+  match (test.size, policy.small_test_timeout) with
+  | Test_case.Small, Some timeout -> Some timeout
+  | _ -> None
+
+let retry_budget = fun policy (test: Test_case.t) ->
+  match test.reliability with
+  | Test_case.Stable -> 0
+  | Test_case.Flaky { retry_attempts } ->
+      if policy.flaky_max_retries > 0 then
+        Int.min retry_attempts policy.flaky_max_retries
+      else
+        retry_attempts
+
+let wait_for_exit = fun pid ?timeout () ->
+  receive
+    ~selector:
+      (fun (msg: Actors.Message.t) ->
+        match msg with
+        | Actors.Process.DOWN { pid = down_pid; reason; _ } when Pid.equal down_pid pid -> `select reason
+        | _ -> `skip)
+    ?timeout
+    ()
+
+let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
+  let outcome: ((unit, string) result option) Sync.Atomic.t = Sync.Atomic.make None in
+  let child =
+    spawn
+      (fun () ->
+        let result =
+          match test.fn ctx with
+          | Ok () -> Ok ()
+          | Error msg -> Error msg
+          | exception exn -> Error (render_exception_failure exn)
+        in
+        Sync.Atomic.set outcome (Some result);
+        Ok ())
+  in
+  let monitor_ref = Actors.Process.monitor child in
+  let started = Time.Instant.now () in
+  let exit_reason =
+    match timeout with
+    | None -> wait_for_exit child ()
+    | Some timeout -> (
+        try wait_for_exit child ~timeout ()
+        with
+        | Receive_timeout ->
+            Actors.Process.kill child ~reason:(Test_timeout timeout);
+            wait_for_exit child ()
+      )
+  in
+  Actors.Process.demonitor monitor_ref;
+  let duration = Time.Instant.elapsed started in
+  let result =
+    match Sync.Atomic.get outcome with
+    | Some (Ok ()) -> Test_result.Passed
+    | Some (Error msg) -> Failed msg
+    | None -> (
+        match exit_reason with
+        | Error (Test_timeout timeout) -> Timed_out { timeout }
+        | Ok () -> Failed "test actor exited without reporting a result"
+        | Error exn -> Failed (render_exception_failure exn)
+      )
+  in
+  (result, duration)
+
+let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.single_result) ->
+  attempts <= retry_budget policy test
+  &&
+  match result with
+  | Test_result.Passed
+  | Test_result.Skipped -> false
+  | Test_result.Failed _
+  | Test_result.Timed_out _ -> true
+
+let run_single_test = fun reporter ~suite_info ~policy index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
   let ctx = make_ctx ~suite_info ~index test in
-  let start = Time.Instant.now () in
   let result =
     if test.skip then
       Test_result.{
         index;
         name;
         test_type;
+        size = test.size;
+        reliability = test.reliability;
+        attempts = 0;
         result = Skipped;
         duration = Time.Duration.zero;
       }
-    else
-      match test.fn ctx with
-      | exception exn ->
-          let result =
-            let exn = Exception.to_string exn in
-            let bt = Exception.get_backtrace () in
-            let reason = exn ^ "\n\n" ^ bt in
-            Test_result.Failed reason
-          in
+    else (
+      let timeout = test_timeout_for policy test in
+      let rec loop attempts total_duration =
+        let attempt_result, attempt_duration = run_single_attempt ~ctx test ~timeout in
+        let total_duration = Time.Duration.add total_duration attempt_duration in
+        if should_retry policy test attempts attempt_result then
+          loop (attempts + 1) total_duration
+        else
           Test_result.{
             index;
             name;
             test_type;
-            result;
-            duration = Time.Instant.elapsed start;
+            size = test.size;
+            reliability = test.reliability;
+            attempts;
+            result = attempt_result;
+            duration = total_duration;
           }
-      | Error msg ->
-          Test_result.{
-            index;
-            name;
-            test_type;
-            result = Failed msg;
-            duration = Time.Instant.elapsed start;
-          }
-      | Ok () ->
-          Test_result.{
-            index;
-            name;
-            test_type;
-            result = Passed;
-            duration = Time.Instant.elapsed start;
-          }
+      in
+      loop 1 Time.Duration.zero
+    )
   in
   let module R = (val reporter : Reporter.Intf) in
   R.on_result index result;
@@ -183,7 +289,8 @@ let run_tests = fun ~config tests ->
   R.init config.suite_info (List.length tests_to_run);
   let results =
     List.mapi
-      (fun i test -> run_single_test config.reporter ~suite_info:config.suite_info (i + 1) test)
+      (fun i test ->
+        run_single_test config.reporter ~suite_info:config.suite_info ~policy:config.policy (i + 1) test)
       tests_to_run
   in
   let summary = Test_result.make_summary results in

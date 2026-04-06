@@ -203,7 +203,7 @@ let write_bench_error_json = fun ~command_started_at err ->
     );
   print "\n"
 
-let run = fun ~workspace matches ->
+let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
   let displayed_packages = Collections.HashSet.create () in
   let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
@@ -218,7 +218,12 @@ let run = fun ~workspace matches ->
   in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
-  let request = Test_selection.parse_request ~pattern ~legacy_package in
+  let request = Test_selection.parse_request
+    ~pattern
+    ~legacy_package
+    ~size_filter:Test_selection.All
+    ~flaky_only:false in
+  let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
     Build.reset_json_clock ~started_at:command_started_at;

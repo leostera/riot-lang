@@ -6,8 +6,14 @@ type cache_policy = {
   max_size_bytes: int64;
 }
 
+type test_policy = {
+  small_test_timeout: Time.Duration.t option;
+  flaky_max_retries: int;
+}
+
 type t = {
   cache: cache_policy;
+  test: test_policy;
 }
 
 type error =
@@ -17,7 +23,9 @@ type error =
 
 let default_cache_policy = { keep_generations = 10; max_size_bytes = Int64.mul 50L 1_073_741_824L }
 
-let default = { cache = default_cache_policy }
+let default_test_policy = { small_test_timeout = None; flaky_max_retries = 0 }
+
+let default = { cache = default_cache_policy; test = default_test_policy }
 
 let message = function
   | ReadFailed { path; error } -> "failed to read workspace config '"
@@ -109,6 +117,85 @@ let parse_cache_policy = fun ~path fields ->
   | (Error error, _)
   | (_, Error error) -> Error (InvalidConfig { path; error })
 
+let normalize_duration = fun raw ->
+  raw
+  |> String.trim
+  |> String.to_seq
+  |> List.of_seq
+  |> List.filter (fun c -> not (Char.equal c ' ' || Char.equal c '\t'))
+  |> List.to_seq
+  |> String.of_seq
+  |> String.lowercase_ascii
+
+let duration_unit_seconds = function
+  | ""
+  | "s" -> Some 1.0
+  | "ms" -> Some 0.001
+  | "us" -> Some 0.000001
+  | "ns" -> Some 0.000000001
+  | "m" -> Some 60.0
+  | "h" -> Some 3600.0
+  | _ -> None
+
+let parse_duration = fun raw ->
+  let normalized = normalize_duration raw in
+  let len = String.length normalized in
+  let rec split idx =
+    if idx >= len then
+      (normalized, "")
+    else
+      match normalized.[idx] with
+      | '0' .. '9'
+      | '.' -> split (idx + 1)
+      | _ -> (String.sub normalized 0 idx, String.sub normalized idx (len - idx))
+  in
+  let number_str, unit_str = split 0 in
+  if String.equal number_str "" then
+    Error "small_test_timeout must start with a number"
+  else
+    match duration_unit_seconds unit_str with
+    | None -> Error ("unsupported small_test_timeout unit '" ^ unit_str ^ "'")
+    | Some multiplier -> (
+        try
+          let number = float_of_string number_str in
+          if number < 0.0 then
+            Error "small_test_timeout must be non-negative"
+          else
+            Ok (Time.Duration.from_secs_float (number *. multiplier))
+        with
+        | _ -> Error ("invalid small_test_timeout value '" ^ raw ^ "'")
+      )
+
+let find_field = fun names fields ->
+  names |> List.find_map (fun name -> List.assoc_opt name fields)
+
+let parse_test_policy = fun ~path fields ->
+  let small_test_timeout =
+    match find_field [ "small_test_timeout" ] fields with
+    | None -> Ok default_test_policy.small_test_timeout
+    | Some (Toml.String raw) -> parse_duration raw |> Result.map Option.some
+    | Some value -> (
+        match Toml.get_int value with
+        | Some millis when millis >= 0 -> Ok (Some (Time.Duration.from_millis millis))
+        | Some _ -> Error "riot.test.small_test_timeout must be non-negative"
+        | None -> Error "riot.test.small_test_timeout must be a duration string like \"500ms\""
+      )
+  in
+  let flaky_max_retries =
+    match find_field [ "flaky_max_retries"; "flaky_max_retry"; "flakey_max_retries"; "flakey_max_retry" ] fields with
+    | None -> Ok default_test_policy.flaky_max_retries
+    | Some value -> (
+        match Toml.get_int value with
+        | Some n when n >= 0 -> Ok n
+        | Some _ -> Error "riot.test.flaky_max_retries must be greater than or equal to 0"
+        | None -> Error "riot.test.flaky_max_retries must be an integer"
+      )
+  in
+  match small_test_timeout, flaky_max_retries with
+  | Ok small_test_timeout, Ok flaky_max_retries -> Ok { small_test_timeout; flaky_max_retries }
+  | (Error error, _)
+  | (_, Error error) -> Error (InvalidConfig { path; error })
+
 let of_toml = fun ~path toml ->
   match toml with
   | Toml.Table fields -> (
@@ -116,11 +203,24 @@ let of_toml = fun ~path toml ->
       | None ->
           Ok default
       | Some (Toml.Table riot_fields) -> (
-          match List.assoc_opt "cache" riot_fields with
-          | None -> Ok default
-          | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
-          |> Result.map (fun cache -> { cache })
-          | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.cache] must be a table" })
+          let cache =
+            match List.assoc_opt "cache" riot_fields with
+            | None -> Ok default_cache_policy
+            | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
+            | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.cache] must be a table" })
+          in
+          let test =
+            match List.assoc_opt "test" riot_fields with
+            | None -> Ok default_test_policy
+            | Some (Toml.Table test_fields) -> parse_test_policy ~path test_fields
+            | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.test] must be a table" })
+          in
+          (
+            match cache, test with
+            | Ok cache, Ok test -> Ok { cache; test }
+            | (Error err, _)
+            | (_, Error err) -> Error err
+          )
         )
       | Some _ ->
           Error (InvalidConfig { path; error = "top-level [riot] must be a table" })

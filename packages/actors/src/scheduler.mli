@@ -41,6 +41,9 @@ val current_worker_id_opt: unit -> Scheduler_id.t option
 val send: Pid.t -> Message.t -> unit
 
 (** Send a message by PID through the runtime-wide process registry. *)
+val kill: t -> Pid.t -> Process.exit_reason -> unit
+
+(** Request that a process exit at its next scheduler boundary. *)
 val shutdown: t -> status:int -> unit
 
 (** Request runtime-wide shutdown with an exit status. *)

@@ -17,15 +17,27 @@ type test_case_type =
   | Test
   | Property of { examples: int }
 
+type test_case_size =
+  | Small
+  | Long
+
+type test_case_reliability =
+  | Stable
+  | Flaky of { retry_attempts: int }
+
 type test_case_status =
   | Passed
   | Failed of string
+  | Timed_out of { timeout_ms: int }
   | Skipped
 
 type test_case_result = {
   index: int;
   name: string;
   test_type: test_case_type;
+  size: test_case_size;
+  reliability: test_case_reliability;
+  attempts: int;
   result: test_case_status;
   duration_us: int;
 }
@@ -198,6 +210,32 @@ let test_type_of_json = fun json ->
   | other ->
       Error ("unknown test type " ^ other)
 
+let test_size_of_json = fun fields ->
+  match List.assoc_opt "size" fields with
+  | None -> Ok Small
+  | Some value ->
+      let* size = get_string value in
+      match size with
+      | "small" -> Ok Small
+      | "long" -> Ok Long
+      | other -> Error ("unknown test size " ^ other)
+
+let test_reliability_of_json = fun fields ->
+  match List.assoc_opt "reliability" fields with
+  | None -> Ok Stable
+  | Some value ->
+      let* reliability = get_string value in
+      match reliability with
+      | "stable" -> Ok Stable
+      | "flaky" ->
+          let retry_attempts =
+            match List.assoc_opt "retry_attempts" fields with
+            | Some value -> get_int value
+            | None -> Ok 0
+          in
+          retry_attempts |> Result.map (fun retry_attempts -> Flaky { retry_attempts })
+      | other -> Error ("unknown test reliability " ^ other)
+
 let test_status_of_json = fun json ->
   let* fields = get_object json in
   let* status_json = field "status" fields in
@@ -211,6 +249,10 @@ let test_status_of_json = fun json ->
       let* message_json = field "message" fields in
       let* message = get_string message_json in
       Ok (Failed message)
+  | "timed_out" ->
+      let* timeout_json = field "timeout_ms" fields in
+      let* timeout_ms = get_int timeout_json in
+      Ok (Timed_out { timeout_ms })
   | other ->
       Error ("unknown test status " ^ other)
 
@@ -219,12 +261,18 @@ let test_result_of_json = fun index json ->
   let* name_json = field "name" fields in
   let* name = get_string name_json in
   let* test_type = test_type_of_json json in
+  let* size = test_size_of_json fields in
+  let* reliability = test_reliability_of_json fields in
+  let* attempts = optional_int_field "attempts" fields in
   let* result = test_status_of_json json in
   let* duration_us = optional_int_field "duration_us" fields in
   Ok {
     index;
     name;
     test_type;
+    size;
+    reliability;
+    attempts = Option.unwrap_or ~default:1 attempts;
     result;
     duration_us = Option.unwrap_or ~default:0 duration_us;
   }
@@ -328,9 +376,26 @@ let test_event_to_json = function
               match result.result with
               | Passed -> [ ("status", Data.Json.String "passed") ]
               | Skipped -> [ ("status", Data.Json.String "skipped") ]
+              | Timed_out { timeout_ms } -> [
+                ("status", Data.Json.String "timed_out");
+                ("timeout_ms", Data.Json.Int timeout_ms);
+              ]
               | Failed message -> [
                 ("status", Data.Json.String "failed");
                 ("message", Data.Json.String message);
+              ]
+            in
+            let size_fields =
+              match result.size with
+              | Small -> [ ("size", Data.Json.String "small") ]
+              | Long -> [ ("size", Data.Json.String "long") ]
+            in
+            let reliability_fields =
+              match result.reliability with
+              | Stable -> [ ("reliability", Data.Json.String "stable") ]
+              | Flaky { retry_attempts } -> [
+                ("reliability", Data.Json.String "flaky");
+                ("retry_attempts", Data.Json.Int retry_attempts);
               ]
             in
             let type_fields =
@@ -345,8 +410,11 @@ let test_event_to_json = function
               ("name", Data.Json.String result.name);
               ("index", Data.Json.Int result.index);
               ("duration_us", Data.Json.Int result.duration_us);
+              ("attempts", Data.Json.Int result.attempts);
             ]
             @ status_fields
+            @ size_fields
+            @ reliability_fields
             @ type_fields))
       in
       Some (
@@ -556,6 +624,12 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                                     name = result.name;
                                     message;
                                     duration_us = result.duration_us
+                                  }
+                                  | Timed_out { timeout_ms } -> Some {
+                                    suite;
+                                    name = result.name;
+                                    message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
+                                    duration_us = result.duration_us;
                                   }
                                   | Passed
                                   | Skipped -> None)

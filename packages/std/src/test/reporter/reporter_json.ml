@@ -5,6 +5,17 @@ let suite_started_monotonic = ref None
 
 let duration_us = fun duration -> Time.Duration.to_micros duration
 
+let size_to_json = function
+  | Test_case.Small -> Data.Json.string "small"
+  | Test_case.Long -> Data.Json.string "long"
+
+let reliability_fields = function
+  | Test_case.Stable -> [ ("reliability", Data.Json.string "stable") ]
+  | Test_case.Flaky { retry_attempts } -> [
+    ("reliability", Data.Json.string "flaky");
+    ("retry_attempts", Data.Json.int retry_attempts);
+  ]
+
 let init = fun (_suite: Intf.suite_info) _total ->
   suite_started_monotonic := Some (Time.Instant.now ())
 
@@ -28,7 +39,14 @@ let finalize = fun (summary: Test_result.summary) ->
               ("examples", int examples)
             ]
           in
-          let timing_fields = [ ("duration_us", int (duration_us r.duration)) ] in
+          let timing_fields =
+            [
+              ("duration_us", int (duration_us r.duration));
+              ("attempts", int r.attempts);
+              ("size", size_to_json r.size);
+            ]
+            @ reliability_fields r.reliability
+          in
           let base_fields =
             match r.result with
             | Test_result.Passed -> [ ("name", string r.name); ("status", string "passed") ]
@@ -36,6 +54,11 @@ let finalize = fun (summary: Test_result.summary) ->
               ("name", string r.name);
               ("status", string "failed");
               ("message", string msg);
+            ]
+            | Test_result.Timed_out { timeout } -> [
+              ("name", string r.name);
+              ("status", string "timed_out");
+              ("timeout_ms", int (Time.Duration.to_millis timeout));
             ]
             | Test_result.Skipped -> [ ("name", string r.name); ("status", string "skipped") ]
           in

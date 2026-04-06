@@ -36,11 +36,18 @@ module FixtureRunner = Fixture_runner
 type test_type =
   | UnitTest
   | Property of { examples: int }
+type size = Test_case.size =
+  | Small
+  | Long
+type reliability = Test_case.reliability =
+  | Stable
+  | Flaky of { retry_attempts: int }
 (** Public representation of a test case. *)
 type test_case = Test_case.t
 
 (** [case name fn] creates a regular unit test. *)
-val case: string -> (ctx -> (unit, string) result) -> test_case
+val case:
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [property name ~examples fn] creates a property test.
     Use this for property-based tests to show the number of examples tested.
@@ -53,13 +60,15 @@ val case: string -> (ctx -> (unit, string) result) -> test_case
       )
     ]}
 *)
-val property: string -> examples:int -> (ctx -> (unit, string) result) -> test_case
+val property:
+  ?size:size -> ?reliability:reliability -> string -> examples:int -> (ctx -> (unit, string) result) -> test_case
 
 (** [skip name fn] creates a skipped test. *)
-val skip: string -> (ctx -> (unit, string) result) -> test_case
+val skip:
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [todo name] creates a placeholder test marked as todo. *)
-val todo: string -> test_case
+val todo: ?size:size -> ?reliability:reliability -> string -> test_case
 
 (** Assert that [actual] equals [expected]. Raises on failure. *)
 val assert_equal: expected:'a -> actual:'a -> unit

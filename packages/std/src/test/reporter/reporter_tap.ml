@@ -21,6 +21,12 @@ let on_result = fun idx (result: Test_result.t) ->
       println ("  message: '" ^ msg ^ "'");
       println "  severity: fail";
       println "  ..."
+  | Test_result.Timed_out { timeout } ->
+      println ("not ok " ^ idx_str ^ " - " ^ name_with_type);
+      println "  ---";
+      println ("  message: 'timed out after " ^ Int.to_string (Time.Duration.to_millis timeout) ^ "ms'");
+      println "  severity: fail";
+      println "  ..."
   | Test_result.Skipped ->
       println ("ok " ^ idx_str ^ " - " ^ name_with_type ^ " # SKIP")
 

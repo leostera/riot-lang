@@ -11,12 +11,23 @@ type test_result =
 type test_type =
   | UnitTest
   | Property of { examples: int }
+(** Coarse execution policy bucket for a test. *)
+type size =
+  | Small
+  | Long
+type reliability =
+  | Stable
+  | Flaky of { retry_attempts: int }
 (** Public representation of a test case. *)
 type t = {
   (** Human-readable test name. *)
   name: string;
   (** Test kind. *)
   test_type: test_type;
+  (** Execution size bucket. *)
+  size: size;
+  (** Reliability metadata used by the runner. *)
+  reliability: reliability;
   (** Test implementation. *)
   fn: ctx -> (unit, string) result;
   (** Whether the test should be skipped. *)
@@ -24,14 +35,15 @@ type t = {
 }
 
 (** [case name fn] creates a regular unit test. *)
-val case: string -> (ctx -> (unit, string) result) -> t
+val case: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> t
 
 (** [property name ~examples fn] creates a property test that ran [examples]
     test cases. *)
-val property: string -> examples:int -> (ctx -> (unit, string) result) -> t
+val property:
+  ?size:size -> ?reliability:reliability -> string -> examples:int -> (ctx -> (unit, string) result) -> t
 
 (** [skip name fn] creates a skipped test. *)
-val skip: string -> (ctx -> (unit, string) result) -> t
+val skip: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> t
 
 (** [todo name] creates a placeholder test marked as todo. *)
-val todo: string -> t
+val todo: ?size:size -> ?reliability:reliability -> string -> t

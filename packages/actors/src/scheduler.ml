@@ -485,6 +485,15 @@ let send_internal = fun t pid msg ->
 
 let send = fun pid msg -> send_internal (get_scheduler ()) pid msg
 
+let kill = fun t pid reason ->
+  match get_process_slot t pid with
+  | None -> ()
+  | Some slot ->
+      let proc = slot_process slot in
+      Process.request_exit proc (Error reason);
+      mark_slot_pending slot;
+      wake_process t slot
+
 let spawn_on_worker_with_placement = fun t ~worker_id ~placement fn ->
   let proc = Process.make fn in
   let slot = create_process_slot proc ~owner_worker:worker_id ~placement in
@@ -873,33 +882,50 @@ let handle_run_proc = fun t ctx slot ->
 let step_process = fun t ctx slot ->
   let proc = slot_process slot in
   match Process.state proc with
-  | Uninitialized ->
-      if try_mark_slot_executing slot then
-        (
-          Process.init proc;
-          handle_run_proc t ctx slot
-        )
-      else
-        mark_slot_pending slot
   | Finalized ->
-      ()
-  | Waiting_message ->
-      if Process.has_messages proc && Process.try_mark_runnable_from_waiting_message proc then
-        if try_mark_slot_executing slot then
-          handle_run_proc t ctx slot
-        else
-          mark_slot_pending slot
-  | Waiting_io _ ->
       ()
   | Exited reason ->
       handle_exit_proc t proc reason
   | Running ->
       mark_slot_pending slot
-  | Runnable ->
-      if try_mark_slot_executing slot then
-        handle_run_proc t ctx slot
-      else
-        mark_slot_pending slot
+  | _ -> (
+      match Process.take_exit_request proc with
+      | Some reason when Process.is_alive proc ->
+          Process.mark_as_exited proc reason;
+          handle_exit_proc t proc reason
+      | Some _ ->
+          ()
+      | None -> (
+          match Process.state proc with
+          | Uninitialized ->
+              if try_mark_slot_executing slot then
+                (
+                  Process.init proc;
+                  handle_run_proc t ctx slot
+                )
+              else
+                mark_slot_pending slot
+          | Waiting_message ->
+              if Process.has_messages proc && Process.try_mark_runnable_from_waiting_message proc then
+                if try_mark_slot_executing slot then
+                  handle_run_proc t ctx slot
+                else
+                  mark_slot_pending slot
+          | Waiting_io _ ->
+              ()
+          | Runnable ->
+              if try_mark_slot_executing slot then
+                handle_run_proc t ctx slot
+              else
+                mark_slot_pending slot
+          | Finalized ->
+              ()
+          | Exited reason ->
+              handle_exit_proc t proc reason
+          | Running ->
+              mark_slot_pending slot
+        )
+    )
 
 let spawn_blocked = fun t fn ->
   let proc = Process.make fn in

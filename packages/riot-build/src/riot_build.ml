@@ -105,15 +105,27 @@ type test_case_type = Test_runtime.test_case_type =
   | Test
   | Property of { examples: int }
 
+type test_case_size = Test_runtime.test_case_size =
+  | Small
+  | Long
+
+type test_case_reliability = Test_runtime.test_case_reliability =
+  | Stable
+  | Flaky of { retry_attempts: int }
+
 type test_case_status = Test_runtime.test_case_status =
   | Passed
   | Failed of string
+  | Timed_out of { timeout_ms: int }
   | Skipped
 
 type test_case_result = Test_runtime.test_case_result = {
   index: int;
   name: string;
   test_type: test_case_type;
+  size: test_case_size;
+  reliability: test_case_reliability;
+  attempts: int;
   result: test_case_status;
   duration_us: int;
 }
