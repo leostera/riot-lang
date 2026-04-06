@@ -4,9 +4,9 @@ module Test = Std.Test
 let flaky_counter = Sync.Atomic.make 0
 
 let sample_tests = [
-  Test.case ~size:Test.Long "alpha_long" (fun _ctx -> Ok ());
+  Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
-  Test.case ~size:Test.Long "middle_long_case" (fun _ctx -> Ok ());
+  Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
   Test.case
     ~reliability:Test.(Flaky { retry_attempts = 2 })
     "flaky_then_ok"
@@ -51,7 +51,7 @@ let test_list_tests_lists_all_cases = fun _ctx ->
     Error ("expected list-tests to succeed, got " ^ Int.to_string output.status)
   else
     let names = split_lines output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_long"; "beta"; "middle_long_case"; "flaky_then_ok"; "timeout_probe" ]
+    let expected = [ "alpha_large"; "beta"; "middle_large_case"; "flaky_then_ok"; "timeout_probe" ]
     |> List.sort String.compare in
     if names = expected then
       Ok ()
@@ -59,27 +59,27 @@ let test_list_tests_lists_all_cases = fun _ctx ->
       Error ("unexpected listed test names: " ^ String.concat ", " names)
 
 let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "_long"; "--format"; "json" ] in
+  let output = run_sample_capture [ "run-tests"; "_large"; "--format"; "json" ] in
   if not (Int.equal output.status 0) then
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
     if names = expected then
       Ok ()
     else
-      Error ("unexpected filtered names for _long: " ^ String.concat ", " names)
+      Error ("unexpected filtered names for _large: " ^ String.concat ", " names)
 
 let test_run_tests_pattern_matches_middle_substring = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "long_case"; "--format"; "json" ] in
+  let output = run_sample_capture [ "run-tests"; "large_case"; "--format"; "json" ] in
   if not (Int.equal output.status 0) then
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout in
-    if names = [ "middle_long_case" ] then
+    if names = [ "middle_large_case" ] then
       Ok ()
     else
-      Error ("unexpected filtered names for long_case: " ^ String.concat ", " names)
+      Error ("unexpected filtered names for large_case: " ^ String.concat ", " names)
 
 let test_run_tests_returns_success_with_zero_matches = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "missing_case"; "--format"; "json" ] in
@@ -91,12 +91,12 @@ let test_run_tests_returns_success_with_zero_matches = fun _ctx ->
     Error "expected filtered run with no matches to report an empty test list"
 
 let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "_long"; "--json" ] in
+  let output = run_sample_capture [ "run-tests"; "_large"; "--json" ] in
   if not (Int.equal output.status 0) then
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
     if names = expected then
       Ok ()
     else
@@ -114,17 +114,17 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
     else
       Error ("unexpected filtered names for --small: " ^ String.concat ", " names)
 
-let test_run_tests_long_flag_filters_long_tests = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "--long"; "--format"; "json" ] in
+let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
+  let output = run_sample_capture [ "run-tests"; "--large"; "--format"; "json" ] in
   if not (Int.equal output.status 0) then
-    Error ("expected --long run to succeed, got " ^ Int.to_string output.status)
+    Error ("expected --large run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
     if names = expected then
       Ok ()
     else
-      Error ("unexpected filtered names for --long: " ^ String.concat ", " names)
+      Error ("unexpected filtered names for --large: " ^ String.concat ", " names)
 
 let test_run_tests_flaky_flag_filters_flaky_tests = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "--flaky"; "--format"; "json" ] in
@@ -136,7 +136,7 @@ let test_run_tests_flaky_flag_filters_flaky_tests = fun _ctx ->
     Error ("unexpected filtered names for --flaky: " ^ String.concat ", " (test_names_from_json output.stdout))
 
 let test_run_tests_json_includes_timing_fields = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "_long"; "--json" ] in
+  let output = run_sample_capture [ "run-tests"; "_large"; "--json" ] in
   if not (Int.equal output.status 0) then
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
@@ -217,7 +217,7 @@ let meta_tests = [
   Test.case "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
   Test.case "run-tests --json alias emits json" test_run_tests_json_flag_alias_emits_json;
   Test.case "run-tests --small filters small tests" test_run_tests_small_flag_filters_small_tests;
-  Test.case "run-tests --long filters long tests" test_run_tests_long_flag_filters_long_tests;
+  Test.case "run-tests --large filters large tests" test_run_tests_large_flag_filters_large_tests;
   Test.case "run-tests --flaky filters flaky tests" test_run_tests_flaky_flag_filters_flaky_tests;
   Test.case "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
   Test.case "run-tests --json includes reliability metadata" test_run_tests_json_includes_reliability_metadata;

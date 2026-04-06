@@ -3,7 +3,7 @@ open Std
 type size_filter =
   | All
   | Small
-  | Long
+  | Large
 
 type request = {
   package_filter: string option;

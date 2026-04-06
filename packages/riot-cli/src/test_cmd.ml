@@ -17,9 +17,9 @@ let command =
           |> long "package"
           |> help "Run tests from a specific package"; flag "small"
           |> long "small"
-          |> help "Run only tests marked small"; flag "long"
-          |> long "long"
-          |> help "Run only tests marked long"; flag "flaky"
+          |> help "Run only tests marked small"; flag "large"
+          |> long "large"
+          |> help "Run only tests marked large"; flag "flaky"
           |> long "flaky"
           |> help "Run only tests marked flaky"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
             "verbose"
@@ -92,7 +92,7 @@ let metadata_labels = fun size reliability ->
   let size_labels =
     match size with
     | Riot_build.Small -> []
-    | Riot_build.Long -> [ "long" ]
+    | Riot_build.Large -> [ "large" ]
   in
   let reliability_labels =
     match reliability with
@@ -442,15 +442,15 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       Build.Human
   in
   let small_only = ArgParser.get_flag matches "small" in
-  let long_only = ArgParser.get_flag matches "long" in
+  let large_only = ArgParser.get_flag matches "large" in
   let flaky_only = ArgParser.get_flag matches "flaky" in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
     Build.reset_json_clock ~started_at:command_started_at;
-  if small_only && long_only then
-    Error (Failure "Cannot combine --small and --long")
+  if small_only && large_only then
+    Error (Failure "Cannot combine --small and --large")
   else
     match Riot_model.Workspace_operational_config.load ~workspace_root:workspace.root with
     | Error err ->
@@ -470,13 +470,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure message)
     | Ok operational_config ->
-        let size_filter =
-          if small_only then
-            Test_selection.Small
-          else if long_only then
-            Test_selection.Long
-          else
-            Test_selection.All
+          let size_filter =
+            if small_only then
+              Test_selection.Small
+            else if large_only then
+              Test_selection.Large
+            else
+              Test_selection.All
         in
         let request = Test_selection.parse_request
           ~pattern

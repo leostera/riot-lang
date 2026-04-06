@@ -13,7 +13,7 @@ type test_type =
 
 type size =
   | Small
-  | Long
+  | Large
 
 type reliability =
   | Stable

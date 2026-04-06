@@ -19,7 +19,7 @@ type test_case_type =
 
 type test_case_size =
   | Small
-  | Long
+  | Large
 
 type test_case_reliability =
   | Stable
@@ -217,7 +217,7 @@ let test_size_of_json = fun fields ->
       let* size = get_string value in
       match size with
       | "small" -> Ok Small
-      | "long" -> Ok Long
+      | "large" -> Ok Large
       | other -> Error ("unknown test size " ^ other)
 
 let test_reliability_of_json = fun fields ->
@@ -388,7 +388,7 @@ let test_event_to_json = function
             let size_fields =
               match result.size with
               | Small -> [ ("size", Data.Json.String "small") ]
-              | Long -> [ ("size", Data.Json.String "long") ]
+              | Large -> [ ("size", Data.Json.String "large") ]
             in
             let reliability_fields =
               match result.reliability with

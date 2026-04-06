@@ -14,11 +14,11 @@ change and not a project-manifest change.
 - `Std.Test` test cases gain `size` and `reliability` metadata.
 - `reliability` is explicit and typed: `Stable | Flaky of { retry_attempts:
   int }`.
-- `small` is the default size bucket; `long` opt-outs are the slow tests that
+- `small` is the default size bucket; `large` opt-outs are the slow tests that
   repositories can skip in pre-commit and other fast feedback loops.
 - `.riot/config.toml` grows a `[riot.test]` section for repository-shared test
   policy such as `small_test_timeout` and `flaky_max_retries`.
-- `riot test --small`, `--long`, and `--flaky` partition the case set through
+- `riot test --small`, `--large`, and `--flaky` partition the case set through
   the shared `run-tests` contract instead of inventing a second filtering layer
   in the CLI.
 - Each test attempt runs in its own child actor so the runner can monitor it,
@@ -46,7 +46,7 @@ Today Riot pays for that in three ways:
   when the test is known to be operationally noisy rather than semantically
   broken
 - repository-shared policy has no way to say "small tests should fail fast
-  here, but long tests are allowed to run"
+  here, but large tests are allowed to run"
 
 These costs are structural because Riot currently has no shared vocabulary for:
 
@@ -63,7 +63,7 @@ This RFD fixes that by giving Riot one shared system:
 The motivating workflows are straightforward:
 
 - a pre-commit hook can run `riot test --small` and skip known slow tests
-- a periodic or CI job can run `riot test --long`
+- a periodic or CI job can run `riot test --large`
 - a debugging pass can run `riot test --flaky`
 - flaky tests can retry a bounded number of times without every package
   inventing its own retry loop
@@ -74,7 +74,7 @@ The motivating workflows are straightforward:
 Contributors should think about Riot tests as having two orthogonal pieces of
 metadata:
 
-1. runtime size: `small` or `long`
+1. runtime size: `small` or `large`
 2. reliability: `stable` or `flaky`
 
 The default case is a stable small test:
@@ -85,11 +85,11 @@ let tests = [
 ]
 ```
 
-Slow tests opt into the long bucket:
+Slow tests opt into the large bucket:
 
 ```ocaml
 let tests = [
-  Test.case ~size:Test.Long "integration handshake" (fun _ctx -> Ok ());
+  Test.case ~size:Test.Large "integration handshake" (fun _ctx -> Ok ());
 ]
 ```
 
@@ -112,26 +112,26 @@ flaky_max_retries = 3
 That means a repository can teach contributors one simple workflow:
 
 - `riot test --small` for fast feedback
-- `riot test --long` for slow suites
+- `riot test --large` for slow suites
 - `riot test --flaky` for noisy cases
 
 Combined filters are intersectional:
 
 - `riot test --small --flaky` runs only flaky small tests
-- `riot test --long --flaky` runs only flaky long tests
+- `riot test --large --flaky` runs only flaky large tests
 
-`--small` and `--long` are mutually exclusive.
+`--small` and `--large` are mutually exclusive.
 
 From the suite-binary side, the same partitioning lives on `Std.Test.Cli`:
 
 ```text
 run-tests --small
-run-tests --long
+run-tests --large
 run-tests --flaky
 run-tests --small --flaky
 ```
 
-Small-test timeout is enforced inside the suite runner. Long tests have no size
+Small-test timeout is enforced inside the suite runner. Large tests have no size
 timeout. Flaky tests rerun on failure or timeout until they either pass or hit
 their retry budget, optionally capped by repository policy.
 
@@ -154,7 +154,7 @@ portable across Riot test binaries.
 The public size vocabulary is:
 
 - `Small`
-- `Long`
+- `Large`
 
 Unannotated tests default to `Small`.
 
@@ -170,7 +170,7 @@ Unannotated tests default to `Stable`.
 `Std.Test.Cli run-tests` accepts:
 
 - `--small`
-- `--long`
+- `--large`
 - `--flaky`
 - `--small-timeout-ms <int>`
 - `--flaky-max-retries <int>`
@@ -232,7 +232,7 @@ render retries and timeout failures without scraping pretty output.
 - Small-test timeout is actor-isolated and cooperative within the suite
   process, not true subprocess isolation.
 - Defaulting unannotated tests to `small` means some existing slow tests must
-  be reclassified as `long` to keep fast workflows healthy.
+  be reclassified as `large` to keep fast workflows healthy.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -275,7 +275,7 @@ if the lightweight model proves insufficient.
 
 - Whether Riot should eventually promote timeout isolation from child actors to
   per-test subprocesses.
-- Whether future workflows need a third size class beyond `small` and `long`.
+- Whether future workflows need a third size class beyond `small` and `large`.
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities

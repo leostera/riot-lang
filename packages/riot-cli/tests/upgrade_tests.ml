@@ -277,8 +277,8 @@ let tests =
     case "upgrade: parse --version flag" test_upgrade_accepts_version_flag;
     case "upgrade: version string uses installed metadata" test_version_string_uses_installed_metadata;
     case "upgrade: version string roundtrips into metadata" test_version_string_roundtrips_into_metadata;
-    case "upgrade: installs downloaded archive" test_upgrade_installs_downloaded_archive;
-    case "upgrade: skips when binary is unchanged" test_upgrade_skips_when_binary_is_unchanged;
+    case ~size:Large "upgrade: installs downloaded archive" test_upgrade_installs_downloaded_archive;
+    case ~size:Large "upgrade: skips when binary is unchanged" test_upgrade_skips_when_binary_is_unchanged;
   ]
 
 let name = "Riot CLI Upgrade Tests"

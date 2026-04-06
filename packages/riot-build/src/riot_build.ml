@@ -107,7 +107,7 @@ type test_case_type = Test_runtime.test_case_type =
 
 type test_case_size = Test_runtime.test_case_size =
   | Small
-  | Long
+  | Large
 
 type test_case_reliability = Test_runtime.test_case_reliability =
   | Stable

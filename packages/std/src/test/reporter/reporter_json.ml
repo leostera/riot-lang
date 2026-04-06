@@ -7,7 +7,7 @@ let duration_us = fun duration -> Time.Duration.to_micros duration
 
 let size_to_json = function
   | Test_case.Small -> Data.Json.string "small"
-  | Test_case.Long -> Data.Json.string "long"
+  | Test_case.Large -> Data.Json.string "large"
 
 let reliability_fields = function
   | Test_case.Stable -> [ ("reliability", Data.Json.string "stable") ]

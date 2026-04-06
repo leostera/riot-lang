@@ -185,7 +185,7 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
 
 let tests =
   Test.[
-    case "build_workspace: two packages succeed" test_build_workspace_two_packages_success;
+    case ~size:Large "build_workspace: two packages succeed" test_build_workspace_two_packages_success;
     case "build_workspace: serial orchestration succeeds" test_build_workspace_respects_serial_package_orchestration;
     case "build_workspace: dependency failure updates package graph" test_failed_dependency_updates_package_graph;
   ]

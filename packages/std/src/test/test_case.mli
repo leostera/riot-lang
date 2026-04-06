@@ -14,7 +14,7 @@ type test_type =
 (** Coarse execution policy bucket for a test. *)
 type size =
   | Small
-  | Long
+  | Large
 type reliability =
   | Stable
   | Flaky of { retry_attempts: int }

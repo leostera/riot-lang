@@ -120,7 +120,7 @@ let test_case = fun _ctx ->
   | exn -> Result.Error (Kernel.Exception.to_string exn)
 
 let () =
-  let tests = [ Test.case "worker pool timeout heartbeat" test_case ] in
+  let tests = [ Test.case ~size:Test.Large "worker pool timeout heartbeat" test_case ] in
   let normalize_args = function
     | [] -> [ "timer_worker_pool_tests"; "run-tests" ]
     | [ exe ] -> [ exe; "run-tests" ]

@@ -3,7 +3,7 @@ open Std
 type size_filter =
   | All
   | Small
-  | Long
+  | Large
 
 type request = {
   package_filter: string option;
@@ -83,7 +83,7 @@ let extra_args = fun ?(small_test_timeout = None) ?(flaky_max_retries = 0) reque
       match request.size_filter with
       | All -> []
       | Small -> [ "--small" ]
-      | Long -> [ "--long" ]
+      | Large -> [ "--large" ]
     in
     let flaky_args =
       if request.flaky_only then

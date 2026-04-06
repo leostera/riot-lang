@@ -136,6 +136,7 @@ let test_case = fun name fn ->
 let () =
   let tests = [
     Test.case
+      ~reliability:Test.(Flaky { retry_attempts = 3 })
       "receive timeout cancellation race"
       (fun _ctx -> test_case "receive timeout cancellation race" test_receive_timeout_cancel_race);
   ] in

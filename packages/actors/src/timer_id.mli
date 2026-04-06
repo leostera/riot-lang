@@ -1,11 +1,11 @@
-(** Opaque timer identifier *)
-(** An opaque identifier for a timer. Can be used to cancel timers. *)
-(** Generate a new unique timer ID *)
+(** An opaque timer identifier. Use it to cancel a scheduled timer. *)
 type t
+
+(** Generate a fresh timer identifier. *)
 val make: unit -> t
 
-(** Test equality of two timer IDs *)
+(** Return `true` if both timer identifiers refer to the same timer. *)
 val equal: t -> t -> bool
 
-(** Compare two timer IDs *)
+(** Compare two timer identifiers. *)
 val compare: t -> t -> int

@@ -78,7 +78,7 @@ type mode =
 type size_filter =
   | All_sizes
   | Only_small
-  | Only_long
+  | Only_large
 
 type target = {
   query: string option;
@@ -130,7 +130,7 @@ let filter_tests = fun target tests ->
     match (target.size_filter, test.size) with
     | All_sizes, _
     | Only_small, Test_case.Small
-    | Only_long, Test_case.Long -> true
+    | Only_large, Test_case.Large -> true
     | _ -> false
   in
   let matches_flaky = fun (test: Test_case.t) ->

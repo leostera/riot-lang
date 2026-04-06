@@ -111,7 +111,7 @@ type test_case_type = Test_runtime.test_case_type =
   | Property of { examples: int }
 type test_case_size = Test_runtime.test_case_size =
   | Small
-  | Long
+  | Large
 type test_case_reliability = Test_runtime.test_case_reliability =
   | Stable
   | Flaky of { retry_attempts: int }

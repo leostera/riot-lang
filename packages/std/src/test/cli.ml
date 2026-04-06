@@ -29,7 +29,7 @@ let run_tests_cmd =
       flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
       option "concurrency" |> long "concurrency" |> help "Number of concurrent workers" |> default "1";
       flag "small" |> long "small" |> help "Run only tests marked small";
-      flag "long" |> long "long" |> help "Run only tests marked long";
+      flag "large" |> long "large" |> help "Run only tests marked large";
       flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
       option "small-timeout-ms"
       |> long "small-timeout-ms"
@@ -74,21 +74,21 @@ let main = fun ~name ~tests ~args ->
               let shuffle = get_flag sub_matches "shuffle" in
               let concurrency = get_int sub_matches "concurrency" |> Option.unwrap_or ~default:1 in
               let small_only = get_flag sub_matches "small" in
-              let long_only = get_flag sub_matches "long" in
+              let large_only = get_flag sub_matches "large" in
               let flaky_only = get_flag sub_matches "flaky" in
               let query =
                 match get_one sub_matches "query" with
                 | Some query -> Some query
                 | None -> get_one sub_matches "pattern"
               in
-              if small_only && long_only then
-                Error (Failure "Cannot combine --small and --long")
+              if small_only && large_only then
+                Error (Failure "Cannot combine --small and --large")
               else
                 let size_filter =
                   if small_only then
                     Runner.Only_small
-                  else if long_only then
-                    Runner.Only_long
+                  else if large_only then
+                    Runner.Only_large
                   else
                     Runner.All_sizes
                 in

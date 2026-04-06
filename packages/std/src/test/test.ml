@@ -28,7 +28,7 @@ type test_type =
 
 type size = Test_case.size =
   | Small
-  | Long
+  | Large
 
 type reliability = Test_case.reliability =
   | Stable

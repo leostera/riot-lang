@@ -5,7 +5,7 @@ let metadata_labels = fun size reliability ->
   let size_labels =
     match size with
     | Test_case.Small -> []
-    | Test_case.Long -> [ "long" ]
+    | Test_case.Large -> [ "large" ]
   in
   let reliability_labels =
     match reliability with
