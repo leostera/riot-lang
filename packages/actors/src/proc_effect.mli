@@ -1,13 +1,15 @@
 open Kernel
 
-(** Process effects for communication and I/O *)
+(** Timeout values for receive and syscall effects. [`after seconds`] uses
+    seconds. *)
 type timeout =
 [
   `infinity
   | `after of float
 ]
 
-(** Timeout specification for operations *)
+(** Receive the next message selected by [`selector`], or abort when the
+    timeout expires. *)
 type _ Effect.t +=
   | Receive: {
       selector: 
@@ -18,12 +20,12 @@ type _ Effect.t +=
       timeout: timeout;
     } -> 'msg Effect.t
 
-(** Effect for receiving messages with a selector and optional timeout
-        *)
+(** Cooperatively yield control back to the scheduler. *)
 type _ Effect.t +=
   | Yield: unit Effect.t
 
-(** Effect for yielding control to the scheduler *)
+(** Wait for an async source to become ready for the requested interest, or
+    abort when the timeout expires. *)
 type _ Effect.t +=
   | Syscall: {
       name: string;
@@ -31,5 +33,3 @@ type _ Effect.t +=
       source: Kernel.Async.Source.t;
       timeout: timeout;
     } -> unit Effect.t
-
-(** Effect for system calls with I/O polling *)

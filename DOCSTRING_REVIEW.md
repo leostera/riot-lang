@@ -12,7 +12,6 @@
 ## List of interfaces to review
 
 - [ ] packages/actors/src/runtime.mli
-- [ ] packages/actors/src/proc_effect.mli
 - [ ] packages/actors/src/mailbox.mli
 - [ ] packages/actors/src/actors.mli
 - [ ] packages/actors/src/config.mli
