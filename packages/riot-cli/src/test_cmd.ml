@@ -88,13 +88,23 @@ let format_duration_us = fun duration_us ->
   else
     Float.to_string ~precision:2 (float_of_int duration_us /. 1000000.0) ^ "s"
 
-let size_label = function
-  | Riot_build.Small -> "small"
-  | Riot_build.Long -> "long"
+let metadata_labels = fun size reliability ->
+  let size_labels =
+    match size with
+    | Riot_build.Small -> []
+    | Riot_build.Long -> [ "long" ]
+  in
+  let reliability_labels =
+    match reliability with
+    | Riot_build.Stable -> []
+    | Riot_build.Flaky { retry_attempts } -> [ "flaky/" ^ Int.to_string retry_attempts ]
+  in
+  List.append size_labels reliability_labels
 
-let reliability_label = function
-  | Riot_build.Stable -> ""
-  | Riot_build.Flaky { retry_attempts } -> " flaky/" ^ Int.to_string retry_attempts
+let metadata_suffix = fun size reliability ->
+  match metadata_labels size reliability with
+  | [] -> ""
+  | labels -> " [" ^ String.concat " " labels ^ "]"
 
 let attempts_suffix = fun attempts ->
   if attempts <= 1 then
@@ -316,9 +326,7 @@ let print_test_result = fun (result: Riot_build.test_case_result) ->
     | Riot_build.Test -> "test"
     | Riot_build.Property _ -> "prop"
   in
-  let metadata =
-    " [" ^ size_label result.size ^ reliability_label result.reliability ^ "]"
-  in
+  let metadata = metadata_suffix result.size result.reliability in
   match result.result with
   | Riot_build.Passed ->
       let suffix =

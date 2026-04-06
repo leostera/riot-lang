@@ -1,13 +1,23 @@
 open Global
 open Collections
 
-let size_label = function
-  | Test_case.Small -> "small"
-  | Test_case.Long -> "long"
+let metadata_labels = fun size reliability ->
+  let size_labels =
+    match size with
+    | Test_case.Small -> []
+    | Test_case.Long -> [ "long" ]
+  in
+  let reliability_labels =
+    match reliability with
+    | Test_case.Stable -> []
+    | Test_case.Flaky { retry_attempts } -> [ "flaky/" ^ Int.to_string retry_attempts ]
+  in
+  List.append size_labels reliability_labels
 
-let reliability_label = function
-  | Test_case.Stable -> ""
-  | Test_case.Flaky { retry_attempts } -> " flaky/" ^ Int.to_string retry_attempts
+let metadata_suffix = fun size reliability ->
+  match metadata_labels size reliability with
+  | [] -> ""
+  | labels -> " [" ^ String.concat " " labels ^ "]"
 
 let attempts_suffix = fun attempts ->
   if attempts <= 1 then
@@ -36,9 +46,7 @@ let on_result = fun _idx (result: Test_result.t) ->
     | Test_case.UnitTest -> "test"
     | Test_case.Property _ -> "prop"
   in
-  let metadata =
-    " [" ^ size_label result.size ^ reliability_label result.reliability ^ "]"
-  in
+  let metadata = metadata_suffix result.size result.reliability in
   match result.result with
   | Test_result.Passed ->
       let suffix =
