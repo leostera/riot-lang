@@ -12,38 +12,27 @@ const rootEntries = Astro.props.entries ?? (activeSection?.type === "group" ? ac
 const nested = Astro.props.nested ?? false;
 ---
 
-<div class="riot-sidebar-shell">
+<ul class:list={["riot-sidebar-list", { "riot-sidebar-list--nested": nested }]}>
   {
-    !nested && activeSectionLabel && (
-      <div class="riot-sidebar-section">
-        <div class="riot-sidebar-kicker">Section</div>
-        <div class="riot-sidebar-heading">{activeSectionLabel}</div>
-      </div>
-    )
+    rootEntries.map((entry) => (
+      <li>
+        {
+          entry.type === "link" ? (
+            <a
+              class="riot-sidebar-link"
+              href={entry.href}
+              aria-current={entry.isCurrent ? "page" : undefined}
+            >
+              {entry.label}
+            </a>
+          ) : (
+            <div class="riot-sidebar-group">
+              <div class="riot-sidebar-group-title">{entry.label}</div>
+              <Astro.self entries={entry.entries} nested />
+            </div>
+          )
+        }
+      </li>
+    ))
   }
-
-  <ul class:list={["riot-sidebar-list", { "riot-sidebar-list--nested": nested }]}>
-    {
-      rootEntries.map((entry) => (
-        <li class="riot-sidebar-item">
-          {
-            entry.type === "link" ? (
-              <a
-                class="riot-sidebar-link"
-                href={entry.href}
-                aria-current={entry.isCurrent ? "page" : undefined}
-              >
-                <span>{entry.label}</span>
-              </a>
-            ) : (
-              <div class="riot-sidebar-group">
-                <div class="riot-sidebar-group-title">{entry.label}</div>
-                <Astro.self entries={entry.entries} nested />
-              </div>
-            )
-          }
-        </li>
-      ))
-    }
-  </ul>
-</div>
+</ul>

@@ -1,7 +1,7 @@
 export const topTabs = [
   {
     label: "Toolchain",
-    href: "/toolchain/",
+    href: "/toolchain/installation/",
     prefix: "/toolchain/",
     description: "Installation, daily commands, runtime facilities, and the built-in developer loop.",
   },
@@ -20,7 +20,6 @@ export const topTabs = [
 ];
 
 export const toolchainSidebar = [
-  { label: "Overview", slug: "toolchain" },
   {
     label: "Get Started",
     items: [
@@ -165,6 +164,7 @@ export function buildSidebar(rfdSidebarItems) {
 }
 
 export function getSectionLabelForPath(pathname) {
+  if (pathname === "/" || pathname === "/index.html") return "Toolchain";
   if (pathname.startsWith("/package-manager/")) return "Package Manager";
   if (pathname.startsWith("/test-runner/")) return "Test Runner";
   if (pathname.startsWith("/rfds/")) return "RFDs";
@@ -173,5 +173,8 @@ export function getSectionLabelForPath(pathname) {
 }
 
 export function getTopTabForPath(pathname) {
+  if (pathname === "/" || pathname === "/index.html") {
+    return topTabs[0] ?? null;
+  }
   return topTabs.find((tab) => pathname.startsWith(tab.prefix)) ?? null;
 }

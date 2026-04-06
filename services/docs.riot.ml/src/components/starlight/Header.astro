@@ -1,5 +1,5 @@
 ---
-import SiteTitle from "virtual:starlight/components/SiteTitle";
+import Search from "virtual:starlight/components/Search";
 import ThemeSelect from "virtual:starlight/components/ThemeSelect";
 import { getTopTabForPath, topTabs } from "../../../docs-nav.mjs";
 
@@ -7,31 +7,27 @@ const pathname = Astro.url.pathname;
 const activeTab = getTopTabForPath(pathname);
 ---
 
-<div class="riot-header-shell">
-  <div class="riot-header-top">
-    <div class="riot-header-brand">
-      <SiteTitle />
-    </div>
-    <div class="riot-header-actions print:hidden">
-      <a class="riot-header-link" href="https://github.com/leostera/riot">GitHub</a>
-      <ThemeSelect />
-    </div>
-  </div>
-
-  <div class="riot-header-bottom print:hidden">
-    <nav class="riot-top-tabs" aria-label="Top-level documentation sections">
-      {
-        topTabs.map((tab) => (
-          <a
-            class="riot-top-tab"
-            data-current={activeTab?.label === tab.label ? "true" : undefined}
-            href={tab.href}
-            title={tab.description}
-          >
-            {tab.label}
-          </a>
-        ))
-      }
-    </nav>
-  </div>
+<a class="riot-brandmark" href="/">
+  <img src="/logo.svg" alt="" />
+  <span class="site-title">Riot Docs</span>
+</a>
+<Search class="riot-header-search print:hidden" />
+<nav class="riot-top-tabs" aria-label="Top-level documentation sections">
+  {
+    topTabs.map((tab) => (
+      <a
+        class="riot-top-tab"
+        data-current={activeTab?.label === tab.label ? "true" : undefined}
+        href={tab.href}
+        title={tab.description}
+      >
+        {tab.label}
+      </a>
+    ))
+  }
+</nav>
+<div class="riot-header-actions print:hidden">
+  <a class="riot-install-link" href="/toolchain/installation/">Install Riot</a>
+  <a class="riot-utility-link" href="https://github.com/leostera/riot">GitHub</a>
+  <ThemeSelect />
 </div>
