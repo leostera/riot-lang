@@ -1193,7 +1193,11 @@ let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-      match Pkgs_ml.Registry.yank_release registry ~api_token:"root-secret" ~package_name:"std" ~version:"0.1.0" with
+      match Pkgs_ml.Registry.yank_release
+        registry
+        ~api_token:"root-secret"
+        ~package_name:"std"
+        ~version:"0.1.0" with
       | Error err -> Error err
       | Ok yanked_release -> (
           match List.rev !requests with

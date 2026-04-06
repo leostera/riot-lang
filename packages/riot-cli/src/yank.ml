@@ -43,11 +43,12 @@ let config_path = fun () -> Riot_dirs.config_path ()
 let load_config = fun path ->
   match Fs.exists path with
   | Error io_error -> Error (ConfigFailed ("failed to read config '"
-    ^ Path.to_string path
-    ^ "': "
-    ^ IO.error_message io_error))
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message io_error))
   | Ok false -> Ok User_config.default
-  | Ok true -> User_config.load path |> Result.map_error (fun err -> ConfigFailed (User_config.message err))
+  | Ok true -> User_config.load path
+  |> Result.map_error (fun err -> ConfigFailed (User_config.message err))
 
 let version_parse_error_to_string = function
   | Version.Invalid_format msg -> msg
@@ -56,7 +57,7 @@ let version_parse_error_to_string = function
 
 let parse_package_spec = fun raw ->
   match String.split_on_char '@' (String.trim raw) with
-  | [ package_name; version ] when not (String.equal (String.trim package_name) "")
+  | [package_name;version] when not (String.equal (String.trim package_name) "")
   && not (String.equal (String.trim version) "") -> (
       match Package.validate_name (String.trim package_name) with
       | Error err -> Error (InvalidPackageName err)
@@ -66,8 +67,10 @@ let parse_package_spec = fun raw ->
           | Error err -> Error (InvalidVersion (version_parse_error_to_string err))
         )
     )
-  | [] -> Error MissingPackageSpec
-  | _ -> Error (InvalidPackageSpec raw)
+  | [] ->
+      Error MissingPackageSpec
+  | _ ->
+      Error (InvalidPackageSpec raw)
 
 let parse_request = fun matches ->
   match ArgParser.get_one matches "package" with
@@ -77,8 +80,10 @@ let parse_request = fun matches ->
 let prompt_confirmation = fun ~package_name ~version ->
   eprint ("Yank " ^ package_name ^ "@" ^ version ^ " from pkgs.ml? [y/N]: ");
   match Tty.make ~stdin:IO.stdin () with
-  | Error Tty.NoTtyConnected -> Error (PromptFailed "no tty connected")
-  | Error (Tty.SystemError io_error) -> Error (PromptFailed (IO.error_message io_error))
+  | Error Tty.NoTtyConnected ->
+      Error (PromptFailed "no tty connected")
+  | Error (Tty.SystemError io_error) ->
+      Error (PromptFailed (IO.error_message io_error))
   | Ok tty -> (
       match Tty.read_line tty with
       | Error io_error ->

@@ -36,7 +36,10 @@ let test_yank_accepts_package_version_spec = fun _ctx ->
       Ok ()
 
 let test_yank_request_rejects_missing_version = fun _ctx ->
-  match Riot_cli.Yank.parse_request (parse_yank [ "yank"; "std" ] |> Result.expect ~msg:"expected args to parse") with
+  match
+    Riot_cli.Yank.parse_request
+      (parse_yank [ "yank"; "std" ] |> Result.expect ~msg:"expected args to parse")
+  with
   | Error (Riot_cli.Yank.InvalidPackageSpec _) -> Ok ()
   | Error err -> Error ("expected invalid package spec error, got: " ^ Riot_cli.Yank.message err)
   | Ok _ -> Error "expected yank request parsing to reject missing version"
