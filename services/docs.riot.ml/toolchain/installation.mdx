@@ -1,0 +1,81 @@
+---
+title: "Installation"
+description: "Install Riot, verify the CLI, and make sure the workspace can materialize the toolchain it needs."
+---
+
+Installing Riot is not only about putting one binary on `PATH`. It is about proving the whole
+workspace loop can start.
+
+That means a successful installation should let you do three things:
+
+1. invoke the CLI
+2. materialize any missing OCaml toolchains
+3. build and run at least one real package
+
+## Step 1: verify the CLI is there
+
+The first check is intentionally boring:
+
+```sh
+riot --version
+```
+
+If that does not work, the rest of the toolchain discussion is premature.
+
+## Step 2: materialize the compiler toolchain
+
+Once the Riot binary is visible, make sure it can also install the compiler toolchains the workspace
+expects:
+
+```sh
+riot toolchain install
+```
+
+This matters because Riot is not just a front-end to whatever random compiler happens to be lying
+around on the machine. It wants a declared toolchain story.
+
+## Step 3: prove the workflow with a real workspace
+
+The fastest real verification is:
+
+```sh
+riot init hello
+cd hello
+riot build
+riot run hello
+riot test
+```
+
+That sequence is better than a shallow `--help` check because it proves:
+
+- scaffolding works
+- the compiler path works
+- the build planner works
+- binaries run
+- the test runner is wired
+
+## What usually goes wrong
+
+Installation issues tend to cluster into a few categories:
+
+- the Riot binary is not actually on `PATH`
+- the workspace cannot fetch or materialize toolchains
+- the shell environment is different between interactive use and scripted use
+- the editor is pointed at the wrong root even though the CLI works
+
+The right response is to verify the system in layers:
+
+1. binary
+2. toolchain
+3. workspace
+4. editor
+
+## After installation
+
+The next pages to read are:
+
+- [Quick Start](/toolchain/quickstart)
+- [Editor Setup](/toolchain/editor-setup)
+- [ocaml-toolchain.toml and riot toolchain](/toolchain/toolchain-config)
+
+Those pages explain how the installation turns into a stable daily workflow instead of a one-time setup.

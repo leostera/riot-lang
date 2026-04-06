@@ -1,0 +1,72 @@
+---
+title: "Quick Start"
+description: "Create a workspace, build it, run it, test it, and generate docs in the shortest useful Riot loop."
+---
+
+The point of a quick start is not to show every feature. It is to get one real package through the
+full Riot loop as quickly as possible.
+
+## The loop
+
+Start with a new workspace:
+
+```sh
+riot init hello
+cd hello
+```
+
+Build it:
+
+```sh
+riot build
+```
+
+Run the package binary:
+
+```sh
+riot run hello
+```
+
+Run the tests:
+
+```sh
+riot test
+```
+
+Generate docs:
+
+```sh
+riot doc
+```
+
+## Why these steps matter
+
+Each step proves a different part of the system:
+
+- `riot init` proves Riot can scaffold the project shape it expects
+- `riot build` proves the workspace can resolve and compile what it needs
+- `riot run` proves the package produces a usable binary path
+- `riot test` proves the quality workflow is wired into the same tool
+- `riot doc` proves the public interface can become docs
+
+That is why this quick start is better than a trivial "print version" walkthrough. It tells you
+whether the system is coherent.
+
+## What to look for while you do it
+
+During the quick start, pay attention to whether Riot feels:
+
+- package-aware rather than file-scattered
+- consistent between commands
+- predictable in what it builds and runs
+- opinionated in a useful way rather than a constraining one
+
+Those are the real evaluation questions.
+
+## What to do next
+
+After the quick start, most users should move into one of three paths:
+
+- [riot build](/toolchain/build) and [riot run](/toolchain/riot-run) if the main concern is the daily development loop
+- [Package Structure](/toolchain/package-structure) if the main concern is how Riot expects a package to look
+- [Package Manager](/package-manager/index) if the main concern is dependencies, publishing, or docs

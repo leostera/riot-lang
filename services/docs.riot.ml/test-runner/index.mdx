@@ -1,0 +1,59 @@
+---
+title: "Test Runner"
+description: "Write tests with Std.Test, use Propane for property testing, manage snapshots, and benchmark real code."
+---
+
+Riot’s test story has four layers:
+
+1. `Std.Test` for example-based suites and shared test-binary structure
+2. `Propane` for property-based testing with generators and shrinking
+3. `Std.Test.Snapshot` and `riot snapshots` for artifact review
+4. `Std.Bench` and `riot bench` for performance verification
+
+The important thing is that these layers line up. You do not have to leave the Riot test runner just
+to get property tests, snapshot workflows, or benchmarks.
+
+## The mental model
+
+At the package level, you normally write test binaries that export:
+
+- regular `Std.Test.case` tests
+- `Propane.property` tests
+- fixture-backed tests
+- snapshot-backed tests
+
+through `Std.Test.Cli.main`.
+
+At the workspace level, `riot test` finds those binaries, builds what it needs, and runs them through
+one consistent loop.
+
+That means you can think about testing in two scopes:
+
+- inside one suite binary
+- across the whole workspace
+
+Both should still feel like one system.
+
+## Start here
+
+If you are new to Riot’s test stack, read these in order:
+
+1. [riot test](/test-runner/riot-test)
+2. [Writing Tests with Std.Test](/test-runner/writing-tests)
+3. [Property Testing with Propane](/test-runner/property-testing-with-propane)
+4. [Configuring Tests](/test-runner/configuring-tests)
+5. [Std.Test.Snapshot](/test-runner/std-test-snapshot)
+6. [Std.Bench](/test-runner/std-bench)
+
+## What good Riot suites look like
+
+Good Riot suites tend to have these properties:
+
+- examples are written as direct `Std.Test.case` tests
+- invariants are written as `Propane.property` tests
+- fixtures are shared through `Std.Test.FixtureRunner`
+- output-heavy surfaces use snapshots deliberately
+- benchmarks live next to the package when performance is part of the contract
+
+That progression is healthy. It means the package is becoming better specified without forcing you to
+adopt every testing feature at once.

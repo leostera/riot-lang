@@ -1,4 +1,5 @@
 name = "riot-docs"
+main = "./worker/index.js"
 compatibility_date = "2026-04-04"
 compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
@@ -7,8 +8,10 @@ workers_dev = false
 pattern = "docs.riot.ml"
 custom_domain = true
 
-[assets]
-directory = "./dist"
+[vars]
+# Replace this with the actual Mintlify upstream hostname, for example:
+# MINTLIFY_ORIGIN = "your-site.mintlify.app"
+MINTLIFY_ORIGIN = "REPLACE_WITH_YOUR_MINTLIFY_HOST"
 
 [observability]
 enabled = true

@@ -1,49 +1,55 @@
-# Starlight Starter Kit: Basics
+# docs.riot.ml
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+This service now uses Mintlify for authoring and navigation.
 
-```
-bun create astro@latest -- --template starlight
-```
+## Local development
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+1. Install the Mintlify CLI:
 
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```sh
+bun x --bun mint --help
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+2. Sync the repository RFDs into the local docs tree:
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+```sh
+npm run sync:rfds
+```
 
-Static assets, like favicons, can be placed in the `public/` directory.
+3. Start the local preview:
 
-## 🧞 Commands
+```sh
+npm run dev
+```
 
-All commands are run from the root of the project, from a terminal:
+Mintlify serves the site locally at `http://localhost:3000`.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
+The service scripts force Mintlify to run under Bun. That avoids Node 25 compatibility failures from
+Mintlify’s CLI runtime check.
 
-## 👀 Want to learn more?
+## Layout
 
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+- `docs.json`: Mintlify site configuration
+- `index.mdx`: landing page
+- `getting-started/`: onboarding and first steps
+- `tooling/`: CLI, workflows, and machine-readable interfaces
+- `runtime/`: runtime and standard library concepts
+- `registry/`: package registry and publishing docs
+- `rfds/`: synced Request for Discussion pages
+
+## Deployment
+
+`wrangler.toml` is still the domain entrypoint for `docs.riot.ml`.
+
+The Worker proxies traffic to the configured Mintlify origin. Set `MINTLIFY_ORIGIN` to your
+Mintlify hostname before deploying, for example:
+
+```sh
+wrangler secret put MINTLIFY_ORIGIN
+```
+
+Then deploy with:
+
+```sh
+npm run deploy
+```
