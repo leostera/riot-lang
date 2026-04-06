@@ -25,6 +25,12 @@ type generation = {
 
 type event =
   | PackageGenerationStarted of { package: string; version: string; output_dir: Path.t }
+  | PackageGenerationFailed of {
+      package: string;
+      version: string;
+      output_dir: Path.t;
+      error: string;
+    }
   | PackageGenerationCompleted of generation
 
 let generation_to_json = fun (summary: generation) ->
@@ -42,6 +48,13 @@ let event_to_json = function
     ("package", Data.Json.String package);
     ("version", Data.Json.String version);
     ("output_dir", Data.Json.String (Path.to_string output_dir));
+  ])
+  | PackageGenerationFailed { package; version; output_dir; error } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "doc.package_generation_failed");
+    ("package", Data.Json.String package);
+    ("version", Data.Json.String version);
+    ("output_dir", Data.Json.String (Path.to_string output_dir));
+    ("error", Data.Json.String error);
   ])
   | PackageGenerationCompleted summary -> Some (Data.Json.Object [
     ("type", Data.Json.String "doc.package_generation_completed");
@@ -145,6 +158,9 @@ let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(packa
             in
             let missing =
               package.dependencies
+              |> List.filter
+                (fun (dependency: Riot_model.Package.dependency) ->
+                  not (Package.is_builtin_dependency dependency))
               |> List.filter_map
                 (fun (dependency: Riot_model.Package.dependency) ->
                   match List.assoc_opt dependency.name resolved with
@@ -171,10 +187,16 @@ let dependency_link_for = fun ~release dependency_map dependency ->
   else
     Ok { Doctree.name = dependency; version = None; url = "../../" ^ dependency ^ "/dev/index.html" }
 
+let documentation_dependencies = fun (package: Riot_model.Package.t) ->
+  package.dependencies
+  |> List.filter
+    (fun (dependency: Riot_model.Package.dependency) ->
+      not (Package.is_builtin_dependency dependency))
+
 let map_dependencies = fun ~release ~(dependency_map:(string * string) list) (
   package: Riot_model.Package.t
 ) ->
-  package.dependencies |> List.sort_uniq
+  documentation_dependencies package |> List.sort_uniq
     (fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
       String.compare left.name right.name) |> List.fold_left
     (fun acc (dependency: Riot_model.Package.dependency) ->
@@ -347,80 +369,92 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
     ~release:request.release
     ~output_root_opt:request.output_root in
   let () = emit ~on_event (PackageGenerationStarted { package = package.name; version; output_dir }) in
-  let* sources = Source.collect_interfaces
-    ~workspace:request.workspace
-    ~store
-    ~release:request.release
-    package in
-  if sources = [] then
-    Error ("no interface files found for package " ^ package.name)
-  else
-    let* dependency_map =
-      if request.release then
-        locked_dependency_versions ~workspace:request.workspace ~package lockfile_opt
-      else
-        Ok []
-    in
-    let source_signature = Source.source_signature sources in
-    let dependency_signature = dependency_signature dependency_map in
-    let cache_key = cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature in
-    let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
-    let* package_doc = package_doc_of_sources ~package:package.name ~version ~dependencies sources in
-    let cache_hit_ref = ref false in
-    let* () =
-      if cache_allowed && not request.force then
-        match Riot_store.Store.get store (Crypto.hash_string cache_key) with
-        | Some _ ->
-            let* () = Riot_store.Store.promote store (Crypto.hash_string cache_key) ~target_dir:output_dir
-            |> Result.map_error (fun err -> "failed to promote cache hit: " ^ err) in
-            cache_hit_ref := true;
-            Ok ()
-        | None -> Ok ()
-      else
-        Ok ()
-    in
-    if !cache_hit_ref then
-      let summary = {
-        package = package.name;
-        version;
-        output_dir;
-        cache_hit = true;
-        cache_key;
-      }
-      in
-      let () = emit ~on_event (PackageGenerationCompleted summary) in
-      Ok summary
+  let result =
+    let* sources = Source.collect_interfaces
+      ~workspace:request.workspace
+      ~store
+      ~release:request.release
+      package in
+    if sources = [] then
+      Error ("no interface files found for package " ^ package.name)
     else
-      let* () = sanitize_output_path output_dir in
-      let* index_path = write_index ~output_dir package_doc in
-      let* page_paths = write_pages ~output_dir package_doc in
-      let* () = write_assets output_dir in
+      let* dependency_map =
+        if request.release then
+          locked_dependency_versions ~workspace:request.workspace ~package lockfile_opt
+        else
+          Ok []
+      in
+      let source_signature = Source.source_signature sources in
+      let dependency_signature = dependency_signature dependency_map in
+      let cache_key = cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature in
+      let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
+      let* package_doc = package_doc_of_sources ~package:package.name ~version ~dependencies sources in
+      let cache_hit_ref = ref false in
       let* () =
-        if cache_allowed then
-          let outs = [ index_path ]
-          @ page_paths
-          @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css"); ] in
-          Riot_store.Store.save
-            ~package:package.name
-            ~hash:(Crypto.hash_string cache_key)
-            store
-            ~sandbox_dir:output_dir
-            ~outs
-          |> Result.map_error (fun err -> "failed to save cached docs: " ^ err)
-          |> Result.map (fun _ -> ())
+        if cache_allowed && not request.force then
+          match Riot_store.Store.get store (Crypto.hash_string cache_key) with
+          | Some _ ->
+              let* () = Riot_store.Store.promote store (Crypto.hash_string cache_key) ~target_dir:output_dir
+              |> Result.map_error (fun err -> "failed to promote cache hit: " ^ err) in
+              cache_hit_ref := true;
+              Ok ()
+          | None -> Ok ()
         else
           Ok ()
       in
-      let summary = {
+      if !cache_hit_ref then
+        let summary = {
+          package = package.name;
+          version;
+          output_dir;
+          cache_hit = true;
+          cache_key;
+        }
+        in
+        let () = emit ~on_event (PackageGenerationCompleted summary) in
+        Ok summary
+      else
+        let* () = sanitize_output_path output_dir in
+        let* index_path = write_index ~output_dir package_doc in
+        let* page_paths = write_pages ~output_dir package_doc in
+        let* () = write_assets output_dir in
+        let* () =
+          if cache_allowed then
+            let outs = [ index_path ]
+            @ page_paths
+            @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css"); ] in
+            Riot_store.Store.save
+              ~package:package.name
+              ~hash:(Crypto.hash_string cache_key)
+              store
+              ~sandbox_dir:output_dir
+              ~outs
+            |> Result.map_error (fun err -> "failed to save cached docs: " ^ err)
+            |> Result.map (fun _ -> ())
+          else
+            Ok ()
+        in
+        let summary = {
+          package = package.name;
+          version;
+          output_dir;
+          cache_hit = false;
+          cache_key;
+        }
+        in
+        let () = emit ~on_event (PackageGenerationCompleted summary) in
+        Ok summary
+  in
+  match result with
+  | Ok _ as ok -> ok
+  | Error error ->
+      let () = emit ~on_event (PackageGenerationFailed {
         package = package.name;
         version;
         output_dir;
-        cache_hit = false;
-        cache_key;
-      }
-      in
-      let () = emit ~on_event (PackageGenerationCompleted summary) in
-      Ok summary
+        error;
+      }) in
+      Error error
 
 let run = fun ?on_event (request: request) ->
   let on_event =
