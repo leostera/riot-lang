@@ -29,7 +29,7 @@ let path_error_message = function
   ^ path
   | Path.SystemError error -> error
 
-let unsupported_json_kind = fun expected ->
+let rec unsupported_json_kind = fun expected ->
   function
   | Json.Null -> expected ^ " must not be null"
   | Json.Bool _ -> expected ^ " must be a JSON " ^ expected ^ ", found bool"
@@ -38,6 +38,7 @@ let unsupported_json_kind = fun expected ->
   | Json.String _ -> expected ^ " must be a JSON " ^ expected ^ ", found string"
   | Json.Array _ -> expected ^ " must be a JSON " ^ expected ^ ", found array"
   | Json.Object _ -> expected ^ " must be a JSON " ^ expected ^ ", found object"
+  | Json.Embed t -> unsupported_json_kind expected t
 
 module Decode = struct
   let field = fun name ->

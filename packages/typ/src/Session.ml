@@ -91,14 +91,14 @@ let loaded_modules_key = fun loaded_modules ->
   |> List.sort String.compare
   |> String.concat "|"
 
-let create_prepared_source = fun session ~kind ~origin ~text ~parse_result ~cst ->
+let create_prepared_source = fun session ~kind ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
   let source = Source.make_prepared
     ~source_id
     ~kind
     ~origin
     ~revision:session.next_revision
-    ~text
+    ~source_hash
     ~parse_result
     ~cst in
   let session = {

@@ -587,7 +587,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   in
                   match Module_planner.plan_node plan_input with
                   | Error err -> Error err
-                  | Ok { sources; module_graph; action_graph } ->
+                  | Ok { sources; module_graph; analyzed_modules=_; action_graph } ->
                       (* Add foreign dependency build actions and make all other nodes depend on them *)
                       let foreign_nodes =
                         List.map
@@ -681,7 +681,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
               in
               match Module_planner.plan_node plan_input with
               | Error err -> Error err
-              | Ok { sources; module_graph; action_graph } ->
+              | Ok { sources; module_graph; analyzed_modules=_; action_graph } ->
                   (* Add foreign dependency build actions and make all other nodes depend on them *)
                   let foreign_nodes =
                     List.map

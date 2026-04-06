@@ -40,7 +40,7 @@ let exports = function
 
 let type_decls = fun summary -> summary.type_decls
 
-let json_type_name = function
+let rec json_type_name = function
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -48,6 +48,7 @@ let json_type_name = function
   | String _ -> "string"
   | Array _ -> "array"
   | Object _ -> "object"
+  | Embed t -> json_type_name t
 
 let error_expected = fun expected actual ->
   Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
@@ -133,7 +134,7 @@ let rec type_to_json = fun ty ->
     ("lhs", type_to_json lhs);
     ("rhs", type_to_json rhs);
   ]
-  | TypeRepr.Var { id; link=None } -> Data.Json.Object [
+  | TypeRepr.Var { id; link=None; _ } -> Data.Json.Object [
     ("tag", Data.Json.String "var");
     ("id", Data.Json.Int id);
   ]
@@ -339,7 +340,7 @@ let rec type_of_json = fun json ->
   | "var" ->
       let* id_json = field "id" fields in
       let* id = get_int id_json in
-      Ok (TypeRepr.Var { id; link = None })
+      Ok (TypeRepr.make_var id)
   | "hole" ->
       let* id_json = field "id" fields in
       let* id = get_int id_json in

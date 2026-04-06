@@ -108,7 +108,7 @@ let test_error_message = function
   | SuiteExecutionError { reason; _ } -> reason
   | SuitesFailed count -> Int.to_string count ^ " test suite(s) failed"
 
-let json_type_name = function
+let rec json_type_name = function
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -116,6 +116,7 @@ let json_type_name = function
   | String _ -> "string"
   | Array _ -> "array"
   | Object _ -> "object"
+  | Embed json -> json_type_name json
 
 let error_expected = fun expected actual ->
   Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)

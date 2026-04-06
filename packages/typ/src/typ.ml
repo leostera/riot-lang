@@ -16,6 +16,7 @@ module SemanticTree = SemanticTree
 module TypeDecl = TypeDecl
 module TypeRepr = TypeRepr
 module TypeScheme = TypeScheme
+module Region = Region
 module TypePrinter = TypePrinter
 module TypeIndex = TypeIndex
 module FileSummary = FileSummary

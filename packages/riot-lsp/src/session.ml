@@ -288,11 +288,15 @@ let typ_session_with_paths = fun ~config paths ->
       | Ok text ->
           let parse_result = Syn.parse ~filename:path text in
           let cst = Syn.build_cst parse_result in
+          let source_hash = Typ.Source.hash_text
+            ~kind:Typ.Source.File
+            ~origin:(Typ.Source.Path path)
+            ~text in
           let (session, source_id) = Typ.Session.create_prepared_source
             session
             ~kind:Typ.Source.File
             ~origin:(Typ.Source.Path path)
-            ~text
+            ~source_hash
             ~parse_result
             ~cst in
           let source = Typ.Source.make_prepared
@@ -300,7 +304,7 @@ let typ_session_with_paths = fun ~config paths ->
             ~kind:Typ.Source.File
             ~origin:(Typ.Source.Path path)
             ~revision:0
-            ~text
+            ~source_hash
             ~parse_result
             ~cst in
           (session, source_ids @ [ source_id ], sources @ [ source ]))
@@ -474,11 +478,15 @@ let typ_analysis_for_document = fun state ->
           | Some text ->
               let parse_result = Syn.parse ~filename:path text in
               let cst = Syn.build_cst parse_result in
+              let source_hash = Typ.Source.hash_text
+                ~kind:Typ.Source.File
+                ~origin:(Typ.Source.Path path)
+                ~text in
               let (session, source_id) = Typ.Session.create_prepared_source
                 session
                 ~kind:Typ.Source.File
                 ~origin:(Typ.Source.Path path)
-                ~text
+                ~source_hash
                 ~parse_result
                 ~cst in
               let revision =
@@ -492,7 +500,7 @@ let typ_analysis_for_document = fun state ->
                 ~kind:Typ.Source.File
                 ~origin:(Typ.Source.Path path)
                 ~revision
-                ~text
+                ~source_hash
                 ~parse_result
                 ~cst in
               let current_source_id =
@@ -523,19 +531,21 @@ let typ_analysis_for_document = fun state ->
     | (session, None, sources) ->
         let parse_result = Syn.parse ~filename:(filename_of_document document) document.text in
         let cst = Syn.build_cst parse_result in
+        let origin = typ_source_origin_of_document document in
+        let source_hash = Typ.Source.hash_text ~kind:Typ.Source.File ~origin ~text:document.text in
         let (session, source_id) = Typ.Session.create_prepared_source
           session
           ~kind:Typ.Source.File
-          ~origin:(typ_source_origin_of_document document)
-          ~text:document.text
+          ~origin
+          ~source_hash
           ~parse_result
           ~cst in
         let source = Typ.Source.make_prepared
           ~source_id
           ~kind:Typ.Source.File
-          ~origin:(typ_source_origin_of_document document)
+          ~origin
           ~revision:document.version
-          ~text:document.text
+          ~source_hash
           ~parse_result
           ~cst in
         (

@@ -145,7 +145,7 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
       lower_core_type state type_params inner
   | Cst.CoreType.Var { name_token; _ } -> (
       match List.assoc_opt (Cst.Token.text name_token) type_params with
-      | Some id -> TypeRepr.Var { id; link = None }
+      | Some id -> TypeRepr.make_var id
       | None -> TypeRepr.Hole (-100)
     )
   | Cst.CoreType.Constr { constructor_path; arguments; _ } ->
@@ -436,7 +436,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
   let params = type_param_bindings declaration in
   let result_type = TypeRepr.Named {
     name = qualify_scoped_name state.scope_path type_name;
-    arguments = params |> List.map (fun (_, id) -> TypeRepr.Var { id; link = None })
+    arguments = params |> List.map (fun (_, id) -> TypeRepr.make_var id)
   } in
   let lowered_declaration =
     match Cst.TypeDeclaration.type_definition declaration with

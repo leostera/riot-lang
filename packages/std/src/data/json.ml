@@ -11,6 +11,17 @@ type t =
   | String of string
   | Array of t list
   | Object of (string * t) list
+  | Embed of t
+
+let rec type_name = function
+  | Null -> "null"
+  | Bool _ -> "bool"
+  | Int _ -> "int"
+  | Float _ -> "float"
+  | String _ -> "string"
+  | Array _ -> "array"
+  | Object _ -> "object"
+  | Embed t -> type_name t
 
 type error =
   | Unterminated_string of { position: int }
@@ -161,6 +172,7 @@ let rec to_string = function
     ","
     (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
   ^ "}"
+  | Embed t -> to_string t
 
 let indentation = fun depth ->
   String.make (depth * 2) ' '
@@ -199,6 +211,8 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
       ^ "\n"
       ^ closing_indent
       ^ "}"
+  | Embed t ->
+      to_string_pretty t
 
 (** Parse JSON from string *)
 let of_string = fun str ->

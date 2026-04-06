@@ -13,6 +13,12 @@ type var = {
   id: int;
   (** Query-local mutable link used by unification. *)
   mutable link: t option;
+  (** Region level where this inference variable was created. *)
+  mutable level: int;
+  (** Query-local reachability generation used by solver bookkeeping. *)
+  mutable mark: int;
+  (** First-visit order for the current mark generation. *)
+  mutable mark_order: int;
 }
 
 and t =
@@ -52,6 +58,9 @@ and t =
 (** Chase mutable links until a canonical representative is reached. *)
 val prune: t -> t
 
+(** Construct one unlinked inference variable with the given id and level. *)
+val make_var: ?level:int -> int -> t
+
 (** Set-like union over integer identifiers while preserving left-to-right bias. *)
 val union: int list -> int list -> int list
 
@@ -61,9 +70,17 @@ val diff: int list -> int list -> int list
 (** Collect free inference-variable identifiers from a type. *)
 val free_vars: t -> int list
 
+(** Mark reachable inference variables for one solver generation in first-visit
+    order. *)
+val mark_reachable_vars: generation:int -> next_order:(unit -> int) -> t -> unit
+
 (** Collect the free inference-variable identifiers that occur only covariantly
     in the type. *)
 val covariant_vars: t -> int list
 
 (** Check whether the given inference variable occurs inside the type. *)
 val occurs: int -> t -> bool
+
+(** Check whether the given inference variable occurs inside the type while
+    lowering any deeper unbound variables to the provided region level. *)
+val occurs_or_lower: needle:int -> level:int -> t -> bool

@@ -52,7 +52,9 @@ let select_source = fun sources desired_kind ->
   loop None sources
 
 let source_span = fun (source: Source.t) ->
-  Syn.Ceibo.Span.make ~start:0 ~end_:(String.length source.text)
+  match source.cst with
+  | Ok cst -> Syn.Cst.syntax_node_of_source_file cst |> Syn.Cst.token_body_span
+  | Error _ -> Syn.Ceibo.Span.make ~start:0 ~end_:0
 
 let qualified_name = fun scope_path name ->
   match scope_path with

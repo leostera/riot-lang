@@ -45,11 +45,20 @@ type config = {
   workspace: Workspace.t;
 }
 
+type analyzed_module = {
+  display_path: Path.t;
+  source_hash: Crypto.hash;
+  parse_result: Syn.Parser.parse_result;
+  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
+  deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
+}
+
 type t = {
   config: config;
   graph: Module_node.t G.t;
   registry: Module_registry.t;
   entries: Module_scanner.entry list;
+  analyzed_modules: (G.Node_id.t, analyzed_module) HashMap.t;
 }
 
 type scan_ctx = {
@@ -77,6 +86,27 @@ let make_relative = fun ~base ~path ->
     Path.v (String.sub path_str len (String.length path_str - len))
   else
     path
+
+let sanitize_module_name = fun name ->
+  String.map
+    (fun ch ->
+      if ch = '-' then
+        '_'
+      else
+        ch)
+    name
+
+let source_hash = fun ~kind_tag ~module_name ~text ->
+  let module H = Crypto.Sha256 in
+  let state = H.create () in
+  let () = H.write state kind_tag in
+  let () = H.write state "\x1f" in
+  let () = H.write state
+    (sanitize_module_name module_name |> String.capitalize_ascii)
+  in
+  let () = H.write state "\x1f" in
+  let () = H.write state text in
+  H.finish state
 
 let rec filter_entries = fun ~allowed entries ->
   let allowed_strings = List.map Path.to_string allowed in
@@ -347,7 +377,15 @@ let create = fun config ->
   |> filter_entries ~allowed:config.allowed_source_files in
   let graph = G.make () in
   let registry = Module_registry.create () in
-  let t = { config; graph; registry; entries } in
+  let analyzed_modules = HashMap.with_capacity 64 in
+  let t = {
+    config;
+    graph;
+    registry;
+    entries;
+    analyzed_modules;
+  }
+  in
   scan_sources t entries;
   t
 
@@ -370,6 +408,16 @@ let create = fun config ->
     - MLI -> ML dependencies are filtered out to maintain proper compilation
       order *)
 let wire_dependencies = fun t ->
+  let () = HashMap.clear t.analyzed_modules in
+  let injected_open_lines (open_modules: Module_node.t G.node list) =
+    open_modules
+    |> List.filter_map
+      (fun (node: Module_node.t G.node) ->
+        match node.value.kind with
+        | Module_node.ML mod_
+        | Module_node.MLI mod_ -> Some ("open " ^ Module.namespaced_name mod_)
+        | _ -> None)
+  in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = function
       | [] -> (List.rev acc, has_ml)
@@ -412,14 +460,11 @@ let wire_dependencies = fun t ->
         | Module_node.ML _
         | Module_node.MLI _ -> (
             match module_node.file with
-            | Module_node.Concrete path -> Some (path, node)
-            | Module_node.Generated _ -> None
+            | Module_node.Concrete path
+            | Module_node.Generated { path; _ } -> Some (path, node)
           )
         | _ -> None)
       sorted_nodes
-  in
-  let files =
-    List.map (fun ((path, _)) -> path) files_with_nodes
   in
   let namespace = Namespace.of_string t.config.namespace in
   let source_dir_prefix = Path.to_string t.config.source_dir ^ "/" in
@@ -435,6 +480,63 @@ let wire_dependencies = fun t ->
     ^ Path.to_string path
     ^ " during dependency analysis: "
     ^ err.message
+  in
+  let effective_source_text (node: Module_node.t G.node) =
+    let source_result =
+      match node.value.file with
+      | Module_node.Concrete path ->
+          let display_path =
+            if Path.is_absolute path then
+              path
+            else
+              Path.(t.config.package.path / path)
+          in
+          Fs.read display_path |> Result.map (fun text -> (text, display_path))
+      | Module_node.Generated { path; contents } ->
+          let display_path =
+            if Path.is_absolute path then
+              path
+            else
+              Path.(t.config.package.path / path)
+          in
+          Ok (contents, display_path)
+    in
+    match source_result with
+    | Error err -> Error (Planning_error.DependencyAnalysisFailed {
+      reason = "failed to read "
+      ^ Module_node.file_to_string node.value.file
+      ^ " for dependency analysis: "
+      ^ IO.error_message err
+    })
+    | Ok (raw_text, display_path) ->
+        let prelude = injected_open_lines node.value.open_modules in
+        let text =
+          if List.is_empty prelude then
+            raw_text
+          else
+            String.concat "\n" (prelude @ [ ""; raw_text ])
+        in
+        Ok (text, display_path)
+  in
+  let source_origin_and_hash text (node: Module_node.t G.node) =
+    match node.value.kind, node.value.file with
+    | Module_node.ML mod_, Module_node.Concrete _ -> Some (
+      Module_name.canonical_ml (Module.module_name mod_),
+      source_hash ~kind_tag:"file" ~module_name:(Module.qualified_name mod_) ~text
+    )
+    | Module_node.MLI mod_, Module_node.Concrete _ -> Some (
+      Module_name.canonical_mli (Module.module_name mod_),
+      source_hash ~kind_tag:"file" ~module_name:(Module.qualified_name mod_) ~text
+    )
+    | Module_node.ML mod_, Module_node.Generated _ -> Some (
+      Module_name.canonical_ml (Module.module_name mod_),
+      source_hash ~kind_tag:"generated" ~module_name:(Module.qualified_name mod_) ~text
+    )
+    | Module_node.MLI mod_, Module_node.Generated _ -> Some (
+      Module_name.canonical_mli (Module.module_name mod_),
+      source_hash ~kind_tag:"generated" ~module_name:(Module.qualified_name mod_) ~text
+    )
+    | _ -> None
   in
   let file_namespace path =
     let file_str = Path.to_string path in
@@ -458,62 +560,63 @@ let wire_dependencies = fun t ->
     in
     List.fold_left Namespace.append namespace subdir_parts
   in
-  let analyze_file path =
-    let absolute_path =
-      if Path.is_absolute path then
-        path
-      else
-        Path.(t.config.root / path)
-    in
-    match Fs.read absolute_path with
-    | Error err -> Error (Planning_error.DependencyAnalysisFailed {
-      reason = "failed to read "
-      ^ Path.to_string absolute_path
-      ^ " for dependency analysis: "
-      ^ IO.error_message err
-    })
-    | Ok source -> (
-        let parse_result = Syn.parse ~filename:path source in
-        match Syn.Deps.of_parse_result parse_result with
-        | Ok deps ->
+  let analyze_node path (node: Module_node.t G.node) =
+    match effective_source_text node with
+    | Error _ as err -> err
+    | Ok (text, display_path) ->
+        let parse_result = Syn.parse ~filename:display_path text in
+        let cst = Syn.build_cst parse_result in
+        let deps = Syn.Deps.of_parse_result parse_result in
+        let source_hash =
+          match source_origin_and_hash text node with
+          | Some (_origin, source_hash) -> source_hash
+          | None -> Crypto.hash_string ""
+        in
+        let analyzed = {
+          display_path;
+          source_hash;
+          parse_result;
+          cst;
+          deps;
+        }
+        in
+        let _ = HashMap.insert t.analyzed_modules node.id analyzed in
+        match deps, node.value.file with
+        | Ok deps, Module_node.Concrete _ ->
             let names = Syn.Deps.modules deps
             |> List.map
               (fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname) in
             Ok names
-        | Error err -> Error (Planning_error.DependencyAnalysisFailed {
-          reason = stringify_dependency_error path err
-        })
-      )
+        | Error err, Module_node.Concrete _ ->
+            Error (Planning_error.DependencyAnalysisFailed {
+              reason = stringify_dependency_error path err
+            })
+        | Ok _, Module_node.Generated _ ->
+            Ok []
+        | Error err, Module_node.Generated _ ->
+            Error (Planning_error.DependencyAnalysisFailed {
+              reason = stringify_dependency_error path err
+            })
   in
   (* Sort files deterministically to ensure consistent hashing *)
-  let sorted_files =
+  let sorted_file_nodes =
     List.sort
-      (fun a b ->
-        String.compare (Path.to_string a) (Path.to_string b))
-      files
+      (fun ((left_path, _)) ((right_path, _)) ->
+        String.compare (Path.to_string left_path) (Path.to_string right_path))
+      files_with_nodes
   in
-  let nodes_by_path = HashMap.with_capacity (List.length files_with_nodes) in
-  List.iter
-    (fun ((path, node)) ->
-      let _ = HashMap.insert nodes_by_path (Path.to_string path) node in
-      ())
-    files_with_nodes;
   let deps =
     List.fold_left
-      (fun acc path ->
+      (fun acc (path, node) ->
         match acc with
         | Error _ as error -> error
         | Ok deps -> (
-            match analyze_file path with
+            match analyze_node path node with
             | Error _ as error -> error
-            | Ok module_deps -> (
-                match HashMap.get nodes_by_path (Path.to_string path) with
-                | Some node -> Ok ((node, module_deps) :: deps)
-                | None -> Ok deps
-              )
+            | Ok module_deps -> Ok ((node, module_deps) :: deps)
           ))
       (Ok [])
-      sorted_files
+      sorted_file_nodes
   in
   match deps with
   | Error _ as error -> error
@@ -584,6 +687,11 @@ let add_binary_node = fun t ~name ~source ~libraries ~includes ->
 let add_command_node = add_binary_node
 
 let graph = fun t -> t.graph
+
+let analyzed_modules = fun t ->
+  HashMap.to_list t.analyzed_modules |> List.sort
+    (fun ((left_id, _)) ((right_id, _)) ->
+      Int.compare (G.Node_id.to_int left_id) (G.Node_id.to_int right_id))
 
 let registry = fun t -> t.registry
 

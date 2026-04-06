@@ -2,7 +2,7 @@ open Std
 
 let monomorphic = fun ty -> TypeScheme.Forall ([], ty)
 
-let var = fun id -> TypeRepr.Var { id; link = None }
+let var = fun id -> TypeRepr.make_var id
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.Arrow { label; lhs; rhs }
 

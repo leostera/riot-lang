@@ -608,55 +608,6 @@ let test_check_package_filter_persists_interface_shaped_module_typings = fun _ct
                   Ok ()
         ))
 
-let test_populate_workspace_typings_persists_local_dependency_bundles = fun _ctx ->
-  with_tempdir_result "riot_populate_workspace_typings"
-    (fun tmpdir ->
-      let workspace_root = Path.(tmpdir / Path.v "workspace") in
-      let external_root = Path.(tmpdir / Path.v "external/std") in
-      let app_root = Path.(workspace_root / Path.v "packages/app") in
-      let external_source = Path.(external_root / Path.v "src/std.ml") in
-      let app_source = Path.(app_root / Path.v "src/app.ml") in
-      let workspace = make_workspace
-        workspace_root
-        [
-          make_package
-            ~name:"std"
-            ~path:external_root
-            ~relative_path:(Path.v "../external/std")
-            ~sources:{ empty_sources with src = [ Path.v "src/std.ml" ] }
-            ();
-          make_package
-            ~name:"app"
-            ~path:app_root
-            ~relative_path:(Path.v "packages/app")
-            ~dependencies:[ make_dependency "std" ]
-            ~sources:{ empty_sources with src = [ Path.v "src/app.ml" ] }
-            ();
-        ] in
-      match write_file external_source "let twice x = x + x\n" with
-      | Error err -> Error err
-      | Ok () -> (
-          match write_file app_source "let answer = Std.twice 21\n" with
-          | Error err -> Error err
-          | Ok () ->
-              Riot_cli.Check_cmd.populate_workspace_typings ~workspace ~package_names:[ "app" ] ();
-              let typ_store = workspace_typ_store workspace in
-              let std_bundle = Typ.Store.load_package_module_typings typ_store ~package_name:"std" in
-              let app_bundle = Typ.Store.load_package_module_typings typ_store ~package_name:"app" in
-              let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
-              let app_typings = Typ.Store.load_module_typings typ_store ~module_name:"App" in
-              if not (Option.is_some std_bundle) then
-                Error "expected std package module typings bundle to be persisted"
-              else if not (Option.is_some app_bundle) then
-                Error "expected app package module typings bundle to be persisted"
-              else if not (Option.is_some std_typings) then
-                Error "expected Std module typings to be persisted"
-              else if not (Option.is_some app_typings) then
-                Error "expected App module typings to be persisted"
-              else
-                Ok ()
-        ))
-
 let test_check_package_filter_reports_signature_inclusion_errors = fun _ctx ->
   with_tempdir_result "riot_check_package_signature_inclusion"
     (fun tmpdir ->
@@ -1715,22 +1666,19 @@ let test_check_package_filter_merges_bootstrap_and_dependency_module_exports = f
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ())
 
-let test_check_rejects_package_filter_without_workspace = fun _ctx ->
-  let matches = parse_check [ "check"; "--json"; "-p"; "colors" ] |> Result.expect ~msg:"parse check args" in
-  let stdout, stdout_contents = make_capture_writer () in
-  let stderr, stderr_contents = make_capture_writer () in
-  (
-    match Riot_cli.Check_cmd.run ~stdout ~stderr matches with
-    | Ok () -> Error "expected package-filtered check without workspace to fail"
-    | Error _ ->
-        Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
-        if
-          String.contains (stderr_contents ()) "cannot use --package colors outside a riot workspace"
-        then
-          Ok ()
-        else
-          Error ("unexpected stderr: " ^ stderr_contents ())
-  )
+let test_check_requires_workspace = fun _ctx ->
+  with_tempdir_result "riot_check_requires_workspace"
+    (fun tmpdir ->
+      with_current_dir_result tmpdir
+        (fun () ->
+          match Riot_cli.Cli.run ~args:[ "riot"; "check"; "--json"; "-p"; "colors" ] with
+          | Ok () ->
+              Error "expected check outside a workspace to fail"
+          | Error (Failure message) ->
+              Test.assert_equal ~expected:"Not in a riot workspace" ~actual:message;
+              Ok ()
+          | Error exn ->
+              Error ("unexpected error: " ^ Exception.to_string exn)))
 
 let tests =
   Test.[
@@ -1751,7 +1699,6 @@ let tests =
     case "check: package filter loads external dependency summaries" test_check_package_filter_loads_external_dependency_summaries;
     case "check: package filter persists module typings to store" test_check_package_filter_persists_module_typings_to_store;
     case "check: package filter persists interface-shaped module typings" test_check_package_filter_persists_interface_shaped_module_typings;
-    case "check: workspace typing warmup persists local dependency bundles" test_populate_workspace_typings_persists_local_dependency_bundles;
     case "check: package filter reports signature inclusion errors" test_check_package_filter_reports_signature_inclusion_errors;
     case "check: package filter reexports workspace dependency summaries via include" test_check_package_filter_reexports_workspace_dependency_summaries_via_include;
     case "check: package filter persists locally built dependency modules" test_check_package_filter_persists_locally_built_dependency_modules;
@@ -1771,7 +1718,7 @@ let tests =
     case "check: explicit workspace file loads dependency summaries" test_check_explicit_workspace_file_loads_dependency_summaries;
     case "check: explicit workspace file loads transitive dependency summaries" test_check_explicit_workspace_file_loads_transitive_dependency_summaries;
     case "check: package filter merges bootstrap and dependency module exports" test_check_package_filter_merges_bootstrap_and_dependency_module_exports;
-    case "check: package filter requires workspace" test_check_rejects_package_filter_without_workspace;
+    case "check: requires workspace" test_check_requires_workspace;
   ]
 
 let name = "Riot CLI Check Tests"

@@ -94,6 +94,8 @@ module TypeRepr: module type of TypeRepr
 
 module TypeScheme: module type of TypeScheme
 
+module Region: module type of Region
+
 module TypePrinter: module type of TypePrinter
 
 module TypeIndex: module type of TypeIndex

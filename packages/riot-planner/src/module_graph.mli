@@ -12,6 +12,13 @@ type config = {
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
 }
+type analyzed_module = {
+  display_path: Path.t;
+  source_hash: Crypto.hash;
+  parse_result: Syn.Parser.parse_result;
+  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
+  deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
+}
 type t
 val create: config -> t
 
@@ -26,6 +33,8 @@ val add_command_node:
   t -> name:string -> source:Path.t -> libraries:Path.t list -> includes:Path.t list -> unit
 
 val graph: t -> Module_node.t G.t
+
+val analyzed_modules: t -> (G.Node_id.t * analyzed_module) list
 
 val registry: t -> Module_registry.t
 

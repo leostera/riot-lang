@@ -262,13 +262,11 @@ let run = fun ~args ->
                 )
               | Error _ as e -> e
             )
-          | Some ("check", check_matches) ->
-              let workspace =
-                match get_workspace_scan () with
-                | Loaded (workspace, _) -> Some workspace
-                | _ -> None
-              in
-              Check_cmd.run ?workspace check_matches
+          | Some ("check", check_matches) -> (
+              match require_clean_workspace (get_workspace_scan ()) with
+              | Ok workspace -> Check_cmd.run ~workspace check_matches
+              | Error _ as e -> e
+            )
           | Some ("run", run_matches) -> (
               let workspace_scan = get_workspace_scan () in
               let workspace, workspace_error =

@@ -18,7 +18,6 @@ type item_trace = {
 type t = {
   source_id: SourceId.t;
   filename: Path.t;
-  source: string;
   parse_diagnostics: Syn.Diagnostic.t list;
   item_tree: ItemTree.t option;
   body_arena: BodyArena.t option;

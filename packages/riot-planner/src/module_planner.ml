@@ -19,6 +19,7 @@ type plan_input = {
 type plan_result = {
   sources: Path.t list;
   module_graph: Module_node.t G.t;
+  analyzed_modules: (G.Node_id.t * Module_graph.analyzed_module) list;
   action_graph: Action_graph.t;
 }
 
@@ -149,6 +150,7 @@ let plan_node = fun input ->
               ~includes:binary_includes)
           input.package.commands;
         let module_graph = Module_graph.graph graph_builder in
+        let analyzed_modules = Module_graph.analyzed_modules graph_builder in
         (
           match G.topo_sort module_graph with
           | Error cycle_ids ->
@@ -211,7 +213,7 @@ let plan_node = fun input ->
                         | _ -> []
                       ))
               in
-              Ok { sources; module_graph; action_graph }
+              Ok { sources; module_graph; analyzed_modules; action_graph }
             )
         )
   with

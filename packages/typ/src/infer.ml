@@ -23,6 +23,7 @@ type variance =
 type state = {
   file: SemanticTree.file;
   config: TypConfig.t;
+  regions: Region.t;
   mutable next_type_var_id: int;
   mutable next_hole_id: int;
   mutable diagnostics: Typ_diagnostic.t list;
@@ -127,6 +128,7 @@ let make_state = fun ~config file ->
   let state = {
     file;
     config;
+    regions = Region.create ();
     next_type_var_id = 0;
     next_hole_id = 0;
     diagnostics = [];
@@ -205,26 +207,12 @@ let introduced_names = fun before after ->
       else
         Some name)
 
-let env_free_vars = fun env ->
-  let seen = Collections.HashSet.create () in
-  visible_env_entries env |> List.fold_left
-    (fun acc (_, scheme) ->
-      TypeScheme.free_vars scheme |> List.fold_left
-        (fun acc var_id ->
-          if Collections.HashSet.contains seen var_id then
-            acc
-          else
-            let () = Collections.HashSet.insert seen var_id |> ignore in
-            var_id :: acc)
-        acc)
-    []
-
 let fresh_var = fun (state: state) ->
   let id = state.next_type_var_id in
   let () =
     state.next_type_var_id <- state.next_type_var_id + 1
   in
-  TypeRepr.Var { id; link = None }
+  Region.fresh_var state.regions id
 
 let fresh_hole = fun (state: state) ->
   let hole_id = state.next_hole_id in
@@ -445,17 +433,10 @@ let resolve_record_decl = fun (state: state) ~field_names ~owner_hint ~span ~con
         (Typ_diagnostic.AmbiguousRecordLabels field_names) in
       None
 
-let generalize = fun env ty ->
-  let env_free = env_free_vars env in
-  let ty_free = TypeRepr.free_vars ty in
-  TypeScheme.Forall (TypeRepr.diff ty_free env_free |> List.rev, ty)
-
 let generalize_with_quantifiers = fun quantified ty -> TypeScheme.Forall (quantified, ty)
 
-let local_generalizable_vars = fun env ty ->
-  let env_free = env_free_vars env in
-  let ty_free = TypeRepr.free_vars ty in
-  TypeRepr.diff ty_free env_free |> List.rev
+let local_generalizable_vars = fun (state: state) (frame: Region.frame) ty ->
+  Region.local_reachable_vars state.regions frame ty
 
 let flip_variance = function
   | Covariant -> Contravariant
@@ -635,8 +616,8 @@ let covariant_vars_of_type = fun (state: state) ty ->
       | Contravariant
       | Invariant -> None)
 
-let relaxed_generalizable_vars = fun (state: state) env ty ->
-  let local_vars = local_generalizable_vars env ty in
+let relaxed_generalizable_vars = fun (state: state) (frame: Region.frame) ty ->
+  let local_vars = local_generalizable_vars state frame ty in
   let covariant_vars = covariant_vars_of_type state ty in
   let covariant_var_set = Collections.HashSet.of_list covariant_vars in
   List.filter
@@ -735,12 +716,12 @@ and is_nonexpansive_binding = fun (state: state) binding_id ->
   | Some (binding: BodyArena.binding) -> is_nonexpansive_expr state binding.value_id
   | None -> false
 
-let generalize_binding = fun (state: state) env expr_id ty ->
+let generalize_binding = fun (state: state) (frame: Region.frame) expr_id ty ->
   let quantified =
     if is_nonexpansive_expr state expr_id then
-      local_generalizable_vars env ty
+      local_generalizable_vars state frame ty
     else
-      relaxed_generalizable_vars state env ty
+      relaxed_generalizable_vars state frame ty
   in
   generalize_with_quantifiers quantified ty
 
@@ -834,7 +815,7 @@ let rec unify = fun (state: state) ~origin left right ->
       ()
   | (TypeRepr.Var var, ty)
   | (ty, TypeRepr.Var var) ->
-      if TypeRepr.occurs var.id ty then
+      if TypeRepr.occurs_or_lower ~needle:var.id ~level:var.level ty then
         raise
           (Unify_error (Typ_diagnostic.OccursCheckFailed {
             variable_id = var.id;
@@ -1525,19 +1506,21 @@ and infer_binding_group = fun (state: state) env binding_ids ->
     infer_nonrecursive_group state env bindings
 
 and infer_nonrecursive_group = fun (state: state) env bindings ->
-  let inferred_bindings =
-    List.map
-      (fun (binding: BodyArena.binding) ->
-        let value_ty = infer_expr state env binding.value_id in
-        let bound_entries = bind_pattern state env binding.pattern_id value_ty in
-        let generalized = bound_entries
-        |> List.map
-          (fun (name, TypeScheme.Forall (_, ty)) ->
-            (name, generalize_binding state env binding.value_id ty)) in
-        (binding, generalized))
-      bindings
-  in
-  List.fold_left (fun env (_, entries) -> bind_env env entries) env inferred_bindings
+  Region.with_region state.regions
+    (fun frame ->
+      let inferred_bindings =
+        List.map
+          (fun (binding: BodyArena.binding) ->
+            let value_ty = infer_expr state env binding.value_id in
+            let bound_entries = bind_pattern state env binding.pattern_id value_ty in
+            let generalized = bound_entries
+            |> List.map
+              (fun (name, TypeScheme.Forall (_, ty)) ->
+                (name, generalize_binding state frame binding.value_id ty)) in
+            (binding, generalized))
+          bindings
+      in
+      List.fold_left (fun env (_, entries) -> bind_env env entries) env inferred_bindings)
 
 and infer_recursive_group = fun (state: state) env bindings ->
   let unsupported_bindings =
@@ -1546,34 +1529,36 @@ and infer_recursive_group = fun (state: state) env bindings ->
       bindings
   in
   if List.is_empty unsupported_bindings then
-    let placeholders =
-      bindings
-      |> List.map (fun (binding: BodyArena.binding) -> (binding, fresh_var state))
-      |> List.filter_map
-        (fun ((binding: BodyArena.binding), ty) ->
-          match binding.name with
-          | Some name -> Some (name, ty)
-          | None -> None)
-    in
-    let provisional_env = placeholders
-    |> List.map (fun (name, ty) -> (name, TypeScheme.Forall ([], ty)))
-    |> bind_env env in
-    let () =
-      List.iter2
-        (fun (binding: BodyArena.binding) placeholder_ty ->
-          let value_ty = infer_expr state provisional_env binding.value_id in
-          try_unify state ~origin:(origin_of_binding state binding) placeholder_ty value_ty)
-        bindings
-        (placeholders |> List.map snd)
-    in
-    let generalized =
-      List.map2
-        (fun (binding: BodyArena.binding) (name, ty) ->
-          (name, generalize_binding state env binding.value_id ty))
-        bindings
-        placeholders
-    in
-    bind_env env generalized
+    Region.with_region state.regions
+      (fun frame ->
+        let placeholders =
+          bindings
+          |> List.map (fun (binding: BodyArena.binding) -> (binding, fresh_var state))
+          |> List.filter_map
+            (fun ((binding: BodyArena.binding), ty) ->
+              match binding.name with
+              | Some name -> Some (name, ty)
+              | None -> None)
+        in
+        let provisional_env = placeholders
+        |> List.map (fun (name, ty) -> (name, TypeScheme.Forall ([], ty)))
+        |> bind_env env in
+        let () =
+          List.iter2
+            (fun (binding: BodyArena.binding) placeholder_ty ->
+              let value_ty = infer_expr state provisional_env binding.value_id in
+              try_unify state ~origin:(origin_of_binding state binding) placeholder_ty value_ty)
+            bindings
+            (placeholders |> List.map snd)
+        in
+        let generalized =
+          List.map2
+            (fun (binding: BodyArena.binding) (name, ty) ->
+              (name, generalize_binding state frame binding.value_id ty))
+            bindings
+            placeholders
+        in
+        bind_env env generalized)
   else
     let () =
       List.iter

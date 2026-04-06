@@ -3,33 +3,21 @@ open Std
 (** Command definition for [riot check]. *)
 val command: ArgParser.command
 
-open Riot_model
+module Diagnostic: module type of Diagnostic
+
+module Check: module type of Check
+
+module Error: module type of Error
 
 (** Run [riot check] from already-parsed CLI matches.
 
-    When [workspace] is provided, omitted targets are interpreted relative to that
-    workspace context (package-aware ignore configuration, package roots, and
-    optional [-p]/[--package] package narrowing). When [workspace] is omitted
-    and no explicit targets are provided, [riot check] falls back to checking
-    from the current directory.
-
-    Optional [stdout] and [stderr] emitters allow tests and embedded callers to
-    capture structured and human output without going through process-global
-    stdio.
+    [riot check] is workspace-scoped. Omitted targets are interpreted relative
+    to the provided workspace context, including package-aware ignore
+    configuration and optional [-p]/[--package] narrowing. Structured command
+    events are emitted through [on_event]; callers own all final rendering.
 *)
 val run:
-  ?workspace:Workspace.t ->
-  ?stdout:(string -> unit) ->
-  ?stderr:(string -> unit) ->
+  workspace:Riot_model.Workspace.t ->
+  ?on_event:(Check.Event.t -> unit) ->
   ArgParser.matches ->
-  (unit, exn) result
-
-(** Best-effort local type-cache warmup for a workspace.
-
-    This computes canonical [Typ.ModuleTypings] for the requested workspace
-    packages and persists them under the workspace-local type cache rooted in
-    the workspace target directory. When [package_names] is empty, all workspace
-    member packages are warmed. Failures are intentionally swallowed so callers
-    can keep this as a best-effort cache refresh instead of a fatal command
-    step. *)
-val populate_workspace_typings: workspace:Workspace.t -> package_names:string list -> unit -> unit
+  (unit, Error.t) result

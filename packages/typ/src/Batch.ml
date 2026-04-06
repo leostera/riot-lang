@@ -9,7 +9,7 @@ let check_source = fun ~filename source ->
     session
     ~kind:Source.File
     ~origin:(Source.Path filename)
-    ~text:source
+    ~source_hash:(Source.hash_text ~kind:Source.File ~origin:(Source.Path filename) ~text:source)
     ~parse_result
     ~cst in
   let source = Source.make_prepared
@@ -17,7 +17,7 @@ let check_source = fun ~filename source ->
     ~kind:Source.File
     ~origin:(Source.Path filename)
     ~revision:0
-    ~text:source
+    ~source_hash:(Source.hash_text ~kind:Source.File ~origin:(Source.Path filename) ~text:source)
     ~parse_result
     ~cst in
   let fallback_analysis = SourceAnalysis.analyze ~config source in
@@ -42,7 +42,6 @@ let check_source = fun ~filename source ->
   {
     Check_result.source_id;
     filename;
-    source = analysis.source.text;
     parse_diagnostics = analysis.parse_diagnostics;
     item_tree;
     body_arena;

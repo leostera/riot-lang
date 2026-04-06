@@ -24,7 +24,7 @@ val create_prepared_source:
   t ->
   kind:Source.kind ->
   origin:Source.origin ->
-  text:string ->
+  source_hash:Crypto.hash ->
   parse_result:Syn.Parser.parse_result ->
   cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
   t * SourceId.t

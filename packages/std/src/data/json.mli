@@ -90,6 +90,7 @@ type t =
   | String of string
   | Array of t list
   | Object of (string * t) list
+  | Embed of t
 (** JSON parsing errors with position information for debugging. *)
 type error =
   | Unterminated_string of { position: int }

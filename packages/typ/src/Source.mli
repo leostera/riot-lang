@@ -20,8 +20,8 @@ type t = {
   kind: kind;
   (** Host-owned origin label. *)
   origin: origin;
-  (** Current full text for this source revision. *)
-  text: string;
+  (** Stable hash for the exact input that produced this source revision. *)
+  source_hash: Crypto.hash;
   (** Monotonic revision number for this source snapshot. *)
   revision: int;
   (** Prepared parse result for this exact source text. *)
@@ -33,6 +33,9 @@ type t = {
 (** Build one logical source record from raw text. *)
 val make: source_id:SourceId.t -> kind:kind -> origin:origin -> revision:int -> text:string -> t
 
+(** Compute the stable hash for one source input text. *)
+val hash_text: kind:kind -> origin:origin -> text:string -> Crypto.hash
+
 (** Build one logical source record from host-prepared parse and CST
     artifacts. *)
 val make_prepared:
@@ -40,7 +43,7 @@ val make_prepared:
   kind:kind ->
   origin:origin ->
   revision:int ->
-  text:string ->
+  source_hash:Crypto.hash ->
   parse_result:Syn.Parser.parse_result ->
   cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
   t

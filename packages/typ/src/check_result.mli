@@ -28,8 +28,6 @@ type t = {
   source_id: SourceId.t;
   (** Host filename used when parsing this source text. *)
   filename: Path.t;
-  (** Original source text checked by this run. *)
-  source: string;
   (** Parser diagnostics emitted before CST building. *)
   parse_diagnostics: Syn.Diagnostic.t list;
   (** Lowered item skeleton when CST building and lowering succeeded. *)

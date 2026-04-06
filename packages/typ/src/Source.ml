@@ -13,7 +13,7 @@ type t = {
   source_id: SourceId.t;
   kind: kind;
   origin: origin;
-  text: string;
+  source_hash: Crypto.hash;
   revision: int;
   parse_result: Syn.Parser.parse_result;
   cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
@@ -28,23 +28,9 @@ let prepare = fun ~origin ~text ->
   let cst = Syn.build_cst parse_result in
   (parse_result, cst)
 
-let make_prepared = fun ~source_id ~kind ~origin ~revision ~text ~parse_result ~cst ->
-  {
-    source_id;
-    kind;
-    origin;
-    text;
-    revision;
-    parse_result;
-    cst;
-  }
-
-let make = fun ~source_id ~kind ~origin ~revision ~text ->
-  let (parse_result, cst) = prepare ~origin ~text in
-  make_prepared ~source_id ~kind ~origin ~revision ~text ~parse_result ~cst
-
-let update_text = fun source ~revision ~text ->
-  make ~source_id:source.source_id ~kind:source.kind ~origin:source.origin ~revision ~text
+let module_name_of_origin = function
+  | Path path -> Path.remove_extension path |> Path.basename
+  | Label label -> label |> Path.v |> Path.remove_extension |> Path.basename
 
 let sanitize_module_name = fun name ->
   String.map
@@ -55,28 +41,46 @@ let sanitize_module_name = fun name ->
         ch)
     name
 
-let module_name = fun source ->
-  let raw_name =
-    match source.origin with
-    | Path path -> Path.remove_extension path |> Path.basename
-    | Label label -> label |> Path.v |> Path.remove_extension |> Path.basename
-  in
-  sanitize_module_name raw_name |> String.capitalize_ascii
-
 let kind_tag = function
   | File -> "file"
   | Fragment -> "fragment"
   | Generated -> "generated"
 
-let input_hash = fun source ->
+let hash_text = fun ~kind ~origin ~text ->
   let module H = Crypto.Sha256 in
   let state = H.create () in
-  let () = H.write state (kind_tag source.kind) in
+  let () = H.write state (kind_tag kind) in
   let () = H.write state "\x1f" in
-  let () = H.write state (module_name source) in
+  let () = H.write state
+    (module_name_of_origin origin |> sanitize_module_name |> String.capitalize_ascii)
+  in
   let () = H.write state "\x1f" in
-  let () = H.write state source.text in
+  let () = H.write state text in
   H.finish state
+
+let make_prepared = fun ~source_id ~kind ~origin ~revision ~source_hash ~parse_result ~cst ->
+  {
+    source_id;
+    kind;
+    origin;
+    source_hash;
+    revision;
+    parse_result;
+    cst;
+  }
+
+let make = fun ~source_id ~kind ~origin ~revision ~text ->
+  let (parse_result, cst) = prepare ~origin ~text in
+  let source_hash = hash_text ~kind ~origin ~text in
+  make_prepared ~source_id ~kind ~origin ~revision ~source_hash ~parse_result ~cst
+
+let update_text = fun source ~revision ~text ->
+  make ~source_id:source.source_id ~kind:source.kind ~origin:source.origin ~revision ~text
+
+let module_name = fun source ->
+  sanitize_module_name (module_name_of_origin source.origin) |> String.capitalize_ascii
+
+let input_hash = fun source -> source.source_hash
 
 let display_name = fun source ->
   match source.origin with

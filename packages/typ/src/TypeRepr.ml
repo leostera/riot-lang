@@ -8,6 +8,9 @@ type label =
 type var = {
   id: int;
   mutable link: t option;
+  mutable level: int;
+  mutable mark: int;
+  mutable mark_order: int;
 }
 
 and t =
@@ -36,6 +39,15 @@ let rec prune = function
       in
       linked
   | ty -> ty
+
+let make_var = fun ?(level = 0) id ->
+  Var {
+    id;
+    link = None;
+    level;
+    mark = (-1);
+    mark_order = (-1);
+  }
 
 let add_unique = fun xs x ->
   if List.mem x xs then
@@ -125,6 +137,45 @@ let free_vars =
   in
   fun ty -> collect (Collections.HashSet.create ()) [] ty
 
+let mark_reachable_vars =
+  let rec loop ~generation ~next_order = function
+    | Int
+    | Float
+    | Bool
+    | String
+    | Char
+    | Unit
+    | Hole _ ->
+        ()
+    | Option element ->
+        loop ~generation ~next_order (prune element)
+    | Result (ok_ty, error_ty) ->
+        let () = loop ~generation ~next_order (prune ok_ty) in
+        loop ~generation ~next_order (prune error_ty)
+    | Array element ->
+        loop ~generation ~next_order (prune element)
+    | List element ->
+        loop ~generation ~next_order (prune element)
+    | Seq element ->
+        loop ~generation ~next_order (prune element)
+    | Named { arguments; _ } ->
+        List.iter (fun argument -> loop ~generation ~next_order (prune argument)) arguments
+    | Tuple members ->
+        List.iter (fun member -> loop ~generation ~next_order (prune member)) members
+    | Arrow { lhs; rhs; _ } ->
+        let () = loop ~generation ~next_order (prune lhs) in
+        loop ~generation ~next_order (prune rhs)
+    | Var ({ link=None; _ } as var) ->
+        if not (Int.equal var.mark generation) then
+          (
+            var.mark <- generation;
+            var.mark_order <- next_order ()
+          )
+    | Var { link=Some linked; _ } ->
+        loop ~generation ~next_order linked
+  in
+  fun ~generation ~next_order ty -> loop ~generation ~next_order ty
+
 let add_variance = fun acc var_id variance ->
   match List.assoc_opt var_id acc with
   | Some existing -> (var_id, join_variance existing variance) :: List.remove_assoc var_id acc
@@ -209,3 +260,46 @@ let rec occurs = fun needle ty ->
       | Some linked -> occurs needle linked
       | None -> var.id = needle
     )
+
+let occurs_or_lower =
+  let rec loop needle level ty =
+    match prune ty with
+    | Int
+    | Float
+    | Bool
+    | String
+    | Char
+    | Unit
+    | Hole _ ->
+        false
+    | Option element ->
+        loop needle level element
+    | Result (ok_ty, error_ty) ->
+        loop needle level ok_ty || loop needle level error_ty
+    | Array element ->
+        loop needle level element
+    | List element ->
+        loop needle level element
+    | Seq element ->
+        loop needle level element
+    | Named { arguments; _ } ->
+        List.exists (loop needle level) arguments
+    | Tuple members ->
+        List.exists (loop needle level) members
+    | Arrow { lhs; rhs; _ } ->
+        loop needle level lhs || loop needle level rhs
+    | Var var -> (
+        match var.link with
+        | Some linked -> loop needle level linked
+        | None ->
+            if var.id = needle then
+              true
+            else
+              (
+                if var.level > level then
+                  var.level <- level;
+                false
+              )
+      )
+  in
+  fun ~needle ~level ty -> loop needle level ty

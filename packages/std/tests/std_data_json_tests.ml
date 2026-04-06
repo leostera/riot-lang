@@ -2,7 +2,7 @@ open Std
 open Std.Data
 open Std.Collections
 
-let describe_json = function
+let rec describe_json = function
   | Json.Null -> "null"
   | Json.Bool b -> "bool(" ^ Bool.to_string b ^ ")"
   | Json.Int i -> "int(" ^ Int.to_string i ^ ")"
@@ -10,6 +10,7 @@ let describe_json = function
   | Json.String s -> "string(" ^ s ^ ")"
   | Json.Array items -> "array(" ^ Int.to_string (List.length items) ^ ")"
   | Json.Object fields -> "object(" ^ Int.to_string (List.length fields) ^ ")"
+  | Json.Embed json -> describe_json json
 
 let test_parse_null = fun _ctx ->
   match Json.of_string "null" with

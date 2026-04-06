@@ -5,7 +5,7 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v8"
+let planner_artifacts_version = "planner-artifacts:v11"
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.{
