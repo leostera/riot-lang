@@ -345,6 +345,36 @@ export async function readLatestPackageReleaseToProcess(
   return row ? parsePackageReleaseToProcessRow(row) : null;
 }
 
+export async function readPackageReleaseToProcessById(
+  db: D1Database,
+  releaseId: string,
+): Promise<PackageReleaseToProcessRecord | null> {
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      release_id: packageReleasesToProcess.releaseId,
+      package_name: packageReleasesToProcess.packageName,
+      package_version: packageReleasesToProcess.packageVersion,
+      artifact_sha256: packageReleasesToProcess.artifactSha256,
+      source_archive_key: packageReleasesToProcess.sourceArchiveKey,
+      status: packageReleasesToProcess.status,
+      attempt_count: packageReleasesToProcess.attemptCount,
+      next_attempt_at: packageReleasesToProcess.nextAttemptAt,
+      created_at: packageReleasesToProcess.createdAt,
+      updated_at: packageReleasesToProcess.updatedAt,
+      last_attempted_at: packageReleasesToProcess.lastAttemptedAt,
+      lease_expires_at: packageReleasesToProcess.leaseExpiresAt,
+      finished_at: packageReleasesToProcess.finishedAt,
+      status_message: packageReleasesToProcess.statusMessage,
+      payload_json: packageReleasesToProcess.payloadJson,
+    })
+    .from(packageReleasesToProcess)
+    .where(eq(packageReleasesToProcess.releaseId, releaseId))
+    .limit(1);
+
+  return row ? parsePackageReleaseToProcessRow(row) : null;
+}
+
 export async function readLatestPackagePipelineRun(
   db: D1Database,
   packageName: string,

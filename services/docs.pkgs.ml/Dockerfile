@@ -24,7 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=sandbox-base /container-server/sandbox /sandbox
 
 RUN curl -sSL https://get.riot.ml | sh - \
-    && /root/.riot/bin/riot version
+    && /root/.riot/bin/riot version \
+    && mkdir -p /tmp/riot-toolchain-workspace \
+    && printf "[workspace]\nmembers = []\n" > /tmp/riot-toolchain-workspace/riot.toml \
+    && printf "[toolchain]\nversion = \"5.5.0-riot.2\"\ntargets = [\"x86_64-unknown-linux-gnu\"]\n" > /tmp/riot-toolchain-workspace/ocaml-toolchain.toml \
+    && cd /tmp/riot-toolchain-workspace \
+    && /root/.riot/bin/riot toolchain install \
+    && rm -rf /tmp/riot-toolchain-workspace
 
 RUN mkdir -p /workspace
 

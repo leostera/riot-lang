@@ -39,6 +39,19 @@ preview_database_id = "3a482dd8-a28f-4f87-a143-46153d492819"
 [[queues.consumers]]
 queue = "riot-package-published"
 
+[[queues.producers]]
+binding = "PACKAGE_PROCESSING_QUEUE"
+queue = "riot-package-processing"
+
+[[queues.consumers]]
+queue = "riot-package-processing"
+max_batch_size = 1
+max_batch_timeout = 1
+max_concurrency = 1
+
+[limits]
+cpu_ms = 300000
+
 [triggers]
 crons = ["* * * * *"]
 
@@ -57,6 +70,6 @@ persist = true
 invocation_logs = true
 
 [observability.traces]
-enabled = true
+enabled = false
 persist = true
 head_sampling_rate = 1

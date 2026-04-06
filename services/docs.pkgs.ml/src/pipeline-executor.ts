@@ -27,6 +27,23 @@ const DOCS_PIPELINE_AGENT = "riot-docs-pipeline@1.0";
 const COMMAND_TIMEOUT_MS = 15 * 60 * 1000;
 const SANDBOX_STARTUP_RETRY_LIMIT = 8;
 const SANDBOX_STARTUP_RETRY_DELAY_MS = 2_000;
+const TRANSIENT_SANDBOX_ERROR_PATTERNS = [
+  "container is starting. please retry in a moment.",
+  "container port not found",
+  "connection refused: container port",
+  "the container is not listening",
+  "failed to verify port",
+  "container did not start",
+  "network connection lost",
+  "container suddenly disconnected",
+  "monitor failed to find container",
+  "container exited with unexpected exit code",
+  "container exited before we could determine",
+  "timed out",
+  "timeout",
+  "the operation was aborted",
+  "no container instance",
+] as const;
 
 export class DocsPipelineContainer extends Sandbox {
   sleepAfter = "5m";
@@ -69,8 +86,15 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
     const docsOutputDir = `${WORKSPACE_ROOT}/_build/doc/${request.package_name}/${request.package_version}`;
 
     try {
+      logPipelineStep(request, "sandbox.attached", {
+        runner_id: runnerId,
+      });
+
       const upgradeCommand = [RIOT_BIN, "upgrade"] as const;
       const upgradeStartedAt = Date.now();
+      logPipelineStep(request, "riot.upgrade.started", {
+        command: upgradeCommand,
+      });
       const upgradeExec = await execWithStartupRetry(
         sandbox,
         shellCommand(upgradeCommand),
@@ -85,12 +109,18 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
         upgradeExec,
         Date.now() - upgradeStartedAt,
       );
+      logPipelineStep(request, "riot.upgrade.finished", {
+        success: upgrade.success,
+        exit_code: upgrade.exit_code,
+        duration_ms: upgrade.duration_ms,
+      });
       const probeCommand = [
         "sh",
         "-lc",
         "printf 'glibc=%s\\n' \"$(getconf GNU_LIBC_VERSION 2>/dev/null || echo unknown)\" && printf 'riot=%s\\n' \"$(/root/.riot/bin/riot version 2>/dev/null || echo unavailable)\" && cat /etc/os-release",
       ] as const;
       const probeStartedAt = Date.now();
+      logPipelineStep(request, "environment.probe.started");
       const probeExec = await execWithStartupRetry(
         sandbox,
         shellCommand(probeCommand),
@@ -105,6 +135,11 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
         probeExec,
         Date.now() - probeStartedAt,
       );
+      logPipelineStep(request, "environment.probe.finished", {
+        success: environmentProbe.success,
+        exit_code: environmentProbe.exit_code,
+        duration_ms: environmentProbe.duration_ms,
+      });
 
       await sandbox.mkdir(WORKSPACE_ROOT, { recursive: true });
       await sandbox.mkdir(`${WORKSPACE_ROOT}/packages`, { recursive: true });
@@ -125,6 +160,9 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
         "-lc",
         `curl -fsSL --retry 3 --retry-delay 1 -H 'X-Riot-Agent: ${DOCS_PIPELINE_AGENT}' -o ${shellEscape(artifactPath)} ${shellEscape(request.source_archive_url)}`,
       ] as const;
+      logPipelineStep(request, "artifact.download.started", {
+        source_archive_url: request.source_archive_url,
+      });
       const downloadExec = await execWithStartupRetry(
         sandbox,
         shellCommand(downloadCommand),
@@ -144,8 +182,12 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
           ),
         );
       }
+      logPipelineStep(request, "artifact.download.finished");
 
       const extractCommand = ["tar", "-xzf", artifactPath, "-C", packageDir] as const;
+      logPipelineStep(request, "artifact.extract.started", {
+        package_dir: packageDir,
+      });
       const extractExec = await execWithStartupRetry(
         sandbox,
         shellCommand(extractCommand),
@@ -165,6 +207,7 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
           ),
         );
       }
+      logPipelineStep(request, "artifact.extract.finished");
 
       const result: DocsPipelineProcessResult = {
         environment_probe: environmentProbe,
@@ -174,6 +217,9 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
       if (request.verify_build) {
         const buildCommand = [RIOT_BIN, "build", "--json", request.package_name] as const;
         const buildStartedAt = Date.now();
+        logPipelineStep(request, "build.started", {
+          command: buildCommand,
+        });
         const buildExec = await execWithStartupRetry(
           sandbox,
           shellCommand(buildCommand),
@@ -188,11 +234,20 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
           buildExec,
           Date.now() - buildStartedAt,
         );
+        logPipelineStep(request, "build.finished", {
+          success: result.build.success,
+          exit_code: result.build.exit_code,
+          duration_ms: result.build.duration_ms,
+          json_event_count: result.build.json_events?.length ?? 0,
+        });
       }
 
       if (request.generate_docs) {
         const docsCommand = [RIOT_BIN, "doc", "--json", "--release", "-p", request.package_name] as const;
         const docsStartedAt = Date.now();
+        logPipelineStep(request, "docs.started", {
+          command: docsCommand,
+        });
         const docsExec = await execWithStartupRetry(
           sandbox,
           shellCommand(docsCommand),
@@ -207,10 +262,20 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
           docsExec,
           Date.now() - docsStartedAt,
         );
+        logPipelineStep(request, "docs.finished", {
+          success: docs.success,
+          exit_code: docs.exit_code,
+          duration_ms: docs.duration_ms,
+          json_event_count: docs.json_events?.length ?? 0,
+        });
 
         const files = docs.success
           ? await collectGeneratedDocsFiles(sandbox, docsOutputDir)
           : [];
+        logPipelineStep(request, "docs.artifacts.collected", {
+          output_dir: docsOutputDir,
+          file_count: files.length,
+        });
 
         result.docs = {
           ...docs,
@@ -219,16 +284,23 @@ export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
         };
       }
 
+      logPipelineStep(request, "release.process.finished", {
+        generated_docs: request.generate_docs,
+        verified_build: request.verify_build,
+      });
       return result;
     } finally {
-      await sandbox.destroy().catch((error) => {
+      logPipelineStep(request, "sandbox.destroy.scheduled", {
+        runner_id: runnerId,
+      });
+      void sandbox.destroy().catch((error) => {
         console.warn("failed to destroy docs pipeline sandbox", error);
       });
     }
   }
 }
 
-const RUNNER_REVISION = "v6";
+const RUNNER_REVISION = "v7";
 
 function buildRunnerId(packageName: string, packageVersion: string, artifactSha256: string): string {
   const identity = `${RUNNER_REVISION}-${packageName}-${packageVersion}-${artifactSha256.slice(0, 12)}`;
@@ -237,6 +309,23 @@ function buildRunnerId(packageName: string, packageVersion: string, artifactSha2
     .replaceAll(/[^a-z0-9-]+/g, "-")
     .replaceAll(/-+/g, "-")
     .replaceAll(/^-|-$/g, "");
+}
+
+function logPipelineStep(
+  request: PackagePipelineProcessRequest,
+  step: string,
+  details?: Record<string, unknown>,
+): void {
+  console.log("[docs-pipeline]", JSON.stringify({
+    package_name: request.package_name,
+    package_version: request.package_version,
+    run_kind: [
+      request.verify_build ? "build" : null,
+      request.generate_docs ? "docs" : null,
+    ].filter((value) => value !== null),
+    step,
+    details: details ?? {},
+  }));
 }
 
 function commandEnv(): Record<string, string> {
@@ -269,6 +358,11 @@ async function execWithStartupRetry(
 
       lastError = error;
       attempt += 1;
+      console.warn("retrying transient sandbox exec error", {
+        attempt,
+        limit: SANDBOX_STARTUP_RETRY_LIMIT,
+        error: error instanceof Error ? error.message : String(error),
+      });
       if (attempt >= SANDBOX_STARTUP_RETRY_LIMIT) {
         break;
       }
@@ -285,7 +379,8 @@ function isSandboxStartingError(error: unknown): boolean {
     return false;
   }
 
-  return error.message.includes("Container is starting. Please retry in a moment.");
+  const message = error.message.toLowerCase();
+  return TRANSIENT_SANDBOX_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
 }
 
 function sleep(durationMs: number): Promise<void> {

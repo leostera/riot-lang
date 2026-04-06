@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { Buffer } from "node:buffer";
 
-import { FakeD1Database, FakeExecutionContext, FakeR2Bucket } from "../../api.pkgs.ml/tests/helpers.ts";
+import {
+  FakeD1Database,
+  FakeExecutionContext,
+  FakeQueue,
+  FakeR2Bucket,
+} from "../../api.pkgs.ml/tests/helpers.ts";
 import type { PackagePublishedEvent } from "../../api.pkgs.ml/src/types.ts";
 import type { DocsPipelineProcessResult, PackagePipelineExecutor } from "../src/pipeline-types.ts";
 import worker from "../src/main.ts";
@@ -10,6 +15,7 @@ interface TestEnv {
   ASSETS: { fetch(request: Request): Promise<Response> | Response };
   ML_PKGS_CDN: R2Bucket;
   SEARCH_DB: D1Database;
+  PACKAGE_PROCESSING_QUEUE: Queue<unknown>;
   PIPELINE_EXECUTOR?: PackagePipelineExecutor;
 }
 
@@ -124,6 +130,7 @@ describe("docs.pkgs worker", () => {
 
     await enqueuePublishedRelease(env, ctx);
     await runScheduled(env, ctx);
+    await drainProcessingQueue(env, ctx);
 
     const rows = await db
       .prepare(
@@ -149,7 +156,7 @@ describe("docs.pkgs worker", () => {
       run_kind: "docs",
       status: "succeeded",
       output_prefix: "docs/std/0.1.0/",
-      request_key: "docs/std/0.1.0/_pipeline/request.json",
+      request_key: "pipelines/docs/std/0.1.0/deadbeef/request.json",
     });
 
     const releaseRows = await db
@@ -181,7 +188,7 @@ describe("docs.pkgs worker", () => {
     expect(buildRequestPayload).toContain('"result_key": "pipelines/builds/std/0.1.0/deadbeef/result.json"');
     expect(buildRequestPayload).toContain('"logs_key": "pipelines/builds/std/0.1.0/deadbeef/build.log"');
 
-    const docsRequestPayload = await bucket.text("docs/std/0.1.0/_pipeline/request.json");
+    const docsRequestPayload = await bucket.text("pipelines/docs/std/0.1.0/deadbeef/request.json");
     expect(docsRequestPayload).not.toBeNull();
     expect(docsRequestPayload).toContain('"run_kind": "docs"');
     expect(docsRequestPayload).toContain('"riot_install_url": "https://get.riot.ml"');
@@ -228,6 +235,7 @@ describe("docs.pkgs worker", () => {
 
     await enqueuePublishedRelease(env, ctx);
     await runScheduled(env, ctx);
+    await drainProcessingQueue(env, ctx);
 
     const release = await db
       .prepare(
@@ -283,10 +291,13 @@ describe("docs.pkgs worker", () => {
 
     await enqueuePublishedRelease(env, ctx);
     await runScheduled(env, ctx);
+    await drainProcessingQueue(env, ctx);
     await db.exec("UPDATE package_releases_to_process SET next_attempt_at = '1970-01-01T00:00:00.000Z'");
     await runScheduled(env, ctx);
+    await drainProcessingQueue(env, ctx);
     await db.exec("UPDATE package_releases_to_process SET next_attempt_at = '1970-01-01T00:00:00.000Z'");
     await runScheduled(env, ctx);
+    await drainProcessingQueue(env, ctx);
 
     const release = await db
       .prepare(
@@ -352,6 +363,7 @@ function makeEnv(overrides: Partial<TestEnv> = {}): TestEnv {
     },
     ML_PKGS_CDN: new FakeR2Bucket() as unknown as R2Bucket,
     SEARCH_DB: new FakeD1Database() as unknown as D1Database,
+    PACKAGE_PROCESSING_QUEUE: new FakeQueue() as unknown as Queue<unknown>,
     ...overrides,
   };
 }
@@ -392,6 +404,41 @@ async function runScheduled(env: TestEnv, ctx: FakeExecutionContext): Promise<vo
       scheduledTime: Date.now(),
     } as ScheduledController,
     env,
+    ctx,
+  );
+  await ctx.drain();
+}
+
+async function drainProcessingQueue(env: TestEnv, ctx: FakeExecutionContext): Promise<void> {
+  const queue = env.PACKAGE_PROCESSING_QUEUE as unknown as FakeQueue;
+  if (queue.messages.length === 0) {
+    return;
+  }
+
+  const messages = queue.messages.splice(0, queue.messages.length);
+  await worker.queue?.(
+    {
+      queue: "riot-package-processing",
+      messages: messages.map((body, index) => ({
+        id: `process-${index}`,
+        timestamp: new Date(),
+        attempts: 1,
+        body,
+        ack: () => {},
+        retry: () => {
+          throw new Error("retry should not be called");
+        },
+      })),
+    } as unknown as MessageBatch<
+      | PackagePublishedEvent
+      | {
+          kind: "process_release";
+          release_id: string;
+          attempt_count: number;
+          payload: PackagePublishedEvent;
+        }
+    >,
+    env as never,
     ctx,
   );
   await ctx.drain();

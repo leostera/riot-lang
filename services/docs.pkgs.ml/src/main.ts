@@ -5,6 +5,7 @@ import {
   listDuePackageReleasesToProcess,
   markPackageReleaseToProcessBlocked,
   markPackageReleaseToProcessFinished,
+  readPackageReleaseToProcessById,
   readLatestPackageReleaseToProcess,
   readLatestPackagePipelineRun,
   reschedulePackageReleaseToProcess,
@@ -48,6 +49,7 @@ export interface Env {
   ASSETS: AssetFetcher;
   ML_PKGS_CDN: ObjectBucket;
   SEARCH_DB: D1Database;
+  PACKAGE_PROCESSING_QUEUE: Queue<PackageReleaseProcessingMessage>;
   DOCS_PIPELINE_CONTAINER?: DurableObjectNamespace;
   PIPELINE_EXECUTOR?: PackagePipelineExecutor;
 }
@@ -58,19 +60,41 @@ const DOCS_WEB_BASE_URL = "https://docs.pkgs.ml";
 const CDN_BASE_URL = "https://cdn.pkgs.ml";
 const RIOT_INSTALL_SCRIPT_URL = "https://get.riot.ml";
 const RIOT_RELEASE_METADATA_URL = `${CDN_BASE_URL}/riot/latest.json`;
-const RELEASE_PROCESSING_BATCH_SIZE = 10;
-const RELEASE_PROCESSING_TARGET_CONCURRENCY = 3;
+const RELEASE_PROCESSING_BATCH_SIZE = 1;
+const RELEASE_PROCESSING_TARGET_CONCURRENCY = 1;
 const RELEASE_PROCESSING_LEASE_MS = 20 * 60 * 1000;
 const RELEASE_PROCESSING_RETRY_DELAY_MS = 5 * 60 * 1000;
 const RELEASE_PROCESSING_MAX_ATTEMPTS = 3;
+
+interface PackageReleaseProcessingMessage {
+  kind: "process_release";
+  release_id: string;
+  attempt_count: number;
+  payload: PackagePublishedEvent;
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     return await handleRequest(request, env);
   },
 
-  async queue(batch: MessageBatch<PackagePublishedEvent>, env: Env, _ctx: ExecutionContext): Promise<void> {
+  async queue(
+    batch: MessageBatch<PackagePublishedEvent | PackageReleaseProcessingMessage>,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
     for (const message of batch.messages) {
+      if (isPackageReleaseProcessingMessage(message.body)) {
+        await processClaimedReleaseMessage(env, message.body);
+        message.ack();
+        try {
+          await dispatchDueReleases(env);
+        } catch (error) {
+          console.error("failed to dispatch follow-up package releases", error);
+        }
+        continue;
+      }
+
       await enqueuePackageReleaseToProcess(env.SEARCH_DB, message.body);
       await writeRegistryEvent(
         env.SEARCH_DB,
@@ -83,7 +107,7 @@ export default {
   },
 
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(processQueuedReleases(env));
+    ctx.waitUntil(dispatchDueReleases(env));
   },
 };
 
@@ -529,6 +553,51 @@ async function writeDocsArtifacts(
   return uploadedKeys;
 }
 
+function buildCommandMetadata(
+  result: {
+    stdout: string;
+    stderr: string;
+    exit_code: number;
+    json_events?: Record<string, unknown>[];
+    non_json_stdout_lines?: string[];
+  },
+  extras: Record<string, unknown> = {},
+  options: {
+    includeFailureSummary?: boolean;
+    includeTextExcerpts?: boolean;
+  } = {},
+): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {
+    ...extras,
+    exit_code: result.exit_code,
+    json_event_count: jsonEventCount(result),
+    non_json_stdout_count: nonJsonStdoutCount(result),
+    last_json_event_type: lastJsonEventType(result),
+    last_json_event: lastJsonEvent(result),
+  };
+
+  if (options.includeFailureSummary) {
+    const failureSummary = summarizeCommandFailure(result);
+    if (failureSummary.length > 0) {
+      metadata.failure_summary = failureSummary;
+    }
+  }
+
+  if (options.includeTextExcerpts) {
+    const stderrExcerpt = excerptText(result.stderr);
+    if (stderrExcerpt !== undefined) {
+      metadata.stderr_excerpt = stderrExcerpt;
+    }
+
+    const stdoutExcerpt = excerptText(result.stdout);
+    if (stdoutExcerpt !== undefined) {
+      metadata.stdout_excerpt = stdoutExcerpt;
+    }
+  }
+
+  return metadata;
+}
+
 async function writeBuildArtifacts(
   env: Env,
   event: PackagePublishedEvent,
@@ -663,7 +732,18 @@ async function selectPipelineExecutor(env: Env): Promise<PackagePipelineExecutor
   return new SandboxPackagePipelineExecutor(env);
 }
 
-async function processQueuedReleases(env: Env): Promise<void> {
+function isPackageReleaseProcessingMessage(
+  value: unknown,
+): value is PackageReleaseProcessingMessage {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const message = value as Record<string, unknown>;
+  return message.kind === "process_release" && typeof message.release_id === "string";
+}
+
+async function dispatchDueReleases(env: Env): Promise<void> {
   const now = new Date().toISOString();
   const activeReleases = await countActivePackageReleasesToProcess(env.SEARCH_DB, now);
   const availableSlots = Math.max(0, RELEASE_PROCESSING_TARGET_CONCURRENCY - activeReleases);
@@ -688,231 +768,252 @@ async function processQueuedReleases(env: Env): Promise<void> {
       continue;
     }
 
-    const event = claimed.payload;
-    const docsRun = buildDocsRunContext(event);
-    const buildRun = buildBuildRunContext(event);
-    const releaseStartedAt = new Date().toISOString();
-    const shouldGenerateDocs = !(await isDocsSatisfied(env, event));
-    const shouldVerifyBuild = shouldGenerateDocs || !(await isBuildSatisfied(env, event));
-
     try {
+      await env.PACKAGE_PROCESSING_QUEUE.send({
+        kind: "process_release",
+        release_id: claimed.release_id,
+        attempt_count: claimed.attempt_count,
+        payload: claimed.payload,
+      });
+    } catch (error) {
+      const failedAt = new Date().toISOString();
+      const nextAttemptAt = toIso(failedAt, RELEASE_PROCESSING_RETRY_DELAY_MS);
+      await reschedulePackageReleaseToProcess(
+        env.SEARCH_DB,
+        claimed.release_id,
+        failedAt,
+        nextAttemptAt,
+        `Failed to enqueue claimed release for sandbox processing: ${
+          error instanceof Error ? error.message : "unknown_error"
+        }`,
+      );
       await writeRegistryEvent(
         env.SEARCH_DB,
-        makePipelineEvent("package.processing.started", releaseStartedAt, event, {
-          status: "processing",
+        makePipelineEvent("package.processing.requeued", failedAt, claimed.payload, {
+          status: "pending",
           attempt_count: claimed.attempt_count,
+          next_attempt_at: nextAttemptAt,
+          error: error instanceof Error ? error.message : "unknown_error",
         }),
       );
+    }
+  }
+}
 
-      if (!shouldGenerateDocs && !shouldVerifyBuild) {
-        await markPackageReleaseToProcessFinished(
+async function processClaimedReleaseMessage(
+  env: Env,
+  message: PackageReleaseProcessingMessage,
+): Promise<void> {
+  const claimed = await readPackageReleaseToProcessById(env.SEARCH_DB, message.release_id);
+  if (claimed === null) {
+    return;
+  }
+
+  if (claimed.status !== "processing" || claimed.attempt_count !== message.attempt_count) {
+    return;
+  }
+
+  const event = claimed.payload;
+  const docsRun = buildDocsRunContext(event);
+  const buildRun = buildBuildRunContext(event);
+  const releaseStartedAt = new Date().toISOString();
+  const shouldGenerateDocs = !(await isDocsSatisfied(env, event));
+  const shouldVerifyBuild = shouldGenerateDocs || !(await isBuildSatisfied(env, event));
+
+  try {
+    await writeRegistryEvent(
+      env.SEARCH_DB,
+      makePipelineEvent("package.processing.started", releaseStartedAt, event, {
+        status: "processing",
+        attempt_count: claimed.attempt_count,
+      }),
+    );
+
+    if (!shouldGenerateDocs && !shouldVerifyBuild) {
+      await markPackageReleaseToProcessFinished(
+        env.SEARCH_DB,
+        claimed.release_id,
+        new Date().toISOString(),
+        "Package docs and build verification already completed.",
+      );
+      await writeRegistryEvent(
+        env.SEARCH_DB,
+        makePipelineEvent("package.processing.finished", new Date().toISOString(), event, {
+          status: "finished",
+        }),
+      );
+      return;
+    }
+
+    if (shouldVerifyBuild) {
+      await recordBuildRunStarted(env, event, buildRun, toIso(releaseStartedAt, 1));
+    }
+
+    if (shouldGenerateDocs) {
+      await recordDocsRunStarted(env, event, docsRun, toIso(releaseStartedAt, 2));
+    }
+
+    const execution = await (await selectPipelineExecutor(env)).processRelease({
+      package_name: event.package_name,
+      package_version: event.package_version,
+      artifact_sha256: event.artifact_sha256,
+      source_archive_key: event.source_archive_key,
+      source_archive_url: `${CDN_BASE_URL}/${event.source_archive_key}`,
+      riot_install_url: RIOT_INSTALL_SCRIPT_URL,
+      riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
+      generate_docs: shouldGenerateDocs,
+      verify_build: shouldVerifyBuild,
+    });
+
+    const releaseErrors: string[] = [];
+
+    if (shouldVerifyBuild) {
+      const buildFinishedAt = new Date().toISOString();
+      const build = execution.build;
+
+      if (build === undefined) {
+        releaseErrors.push("build runner returned no build result");
+      } else if (!build.success) {
+        releaseErrors.push(summarizeCommandFailure(build));
+        await writeBuildArtifacts(env, event, execution, build, buildRun);
+        await writePackagePipelineRunRecord(
           env.SEARCH_DB,
-          claimed.release_id,
-          new Date().toISOString(),
-          "Package docs and build verification already completed.",
+          {
+            ...buildRunRecord(
+              event,
+              "build",
+              "failed",
+              buildFinishedAt,
+              buildRun.requestKey,
+              buildRun.outputPrefix,
+              "Build verification failed in the sandbox runner.",
+                {
+                  source_archive_url: buildRun.sourceArchiveUrl,
+                  result_key: buildRun.resultKey,
+                  logs_key: buildRun.logsKey,
+                  environment_probe: execution.environment_probe,
+                  ...buildCommandMetadata(build, {}, {
+                    includeFailureSummary: true,
+                    includeTextExcerpts: true,
+                  }),
+                },
+              ),
+              started_at: releaseStartedAt,
+          },
         );
         await writeRegistryEvent(
           env.SEARCH_DB,
-          makePipelineEvent("package.processing.finished", new Date().toISOString(), event, {
-            status: "finished",
-          }),
-        );
-        continue;
-      }
-
-      if (shouldVerifyBuild) {
-        await recordBuildRunStarted(env, event, buildRun, toIso(releaseStartedAt, 1));
-      }
-
-      if (shouldGenerateDocs) {
-        await recordDocsRunStarted(env, event, docsRun, toIso(releaseStartedAt, 2));
-      }
-
-      const execution = await (await selectPipelineExecutor(env)).processRelease({
-        package_name: event.package_name,
-        package_version: event.package_version,
-        artifact_sha256: event.artifact_sha256,
-        source_archive_key: event.source_archive_key,
-        source_archive_url: `${CDN_BASE_URL}/${event.source_archive_key}`,
-        riot_install_url: RIOT_INSTALL_SCRIPT_URL,
-        riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
-        generate_docs: shouldGenerateDocs,
-        verify_build: shouldVerifyBuild,
-      });
-
-      const releaseErrors: string[] = [];
-
-      if (shouldVerifyBuild) {
-        const buildFinishedAt = new Date().toISOString();
-        const build = execution.build;
-
-        if (build === undefined) {
-          releaseErrors.push("build runner returned no build result");
-        } else if (!build.success) {
-          releaseErrors.push(summarizeCommandFailure(build));
-          await writeBuildArtifacts(env, event, execution, build, buildRun);
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "build",
-                "failed",
-                buildFinishedAt,
-                buildRun.requestKey,
-                buildRun.outputPrefix,
-                "Build verification failed in the sandbox runner.",
-                {
-                  source_archive_url: buildRun.sourceArchiveUrl,
-                  result_key: buildRun.resultKey,
-                  logs_key: buildRun.logsKey,
-                  environment_probe: execution.environment_probe,
-                  stdout: build.stdout,
-                  stderr: build.stderr,
-                  exit_code: build.exit_code,
-                  json_event_count: jsonEventCount(build),
-                  non_json_stdout_count: nonJsonStdoutCount(build),
-                  last_json_event_type: lastJsonEventType(build),
-                  last_json_event: lastJsonEvent(build),
-                  failure_summary: summarizeCommandFailure(build),
-                },
-              ),
-              started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.build.failed", buildFinishedAt, event, {
-              run_kind: "build",
+          makePipelineEvent("package.build.failed", buildFinishedAt, event, {
+            run_kind: "build",
               result_key: buildRun.resultKey,
               logs_key: buildRun.logsKey,
               environment_probe: execution.environment_probe,
-              exit_code: build.exit_code,
-              json_event_count: jsonEventCount(build),
-              non_json_stdout_count: nonJsonStdoutCount(build),
-              json_events: build.json_events ?? [],
-              non_json_stdout_lines: build.non_json_stdout_lines ?? [],
-              stderr: build.stderr,
-              last_json_event_type: lastJsonEventType(build),
-              last_json_event: lastJsonEvent(build),
-              failure_summary: summarizeCommandFailure(build),
+              ...buildCommandMetadata(build, {}, {
+                includeFailureSummary: true,
+                includeTextExcerpts: true,
+              }),
             }),
           );
         } else {
-          await writeBuildArtifacts(env, event, execution, build, buildRun);
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "build",
-                "succeeded",
-                buildFinishedAt,
-                buildRun.requestKey,
-                buildRun.outputPrefix,
-                "Build verification completed successfully.",
+        await writeBuildArtifacts(env, event, execution, build, buildRun);
+        await writePackagePipelineRunRecord(
+          env.SEARCH_DB,
+          {
+            ...buildRunRecord(
+              event,
+              "build",
+              "succeeded",
+              buildFinishedAt,
+              buildRun.requestKey,
+              buildRun.outputPrefix,
+              "Build verification completed successfully.",
                 {
                   source_archive_url: buildRun.sourceArchiveUrl,
                   result_key: buildRun.resultKey,
                   logs_key: buildRun.logsKey,
                   environment_probe: execution.environment_probe,
-                  stdout: build.stdout,
-                  stderr: build.stderr,
-                  exit_code: build.exit_code,
-                  json_event_count: jsonEventCount(build),
-                  non_json_stdout_count: nonJsonStdoutCount(build),
-                  last_json_event_type: lastJsonEventType(build),
-                  last_json_event: lastJsonEvent(build),
+                  ...buildCommandMetadata(build),
                 },
               ),
               started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.build.verified", buildFinishedAt, event, {
-              run_kind: "build",
-              result_key: buildRun.resultKey,
-              logs_key: buildRun.logsKey,
-              json_event_count: jsonEventCount(build),
-              non_json_stdout_count: nonJsonStdoutCount(build),
-              last_json_event_type: lastJsonEventType(build),
-            }),
-          );
-        }
+          },
+        );
+        await writeRegistryEvent(
+          env.SEARCH_DB,
+          makePipelineEvent("package.build.verified", buildFinishedAt, event, {
+            run_kind: "build",
+            result_key: buildRun.resultKey,
+            logs_key: buildRun.logsKey,
+            json_event_count: jsonEventCount(build),
+            non_json_stdout_count: nonJsonStdoutCount(build),
+            last_json_event_type: lastJsonEventType(build),
+          }),
+        );
       }
+    }
 
-      if (shouldGenerateDocs) {
-        const docsFinishedAt = new Date().toISOString();
-        const docs = execution.docs;
+    if (shouldGenerateDocs) {
+      const docsFinishedAt = new Date().toISOString();
+      const docs = execution.docs;
 
-        if (docs === undefined) {
-          releaseErrors.push("docs runner returned no docs result");
-        } else if (!docs.success) {
-          releaseErrors.push(summarizeCommandFailure(docs));
-          await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "docs",
-                "failed",
-                docsFinishedAt,
-                docsRun.requestKey,
-                docsRun.outputPrefix,
-                "Docs generation failed in the sandbox runner.",
+      if (docs === undefined) {
+        releaseErrors.push("docs runner returned no docs result");
+      } else if (!docs.success) {
+        releaseErrors.push(summarizeCommandFailure(docs));
+        await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
+        await writePackagePipelineRunRecord(
+          env.SEARCH_DB,
+          {
+            ...buildRunRecord(
+              event,
+              "docs",
+              "failed",
+              docsFinishedAt,
+              docsRun.requestKey,
+              docsRun.outputPrefix,
+              "Docs generation failed in the sandbox runner.",
                 {
                   source_archive_url: docsRun.sourceArchiveUrl,
                   public_docs_url: docsRun.publicDocsUrl,
                   result_key: docsRun.resultKey,
                   logs_key: docsRun.logsKey,
                   environment_probe: execution.environment_probe,
-                  stdout: docs.stdout,
-                  stderr: docs.stderr,
-                  exit_code: docs.exit_code,
-                  json_event_count: jsonEventCount(docs),
-                  non_json_stdout_count: nonJsonStdoutCount(docs),
-                  last_json_event_type: lastJsonEventType(docs),
-                  last_json_event: lastJsonEvent(docs),
-                  failure_summary: summarizeCommandFailure(docs),
+                  ...buildCommandMetadata(docs, {}, {
+                    includeFailureSummary: true,
+                    includeTextExcerpts: true,
+                  }),
                 },
               ),
               started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.docs.failed", docsFinishedAt, event, {
-              run_kind: "docs",
+          },
+        );
+        await writeRegistryEvent(
+          env.SEARCH_DB,
+          makePipelineEvent("package.docs.failed", docsFinishedAt, event, {
+            run_kind: "docs",
               result_key: docsRun.resultKey,
               logs_key: docsRun.logsKey,
               environment_probe: execution.environment_probe,
-              exit_code: docs.exit_code,
-              json_event_count: jsonEventCount(docs),
-              non_json_stdout_count: nonJsonStdoutCount(docs),
-              json_events: docs.json_events ?? [],
-              non_json_stdout_lines: docs.non_json_stdout_lines ?? [],
-              stderr: docs.stderr,
-              last_json_event_type: lastJsonEventType(docs),
-              last_json_event: lastJsonEvent(docs),
-              failure_summary: summarizeCommandFailure(docs),
+              ...buildCommandMetadata(docs, {}, {
+                includeFailureSummary: true,
+                includeTextExcerpts: true,
+              }),
             }),
           );
         } else {
-          const uploadedKeys = await writeDocsArtifacts(env, docs, docsRun);
-          await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "docs",
-                "succeeded",
-                docsFinishedAt,
-                docsRun.requestKey,
-                docsRun.outputPrefix,
-                "Package docs generated and uploaded successfully.",
+        const uploadedKeys = await writeDocsArtifacts(env, docs, docsRun);
+        await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
+        await writePackagePipelineRunRecord(
+          env.SEARCH_DB,
+          {
+            ...buildRunRecord(
+              event,
+              "docs",
+              "succeeded",
+              docsFinishedAt,
+              docsRun.requestKey,
+              docsRun.outputPrefix,
+              "Package docs generated and uploaded successfully.",
                 {
                   source_archive_url: docsRun.sourceArchiveUrl,
                   public_docs_url: docsRun.publicDocsUrl,
@@ -921,87 +1022,80 @@ async function processQueuedReleases(env: Env): Promise<void> {
                   environment_probe: execution.environment_probe,
                   uploaded_keys: uploadedKeys,
                   output_dir: docs.output_dir,
-                  stdout: docs.stdout,
-                  stderr: docs.stderr,
-                  exit_code: docs.exit_code,
-                  json_event_count: jsonEventCount(docs),
-                  non_json_stdout_count: nonJsonStdoutCount(docs),
-                  last_json_event_type: lastJsonEventType(docs),
-                  last_json_event: lastJsonEvent(docs),
+                  ...buildCommandMetadata(docs),
                 },
               ),
               started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.docs.generated", docsFinishedAt, event, {
-              run_kind: "docs",
-              output_prefix: docsRun.outputPrefix,
-              public_docs_url: docsRun.publicDocsUrl,
-              result_key: docsRun.resultKey,
-              logs_key: docsRun.logsKey,
-              json_event_count: jsonEventCount(docs),
-              non_json_stdout_count: nonJsonStdoutCount(docs),
-              last_json_event_type: lastJsonEventType(docs),
-            }),
-          );
-        }
+          },
+        );
+        await writeRegistryEvent(
+          env.SEARCH_DB,
+          makePipelineEvent("package.docs.generated", docsFinishedAt, event, {
+            run_kind: "docs",
+            output_prefix: docsRun.outputPrefix,
+            public_docs_url: docsRun.publicDocsUrl,
+            result_key: docsRun.resultKey,
+            logs_key: docsRun.logsKey,
+            json_event_count: jsonEventCount(docs),
+            non_json_stdout_count: nonJsonStdoutCount(docs),
+            last_json_event_type: lastJsonEventType(docs),
+          }),
+        );
       }
+    }
 
-      if (releaseErrors.length > 0) {
-        throw new Error(releaseErrors[0] ?? "package processing failed");
-      }
+    if (releaseErrors.length > 0) {
+      throw new Error(releaseErrors[0] ?? "package processing failed");
+    }
 
-      const finishedAt = new Date().toISOString();
-      await markPackageReleaseToProcessFinished(
+    const finishedAt = new Date().toISOString();
+    await markPackageReleaseToProcessFinished(
+      env.SEARCH_DB,
+      claimed.release_id,
+      finishedAt,
+      "Package docs and build verification completed successfully.",
+    );
+    await writeRegistryEvent(
+      env.SEARCH_DB,
+      makePipelineEvent("package.processing.finished", finishedAt, event, {
+        status: "finished",
+      }),
+    );
+  } catch (error) {
+    const failedAt = new Date().toISOString();
+    if (claimed.attempt_count >= RELEASE_PROCESSING_MAX_ATTEMPTS) {
+      await markPackageReleaseToProcessBlocked(
         env.SEARCH_DB,
         claimed.release_id,
-        finishedAt,
-        "Package docs and build verification completed successfully.",
+        failedAt,
+        normalizeBlockedPipelineError(error),
       );
       await writeRegistryEvent(
         env.SEARCH_DB,
-        makePipelineEvent("package.processing.finished", finishedAt, event, {
-          status: "finished",
+        makePipelineEvent("package.processing.blocked", failedAt, event, {
+          status: "blocked",
+          attempt_count: claimed.attempt_count,
+          error: error instanceof Error ? error.message : "unknown_error",
         }),
       );
-    } catch (error) {
-      const failedAt = new Date().toISOString();
-      if (claimed.attempt_count >= RELEASE_PROCESSING_MAX_ATTEMPTS) {
-        await markPackageReleaseToProcessBlocked(
-          env.SEARCH_DB,
-          claimed.release_id,
-          failedAt,
-          normalizeBlockedPipelineError(error),
-        );
-        await writeRegistryEvent(
-          env.SEARCH_DB,
-          makePipelineEvent("package.processing.blocked", failedAt, event, {
-            status: "blocked",
-            attempt_count: claimed.attempt_count,
-            error: error instanceof Error ? error.message : "unknown_error",
-          }),
-        );
-      } else {
-        const nextAttemptAt = toIso(failedAt, RELEASE_PROCESSING_RETRY_DELAY_MS);
-        await reschedulePackageReleaseToProcess(
-          env.SEARCH_DB,
-          claimed.release_id,
-          failedAt,
-          nextAttemptAt,
-          normalizePipelineError(error),
-        );
-        await writeRegistryEvent(
-          env.SEARCH_DB,
-          makePipelineEvent("package.processing.requeued", failedAt, event, {
-            status: "pending",
-            attempt_count: claimed.attempt_count,
-            next_attempt_at: nextAttemptAt,
-            error: error instanceof Error ? error.message : "unknown_error",
-          }),
-        );
-      }
+    } else {
+      const nextAttemptAt = toIso(failedAt, RELEASE_PROCESSING_RETRY_DELAY_MS);
+      await reschedulePackageReleaseToProcess(
+        env.SEARCH_DB,
+        claimed.release_id,
+        failedAt,
+        nextAttemptAt,
+        normalizePipelineError(error),
+      );
+      await writeRegistryEvent(
+        env.SEARCH_DB,
+        makePipelineEvent("package.processing.requeued", failedAt, event, {
+          status: "pending",
+          attempt_count: claimed.attempt_count,
+          next_attempt_at: nextAttemptAt,
+          error: error instanceof Error ? error.message : "unknown_error",
+        }),
+      );
     }
   }
 }
@@ -1057,17 +1151,26 @@ function summarizeCommandFailure(result: {
     return clipText(stderr.replaceAll(/\s+/g, " "));
   }
 
-  const nonJsonLine = result.non_json_stdout_lines?.find((line) => line.trim().length > 0);
-  if (nonJsonLine !== undefined) {
-    return clipText(nonJsonLine.trim());
-  }
-
   const event = lastJsonEvent(result);
   if (event !== undefined) {
     return clipText(JSON.stringify(event));
   }
 
+  const nonJsonLine = result.non_json_stdout_lines?.find((line) => line.trim().length > 0);
+  if (nonJsonLine !== undefined) {
+    return clipText(nonJsonLine.trim());
+  }
+
   return "The command failed without emitting a structured error payload.";
+}
+
+function excerptText(value: string, limit = 2048): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  return clipText(trimmed, limit);
 }
 
 function toIso(baseIso: string, deltaMs: number): string {

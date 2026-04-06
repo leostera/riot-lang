@@ -217,12 +217,13 @@ export type PackagePipelineRunStatus =
   | "failed"
   | "blocked";
 
-export type PackagePipelineRunnerKind = "cloudflare-container";
+export type PackagePipelineRunnerKind = "cloudflare-container" | "cloudflare-sandbox";
 
 export type PackagePipelineStepKind =
   | "download"
   | "unpack"
   | "install-riot"
+  | "upgrade-riot"
   | "generate-docs"
   | "build-package"
   | "upload"
@@ -253,7 +254,7 @@ export interface PackagePipelineRequestStep {
 }
 
 export interface PackagePipelineRequestRunner {
-  kind: "cloudflare-container";
+  kind: "cloudflare-container" | "cloudflare-sandbox";
   status: "pending_runner";
   notes: string[];
 }
@@ -278,6 +279,8 @@ interface PackagePipelineRequestBase {
 export interface DocsBuildRequest extends PackagePipelineRequestBase {
   run_kind: "docs";
   public_docs_url: string;
+  result_key: string;
+  logs_key: string;
 }
 
 export interface PackageBuildRequest extends PackagePipelineRequestBase {
