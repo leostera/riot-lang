@@ -23,7 +23,7 @@ type pattern_desc =
   (** Or-pattern with child pattern IDs in source order. *)
   | POr of PatId.t list
   (** Constructor pattern with a stable constructor name and lowered payloads. *)
-  | PConstructor of { constructor: string; arguments: PatId.t list }
+  | PConstructor of { constructor: IdentPath.t; arguments: PatId.t list }
   (** Record pattern with lowered field patterns and explicit openness. *)
   | PRecord of { fields: record_pattern_field list; open_: bool }
   (** List pattern with lowered element patterns. *)
@@ -78,7 +78,7 @@ type apply_argument = {
 }
 type expr_desc =
   (** Variable reference. *)
-  | EVar of string
+  | EVar of IdentPath.t
   (** Integer literal expression. *)
   | EInt of string
   (** Floating-point literal expression. *)
@@ -118,7 +118,7 @@ type expr_desc =
   (** Lenient polymorphic-variant expression with an optional payload. *)
   | EPolyVariant of { tag: string; payload: ExprId.t option }
   (** Local module open expression with the lowered body expression. *)
-  | ELocalOpen of { module_path: string; body_id: ExprId.t }
+  | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   (** Unsupported semantic node that still reached the inferencer. *)
   | EUnsupported of string
   (** Recovery hole introduced during lowering. *)
@@ -146,7 +146,7 @@ and binding = {
   (** Source origin for this binding. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this binding, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Simple binder name when one exists. *)
   name: string option;
   (** Pattern bound by this binding. *)

@@ -4,7 +4,7 @@ open Diagnostics
 open Model
 
 type record_type_decl = {
-  owner_name: string;
+  owner_name: IdentPath.t;
   param_ids: int list;
   labels: TypeDecl.label list;
 }
@@ -25,15 +25,13 @@ type t = {
   mutable item_traces: Check_result.item_trace list;
   mutable record_types: record_type_decl list;
   mutable visible_type_decls: FileSummary.type_decl list;
-  visible_type_decl_index: (string, FileSummary.type_decl) Collections.HashMap.t;
-  declaration_variances: (string, variance list) Collections.HashMap.t;
+  visible_type_decl_index: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
+  declaration_variances: (IdentPath.t, variance list) Collections.HashMap.t;
   mutable forced_export_names: string list;
 }
 
 let qualify_name = fun scope_path name ->
-  match scope_path with
-  | [] -> name
-  | _ -> String.concat "." scope_path ^ "." ^ name
+  IdentPath.append_name scope_path name
 
 let record_type_of_summary_decl = fun (type_decl: FileSummary.type_decl) ->
   match type_decl.declaration.labels with
@@ -65,47 +63,29 @@ let bind_type_decls = fun type_decls introduced ->
     (fun acc (type_decl: FileSummary.type_decl) ->
       let key = type_decl_key type_decl in
       let acc =
-        List.filter (fun candidate -> not (String.equal (type_decl_key candidate) key)) acc
+        List.filter (fun candidate -> not (IdentPath.equal (type_decl_key candidate) key)) acc
       in
       acc @ [ type_decl ])
     type_decls
     introduced
 
-let split_module_path = fun module_path ->
-  if String.equal module_path "" then
-    []
-  else
-    String.split_on_char '.' module_path
-
-let rec strip_scope_prefix = fun prefix scope_path ->
-  match (prefix, scope_path) with
-  | [], rest -> Some rest
-  | prefix_segment :: prefix_rest, scope_segment :: scope_rest when String.equal prefix_segment scope_segment -> strip_scope_prefix
-    prefix_rest
-    scope_rest
-  | _ -> None
-
 let aliases_for_type_decls = fun type_decls module_path ->
-  let prefix = split_module_path module_path in
   type_decls |> List.filter_map
     (fun (type_decl: FileSummary.type_decl) ->
-      match strip_scope_prefix prefix type_decl.scope_path with
+      match IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path with
       | Some scope_path -> Some { type_decl with scope_path }
       | None -> None)
 
 let prefix_type_decls = fun prefix type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      { type_decl with scope_path = prefix @ type_decl.scope_path })
+      { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path })
     type_decls
 
 let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
 
 let type_decls_for_module_alias = fun type_decls ~alias_name ~module_path ->
-  if String.equal alias_name module_path then
-    []
-  else
-    aliases_for_type_decls type_decls module_path |> prefix_type_decls [ alias_name ]
+  aliases_for_type_decls type_decls module_path |> prefix_type_decls (IdentPath.of_name alias_name)
 
 let rebuild_visible_type_decl_index = fun (state: t) ->
   let () = Collections.HashMap.clear state.visible_type_decl_index in

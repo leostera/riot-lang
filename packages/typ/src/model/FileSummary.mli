@@ -8,7 +8,7 @@ open Std
     semantic layers. *)
 type type_decl = {
   (** Lexical module path that owns the declaration, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Lowered declaration summary exported by the source. *)
   declaration: TypeDecl.t;
 }

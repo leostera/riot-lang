@@ -91,9 +91,11 @@ let exported_type_names = fun snapshot source_id ->
   | Some typings ->
       ModuleTypings.type_decls typings |> List.map
         (fun (type_decl: FileSummary.type_decl) ->
-          match type_decl.scope_path with
-          | [] -> type_decl.declaration.type_name
-          | scope_path -> String.concat "." (scope_path @ [ type_decl.declaration.type_name ]))
+          if IdentPath.is_empty type_decl.scope_path then
+            type_decl.declaration.type_name
+          else
+            IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+            |> IdentPath.to_string)
 
 let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
@@ -704,7 +706,7 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
     let exported_type_decls = ModuleTypings.type_decls consumer_summary
     |> List.map
       (fun (type_decl: FileSummary.type_decl) ->
-        (type_decl.scope_path, type_decl.declaration.type_name)) in
+        (IdentPath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
     let client_config = Config.default
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
@@ -760,7 +762,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
     let exported_type_decls = ModuleTypings.type_decls consumer_summary
     |> List.map
       (fun (type_decl: FileSummary.type_decl) ->
-        (type_decl.scope_path, type_decl.declaration.type_name)) in
+        (IdentPath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
     let client_config = Config.default
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
@@ -1535,5 +1537,5 @@ let () =
       ]
       in
       Test.Cli.main ~name:"typ:session" ~tests ~args)
-    ~args:Env.args
+    ~args:Std.Env.args
     ()

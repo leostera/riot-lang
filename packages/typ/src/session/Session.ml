@@ -174,7 +174,7 @@ let module_segments_of_export_name = fun export_name ->
       rest
     | _ -> List.rev acc
   in
-  String.split_on_char '.' export_name |> loop []
+  IdentPath.of_string export_name |> IdentPath.to_segments |> loop []
 
 let deps_env_for_loaded_modules = fun session loaded_modules ->
   let key = loaded_modules_key loaded_modules in
@@ -198,12 +198,13 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
         in
         ModuleTypings.type_decls summary |> List.fold_left
           (fun env (type_decl: FileSummary.type_decl) ->
-            match type_decl.scope_path with
-            | [] -> env
-            | scope_path -> Syn.Deps.Env.add_path
+            if IdentPath.is_empty type_decl.scope_path then
               env
-              ~path:((module_name :: scope_path))
-              ~free_names:[ module_name ])
+            else
+              Syn.Deps.Env.add_path
+                env
+                ~path:(module_name :: IdentPath.to_segments type_decl.scope_path)
+                ~free_names:[ module_name ])
           env
       in
       let env = List.fold_left add_summary_paths Syn.Deps.Env.empty loaded_modules in
@@ -272,7 +273,7 @@ let collect_missing_module_summaries = fun session roots ->
     | Some summary ->
         ModuleTypings.exports summary |> List.map fst |> List.filter_map
           (fun export_name ->
-            let segments = String.split_on_char '.' export_name in
+            let segments = IdentPath.of_string export_name |> IdentPath.to_segments in
             match segments with
             | head :: _ :: _ when String.length head > 0 && is_uppercase_ascii head.[0] -> Some head
             | _ -> None) |> List.sort_uniq String.compare

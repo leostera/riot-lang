@@ -5,7 +5,7 @@ open Syn
 
 type state = {
   source: Source.t;
-  mutable scope_path: string list;
+  mutable scope_path: IdentPath.t;
   mutable next_origin_id: int;
   mutable next_pattern_id: int;
   mutable next_expr_id: int;
@@ -18,10 +18,13 @@ type state = {
   mutable bindings: BodyArena.binding list;
   mutable items: ItemTree.item list;
   mutable diagnostics: Typ_diagnostic.t list;
-  mutable declared_type_names: (string * string list) list;
+  mutable declared_type_names: (string * IdentPath.t) list;
 }
 
-let path_text = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> String.concat "."
+let ident_path = fun path ->
+  path |> Cst.Ident.segments |> List.map Cst.Token.text |> IdentPath.of_segments
+
+let path_text = fun path -> path |> ident_path |> IdentPath.to_string
 
 let last_path_segment_text = fun path ->
   match List.rev (Cst.Ident.segments path) with
@@ -29,38 +32,30 @@ let last_path_segment_text = fun path ->
   | [] -> ""
 
 let qualify_scoped_name = fun scope_path name ->
-  match scope_path with
-  | [] -> name
-  | _ -> String.concat "." (scope_path @ [ name ])
-
-let rec scope_prefixes = function
-  | [] -> [ [] ]
-  | scope_path ->
-      let parent_scope_path = List.rev scope_path |> List.tl |> List.rev in
-      scope_path :: scope_prefixes parent_scope_path
+  IdentPath.append_name scope_path name
 
 let resolve_named_type_name = fun (state: state) name ->
   let rec loop = function
-    | [] -> name
+    | [] -> IdentPath.of_name name
     | scope_path :: rest ->
         if
           List.exists
             (fun (candidate_name, candidate_scope_path) ->
-              String.equal candidate_name name && List.equal String.equal candidate_scope_path scope_path)
+              String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path)
             state.declared_type_names
         then
           qualify_scoped_name scope_path name
         else
           loop rest
   in
-  loop (scope_prefixes state.scope_path)
+  IdentPath.prefixes state.scope_path |> List.rev |> loop
 
 let register_declared_type_name = fun (state: state) name ->
   let binding = (name, state.scope_path) in
   if
     List.exists
       (fun (candidate_name, candidate_scope_path) ->
-        String.equal candidate_name name && List.equal String.equal candidate_scope_path state.scope_path)
+        String.equal candidate_name name && IdentPath.equal candidate_scope_path state.scope_path)
       state.declared_type_names
   then
     ()
@@ -78,13 +73,13 @@ let rec module_path_segments_of_expr = function
       if List.is_empty segments || not (List.for_all is_module_name segments) then
         None
       else
-        Some segments
+        Some (IdentPath.of_segments segments)
   | Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
       match module_path_segments_of_expr receiver with
-      | Some segments ->
+      | Some path ->
           let field_name = Cst.Token.text field_name in
           if is_module_name field_name then
-            Some (segments @ [ field_name ])
+            Some (IdentPath.append_name path field_name)
           else
             None
       | None -> None
@@ -93,7 +88,7 @@ let rec module_path_segments_of_expr = function
       None
 
 let rec module_path_segments_of_module_expression = function
-  | Cst.ModuleExpression.Path path -> Some (Cst.Ident.segments path |> List.map Cst.Token.text)
+  | Cst.ModuleExpression.Path path -> Some (ident_path path)
   | Cst.ModuleExpression.Parenthesized { inner; _ }
   | Cst.ModuleExpression.Attribute { module_expression=inner; _ }
   | Cst.ModuleExpression.Constraint { module_expression=inner; _ } -> module_path_segments_of_module_expression
@@ -150,10 +145,10 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
       | None -> TypeRepr.Hole (-100)
     )
   | Cst.CoreType.Constr { constructor_path; arguments; _ } ->
-      let name = path_text constructor_path in
+      let name = ident_path constructor_path in
       let arguments = List.map (lower_core_type state type_params) arguments in
       begin
-        match builtin_type_of_name name arguments with
+        match builtin_type_of_name (IdentPath.to_string name) arguments with
         | Some builtin -> builtin
         | None ->
             let segments = Cst.Ident.segments constructor_path in
@@ -209,7 +204,7 @@ let variant_constructor_payload = fun (state: state) type_params (
 let make_state = fun source ->
   {
     source;
-    scope_path = [];
+    scope_path = IdentPath.empty;
     next_origin_id = 0;
     next_pattern_id = 0;
     next_expr_id = 0;
@@ -498,7 +493,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
 
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
-  let exn_type = TypeRepr.Named { name = "exn"; arguments = [] } in
+  let exn_type = TypeRepr.Named { name = IdentPath.of_name "exn"; arguments = [] } in
   let payload_type =
     match declaration.rhs with
     | Some (Cst.Payload { payload_type; _ }) -> Some (lower_core_type state [] payload_type)
@@ -697,7 +692,7 @@ let rec lower_pattern = fun (state: state) pattern ->
         ~syntax_node
         ~label:"constructor_pattern"
         (BodyArena.PConstructor {
-          constructor = path_text constructor_path;
+          constructor = ident_path constructor_path;
           arguments = argument_ids
         })
   | Cst.Pattern.Record { syntax_node; fields; closedness; _ } ->
@@ -839,7 +834,7 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body ->
           state
           ~syntax_node
           ~label:"synthetic_function_argument"
-          (BodyArena.EVar synthetic_name) in
+          (BodyArena.EVar (IdentPath.of_name synthetic_name)) in
         let match_id = add_expr
           state
           ~syntax_node
@@ -925,7 +920,7 @@ and lower_apply = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"implicit_labeled_argument"
-            (BodyArena.EVar (Cst.Token.text label_token))
+            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
         in
         { BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token); value_id }
     | Cst.Optional { syntax_node; label_token; value; _ } ->
@@ -936,7 +931,7 @@ and lower_apply = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"implicit_optional_argument"
-            (BodyArena.EVar (Cst.Token.text label_token))
+            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
         in
         { BodyArena.label = BodyArena.Optional (Cst.Token.text label_token); value_id }
   in
@@ -959,7 +954,7 @@ and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
     state
     ~syntax_node
     ~label:"infix_operator"
-    (BodyArena.EVar operator_name) in
+    (BodyArena.EVar (IdentPath.of_name operator_name)) in
   let left_id = lower_expr state infix.left in
   let right_id = lower_expr state infix.right in
   add_expr
@@ -979,14 +974,14 @@ and lower_list_expression = fun (state: state) (list_expression: Cst.list_expres
     state
     ~syntax_node:list_expression.syntax_node
     ~label:"list_nil_expression"
-    (BodyArena.EVar "[]") in
+    (BodyArena.EVar (IdentPath.of_name "[]")) in
   list_expression.elements |> List.rev |> List.fold_left
     (fun tail_id element ->
       let cons_id = add_expr
         state
         ~syntax_node:list_expression.syntax_node
         ~label:"list_cons_expression"
-        (BodyArena.EVar "::") in
+        (BodyArena.EVar (IdentPath.of_name "::")) in
       let head_id = lower_expr state element in
       add_expr
         state
@@ -1004,9 +999,9 @@ and lower_list_expression = fun (state: state) (list_expression: Cst.list_expres
 and lower_expr = fun (state: state) expression ->
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
-      add_expr state ~syntax_node ~label:"path_expression" (BodyArena.EVar (path_text path))
+      add_expr state ~syntax_node ~label:"path_expression" (BodyArena.EVar (ident_path path))
   | Cst.Expression.Constructor { syntax_node; constructor_path; payload; _ } -> (
-      let constructor_name = path_text constructor_path in
+      let constructor_name = ident_path constructor_path in
       match payload with
       | None -> add_expr
         state
@@ -1031,8 +1026,8 @@ and lower_expr = fun (state: state) expression ->
     )
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
       match module_path_segments_of_expr receiver with
-      | Some module_segments ->
-          let qualified_name = String.concat "." (module_segments @ [ Cst.Token.text field_name ]) in
+      | Some module_path ->
+          let qualified_name = IdentPath.append_name module_path (Cst.Token.text field_name) in
           add_expr
             state
             ~syntax_node
@@ -1075,7 +1070,11 @@ and lower_expr = fun (state: state) expression ->
         (BodyArena.ERecord { base_id = Some base_id; fields })
   | Cst.Expression.Operator { syntax_node; operator_tokens; _ } ->
       let operator = operator_tokens |> List.map Cst.Token.text |> String.concat "" in
-      add_expr state ~syntax_node ~label:"operator_expression" (BodyArena.EVar operator)
+      add_expr
+        state
+        ~syntax_node
+        ~label:"operator_expression"
+        (BodyArena.EVar (IdentPath.of_name operator))
   | Cst.Expression.Literal literal -> (
       match literal with
       | Cst.Literal.Int integer -> add_expr
@@ -1203,7 +1202,7 @@ and lower_expr = fun (state: state) expression ->
         state
         ~syntax_node
         ~label:"local_open_expression"
-        (BodyArena.ELocalOpen { module_path = path_text module_path; body_id })
+        (BodyArena.ELocalOpen { module_path = ident_path module_path; body_id })
   | Cst.Expression.Prefix { syntax_node; operator_token; operand; _ } -> (
       match (Cst.Token.text operator_token, operand) with
       | ("-", Cst.Expression.Literal (Cst.Literal.Int integer)) ->
@@ -1223,7 +1222,7 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"prefix_operator"
-            (BodyArena.EVar (Cst.Token.text operator_token)) in
+            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text operator_token))) in
           let operand_id = lower_expr state operand in
           add_expr
             state
@@ -1264,7 +1263,7 @@ let rec lower_structure_item = fun (state: state) item ->
           let _ = add_item
             state
             ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
-            (`Open (path_text module_path)) in
+            (`Open (ident_path module_path)) in
           ()
       | None -> ()
     )
@@ -1337,7 +1336,7 @@ and lower_signature_item = fun (state: state) item ->
           let _ = add_item
             state
             ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
-            (`Open (path_text module_path)) in
+            (`Open (ident_path module_path)) in
           ()
       | None -> ()
     )
@@ -1353,10 +1352,10 @@ and lower_include_statement = fun (state: state) (include_statement: Cst.include
   match include_statement.target with
   | Cst.ModuleExpression module_expression -> (
       match module_path_segments_of_module_expression module_expression with
-      | Some [] ->
+      | Some path when IdentPath.is_empty path ->
           ()
-      | Some segments ->
-          let _ = add_item state ~syntax_node (`Include (String.concat "." segments)) in
+      | Some module_path ->
+          let _ = add_item state ~syntax_node (`Include module_path) in
           ()
       | None ->
           add_unsupported_structure_item state syntax_node
@@ -1369,7 +1368,7 @@ and lower_signature_include_statement = fun (state: state) (include_statement: C
   | Cst.ModuleType module_type -> (
       match module_type with
       | Cst.ModuleType.Path path ->
-          let _ = add_item state ~syntax_node (`Include (path_text path)) in
+          let _ = add_item state ~syntax_node (`Include (ident_path path)) in
           ()
       | Cst.ModuleType.Parenthesized { inner; _ }
       | Cst.ModuleType.Attribute { module_type=inner; _ } ->
@@ -1395,13 +1394,13 @@ and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStruct
     let module_name = Cst.ModuleStructure.name declaration in
     let module_expression = Cst.ModuleStructure.module_expression declaration in
     match module_path_segments_of_module_expression module_expression with
-    | Some [] ->
+    | Some path when IdentPath.is_empty path ->
         ()
-    | Some segments ->
-        let _ = add_item state ~syntax_node (`ModuleAlias (module_name, String.concat "." segments)) in
+    | Some module_path ->
+        let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
         ()
     | None ->
-        let nested_scope_path = state.scope_path @ [ module_name ] in
+        let nested_scope_path = IdentPath.append_name state.scope_path module_name in
         with_scope state nested_scope_path
           (fun () ->
             match CstBuilder.structure_items_of_module_expression module_expression with
@@ -1425,19 +1424,19 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
     match Cst.ModuleSignature.definition declaration with
     | Cst.ModuleSignature.Alias module_expression -> (
         match module_path_segments_of_module_expression module_expression with
-        | Some [] ->
+        | Some path when IdentPath.is_empty path ->
             ()
-        | Some segments ->
+        | Some module_path ->
             let _ = add_item
               state
               ~syntax_node
-              (`ModuleAlias (module_name, String.concat "." segments)) in
+              (`ModuleAlias (module_name, module_path)) in
             ()
         | None ->
             add_unsupported_signature_item state syntax_node
       )
     | Cst.ModuleSignature.Signature module_type ->
-        let nested_scope_path = state.scope_path @ [ module_name ] in
+        let nested_scope_path = IdentPath.append_name state.scope_path module_name in
         with_scope
           state
           nested_scope_path

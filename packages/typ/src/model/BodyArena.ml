@@ -11,7 +11,7 @@ type pattern_desc =
   | PUnit
   | PTuple of PatId.t list
   | POr of PatId.t list
-  | PConstructor of { constructor: string; arguments: PatId.t list }
+  | PConstructor of { constructor: IdentPath.t; arguments: PatId.t list }
   | PRecord of { fields: record_pattern_field list; open_: bool }
   | PList of PatId.t list
   | PAlias of { pattern_id: PatId.t; alias: string }
@@ -51,7 +51,7 @@ type apply_argument = {
 }
 
 type expr_desc =
-  | EVar of string
+  | EVar of IdentPath.t
   | EInt of string
   | EFloat of string
   | EBool of bool
@@ -71,7 +71,7 @@ type expr_desc =
   | EMatch of ExprId.t * match_case list
   | ETry of ExprId.t * match_case list
   | EPolyVariant of { tag: string; payload: ExprId.t option }
-  | ELocalOpen of { module_path: string; body_id: ExprId.t }
+  | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   | EUnsupported of string
   | EHole of string
 
@@ -89,7 +89,7 @@ and expr_node = {
 and binding = {
   binding_id: BindingId.t;
   origin_id: OriginId.t;
-  scope_path: string list;
+  scope_path: IdentPath.t;
   name: string option;
   pattern_id: PatId.t;
   value_id: ExprId.t;
@@ -204,7 +204,7 @@ let render_pattern_desc = function
   | POr alternatives ->
       "or [" ^ render_ids PatId.to_string alternatives ^ "]"
   | PConstructor { constructor; arguments } ->
-      "constructor " ^ constructor ^ " [" ^ render_ids PatId.to_string arguments ^ "]"
+      "constructor " ^ IdentPath.to_string constructor ^ " [" ^ render_ids PatId.to_string arguments ^ "]"
   | PRecord { fields; open_ } ->
       "record { "
       ^ (fields |> List.map render_record_pattern_field |> String.concat ", ")
@@ -227,7 +227,7 @@ let render_pattern_desc = function
 
 let render_expr_desc = function
   | EVar name ->
-      "var " ^ name
+      "var " ^ IdentPath.to_string name
   | EInt digits ->
       "int " ^ digits
   | EFloat digits ->
@@ -325,7 +325,7 @@ let render_expr_desc = function
       | None -> "poly_variant `" ^ tag
     )
   | ELocalOpen { module_path; body_id } ->
-      "local_open " ^ module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
+      "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
       "unsupported(" ^ summary ^ ")"
   | EHole summary ->
@@ -337,11 +337,7 @@ let render_binding = fun (binding: binding) ->
     | Some name -> name
     | None -> "_"
   in
-  let qualified_name =
-    match binding.scope_path with
-    | [] -> name
-    | scope_path -> String.concat "." scope_path ^ "." ^ name
-  in
+  let qualified_name = IdentPath.to_string (IdentPath.append_name binding.scope_path name) in
   "  "
   ^ BindingId.to_string binding.binding_id
   ^ " "
@@ -381,7 +377,7 @@ let pattern_desc_to_json = function
   ]
   | PConstructor { constructor; arguments } -> Data.Json.Object [
     ("tag", Data.Json.String "constructor");
-    ("constructor", Data.Json.String constructor);
+    ("constructor", Data.Json.String (IdentPath.to_string constructor));
     (
       "arguments",
       Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) arguments)
@@ -485,7 +481,7 @@ let apply_argument_to_json = fun (argument: apply_argument) ->
 let expr_desc_to_json = function
   | EVar name -> Data.Json.Object [
     ("tag", Data.Json.String "var");
-    ("name", Data.Json.String name)
+    ("name", Data.Json.String (IdentPath.to_string name))
   ]
   | EInt digits -> Data.Json.Object [
     ("tag", Data.Json.String "int");
@@ -593,7 +589,7 @@ let expr_desc_to_json = function
       ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
-    ("module_path", Data.Json.String module_path);
+    ("module_path", Data.Json.String (IdentPath.to_string module_path));
     ("body_id", Data.Json.Int (ExprId.to_int body_id));
   ]
   | EUnsupported summary -> Data.Json.Object [
@@ -630,7 +626,9 @@ let binding_to_json = fun (binding: binding) ->
     ("origin_id", Data.Json.Int (OriginId.to_int binding.origin_id));
     (
       "scope_path",
-      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) binding.scope_path)
+      Data.Json.Array
+        (IdentPath.to_segments binding.scope_path
+        |> List.map (fun segment -> Data.Json.String segment))
     );
     ("name", name_json);
     ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));

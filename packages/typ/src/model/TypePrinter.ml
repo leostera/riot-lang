@@ -89,12 +89,12 @@ let rec render_type = fun state ~nested ty ->
         text
   | TypeRepr.Named { name; arguments } -> (
       match arguments with
-      | [] -> name
-      | [ argument ] -> render_type state ~nested:true argument ^ " " ^ name
+      | [] -> IdentPath.to_string name
+      | [ argument ] -> render_type state ~nested:true argument ^ " " ^ IdentPath.to_string name
       | arguments -> "("
       ^ (arguments |> List.map (render_type state ~nested:false) |> String.concat ", ")
       ^ ") "
-      ^ name
+      ^ IdentPath.to_string name
     )
   | TypeRepr.Tuple members ->
       members |> List.map (render_type state ~nested:true) |> String.concat " * " |> fun text ->

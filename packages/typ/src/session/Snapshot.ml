@@ -40,13 +40,17 @@ let make = fun ~revision ~roots ~config ~sources ->
   }
 
 let qualify_exports = fun module_name exports ->
-  List.map (fun (name, scheme) -> (module_name ^ "." ^ name, scheme)) exports
+  let module_path = IdentPath.of_name module_name in
+  List.map
+    (fun (name, scheme) ->
+      (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
+    exports
 
 let qualify_type_decls = fun module_name type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
       {
-        FileSummary.scope_path = module_name :: type_decl.scope_path;
+        FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
         declaration = type_decl.declaration
       })
     type_decls

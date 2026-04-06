@@ -1,7 +1,7 @@
 open Std
 
 type type_decl = {
-  scope_path: string list;
+  scope_path: IdentPath.t;
   declaration: TypeDecl.t;
 }
 

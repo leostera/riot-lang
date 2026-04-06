@@ -38,5 +38,5 @@ let () =
           ~run:(fun ctx -> test_fixture ~ctx)
       in
       Test.Cli.main ~name:"typ:prototype_fixtures" ~tests ~args)
-    ~args:Env.args
+    ~args:Std.Env.args
     ()

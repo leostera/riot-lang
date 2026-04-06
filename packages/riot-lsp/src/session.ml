@@ -211,7 +211,11 @@ let merge_module_exports = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  String.concat "." (type_decl.scope_path @ [ type_decl.declaration.type_name ])
+  if Typ.Model.IdentPath.is_empty type_decl.scope_path then
+    type_decl.declaration.type_name
+  else
+    Typ.Model.IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+    |> Typ.Model.IdentPath.to_string
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =

@@ -6,6 +6,7 @@ module Env: module type of Env
 
 module Region: module type of Region
 
+open Std
 (** Result of inferring types for one semantic tree. *)
 type t = {
   (** File-local exports after filtering the configured prelude. *)

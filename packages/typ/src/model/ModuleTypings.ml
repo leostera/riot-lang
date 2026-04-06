@@ -121,7 +121,7 @@ let rec type_to_json = fun ty ->
   ]
   | TypeRepr.Named { name; arguments } -> Data.Json.Object [
     ("tag", Data.Json.String "named");
-    ("name", Data.Json.String name);
+    ("name", Data.Json.String (IdentPath.to_string name));
     ("arguments", Data.Json.Array (List.map type_to_json arguments));
   ]
   | TypeRepr.Tuple members -> Data.Json.Object [
@@ -201,7 +201,9 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   let fields = [
     (
       "scope_path",
-      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) type_decl.scope_path)
+      Data.Json.Array
+        (IdentPath.to_segments type_decl.scope_path
+        |> List.map (fun segment -> Data.Json.String segment))
     );
     ("type_name", Data.Json.String type_decl.declaration.type_name);
     (
@@ -317,7 +319,7 @@ let rec type_of_json = fun json ->
             loop (argument :: acc) tail
       in
       let* arguments = loop [] arguments_json in
-      Ok (TypeRepr.Named { name; arguments })
+      Ok (TypeRepr.Named { name = IdentPath.of_string name; arguments })
   | "tuple" ->
       let* members_json = field "members" fields in
       let* members_json = get_array members_json in
@@ -512,7 +514,7 @@ let type_decl_of_json = fun json ->
   in
   let* manifest = manifest in
   Ok {
-    FileSummary.scope_path = scope_path;
+    FileSummary.scope_path = IdentPath.of_segments scope_path;
     declaration =
       {
         TypeDecl.type_name = type_name;

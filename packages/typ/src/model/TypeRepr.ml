@@ -25,7 +25,7 @@ and t =
   | Array of t
   | List of t
   | Seq of t
-  | Named of { name: string; arguments: t list }
+  | Named of { name: IdentPath.t; arguments: t list }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var

@@ -7,7 +7,7 @@ type type_item = {
   (** Source origin for this item shell. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Lowered declaration summary used to populate constructor environments. *)
   declaration: TypeDecl.t;
 }
@@ -18,7 +18,7 @@ type exception_item = {
   (** Source origin for this item shell. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Declared exception constructor name. *)
   exception_name: string;
   (** Constructor scheme used by expressions, patterns, and [raise]. *)
@@ -31,7 +31,7 @@ type value_item = {
   (** Source origin for this item shell. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Top-level bindings introduced by this item. *)
   binding_ids: BindingId.t list;
   (** Whether the item's binding group is recursive. *)
@@ -43,7 +43,7 @@ type declared_value_item = {
   (** Source origin for this item shell. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Declared binding name introduced by the interface item. *)
   value_name: string;
   (** Declared type scheme introduced for downstream use. *)
@@ -55,7 +55,7 @@ type unsupported_item = {
   (** Source origin for this placeholder item. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Short recovery summary naming the unsupported syntax family. *)
   summary: string;
 }
@@ -65,9 +65,9 @@ type open_item = {
   (** Source origin for this open statement. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Lowered module path opened for later sibling items. *)
-  module_path: string;
+  module_path: IdentPath.t;
 }
 type include_item = {
   (** Stable item identity. *)
@@ -75,9 +75,9 @@ type include_item = {
   (** Source origin for this include statement. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Lowered module path whose exports are spliced into the current scope. *)
-  module_path: string;
+  module_path: IdentPath.t;
 }
 type module_alias_item = {
   (** Stable item identity. *)
@@ -85,11 +85,11 @@ type module_alias_item = {
   (** Source origin for this module alias declaration. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this item, empty at top level. *)
-  scope_path: string list;
+  scope_path: IdentPath.t;
   (** Alias name introduced in the current scope. *)
   alias_name: string;
   (** Lowered module path whose exports are rebound under [alias_name]. *)
-  module_path: string;
+  module_path: IdentPath.t;
 }
 type item =
   (** Type declaration with exported constructor schemes. *)

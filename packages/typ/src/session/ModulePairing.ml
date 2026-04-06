@@ -59,9 +59,7 @@ let source_span = fun (source: Source.t) ->
   | Error _ -> Syn.Ceibo.Span.make ~start:0 ~end_:0
 
 let qualified_name = fun scope_path name ->
-  match scope_path with
-  | [] -> name
-  | _ -> String.concat "." (scope_path @ [ name ])
+  IdentPath.append_name scope_path name
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
   qualified_name type_decl.scope_path type_decl.declaration.type_name
@@ -114,7 +112,7 @@ let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
           function
           | ItemTree.DeclaredValue item when String.equal
             export_name
-            (qualified_name item.scope_path item.value_name) -> OriginMap.find
+            (qualified_name item.scope_path item.value_name |> IdentPath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
           |> Option.map (fun (origin: OriginMap.origin) -> origin.span)
@@ -130,7 +128,7 @@ let find_type_decl_span = fun (analysis: SourceAnalysis.t) type_name ->
           function
           | ItemTree.Type item when String.equal
             type_name
-            (qualified_name item.scope_path item.declaration.type_name) -> OriginMap.find
+            (qualified_name item.scope_path item.declaration.type_name |> IdentPath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
           |> Option.map (fun (origin: OriginMap.origin) -> origin.span)
@@ -194,19 +192,19 @@ let type_decl_matches = fun interface_decl implementation_decl ->
 let type_decl_mismatches = fun interface_decls implementation_decls ->
   interface_decls |> List.filter_map
     (fun (interface_decl: FileSummary.type_decl) ->
-      let name = type_decl_key interface_decl in
+      let key = type_decl_key interface_decl in
       match
         implementation_decls |> List.find_opt
           (fun (implementation_decl: FileSummary.type_decl) ->
-            String.equal name (type_decl_key implementation_decl))
+            IdentPath.equal key (type_decl_key implementation_decl))
       with
-      | None -> Some (Diagnostic.MissingTypeDeclaration { name })
+      | None -> Some (Diagnostic.MissingTypeDeclaration { name = IdentPath.to_string key })
       | Some implementation_decl ->
           if type_decl_matches interface_decl.declaration implementation_decl.declaration then
             None
           else
             Some (Diagnostic.TypeDeclarationMismatch {
-              name;
+              name = IdentPath.to_string key;
               expected = TypeDecl.to_string interface_decl.declaration;
               actual = TypeDecl.to_string implementation_decl.declaration
             }))

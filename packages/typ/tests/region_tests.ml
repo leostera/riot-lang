@@ -40,5 +40,5 @@ let () =
         Test.case "local reachable vars include nested escaped vars" test_local_reachable_vars_include_nested_escaped_vars;
       ] in
       Test.Cli.main ~name:"typ:region" ~tests ~args)
-    ~args:Env.args
+    ~args:Std.Env.args
     ()

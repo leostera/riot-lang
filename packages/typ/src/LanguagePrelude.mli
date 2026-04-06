@@ -7,7 +7,7 @@ open Model
     behave like intrinsic or pervasive language constructs for the current
     prototype, not ordinary module APIs that should instead arrive through
     persisted module summaries. *)
-type env = (string * TypeScheme.t) list
+type env = (IdentPath.t * TypeScheme.t) list
 
 (** Minimal intrinsic bindings used by the prototype checker. *)
 val bindings: env

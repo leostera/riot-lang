@@ -45,7 +45,7 @@ and t =
   (** Sequence type used by helpers such as [String.to_seq] and [List.of_seq]. *)
   | Seq of t
   (** Named algebraic or abstract type, optionally applied to arguments. *)
-  | Named of { name: string; arguments: t list }
+  | Named of { name: IdentPath.t; arguments: t list }
   (** Tuple type. *)
   | Tuple of t list
   (** Function type. *)

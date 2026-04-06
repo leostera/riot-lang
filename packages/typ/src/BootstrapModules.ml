@@ -7,7 +7,10 @@ let var = fun id -> TypeRepr.make_var id
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.Arrow { label; lhs; rhs }
 
-let named = fun name -> TypeRepr.Named { name; arguments = [] }
+let bare_named = fun name -> TypeRepr.Named { name = IdentPath.of_name name; arguments = [] }
+
+let qualified_name = fun module_name name ->
+  IdentPath.append_name (IdentPath.of_name module_name) name
 
 let module_typings = fun ~source_id ~module_name exports ->
   let file_summary = FileSummary.trusted ~source_id exports in
@@ -109,9 +112,9 @@ let summaries = [
   (
     "Buffer",
     [
-      ("create", monomorphic (arrow TypeRepr.Int (named "Buffer.t")));
-      ("add_char", monomorphic (arrow (named "Buffer.t") (arrow TypeRepr.Char TypeRepr.Unit)));
-      ("contents", monomorphic (arrow (named "Buffer.t") TypeRepr.String));
+      ("create", monomorphic (arrow TypeRepr.Int (TypeRepr.Named { name = qualified_name "Buffer" "t"; arguments = [] })));
+      ("add_char", monomorphic (arrow (TypeRepr.Named { name = qualified_name "Buffer" "t"; arguments = [] }) (arrow TypeRepr.Char TypeRepr.Unit)));
+      ("contents", monomorphic (arrow (TypeRepr.Named { name = qualified_name "Buffer" "t"; arguments = [] }) TypeRepr.String));
     ]
   );
   (

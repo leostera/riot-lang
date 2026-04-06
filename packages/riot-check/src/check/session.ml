@@ -150,7 +150,11 @@ let merge_module_exports = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let type_decl_key = fun (type_decl: Typ_file_summary.type_decl) ->
-  String.concat "." (type_decl.scope_path @ [ type_decl.declaration.type_name ])
+  if Typ.Model.IdentPath.is_empty type_decl.scope_path then
+    type_decl.declaration.type_name
+  else
+    Typ.Model.IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+    |> Typ.Model.IdentPath.to_string
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -360,13 +364,17 @@ let package_typ_sources_from_planner = fun ~(workspace:Workspace.t) ~(pkg:Packag
         )
 
 let qualify_typings_exports = fun module_name exports ->
-  List.map (fun (name, scheme) -> (module_name ^ "." ^ name, scheme)) exports
+  let module_path = Typ.Model.IdentPath.of_name module_name in
+  List.map
+    (fun (name, scheme) ->
+      (Typ.Model.IdentPath.append_path module_path (Typ.Model.IdentPath.of_string name), scheme))
+    exports
 
 let qualify_typings_type_decls = fun module_name type_decls ->
   List.map
     (fun (type_decl: Typ_file_summary.type_decl) ->
       {
-        Typ_file_summary.scope_path = module_name :: type_decl.scope_path;
+        Typ_file_summary.scope_path = Typ.Model.IdentPath.prepend_name module_name type_decl.scope_path;
         declaration = type_decl.declaration
       })
     type_decls
