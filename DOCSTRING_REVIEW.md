@@ -23,7 +23,6 @@
 - [ ] packages/actors/src/pid.mli
 - [ ] packages/actors/src/process.mli
 - [ ] packages/actors/src/timer_wheel.mli
-- [ ] packages/actors/src/message.mli
 - [ ] packages/blink/src/protocol.mli
 - [ ] packages/blink/src/connection.mli
 - [ ] packages/blink/src/websocket.mli
