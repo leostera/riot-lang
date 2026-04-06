@@ -16,3 +16,4 @@ riot-deps = { path = "../riot-deps", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }
 syn = { path = "../syn", version = "*" }
+markdown = { path = "../markdown", version = "*" }

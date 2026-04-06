@@ -176,52 +176,10 @@ let render_code_block = fun snippet ->
   else
     "<pre class=\"item-snippet\"><code class=\"language-ocaml\">" ^ escape_html snippet ^ "</code></pre>\n"
 
-let parse_doc_blocks = fun text ->
-  let lines = String.split_on_char '\n' text in
-  let flush_text text_lines acc =
-    let text = text_lines |> List.rev |> String.concat "\n" |> String.trim in
-    if String.equal text "" then
-      acc
-    else
-      Text text :: acc
-  in
-  let flush_code code_lines acc =
-    let code = code_lines |> List.rev |> String.concat "\n" |> String.trim in
-    if String.equal code "" then
-      acc
-    else
-      Code code :: acc
-  in
-  let rec outside text_lines acc = function
-    | [] -> flush_text text_lines acc |> List.rev
-    | line :: rest ->
-        if String.starts_with ~prefix:"```" (String.trim line) then
-          inside [] (flush_text text_lines acc) rest
-        else
-          outside (line :: text_lines) acc rest
-  and inside code_lines acc = function
-    | [] -> flush_code code_lines acc |> List.rev
-    | line :: rest ->
-        if String.starts_with ~prefix:"```" (String.trim line) then
-          outside [] (flush_code code_lines acc) rest
-        else
-          inside (line :: code_lines) acc rest
-  in
-  outside [] [] lines
-
-let render_doc_blocks = fun ~class_name text ->
-  parse_doc_blocks text |> List.map
-    (
-      function
-      | Text text -> "<div class=\"" ^ class_name ^ "\">" ^ escape_html text ^ "</div>\n"
-      | Code code -> render_code_block code
-    ) |> String.concat ""
-
-let render_docstring = function
-  | Some docstring when not (String.equal docstring "") -> render_doc_blocks
-    ~class_name:"item-docstring"
-    docstring
-  | _ -> ""
+let render_docstring x =
+  match x with
+  | Some md -> Markdown.compile_gfm md
+  | None -> ""
 
 let first_doc_line = function
   | Some docstring -> docstring
@@ -423,12 +381,15 @@ let render_module_breadcrumbs = fun package (module_doc: Doctree.module_doc) ->
   in
   String.concat " / " (package_link :: loop [] module_doc.path)
 
-let render_module_docstring = function
-  | Some docstring when not (String.equal docstring "") -> "<details class=\"summary-block\" open>\n"
-  ^ "  <summary class=\"summary-toggle\">Summary</summary>\n"
-  ^ render_doc_blocks ~class_name:"module-docstring" docstring
-  ^ "</details>\n"
-  | _ -> ""
+let render_module_docstring doc =
+  let docstring = render_docstring doc in
+  if docstring != "" then
+    "<details class=\"summary-block\" open>\n"
+    ^ "  <summary class=\"summary-toggle\">Summary</summary>\n"
+    ^ docstring
+    ^ "</details>\n"
+  else
+    ""
 
 let rec prefix_segments = fun count acc ->
   if count <= 0 then
