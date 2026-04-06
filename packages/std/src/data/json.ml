@@ -79,6 +79,33 @@ let error_to_string = function
       "Unknown error: " ^ msg
 
 (** Escape a string for JSON *)
+let hex_digit = fun value ->
+  match value with
+  | 0 -> '0'
+  | 1 -> '1'
+  | 2 -> '2'
+  | 3 -> '3'
+  | 4 -> '4'
+  | 5 -> '5'
+  | 6 -> '6'
+  | 7 -> '7'
+  | 8 -> '8'
+  | 9 -> '9'
+  | 10 -> 'A'
+  | 11 -> 'B'
+  | 12 -> 'C'
+  | 13 -> 'D'
+  | 14 -> 'E'
+  | 15 -> 'F'
+  | _ -> panic "invalid hex digit"
+
+let add_unicode_escape = fun buffer code ->
+  Buffer.add_string buffer "\\u";
+  Buffer.add_char buffer (hex_digit ((code lsr 12) land 0xF));
+  Buffer.add_char buffer (hex_digit ((code lsr 8) land 0xF));
+  Buffer.add_char buffer (hex_digit ((code lsr 4) land 0xF));
+  Buffer.add_char buffer (hex_digit (code land 0xF))
+
 let escape_string = fun s ->
   let buffer = Buffer.create (String.length s * 2) in
   String.iter
@@ -86,9 +113,12 @@ let escape_string = fun s ->
       function
       | '"' -> Buffer.add_string buffer "\\\""
       | '\\' -> Buffer.add_string buffer "\\\\"
+      | '\b' -> Buffer.add_string buffer "\\b"
+      | '\012' -> Buffer.add_string buffer "\\f"
       | '\n' -> Buffer.add_string buffer "\\n"
       | '\r' -> Buffer.add_string buffer "\\r"
       | '\t' -> Buffer.add_string buffer "\\t"
+      | c when Char.code c < 0x20 -> add_unicode_escape buffer (Char.code c)
       | c -> Buffer.add_char buffer c
     )
     s;
@@ -202,6 +232,41 @@ let of_string = fun str ->
     advance ();
     (* skip opening quote *)
     let buffer = Buffer.create 16 in
+    let hex_value = fun c ->
+      match c with
+      | '0' .. '9' -> Some (Char.code c - Char.code '0')
+      | 'a' .. 'f' -> Some (10 + Char.code c - Char.code 'a')
+      | 'A' .. 'F' -> Some (10 + Char.code c - Char.code 'A')
+      | _ -> None
+    in
+    let parse_unicode_escape = fun () ->
+      if !pos + 4 >= len then
+        raise_error (Unterminated_string { position = !pos })
+      else
+        let decode_at index =
+          match hex_value str.[index] with
+          | Some value -> value
+          | None ->
+              raise_error
+                (Unexpected_character {
+                  position = index;
+                  character = str.[index];
+                  expected = "hex digit"
+                })
+        in
+        let code =
+          (decode_at (!pos + 1) lsl 12)
+          lor (decode_at (!pos + 2) lsl 8)
+          lor (decode_at (!pos + 3) lsl 4)
+          lor decode_at (!pos + 4)
+        in
+        advance ();
+        advance ();
+        advance ();
+        advance ();
+        advance ();
+        Buffer.add_utf_8_uchar buffer (Uchar.of_int code)
+    in
     let rec loop () =
       if !pos >= len then
         raise_error (Unterminated_string { position = !pos })
@@ -216,14 +281,35 @@ let of_string = fun str ->
               raise_error (Unterminated_string { position = !pos });
             (
               match str.[!pos] with
-              | '"' -> Buffer.add_char buffer '"'
-              | '\\' -> Buffer.add_char buffer '\\'
-              | 'n' -> Buffer.add_char buffer '\n'
-              | 'r' -> Buffer.add_char buffer '\r'
-              | 't' -> Buffer.add_char buffer '\t'
-              | c -> Buffer.add_char buffer c
+              | '"' ->
+                  Buffer.add_char buffer '"';
+                  advance ()
+              | '\\' ->
+                  Buffer.add_char buffer '\\';
+                  advance ()
+              | '/' ->
+                  Buffer.add_char buffer '/';
+                  advance ()
+              | 'b' ->
+                  Buffer.add_char buffer '\b';
+                  advance ()
+              | 'f' ->
+                  Buffer.add_char buffer '\012';
+                  advance ()
+              | 'n' ->
+                  Buffer.add_char buffer '\n';
+                  advance ()
+              | 'r' ->
+                  Buffer.add_char buffer '\r';
+                  advance ()
+              | 't' ->
+                  Buffer.add_char buffer '\t';
+                  advance ()
+              | 'u' -> parse_unicode_escape ()
+              | c ->
+                  Buffer.add_char buffer c;
+                  advance ()
             );
-            advance ();
             loop ()
         | c ->
             Buffer.add_char buffer c;

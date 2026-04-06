@@ -76,11 +76,60 @@ let test_run_tests_returns_success_with_zero_matches = fun _ctx ->
   else
     Error "expected filtered run with no matches to report an empty test list"
 
+let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
+  let output = run_sample_capture [ "run-tests"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = test_names_from_json output.stdout |> List.sort String.compare in
+    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    if names = expected then
+      Ok ()
+    else
+      Error ("unexpected filtered names for --json: " ^ String.concat ", " names)
+
+let test_run_tests_json_includes_timing_fields = fun _ctx ->
+  let output = run_sample_capture [ "run-tests"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
+  else
+    let json = parse_json_output output.stdout in
+    let has_int_field name json =
+      match Data.Json.get_field name json with
+      | Some (Data.Json.Int _) -> true
+      | _ -> false
+    in
+    let tests_have_duration =
+      match Data.Json.get_field "tests" json with
+      | Some (Data.Json.Array tests) ->
+          List.for_all
+            (fun test_json -> has_int_field "duration_us" test_json)
+            tests
+      | _ -> false
+    in
+    let summary_has_duration =
+      match Data.Json.get_field "summary" json with
+      | Some summary_json -> has_int_field "duration_us" summary_json
+      | None -> false
+    in
+    if
+      has_int_field "started_at_us" json
+      && has_int_field "completed_at_us" json
+      && has_int_field "duration_us" json
+      && summary_has_duration
+      && tests_have_duration
+    then
+      Ok ()
+    else
+      Error "expected test json output to include timing fields"
+
 let meta_tests = [
   Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
   Test.case "run-tests pattern matches suffix substring" test_run_tests_pattern_matches_suffix_substring;
   Test.case "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
   Test.case "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
+  Test.case "run-tests --json alias emits json" test_run_tests_json_flag_alias_emits_json;
+  Test.case "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
 ]
 
 let sample_main = fun ~args ->

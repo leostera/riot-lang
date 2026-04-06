@@ -2,6 +2,11 @@ open Global
 open Collections
 open Arg_parser
 
+let parse_format_to_reporter = function
+  | "default" -> Ok (module Reporter.Default : Reporter.Intf.Intf)
+  | "json" -> Ok (module Reporter.Reporter_json : Reporter.Intf.Intf)
+  | other -> Error ("Unknown format: " ^ other)
+
 let list_benchmarks = fun benchmarks ->
   List.iter
     (fun item ->
@@ -17,10 +22,12 @@ let run_benchmarks_cmd =
   |> args
     [
       positional "pattern" |> required false |> help "Run only benchmarks whose names contain this substring";
+      flag "json" |> long "json" |> help "Emit machine-readable JSON output";
       option "format"
       |> long "format"
-      |> help "Output format (currently only 'default')"
-      |> default "default";
+      |> help "Output format: default, json"
+      |> default "default"
+      |> possible_values [ "default"; "json" ];
       option "iterations" |> long "iterations" |> help "Override iterations count for all benchmarks";
       option "warmup" |> long "warmup" |> help "Override warmup count for all benchmarks";
     ]
@@ -82,7 +89,12 @@ let main = fun ~name ~benchmarks ~args ->
           list_benchmarks benchmarks
       | Some ("run-benchmarks", sub_matches) ->
           let pattern = get_one sub_matches "pattern" in
-          let _format = get_one sub_matches "format" |> Option.unwrap_or ~default:"default" in
+          let format_str =
+            if get_flag sub_matches "json" then
+              "json"
+            else
+              get_one sub_matches "format" |> Option.unwrap_or ~default:"default"
+          in
           let iterations_override = get_int sub_matches "iterations" in
           let warmup_override = get_int sub_matches "warmup" in
           (* Apply overrides if specified *)
@@ -92,11 +104,18 @@ let main = fun ~name ~benchmarks ~args ->
             | Some pattern -> List.filter (matches_pattern ~pattern) benchmarks_to_run
             | None -> benchmarks_to_run
           in
-          let config = Bench_runner.{ reporter = (module Reporter.Default); suite_info } in
-          let summary = Bench_runner.run_benchmarks ~config benchmarks_to_run in
-          if summary.failed > 0 then
-            exit 1;
-          Ok ()
+          (
+            match parse_format_to_reporter format_str with
+            | Error msg ->
+                println ("Error: " ^ msg);
+                Error (Failure msg)
+            | Ok reporter ->
+                let config = Bench_runner.{ reporter; suite_info } in
+                let summary = Bench_runner.run_benchmarks ~config benchmarks_to_run in
+                if summary.failed > 0 then
+                  exit 1;
+                Ok ()
+          )
       | _ ->
           (* Default: run benchmarks with no overrides *)
           let config = Bench_runner.{ reporter = (module Reporter.Default); suite_info } in

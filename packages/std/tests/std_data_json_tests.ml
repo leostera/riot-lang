@@ -60,6 +60,16 @@ let test_parse_string_with_escapes = fun _ctx ->
   | Ok (Json.String s) when String.contains s "\n" -> Ok ()
   | _ -> Error "Failed to parse string with escapes"
 
+let test_parse_string_with_unicode_escape = fun _ctx ->
+  match Json.of_string {|"\u0000\t\u001F"|} with
+  | Ok (Json.String s) when
+      String.length s = 3
+      && Char.code s.[0] = 0
+      && Char.code s.[1] = 9
+      && Char.code s.[2] = 31 ->
+      Ok ()
+  | _ -> Error "Failed to parse string with unicode escapes"
+
 let test_parse_empty_string = fun _ctx ->
   match Json.of_string {|""|} with
   | Ok (Json.String "") -> Ok ()
@@ -134,6 +144,13 @@ let test_serialize_string = fun _ctx ->
   else
     Error "Failed to serialize string"
 
+let test_serialize_string_escapes_control_characters = fun _ctx ->
+  let serialized = Json.to_string (Json.string ("\000\t\031")) in
+  if String.equal serialized {|"\u0000\t\u001F"|} then
+    Ok ()
+  else
+    Error ("Failed to escape control characters: " ^ serialized)
+
 let test_serialize_array = fun _ctx ->
   let json = Json.array [ Json.int 1; Json.int 2 ] in
   if Json.to_string json = "[1,2]" then
@@ -163,6 +180,14 @@ let test_roundtrip = fun _ctx ->
   match Json.of_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Roundtrip failed"
+
+let test_roundtrip_control_characters = fun _ctx ->
+  let original = Json.obj [ ("stdout", Json.string ("\000\t\031")) ] in
+  let serialized = Json.to_string original in
+  match Json.of_string serialized with
+  | Ok parsed when parsed = original -> Ok ()
+  | Ok _ -> Error "Roundtrip with control characters produced a different value"
+  | Error err -> Error ("Roundtrip with control characters failed: " ^ Json.error_to_string err)
 
 let test_get_field = fun _ctx ->
   let json = Json.obj [ ("key", Json.string "value") ] in
@@ -197,6 +222,7 @@ let tests =
     case "parse scientific notation" test_parse_scientific_notation;
     case "parse simple string" test_parse_simple_string;
     case "parse string with escapes" test_parse_string_with_escapes;
+    case "parse string with unicode escapes" test_parse_string_with_unicode_escape;
     case "parse empty string" test_parse_empty_string;
     case "parse empty array" test_parse_empty_array;
     case "parse array with numbers" test_parse_array_with_numbers;
@@ -211,10 +237,12 @@ let tests =
     case "serialize bool" test_serialize_bool;
     case "serialize int" test_serialize_int;
     case "serialize string" test_serialize_string;
+    case "serialize string escapes control characters" test_serialize_string_escapes_control_characters;
     case "serialize array" test_serialize_array;
     case "serialize object" test_serialize_object;
     case "serialize object pretty" test_serialize_object_pretty;
     case "roundtrip" test_roundtrip;
+    case "roundtrip control characters" test_roundtrip_control_characters;
     case "get field" test_get_field;
     case "get string" test_get_string;
     case "get int" test_get_int;

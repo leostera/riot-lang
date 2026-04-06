@@ -20,6 +20,7 @@ let run_tests_cmd =
   |> args
     [
       positional "query" |> required false |> help "Test name substring to filter by";
+      flag "json" |> long "json" |> help "Emit machine-readable JSON output";
       option "format"
       |> long "format"
       |> help "Output format: tap, json, junit, pretty, minimal"
@@ -50,7 +51,12 @@ let main = fun ~name ~tests ~args ->
       | Some ("list-tests", _) ->
           list_tests tests
       | Some ("run-tests", sub_matches) -> (
-          let format_str = get_one sub_matches "format" |> Option.unwrap_or ~default:"pretty" in
+          let format_str =
+            if get_flag sub_matches "json" then
+              "json"
+            else
+              get_one sub_matches "format" |> Option.unwrap_or ~default:"pretty"
+          in
           match parse_format_to_reporter format_str with
           | Error msg ->
               println ("Error: " ^ msg);

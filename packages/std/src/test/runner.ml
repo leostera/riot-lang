@@ -124,9 +124,10 @@ let run_single_test = fun reporter ~suite_info index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
   let ctx = make_ctx ~suite_info ~index test in
+  let start = Time.Instant.now () in
   let result =
     if test.skip then
-      Test_result.{ index; name; test_type; result = Skipped }
+      Test_result.{ index; name; test_type; result = Skipped; duration = Time.Duration.zero }
     else
       match test.fn ctx with
       | exception exn ->
@@ -136,11 +137,11 @@ let run_single_test = fun reporter ~suite_info index (test: Test_case.t) ->
             let reason = exn ^ "\n\n" ^ bt in
             Test_result.Failed reason
           in
-          Test_result.{ index; name; test_type; result }
+          Test_result.{ index; name; test_type; result; duration = Time.Instant.elapsed start }
       | Error msg ->
-          Test_result.{ index; name; test_type; result = Failed msg }
+          Test_result.{ index; name; test_type; result = Failed msg; duration = Time.Instant.elapsed start }
       | Ok () ->
-          Test_result.{ index; name; test_type; result = Passed }
+          Test_result.{ index; name; test_type; result = Passed; duration = Time.Instant.elapsed start }
   in
   let module R = (val reporter : Reporter.Intf) in
   R.on_result index result;

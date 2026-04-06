@@ -11,6 +11,7 @@ type t = {
   name: string;
   test_type: Test_case.test_type;
   result: single_result;
+  duration: Time.Duration.t;
 }
 
 type summary = {
@@ -19,6 +20,7 @@ type summary = {
   failed: int;
   skipped: int;
   results: t list;
+  duration: Time.Duration.t;
 }
 
 let make_summary = fun results ->
@@ -34,10 +36,17 @@ let make_summary = fun results ->
     |> List.length
   in
   let skipped = List.filter (fun r -> r.result = Skipped) results |> List.length in
+  let duration =
+    List.fold_left
+      (fun acc (result: t) -> Time.Duration.add acc result.duration)
+      Time.Duration.zero
+      results
+  in
   {
     total;
     passed;
     failed;
     skipped;
     results;
+    duration;
   }

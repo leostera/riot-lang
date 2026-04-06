@@ -18,6 +18,19 @@ let run_sample_capture = fun args ->
   let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample bench cli"
 
+let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
+
+let bench_names_from_json = fun stdout ->
+  let json = parse_json_output stdout in
+  match Data.Json.get_field "benchmarks" json with
+  | Some (Data.Json.Array benchmarks) ->
+      benchmarks |> List.filter_map
+        (fun benchmark_json ->
+          match Data.Json.get_field "name" benchmark_json with
+          | Some (Data.Json.String name) -> Some name
+          | _ -> None)
+  | _ -> []
+
 let test_list_benchmarks_lists_all_cases = fun _ctx ->
   let output = run_sample_capture [ "list-benchmarks" ] in
   if not (Int.equal output.status 0) then
@@ -59,10 +72,54 @@ let test_run_benchmarks_succeeds_with_zero_matches = fun _ctx ->
   else
     Error "expected no-match benchmark run to report zero benchmarks"
 
+let test_run_benchmarks_json_flag_filters_results = fun _ctx ->
+  let output = run_sample_capture [ "run-benchmarks"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered benchmark json run to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = bench_names_from_json output.stdout |> List.sort String.compare in
+    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    if names = expected then
+      Ok ()
+    else
+      Error ("unexpected filtered benchmark names for _long: " ^ String.concat ", " names)
+
+let test_run_benchmarks_json_flag_reports_zero_matches = fun _ctx ->
+  let output = run_sample_capture [ "run-benchmarks"; "missing_case"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected zero-match benchmark json run to succeed, got " ^ Int.to_string output.status)
+  else if bench_names_from_json output.stdout = [] then
+    Ok ()
+  else
+    Error "expected zero-match benchmark json run to report an empty benchmark list"
+
+let test_run_benchmarks_json_includes_timing_fields = fun _ctx ->
+  let output = run_sample_capture [ "run-benchmarks"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered benchmark json run to succeed, got " ^ Int.to_string output.status)
+  else
+    let json = parse_json_output output.stdout in
+    let has_int_field name json =
+      match Data.Json.get_field name json with
+      | Some (Data.Json.Int _) -> true
+      | _ -> false
+    in
+    if
+      has_int_field "started_at_us" json
+      && has_int_field "completed_at_us" json
+      && has_int_field "duration_us" json
+    then
+      Ok ()
+    else
+      Error "expected benchmark json output to include timing fields"
+
 let meta_tests = [
   Test.case "list-benchmarks lists all sample cases" test_list_benchmarks_lists_all_cases;
   Test.case "run-benchmarks pattern matches substring" test_run_benchmarks_pattern_matches_substring;
   Test.case "run-benchmarks succeeds when the query matches no benchmarks" test_run_benchmarks_succeeds_with_zero_matches;
+  Test.case "run-benchmarks --json filters results" test_run_benchmarks_json_flag_filters_results;
+  Test.case "run-benchmarks --json reports zero matches" test_run_benchmarks_json_flag_reports_zero_matches;
+  Test.case "run-benchmarks --json includes timing fields" test_run_benchmarks_json_includes_timing_fields;
 ]
 
 let sample_main = fun ~args ->

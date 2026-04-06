@@ -13,6 +13,8 @@ type t = {
   test_type: Test_case.test_type;
   (** Outcome for this test. *)
   result: single_result;
+  (** Time spent executing this test case. *)
+  duration: Time.Duration.t;
 }
 (** Summary of all test results in a run. *)
 type summary = {
@@ -26,6 +28,8 @@ type summary = {
   skipped: int;
   (** Original per-test results included in the summary. *)
   results: t list;
+  (** Total wall-clock execution time across matched tests. *)
+  duration: Time.Duration.t;
 }
 
 (** [make_summary results] creates a summary from individual test results.
