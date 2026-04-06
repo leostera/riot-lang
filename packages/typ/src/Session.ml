@@ -285,6 +285,72 @@ let collect_missing_module_summaries = fun session roots ->
           MissingRequirements.MissingModuleSummary { module_name; requested_by }
       ))
 
+let local_source_closure = fun session roots ->
+  let deps_env = deps_env_for_loaded_modules session.config.loaded_modules in
+  let parse_module_dependencies = fun (source: Source.t) ->
+    let filename =
+      match source.origin with
+      | Source.Path path -> path
+      | Source.Label label ->
+          Path.of_string label
+          |> Result.unwrap_or ~default:(Path.v "<fragment>")
+    in
+    let parse_result = Syn.parse ~filename source.text in
+    match Syn.Deps.of_parse_result ~env:deps_env parse_result with
+    | Ok deps -> Syn.Deps.modules deps
+    | Error _ -> []
+  in
+  let local_source_ids_of_module = fun module_name ->
+    session.sources
+    |> List.filter
+      (fun (source: Source.t) ->
+        String.equal module_name (Source.module_name source))
+    |> List.map (fun (source: Source.t) -> source.source_id)
+  in
+  let initial_source_ids =
+    roots
+    |> List.filter_map
+      (
+        fun source_id ->
+          session.sources
+          |> List.find_opt
+            (fun (source: Source.t) -> SourceId.equal source.source_id source_id)
+          |> Option.map
+            (fun (source: Source.t) ->
+              let siblings = local_source_ids_of_module (Source.module_name source) in
+              if List.is_empty siblings then
+                [ source_id ]
+              else
+                siblings)
+      )
+    |> List.flatten
+    |> List.sort_uniq SourceId.compare
+  in
+  let rec discover = fun to_visit seen ->
+    match to_visit with
+    | [] -> seen
+    | source_id :: rest ->
+        if List.exists (SourceId.equal source_id) seen then
+          discover rest seen
+        else (
+          match List.find_opt
+            (fun (source: Source.t) -> SourceId.equal source.source_id source_id)
+            session.sources
+          with
+          | None -> discover rest seen
+          | Some source ->
+              let additional =
+                parse_module_dependencies source
+                |> List.concat_map local_source_ids_of_module
+              in
+              discover (additional @ rest) (source_id :: seen)
+        )
+  in
+  let closure_source_ids = discover initial_source_ids [] in
+  session.sources
+  |> List.filter
+    (fun (source: Source.t) ->
+      List.exists (SourceId.equal source.source_id) closure_source_ids)
 
 let prepare_snapshot = fun session ~roots ->
   let missing_roots =
@@ -333,11 +399,12 @@ let prepare_snapshot = fun session ~roots ->
       (missing_roots @ MissingRequirements.requirements missing_modules)
   in
   if MissingRequirements.(missing_requirements |> is_empty) then
+    let sources = local_source_closure session roots in
     Ok (Snapshot.make
       ~revision:session.next_revision
       ~roots
       ~config:session.config
-      ~sources:session.sources)
+      ~sources)
   else
     Error missing_requirements
 

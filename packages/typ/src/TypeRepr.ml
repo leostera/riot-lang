@@ -44,10 +44,26 @@ let add_unique = fun xs x ->
     x :: xs
 
 let union = fun left right ->
-  List.fold_left add_unique left right
+  if List.is_empty right then
+    left
+  else
+    let seen = Collections.HashSet.of_list left in
+    List.fold_left
+      (fun acc value ->
+        if Collections.HashSet.contains seen value then
+          acc
+        else
+          let () = Collections.HashSet.insert seen value |> ignore in
+          value :: acc)
+      left
+      right
 
 let diff = fun left right ->
-  List.filter (fun value -> not (List.mem value right)) left
+  if List.is_empty left || List.is_empty right then
+    left
+  else
+    let right_values = Collections.HashSet.of_list right in
+    List.filter (fun value -> not (Collections.HashSet.contains right_values value)) left
 
 type variance =
   | Covariant
@@ -68,36 +84,46 @@ let join_variance = fun left right ->
   | (Covariant, Contravariant)
   | (Contravariant, Covariant) -> Invariant
 
-let rec free_vars = function
-  | Int
-  | Float
-  | Bool
-  | String
-  | Char
-  | Unit
-  | Hole _ ->
-      []
-  | Option element ->
-      free_vars (prune element)
-  | Result (ok_ty, error_ty) ->
-      union (free_vars (prune ok_ty)) (free_vars (prune error_ty))
-  | Array element ->
-      free_vars (prune element)
-  | List element ->
-      free_vars (prune element)
-  | Seq element ->
-      free_vars (prune element)
-  | Named { arguments; _ } ->
-      List.fold_left (fun acc argument -> union acc (free_vars (prune argument))) [] arguments
-  | Tuple members ->
-      List.fold_left (fun acc member -> union acc (free_vars (prune member))) [] members
-  | Arrow { lhs; rhs; _ } ->
-      union (free_vars (prune lhs)) (free_vars (prune rhs))
-  | Var var -> (
-      match var.link with
-      | Some linked -> free_vars linked
-      | None -> [ var.id ]
-    )
+let free_vars =
+  let rec collect seen acc = function
+    | Int
+    | Float
+    | Bool
+    | String
+    | Char
+    | Unit
+    | Hole _ ->
+        acc
+    | Option element ->
+        collect seen acc (prune element)
+    | Result (ok_ty, error_ty) ->
+        let acc = collect seen acc (prune ok_ty) in
+        collect seen acc (prune error_ty)
+    | Array element ->
+        collect seen acc (prune element)
+    | List element ->
+        collect seen acc (prune element)
+    | Seq element ->
+        collect seen acc (prune element)
+    | Named { arguments; _ } ->
+        List.fold_left (fun acc argument -> collect seen acc (prune argument)) acc arguments
+    | Tuple members ->
+        List.fold_left (fun acc member -> collect seen acc (prune member)) acc members
+    | Arrow { lhs; rhs; _ } ->
+        let acc = collect seen acc (prune lhs) in
+        collect seen acc (prune rhs)
+    | Var var -> (
+        match var.link with
+        | Some linked -> collect seen acc linked
+        | None ->
+            if Collections.HashSet.contains seen var.id then
+              acc
+            else
+              let () = Collections.HashSet.insert seen var.id |> ignore in
+              var.id :: acc
+      )
+  in
+  fun ty -> collect (Collections.HashSet.create ()) [] ty
 
 let add_variance = fun acc var_id variance ->
   match List.assoc_opt var_id acc with

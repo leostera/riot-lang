@@ -207,10 +207,19 @@ let introduced_names = fun before after ->
         Some name)
 
 let env_free_vars = fun env ->
+  let seen = Collections.HashSet.create () in
   visible_env_entries env
   |> List.fold_left
     (fun acc (_, scheme) ->
-      TypeRepr.union acc (TypeScheme.free_vars scheme))
+      TypeScheme.free_vars scheme
+      |> List.fold_left
+        (fun acc var_id ->
+          if Collections.HashSet.contains seen var_id then
+            acc
+          else
+            let () = Collections.HashSet.insert seen var_id |> ignore in
+            var_id :: acc)
+        acc)
     []
 
 let fresh_var = fun (state: state) ->
