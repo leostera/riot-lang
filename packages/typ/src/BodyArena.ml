@@ -98,13 +98,55 @@ and binding = {
 
 type t = {
   patterns: pattern_node list;
+  patterns_by_id: (int, pattern_node) Collections.HashMap.t;
   expressions: expr_node list;
+  expressions_by_id: (int, expr_node) Collections.HashMap.t;
   bindings: binding list;
+  bindings_by_id: (int, binding) Collections.HashMap.t;
 }
 
-let empty = { patterns = []; expressions = []; bindings = [] }
+let empty = {
+  patterns = [];
+  patterns_by_id = Collections.HashMap.with_capacity 64;
+  expressions = [];
+  expressions_by_id = Collections.HashMap.with_capacity 64;
+  bindings = [];
+  bindings_by_id = Collections.HashMap.with_capacity 32;
+}
 
-let of_lists = fun ~patterns ~expressions ~bindings -> { patterns; expressions; bindings }
+let of_lists = fun ~patterns ~expressions ~bindings ->
+  let patterns_by_id = Collections.HashMap.with_capacity (List.length patterns) in
+  let expressions_by_id = Collections.HashMap.with_capacity (List.length expressions) in
+  let bindings_by_id = Collections.HashMap.with_capacity (List.length bindings) in
+  let () =
+    patterns
+    |> List.iter
+      (fun (node: pattern_node) ->
+        let _ = Collections.HashMap.insert patterns_by_id (PatId.to_int node.pat_id) node in
+        ())
+  in
+  let () =
+    expressions
+    |> List.iter
+      (fun (node: expr_node) ->
+        let _ = Collections.HashMap.insert expressions_by_id (ExprId.to_int node.expr_id) node in
+        ())
+  in
+  let () =
+    bindings
+    |> List.iter
+      (fun (node: binding) ->
+        let _ = Collections.HashMap.insert bindings_by_id (BindingId.to_int node.binding_id) node in
+        ())
+  in
+  {
+    patterns;
+    patterns_by_id;
+    expressions;
+    expressions_by_id;
+    bindings;
+    bindings_by_id;
+  }
 
 let patterns = fun arena -> arena.patterns
 
@@ -113,22 +155,13 @@ let expressions = fun arena -> arena.expressions
 let bindings = fun arena -> arena.bindings
 
 let find_pattern = fun arena pat_id ->
-  List.find_opt
-    (fun (node: pattern_node) ->
-      PatId.equal node.pat_id pat_id)
-    arena.patterns
+  Collections.HashMap.get arena.patterns_by_id (PatId.to_int pat_id)
 
 let find_expr = fun arena expr_id ->
-  List.find_opt
-    (fun (node: expr_node) ->
-      ExprId.equal node.expr_id expr_id)
-    arena.expressions
+  Collections.HashMap.get arena.expressions_by_id (ExprId.to_int expr_id)
 
 let find_binding = fun arena binding_id ->
-  List.find_opt
-    (fun (binding: binding) ->
-      BindingId.equal binding.binding_id binding_id)
-    arena.bindings
+  Collections.HashMap.get arena.bindings_by_id (BindingId.to_int binding_id)
 
 let render_ids = fun render ids -> ids |> List.map render |> String.concat ", "
 

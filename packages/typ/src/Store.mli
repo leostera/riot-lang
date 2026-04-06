@@ -27,5 +27,4 @@ val save_module_typings: t -> ModuleTypings.t -> (unit, string) result
 
     Hosts use this to cache the locally computed module-typing closure for a
     package under the current build lane. *)
-val save_package_module_typings:
-  t -> package_name:string -> ModuleTypings.t list -> (unit, string) result
+val save_package_module_typings: t -> package_name:string -> ModuleTypings.t list -> (unit, string) result

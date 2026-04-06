@@ -24,10 +24,26 @@ type t = {
   text: string;
   (** Monotonic revision number for this source snapshot. *)
   revision: int;
+  (** Prepared parse result for this exact source text. *)
+  parse_result: Syn.Parser.parse_result;
+  (** Prepared CST lift for this exact source text. *)
+  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
 }
 
-(** Build one logical source record. *)
+(** Build one logical source record from raw text. *)
 val make: source_id:SourceId.t -> kind:kind -> origin:origin -> revision:int -> text:string -> t
+
+(** Build one logical source record from host-prepared parse and CST
+    artifacts. *)
+val make_prepared:
+  source_id:SourceId.t ->
+  kind:kind ->
+  origin:origin ->
+  revision:int ->
+  text:string ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
+  t
 
 (** Replace the source text while preserving [source_id]. *)
 val update_text: t -> revision:int -> text:string -> t

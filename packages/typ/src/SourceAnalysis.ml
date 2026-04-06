@@ -18,13 +18,8 @@ type t = {
 let exports = fun analysis -> FileSummary.exports analysis.file_summary
 
 let analyze = fun ~config (source: Source.t) ->
-  let filename =
-    match source.origin with
-    | Source.Path path -> path
-    | Source.Label label -> Path.of_string label |> Result.unwrap_or ~default:(Path.v "<fragment>")
-  in
-  let parsed = Syn.parse ~filename source.text in
-  match Syn.build_cst parsed with
+  let parsed = source.parse_result in
+  match source.cst with
   | Ok cst ->
       let semantic_tree = Lower.lower_source_file ~source cst in
       let inferred = Infer.infer_file ~config semantic_tree in

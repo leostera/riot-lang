@@ -321,8 +321,7 @@ let message = function
       ^ render_binding_names actual_names
       ^ ")"
   | SignatureInclusionError { mismatch=MissingValue { name }; _ } ->
-      "signature inclusion failed: implementation does not export value "
-      ^ name
+      "signature inclusion failed: implementation does not export value " ^ name
   | SignatureInclusionError { mismatch=ValueTypeMismatch { name; expected; actual }; _ } ->
       "signature inclusion failed: value "
       ^ name
@@ -331,8 +330,7 @@ let message = function
       ^ " but the interface requires "
       ^ expected
   | SignatureInclusionError { mismatch=MissingTypeDeclaration { name }; _ } ->
-      "signature inclusion failed: implementation does not export type "
-      ^ name
+      "signature inclusion failed: implementation does not export type " ^ name
   | SignatureInclusionError { mismatch=TypeDeclarationMismatch { name; expected; actual }; _ } ->
       "signature inclusion failed: type "
       ^ name

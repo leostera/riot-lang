@@ -15,6 +15,20 @@ val with_config: t -> config:TypConfig.t -> t
 (** Add one logical source and return its stable [SourceId]. *)
 val create_source: t -> kind:Source.kind -> origin:Source.origin -> text:string -> t * SourceId.t
 
+(** Add one logical source whose parse result and CST were prepared by the
+    host ahead of time.
+
+    Hosts should use this when they already have planner-owned parse artifacts
+    and want to seed a session without reparsing the same source again. *)
+val create_prepared_source:
+  t ->
+  kind:Source.kind ->
+  origin:Source.origin ->
+  text:string ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
+  t * SourceId.t
+
 (** Replace the text for one existing source while preserving its [SourceId]. *)
 val update_source_text: t -> SourceId.t -> text:string -> t
 

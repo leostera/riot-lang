@@ -23,20 +23,17 @@ let add_module_requirement = fun modules module_name requested_by ->
 let of_list = fun requirements ->
   let rec loop roots modules = function
     | [] ->
-        let root_requirements =
-          roots
-          |> List.sort_uniq compare_source_ids
-          |> List.map (fun source_id -> MissingRootSource { source_id })
-        in
+        let root_requirements = roots
+        |> List.sort_uniq compare_source_ids
+        |> List.map (fun source_id -> MissingRootSource { source_id }) in
         let module_requirements =
           modules
-          |> List.sort (fun (left, _) (right, _) -> String.compare left right)
+          |> List.sort
+            (fun (left, _) (right, _) ->
+              String.compare left right)
           |> List.map
             (fun (module_name, requested_by) ->
-              MissingModuleSummary {
-                module_name;
-                requested_by = normalize_requesters requested_by;
-              })
+              MissingModuleSummary { module_name; requested_by = normalize_requesters requested_by })
         in
         root_requirements @ module_requirements
     | MissingRootSource { source_id } :: tail ->

@@ -26,20 +26,16 @@ let assert_roundtrip = fun ~ctx source ->
   match file_summary_for source with
   | Error _ as err -> err
   | Ok summary ->
-      let typings =
-        ModuleTypings.of_file_summary
-          ~module_name:"Module_typings"
-          ~source_hash:(module_typings_hash_for "module_typings.ml" source)
-          summary
-      in
+      let typings = ModuleTypings.of_file_summary
+        ~module_name:"Module_typings"
+        ~source_hash:(module_typings_hash_for "module_typings.ml" source)
+        summary in
       let actual_json = ModuleTypings.Json.to_json typings in
       begin
         match ModuleTypings.Json.of_json actual_json with
         | Error _ as err -> err
         | Ok decoded ->
-            let roundtripped_summary =
-              ModuleTypings.to_file_summary ~source_id:summary.source_id decoded
-            in
+            let roundtripped_summary = ModuleTypings.to_file_summary ~source_id:summary.source_id decoded in
             let roundtripped_persisted_json = ModuleTypings.Json.to_json decoded in
             let roundtripped_json = FileSummary.to_json roundtripped_summary in
             let original_json = FileSummary.to_json summary in
@@ -66,10 +62,7 @@ let test_trusted_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "let id x 
 
 let test_errored_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "let broken = missing\n"
 
-let test_type_decl_summary_roundtrip = fun ctx ->
-  assert_roundtrip
-    ~ctx
-    "type point = { x: int; y: int }\nlet origin = { x = 0; y = 0 }\n"
+let test_type_decl_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "type point = { x: int; y: int }\nlet origin = { x = 0; y = 0 }\n"
 
 let () =
   Actors.run

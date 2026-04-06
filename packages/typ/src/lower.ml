@@ -42,10 +42,11 @@ let resolve_named_type_name = fun (state: state) name ->
   let rec loop = function
     | [] -> name
     | scope_path :: rest ->
-        if List.exists
-          (fun (candidate_name, candidate_scope_path) ->
-            String.equal candidate_name name && List.equal String.equal candidate_scope_path scope_path)
-          state.declared_type_names
+        if
+          List.exists
+            (fun (candidate_name, candidate_scope_path) ->
+              String.equal candidate_name name && List.equal String.equal candidate_scope_path scope_path)
+            state.declared_type_names
         then
           qualify_scoped_name scope_path name
         else
@@ -55,10 +56,11 @@ let resolve_named_type_name = fun (state: state) name ->
 
 let register_declared_type_name = fun (state: state) name ->
   let binding = (name, state.scope_path) in
-  if List.exists
-    (fun (candidate_name, candidate_scope_path) ->
-      String.equal candidate_name name && List.equal String.equal candidate_scope_path state.scope_path)
-    state.declared_type_names
+  if
+    List.exists
+      (fun (candidate_name, candidate_scope_path) ->
+        String.equal candidate_name name && List.equal String.equal candidate_scope_path state.scope_path)
+      state.declared_type_names
   then
     ()
   else
@@ -165,7 +167,7 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
       TypeRepr.Arrow {
         label = lower_arrow_label label;
         lhs = lower_core_type state type_params parameter_type;
-        rhs = lower_core_type state type_params result_type;
+        rhs = lower_core_type state type_params result_type
       }
   | Cst.CoreType.Tuple { elements; _ } ->
       TypeRepr.Tuple (List.map (lower_core_type state type_params) elements)
@@ -184,7 +186,9 @@ let constructor_scheme = fun ~params ~result_type payload_type ->
   in
   TypeScheme.Forall (List.map snd params, body)
 
-let variant_constructor_payload = fun (state: state) type_params (constructor: Cst.VariantConstructor.t) ->
+let variant_constructor_payload = fun (state: state) type_params (
+  constructor: Cst.VariantConstructor.t
+) ->
   match Cst.VariantConstructor.arguments constructor with
   | Some (Cst.ConstructorArguments.Tuple members) ->
       let members = List.map (lower_core_type state type_params) members in
@@ -382,10 +386,7 @@ let lower_poly_variant_manifest = fun (state: state) type_params (poly_variant: 
     |> List.fold_left
       (fun (tags, inherited) field ->
         match field with
-        | Cst.RowField.Tag tag -> (
-          lower_poly_variant_tag state type_params tag :: tags,
-          inherited
-        )
+        | Cst.RowField.Tag tag -> (lower_poly_variant_tag state type_params tag :: tags, inherited)
         | Cst.RowField.Inherit { type_; _ } -> (
           tags,
           lower_core_type state type_params type_ :: inherited
@@ -422,9 +423,9 @@ let add_unsupported_signature_item = fun (state: state) syntax_node ->
   add_unsupported_item state ~context:Typ_diagnostic.SignatureItem syntax_node
 
 let rec register_type_declaration_names = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
-  let () =
-    register_declared_type_name state (Cst.Token.text (Cst.TypeDeclaration.name_token declaration))
-  in
+  let () = register_declared_type_name
+    state
+    (Cst.Token.text (Cst.TypeDeclaration.name_token declaration)) in
   match Cst.TypeDeclaration.next_and_declaration declaration with
   | Some next -> register_type_declaration_names state next
   | None -> ()
@@ -533,9 +534,7 @@ let rec collect_core_type_var_names = fun core_type ->
   in
   let collect_many items =
     List.fold_left
-      (fun acc item ->
-        collect_core_type_var_names item
-        |> List.fold_left append_unique acc)
+      (fun acc item -> collect_core_type_var_names item |> List.fold_left append_unique acc)
       []
       items
   in
@@ -545,8 +544,8 @@ let rec collect_core_type_var_names = fun core_type ->
   | Cst.CoreType.Alias { type_=inner; _ } -> collect_core_type_var_names inner
   | Cst.CoreType.Var { name_token; _ } -> [ Cst.Token.text name_token ]
   | Cst.CoreType.Constr { arguments; _ } -> collect_many arguments
-  | Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
-      collect_many [ parameter_type; result_type ]
+  | Cst.CoreType.Arrow { parameter_type; result_type; _ } -> collect_many
+    [ parameter_type; result_type ]
   | Cst.CoreType.Tuple { elements; _ } -> collect_many elements
   | _ -> []
 
@@ -1293,8 +1292,10 @@ and lower_signature_items_of_module_type = fun (state: state) module_type ~on_un
       | Ok items ->
           let _ = List.map (lower_signature_item state) items in
           ()
-      | Error builder_error ->
-          add_diagnostic state (Typ_diagnostic.CstBuilderError { builder_error }))
+      | Error builder_error -> add_diagnostic
+        state
+        (Typ_diagnostic.CstBuilderError { builder_error })
+    )
   | Cst.ModuleType.Parenthesized { inner; _ }
   | Cst.ModuleType.Attribute { module_type=inner; _ } ->
       lower_signature_items_of_module_type state inner ~on_unsupported
@@ -1317,11 +1318,7 @@ and lower_signature_item = fun (state: state) item ->
         (Cst.ValueDeclaration.name_tokens declaration)
         (Cst.ValueDeclaration.type_ declaration)
   | Cst.SignatureItem.ExternalDeclaration declaration ->
-      lower_value_declaration
-        state
-        declaration.syntax_node
-        declaration.name_tokens
-        declaration.type_
+      lower_value_declaration state declaration.syntax_node declaration.name_tokens declaration.type_
   | Cst.SignatureItem.TypeDeclaration declaration ->
       let () = register_type_declaration_names state declaration in
       let rec loop declaration =
@@ -1339,8 +1336,7 @@ and lower_signature_item = fun (state: state) item ->
           let _ = add_item
             state
             ~syntax_node:(Cst.OpenStatement.syntax_node open_statement)
-            (`Open (path_text module_path))
-          in
+            (`Open (path_text module_path)) in
           ()
       | None -> ()
     )
@@ -1376,15 +1372,16 @@ and lower_signature_include_statement = fun (state: state) (include_statement: C
           ()
       | Cst.ModuleType.Parenthesized { inner; _ }
       | Cst.ModuleType.Attribute { module_type=inner; _ } ->
-          lower_signature_include_statement state { include_statement with target = Cst.ModuleType inner }
+          lower_signature_include_statement
+            state
+            { include_statement with target = Cst.ModuleType inner }
       | _ ->
           lower_signature_items_of_module_type
             state
             module_type
             ~on_unsupported:(fun () -> add_unsupported_signature_item state syntax_node)
     )
-  | Cst.ModuleExpression _ ->
-      add_unsupported_signature_item state syntax_node
+  | Cst.ModuleExpression _ -> add_unsupported_signature_item state syntax_node
 
 and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStructure.t) ->
   let syntax_node = Cst.ModuleStructure.syntax_node declaration in
@@ -1430,14 +1427,19 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
         | Some [] ->
             ()
         | Some segments ->
-            let _ = add_item state ~syntax_node (`ModuleAlias (module_name, String.concat "." segments)) in
+            let _ = add_item
+              state
+              ~syntax_node
+              (`ModuleAlias (module_name, String.concat "." segments)) in
             ()
         | None ->
             add_unsupported_signature_item state syntax_node
       )
     | Cst.ModuleSignature.Signature module_type ->
         let nested_scope_path = state.scope_path @ [ module_name ] in
-        with_scope state nested_scope_path
+        with_scope
+          state
+          nested_scope_path
           (fun () ->
             lower_signature_items_of_module_type
               state

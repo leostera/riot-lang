@@ -22,13 +22,41 @@ type origin = {
   span: Syn.Ceibo.Span.t;
 }
 
-type t = origin list
+type t = {
+  origins: origin list;
+  origins_by_id: (int, origin) Collections.HashMap.t;
+  origins_by_semantic_id: (string, origin) Collections.HashMap.t;
+}
 
-let empty = []
+let semantic_id_key = function
+  | Item item_id -> "item:" ^ ItemId.to_string item_id
+  | Binding binding_id -> "binding:" ^ BindingId.to_string binding_id
+  | Expr expr_id -> "expr:" ^ ExprId.to_string expr_id
+  | Pattern pat_id -> "pattern:" ^ PatId.to_string pat_id
 
-let of_list = fun origins -> origins
+let empty = {
+  origins = [];
+  origins_by_id = Collections.HashMap.with_capacity 64;
+  origins_by_semantic_id = Collections.HashMap.with_capacity 64
+}
 
-let origins = fun origins -> origins
+let of_list = fun origins ->
+  let origins_by_id = Collections.HashMap.with_capacity (List.length origins) in
+  let origins_by_semantic_id = Collections.HashMap.with_capacity (List.length origins) in
+  let () =
+    origins
+    |> List.iter
+      (fun (origin: origin) ->
+        let _ = Collections.HashMap.insert origins_by_id (OriginId.to_int origin.origin_id) origin in
+        let _ = Collections.HashMap.insert
+          origins_by_semantic_id
+          (semantic_id_key origin.semantic_id)
+          origin in
+        ())
+  in
+  { origins; origins_by_id; origins_by_semantic_id }
+
+let origins = fun origins -> origins.origins
 
 let kind_of_semantic_id = function
   | Item _ -> ItemKind
@@ -45,13 +73,10 @@ let semantic_id_equal = fun left right ->
   | _ -> false
 
 let find = fun origins origin_id ->
-  List.find_opt
-    (fun (origin: origin) ->
-      OriginId.equal origin.origin_id origin_id)
-    origins
+  Collections.HashMap.get origins.origins_by_id (OriginId.to_int origin_id)
 
 let find_by_semantic_id = fun origins semantic_id ->
-  List.find_opt (fun (origin: origin) -> semantic_id_equal origin.semantic_id semantic_id) origins
+  Collections.HashMap.get origins.origins_by_semantic_id (semantic_id_key semantic_id)
 
 let find_item = fun origins item_id -> find_by_semantic_id origins (Item item_id)
 
@@ -106,12 +131,12 @@ let origin_to_json = fun (origin: origin) ->
     ("span", span_to_json origin.span);
   ]
 
-let to_json = fun origins -> Data.Json.Array (List.map origin_to_json origins)
+let to_json = fun origins -> Data.Json.Array (List.map origin_to_json origins.origins)
 
 let to_string = fun origins ->
-  match origins with
+  match origins.origins with
   | [] -> "  none\n"
-  | _ -> origins
+  | _ -> origins.origins
   |> List.map
     (fun (origin: origin) ->
       "  "

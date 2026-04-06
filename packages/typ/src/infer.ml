@@ -121,8 +121,7 @@ let rebuild_visible_type_decl_index = fun (state: state) ->
       let _ = Collections.HashMap.insert state.visible_type_decl_index (type_decl_key type_decl) type_decl in
       ())
 
-let reset_declaration_variances = fun (state: state) ->
-  Collections.HashMap.clear state.declaration_variances
+let reset_declaration_variances = fun (state: state) -> Collections.HashMap.clear state.declaration_variances
 
 let make_state = fun ~config file ->
   let state = {
@@ -138,7 +137,8 @@ let make_state = fun ~config file ->
     visible_type_decl_index = Collections.HashMap.with_capacity 32;
     declaration_variances = Collections.HashMap.with_capacity 32;
     forced_export_names = [];
-  } in
+  }
+  in
   let () = rebuild_visible_type_decl_index state in
   state
 
@@ -198,8 +198,7 @@ let introduced_names = fun before after ->
         seen)
       (Collections.HashSet.with_capacity (List.length before))
   in
-  visible_env_entries after
-  |> List.filter_map
+  visible_env_entries after |> List.filter_map
     (fun (name, _) ->
       if Collections.HashSet.contains before_name_set name then
         None
@@ -208,11 +207,9 @@ let introduced_names = fun before after ->
 
 let env_free_vars = fun env ->
   let seen = Collections.HashSet.create () in
-  visible_env_entries env
-  |> List.fold_left
+  visible_env_entries env |> List.fold_left
     (fun acc (_, scheme) ->
-      TypeScheme.free_vars scheme
-      |> List.fold_left
+      TypeScheme.free_vars scheme |> List.fold_left
         (fun acc var_id ->
           if Collections.HashSet.contains seen var_id then
             acc
@@ -505,6 +502,7 @@ let constructor_payload_types = fun (constructor: TypeDecl.constructor) ->
 (* Relaxed value restriction needs declaration-aware variance for lowered
    nominal types. Unknown or recursive declarations stay invariant so the
    approximation remains sound. *)
+
 let type_variance_helpers = fun (state: state) ->
   let rec collect_type_variances visiting variance ty =
     match TypeRepr.prune ty with
@@ -541,29 +539,23 @@ let type_variance_helpers = fun (state: state) ->
                     let () = Collections.HashSet.remove visiting name |> ignore in
                     let _ = Collections.HashMap.insert state.declaration_variances name variances in
                     variances
-                | None ->
-                    List.map (fun _ -> Invariant) arguments
+                | None -> List.map (fun _ -> Invariant) arguments
               )
         in
         let rec loop acc arguments parameter_variances =
           match (arguments, parameter_variances) with
-          | (argument :: rest_arguments, parameter_variance :: rest_variances) ->
-              loop
-                (merge_variances
-                   acc
-                   (collect_type_variances
-                      visiting
-                      (compose_variance variance parameter_variance)
-                      argument))
-                rest_arguments
-                rest_variances
+          | (argument :: rest_arguments, parameter_variance :: rest_variances) -> loop
+            (merge_variances
+              acc
+              (collect_type_variances visiting (compose_variance variance parameter_variance) argument))
+            rest_arguments
+            rest_variances
           | _ -> acc
         in
         loop [] arguments parameter_variances
     | TypeRepr.Tuple members ->
         List.fold_left
-          (fun acc member ->
-            merge_variances acc (collect_type_variances visiting variance member))
+          (fun acc member -> merge_variances acc (collect_type_variances visiting variance member))
           []
           members
     | TypeRepr.Arrow { lhs; rhs; _ } ->
@@ -587,8 +579,9 @@ let type_variance_helpers = fun (state: state) ->
             |> List.fold_left
               (fun acc (tag: TypeDecl.poly_variant_tag) ->
                 match tag.payload_type with
-                | Some payload_type ->
-                    merge_variances acc (collect_type_variances visiting Covariant payload_type)
+                | Some payload_type -> merge_variances
+                  acc
+                  (collect_type_variances visiting Covariant payload_type)
                 | None -> acc)
               []
           in
@@ -600,17 +593,15 @@ let type_variance_helpers = fun (state: state) ->
       | None ->
           []
     in
-    let constructor_variances =
-      declaration.constructors
-      |> List.fold_left
-        (fun acc constructor ->
-          constructor_payload_types constructor
-          |> List.fold_left
-            (fun acc payload_type ->
-              merge_variances acc (collect_type_variances visiting Covariant payload_type))
-            acc)
-        []
-    in
+    let constructor_variances = declaration.constructors
+    |> List.fold_left
+      (fun acc constructor ->
+        constructor_payload_types constructor
+        |> List.fold_left
+          (fun acc payload_type ->
+            merge_variances acc (collect_type_variances visiting Covariant payload_type))
+          acc)
+      [] in
     let label_variances =
       declaration.labels
       |> List.fold_left
@@ -624,11 +615,10 @@ let type_variance_helpers = fun (state: state) ->
           merge_variances acc (collect_type_variances visiting field_variance label.field_type))
         []
     in
-    let variances =
-      merge_variances manifest_variances (merge_variances constructor_variances label_variances)
-    in
-    declaration.param_ids
-    |> List.map
+    let variances = merge_variances
+      manifest_variances
+      (merge_variances constructor_variances label_variances) in
+    declaration.param_ids |> List.map
       (fun param_id ->
         match List.assoc_opt param_id variances with
         | Some variance -> variance
@@ -638,8 +628,7 @@ let type_variance_helpers = fun (state: state) ->
 
 let covariant_vars_of_type = fun (state: state) ty ->
   let collect_type_variances = type_variance_helpers state in
-  collect_type_variances (Collections.HashSet.create ()) Covariant ty
-  |> List.filter_map
+  collect_type_variances (Collections.HashSet.create ()) Covariant ty |> List.filter_map
     (fun (var_id, variance) ->
       match variance with
       | Covariant -> Some var_id
@@ -1611,8 +1600,8 @@ let ambient_names = fun (config: TypConfig.t) -> config.ambient |> List.map fst
 let export_env = fun config env ->
   let hidden_names = prelude_names config @ ambient_names config in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
-  render_env env |> List.filter
-    (fun (name, _) -> not (Collections.HashSet.contains hidden_name_set name))
+  render_env env
+  |> List.filter (fun (name, _) -> not (Collections.HashSet.contains hidden_name_set name))
 
 let export_env_with_forced_names = fun (state: state) env ->
   let hidden_names = prelude_names state.config @ ambient_names state.config in
@@ -1634,9 +1623,7 @@ let introduced_entries = fun before after ->
       (Collections.HashSet.with_capacity (List.length before))
   in
   visible_env_entries after
-  |> List.filter
-    (fun (name, _) ->
-      not (Collections.HashSet.contains before_name_set name))
+  |> List.filter (fun (name, _) -> not (Collections.HashSet.contains before_name_set name))
 
 let qualify_entries = fun scope_path entries ->
   List.map (fun (name, scheme) -> (qualify_name scope_path name, scheme)) entries
@@ -1695,7 +1682,9 @@ let env_for_item_scope = fun export_env scope_entries scope_opens scope_path ->
   scope_opens_for scope_opens scope_path |> List.fold_left env_with_local_open base_env
 
 let set_visible_type_decls = fun (state: state) type_decls ->
-  let () = state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls in
+  let () =
+    state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls
+  in
   let () = rebuild_visible_type_decl_index state in
   reset_declaration_variances state
 
@@ -1750,15 +1739,8 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () =
-              set_visible_type_decls state type_decls
-            in
-            loop
-              export_state
-              type_decls
-              scope_entries
-              scope_opens
-              rest
+            let () = set_visible_type_decls state type_decls in
+            loop export_state type_decls scope_entries scope_opens rest
         | ItemTree.Exception exception_item ->
             let introduced = [ (exception_item.exception_name, exception_item.scheme) ] in
             let visible_exports_before =
@@ -1852,7 +1834,8 @@ let infer_file = fun ~config file ->
                     Check_result.item_id = declared_value_item.item_id;
                     binding_names;
                     exports_after
-                  }: Check_result.item_trace
+                  }:
+                    Check_result.item_trace
                 )
                 :: state.item_traces
             in
@@ -1904,15 +1887,8 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () =
-              set_visible_type_decls state type_decls
-            in
-            loop
-              export_state
-              type_decls
-              scope_entries
-              scope_opens
-              rest
+            let () = set_visible_type_decls state type_decls in
+            loop export_state type_decls scope_entries scope_opens rest
         | ItemTree.ModuleAlias module_alias_item ->
             let item_env = env_for_item_scope
               export_state
@@ -1970,15 +1946,8 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () =
-              set_visible_type_decls state type_decls
-            in
-            loop
-              export_state
-              type_decls
-              scope_entries
-              scope_opens
-              rest
+            let () = set_visible_type_decls state type_decls in
+            loop export_state type_decls scope_entries scope_opens rest
         | ItemTree.Unsupported unsupported_item ->
             let () =
               if state.config.capture_traces then

@@ -3,17 +3,23 @@ open Std
 let check_source = fun ~filename source ->
   let config = TypConfig.default in
   let session = Session.empty ~config in
-  let (session, source_id) = Session.create_source
+  let parse_result = Syn.parse ~filename source in
+  let cst = Syn.build_cst parse_result in
+  let (session, source_id) = Session.create_prepared_source
     session
     ~kind:Source.File
     ~origin:(Source.Path filename)
-    ~text:source in
-  let source = Source.make
+    ~text:source
+    ~parse_result
+    ~cst in
+  let source = Source.make_prepared
     ~source_id
     ~kind:Source.File
     ~origin:(Source.Path filename)
     ~revision:0
-    ~text:source in
+    ~text:source
+    ~parse_result
+    ~cst in
   let fallback_analysis = SourceAnalysis.analyze ~config source in
   let analysis =
     match Session.prepare_snapshot session ~roots:[ source_id ] with

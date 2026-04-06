@@ -33,11 +33,7 @@ val missing:
   t
 
 (** Lift one per-source [FileSummary] into canonical module typings. *)
-val of_file_summary:
-  module_name:string ->
-  source_hash:Crypto.hash ->
-  FileSummary.t ->
-  t
+val of_file_summary: module_name:string -> source_hash:Crypto.hash -> FileSummary.t -> t
 
 (** Recover one per-source [FileSummary] from module typings.
 

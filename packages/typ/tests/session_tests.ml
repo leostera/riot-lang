@@ -85,8 +85,7 @@ let exported_type_names = fun snapshot source_id ->
   match Query.module_typings_of snapshot source_id with
   | None -> []
   | Some typings ->
-      ModuleTypings.type_decls typings
-      |> List.map
+      ModuleTypings.type_decls typings |> List.map
         (fun (type_decl: FileSummary.type_decl) ->
           match type_decl.scope_path with
           | [] -> type_decl.declaration.type_name
@@ -101,15 +100,12 @@ let prepare_snapshot_or_error = fun session ~roots ->
 let with_typ_store = fun f ->
   Fs.with_tempdir ~prefix:"typ-store"
     (fun tmpdir ->
-      let contentstore =
-        Contentstore.create
-          ~root:Path.(tmpdir / Path.v "cache")
-          ~policy:Contentstore.Policy.default
-          ()
-      in
+      let contentstore = Contentstore.create
+        ~root:Path.(tmpdir / Path.v "cache")
+        ~policy:Contentstore.Policy.default
+        () in
       let store = Store.create contentstore () in
-      f store)
-  |> Result.unwrap_or ~default:(Error "tempdir creation failed")
+      f store) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let test_source_id_stays_stable_across_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -175,11 +171,13 @@ let test_snapshot_without_traces_still_reports_diagnostics_and_module_typings = 
   let inferred = inferred_type_at snapshot source_id missing_offset in
   let () = Test.assert_equal ~expected:[] ~actual:analysis.expr_traces in
   let () = Test.assert_equal ~expected:[] ~actual:analysis.item_traces in
-  let () = Test.assert_equal ~expected:(Data.Json.Array []) ~actual:(TypeIndex.to_json analysis.type_index) in
+  let () = Test.assert_equal
+    ~expected:(Data.Json.Array [])
+    ~actual:(TypeIndex.to_json analysis.type_index) in
   let () = Test.assert_equal ~expected:None ~actual:inferred in
-  if List.exists
-    (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name"))
-    diagnostics then
+  if
+    List.exists (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name")) diagnostics
+  then
     match module_typings with
     | Some _ -> Ok ()
     | None -> Error "expected module typings even when traces are disabled"
@@ -229,8 +227,7 @@ let test_snapshot_exports_interface_declarations = fun _ctx ->
     session
     ~kind:Source.File
     ~origin:(Source.Label "iface.mli")
-    ~text:source
-  in
+    ~text:source in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -253,8 +250,7 @@ let test_snapshot_exports_interface_externals = fun _ctx ->
     session
     ~kind:Source.File
     ~origin:(Source.Label "externals.mli")
-    ~text:source
-  in
+    ~text:source in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -343,15 +339,13 @@ let test_query_module_typings_of_uses_canonical_root_typings = fun _ctx ->
   let canonical_json =
     match Snapshot.module_typings snapshot with
     | [ typings ] -> ModuleTypings.Json.to_json typings |> Data.Json.to_string
-    | typings ->
-        panic ("expected one canonical module typings value but got "
-        ^ string_of_int (List.length typings))
+    | typings -> panic
+      ("expected one canonical module typings value but got " ^ string_of_int (List.length typings))
   in
-  let typings_json = fun source_id ->
+  let typings_json source_id =
     match Query.module_typings_of snapshot source_id with
     | Some typings -> ModuleTypings.Json.to_json typings |> Data.Json.to_string
-    | None ->
-        panic ("expected module typings for " ^ SourceId.to_string source_id)
+    | None -> panic ("expected module typings for " ^ SourceId.to_string source_id)
   in
   let impl_json = typings_json impl_source_id in
   let intf_json = typings_json intf_source_id in
@@ -403,16 +397,16 @@ let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
         | _ -> false
       )
   in
-  let impl_typings =
-    Query.module_typings_of snapshot impl_source_id |> Option.expect ~msg:"missing impl typings"
-  in
-  let intf_typings =
-    Query.module_typings_of snapshot intf_source_id |> Option.expect ~msg:"missing interface typings"
-  in
+  let impl_typings = Query.module_typings_of snapshot impl_source_id |> Option.expect ~msg:"missing impl typings" in
+  let intf_typings = Query.module_typings_of snapshot intf_source_id |> Option.expect ~msg:"missing interface typings" in
   let () = Test.assert_equal ~expected:true ~actual:(has_signature_error impl_source_id) in
   let () = Test.assert_equal ~expected:true ~actual:(has_signature_error intf_source_id) in
-  let () = Test.assert_equal ~expected:[] ~actual:(ModuleTypings.exports impl_typings |> List.map fst) in
-  let () = Test.assert_equal ~expected:[] ~actual:(ModuleTypings.exports intf_typings |> List.map fst) in
+  let () = Test.assert_equal
+    ~expected:[]
+    ~actual:((ModuleTypings.exports impl_typings |> List.map fst)) in
+  let () = Test.assert_equal
+    ~expected:[]
+    ~actual:((ModuleTypings.exports intf_typings |> List.map fst)) in
   Ok ()
 
 let test_source_input_hash_ignores_source_id_and_revision = fun _ctx ->
@@ -503,10 +497,7 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
         | Some typings -> typings
         | None -> panic "expected seed module typings"
       in
-      let _ =
-        Store.save_module_typings store loaded_colors
-        |> Result.expect ~msg:"save_module_typings should succeed"
-      in
+      let _ = Store.save_module_typings store loaded_colors |> Result.expect ~msg:"save_module_typings should succeed" in
       let config = Config.default |> Config.with_store ~store:(Some store) in
       let session = Session.empty ~config in
       let (session, demo_source_id) = Session.create_source
@@ -515,10 +506,8 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
         ~origin:(Source.Label "blend_demo.ml")
         ~text:"open Colors\nlet midpoint = RGB.blend 1 2\nlet label = to_string \"ok\"\n" in
       match Session.prepare_snapshot session ~roots:[ demo_source_id ] with
-      | Error missing ->
-          Error
-            ("expected store-backed snapshot preparation to succeed, got "
-            ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
+      | Error missing -> Error ("expected store-backed snapshot preparation to succeed, got "
+      ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
       | Ok snapshot ->
           let diagnostics = diagnostic_strings snapshot demo_source_id in
           if not (List.is_empty diagnostics) then
@@ -586,10 +575,7 @@ let test_loaded_module_typings_override_store = fun _ctx ->
         | Some typings -> typings
         | None -> panic "expected bad colors module typings"
       in
-      let _ =
-        Store.save_module_typings store bad_colors
-        |> Result.expect ~msg:"save_module_typings should succeed"
-      in
+      let _ = Store.save_module_typings store bad_colors |> Result.expect ~msg:"save_module_typings should succeed" in
       let config = Config.default
       |> Config.with_store ~store:(Some store)
       |> Config.with_loaded_modules ~loaded_modules:[ good_colors ] in
@@ -924,8 +910,8 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
     Error ("unexpected std exports: " ^ String.concat ", " std_exported_names)
   else
     match Session.prepare_snapshot client_session ~roots:[ client_source_id ] with
-    | Error missing ->
-        Error ("missing requirements: " ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
+    | Error missing -> Error ("missing requirements: "
+    ^ (MissingRequirements.to_json missing |> Data.Json.to_string))
     | Ok client_snapshot ->
         let client_diagnostics = diagnostic_strings client_snapshot client_source_id in
         if not (List.is_empty client_diagnostics) then
@@ -1185,8 +1171,7 @@ let test_prepare_snapshot_canonicalizes_missing_requirements = fun _ctx ->
   let missing_root_b = SourceId.of_int 42 in
   match Session.prepare_snapshot
     session
-    ~roots:[ second_source_id; missing_root_a; first_source_id; second_source_id; missing_root_b ]
-  with
+    ~roots:[ second_source_id; missing_root_a; first_source_id; second_source_id; missing_root_b ] with
   | Ok _ -> Error "expected rooted snapshot preparation to report canonical missing requirements"
   | Error missing ->
       let actual = MissingRequirements.to_json missing |> Data.Json.to_string in
@@ -1202,10 +1187,13 @@ let test_prepare_snapshot_canonicalizes_missing_requirements = fun _ctx ->
         Data.Json.Object [
           ("tag", Data.Json.String "missing_module_summary");
           ("module_name", Data.Json.String "Missing_module");
-          ("requested_by", Data.Json.Array [
-            Data.Json.Int (SourceId.to_int first_source_id);
-            Data.Json.Int (SourceId.to_int second_source_id);
-          ]);
+          (
+            "requested_by",
+            Data.Json.Array [
+              Data.Json.Int (SourceId.to_int first_source_id);
+              Data.Json.Int (SourceId.to_int second_source_id);
+            ]
+          );
         ];
       ]
       |> Data.Json.to_string in
@@ -1457,11 +1445,7 @@ let test_expansive_covariant_lists_still_generalize = fun _ctx ->
 
 let test_expansive_covariant_nominal_types_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let source =
-    "type 'a box = Box of 'a list\n"
-    ^ "let make _ = Box []\n"
-    ^ "let boxed = make ()\n"
-  in
+  let source = "type 'a box = Box of 'a list\n" ^ "let make _ = Box []\n" ^ "let boxed = make ()\n" in
   let (session, source_id) = Session.create_source
     session
     ~kind:Source.File
@@ -1478,11 +1462,7 @@ let test_expansive_covariant_nominal_types_still_generalize = fun _ctx ->
 
 let test_expansive_covariant_record_types_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let source =
-    "type 'a box = { items: 'a list }\n"
-    ^ "let make _ = { items = [] }\n"
-    ^ "let boxed = make ()\n"
-  in
+  let source = "type 'a box = { items: 'a list }\n" ^ "let make _ = { items = [] }\n" ^ "let boxed = make ()\n" in
   let (session, source_id) = Session.create_source
     session
     ~kind:Source.File
@@ -1504,36 +1484,20 @@ let () =
         Test.case "source id stays stable across updates" test_source_id_stays_stable_across_updates;
         Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
         Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
-        Test.case
-          "snapshot without traces still reports diagnostics and module typings"
-          test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
+        Test.case "snapshot without traces still reports diagnostics and module typings" test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
         Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
         Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
         Test.case "snapshot collects module typings" test_snapshot_collects_module_typings;
-        Test.case
-          "snapshot module typings are canonical per module"
-          test_snapshot_module_typings_are_canonical_per_module;
-        Test.case
-          "query module_typings_of uses the canonical root typings"
-          test_query_module_typings_of_uses_canonical_root_typings;
-        Test.case
-          "paired modules export interface-shaped module typings"
-          test_paired_modules_export_interface_shaped_module_typings;
-        Test.case
-          "paired modules report signature inclusion mismatches"
-          test_paired_modules_report_signature_inclusion_mismatches;
+        Test.case "snapshot module typings are canonical per module" test_snapshot_module_typings_are_canonical_per_module;
+        Test.case "query module_typings_of uses the canonical root typings" test_query_module_typings_of_uses_canonical_root_typings;
+        Test.case "paired modules export interface-shaped module typings" test_paired_modules_export_interface_shaped_module_typings;
+        Test.case "paired modules report signature inclusion mismatches" test_paired_modules_report_signature_inclusion_mismatches;
         Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
-        Test.case
-          "prepare_snapshot hydrates module typings from store"
-          test_prepare_snapshot_hydrates_module_typings_from_store;
-        Test.case
-          "prepare_snapshot includes interface sibling dependencies"
-          test_prepare_snapshot_includes_interface_sibling_dependencies;
-        Test.case
-          "loaded module typings override store"
-          test_loaded_module_typings_override_store;
+        Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
+        Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
+        Test.case "loaded module typings override store" test_loaded_module_typings_override_store;
         Test.case "snapshot uses sibling source record types" test_snapshot_uses_sibling_source_record_types;
         Test.case "snapshot uses loaded module record types" test_snapshot_uses_loaded_module_record_types;
         Test.case "include reexports loaded module record types" test_include_reexports_loaded_module_record_types;
@@ -1548,9 +1512,7 @@ let () =
         Test.case "prepare_snapshot reports missing module summaries" test_prepare_snapshot_reports_missing_module_summary;
         Test.case "prepare_snapshot collects transitive missing modules" test_prepare_snapshot_collects_transitive_missing_modules;
         Test.case "prepare_snapshot collects missing modules from qualified references" test_prepare_snapshot_collects_missing_module_for_qualified_reference;
-        Test.case
-          "prepare_snapshot keeps nested sibling modules out of top-level requirements"
-          test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirements;
+        Test.case "prepare_snapshot keeps nested sibling modules out of top-level requirements" test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirements;
         Test.case
           "prepare_snapshot keeps loaded nested module exports out of top-level requirements"
           test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements;
@@ -1562,12 +1524,8 @@ let () =
         Test.case "expansive bindings stay monomorphic" test_expansive_bindings_stay_monomorphic;
         Test.case "nonexpansive list bindings still generalize" test_nonexpansive_list_bindings_still_generalize;
         Test.case "expansive covariant lists still generalize" test_expansive_covariant_lists_still_generalize;
-        Test.case
-          "expansive covariant nominal types still generalize"
-          test_expansive_covariant_nominal_types_still_generalize;
-        Test.case
-          "expansive covariant record types still generalize"
-          test_expansive_covariant_record_types_still_generalize;
+        Test.case "expansive covariant nominal types still generalize" test_expansive_covariant_nominal_types_still_generalize;
+        Test.case "expansive covariant record types still generalize" test_expansive_covariant_record_types_still_generalize;
         Test.case "fun cases keep preceding parameters in scope" test_fun_cases_keep_preceding_parameters;
         Test.case "records flow through snapshot queries" test_records_flow_through_snapshot_queries;
       ]

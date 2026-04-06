@@ -70,28 +70,41 @@ type item =
   | ModuleAlias of module_alias_item
   | Unsupported of unsupported_item
 
-type t = item list
+type t = {
+  items: item list;
+  items_by_id: (int, item) Collections.HashMap.t;
+}
 
-let empty = []
+let item_id_of_item = function
+  | Type (item: type_item) -> item.item_id
+  | Exception (item: exception_item) -> item.item_id
+  | Value (item: value_item) -> item.item_id
+  | DeclaredValue (item: declared_value_item) -> item.item_id
+  | Open (item: open_item) -> item.item_id
+  | Include (item: include_item) -> item.item_id
+  | ModuleAlias (item: module_alias_item) -> item.item_id
+  | Unsupported (item: unsupported_item) -> item.item_id
 
-let of_list = fun items -> items
+let empty = { items = []; items_by_id = Collections.HashMap.with_capacity 32 }
 
-let items = fun items -> items
+let of_list = fun items ->
+  let items_by_id = Collections.HashMap.with_capacity (List.length items) in
+  let () =
+    items
+    |> List.iter
+      (fun item ->
+        let _ = Collections.HashMap.insert items_by_id
+          (item_id_of_item item |> ItemId.to_int)
+          item
+        in
+        ())
+  in
+  { items; items_by_id }
+
+let items = fun items -> items.items
 
 let find_item = fun items item_id ->
-  List.find_opt
-    (
-      function
-      | Type (item: type_item) -> ItemId.equal item.item_id item_id
-      | Exception (item: exception_item) -> ItemId.equal item.item_id item_id
-      | Value (item: value_item) -> ItemId.equal item.item_id item_id
-      | DeclaredValue (item: declared_value_item) -> ItemId.equal item.item_id item_id
-      | Open (item: open_item) -> ItemId.equal item.item_id item_id
-      | Include (item: include_item) -> ItemId.equal item.item_id item_id
-      | ModuleAlias (item: module_alias_item) -> ItemId.equal item.item_id item_id
-      | Unsupported (item: unsupported_item) -> ItemId.equal item.item_id item_id
-    )
-    items
+  Collections.HashMap.get items.items_by_id (ItemId.to_int item_id)
 
 let item_to_json = function
   | Type (item: type_item) -> Data.Json.Object [
@@ -184,13 +197,13 @@ let item_to_json = function
     ("summary", Data.Json.String item.summary);
   ]
 
-let to_json = fun items -> Data.Json.Array (List.map item_to_json items)
+let to_json = fun items -> Data.Json.Array (List.map item_to_json items.items)
 
 let to_string = fun items ->
-  match items with
+  match items.items with
   | [] -> "  none\n"
   | _ ->
-      items |> List.map
+      items.items |> List.map
         (
           function
           | Type (item: type_item) ->

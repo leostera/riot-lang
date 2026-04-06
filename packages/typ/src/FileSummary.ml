@@ -24,7 +24,8 @@ let trusted = fun ~source_id ?(type_decls = []) exports ->
 let errored = fun ~source_id ?(type_decls = []) exports ->
   { source_id; export_result = ErroredExport { exports }; type_decls }
 
-let missing = fun ~source_id ?(type_decls = []) () -> { source_id; export_result = NoExport; type_decls }
+let missing = fun ~source_id ?(type_decls = []) () ->
+  { source_id; export_result = NoExport; type_decls }
 
 let exports = function
   | { export_result=TrustedExport { exports }; _ }

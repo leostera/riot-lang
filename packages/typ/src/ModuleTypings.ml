@@ -8,20 +8,10 @@ type t = {
 }
 
 let trusted = fun ~module_name ~source_hash ?(type_decls = []) exports ->
-  {
-    module_name;
-    source_hash;
-    export_result = FileSummary.TrustedExport { exports };
-    type_decls;
-  }
+  { module_name; source_hash; export_result = FileSummary.TrustedExport { exports }; type_decls }
 
 let errored = fun ~module_name ~source_hash ?(type_decls = []) exports ->
-  {
-    module_name;
-    source_hash;
-    export_result = FileSummary.ErroredExport { exports };
-    type_decls;
-  }
+  { module_name; source_hash; export_result = FileSummary.ErroredExport { exports }; type_decls }
 
 let missing = fun ~module_name ~source_hash ?(type_decls = []) () ->
   { module_name; source_hash; export_result = FileSummary.NoExport; type_decls }
@@ -31,7 +21,7 @@ let of_file_summary = fun ~module_name ~source_hash (summary: FileSummary.t) ->
     module_name;
     source_hash;
     export_result = summary.export_result;
-    type_decls = summary.type_decls;
+    type_decls = summary.type_decls
   }
 
 let to_file_summary = fun ~source_id summary ->
@@ -44,9 +34,9 @@ let source_hash = fun summary -> summary.source_hash
 let export_result = fun summary -> summary.export_result
 
 let exports = function
-  | { export_result = FileSummary.TrustedExport { exports }; _ }
-  | { export_result = FileSummary.ErroredExport { exports }; _ } -> exports
-  | { export_result = FileSummary.NoExport; _ } -> []
+  | { export_result=FileSummary.TrustedExport { exports }; _ }
+  | { export_result=FileSummary.ErroredExport { exports }; _ } -> exports
+  | { export_result=FileSummary.NoExport; _ } -> []
 
 let type_decls = fun summary -> summary.type_decls
 
@@ -143,11 +133,11 @@ let rec type_to_json = fun ty ->
     ("lhs", type_to_json lhs);
     ("rhs", type_to_json rhs);
   ]
-  | TypeRepr.Var { id; link = None } -> Data.Json.Object [
+  | TypeRepr.Var { id; link=None } -> Data.Json.Object [
     ("tag", Data.Json.String "var");
     ("id", Data.Json.Int id);
   ]
-  | TypeRepr.Var { link = Some linked; _ } -> type_to_json linked
+  | TypeRepr.Var { link=Some linked; _ } -> type_to_json linked
   | TypeRepr.Hole id -> Data.Json.Object [
     ("tag", Data.Json.String "hole");
     ("id", Data.Json.Int id);
@@ -160,14 +150,10 @@ let scheme_to_json = fun (TypeScheme.Forall (quantified, body)) ->
   ]
 
 let exports_to_json = fun exports ->
-  Data.Json.Array
-    (exports
-     |> List.map
-       (fun (name, scheme) ->
-         Data.Json.Object [
-           ("name", Data.Json.String name);
-           ("scheme", scheme_to_json scheme);
-         ]))
+  Data.Json.Array (exports
+  |> List.map
+    (fun (name, scheme) ->
+      Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_to_json scheme); ]))
 
 let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   Data.Json.Object [
@@ -212,10 +198,19 @@ let manifest_to_json = function
 
 let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   let fields = [
-    ("scope_path", Data.Json.Array (List.map (fun segment -> Data.Json.String segment) type_decl.scope_path));
+    (
+      "scope_path",
+      Data.Json.Array (List.map (fun segment -> Data.Json.String segment) type_decl.scope_path)
+    );
     ("type_name", Data.Json.String type_decl.declaration.type_name);
-    ("param_ids", Data.Json.Array (List.map (fun id -> Data.Json.Int id) type_decl.declaration.param_ids));
-    ("constructors", Data.Json.Array (List.map constructor_to_json type_decl.declaration.constructors));
+    (
+      "param_ids",
+      Data.Json.Array (List.map (fun id -> Data.Json.Int id) type_decl.declaration.param_ids)
+    );
+    (
+      "constructors",
+      Data.Json.Array (List.map constructor_to_json type_decl.declaration.constructors)
+    );
     ("labels", Data.Json.Array (List.map label_decl_to_json type_decl.declaration.labels));
   ] in
   let fields =
@@ -225,8 +220,7 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   in
   Data.Json.Object fields
 
-let type_decls_to_json = fun type_decls ->
-  Data.Json.Array (List.map type_decl_to_json type_decls)
+let type_decls_to_json = fun type_decls -> Data.Json.Array (List.map type_decl_to_json type_decls)
 
 let export_result_to_json = function
   | FileSummary.TrustedExport { exports } -> Data.Json.Object [
@@ -258,7 +252,8 @@ let label_of_json = fun json ->
   let* tag_json = field "tag" fields in
   let* tag = get_string tag_json in
   match tag with
-  | "nolabel" -> Ok TypeRepr.Nolabel
+  | "nolabel" ->
+      Ok TypeRepr.Nolabel
   | "labeled" ->
       let* label_json = field "label" fields in
       let* label = get_string label_json in
@@ -267,19 +262,26 @@ let label_of_json = fun json ->
       let* label_json = field "label" fields in
       let* label = get_string label_json in
       Ok (TypeRepr.Optional label)
-  | other -> Error ("unknown module typings type label tag " ^ other)
+  | other ->
+      Error ("unknown module typings type label tag " ^ other)
 
 let rec type_of_json = fun json ->
   let* fields = get_object json in
   let* tag_json = field "tag" fields in
   let* tag = get_string tag_json in
   match tag with
-  | "int" -> Ok TypeRepr.Int
-  | "float" -> Ok TypeRepr.Float
-  | "bool" -> Ok TypeRepr.Bool
-  | "string" -> Ok TypeRepr.String
-  | "char" -> Ok TypeRepr.Char
-  | "unit" -> Ok TypeRepr.Unit
+  | "int" ->
+      Ok TypeRepr.Int
+  | "float" ->
+      Ok TypeRepr.Float
+  | "bool" ->
+      Ok TypeRepr.Bool
+  | "string" ->
+      Ok TypeRepr.String
+  | "char" ->
+      Ok TypeRepr.Char
+  | "unit" ->
+      Ok TypeRepr.Unit
   | "option" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
@@ -342,7 +344,8 @@ let rec type_of_json = fun json ->
       let* id_json = field "id" fields in
       let* id = get_int id_json in
       Ok (TypeRepr.Hole id)
-  | other -> Error ("unknown module typings type tag " ^ other)
+  | other ->
+      Error ("unknown module typings type tag " ^ other)
 
 let scheme_of_json = function
   | Data.Json.Object fields -> (
@@ -351,8 +354,8 @@ let scheme_of_json = function
           let rec parse_quantified acc = function
             | [] -> Ok (List.rev acc)
             | Data.Json.Int id :: rest -> parse_quantified (id :: acc) rest
-            | other :: _ ->
-                Error ("expected quantified type variable id int but got " ^ json_type_name other)
+            | other :: _ -> Error ("expected quantified type variable id int but got "
+            ^ json_type_name other)
           in
           begin
             match parse_quantified [] quantified_json, type_of_json body_json with
@@ -472,7 +475,8 @@ let manifest_of_json = fun json ->
       in
       let* inherited = parse_inherited [] inherited_json in
       Ok (TypeDecl.PolyVariant { bound; tags; inherited })
-  | other -> Error ("unknown module typings manifest tag " ^ other)
+  | other ->
+      Error ("unknown module typings manifest tag " ^ other)
 
 let type_decl_of_json = fun json ->
   let* fields = get_object json in
@@ -508,13 +512,14 @@ let type_decl_of_json = fun json ->
   let* manifest = manifest in
   Ok {
     FileSummary.scope_path = scope_path;
-    declaration = {
-      TypeDecl.type_name = type_name;
-      param_ids;
-      constructors;
-      labels;
-      manifest;
-    };
+    declaration =
+      {
+        TypeDecl.type_name = type_name;
+        param_ids;
+        constructors;
+        labels;
+        manifest;
+      };
   }
 
 let type_decls_of_json = fun json ->
