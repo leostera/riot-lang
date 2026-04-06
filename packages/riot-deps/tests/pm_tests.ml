@@ -1827,10 +1827,11 @@ let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
       let origin = Path.(root / Path.v "origin") in
       let checkout = Path.(root / Path.v "checkout") in
       let* _repo_root = prepare_local_git_repo ~root:origin ~package_name:"widgets" () in
-      let* () = Riot_deps.Git_dependency.sync_checkout
+      let* _ = Riot_deps.Git_dependency.sync_checkout
         ~repo_dir:checkout
         ~remote_url:(Path.to_string origin)
         ~ref_:"main"
+        ()
       |> Result.map_error Riot_deps.Git_dependency.message in
       let* manifest_source = Fs.read_to_string Path.(checkout / Path.v "riot.toml")
       |> Result.map_error IO.error_message in
@@ -1838,6 +1839,52 @@ let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
         Ok ()
       else
         Error "expected git dependency checkout to clone the local repository")
+
+let test_git_dependency_sync_checkout_skips_fetch_without_update = fun _ctx ->
+  let ( let* ) = Result.and_then in
+  with_tempdir "riot_deps_git_checkout_no_update"
+    (fun root ->
+      let origin = Path.(root / Path.v "origin") in
+      let checkout = Path.(root / Path.v "checkout") in
+      let* _repo_root = prepare_local_git_repo ~root:origin ~package_name:"widgets" () in
+      let* _ = Riot_deps.Git_dependency.sync_checkout
+        ~repo_dir:checkout
+        ~remote_url:(Path.to_string origin)
+        ~ref_:"main"
+        ()
+      |> Result.map_error Riot_deps.Git_dependency.message in
+      write_file
+        Path.(origin / Path.v "riot.toml")
+        {|
+[package]
+name = "widgets-next"
+version = "0.0.2"
+description = "widgets-next"
+license = "Apache-2.0"
+public = true
+|};
+      let* _ = run_git_steps
+        ~cwd:origin
+        [
+          [ "add"; "." ];
+          [ "commit"; "-m"; "update" ];
+        ]
+      in
+      let* _ = Riot_deps.Git_dependency.sync_checkout
+        ~update:false
+        ~repo_dir:checkout
+        ~remote_url:(Path.to_string origin)
+        ~ref_:"main"
+        ()
+      |> Result.map_error Riot_deps.Git_dependency.message in
+      let* manifest_source = Fs.read_to_string Path.(checkout / Path.v "riot.toml")
+      |> Result.map_error IO.error_message in
+      if String.contains manifest_source "name = \"widgets\"" then
+        Ok ()
+      else if String.contains manifest_source "name = \"widgets-next\"" then
+        Error "expected sync_checkout ~update:false to keep the cached checkout without fetching upstream changes"
+      else
+        Error "expected cached checkout to preserve the original manifest contents")
 
 let test_add_rejects_unsupported_source_dependency_specs = fun _ctx ->
   let ( let* ) = Result.and_then in
@@ -2482,6 +2529,73 @@ let test_projection_fails_when_lockfile_is_missing_package = fun _ctx ->
       else
         Error ("unexpected error: " ^ pm_error_message err)
 
+let test_git_dependency_parse_source_locator_accepts_github_shorthand = fun _ctx ->
+  match Riot_deps.Git_dependency.parse_source_locator "leostera/riot/packages/riot-cli" with
+  | Ok locator ->
+      if
+        String.equal locator.host "github.com"
+        && String.equal locator.owner "leostera"
+        && String.equal locator.repo "riot"
+        && Option.map Path.to_string locator.subdir = Some "packages/riot-cli"
+        && Riot_deps.Git_dependency.looks_like_remote_spec "leostera/riot/packages/riot-cli"
+      then
+        Ok ()
+      else
+        Error "unexpected shorthand source locator decode"
+  | Error err ->
+      Error ("expected github shorthand to parse: " ^ Riot_deps.Git_dependency.message err)
+
+let test_load_registry_workspace_materializes_release = fun _ctx ->
+  with_tempdir "riot_deps_load_registry_workspace"
+    (fun root ->
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:Path.(root / Path.v ".riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let version = "0.1.0" in
+      let registry = Pkgs_ml.Registry.in_memory
+        ~cache:registry_cache
+        ~packages:[
+          make_registry_document
+            ~name:"demo"
+            ~latest:version
+            ~releases:[ make_release ~version () ]
+            ()
+        ]
+        ~releases:[
+          {
+            Pkgs_ml.Registry.package_name = "demo";
+            version;
+            manifest_toml =
+              {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+            files = [ { path = Path.v "src/demo.ml"; contents = "let answer = 42\n" } ];
+          }
+        ]
+        ()
+      in
+      match Riot_deps.load_registry_workspace ~registry ~spec:"demo" () with
+      | Ok loaded ->
+          if
+            String.equal loaded.package_name "demo"
+            && Int.equal (List.length loaded.workspace.packages) 1
+            && Path.equal
+              loaded.workspace.root
+              (Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name:"demo" ~version)
+          then
+            Ok ()
+          else
+            Error "unexpected loaded registry workspace"
+      | Error err ->
+          Error ("expected registry workspace load to succeed: " ^ Riot_deps.package_error_message err))
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -2508,7 +2622,9 @@ let tests =
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
+    case "git dependency: github shorthand locator parses for remote commands" test_git_dependency_parse_source_locator_accepts_github_shorthand;
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
+    case "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
@@ -2518,6 +2634,7 @@ let tests =
     case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;
     case "ensure lock: reuses existing lock and repairs missing registry packages" test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages;
     case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
+    case "package management: load registry workspace materializes release" test_load_registry_workspace_materializes_release;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;

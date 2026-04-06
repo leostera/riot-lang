@@ -23,6 +23,7 @@
 17. `Workspace_manager.scan` should still surface real member and local-package manifest failures, but it must not raise load errors for missing external `path` dependencies when that dependency also carries a publishable fallback (`version` or `source`). Those are resolved later by `riot-deps`.
 18. Repository-local operational policy belongs in `.riot/config.toml`, modeled by `Workspace_operational_config`. Keep it separate from `riot.toml` build/package semantics and `~/.riot/config.toml` user config.
 19. `Workspace_manager.scan` should resolve the build root in one upward pass: prefer the nearest enclosing workspace manifest with `[workspace]`, but if none exists, fall back to the first package manifest with `[package]` and synthesize a one-package workspace so detached package roots still build.
+20. `Package.from_toml` should autodiscover a default runtime binary named after the package when `src/main.ml` exists and no explicit `[[bin]]` entries are declared. Keep that fallback minimal; tests/examples/bench autodiscovery remains separate.
 
 ## Validate
 

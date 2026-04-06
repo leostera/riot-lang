@@ -39,6 +39,10 @@
 33. `riot doc --json` should emit JSONL payloads on stdout only. When `riot run` launches a child command with `--json` in its forwarded args, the wrapper should switch its own build/run progress output to JSON too so the combined stream stays machine-readable.
 34. `Riot_cli.Cli.run` should stamp the default `X-Riot-Agent` value early through the `pkgs-ml` client API so downstream registry and CDN clients emit Riot version metadata consistently. Keep `RIOT_AGENT_HEADER` available as an override for automation that shells out to `riot` and needs a different identity.
 35. Workspace resolution for build-facing commands should go through `Workspace_manager.scan` directly so detached single-package manifests can synthesize a one-package workspace. Do not prefilter those invocations with a separate "workspace root only" check.
+36. `riot install` resolves targets in this order: local workspace binary, remote source, registry package. `riot run` resolves in this order: local workspace binary, remote source. Keep the target parsing and fallback policy in the CLI, including `-p/--package` disambiguation for local binaries, but delegate the actual external load/build/install/run work into `riot-build`.
+37. `--local` is only for workspace-binary installs. Do not silently reinterpret `riot install --local <remote-or-registry-target>` as a global install.
+38. `riot run` and `riot install` should allow omitting `<name>` when the current workspace or detached package has exactly one normal runnable binary. If multiple runnable binaries exist, keep the ambiguity explicit and require a binary name or `--package`.
+39. `riot run <remote-source>` and `riot install <remote-source>` should reuse a cached source checkout by default. Surface `--update` as the explicit opt-in refresh path instead of fetching on every invocation.
 
 ## Validate
 

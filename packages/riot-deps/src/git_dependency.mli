@@ -10,11 +10,16 @@ type locator = {
   repo: string;
   subdir: Path.t option;
 }
+type checkout_status =
+  | Cloned
+  | Updated
+  | Reused
 type materialized = {
   source_locator: string;
   ref_: string;
   repository_root: Path.t;
   package_root: Path.t;
+  checkout_status: checkout_status;
 }
 type error =
   | InvalidSourceSpec of { source: string; error: string }
@@ -25,10 +30,23 @@ type error =
   | GitCommandSpawnFailed of { command: string; error: string }
 val message: error -> string
 
+val looks_like_remote_spec: string -> bool
+
 val parse_spec: string -> (spec, error) result
 
 val parse_source_locator: string -> (locator, error) result
 
-val sync_checkout: repo_dir:Path.t -> remote_url:string -> ref_:string -> (unit, error) result
+val sync_checkout:
+  ?update:bool ->
+  repo_dir:Path.t ->
+  remote_url:string ->
+  ref_:string ->
+  unit ->
+  (checkout_status, error) result
 
-val materialize: source_locator:string -> ref_:string option -> unit -> (materialized, error) result
+val materialize:
+  ?update:bool ->
+  source_locator:string ->
+  ref_:string option ->
+  unit ->
+  (materialized, error) result

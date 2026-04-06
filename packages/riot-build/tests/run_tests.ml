@@ -38,10 +38,19 @@ let test_run_event_to_json_serializes_running_binary = fun _ctx ->
   | None ->
       Error "expected JSON output for running binary event"
 
+let test_run_error_message_names_external_target_load_failure = fun _ctx ->
+  Test.assert_equal
+    ~expected:"failed to load external target 'leostera/riot': boom"
+    ~actual:
+      (Riot_build.run_error_message
+         (Riot_build.ExternalTargetLoadFailed { target = "leostera/riot"; reason = "boom" }));
+  Ok ()
+
 let tests =
   let open Test in [
     case "run: test binaries use dev scope" test_build_scope_for_test_binary_uses_dev;
     case "run: running binary event json" test_run_event_to_json_serializes_running_binary;
+    case "run: external target load error message" test_run_error_message_names_external_target_load_failure;
   ]
 
 let name = "Riot Build Run Tests"

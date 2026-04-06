@@ -12,11 +12,17 @@ type locator = {
   subdir: Path.t option;
 }
 
+type checkout_status =
+  | Cloned
+  | Updated
+  | Reused
+
 type materialized = {
   source_locator: string;
   ref_: string;
   repository_root: Path.t;
   package_root: Path.t;
+  checkout_status: checkout_status;
 }
 
 type error =
@@ -72,6 +78,24 @@ let normalize_source_locator = fun raw ->
   else
     raw
 
+let looks_like_github_shorthand = fun raw ->
+  match String.split_on_char '/' raw with
+  | owner :: repo :: _ when not (String.equal owner "")
+  && not (String.equal repo "")
+  && not (String.equal owner ".")
+  && not (String.equal owner "..")
+  && not (String.starts_with ~prefix:"." owner)
+  && not (String.starts_with ~prefix:"/" owner) ->
+      true
+  | _ -> false
+
+let looks_like_remote_spec = fun raw ->
+  let raw = String.trim raw in
+  String.starts_with ~prefix:"http://" raw
+  || String.starts_with ~prefix:"https://" raw
+  || String.starts_with ~prefix:"github.com/" raw
+  || looks_like_github_shorthand raw
+
 let parse_spec = fun raw ->
   let trimmed = String.trim raw in
   match String.split_on_char '#' trimmed with
@@ -89,6 +113,19 @@ let parse_spec = fun raw ->
 
 let parse_source_locator = fun source_locator ->
   let normalized = normalize_source_locator source_locator in
+  let normalized =
+    match String.split_on_char '/' normalized with
+    | owner :: repo :: _
+      when not (String.equal owner "")
+      && not (String.equal repo "")
+      && not (String.equal owner ".")
+      && not (String.equal owner "..")
+      && not (String.starts_with ~prefix:"." owner)
+      && not (String.starts_with ~prefix:"/" owner)
+      && not (String.contains owner ".") ->
+        "github.com/" ^ normalized
+    | _ -> normalized
+  in
   match String.split_on_char '/' normalized with
   | host :: owner :: repo :: rest when not (String.equal host "")
   && not (String.equal owner "")
@@ -159,7 +196,7 @@ let checkout_target = fun ~repo_dir ~ref_ ->
       | Error _ -> ref_
     )
 
-let sync_checkout = fun ~repo_dir ~remote_url ~ref_ ->
+let sync_checkout = fun ?(update = true) ~repo_dir ~remote_url ~ref_ () ->
   let repo_git_dir = Path.(repo_dir / Path.v ".git") in
   let parent =
     match Path.parent repo_dir with
@@ -175,17 +212,14 @@ let sync_checkout = fun ~repo_dir ~remote_url ~ref_ ->
       (fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
     if not has_git_dir then
       Error (CachedRepositoryInvalid { path = repo_dir })
+    else if update then
+      let* _ = run_git ~cwd:repo_dir [ "remote"; "set-url"; "origin"; remote_url ] in
+      let* _ = run_git ~cwd:repo_dir [ "fetch"; "--quiet"; "--tags"; "origin" ] in
+      run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
+      |> Result.map (fun _ -> Updated)
     else
-      let target = checkout_target ~repo_dir ~ref_ in
-      let checkout_current () = run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; target ]
-      |> Result.map (fun _ -> ()) in
-      match checkout_current () with
-      | Ok () -> Ok ()
-      | Error _ ->
-          let* _ = run_git ~cwd:repo_dir [ "remote"; "set-url"; "origin"; remote_url ] in
-          let* _ = run_git ~cwd:repo_dir [ "fetch"; "--quiet"; "--tags"; "origin" ] in
-          run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
-          |> Result.map (fun _ -> ())
+      run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
+      |> Result.map (fun _ -> Reused)
   else
     let* () = Fs.create_dir_all parent
     |> Result.map_error
@@ -193,16 +227,18 @@ let sync_checkout = fun ~repo_dir ~remote_url ~ref_ ->
         GitCommandSpawnFailed { command = "fs.create_dir_all"; error = IO.error_message err }) in
     let* _ = run_git ~cwd:parent [ "clone"; "--quiet"; remote_url; Path.to_string repo_dir ] in
     run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
-    |> Result.map (fun _ -> ())
+    |> Result.map (fun _ -> Cloned)
 
-let materialize = fun ~source_locator ~ref_ () ->
+let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
   let* locator = parse_source_locator source_locator in
   let repository_root = Riot_model.Riot_dirs.git_registry_repo_dir
     ~host:locator.host
     ~owner:locator.owner
     ~repo:locator.repo in
   let ref_ = Option.unwrap_or ~default:"main" ref_ in
-  let* () = sync_checkout ~repo_dir:repository_root ~remote_url:(remote_url_of_locator locator) ~ref_ in
+  let* checkout_status =
+    sync_checkout ~update ~repo_dir:repository_root ~remote_url:(remote_url_of_locator locator) ~ref_ ()
+  in
   let package_root =
     match locator.subdir with
     | Some subdir -> Path.(repository_root / subdir)
@@ -214,4 +250,4 @@ let materialize = fun ~source_locator ~ref_ () ->
   if not exists then
     Error (PackageRootMissing { path = package_root })
   else
-    Ok { source_locator; ref_; repository_root; package_root }
+    Ok { source_locator; ref_; repository_root; package_root; checkout_status }

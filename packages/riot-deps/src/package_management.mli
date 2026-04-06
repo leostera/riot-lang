@@ -17,6 +17,10 @@ type search_request = {
   query: string;
   limit: int;
 }
+type loaded_workspace = {
+  workspace: Riot_model.Workspace.t;
+  package_name: string;
+}
 type event_sink = Riot_model.Event.kind -> unit
 type add_request = {
   selection: manifest_selection;
@@ -42,6 +46,7 @@ type error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistryMaterializationFailed of { package: string; version: string; registry: string; error: string }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of {
       package: string;
@@ -53,8 +58,25 @@ type error =
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
   | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
   | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
+  | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Error.t
 val error_message: error -> string
+
+val load_source_workspace:
+  ?emit:event_sink ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  ?update:bool ->
+  spec:string ->
+  unit ->
+  (loaded_workspace, error) result
+
+val load_registry_workspace:
+  ?emit:event_sink ->
+  ?registry:Pkgs_ml.Registry.t ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  spec:string ->
+  unit ->
+  (loaded_workspace, error) result
 
 val add:
   ?on_event:event_sink ->

@@ -38,6 +38,11 @@ type search_request = Package_management.search_request = {
   limit: int;
 }
 
+type loaded_workspace = Package_management.loaded_workspace = {
+  workspace: Riot_model.Workspace.t;
+  package_name: string;
+}
+
 type add_request = Package_management.add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
@@ -64,6 +69,7 @@ type package_error = Package_management.error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistryMaterializationFailed of { package: string; version: string; registry: string; error: string }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of {
       package: string;
@@ -75,9 +81,14 @@ type package_error = Package_management.error =
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
   | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
   | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
+  | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Error.t
 
 let package_error_message = Package_management.error_message
+
+let load_source_workspace = Package_management.load_source_workspace
+
+let load_registry_workspace = Package_management.load_registry_workspace
 
 let add = Package_management.add
 

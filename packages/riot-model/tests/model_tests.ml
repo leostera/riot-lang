@@ -153,6 +153,45 @@ path = "examples/test_https_httpbin.ml"
               duplicate, got: [" ^ String.concat ", " binary_names ^ "]"
           ))
 
+let test_src_main_autodiscovers_runtime_binary = fun _ctx ->
+  with_tempdir "riot_model_main_binary"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml"))
+        ~msg:"Failed to write main source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "hello-world"
+version = "0.1.0"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v ".")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      match pkg.binaries with
+      | [ Riot_model.Package.{ name; path } ] ->
+          if String.equal name "hello-world" && Path.equal path (Path.v "src/main.ml") then
+            Ok ()
+          else
+            Error ("expected src/main.ml to autodiscover hello-world runtime binary, got "
+            ^ name
+            ^ " at "
+            ^ Path.to_string path)
+      | binaries ->
+          Error ("expected exactly one autodiscovered runtime binary, got "
+          ^ Int.to_string (List.length binaries))
+    )
+
 let test_scan_sources_ignores_hidden_entries = fun _ctx ->
   with_tempdir "riot_model_hidden_sources"
     (fun tmpdir ->
@@ -889,6 +928,7 @@ let tests =
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
     case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
+    case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case "package: source scan ignores test support entries" test_scan_sources_ignores_test_support_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;

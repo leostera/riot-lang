@@ -7,6 +7,13 @@ type run_request = {
   args: string list;
 }
 
+type source_run_request = {
+  source_spec: string;
+  binary_name: string;
+  update: bool;
+  args: string list;
+}
+
 type run_event =
   | Build of Build_runtime.build_event
   | RunningBinary of { package: string; binary: string; args: string list }
@@ -18,7 +25,10 @@ type run_error =
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ProcessExited of int
   | SystemError of string
+  | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
+
+let ( let* ) = Result.and_then
 
 let no_event: run_event -> unit = fun _ -> ()
 
@@ -49,6 +59,10 @@ let run_error_message = function
   | ArtifactNotFound { reason; _ } -> reason
   | ProcessExited code -> "process exited with " ^ Int.to_string code
   | SystemError msg -> msg
+  | ExternalTargetLoadFailed { target; reason } -> "failed to load external target '"
+  ^ target
+  ^ "': "
+  ^ reason
   | ClientError err -> Client.error_message err
 
 let run_event_to_json = function
@@ -62,6 +76,26 @@ let run_event_to_json = function
 
 let reconnect = fun ~workspace ->
   Client.connect_local ~workspace () |> Result.map_error (fun err -> ClientError err)
+
+let make_pm_event = fun session_id kind ->
+  Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
+
+let emit_pm_build_event = fun ~session_id ~on_event kind ->
+  on_event (Build (Build_runtime.Pm (make_pm_event session_id kind)))
+
+let load_source_workspace = fun ~on_event ~source_spec ~update ->
+  let session_id = Riot_model.Session_id.make () in
+  Riot_deps.load_source_workspace
+    ~emit:(emit_pm_build_event ~session_id ~on_event)
+    ~update
+    ~spec:source_spec
+    ()
+  |> Result.map_error
+    (fun err ->
+      ExternalTargetLoadFailed {
+        target = source_spec;
+        reason = Riot_deps.package_error_message err
+      })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
   let find_binary_export (result: Riot_executor.Package_builder.build_result) =
@@ -158,3 +192,14 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
       in
       Client.close client;
       result
+
+let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
+  let* loaded = load_source_workspace ~on_event ~source_spec:request.source_spec ~update:request.update in
+  run
+    ~on_event
+    {
+      workspace = loaded.workspace;
+      package_name = Some loaded.package_name;
+      binary_name = request.binary_name;
+      args = request.args;
+    }

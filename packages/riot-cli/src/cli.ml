@@ -269,13 +269,19 @@ let run = fun ~args ->
               in
               Check_cmd.run ?workspace check_matches
           | Some ("run", run_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> (
-                  match ensure_toolchain workspace with
-                  | Ok () -> Run.run ~workspace run_matches
-                  | Error _ as e -> e
-                )
-              | Error _ as e -> e
+              let workspace_scan = get_workspace_scan () in
+              let workspace, workspace_error =
+                match workspace_scan with
+                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (Some workspace, None)
+                | Loaded (workspace, load_errors) ->
+                    (
+                      Some workspace,
+                      Some (String.concat "\n" (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                    )
+                | NoWorkspace -> (None, None)
+                | ScanFailed err -> (None, Some err)
+              in
+              Run.run_with_workspace_info ~workspace ~workspace_error run_matches
             )
           | Some ("search", search_matches) ->
               Search.run search_matches
@@ -396,9 +402,19 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("install", install_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> Install.run ~workspace install_matches
-              | Error _ as e -> e
+              let workspace_scan = get_workspace_scan () in
+              let workspace, workspace_error =
+                match workspace_scan with
+                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (Some workspace, None)
+                | Loaded (workspace, load_errors) ->
+                    (
+                      Some workspace,
+                      Some (String.concat "\n" (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                    )
+                | NoWorkspace -> (None, None)
+                | ScanFailed err -> (None, Some err)
+              in
+              Install.run_with_workspace_info ~workspace ~workspace_error install_matches
             )
           | Some ("update", update_matches) -> (
               match get_workspace_scan () with

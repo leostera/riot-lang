@@ -35,11 +35,20 @@ let test_install_error_message_names_promotion_failure = fun _ctx ->
       }));
   Ok ()
 
+let test_install_error_message_names_external_target_load_failure = fun _ctx ->
+  Test.assert_equal
+    ~expected:"failed to load external target 'demo': boom"
+    ~actual:
+      (Riot_build.install_error_message
+         (Riot_build.ExternalTargetLoadFailed { target = "demo"; reason = "boom" }));
+  Ok ()
+
 let tests =
   let open Test in [
     case "install runtime: promoted binary event json" test_install_event_to_json_serializes_promoted_binary;
     case "install runtime: missing binary message" test_install_error_message_names_missing_binary;
     case "install runtime: promotion failure message" test_install_error_message_names_promotion_failure;
+    case "install runtime: external target load failure message" test_install_error_message_names_external_target_load_failure;
   ]
 
 let name = "Riot Build Install Runtime Tests"

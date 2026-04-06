@@ -45,6 +45,13 @@ type run_request = Run_runtime.run_request = {
   args: string list;
 }
 
+type source_run_request = Run_runtime.source_run_request = {
+  source_spec: string;
+  binary_name: string;
+  update: bool;
+  args: string list;
+}
+
 type run_event = Run_runtime.run_event =
   | Build of build_event
   | RunningBinary of { package: string; binary: string; args: string list }
@@ -56,6 +63,7 @@ type run_error = Run_runtime.run_error =
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ProcessExited of int
   | SystemError of string
+  | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 
 let error_message = Internal_server.error_message
@@ -77,6 +85,8 @@ let build_prepared = fun ?on_event ?workspace_manager request ->
   Build_runtime.build_prepared ?on_event ?workspace_manager request
 
 let run = Run_runtime.run
+
+let run_source = Run_runtime.run_source
 
 type suite_binary = Test_runtime.suite_binary = {
   package_name: string;
@@ -144,6 +154,21 @@ let bench = Bench_runtime.bench
 
 type install_request = Install_runtime.install_request = {
   workspace: Riot_model.Workspace.t;
+  package_name: string option;
+  binary_name: string;
+  local_only: bool;
+  promote_to_workspace_root: bool;
+}
+
+type source_install_request = Install_runtime.source_install_request = {
+  source_spec: string;
+  binary_name: string;
+  update: bool;
+  local_only: bool;
+}
+
+type registry_install_request = Install_runtime.registry_install_request = {
+  package_spec: string;
   binary_name: string;
   local_only: bool;
 }
@@ -156,9 +181,11 @@ type install_event = Install_runtime.install_event =
 
 type install_error = Install_runtime.install_error =
   | BinaryNotFound of { binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
   | BuildFailed of build_error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
+  | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 
 let install_error_message = Install_runtime.install_error_message
@@ -166,3 +193,7 @@ let install_error_message = Install_runtime.install_error_message
 let install_event_to_json = Install_runtime.install_event_to_json
 
 let install = Install_runtime.install
+
+let install_source = Install_runtime.install_source
+
+let install_registry = Install_runtime.install_registry

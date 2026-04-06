@@ -1406,6 +1406,13 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
         None)
     sources.tests
 
+(** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
+let autodiscover_main_binary: sources -> package_name:string -> binary list = fun sources ~package_name ->
+  if List.exists (fun path -> Path.equal path (Path.v "src/main.ml")) sources.src then
+    [ { name = package_name; path = Path.v "src/main.ml" } ]
+  else
+    []
+
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
 let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
@@ -1503,9 +1510,16 @@ let from_toml:
                       let excluded_relpaths = provider_excluded_relpaths ~package_path:path fix_providers in
                       let sources = scan_sources ~package_path:path ~excluded_relpaths () in
                       let compiler = parse_compiler_config items in
+                      let main_binaries = autodiscover_main_binary sources ~package_name:name in
                       let test_binaries = autodiscover_test_binaries sources ~package_path:path in
                       let example_binaries = autodiscover_example_binaries sources ~package_path:path in
                       let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
+                      Log.debug
+                        ("[PACKAGE] "
+                        ^ name
+                        ^ ": discovered "
+                        ^ Int.to_string (List.length main_binaries)
+                        ^ " runtime binaries from src/main.ml");
                       Log.debug
                         ("[PACKAGE] "
                         ^ name
@@ -1530,9 +1544,12 @@ let from_toml:
                         ^ " benchmark binaries from "
                         ^ Int.to_string (List.length sources.bench)
                         ^ " benchmark files");
-                      let all_binaries = merge_binaries
+                      let runtime_binaries = merge_binaries
                         ~declared:binaries
-                        ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
+                        ~autodiscovered:main_binaries in
+                      let all_binaries = merge_binaries
+                        ~declared:runtime_binaries
+                        ~autodiscovered:(test_binaries @ example_binaries @ bench_binaries) in
                       let commands =
                         match List.assoc_opt "command" items with
                         | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml

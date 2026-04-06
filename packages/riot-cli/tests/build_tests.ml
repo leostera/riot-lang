@@ -7,6 +7,16 @@ let parse_build = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_run = fun args ->
+  match ArgParser.get_matches Riot_cli.Run.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
+let parse_install = fun args ->
+  match ArgParser.get_matches Riot_cli.Install.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
 let test_build_accepts_multiple_packages = fun _ctx ->
   match parse_build [ "build"; "syn"; "krasny"; "riot-cli" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
@@ -40,6 +50,65 @@ let test_build_accepts_release_flag = fun _ctx ->
       else
         Error "expected --release flag to be parsed"
 
+let test_run_accepts_missing_name = fun _ctx ->
+  match parse_run [ "run" ] with
+  | Error err -> Error ("expected run args to parse without a name: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:None ~actual:(ArgParser.get_one matches "name");
+      Ok ()
+
+let test_run_accepts_update_flag = fun _ctx ->
+  match parse_run [ "run"; "--update"; "leostera/hello-world" ] with
+  | Error err -> Error ("expected run args to parse with --update: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "update" then
+        Ok ()
+      else
+        Error "expected run --update flag to be parsed"
+
+let test_install_accepts_update_flag = fun _ctx ->
+  match parse_install [ "install"; "--update"; "leostera/hello-world" ] with
+  | Error err -> Error ("expected install args to parse with --update: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "update" then
+        Ok ()
+      else
+        Error "expected install --update flag to be parsed"
+
+let test_install_accepts_missing_name = fun _ctx ->
+  match parse_install [ "install" ] with
+  | Error err -> Error ("expected install args to parse without a name: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:None ~actual:(ArgParser.get_one matches "name");
+      Ok ()
+
+let test_install_accepts_package_flag = fun _ctx ->
+  match parse_install [ "install"; "--package"; "riot-cli"; "riot" ] with
+  | Error err -> Error ("expected install args to parse with --package: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some "riot-cli") ~actual:(ArgParser.get_one matches "package");
+      Ok ()
+
+let test_run_defaults_remote_binary_to_repo_name = fun _ctx ->
+  Test.assert_equal
+    ~expected:"hello-world"
+    ~actual:(Riot_cli.Run.default_remote_binary_name "leostera/hello-world");
+  Test.assert_equal
+    ~expected:"hello-world"
+    ~actual:(Riot_cli.Run.default_remote_binary_name "github.com/leostera/hello-world/packages/demo");
+  Ok ()
+
+let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
+  match Riot_cli.Run.run_with_workspace_info ~workspace:None ~workspace_error:None
+    (parse_run [ "run"; "leostera/hello-world@" ] |> Result.expect ~msg:"expected run args to parse") with
+  | Ok () -> Error "expected trailing @ remote target to fail"
+  | Error (Failure message) ->
+      if String.equal message "invalid remote target 'leostera/hello-world@': expected binary name after @" then
+        Ok ()
+      else
+        Error ("unexpected trailing @ error: " ^ message)
+  | Error err -> Error ("unexpected error kind: " ^ Exception.to_string err)
+
 let make_workspace = fun binaries ->
   let package = Riot_model.Package.make
     ~name:"demo"
@@ -48,6 +117,9 @@ let make_workspace = fun binaries ->
     ~binaries
     () in
   Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
+
+let make_workspace_with_packages = fun packages ->
+  Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages ()
 
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
   let workspace = make_workspace
@@ -71,6 +143,59 @@ let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun _ctx -
     ~expected:Riot_cli.Build.Runtime
     ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"missing");
   Ok ()
+
+let test_run_resolves_single_implicit_binary = fun _ctx ->
+  let workspace = make_workspace
+    [ Riot_model.Package.{ name = "hello-world"; path = Path.v "src/hello_world.ml" } ] in
+  match Riot_cli.Run.resolve_implicit_local_target workspace with
+  | Ok { package_name; binary_name } ->
+      Test.assert_equal ~expected:"demo" ~actual:package_name;
+      Test.assert_equal ~expected:"hello-world" ~actual:binary_name;
+      Ok ()
+  | Error err -> Error ("expected single implicit binary to resolve: " ^ err)
+
+let test_run_resolves_single_implicit_binary_in_package = fun _ctx ->
+  let demo = Riot_model.Package.make
+    ~name:"demo"
+    ~path:(Path.v "/workspace/packages/demo")
+    ~relative_path:(Path.v "packages/demo")
+    ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
+    () in
+  let util = Riot_model.Package.make
+    ~name:"util"
+    ~path:(Path.v "/workspace/packages/util")
+    ~relative_path:(Path.v "packages/util")
+    ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
+    () in
+  let workspace = make_workspace_with_packages [ demo; util ] in
+  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:"util" workspace with
+  | Ok { package_name; binary_name } ->
+      Test.assert_equal ~expected:"util" ~actual:package_name;
+      Test.assert_equal ~expected:"util" ~actual:binary_name;
+      Ok ()
+  | Error err -> Error ("expected package-filtered implicit binary to resolve: " ^ err)
+
+let test_run_rejects_ambiguous_implicit_binary = fun _ctx ->
+  let demo = Riot_model.Package.make
+    ~name:"demo"
+    ~path:(Path.v "/workspace/packages/demo")
+    ~relative_path:(Path.v "packages/demo")
+    ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
+    () in
+  let util = Riot_model.Package.make
+    ~name:"util"
+    ~path:(Path.v "/workspace/packages/util")
+    ~relative_path:(Path.v "packages/util")
+    ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
+    () in
+  let workspace = make_workspace_with_packages [ demo; util ] in
+  match Riot_cli.Run.resolve_implicit_local_target workspace with
+  | Ok _ -> Error "expected implicit run target resolution to reject multiple binaries"
+  | Error err ->
+      if String.contains err "multiple runnable binaries found" then
+        Ok ()
+      else
+        Error ("expected ambiguity error, got: " ^ err)
 
 let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
@@ -118,12 +243,25 @@ let test_pm_event_hides_download_skipped = fun _ctx ->
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
+let test_pm_event_shows_installing_with_padding = fun _ctx ->
+  let seen_registry_updates = HashSet.create () in
+  let actual = Riot_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Riot_model.Event.SourceDependencyMaterializationStarted {
+      source_locator = "leostera/hello-world";
+      ref_ = None;
+    }) in
+  Test.assert_equal
+    ~expected:(Some "  \027[1;34mInstalling\027[0m leostera/hello-world")
+    ~actual;
+  Ok ()
+
 let test_pm_event_shows_locked_package = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
     (Riot_model.Event.PackageVersionLocked { package = "std"; version = "0.2.0" }) in
-  Test.assert_equal ~expected:(Some "    \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
+  Test.assert_equal ~expected:(Some "      \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
   Ok ()
 
 let test_pm_event_shows_up_to_date = fun _ctx ->
@@ -140,13 +278,24 @@ let tests =
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
+    case "run: parse missing name" test_run_accepts_missing_name;
+    case "run: parse --update flag" test_run_accepts_update_flag;
+    case "install: parse missing name" test_install_accepts_missing_name;
+    case "install: parse --update flag" test_install_accepts_update_flag;
+    case "install: parse --package flag" test_install_accepts_package_flag;
+    case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
+    case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
     case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
     case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
+    case "run: single implicit binary resolves" test_run_resolves_single_implicit_binary;
+    case "run: package-filtered implicit binary resolves" test_run_resolves_single_implicit_binary_in_package;
+    case "run: ambiguous implicit binary is rejected" test_run_rejects_ambiguous_implicit_binary;
     case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
     case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
     case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
     case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
+    case "build: pm installing source is shown with padding" test_pm_event_shows_installing_with_padding;
     case "build: pm locked package is shown" test_pm_event_shows_locked_package;
     case "build: pm no-op update is shown" test_pm_event_shows_up_to_date;
   ]

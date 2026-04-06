@@ -24,6 +24,9 @@
 18. `add`/`remove`/`update` progress should flow through `Riot_model.Event.kind`. Do not maintain a second package-management-only event vocabulary in `riot-deps` when the shared event surface can express the same lifecycle.
 19. Registry package materialization should be lazy at projection/build preparation time. Do not reintroduce an eager `ensure_lock` pre-pass that materializes every external package before projection.
 20. `path` dependencies that also declare a publishable fallback (`version` or `source`) should prefer the local package only when the local manifest is actually present. In isolated published-artifact contexts, missing local paths must fall back to the external dependency instead of failing workspace load up front.
+21. External workspace loading for `riot install` / `riot run` belongs here. Keep GitHub shorthand parsing, source materialization, registry release materialization, and package-selection policy in `riot-deps`, then return a normal `Workspace.t + package_name` pair to `riot-build`.
+22. Bare `owner/repo[/subdir]` source specs are only remote-looking shorthand for the workspace-free install/run path. Do not let that shorthand change `riot add` path-dependency parsing.
+23. Remote source materialization is cache-first by default for `riot run` / `riot install`. Reuse the cached checkout when it already exists, and only fetch/refresh it when the caller explicitly passes `~update:true`.
 
 ## Validate
 

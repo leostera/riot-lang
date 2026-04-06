@@ -2,6 +2,21 @@ open Std
 
 type install_request = {
   workspace: Riot_model.Workspace.t;
+  package_name: string option;
+  binary_name: string;
+  local_only: bool;
+  promote_to_workspace_root: bool;
+}
+
+type source_install_request = {
+  source_spec: string;
+  binary_name: string;
+  update: bool;
+  local_only: bool;
+}
+
+type registry_install_request = {
+  package_spec: string;
   binary_name: string;
   local_only: bool;
 }
@@ -14,9 +29,11 @@ type install_event =
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
   | BuildFailed of Build_runtime.build_error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
+  | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 
 let ( let* ) = Result.and_then
@@ -28,6 +45,11 @@ let reconnect = fun ~workspace ->
 
 let install_error_message = function
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found in workspace"
+  | BinaryNotFoundInPackage { package_name; binary_name } -> "binary '"
+  ^ binary_name
+  ^ "' not found in package '"
+  ^ package_name
+  ^ "'"
   | BuildFailed err -> Build_runtime.error_message err
   | ArtifactNotFound { package_name; binary_name; reason } -> "binary '"
   ^ binary_name
@@ -40,6 +62,10 @@ let install_error_message = function
   ^ " to "
   ^ Path.to_string destination
   ^ ": "
+  ^ reason
+  | ExternalTargetLoadFailed { target; reason } -> "failed to load external target '"
+  ^ target
+  ^ "': "
   ^ reason
   | ClientError err -> Client.error_message err
 
@@ -72,6 +98,39 @@ let install_event_to_json = function
           );
         ]
       )
+
+let make_pm_event = fun session_id kind ->
+  Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
+
+let emit_pm_build_event = fun ~session_id ~on_event kind ->
+  on_event (Build (Build_runtime.Pm (make_pm_event session_id kind)))
+
+let load_source_workspace = fun ~on_event ~source_spec ~update ->
+  let session_id = Riot_model.Session_id.make () in
+  Riot_deps.load_source_workspace
+    ~emit:(emit_pm_build_event ~session_id ~on_event)
+    ~update
+    ~spec:source_spec
+    ()
+  |> Result.map_error
+    (fun err ->
+      ExternalTargetLoadFailed {
+        target = source_spec;
+        reason = Riot_deps.package_error_message err
+      })
+
+let load_registry_workspace = fun ~on_event ~package_spec ->
+  let session_id = Riot_model.Session_id.make () in
+  Riot_deps.load_registry_workspace
+    ~emit:(emit_pm_build_event ~session_id ~on_event)
+    ~spec:package_spec
+    ()
+  |> Result.map_error
+    (fun err ->
+      ExternalTargetLoadFailed {
+        target = package_spec;
+        reason = Riot_deps.package_error_message err
+      })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
   let find_binary_export (result: Riot_executor.Package_builder.build_result) =
@@ -158,6 +217,13 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
         | Ok None ->
             Error (BinaryNotFound { binary_name = request.binary_name })
         | Ok (Some (package_name, _binary)) -> (
+            match request.package_name with
+            | Some expected_package when not (String.equal expected_package package_name) ->
+                Error (BinaryNotFoundInPackage {
+                  package_name = expected_package;
+                  binary_name = request.binary_name
+                })
+            | _ ->
             on_event (InstallingBinary { package = package_name; binary = request.binary_name });
             match
               Build_runtime.build ~record_cache_generation:false ~on_event:(fun event ->
@@ -179,14 +245,19 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                 match find_built_binary_path ~store ~package_name ~binary_name:request.binary_name results with
                 | Error _ as err -> err
                 | Ok binary_path ->
-                    let workspace_root = request.workspace.root in
-                    let project_binary = Path.(workspace_root / Path.v request.binary_name) in
-                    let* () = promote_binary
-                      ~on_event
-                      ~src:binary_path
-                      ~dst:project_binary
-                      ~binary:request.binary_name
-                      ~global:false in
+                    let* () =
+                      if request.promote_to_workspace_root then
+                        let workspace_root = request.workspace.root in
+                        let project_binary = Path.(workspace_root / Path.v request.binary_name) in
+                        promote_binary
+                          ~on_event
+                          ~src:binary_path
+                          ~dst:project_binary
+                          ~binary:request.binary_name
+                          ~global:false
+                      else
+                        Ok ()
+                    in
                     let global_destination =
                       if request.local_only then
                         Ok None
@@ -227,3 +298,27 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
       in
       Client.close client;
       result
+
+let install_source = fun ?(on_event = no_event) (request: source_install_request) ->
+  let* loaded = load_source_workspace ~on_event ~source_spec:request.source_spec ~update:request.update in
+  install
+    ~on_event
+    {
+      workspace = loaded.workspace;
+      package_name = Some loaded.package_name;
+      binary_name = request.binary_name;
+      local_only = request.local_only;
+      promote_to_workspace_root = false;
+    }
+
+let install_registry = fun ?(on_event = no_event) (request: registry_install_request) ->
+  let* loaded = load_registry_workspace ~on_event ~package_spec:request.package_spec in
+  install
+    ~on_event
+    {
+      workspace = loaded.workspace;
+      package_name = Some loaded.package_name;
+      binary_name = request.binary_name;
+      local_only = request.local_only;
+      promote_to_workspace_root = false;
+    }

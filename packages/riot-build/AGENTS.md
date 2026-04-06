@@ -17,6 +17,9 @@
 11. Prepared workspaces are a valid input to the local build runtime. When a caller has already run dependency preparation and needs to append synthetic packages for the same build lane, reuse that prepared workspace instead of forcing a second `ensure_workspace` pass.
 12. Successful builds now record workspace cache generations through `riot-store`. Keep that hook lightweight and best-effort: build success should not turn into command failure just because cache bookkeeping had a problem. Recorded generations must include the full reachable cache closure needed to keep a warm rebuild warm, including exported action-artifact hashes referenced by cached package artifacts.
 13. `install` promotion failures are fatal. Do not downgrade failed project-root or `~/.riot/bin` promotion into warnings or synthetic success.
+14. Workspace-free `run`/`install` entrypoints belong here too. If the CLI resolves a remote source or registry package target, `riot-build` should own the typed PM-event emission, external workspace loading, and then delegate back into the normal local build/install/run path instead of reimplementing that flow in `riot-cli`.
+15. External installs only promote into `~/.riot/bin`. Do not force a project-root promotion for detached source or registry installs.
+16. External source `run` / `install` requests are cache-first by default. Carry an explicit `update` flag in the typed request when the caller wants to refresh a cached source checkout before building or running it.
 
 ## Validate
 
