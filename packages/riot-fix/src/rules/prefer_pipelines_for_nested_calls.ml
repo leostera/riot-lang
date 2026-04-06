@@ -72,17 +72,16 @@ let make_diagnostic = fun ~source expr ->
       | Some text -> Some (Fix.make
         ~title:"Rewrite nested calls as a pipeline"
         ~operations:[
-          Fix.replace_node_with_text
-            ~target:(Syn.Cst.Expression.syntax_node expr)
-            ~text
+          Fix.replace_node_with_text ~target:(Syn.Cst.Expression.syntax_node expr) ~text
         ])
     ))
     ()
 
 let diagnostic_for_expression = fun ~source expr ->
   match unwrap_parens expr with
-  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold ->
-      Some (make_diagnostic ~source expr)
+  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold -> Some (make_diagnostic
+    ~source
+    expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->

@@ -73,9 +73,7 @@ let source_slice = fun ~source span ->
   String.sub source span.start len
 
 let source_of_expr = fun ~source expr ->
-  source_slice
-    ~source
-    (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+  source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
   |> String.trim
 
 let rewrite_text_for_condition = fun ~source expr ->
@@ -112,10 +110,10 @@ let make_fix = fun ~source (if_expr: Syn.Cst.if_expression) ->
   | None -> None
   | Some text -> Some (Fix.make
     ~title:"Simplify boolean comparison in condition"
-      ~operations:[
+    ~operations:[
       Fix.replace_node_with_text
         ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
-        ~text:(" " ^ text)
+        ~text:((" " ^ text))
     ])
 
 let make_diagnostic = fun ~source (if_expr: Syn.Cst.if_expression) ->
@@ -129,8 +127,9 @@ let make_diagnostic = fun ~source (if_expr: Syn.Cst.if_expression) ->
 
 let diagnostic_for_expression = fun ~source ->
   function
-  | Syn.Cst.Expression.If if_expr when should_flag_condition if_expr.condition ->
-      Some (make_diagnostic ~source if_expr)
+  | Syn.Cst.Expression.If if_expr when should_flag_condition if_expr.condition -> Some (make_diagnostic
+    ~source
+    if_expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->

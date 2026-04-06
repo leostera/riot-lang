@@ -37,7 +37,7 @@ let make_fix = fun ~source (expr: Syn.Cst.if_expression) ->
     ~operations:[
       Fix.replace_node_with_text
         ~target:expr.syntax_node
-        ~text:("if " ^ condition ^ " then " ^ then_branch);
+        ~text:(("if " ^ condition ^ " then " ^ then_branch));
     ]
 
 let make_diagnostic = fun ~source (expr: Syn.Cst.if_expression) ->

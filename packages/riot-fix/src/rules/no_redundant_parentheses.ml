@@ -106,7 +106,7 @@ let is_obviously_redundant = function
   | Syn.Cst.Expression.If _ -> false
   | _ -> false
 
-  let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
+let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })

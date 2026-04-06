@@ -587,13 +587,12 @@ let solve total feedback_ref =
   let solved = Eval.one (Eval.PeriodCell total) in
   println "Solving x = 100 + 0.1x with the fixed-point evaluator";
   println (String.concat "" [ "  x = "; Float.to_string ~precision:6 solved ])
-|} in
+|}
+      in
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_sequences_over_let_unit.make () ]
         () in
-      assert_single_fix_rewrite
-        ~pipeline
-        ~source
+      assert_single_fix_rewrite ~pipeline ~source
         ~expected:{|
 let solve total feedback_ref =
   (Period_cell.set_ref feedback_ref total);

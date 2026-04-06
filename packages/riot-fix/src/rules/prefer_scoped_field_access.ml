@@ -132,29 +132,32 @@ let local_diagnostic_for_expression = fun ~source ~inside_local_open ->
     _;
 
   } as expr) when receiver_looks_like_record receiver
-  && is_module_like_name (Syn.Cst.Token.text module_name) -> Some (make_diagnostic ~source expr)
+  && is_module_like_name (Syn.Cst.Token.text module_name) ->
+      Some (make_diagnostic ~source expr)
   | Syn.Cst.Expression.Record ((Syn.Cst.RecordExpression.Literal { syntax_node; fields; _ } | Syn.Cst.RecordExpression.Update {
     syntax_node;
     fields;
     _
   }) as _record) when fields != [] -> (
-      let prefixes =
-        fields
-        |> List.filter_map
-          (fun (field: Syn.Cst.record_expression_field) -> ident_prefix_name field.field_path)
-      in
+      let prefixes = fields
+      |> List.filter_map
+        (fun (field: Syn.Cst.record_expression_field) -> ident_prefix_name field.field_path) in
       if List.length prefixes = List.length fields then
-        (match prefixes with
-         | [] -> None
-         | first :: rest when List.for_all (String.equal first) rest ->
-             Some (make_record_diagnostic syntax_node)
-         | _ -> None)
+        (
+          match prefixes with
+          | [] -> None
+          | first :: rest when List.for_all (String.equal first) rest -> Some (make_record_diagnostic
+            syntax_node)
+          | _ -> None
+        )
       else
         None
     )
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { syntax_node; body; _ }) when (not inside_local_open)
-  && body_supports_scoped_brackets body -> Some (make_local_open_diagnostic syntax_node)
-  | _ -> None
+  && body_supports_scoped_brackets body ->
+      Some (make_local_open_diagnostic syntax_node)
+  | _ ->
+      None
 
 let rec diagnostics_for_function_body = fun ~source ~inside_local_open ->
   function
@@ -172,118 +175,146 @@ and diagnostics_for_expression = fun ~source ~inside_local_open expr ->
     | Syn.Cst.Expression.Unreachable _
     | Syn.Cst.Expression.Extension _
     | Syn.Cst.Expression.New _ -> []
-    | Syn.Cst.Expression.Constructor { payload; _ } ->
-        Option.to_list payload
-        |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
-    | Syn.Cst.Expression.Object { members; _ } ->
-        members
-        |> List.concat_map (diagnostics_for_object_member ~source ~inside_local_open)
-    | Syn.Cst.Expression.PolyVariant { payload; _ } ->
-        Option.to_list payload
-        |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
+    | Syn.Cst.Expression.Constructor { payload; _ } -> Option.to_list payload
+    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
+    | Syn.Cst.Expression.Object { members; _ } -> members
+    |> List.concat_map (diagnostics_for_object_member ~source ~inside_local_open)
+    | Syn.Cst.Expression.PolyVariant { payload; _ } -> Option.to_list payload
+    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
     | Syn.Cst.Expression.ModulePack _
     | Syn.Cst.Expression.LetException _ -> []
-    | Syn.Cst.Expression.LetModule { body; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.Assert { asserted; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open asserted
-    | Syn.Cst.Expression.Lazy { body; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.While { condition; body; _ } ->
-        diagnostics_for_expression
-          ~source ~inside_local_open
-          condition
-        @ diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.For { start_expr; end_expr; body; _ } ->
-        diagnostics_for_expression
-          ~source ~inside_local_open
-          start_expr
-        @ diagnostics_for_expression ~source ~inside_local_open end_expr
-        @ diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open callee
-        @ diagnostics_for_apply_argument ~source ~inside_local_open argument
-    | Syn.Cst.Expression.MethodCall { receiver; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open receiver
-    | Syn.Cst.Expression.Prefix { operand; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open operand
-    | Syn.Cst.Expression.FieldAccess { receiver; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open receiver
-    | Syn.Cst.Expression.Index { collection; index; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open collection
-        @ diagnostics_for_expression ~source ~inside_local_open index
-    | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
-        fields
-        |> List.concat_map
-          (fun (field: Syn.Cst.object_override_field) ->
-            Option.to_list field.value
-            |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open))
-    | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open value
-    | Syn.Cst.Expression.FieldAssign { target; value; _ } ->
-        diagnostics_for_expression
-          ~source ~inside_local_open
-          (Syn.Cst.Expression.FieldAccess target)
-        @ diagnostics_for_expression ~source ~inside_local_open value
-    | Syn.Cst.Expression.Assign { target; value; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open target
-        @ diagnostics_for_expression ~source ~inside_local_open value
-    | Syn.Cst.Expression.Infix { left; right; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open left
-        @ diagnostics_for_expression ~source ~inside_local_open right
+    | Syn.Cst.Expression.LetModule { body; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      body
+    | Syn.Cst.Expression.Assert { asserted; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      asserted
+    | Syn.Cst.Expression.Lazy { body; _ } -> diagnostics_for_expression ~source ~inside_local_open body
+    | Syn.Cst.Expression.While { condition; body; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      condition
+    @ diagnostics_for_expression ~source ~inside_local_open body
+    | Syn.Cst.Expression.For { start_expr; end_expr; body; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      start_expr
+    @ diagnostics_for_expression ~source ~inside_local_open end_expr
+    @ diagnostics_for_expression ~source ~inside_local_open body
+    | Syn.Cst.Expression.Apply { callee; argument; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      callee
+    @ diagnostics_for_apply_argument ~source ~inside_local_open argument
+    | Syn.Cst.Expression.MethodCall { receiver; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      receiver
+    | Syn.Cst.Expression.Prefix { operand; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      operand
+    | Syn.Cst.Expression.FieldAccess { receiver; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      receiver
+    | Syn.Cst.Expression.Index { collection; index; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      collection
+    @ diagnostics_for_expression ~source ~inside_local_open index
+    | Syn.Cst.Expression.ObjectOverride { fields; _ } -> fields
+    |> List.concat_map
+      (fun (field: Syn.Cst.object_override_field) ->
+        Option.to_list field.value
+        |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open))
+    | Syn.Cst.Expression.InstanceVariableAssign { value; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      value
+    | Syn.Cst.Expression.FieldAssign { target; value; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      (Syn.Cst.Expression.FieldAccess target)
+    @ diagnostics_for_expression ~source ~inside_local_open value
+    | Syn.Cst.Expression.Assign { target; value; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      target
+    @ diagnostics_for_expression ~source ~inside_local_open value
+    | Syn.Cst.Expression.Infix { left; right; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      left
+    @ diagnostics_for_expression ~source ~inside_local_open right
     | Syn.Cst.Expression.TypeAscription { expression; _ }
-    | Syn.Cst.Expression.Polymorphic { expression; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open expression
-    | Syn.Cst.Expression.Sequence { expressions; _ } ->
-        expressions
-        |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
+    | Syn.Cst.Expression.Polymorphic { expression; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      expression
+    | Syn.Cst.Expression.Sequence { expressions; _ } -> expressions
+    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
     | Syn.Cst.Expression.Tuple { elements; _ }
     | Syn.Cst.Expression.List { elements; _ }
-    | Syn.Cst.Expression.Array { elements; _ } ->
-        elements
-        |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
-    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
-        fields
-        |> List.concat_map
-          (fun (field: Syn.Cst.record_expression_field) ->
-            diagnostics_for_expression ~source ~inside_local_open field.value)
-    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
-        diagnostics_for_expression ~source ~inside_local_open base
-        @ (fields
-          |> List.concat_map
-            (fun (field: Syn.Cst.record_expression_field) ->
-              diagnostics_for_expression ~source ~inside_local_open field.value))
+    | Syn.Cst.Expression.Array { elements; _ } -> elements
+    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
+    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) -> fields
+    |> List.concat_map
+      (fun (field: Syn.Cst.record_expression_field) ->
+        diagnostics_for_expression ~source ~inside_local_open field.value)
+    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      base
+    @ (fields
+    |> List.concat_map
+      (fun (field: Syn.Cst.record_expression_field) ->
+        diagnostics_for_expression ~source ~inside_local_open field.value))
     | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
-    | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
-        diagnostics_for_expression ~source ~inside_local_open:true body
-    | Syn.Cst.Expression.Fun { body; _ } ->
-        diagnostics_for_function_body ~source ~inside_local_open body
-    | Syn.Cst.Expression.Function { cases; _ } ->
-        cases
-        |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open)
-    | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
-        (binding_operator_group_items binding
-          |> List.concat_map
-            (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) ->
-              diagnostics_for_expression ~source ~inside_local_open bound_value))
-        @ diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open bound_value
-        @ (Option.to_list and_binding |> List.concat_map (diagnostics_for_let_binding ~source))
-        @ diagnostics_for_expression ~source ~inside_local_open body
-    | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open scrutinee
-        @ (cases
-          |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open))
-    | Syn.Cst.Expression.Try { body; cases; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open body
-        @ (cases |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open))
-    | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open condition
-        @ diagnostics_for_expression ~source ~inside_local_open then_branch
-        @ (Option.to_list else_branch |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open))
-    | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-        diagnostics_for_expression ~source ~inside_local_open inner
+    | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) -> diagnostics_for_expression
+      ~source
+      ~inside_local_open:true
+      body
+    | Syn.Cst.Expression.Fun { body; _ } -> diagnostics_for_function_body
+      ~source
+      ~inside_local_open
+      body
+    | Syn.Cst.Expression.Function { cases; _ } -> cases
+    |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open)
+    | Syn.Cst.Expression.LetOperator { binding; body; _ } -> (binding_operator_group_items binding
+    |> List.concat_map
+      (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) ->
+        diagnostics_for_expression ~source ~inside_local_open bound_value))
+    @ diagnostics_for_expression ~source ~inside_local_open body
+    | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      bound_value
+    @ (Option.to_list and_binding |> List.concat_map (diagnostics_for_let_binding ~source))
+    @ diagnostics_for_expression ~source ~inside_local_open body
+    | Syn.Cst.Expression.Match { scrutinee; cases; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      scrutinee
+    @ (cases |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open))
+    | Syn.Cst.Expression.Try { body; cases; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      body
+    @ (cases |> List.concat_map (diagnostics_for_match_case ~source ~inside_local_open))
+    | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      condition
+    @ diagnostics_for_expression ~source ~inside_local_open then_branch
+    @ (Option.to_list else_branch
+    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open))
+    | Syn.Cst.Expression.Parenthesized { inner; _ } -> diagnostics_for_expression
+      ~source
+      ~inside_local_open
+      inner
   in
   here @ nested
 
@@ -292,12 +323,14 @@ and diagnostics_for_apply_argument = fun ~source ~inside_local_open ->
   | Syn.Cst.Positional argument -> diagnostics_for_expression ~source ~inside_local_open argument
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value
-    |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
+  |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open)
 
 and diagnostics_for_let_binding = fun ~source binding ->
   diagnostics_for_expression ~source ~inside_local_open:false (Syn.Cst.LetBinding.value binding)
 
-and diagnostics_for_match_case = fun ~source ~inside_local_open ({ guard; body; _ }: Syn.Cst.match_case) ->
+and diagnostics_for_match_case = fun ~source ~inside_local_open (
+  { guard; body; _ }: Syn.Cst.match_case
+) ->
   (Option.to_list guard |> List.concat_map (diagnostics_for_expression ~source ~inside_local_open))
   @ diagnostics_for_expression ~source ~inside_local_open body
 
@@ -305,14 +338,23 @@ and diagnostics_for_object_member = fun ~source ~inside_local_open ->
   function
   | Syn.Cst.ObjectMember.Method { body; _ }
   | Syn.Cst.ObjectMember.Value { value=body; _ }
-  | Syn.Cst.ObjectMember.Initializer { body; _ } -> diagnostics_for_expression ~source ~inside_local_open body
-  | Syn.Cst.ObjectMember.Inherit { expression; _ } -> diagnostics_for_expression ~source ~inside_local_open expression
+  | Syn.Cst.ObjectMember.Initializer { body; _ } -> diagnostics_for_expression
+    ~source
+    ~inside_local_open
+    body
+  | Syn.Cst.ObjectMember.Inherit { expression; _ } -> diagnostics_for_expression
+    ~source
+    ~inside_local_open
+    expression
   | Syn.Cst.ObjectMember.Extension _ -> []
 
 let diagnostics_for_structure_item = fun ~source ->
   function
   | Syn.Cst.StructureItem.LetBinding binding -> diagnostics_for_let_binding ~source binding
-  | Syn.Cst.StructureItem.Expression expr -> diagnostics_for_expression ~source ~inside_local_open:false expr
+  | Syn.Cst.StructureItem.Expression expr -> diagnostics_for_expression
+    ~source
+    ~inside_local_open:false
+    expr
   | _ -> []
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
