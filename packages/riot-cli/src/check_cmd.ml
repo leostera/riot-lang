@@ -1382,7 +1382,12 @@ let prepared_sources_by_path = fun prepared_sources ->
       (path_key (prepared_source_path prepared), prepared) :: prepared_by_path)
     []
 
-let checked_files_for_session = fun config session prepared_by_path root_paths ->
+type checked_group = {
+  checked_files: checked_file list;
+  module_typings: Typ.ModuleTypings.t list;
+}
+
+let checked_group_for_session = fun config session prepared_by_path root_paths ->
   let target_prepared_sources =
     root_paths
     |> List.filter_map
@@ -1396,32 +1401,44 @@ let checked_files_for_session = fun config session prepared_by_path root_paths -
   match Typ.Session.prepare_snapshot session ~roots:root_source_ids with
   | Error missing ->
       let reason = missing_requirements_reason missing in
-      target_prepared_sources
-      |> List.map
-        (
-          function
-          | Unreadable_source { path; reason } -> Unreadable { path; reason }
-          | Readable_source { path; _ } -> Unreadable { path; reason }
-        )
+      {
+        checked_files =
+          target_prepared_sources
+          |> List.map
+            (
+              function
+              | Unreadable_source { path; reason } -> Unreadable { path; reason }
+              | Readable_source { path; _ } -> Unreadable { path; reason }
+            );
+        module_typings = [];
+      }
   | Ok snapshot ->
       let () =
         match config.Typ.Config.store with
         | Some store -> persist_module_typings store (Typ.Snapshot.module_typings snapshot)
         | None -> ()
       in
-      target_prepared_sources
-      |> List.map
-        (
-          function
-          | Unreadable_source { path; reason } -> Unreadable { path; reason }
-          | Readable_source { path; source_id; _ } -> (
-              match Typ.Query.analysis_of_source snapshot source_id with
-              | Some analysis -> checked_file_of_analysis path analysis
-              | None ->
-                  let reason = "missing type analysis for " ^ Path.to_string path in
-                  Unreadable { path; reason }
-            )
-        )
+      {
+        checked_files =
+          target_prepared_sources
+          |> List.map
+            (
+              function
+              | Unreadable_source { path; reason } -> Unreadable { path; reason }
+              | Readable_source { path; source_id; _ } -> (
+                  match Typ.Query.analysis_of_source snapshot source_id with
+                  | Some analysis -> checked_file_of_analysis path analysis
+                  | None ->
+                      let reason = "missing type analysis for " ^ Path.to_string path in
+                      Unreadable { path; reason }
+                )
+            );
+        module_typings = Typ.Snapshot.module_typings snapshot;
+      }
+
+let checked_files_for_session = fun config session prepared_by_path root_paths ->
+  checked_group_for_session config session prepared_by_path root_paths
+  |> fun checked_group -> checked_group.checked_files
 
 let check_source_group = fun ?workspace ~summary_cache ?roots paths ->
   let root_paths =
@@ -1496,6 +1513,43 @@ let grouped_root_targets_for_session = fun group_targets ->
     []
   |> List.rev
 
+let ordered_grouped_root_targets_for_session = fun prepared_by_path group_targets ->
+  let grouped = grouped_root_targets_for_session group_targets in
+  let ordered_unique_module_names =
+    let rec loop seen ordered = function
+      | [] -> List.rev ordered
+      | module_name :: rest ->
+          if List.mem module_name seen then
+            loop seen ordered rest
+          else
+            loop (module_name :: seen) (module_name :: ordered) rest
+    in
+    loop [] []
+  in
+  let ordered_module_names =
+    group_targets
+    |> List.filter_map
+      (fun path -> List.assoc_opt (path_key path) prepared_by_path)
+    |> List.filter_map readable_typ_source_of_prepared
+    |> ordered_readable_typ_sources
+    |> List.map (fun source -> module_name_for_path source.path)
+    |> ordered_unique_module_names
+  in
+  let ordered_groups =
+    ordered_module_names
+    |> List.filter_map
+      (fun module_name ->
+        grouped
+        |> List.find_opt (fun (name, _) -> String.equal name module_name))
+  in
+  let remaining_groups =
+    grouped
+    |> List.filter
+      (fun (module_name, _) ->
+        not (List.mem module_name ordered_module_names))
+  in
+  ordered_groups @ remaining_groups
+
 let check_target_files = fun ?workspace ~scan_mode ?on_result target_files ->
   if not scan_mode && Option.is_none workspace then
     target_files
@@ -1525,11 +1579,25 @@ let check_target_files = fun ?workspace ~scan_mode ?on_result target_files ->
           let config = typ_config_for_source_group ?workspace ~summary_cache group_targets in
           let (session, prepared_sources) = create_typ_session config session_paths in
           let prepared_by_path = prepared_sources_by_path prepared_sources in
-          grouped_root_targets_for_session group_targets
-          |> List.iter
-            (fun (_, root_targets) ->
-              checked_files_for_session config session prepared_by_path root_targets
-              |> List.iter emit))
+          let _ =
+            ordered_grouped_root_targets_for_session prepared_by_path group_targets
+            |> List.fold_left
+              (fun (session, config) (_module_name, root_targets) ->
+                let checked_group =
+                  checked_group_for_session config session prepared_by_path root_targets
+                in
+                checked_group.checked_files |> List.iter emit;
+                let loaded_modules =
+                  merge_loaded_module_typings
+                    checked_group.module_typings
+                    config.Typ.Config.loaded_modules
+                in
+                let config = Typ.Config.with_loaded_modules config ~loaded_modules in
+                let session = Typ.Session.with_config session ~config in
+                (session, config))
+              (session, config)
+          in
+          ())
     in
     target_files
     |> List.map

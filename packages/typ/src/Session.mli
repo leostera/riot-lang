@@ -9,6 +9,9 @@ val empty: config:TypConfig.t -> t
 (** Inspect the host configuration carried by the session. *)
 val config: t -> TypConfig.t
 
+(** Replace the host configuration while preserving the current sources. *)
+val with_config: t -> config:TypConfig.t -> t
+
 (** Add one logical source and return its stable [SourceId]. *)
 val create_source: t -> kind:Source.kind -> origin:Source.origin -> text:string -> t * SourceId.t
 

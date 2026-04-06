@@ -341,13 +341,16 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
                         match Data.Json.get_field "result" json with
                         | Some result_json -> Data.Json.get_field "path" result_json
                         | None -> None)
+                    |> List.sort compare
                   in
                   Test.assert_equal
-                    ~expected:[
+                    ~expected:(
+                      [
                       Data.Json.String "packages/colors/examples/blend_demo.ml";
                       Data.Json.String "packages/colors/src/colors.ml";
                       Data.Json.String "packages/colors/src/helper.ml";
-                    ]
+                      ]
+                      |> List.sort compare)
                     ~actual:file_paths;
                   let diagnostic_count =
                     events

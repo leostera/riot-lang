@@ -11,6 +11,8 @@ let empty = fun ~config -> { config; next_source_id = 0; next_revision = 0; sour
 
 let config = fun session -> session.config
 
+let with_config = fun session ~config -> { session with config }
+
 let create_source = fun session ~kind ~origin ~text ->
   let source_id = SourceId.of_int session.next_source_id in
   let source = Source.make ~source_id ~kind ~origin ~revision:session.next_revision ~text in
@@ -287,6 +289,11 @@ let collect_missing_module_summaries = fun session roots ->
 
 let local_source_closure = fun session roots ->
   let deps_env = deps_env_for_loaded_modules session.config.loaded_modules in
+  let loaded_module_names =
+    session.config.loaded_modules
+    |> List.map ModuleTypings.module_name
+    |> Collections.HashSet.of_list
+  in
   let parse_module_dependencies = fun (source: Source.t) ->
     let filename =
       match source.origin with
@@ -341,6 +348,9 @@ let local_source_closure = fun session roots ->
           | Some source ->
               let additional =
                 parse_module_dependencies source
+                |> List.filter
+                  (fun module_name ->
+                    not (Collections.HashSet.contains loaded_module_names module_name))
                 |> List.concat_map local_source_ids_of_module
               in
               discover (additional @ rest) (source_id :: seen)
