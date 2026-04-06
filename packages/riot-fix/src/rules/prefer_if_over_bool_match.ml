@@ -122,8 +122,8 @@ let fix_text_for_match = fun ~source ->
     | [first_case;second_case] ->
         let scrutinee = expression_source ~source expr.scrutinee in
         let negated_scrutinee = "not (" ^ scrutinee ^ ")" in
-        let first_body = expression_source ~source first_case.body |> Rule_text.parenthesize in
-        let second_body = expression_source ~source second_case.body |> Rule_text.parenthesize in
+        let first_body = expression_source ~source first_case.body in
+        let second_body = expression_source ~source second_case.body in
         (
           match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
           | TruePattern, FalsePattern -> Some (if_text

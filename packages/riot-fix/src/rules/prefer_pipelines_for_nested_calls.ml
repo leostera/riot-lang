@@ -37,6 +37,14 @@ let rec nested_call_count = fun expr ->
 
 let threshold = 4
 
+let source_slice = fun ~source span ->
+  let len = Syn.Ceibo.Span.(span.end_ - span.start) in
+  String.sub source span.start len
+
+let expression_source = fun ~source expr ->
+  source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+  |> String.trim
+
 let rec pipeline_parts = fun expr ->
   match unwrap_parens expr with
   | Syn.Cst.Expression.Apply { callee; argument=Syn.Cst.Positional argument; _ } -> (
@@ -46,33 +54,35 @@ let rec pipeline_parts = fun expr ->
     )
   | _ -> None
 
-let pipeline_text = fun expr ->
+let pipeline_text = fun ~source expr ->
+  let source_of_expression = expression_source ~source in
   match pipeline_parts expr with
   | None -> None
   | Some (seed, stages) ->
-      let seed = Rule_text.expression seed in
-      let stages = stages |> List.map Rule_text.expression in
+      let seed = source_of_expression seed in
+      let stages = stages |> List.map source_of_expression in
       Some (String.concat " |> " (seed :: stages))
 
-let make_diagnostic = fun expr ->
+let make_diagnostic = fun ~source expr ->
   Diagnostic.make ~severity:Warning ~kind:(Diagnostic.Known { rule_id; message = rule_description }) ~span:(Syn.Ceibo.Red.SyntaxNode.span
     (Syn.Cst.Expression.syntax_node expr)) ~suggestion:"Rewrite this call chain as a pipeline."
     ?fix:((
-      match pipeline_text expr with
+      match pipeline_text ~source expr with
       | None -> None
       | Some text -> Some (Fix.make
         ~title:"Rewrite nested calls as a pipeline"
         ~operations:[
           Fix.replace_node_with_text
             ~target:(Syn.Cst.Expression.syntax_node expr)
-            ~text:((" " ^ text));
+            ~text
         ])
     ))
     ()
 
-let diagnostic_for_expression = fun expr ->
+let diagnostic_for_expression = fun ~source expr ->
   match unwrap_parens expr with
-  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold -> Some (make_diagnostic expr)
+  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold ->
+      Some (make_diagnostic ~source expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
@@ -80,7 +90,7 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
   |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  |> List.filter_map (diagnostic_for_expression ~source:ctx.source)
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

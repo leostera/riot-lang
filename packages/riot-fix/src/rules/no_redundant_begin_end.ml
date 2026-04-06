@@ -33,9 +33,9 @@ let make_fix = fun ({ syntax_node; inner; _ }: Syn.Cst.parenthesized_expression)
   Fix.make
     ~title:"Replace begin/end with ordinary grouping"
     ~operations:[
-      Fix.replace_node_with_text
+      Fix.replace_node
         ~target:syntax_node
-        ~text:((" " ^ Rule_text.parenthesize (Rule_text.expression inner)));
+        ~replacement:(Syn.Cst.Expression.syntax_node inner);
     ]
 
 let make_diagnostic = fun ({ syntax_node; _ } as expr: Syn.Cst.parenthesized_expression) ->

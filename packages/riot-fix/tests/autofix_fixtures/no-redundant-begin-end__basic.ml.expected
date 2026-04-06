@@ -22,15 +22,18 @@
               }
             },
             "replacement": {
-              "kind": "text",
-              "text": " (value)"
+              "kind": "source_of_node",
+              "span": {
+                "start": 24,
+                "end": 30
+              }
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let render value = (value)\n",
+  "fixed_source": "let render value = value\n",
   "applied_fixes": [
     {
       "title": "Replace begin/end with ordinary grouping",
@@ -45,8 +48,11 @@
             }
           },
           "replacement": {
-            "kind": "text",
-            "text": " (value)"
+            "kind": "source_of_node",
+            "span": {
+              "start": 24,
+              "end": 30
+            }
           }
         }
       ]

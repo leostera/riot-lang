@@ -106,7 +106,7 @@ let is_obviously_redundant = function
   | Syn.Cst.Expression.If _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
+  let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
@@ -115,9 +115,9 @@ let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
     ~fix:(Fix.make
       ~title:"Remove redundant parentheses"
       ~operations:[
-        Fix.replace_node_with_text
+        Fix.replace_node
           ~target:expr.syntax_node
-          ~text:((" " ^ Rule_text.expression expr.inner));
+          ~replacement:(Syn.Cst.Expression.syntax_node expr.inner);
       ])
     ()
 

@@ -22,15 +22,18 @@
               }
             },
             "replacement": {
-              "kind": "text",
-              "text": " value"
+              "kind": "source_of_node",
+              "span": {
+                "start": 20,
+                "end": 25
+              }
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let render value = value\n",
+  "fixed_source": "let render value =value\n",
   "applied_fixes": [
     {
       "title": "Remove redundant parentheses",
@@ -45,8 +48,11 @@
             }
           },
           "replacement": {
-            "kind": "text",
-            "text": " value"
+            "kind": "source_of_node",
+            "span": {
+              "start": 20,
+              "end": 25
+            }
           }
         }
       ]

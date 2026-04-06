@@ -499,7 +499,7 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.No_redundant_else_unit.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ok =if ok then (log())\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ok =if ok then log ()\n");
   Test.case
     "rule explanations explain redundant else unit branches"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-redundant-else-unit" ~snippet:"else ()");
@@ -578,7 +578,29 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_sequences_over_let_unit.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render () =(log()); flush()\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render () = (log ()); flush ()\n");
+  Test.case "prefer-sequences-over-let-unit preserves multiline body source"
+    (fun _ctx ->
+      let source = {|
+let solve total feedback_ref =
+  let () = Period_cell.set_ref feedback_ref total in
+  let solved = Eval.one (Eval.PeriodCell total) in
+  println "Solving x = 100 + 0.1x with the fixed-point evaluator";
+  println (String.concat "" [ "  x = "; Float.to_string ~precision:6 solved ])
+|} in
+      let pipeline = Riot_fix.Pipeline.make
+        ~rules:[ Riot_fix.Rules.Prefer_sequences_over_let_unit.make () ]
+        () in
+      assert_single_fix_rewrite
+        ~pipeline
+        ~source
+        ~expected:{|
+let solve total feedback_ref =
+  (Period_cell.set_ref feedback_ref total);
+  let solved = Eval.one (Eval.PeriodCell total) in
+  println "Solving x = 100 + 0.1x with the fixed-point evaluator";
+  println (String.concat "" [ "  x = "; Float.to_string ~precision:6 solved ])
+|});
   Test.case
     "rule explanations explain let-unit sequencing"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-sequences-over-let-unit" ~snippet:"log (); flush ()");
@@ -617,14 +639,14 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ready =if ready then (render ()) else (fallback ())\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render ready =if ready then render () else fallback ()\n");
   Test.case "prefer-if-over-bool-match preserves multiline branch source in auto-fixes"
     (fun _ctx ->
       let source = "let f =\n  match f with\n  | true -> do_something\n  | _ ->\n      if f then\n        print\n" in
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let f =if f then (do_something) else (if f then\n        print)\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let f =if f then do_something else if f then\n        print\n");
   Test.case
     "rule explanations explain boolean match rewrites"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-if-over-bool-match" ~snippet:"if is_ready then render () else fallback ()");
@@ -918,7 +940,7 @@ let tests = [
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.Prefer_pipelines_for_nested_calls.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let rendered = 1 |> hex |> baz |> bar |> foo\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let rendered =1 |> hex |> baz |> bar |> foo\n");
   Test.case
     "rule explanations explain nested pipeline preference"
     (fun _ctx -> assert_explanation_contains ~rule_id:"prefer-pipelines-for-nested-calls" ~snippet:"hex 1 |> baz |> bar |> foo");
@@ -1137,7 +1159,7 @@ let render x y z =
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.No_redundant_parentheses.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = value\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value =value\n");
   Test.case
     "rule explanations explain redundant parentheses"
     (fun _ctx -> assert_explanation_contains ~rule_id:"no-redundant-parentheses" ~snippet:"obvious grouping");
@@ -1211,7 +1233,7 @@ let render x y z =
       let pipeline = Riot_fix.Pipeline.make
         ~rules:[ Riot_fix.Rules.No_redundant_begin_end.make () ]
         () in
-      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = (value)\n");
+      assert_single_fix_rewrite ~pipeline ~source ~expected:"let render value = value\n");
   Test.case "no-redundant-begin-end keeps ordinary parentheses clean"
     (fun _ctx ->
       let source = "let render value = (value + 1)\n" in

@@ -23,14 +23,14 @@
             },
             "replacement": {
               "kind": "text",
-              "text": " 1 |> hex |> baz |> bar |> foo"
+              "text": "1 |> hex |> baz |> bar |> foo"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let rendered = 1 |> hex |> baz |> bar |> foo\n",
+  "fixed_source": "let rendered =1 |> hex |> baz |> bar |> foo\n",
   "applied_fixes": [
     {
       "title": "Rewrite nested calls as a pipeline",
@@ -46,7 +46,7 @@
           },
           "replacement": {
             "kind": "text",
-            "text": " 1 |> hex |> baz |> bar |> foo"
+            "text": "1 |> hex |> baz |> bar |> foo"
           }
         }
       ]

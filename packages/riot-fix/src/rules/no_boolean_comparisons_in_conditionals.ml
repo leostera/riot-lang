@@ -68,57 +68,69 @@ let suggestion_for_condition = fun expr ->
     )
   | None -> "Simplify this boolean comparison."
 
-let rewrite_text_for_condition = fun expr ->
+let source_slice = fun ~source span ->
+  let len = Syn.Ceibo.Span.(span.end_ - span.start) in
+  String.sub source span.start len
+
+let source_of_expr = fun ~source expr ->
+  source_slice
+    ~source
+    (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+  |> String.trim
+
+let rewrite_text_for_condition = fun ~source expr ->
+  let source_of_expr = source_of_expr ~source in
   match comparison_operands expr with
   | Some (op, left, right) -> (
       match bool_literal_value left, bool_literal_value right with
       | Some true, None ->
           if String.equal op "=" then
-            Some (Rule_text.expression right)
+            Some (source_of_expr right)
           else
-            Some ("not (" ^ Rule_text.expression right ^ ")")
+            Some ("not (" ^ source_of_expr right ^ ")")
       | Some false, None ->
           if String.equal op "=" then
-            Some ("not (" ^ Rule_text.expression right ^ ")")
+            Some ("not (" ^ source_of_expr right ^ ")")
           else
-            Some (Rule_text.expression right)
+            Some (source_of_expr right)
       | None, Some true ->
           if String.equal op "=" then
-            Some (Rule_text.expression left)
+            Some (source_of_expr left)
           else
-            Some ("not (" ^ Rule_text.expression left ^ ")")
+            Some ("not (" ^ source_of_expr left ^ ")")
       | None, Some false ->
           if String.equal op "=" then
-            Some ("not (" ^ Rule_text.expression left ^ ")")
+            Some ("not (" ^ source_of_expr left ^ ")")
           else
-            Some (Rule_text.expression left)
+            Some (source_of_expr left)
       | _ -> None
     )
   | None -> None
 
-let make_fix = fun (if_expr: Syn.Cst.if_expression) ->
-  match rewrite_text_for_condition if_expr.condition with
+let make_fix = fun ~source (if_expr: Syn.Cst.if_expression) ->
+  match rewrite_text_for_condition ~source if_expr.condition with
   | None -> None
   | Some text -> Some (Fix.make
     ~title:"Simplify boolean comparison in condition"
-    ~operations:[
+      ~operations:[
       Fix.replace_node_with_text
         ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
-        ~text:((" " ^ text));
+        ~text:(" " ^ text)
     ])
 
-let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) ->
+let make_diagnostic = fun ~source (if_expr: Syn.Cst.if_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
     ~suggestion:(suggestion_for_condition if_expr.condition)
-    ?fix:(make_fix if_expr)
+    ?fix:(make_fix ~source if_expr)
     ()
 
-let diagnostic_for_expression = function
-  | Syn.Cst.Expression.If if_expr when should_flag_condition if_expr.condition -> Some (make_diagnostic
-    if_expr)
+let diagnostic_for_expression = fun ~source ->
+  function
+  | Syn.Cst.Expression.If if_expr when should_flag_condition if_expr.condition ->
+      Some (make_diagnostic ~source if_expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
@@ -126,7 +138,7 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
   |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  |> List.filter_map (diagnostic_for_expression ~source:ctx.source)
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

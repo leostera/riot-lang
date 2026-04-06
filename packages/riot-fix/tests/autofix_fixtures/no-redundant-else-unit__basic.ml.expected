@@ -23,14 +23,14 @@
             },
             "replacement": {
               "kind": "text",
-              "text": "if ok then (log())"
+              "text": "if ok then log ()"
             }
           }
         ]
       }
     }
   ],
-  "fixed_source": "let render ok =if ok then (log())\n",
+  "fixed_source": "let render ok =if ok then log ()\n",
   "applied_fixes": [
     {
       "title": "Remove redundant else () branch",
@@ -46,7 +46,7 @@
           },
           "replacement": {
             "kind": "text",
-            "text": "if ok then (log())"
+            "text": "if ok then log ()"
           }
         }
       ]
