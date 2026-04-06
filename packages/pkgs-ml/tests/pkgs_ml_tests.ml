@@ -945,6 +945,94 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
+let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_registry_retry_archive"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(tempdir / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let source_root = Path.(tempdir / Path.v "source/std-0.1.0") in
+        let source_file = Path.(source_root / Path.v "src/std.ml") in
+        let downloaded_archive = Path.(tempdir / Path.v "downloads/std-0.1.0.tar") in
+        Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
+        Fs.write
+          "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+          Path.(source_root / Path.v "riot.toml")
+        |> Result.expect ~msg:"expected manifest to be written";
+        Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
+        match create_test_archive ~source_root ~archive_path:downloaded_archive with
+        | Error err -> Error err
+        | Ok () -> (
+            match Fs.read downloaded_archive with
+            | Error err -> Error ("failed to read test archive: " ^ IO.error_message err)
+            | Ok archive_body ->
+                let fetch, requests =
+                  make_fetch_recorder
+                    (fun uri ->
+                      match Net.Uri.to_string uri with
+                      | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = sparse_index_config_json
+                      }
+                      | "https://cdn.pkgs.ml/index/v1/3/s/std.json" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = sparse_index_std_release_json
+                      }
+                      | "https://cdn.pkgs.ml/sources/std/0.1.0/deadbeef.tar.gz" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = archive_body
+                      }
+                      | url -> Error ("unexpected fetch url " ^ url))
+                in
+                let archive_path = Pkgs_ml.Registry_cache.archive_path
+                  cache
+                  ~package_name:"std"
+                  ~version:"0.1.0" in
+                Fs.create_dir_all Path.(tempdir / Path.v ".riot/registry/pkgs.ml/archive/std")
+                |> Result.expect ~msg:"expected archive directory to be created";
+                Fs.write "this is not a tarball" archive_path
+                |> Result.expect ~msg:"expected corrupt archive to be written";
+                let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+                match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
+                | Error err -> Error err
+                | Ok `Already_present ->
+                    Error "expected corrupt cached archive to be replaced and materialized"
+                | Ok `Materialized ->
+                    let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "riot.toml") in
+                    let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "src/std.ml") in
+                    match Fs.read manifest_path, Fs.read materialized_source with
+                    | Ok manifest, Ok source when String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+                    && String.equal source "let answer = 42\n" ->
+                        let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                        if
+                          requested = [
+                            "https://cdn.pkgs.ml/index/v1/config.json";
+                            "https://cdn.pkgs.ml/index/v1/3/s/std.json";
+                            "https://cdn.pkgs.ml/sources/std/0.1.0/deadbeef.tar.gz";
+                          ]
+                        then
+                          Ok ()
+                        else
+                          Error "expected corrupt cache retry to fetch replacement archive"
+                    | Ok _, Ok _ -> Error "expected retried materialization to restore package root"
+                    | (Error err, _)
+                    | (_, Error err) -> Error (IO.error_message err)
+          ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
 let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun _ctx ->
   with_riot_agent (Some "riot-cli@test")
     (fun () ->
@@ -1119,6 +1207,7 @@ let tests =
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;
     case "registry: filesystem registry materializes gzipped cached release archives" test_filesystem_registry_materializes_gzip_cached_release;
     case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
+    case "registry: filesystem registry replaces corrupt cached release archives" test_filesystem_registry_refetches_corrupt_cached_archive;
     case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
     case "registry: publish artifact bubbles transport exceptions as errors" test_registry_publish_artifact_bubbles_transport_exceptions_as_errors;
     case "registry: env riot agent override wins over default agent" test_registry_riot_agent_env_override_wins_over_default_agent;

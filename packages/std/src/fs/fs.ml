@@ -170,17 +170,30 @@ let write = fun content path ->
     path_str
     [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Truncate; ]
     0o644 in
-  let buf = Bytes.of_string content in
+  let buf = Bytes.unsafe_of_string content in
   let len = Bytes.length buf in
-  match Kernel.Fs.File.write fd buf ~len with
-  | Error e ->
-      let _ = Kernel.Fs.File.close_fd fd in
-      Error e
-  | Ok _ -> (
-      match Kernel.Fs.File.close_fd fd with
-      | Ok () -> Ok ()
-      | Error e -> Error e
-    )
+  let close_with result =
+    match Kernel.Fs.File.close_fd fd with
+    | Ok () -> result
+    | Error e -> (
+        match result with
+        | Ok () -> Error e
+        | Error _ -> result
+      )
+  in
+  let rec write_loop offset remaining =
+    if remaining <= 0 then
+      Ok ()
+    else
+      match Kernel.Fs.File.write fd buf ~pos:offset ~len:remaining with
+      | Ok 0 ->
+          Error (IO.Unknown_error ("short write while writing '" ^ path_str ^ "'"))
+      | Ok written ->
+          write_loop (offset + written) (remaining - written)
+      | Error e ->
+          Error e
+  in
+  close_with (write_loop 0 len)
 
 let read_link = fun path ->
   let path_str = Path.to_string path in

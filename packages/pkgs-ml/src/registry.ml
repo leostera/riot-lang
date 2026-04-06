@@ -914,19 +914,39 @@ let write_cached_archive = fun ~archive_path ~contents ->
     | Some parent -> parent
     | None -> Path.v "."
   in
+  let temp_path = Path.(archive_parent / Path.v (Path.basename archive_path ^ ".tmp")) in
   match Fs.create_dir_all archive_parent with
   | Error err -> Error ("failed to create package archive directory '"
   ^ Path.to_string archive_parent
   ^ "': "
   ^ IO.error_message err)
   | Ok () -> (
-      match Fs.write contents archive_path with
-      | Ok () -> Ok ()
+      match Fs.write contents temp_path with
       | Error err -> Error ("failed to write cached package archive '"
       ^ Path.to_string archive_path
       ^ "': "
       ^ IO.error_message err)
+      | Ok () -> (
+          match Fs.rename ~src:temp_path ~dst:archive_path with
+          | Ok () -> Ok ()
+          | Error err -> Error ("failed to finalize cached package archive '"
+          ^ Path.to_string archive_path
+          ^ "': "
+          ^ IO.error_message err)
+        )
     )
+
+let remove_cached_archive = fun archive_path ->
+  match Fs.exists archive_path with
+  | Error err -> Error ("failed to check cached package archive '"
+  ^ Path.to_string archive_path
+  ^ "': "
+  ^ IO.error_message err)
+  | Ok false -> Ok ()
+  | Ok true -> Fs.remove_file archive_path
+  |> Result.map_error
+    (fun err ->
+      "failed to remove cached package archive '" ^ Path.to_string archive_path ^ "': " ^ IO.error_message err)
 
 let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
   match find_release registry ~package_name ~version with
@@ -965,6 +985,30 @@ let materialize_release = fun registry ~package_name ~version ->
         let* release = find_release registry ~package_name ~version in
         normalize_legacy_package_root ~root ~release |> Result.map (fun () -> `Materialized)
   in
+  let ensure_cached_archive () =
+    match Fs.exists archive_path with
+    | Error err ->
+        Error ("failed to check cached package archive '"
+        ^ Path.to_string archive_path
+        ^ "': "
+        ^ IO.error_message err)
+    | Ok true -> Ok ()
+    | Ok false -> fetch_release_archive registry ~package_name ~version ~archive_path
+  in
+  let extract_with_single_retry () =
+    let rec attempt remaining_retries =
+      let* () = ensure_cached_archive () in
+      match extract_cached_archive ~archive_path ~root with
+      | Ok () -> finalize_extracted_root ()
+      | Error _ as err when remaining_retries <= 0 -> err
+      | Error _ ->
+          let* () = reset_materialized_root root in
+          let* () = remove_cached_archive archive_path in
+          let* () = fetch_release_archive registry ~package_name ~version ~archive_path in
+          attempt (remaining_retries - 1)
+    in
+    attempt 1
+  in
   match Fs.exists manifest_path with
   | Error err ->
       Error ("failed to check package manifest '"
@@ -978,28 +1022,7 @@ let materialize_release = fun registry ~package_name ~version ->
       | Filesystem -> (
           match reset_materialized_root root with
           | Error _ as err -> err
-          | Ok () -> (
-              match Fs.exists archive_path with
-              | Error err ->
-                  Error ("failed to check cached package archive '"
-                  ^ Path.to_string archive_path
-                  ^ "': "
-                  ^ IO.error_message err)
-              | Ok false -> (
-                  match fetch_release_archive registry ~package_name ~version ~archive_path with
-                  | Error _ as err -> err
-                  | Ok () -> (
-                      match extract_cached_archive ~archive_path ~root with
-                      | Ok () -> finalize_extracted_root ()
-                      | Error _ as err -> err
-                    )
-                )
-              | Ok true -> (
-                  match extract_cached_archive ~archive_path ~root with
-                  | Ok () -> finalize_extracted_root ()
-                  | Error _ as err -> err
-                )
-            )
+          | Ok () -> extract_with_single_retry ()
         )
       | In_memory { releases; config=_; packages=_ } -> (
           match List.assoc_opt (release_key ~package_name ~version) releases with
