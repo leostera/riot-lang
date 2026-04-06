@@ -114,13 +114,23 @@ let assets = [ (
       ".item-subitem { display: grid; grid-template-columns: minmax(12rem, 22rem) minmax(0, 1fr); gap: 14px; align-items: start; padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }";
       ".item-subitem:first-child { border-top: 0; padding-top: 0; }";
       ".item-subitem-signature { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.94rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }";
-      ".item-subitem-docstring { color: var(--muted); line-height: 1.55; white-space: pre-wrap; }";
+      ".item-subitem-docstring { color: var(--muted); line-height: 1.6; }";
       ".item-meta { margin-top: 4px; color: var(--muted); font-size: 0.92rem; }";
       ".item-signature { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 0.45rem; background: var(--surface-soft); overflow-x: auto; }";
       ".item-signature code { white-space: pre-wrap; word-break: break-word; }";
-      ".item-docstring, .module-docstring { margin-top: 12px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }";
+      ".item-docstring, .module-docstring { margin-top: 12px; color: var(--text); line-height: 1.7; }";
       ".item-docstring { color: var(--muted); }";
       ".module-docstring { color: var(--muted); max-width: 72ch; }";
+      ".item-docstring > :first-child, .module-docstring > :first-child, .item-subitem-docstring > :first-child { margin-top: 0; }";
+      ".item-docstring > :last-child, .module-docstring > :last-child, .item-subitem-docstring > :last-child { margin-bottom: 0; }";
+      ".item-docstring p, .module-docstring p, .item-subitem-docstring p { margin: 0.7rem 0 0; }";
+      ".item-docstring :is(ul, ol), .module-docstring :is(ul, ol), .item-subitem-docstring :is(ul, ol) { margin: 0.8rem 0 0; padding-left: 1.25rem; list-style: revert; }";
+      ".item-docstring li + li, .module-docstring li + li, .item-subitem-docstring li + li { margin-top: 0.3rem; }";
+      ".item-docstring :is(h1, h2, h3, h4), .module-docstring :is(h1, h2, h3, h4), .item-subitem-docstring :is(h1, h2, h3, h4) { margin: 1rem 0 0; font-family: 'Space Grotesk', sans-serif; color: var(--text); line-height: 1.2; }";
+      ".item-docstring blockquote, .module-docstring blockquote, .item-subitem-docstring blockquote { margin: 0.9rem 0 0; padding-left: 0.9rem; border-left: 3px solid var(--border-strong); color: var(--muted); }";
+      ".item-docstring pre, .module-docstring pre, .item-subitem-docstring pre { margin: 0.9rem 0 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 0.45rem; background: var(--surface-soft); overflow-x: auto; }";
+      ".item-docstring pre code, .module-docstring pre code, .item-subitem-docstring pre code { white-space: pre; }";
+      ".item-docstring :not(pre) > code, .module-docstring :not(pre) > code, .item-subitem-docstring :not(pre) > code { padding: 0.1rem 0.35rem; border-radius: 0.35rem; background: var(--surface-soft); border: 1px solid var(--border); }";
       ".summary-block { margin-top: 8px; }";
       ".summary-toggle { display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--muted); font-size: 0.78rem; user-select: none; text-transform: lowercase; }";
       ".summary-toggle:hover { color: var(--text); }";
@@ -180,6 +190,11 @@ let render_docstring x =
   match x with
   | Some md -> Markdown.compile_gfm md
   | None -> ""
+
+let render_docstring_block = fun ~class_name docstring ->
+  match render_docstring docstring with
+  | "" -> ""
+  | html -> "<div class=\"" ^ class_name ^ "\">" ^ html ^ "</div>\n"
 
 let first_doc_line = function
   | Some docstring -> docstring
@@ -308,9 +323,8 @@ let render_item_detail = fun (item: Doctree.item) ->
           ^ "</div>\n"
           ^ (
             match detail.docstring with
-            | Some docstring when not (String.equal docstring "") -> "  <div class=\"item-subitem-docstring\">"
-            ^ escape_html docstring
-            ^ "</div>\n"
+            | Some docstring when not (String.equal docstring "") ->
+                "  " ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
             | _ -> ""
           )
           ^ "</div>") |> String.concat "\n"
@@ -327,7 +341,7 @@ let render_item_detail = fun (item: Doctree.item) ->
   ^ escape_html item.name
   ^ "</a></h3>\n"
   ^ render_code_block definition
-  ^ render_docstring item.docstring
+  ^ render_docstring_block ~class_name:"item-docstring" item.docstring
   ^ (
     match item.detail_groups with
     | [] -> ""
@@ -382,7 +396,7 @@ let render_module_breadcrumbs = fun package (module_doc: Doctree.module_doc) ->
   String.concat " / " (package_link :: loop [] module_doc.path)
 
 let render_module_docstring doc =
-  let docstring = render_docstring doc in
+  let docstring = render_docstring_block ~class_name:"module-docstring" doc in
   if docstring != "" then
     "<details class=\"summary-block\" open>\n"
     ^ "  <summary class=\"summary-toggle\">Summary</summary>\n"
