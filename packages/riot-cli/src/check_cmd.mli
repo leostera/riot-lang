@@ -23,3 +23,16 @@ val run:
   ?stderr:(string -> unit) ->
   ArgParser.matches ->
   (unit, exn) result
+
+(** Best-effort local type-cache warmup for a workspace.
+
+    This computes canonical [Typ.ModuleTypings] for the requested workspace
+    packages and persists them under the workspace-local type cache rooted in
+    the workspace target directory. When [package_names] is empty, all workspace
+    member packages are warmed. Failures are intentionally swallowed so callers
+    such as [riot build] can keep this as a non-fatal post-build step. *)
+val populate_workspace_typings:
+  workspace:Workspace.t ->
+  package_names:string list ->
+  unit ->
+  unit

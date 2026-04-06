@@ -465,6 +465,69 @@ let test_check_package_filter_loads_workspace_dependency_summaries = fun _ctx ->
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ())
 
+let test_check_package_filter_loads_external_dependency_summaries = fun _ctx ->
+  with_tempdir_result "riot_check_external_package_dependencies"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let external_root = Path.(tmpdir / Path.v "external/std") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let external_source = Path.(external_root / Path.v "src/std.ml") in
+      let app_source = Path.(app_root / Path.v "src/app.ml") in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package
+            ~name:"std"
+            ~path:external_root
+            ~relative_path:(Path.v "../external/std")
+            ~sources:{ empty_sources with src = [ Path.v "src/std.ml" ] }
+            ();
+          make_package
+            ~name:"app"
+            ~path:app_root
+            ~relative_path:(Path.v "packages/app")
+            ~dependencies:[ make_dependency "std" ]
+            ~sources:{ empty_sources with src = [ Path.v "src/app.ml" ] }
+            ();
+        ] in
+      match write_file external_source "let twice x = x + x\n" with
+      | Error err -> Error err
+      | Ok () ->
+          match write_file app_source "let answer = Std.twice 21\n" with
+          | Error err -> Error err
+          | Ok () ->
+              let matches = parse_check [ "check"; "--json"; "-p"; "app" ] |> Result.expect ~msg:"parse check args" in
+              let stdout, stdout_contents = make_capture_writer () in
+              let stderr, stderr_contents = make_capture_writer () in
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
+              |> Result.expect ~msg:"package check should load external dependency summaries";
+              let events = parse_jsonl (stdout_contents ()) in
+              let file_paths =
+                events
+                |> List.filter_map
+                  (fun json ->
+                    match Data.Json.get_field "type" json with
+                    | Some (Data.Json.String "check_file") -> (
+                        match Data.Json.get_field "result" json with
+                        | Some result_json -> Data.Json.get_field "path" result_json
+                        | None -> None
+                      )
+                    | _ -> None)
+              in
+              let diagnostic_count =
+                events
+                |> List.filter
+                  (fun json ->
+                    match Data.Json.get_field "type" json with
+                    | Some (Data.Json.String "check_diagnostic") -> true
+                    | _ -> false)
+                |> List.length
+              in
+              Test.assert_equal ~expected:[ Data.Json.String "packages/app/src/app.ml" ] ~actual:file_paths;
+              Test.assert_equal ~expected:0 ~actual:diagnostic_count;
+              Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+              Ok ())
+
 let test_check_package_filter_persists_module_typings_to_store = fun _ctx ->
   with_tempdir_result "riot_check_package_typ_store"
     (fun tmpdir ->
@@ -557,6 +620,62 @@ let test_check_package_filter_persists_interface_shaped_module_typings = fun _ct
                   Test.assert_equal ~expected:[ "answer" ] ~actual:exports;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ()
+        ))
+
+let test_populate_workspace_typings_persists_local_dependency_bundles = fun _ctx ->
+  with_tempdir_result "riot_populate_workspace_typings"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let external_root = Path.(tmpdir / Path.v "external/std") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let external_source = Path.(external_root / Path.v "src/std.ml") in
+      let app_source = Path.(app_root / Path.v "src/app.ml") in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package
+            ~name:"std"
+            ~path:external_root
+            ~relative_path:(Path.v "../external/std")
+            ~sources:{ empty_sources with src = [ Path.v "src/std.ml" ] }
+            ();
+          make_package
+            ~name:"app"
+            ~path:app_root
+            ~relative_path:(Path.v "packages/app")
+            ~dependencies:[ make_dependency "std" ]
+            ~sources:{ empty_sources with src = [ Path.v "src/app.ml" ] }
+            ();
+        ] in
+      match write_file external_source "let twice x = x + x\n" with
+      | Error err -> Error err
+      | Ok () -> (
+          match write_file app_source "let answer = Std.twice 21\n" with
+          | Error err -> Error err
+          | Ok () ->
+              Riot_cli.Check_cmd.populate_workspace_typings
+                ~workspace
+                ~package_names:[ "app" ]
+                ();
+              let typ_store = workspace_typ_store workspace in
+              let std_bundle =
+                Typ.Store.load_package_module_typings typ_store ~package_name:"std"
+              in
+              let app_bundle =
+                Typ.Store.load_package_module_typings typ_store ~package_name:"app"
+              in
+              let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
+              let app_typings = Typ.Store.load_module_typings typ_store ~module_name:"App" in
+              if not (Option.is_some std_bundle) then
+                Error "expected std package module typings bundle to be persisted"
+              else if not (Option.is_some app_bundle) then
+                Error "expected app package module typings bundle to be persisted"
+              else if not (Option.is_some std_typings) then
+                Error "expected Std module typings to be persisted"
+              else if not (Option.is_some app_typings) then
+                Error "expected App module typings to be persisted"
+              else
+                Ok ()
         ))
 
 let test_check_package_filter_reports_signature_inclusion_errors = fun _ctx ->
@@ -675,7 +794,7 @@ let test_check_package_filter_reexports_workspace_dependency_summaries_via_inclu
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ())
 
-let test_check_package_filter_only_hydrates_dependency_library_module = fun _ctx ->
+let test_check_package_filter_persists_locally_built_dependency_modules = fun _ctx ->
   with_tempdir_result "riot_check_dependency_library_module_only"
     (fun tmpdir ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
@@ -716,7 +835,7 @@ let test_check_package_filter_only_hydrates_dependency_library_module = fun _ctx
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
                   Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
-                  |> Result.expect ~msg:"package check should only require dependency library typings";
+                  |> Result.expect ~msg:"package check should persist locally built dependency module typings";
                   let typ_store = workspace_typ_store workspace in
                   let std_typings = Typ.Store.load_module_typings typ_store ~module_name:"Std" in
                   let internal_typings = Typ.Store.load_module_typings typ_store ~module_name:"Internal" in
@@ -732,13 +851,71 @@ let test_check_package_filter_only_hydrates_dependency_library_module = fun _ctx
                   in
                   if not (Option.is_some std_typings) then
                     Error "expected dependency library module typings to be persisted"
-                  else if Option.is_some internal_typings then
-                    Error "expected non-library dependency module to stay unloaded"
+                  else if not (Option.is_some internal_typings) then
+                    Error "expected dependency package module typings to be cached locally"
                   else (
                     Test.assert_equal ~expected:0 ~actual:diagnostic_count;
                     Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                     Ok ()
                   )
+            )
+        ))
+
+let test_check_package_filter_loads_dependency_library_reexports_from_sibling_sources = fun _ctx ->
+  with_tempdir_result "riot_check_dependency_library_reexports"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let std_root = Path.(workspace_root / Path.v "packages/std") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let std_source = Path.(std_root / Path.v "src/std.ml") in
+      let calendar_source = Path.(std_root / Path.v "src/calendar.ml") in
+      let app_source = Path.(app_root / Path.v "src/app.ml") in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package
+            ~name:"std"
+            ~path:std_root
+            ~relative_path:(Path.v "packages/std")
+            ~library:Riot_model.Package.{ path = std_source }
+            ~sources:{ empty_sources with src = [ Path.v "src/std.ml"; Path.v "src/calendar.ml" ] }
+            ();
+          make_package
+            ~name:"app"
+            ~path:app_root
+            ~relative_path:(Path.v "packages/app")
+            ~dependencies:[ make_dependency "std" ]
+            ~sources:{ empty_sources with src = [ Path.v "src/app.ml" ] }
+            ();
+        ] in
+      match write_file std_source "module Calendar = Calendar\n" with
+      | Error err -> Error err
+      | Ok () -> (
+          match write_file calendar_source "let epoch = 1970\n" with
+          | Error err -> Error err
+          | Ok () -> (
+              match write_file app_source "open Std\nlet answer = Calendar.epoch\n" with
+              | Error err -> Error err
+              | Ok () ->
+                  let matches = parse_check [ "check"; "--json"; "-p"; "app" ]
+                  |> Result.expect ~msg:"parse check args" in
+                  let stdout, stdout_contents = make_capture_writer () in
+                  let stderr, stderr_contents = make_capture_writer () in
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches
+                  |> Result.expect ~msg:"package check should load dependency library reexports from sibling sources";
+                  let events = parse_jsonl (stdout_contents ()) in
+                  let diagnostic_count =
+                    events
+                    |> List.filter
+                      (fun json ->
+                        match Data.Json.get_field "type" json with
+                        | Some (Data.Json.String "check_diagnostic") -> true
+                        | _ -> false)
+                    |> List.length
+                  in
+                  Test.assert_equal ~expected:0 ~actual:diagnostic_count;
+                  Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+                  Ok ()
             )
         ))
 
@@ -1618,11 +1795,14 @@ let tests =
     case "check: package filter uses sibling source exports during package scans" test_check_package_filter_uses_package_session_for_cross_file_exports;
     case "check: package filter uses sibling source record types during package scans" test_check_package_filter_uses_package_session_for_cross_file_record_types;
     case "check: package filter loads workspace dependency summaries" test_check_package_filter_loads_workspace_dependency_summaries;
+    case "check: package filter loads external dependency summaries" test_check_package_filter_loads_external_dependency_summaries;
     case "check: package filter persists module typings to store" test_check_package_filter_persists_module_typings_to_store;
     case "check: package filter persists interface-shaped module typings" test_check_package_filter_persists_interface_shaped_module_typings;
+    case "check: workspace typing warmup persists local dependency bundles" test_populate_workspace_typings_persists_local_dependency_bundles;
     case "check: package filter reports signature inclusion errors" test_check_package_filter_reports_signature_inclusion_errors;
     case "check: package filter reexports workspace dependency summaries via include" test_check_package_filter_reexports_workspace_dependency_summaries_via_include;
-    case "check: package filter only hydrates dependency library modules" test_check_package_filter_only_hydrates_dependency_library_module;
+    case "check: package filter persists locally built dependency modules" test_check_package_filter_persists_locally_built_dependency_modules;
+    case "check: package filter loads dependency library reexports from sibling sources" test_check_package_filter_loads_dependency_library_reexports_from_sibling_sources;
     case "check: package filter uses sibling dependency record reexports during package scans" test_check_package_filter_uses_sibling_reexported_dependency_record_types;
     case "check: package filter reexports same-named workspace modules via alias" test_check_package_filter_reexports_same_named_workspace_modules_via_alias;
     case "check: package filter preserves nested same-named alias reexports" test_check_package_filter_preserves_nested_same_named_alias_reexports;

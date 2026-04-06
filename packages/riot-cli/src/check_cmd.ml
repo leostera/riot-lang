@@ -26,6 +26,8 @@ type error =
   | PackageFilterRequiresWorkspace of { package_name: string }
   | UnknownPackage of { package_name: string }
   | UnknownDiagnosticId of { diagnostic_id: string }
+  | RegistryInitializationFailed of { registry: string; error: string }
+  | WorkspacePreparationFailed of { path: Path.t; error: string }
 
 type diagnostic =
   | Parse of Syn.Diagnostic.t
@@ -56,6 +58,14 @@ type prepared_source =
 type readable_typ_source = {
   path: Path.t;
   text: string;
+  source_id: Typ.SourceId.t;
+  source: Typ.Source.t;
+}
+
+type package_typ_source = {
+  internal_module_name: string;
+  public_module_name: string option;
+  display_path: Path.t;
   source_id: Typ.SourceId.t;
   source: Typ.Source.t;
 }
@@ -163,6 +173,37 @@ let resolve_root = fun (workspace: Workspace.t option) ->
   match workspace with
   | Some workspace -> workspace.root
   | None -> Env.current_dir () |> Result.unwrap_or ~default:(Path.v ".")
+
+let default_registry_name = "pkgs.ml"
+
+let workspace_manifest_path = fun (workspace: Workspace.t) ->
+  Path.(workspace.root / Path.v "riot.toml")
+
+let workspace_can_be_prepared = fun (workspace: Workspace.t) ->
+  match Fs.exists (workspace_manifest_path workspace) with
+  | Ok true -> true
+  | Ok false
+  | Error _ -> false
+
+let prepare_workspace = fun (workspace: Workspace.t) ->
+  if not (workspace_can_be_prepared workspace) then
+    Ok workspace
+  else
+    match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:default_registry_name () with
+    | Error err ->
+        Error (RegistryInitializationFailed { registry = default_registry_name; error = err })
+    | Ok registry ->
+        Riot_deps.ensure_workspace
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ()
+        |> Result.map_error
+          (fun err ->
+            WorkspacePreparationFailed {
+              path = workspace.root;
+              error = Riot_model.Pm_error.message err;
+            })
 
 let resolve_search_roots = fun ?package_filter (workspace: Workspace.t option) ->
   match workspace, package_filter with
@@ -307,6 +348,10 @@ let message = function
   | PackageFilterRequiresWorkspace { package_name } -> "cannot use --package " ^ package_name ^ " outside a riot workspace"
   | UnknownPackage { package_name } -> "unknown workspace package: " ^ package_name
   | UnknownDiagnosticId { diagnostic_id } -> "unknown typ diagnostic id: " ^ diagnostic_id
+  | RegistryInitializationFailed { registry; error } ->
+      "failed to initialize registry '" ^ registry ^ "': " ^ error
+  | WorkspacePreparationFailed { path; error } ->
+      "failed to prepare workspace '" ^ Path.to_string path ^ "': " ^ error
 
 let fail = fun ?(stderr = default_stderr) err ->
   stderr ("\027[1;31mError\027[0m: " ^ message err ^ "\n");
@@ -637,7 +682,7 @@ let report_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
 let workspace_package_by_name = fun (workspace: Workspace.t) package_name ->
   workspace.packages
   |> List.find_opt
-    (fun (pkg: Package.t) -> Package.is_workspace_member pkg && String.equal pkg.name package_name)
+    (fun (pkg: Package.t) -> String.equal pkg.name package_name)
 
 let package_typ_source_files = fun ?(include_dev = false) (pkg: Package.t) ->
   let scoped_sources =
@@ -669,6 +714,9 @@ let package_library_typ_source_files = fun (pkg: Package.t) ->
           [ library_path ]
       in
       files |> List.filter is_supported_source_file |> dedupe_paths
+
+let package_typ_support_source_files = fun (pkg: Package.t) ->
+  package_typ_source_files ~include_dev:false pkg
 
 let merge_module_exports = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -764,6 +812,81 @@ let workspace_typ_store = fun (workspace: Workspace.t) ->
   in
   Typ.Store.create contentstore ()
 
+let workspace_build_store = fun (workspace: Workspace.t) ~profile ~target ->
+  Riot_store.Store.create_for_lane ~workspace ~profile ~target
+
+let resolve_typ_profile = fun ~(workspace: Workspace.t) ~(pkg: Package.t) ->
+  let base_profile = Profile.apply_overrides Profile.debug workspace.profile_overrides in
+  let profile = Profile.apply_overrides base_profile pkg.compiler.profile_overrides in
+  let target_platform =
+    Build_ctx.make
+      ~session_id:(Session_id.make ())
+      ~profile
+      ()
+    |> Build_ctx.target_platform_name
+  in
+  match List.assoc_opt target_platform pkg.compiler.target_overrides with
+  | Some { Package.profile_override = Some override } ->
+      Profile.apply_override profile override
+  | Some { Package.profile_override = None }
+  | None -> profile
+
+let workspace_typ_toolchain = fun (workspace: Workspace.t) ->
+  Riot_toolchain.init ~config:(Toolchain_config.from_workspace workspace)
+
+let source_origin_path_for_module = fun (mod_: Riot_model.Module.t) ->
+  let qualified_name =
+    mod_
+    |> Riot_model.Module.module_name
+    |> Riot_model.Module_name.qualified_name
+  in
+  match Riot_model.Module.kind mod_ with
+  | `interface -> Path.v (qualified_name ^ ".mli")
+  | `implementation -> Path.v (qualified_name ^ ".ml")
+
+let public_module_name_of_module = fun (pkg: Package.t) (mod_: Riot_model.Module.t) ->
+  let package_namespace = String.capitalize_ascii pkg.name in
+  let module_name = Riot_model.Module.module_name mod_ in
+  let namespace = module_name |> Riot_model.Module_name.namespace |> Riot_model.Namespace.to_list in
+  let simple_name = Riot_model.Module_name.to_string module_name in
+  match namespace with
+  | [] when String.equal simple_name package_namespace -> Some simple_name
+  | [ root ] when String.equal root package_namespace -> Some simple_name
+  | _ -> None
+
+let injected_open_lines = fun (open_modules: Riot_planner.Module_node.t Std.Graph.SimpleGraph.node list) ->
+  open_modules
+  |> List.filter_map
+    (fun (node: Riot_planner.Module_node.t Std.Graph.SimpleGraph.node) ->
+      match node.value.kind with
+      | Riot_planner.Module_node.ML mod_
+      | Riot_planner.Module_node.MLI mod_ -> Some ("open " ^ Riot_model.Module.namespaced_name mod_)
+      | _ -> None)
+
+let planner_source_text = fun ~pkg (node: Riot_planner.Module_node.t Std.Graph.SimpleGraph.node) ->
+  let source_result =
+    match node.value.file with
+    | Riot_planner.Module_node.Concrete path ->
+        let display_path = Path.(pkg.Package.path / path) in
+        Fs.read display_path |> Result.map (fun text -> (text, display_path))
+    | Riot_planner.Module_node.Generated { path; contents } ->
+        let display_path = Path.(pkg.Package.path / path) in
+        Ok (contents, display_path)
+  in
+  match source_result with
+  | Error _ as err -> err
+  | Ok (raw_text, display_path) ->
+      let prelude =
+        injected_open_lines node.value.open_modules
+      in
+      let text =
+        if List.is_empty prelude then
+          raw_text
+        else
+          String.concat "\n" (prelude @ [ ""; raw_text ])
+      in
+      Ok (text, display_path)
+
 let sanitize_module_name = fun name ->
   String.map
     (fun ch ->
@@ -785,6 +908,86 @@ let source_rank_for_typ_order = fun path ->
   | Some ".mli" -> 0
   | Some ".ml" -> 1
   | _ -> 2
+
+let package_typ_sources_from_planner = fun ~(workspace: Workspace.t) ~(pkg: Package.t) ->
+  match workspace_typ_toolchain workspace with
+  | Error _ -> None
+  | Ok toolchain ->
+      let profile = resolve_typ_profile ~workspace ~pkg in
+      let build_ctx =
+        Build_ctx.make
+          ~session_id:(Session_id.make ())
+          ~profile
+          ()
+      in
+      let store =
+        workspace_build_store
+          workspace
+          ~profile:profile.name
+          ~target:(Riot_dirs.host_target ())
+      in
+      let input =
+        Riot_planner.Module_planner.{
+          package = pkg;
+          profile;
+          ctx = build_ctx;
+          toolchain;
+          workspace;
+          planning_root = Path.v "src";
+          depset = [];
+          store;
+        }
+      in
+      match Riot_planner.Module_planner.plan_node input with
+      | Error _ -> None
+      | Ok plan -> (
+          match Std.Graph.SimpleGraph.topo_sort plan.module_graph with
+          | Error _ -> None
+          | Ok nodes ->
+              nodes
+              |> List.filter_map
+                (fun (node: Riot_planner.Module_node.t Std.Graph.SimpleGraph.node) ->
+                  match node.value.kind with
+                  | Riot_planner.Module_node.ML mod_
+                  | Riot_planner.Module_node.MLI mod_ -> (
+                      match planner_source_text ~pkg node with
+                      | Error _ -> None
+                      | Ok (text, display_path) ->
+                          let source_id =
+                            Typ.SourceId.of_int (Std.Graph.SimpleGraph.Node_id.to_int node.id)
+                          in
+                          let source =
+                            Typ.Source.make
+                              ~source_id
+                              ~kind:(
+                                match node.value.file with
+                                | Riot_planner.Module_node.Generated _ -> Typ.Source.Generated
+                                | Riot_planner.Module_node.Concrete _ -> Typ.Source.File
+                              )
+                              ~origin:(Typ.Source.Path (source_origin_path_for_module mod_))
+                              ~revision:0
+                              ~text
+                          in
+                          Some {
+                            internal_module_name =
+                              mod_
+                              |> Riot_model.Module.module_name
+                              |> Riot_model.Module_name.qualified_name;
+                            public_module_name = public_module_name_of_module pkg mod_;
+                            display_path;
+                            source_id;
+                            source;
+                          }
+                    )
+                  | Riot_planner.Module_node.C
+                  | Riot_planner.Module_node.H
+                  | Riot_planner.Module_node.Other _
+                  | Riot_planner.Module_node.Root
+                  | Riot_planner.Module_node.Native _
+                  | Riot_planner.Module_node.Library _
+                  | Riot_planner.Module_node.Binary _ -> None)
+              |> Option.some
+        )
 
 let qualify_typings_exports = fun module_name exports ->
   List.map (fun (name, scheme) -> (module_name ^ "." ^ name, scheme)) exports
@@ -963,22 +1166,21 @@ let ordered_readable_typ_sources = fun readable_sources ->
       | Some sources -> sources
       | None -> [])
 
-let analyze_typ_sources_in_order = fun config readable_sources ->
-  let ordered_sources = ordered_readable_typ_sources readable_sources in
+let analyze_package_typ_sources_in_order = fun config ordered_sources ->
   let rec loop loaded_modules analyses = function
     | [] -> List.rev analyses
-    | (source: readable_typ_source) :: rest ->
-        let module_name = module_name_for_path source.path in
+    | (source: package_typ_source) :: rest ->
         let config = config
           |> Typ.Config.with_loaded_modules ~loaded_modules
           |> Typ.Config.with_ambient
-            ~ambient:(ambient_env_for_loaded_modules module_name loaded_modules)
+            ~ambient:(ambient_env_for_loaded_modules source.internal_module_name loaded_modules)
           |> Typ.Config.with_ambient_type_decls
-            ~ambient_type_decls:(ambient_type_decls_for_loaded_modules module_name loaded_modules)
+            ~ambient_type_decls:
+              (ambient_type_decls_for_loaded_modules source.internal_module_name loaded_modules)
         in
         let analysis = Typ.SourceAnalysis.analyze ~config source.source in
         let typings = Typ.ModuleTypings.of_file_summary
-          ~module_name
+          ~module_name:source.internal_module_name
           ~source_hash:(Typ.Source.input_hash source.source)
           analysis.file_summary in
         let () =
@@ -991,43 +1193,36 @@ let analyze_typ_sources_in_order = fun config readable_sources ->
   in
   loop config.Typ.Config.loaded_modules [] ordered_sources
 
-let module_typings_of_analyses = fun readable_sources analyses ->
+let package_module_typings_of_analyses = fun ordered_sources analyses ->
   analyses
   |> List.filter_map
     (fun (source_id, analysis) ->
       match List.find_opt
-        (fun (source: readable_typ_source) -> Typ.SourceId.equal source.source_id source_id)
-        readable_sources
+        (fun (source: package_typ_source) -> Typ.SourceId.equal source.source_id source_id)
+        ordered_sources
       with
       | None -> None
+      | Some { public_module_name = None; _ } -> None
       | Some source ->
           Some
             (Typ.ModuleTypings.of_file_summary
-              ~module_name:(module_name_for_path source.path)
+              ~module_name:(Option.expect ~msg:"public module name" source.public_module_name)
               ~source_hash:(Typ.Source.input_hash source.source)
               analysis.Typ.SourceAnalysis.file_summary))
   |> merge_loaded_module_typings []
 
-let load_package_module_typings_from_store = fun store pkg ->
-  let module_names =
-    package_library_typ_source_files pkg
-    |> List.map module_name_for_path
-    |> List.sort_uniq String.compare
-  in
-  let loaded =
-    module_names
-    |> List.filter_map (fun module_name -> Typ.Store.load_module_typings store ~module_name)
-  in
-  if List.length loaded = List.length module_names then
-    Some loaded
-  else
-    None
+let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
+  Typ.Store.load_package_module_typings store ~package_name:pkg.name
 
-let persist_module_typings = fun store typings ->
+let persist_module_typings = fun store ?package_name typings ->
   typings
   |> List.iter
     (fun typings ->
-      ignore (Typ.Store.save_module_typings store typings))
+      ignore (Typ.Store.save_module_typings store typings));
+  match package_name with
+  | Some package_name ->
+      ignore (Typ.Store.save_package_module_typings store ~package_name typings)
+  | None -> ()
 
 let workspace_dependency_packages = fun ~include_dev (workspace: Workspace.t) (pkg: Package.t) ->
   let dependencies =
@@ -1063,39 +1258,48 @@ let workspace_module_typings_for_package =
                 merge_loaded_module_typings dependency_typings Typ.Config.default.loaded_modules
               in
               let config = Typ.Config.default
-              |> Typ.Config.with_loaded_modules ~loaded_modules
-              |> Typ.Config.with_store ~store:(Some typ_store)
-              |> Typ.Config.with_capture_traces ~capture_traces:false
-              in
-              let (session, prepared_sources) =
-                create_typ_session config (package_library_typ_source_files pkg)
+                |> Typ.Config.with_loaded_modules ~loaded_modules
+                |> Typ.Config.with_store ~store:(Some typ_store)
+                |> Typ.Config.with_capture_traces ~capture_traces:false
               in
               let typings =
-                prepared_sources
-                |> List.filter_map
-                  (
-                    function
-                    | Readable_source { path; source_id; _ } ->
-                        Some (module_name_for_path path, source_id)
-                    | Unreadable_source _ -> None
-                  )
-                |> List.fold_left
-                  (fun grouped (module_name, source_id) ->
-                    let existing =
-                      match List.assoc_opt module_name grouped with
-                      | Some source_ids -> source_ids
-                      | None -> []
+                match package_typ_sources_from_planner ~workspace ~pkg with
+                | Some ordered_sources ->
+                    analyze_package_typ_sources_in_order config ordered_sources
+                    |> package_module_typings_of_analyses ordered_sources
+                | None ->
+                    let session_paths = package_typ_support_source_files pkg in
+                    let root_paths = package_library_typ_source_files pkg in
+                    let (session, prepared_sources) =
+                      create_typ_session config session_paths
                     in
-                    (module_name, existing @ [ source_id ]) :: List.remove_assoc module_name grouped)
-                  []
-                |> List.rev
-                |> List.concat_map
-                  (fun (_module_name, roots) ->
-                    match Typ.Session.prepare_snapshot session ~roots with
-                    | Ok snapshot -> Typ.Snapshot.module_typings snapshot
-                    | Error _ -> [])
+                    prepared_sources
+                    |> List.filter_map
+                      (
+                        function
+                        | Readable_source { path; source_id; _ }
+                          when List.exists (fun root_path -> Path.equal root_path path) root_paths ->
+                            Some (module_name_for_path path, source_id)
+                        | Readable_source _
+                        | Unreadable_source _ -> None
+                      )
+                    |> List.fold_left
+                      (fun grouped (module_name, source_id) ->
+                        let existing =
+                          match List.assoc_opt module_name grouped with
+                          | Some source_ids -> source_ids
+                          | None -> []
+                        in
+                        (module_name, existing @ [ source_id ]) :: List.remove_assoc module_name grouped)
+                      []
+                    |> List.rev
+                    |> List.concat_map
+                      (fun (_module_name, roots) ->
+                        match Typ.Session.prepare_snapshot session ~roots with
+                        | Ok snapshot -> Typ.Snapshot.module_typings snapshot
+                        | Error _ -> [])
               in
-              let () = persist_module_typings typ_store typings in
+              let () = persist_module_typings typ_store ~package_name:pkg.name typings in
               typings
         in
         let typings = merge_loaded_module_typings package_typings dependency_typings in
@@ -1105,6 +1309,34 @@ let workspace_module_typings_for_package =
         typings
   in
   load
+
+let workspace_typing_targets = fun (workspace: Workspace.t) package_names ->
+  if List.is_empty package_names then
+    workspace.packages |> List.filter Package.is_workspace_member
+  else
+    package_names
+    |> List.filter_map (workspace_package_by_name workspace)
+    |> List.sort_uniq
+      (fun (left: Package.t) (right: Package.t) ->
+        String.compare left.name right.name)
+
+let populate_workspace_typings = fun ~workspace ~package_names () ->
+  match prepare_workspace workspace with
+  | Error _ -> ()
+  | Ok prepared_workspace ->
+      let typ_store = workspace_typ_store prepared_workspace in
+      let summary_cache = ref [] in
+      workspace_typing_targets prepared_workspace package_names
+      |> List.iter
+        (fun pkg ->
+          let _ =
+            workspace_module_typings_for_package
+              summary_cache
+              typ_store
+              prepared_workspace
+              pkg
+          in
+          ())
 
 let typ_config_for_source_group = fun ?workspace ~summary_cache paths ->
   match workspace, paths with
@@ -1139,22 +1371,18 @@ let checked_file_of_analysis = fun path (analysis: Typ.SourceAnalysis.t) ->
   let diagnostics = diagnostics_of_report report in
   Typed { path; report; diagnostics }
 
-let check_source_group = fun ?workspace ~summary_cache ?roots paths ->
-  let root_paths =
-    match roots with
-    | Some roots -> roots
-    | None -> paths
-  in
-  let config = typ_config_for_source_group ?workspace ~summary_cache root_paths in
-  let (session, prepared_sources) = create_typ_session config paths in
-  let prepared_source_path = function
-    | Readable_source { path; _ }
-    | Unreadable_source { path; _ } -> path
-  in
-  let prepared_by_path = prepared_sources
+let prepared_source_path = function
+  | Readable_source { path; _ }
+  | Unreadable_source { path; _ } -> path
+
+let prepared_sources_by_path = fun prepared_sources ->
+  prepared_sources
   |> List.fold_left
-    (fun prepared_by_path prepared -> (path_key (prepared_source_path prepared), prepared) :: prepared_by_path)
-    [] in
+    (fun prepared_by_path prepared ->
+      (path_key (prepared_source_path prepared), prepared) :: prepared_by_path)
+    []
+
+let checked_files_for_session = fun config session prepared_by_path root_paths ->
   let target_prepared_sources =
     root_paths
     |> List.filter_map
@@ -1194,6 +1422,20 @@ let check_source_group = fun ?workspace ~summary_cache ?roots paths ->
                   Unreadable { path; reason }
             )
         )
+
+let check_source_group = fun ?workspace ~summary_cache ?roots paths ->
+  let root_paths =
+    match roots with
+    | Some roots -> roots
+    | None -> paths
+  in
+  let config = typ_config_for_source_group ?workspace ~summary_cache root_paths in
+  let (session, prepared_sources) = create_typ_session config paths in
+  checked_files_for_session
+    config
+    session
+    (prepared_sources_by_path prepared_sources)
+    root_paths
 
 let package_root_for_target = fun (workspace: Workspace.t) path ->
   workspace.packages |> List.filter Package.is_workspace_member |> List.sort
@@ -1240,26 +1482,59 @@ let session_source_paths_for_group = fun ?workspace ~scan_mode group_targets ->
     )
   | _ -> group_targets
 
-let check_target_files = fun ?workspace ~scan_mode target_files ->
+let grouped_root_targets_for_session = fun group_targets ->
+  group_targets
+  |> List.fold_left
+    (fun groups path ->
+      let module_name = module_name_for_path path in
+      let existing =
+        match List.assoc_opt module_name groups with
+        | Some existing -> existing
+        | None -> []
+      in
+      (module_name, existing @ [ path ]) :: List.remove_assoc module_name groups)
+    []
+  |> List.rev
+
+let check_target_files = fun ?workspace ~scan_mode ?on_result target_files ->
   if not scan_mode && Option.is_none workspace then
-    target_files |> List.map check_source_file
+    target_files
+    |> List.map
+      (fun path ->
+        let checked_file = check_source_file path in
+        let () =
+          match on_result with
+          | Some callback -> callback checked_file
+          | None -> ()
+        in
+        checked_file)
   else
     let summary_cache = ref [] in
-    let checked_by_path =
+    let checked_by_path = ref [] in
+    let emit checked_file =
+      checked_by_path := (path_key (checked_file_path checked_file), checked_file) :: !checked_by_path;
+      match on_result with
+      | Some callback -> callback checked_file
+      | None -> ()
+    in
+    let () =
       grouped_targets_for_session ?workspace target_files
-      |> List.concat_map
+      |> List.iter
         (fun (_, group_targets) ->
           let session_paths = session_source_paths_for_group ?workspace ~scan_mode group_targets in
-          check_source_group ?workspace ~summary_cache ~roots:group_targets session_paths)
-      |> List.fold_left
-        (fun checked_by_path checked_file ->
-          (path_key (checked_file_path checked_file), checked_file) :: checked_by_path)
-        []
+          let config = typ_config_for_source_group ?workspace ~summary_cache group_targets in
+          let (session, prepared_sources) = create_typ_session config session_paths in
+          let prepared_by_path = prepared_sources_by_path prepared_sources in
+          grouped_root_targets_for_session group_targets
+          |> List.iter
+            (fun (_, root_targets) ->
+              checked_files_for_session config session prepared_by_path root_targets
+              |> List.iter emit))
     in
     target_files
     |> List.map
       (fun path ->
-        checked_by_path
+        !checked_by_path
         |> List.assoc_opt (path_key path)
         |> Option.expect ~msg:(("missing checked result for " ^ Path.to_string path)))
 
@@ -1302,15 +1577,16 @@ let check_all = fun ?workspace ?package_filter ?on_start ?on_result paths ->
             | Some callback -> callback (List.length target_files)
             | None -> ()
           in
-          let checked_files = check_target_files ?workspace ~scan_mode target_files in
-          let _ =
-            checked_files
-            |> List.iter
-              (fun checked_file ->
+          let _checked_files =
+            check_target_files
+              ?workspace
+              ~scan_mode
+              ~on_result:(fun checked_file ->
                 summary := update_checked_summary !summary checked_file;
                 match on_result with
                 | Some callback -> callback checked_file
                 | None -> ())
+              target_files
           in
           Ok { target_count = List.length target_files; summary = !summary }
 
@@ -1422,6 +1698,14 @@ let run = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) m
   | Ok (Explain { diagnostic_id; json }) ->
       run_explain ~stdout ~stderr ~json diagnostic_id
   | Ok (Check { paths; package_filter; json; quiet }) -> (
+      let workspace =
+        match workspace with
+        | None -> Ok None
+        | Some workspace -> prepare_workspace workspace |> Result.map Option.some
+      in
+      match workspace with
+      | Error err -> fail ~stderr err
+      | Ok workspace ->
       let workspace_root = workspace_scope workspace
       |> Option.map (fun scope -> scope.workspace_root) in
       let on_start target_count =

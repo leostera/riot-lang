@@ -444,6 +444,17 @@ let build_error_already_reported = fun (err: Riot_build.build_error) ->
   | Riot_build.ClientError (Client.CycleDetected _) -> true
   | _ -> false
 
+let populate_workspace_typings_after_build = fun (request: request) ->
+  try
+    Check_cmd.populate_workspace_typings
+      ~workspace:request.build_request.workspace
+      ~package_names:request.build_request.packages
+      ()
+  with
+  | exn ->
+      let _ = exn in
+      trace_build "type-cache warmup failed"
+
 let run_request = fun (request: request) ->
   trace_build
     (
@@ -525,7 +536,9 @@ let run_request = fun (request: request) ->
               ^ " skipped)")
     );
   match result with
-  | Ok _ -> Ok ()
+  | Ok _ ->
+      populate_workspace_typings_after_build request;
+      Ok ()
   | Error err ->
       if not (build_error_already_reported err) then
         write_build_error ~mode:request.output_mode err;

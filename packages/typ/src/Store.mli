@@ -16,6 +16,16 @@ val load_module_typings: t -> module_name:string -> ModuleTypings.t option
 (** Load canonical module typings by their source hash, when present. *)
 val load_module_typings_by_hash: t -> source_hash:Crypto.hash -> ModuleTypings.t option
 
+(** Load all canonical module typings persisted for one package, when present. *)
+val load_package_module_typings: t -> package_name:string -> ModuleTypings.t list option
+
 (** Persist canonical module typings in both hash-addressed and module-name
     indexed forms. *)
 val save_module_typings: t -> ModuleTypings.t -> (unit, string) result
+
+(** Persist the canonical module typings bundle for one package.
+
+    Hosts use this to cache the locally computed module-typing closure for a
+    package under the current build lane. *)
+val save_package_module_typings:
+  t -> package_name:string -> ModuleTypings.t list -> (unit, string) result

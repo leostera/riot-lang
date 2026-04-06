@@ -119,6 +119,45 @@ let package_typ_summary_source_files = fun (pkg: Riot_model.Package.t) ->
   |> List.map (fun relative -> Path.(pkg.path / relative))
   |> dedupe_paths
 
+let package_library_typ_source_files = fun (pkg: Riot_model.Package.t) ->
+  match pkg.library with
+  | None -> package_typ_summary_source_files pkg
+  | Some { path = library_path } ->
+      let interface_path = Path.(add_extension (remove_extension library_path) ~ext:"mli") in
+      let files =
+        match Fs.exists interface_path with
+        | Ok true -> [ interface_path; library_path ]
+        | Ok false
+        | Error _ -> [ library_path ]
+      in
+      files |> dedupe_paths
+
+let default_registry_name = "pkgs.ml"
+
+let workspace_manifest_path = fun (workspace: Riot_model.Workspace.t) ->
+  Path.(workspace.root / Path.v "riot.toml")
+
+let workspace_can_be_prepared = fun (workspace: Riot_model.Workspace.t) ->
+  match Fs.exists (workspace_manifest_path workspace) with
+  | Ok true -> true
+  | Ok false
+  | Error _ -> false
+
+let prepare_workspace = fun state (workspace: Riot_model.Workspace.t) ->
+  if not (workspace_can_be_prepared workspace) then
+    Some workspace
+  else
+    match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:default_registry_name () with
+    | Error _ -> None
+    | Ok registry ->
+        Riot_deps.ensure_workspace
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ~workspace_manager:state.workspace_manager
+          ()
+        |> Result.to_option
+
 let workspace_typ_store_root = fun (workspace: Riot_model.Workspace.t) ->
   Path.(workspace.target_dir_root / Path.v "typ-cache")
 
@@ -147,25 +186,18 @@ let module_name_for_path = fun path ->
   |> sanitize_module_name
   |> String.capitalize_ascii
 
-let load_package_module_typings_from_store = fun store pkg ->
-  let module_names =
-    package_typ_summary_source_files pkg
-    |> List.map module_name_for_path
-  in
-  let loaded =
-    module_names
-    |> List.filter_map (fun module_name -> Typ.Store.load_module_typings store ~module_name)
-  in
-  if List.length loaded = List.length module_names then
-    Some loaded
-  else
-    None
+let load_package_module_typings_from_store = fun store (pkg: Riot_model.Package.t) ->
+  Typ.Store.load_package_module_typings store ~package_name:pkg.name
 
-let persist_module_typings = fun store typings ->
+let persist_module_typings = fun store ?package_name typings ->
   typings
   |> List.iter
     (fun typings ->
-      ignore (Typ.Store.save_module_typings store typings))
+      ignore (Typ.Store.save_module_typings store typings));
+  match package_name with
+  | Some package_name ->
+      ignore (Typ.Store.save_package_module_typings store ~package_name typings)
+  | None -> ()
 
 let persist_module_typings_for_source = fun store snapshot source_id ->
   match Typ.Query.module_typings_of snapshot source_id with
@@ -175,8 +207,7 @@ let persist_module_typings_for_source = fun store snapshot source_id ->
 let workspace_package_by_name = fun (workspace: Riot_model.Workspace.t) package_name ->
   workspace.packages
   |> List.find_opt
-    (fun (pkg: Riot_model.Package.t) ->
-      Riot_model.Package.is_workspace_member pkg && String.equal pkg.name package_name)
+    (fun (pkg: Riot_model.Package.t) -> String.equal pkg.name package_name)
 
 let merge_module_exports = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -339,15 +370,27 @@ let workspace_module_typings_for_package =
               |> Typ.Config.with_loaded_modules ~loaded_modules
               |> Typ.Config.with_store ~store:(Some typ_store)
               in
-              let (session, roots, _sources) =
+              let root_paths = package_library_typ_source_files pkg in
+              let (session, source_ids, sources) =
                 typ_session_with_paths ~config (package_typ_summary_source_files pkg)
               in
               let typings =
+                let roots =
+                  List.fold_left2
+                    (fun roots source_id (source: Typ.Source.t) ->
+                      match source.origin with
+                      | Typ.Source.Path path when List.exists (fun root_path -> Path.equal root_path path) root_paths ->
+                          roots @ [ source_id ]
+                      | _ -> roots)
+                    []
+                    source_ids
+                    sources
+                in
                 match roots with
                 | [] -> []
                 | _ -> module_typings_for_roots session roots
               in
-              let () = persist_module_typings typ_store typings in
+              let () = persist_module_typings typ_store ~package_name:pkg.name typings in
               typings
         in
         let typings =
@@ -402,6 +445,11 @@ let typ_config_for_document = fun state ->
             match Riot_model.Workspace_manager.scan state.workspace_manager pkg.path with
             | Error _ -> Typ.Config.default
             | Ok (workspace, _errors) ->
+                let workspace =
+                  match prepare_workspace state workspace with
+                  | Some prepared_workspace -> prepared_workspace
+                  | None -> workspace
+                in
                 let typ_store = workspace_typ_store workspace in
                 let summary_cache = ref [] in
                 let dependency_summaries =
