@@ -13,12 +13,60 @@ type test_request = {
   extra_args: string list;
 }
 
+type test_case_type =
+  | Test
+  | Property of { examples: int }
+
+type test_case_status =
+  | Passed
+  | Failed of string
+  | Skipped
+
+type test_case_result = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  result: test_case_status;
+  duration_us: int;
+}
+
+type failed_test = {
+  suite: suite_binary;
+  name: string;
+  message: string;
+  duration_us: int;
+}
+
+type test_suite_summary = {
+  total: int;
+  passed: int;
+  failed: int;
+  skipped: int;
+  duration_us: int;
+  results: test_case_result list;
+}
+
 type test_event =
   | Build of Build_runtime.build_event
   | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
-  | Summary of { total: int; passed: int; failed: int }
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+      started_at_us: int option;
+      completed_at_us: int option;
+      duration_us: int option;
+      summary: test_suite_summary
+    }
+  | Summary of {
+      total: int;
+      passed: int;
+      failed: int;
+      skipped: int;
+      failed_tests: failed_test list
+    }
 
 type test_error =
   | BuildFailed of Build_runtime.build_error
@@ -66,8 +114,180 @@ let test_error_message = function
   | SuiteExecutionError { reason; _ } -> reason
   | SuitesFailed count -> Int.to_string count ^ " test suite(s) failed"
 
+let json_type_name = function
+  | Data.Json.Null -> "null"
+  | Bool _ -> "bool"
+  | Int _ -> "int"
+  | Float _ -> "float"
+  | String _ -> "string"
+  | Array _ -> "array"
+  | Object _ -> "object"
+
+let error_expected = fun expected actual ->
+  Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
+
+let get_object = function
+  | Data.Json.Object fields -> Ok fields
+  | other -> error_expected "object" other
+
+let get_array = function
+  | Data.Json.Array values -> Ok values
+  | other -> error_expected "array" other
+
+let get_string = function
+  | Data.Json.String value -> Ok value
+  | other -> error_expected "string" other
+
+let get_int = function
+  | Data.Json.Int value -> Ok value
+  | other -> error_expected "int" other
+
+let field = fun name fields ->
+  match List.assoc_opt name fields with
+  | Some value -> Ok value
+  | None -> Error ("missing field " ^ name)
+
+let ( let* ) result f =
+  match result with
+  | Ok value -> f value
+  | Error _ as err -> err
+
+let optional_int_field = fun name fields ->
+  match List.assoc_opt name fields with
+  | Some value -> get_int value |> Result.map Option.some
+  | None -> Ok None
+
+let split_json_stdout = fun stdout ->
+  let lines = String.split_on_char '\n' stdout in
+  let indexed =
+    List.mapi (fun idx line -> (idx, line)) lines
+  in
+  match indexed
+  |> List.rev
+  |> List.find_opt (fun (_, line) -> not (String.equal (String.trim line) "")) with
+  | None -> Error "missing JSON output"
+  | Some (json_idx, json_line) ->
+      let prefix =
+        indexed
+        |> List.filter_map
+          (fun (idx, line) ->
+            if idx < json_idx then
+              Some line
+            else
+              None)
+        |> String.concat "\n"
+      in
+      Ok (prefix, json_line)
+
+let remove_json_args = fun args ->
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | "--json" :: rest -> loop acc rest
+    | "--format" :: _value :: rest -> loop acc rest
+    | arg :: rest when String.starts_with ~prefix:"--format=" arg -> loop acc rest
+    | arg :: rest -> loop (arg :: acc) rest
+  in
+  loop [] args
+
+let test_type_of_json = fun json ->
+  let* fields = get_object json in
+  let* type_json = field "type" fields in
+  let* kind = get_string type_json in
+  match kind with
+  | "test" ->
+      Ok Test
+  | "property" ->
+      let* examples_json = field "examples" fields in
+      let* examples = get_int examples_json in
+      Ok (Property { examples })
+  | other ->
+      Error ("unknown test type " ^ other)
+
+let test_status_of_json = fun json ->
+  let* fields = get_object json in
+  let* status_json = field "status" fields in
+  let* status = get_string status_json in
+  match status with
+  | "passed" ->
+      Ok Passed
+  | "skipped" ->
+      Ok Skipped
+  | "failed" ->
+      let* message_json = field "message" fields in
+      let* message = get_string message_json in
+      Ok (Failed message)
+  | other ->
+      Error ("unknown test status " ^ other)
+
+let test_result_of_json = fun index json ->
+  let* fields = get_object json in
+  let* name_json = field "name" fields in
+  let* name = get_string name_json in
+  let* test_type = test_type_of_json json in
+  let* result = test_status_of_json json in
+  let* duration_us = optional_int_field "duration_us" fields in
+  Ok { index; name; test_type; result; duration_us = Option.unwrap_or ~default:0 duration_us }
+
+let test_summary_of_json = fun json ->
+  let* fields = get_object json in
+  let* total_json = field "total" fields in
+  let* passed_json = field "passed" fields in
+  let* failed_json = field "failed" fields in
+  let* skipped_json = field "skipped" fields in
+  let* total = get_int total_json in
+  let* passed = get_int passed_json in
+  let* failed = get_int failed_json in
+  let* skipped = get_int skipped_json in
+  let* duration_us = optional_int_field "duration_us" fields in
+  Ok (total, passed, failed, skipped, Option.unwrap_or ~default:0 duration_us)
+
+let parse_test_suite_output = fun stdout ->
+  let* (prefix_stdout, json_line) = split_json_stdout stdout in
+  let* json = Data.Json.of_string json_line |> Result.map_error Data.Json.error_to_string in
+  let* fields = get_object json in
+  let* tests_json = field "tests" fields in
+  let* summary_json = field "summary" fields in
+  let* tests = get_array tests_json in
+  let rec parse_results index acc = function
+    | [] -> Ok (List.rev acc)
+    | test_json :: rest ->
+        let* result = test_result_of_json index test_json in
+        parse_results (index + 1) (result :: acc) rest
+  in
+  let* results = parse_results 1 [] tests in
+  let* (total, passed, failed, skipped, summary_duration_us) = test_summary_of_json summary_json in
+  let* started_at_us = optional_int_field "started_at_us" fields in
+  let* completed_at_us = optional_int_field "completed_at_us" fields in
+  let* duration_us = optional_int_field "duration_us" fields in
+  Ok (
+    prefix_stdout,
+    started_at_us,
+    completed_at_us,
+    duration_us,
+    {
+      total;
+      passed;
+      failed;
+      skipped;
+      duration_us = summary_duration_us;
+      results;
+    }
+  )
+
+let empty_suite_summary = {
+  total = 0;
+  passed = 0;
+  failed = 0;
+  skipped = 0;
+  duration_us = 0;
+  results = [];
+}
+
+let is_blank = fun s -> String.equal (String.trim s) ""
+
 let test_event_to_json = function
-  | Build event -> Event.to_json event
+  | Build event ->
+      Event.to_json event
   | NoSuitesFound { package_name; suite_name } ->
       Some (
         Data.Json.Object [ ("type", Data.Json.String "NoSuitesFound"); (
@@ -82,25 +302,109 @@ let test_event_to_json = function
             | None -> Data.Json.Null
           ); ]
       )
-  | RunningSuite { package_name; suite_name } -> Some (Data.Json.Object [
-    ("type", Data.Json.String "RunningSuite");
-    ("package", Data.Json.String package_name);
-    ("suite", Data.Json.String suite_name);
-  ])
-  | SuiteCompleted { suite; status; stdout; stderr } -> Some (Data.Json.Object [
-    ("type", Data.Json.String "SuiteCompleted");
-    ("package", Data.Json.String suite.package_name);
-    ("suite", Data.Json.String suite.suite_name);
-    ("status", Data.Json.Int status);
-    ("stdout", Data.Json.String stdout);
-    ("stderr", Data.Json.String stderr);
-  ])
-  | Summary { total; passed; failed } -> Some (Data.Json.Object [
-    ("type", Data.Json.String "TestSummary");
-    ("total", Data.Json.Int total);
-    ("passed", Data.Json.Int passed);
-    ("failed", Data.Json.Int failed);
-  ])
+  | RunningSuite { package_name; suite_name } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "RunningSuite");
+        ("package", Data.Json.String package_name);
+        ("suite", Data.Json.String suite_name);
+      ])
+  | SuiteCompleted {
+    suite;
+    status;
+    stdout;
+    stderr;
+    started_at_us;
+    completed_at_us;
+    duration_us;
+    summary
+  } ->
+      let test_results =
+        summary.results
+        |> List.map
+          (fun (result: test_case_result) ->
+            let status_fields =
+              match result.result with
+              | Passed -> [ ("status", Data.Json.String "passed") ]
+              | Skipped -> [ ("status", Data.Json.String "skipped") ]
+              | Failed message -> [
+                ("status", Data.Json.String "failed");
+                ("message", Data.Json.String message);
+              ]
+            in
+            let type_fields =
+              match result.test_type with
+              | Test -> [ ("type", Data.Json.String "test") ]
+              | Property { examples } -> [
+                ("type", Data.Json.String "property");
+                ("examples", Data.Json.Int examples);
+              ]
+            in
+            Data.Json.Object ([
+              ("name", Data.Json.String result.name);
+              ("index", Data.Json.Int result.index);
+              ("duration_us", Data.Json.Int result.duration_us);
+            ]
+            @ status_fields
+            @ type_fields))
+      in
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SuiteCompleted");
+        ("package", Data.Json.String suite.package_name);
+        ("suite", Data.Json.String suite.suite_name);
+        ("status", Data.Json.Int status);
+        ("stdout", Data.Json.String stdout);
+        ("stderr", Data.Json.String stderr);
+        (
+          "started_at_us",
+          match started_at_us with
+          | Some value -> Data.Json.Int value
+          | None -> Data.Json.Null
+        );
+        (
+          "completed_at_us",
+          match completed_at_us with
+          | Some value -> Data.Json.Int value
+          | None -> Data.Json.Null
+        );
+        (
+          "duration_us",
+          match duration_us with
+          | Some value -> Data.Json.Int value
+          | None -> Data.Json.Int summary.duration_us
+        );
+        ("tests", Data.Json.Array test_results);
+        (
+          "summary",
+          Data.Json.Object [
+            ("total", Data.Json.Int summary.total);
+            ("passed", Data.Json.Int summary.passed);
+            ("failed", Data.Json.Int summary.failed);
+            ("skipped", Data.Json.Int summary.skipped);
+            ("duration_us", Data.Json.Int summary.duration_us);
+          ]
+        );
+      ])
+  | Summary { total; passed; failed; skipped; failed_tests } ->
+      let failed_tests =
+        failed_tests
+        |> List.map
+          (fun (failed_test: failed_test) ->
+            Data.Json.Object [
+              ("package", Data.Json.String failed_test.suite.package_name);
+              ("suite", Data.Json.String failed_test.suite.suite_name);
+              ("name", Data.Json.String failed_test.name);
+              ("message", Data.Json.String failed_test.message);
+              ("duration_us", Data.Json.Int failed_test.duration_us);
+            ])
+      in
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "TestSummary");
+        ("total", Data.Json.Int total);
+        ("passed", Data.Json.Int passed);
+        ("failed", Data.Json.Int failed);
+        ("skipped", Data.Json.Int skipped);
+        ("failed_tests", Data.Json.Array failed_tests);
+      ])
 
 let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) results ->
   let find_suite_export (result: Riot_executor.Package_builder.build_result) =
@@ -132,6 +436,7 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
     )
 
 let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
+  let extra_args = remove_json_args extra_args @ [ "--json" ] in
   let cmd = Command.make
     binary_path
     ~env:[
@@ -174,6 +479,8 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         let total = ref 0 in
         let passed = ref 0 in
         let failed = ref 0 in
+        let skipped = ref 0 in
+        let failed_tests = ref [] in
         let extra_args =
           match request.query with
           | None -> request.extra_args
@@ -181,13 +488,19 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         in
         let rec loop = function
           | [] ->
-              on_event (Summary { total = !total; passed = !passed; failed = !failed });
+              on_event
+                (Summary {
+                  total = !total;
+                  passed = !passed;
+                  failed = !failed;
+                  skipped = !skipped;
+                  failed_tests = List.rev !failed_tests;
+                });
               if !failed > 0 then
                 Error (SuitesFailed !failed)
               else
                 Ok ()
           | suite :: rest -> (
-              total := !total + 1;
               match find_suite_binary_path ~store ~suite results with
               | Error _ as err -> err
               | Ok binary_path ->
@@ -201,19 +514,61 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                     suite;
                     reason
                   })
-                  | Ok output ->
-                      on_event
-                        (SuiteCompleted {
-                          suite;
-                          status = output.status;
-                          stdout = output.stdout;
-                          stderr = output.stderr
-                        });
-                      if Int.equal output.status 0 then
-                        passed := !passed + 1
-                      else
-                        failed := !failed + 1;
-                        loop rest
+                  | Ok output -> (
+                      let parsed_output =
+                        match parse_test_suite_output output.stdout with
+                        | Ok parsed -> Ok parsed
+                        | Error reason when
+                            Int.equal output.status 0
+                            && is_blank output.stdout
+                            && is_blank output.stderr ->
+                            Ok ("", None, None, None, empty_suite_summary)
+                        | Error reason -> Error reason
+                      in
+                      match parsed_output with
+                      | Error reason -> Error (SuiteExecutionError {
+                        suite;
+                        reason = "failed to parse test results from suite '"
+                        ^ suite.suite_name
+                        ^ "': "
+                        ^ reason
+                      })
+                      | Ok (stdout, started_at_us, completed_at_us, duration_us, summary) ->
+                          total := !total + summary.total;
+                          passed := !passed + summary.passed;
+                          failed := !failed + summary.failed;
+                          skipped := !skipped + summary.skipped;
+                          failed_tests :=
+                            List.rev_append
+                              (summary.results
+                              |> List.filter_map
+                                (fun (result: test_case_result) ->
+                                  match result.result with
+                                  | Failed message ->
+                                      Some {
+                                        suite;
+                                        name = result.name;
+                                        message;
+                                        duration_us = result.duration_us;
+                                      }
+                                  | Passed
+                                  | Skipped -> None))
+                              !failed_tests;
+                          on_event
+                            (
+                              SuiteCompleted {
+                                suite;
+                                status = output.status;
+                                stdout;
+                                stderr = output.stderr;
+                                started_at_us;
+                                completed_at_us;
+                                duration_us;
+                                summary;
+                              }
+                            );
+                          loop rest
+                    )
             )
         in
         loop suites

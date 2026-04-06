@@ -148,6 +148,7 @@ _riot() {
         'install:Install dependencies'
         'login:Save pkgs.ml API token'
         'logout:Remove saved pkgs.ml API token'
+        'yank:Yank a published package version'
         'new:Create new package'
         'search:Search registry packages'
         'toolchain:Manage OCaml toolchains'
@@ -263,6 +264,7 @@ _riot() {
             else
                 _arguments \
                     '(-p --package)'{-p,--package}'[Run tests from package]:package:->packages' \
+                    '--json[Emit machine-readable JSONL events]' \
                     '(-v --verbose)'{-v,--verbose}'[Verbose output]'
                 
                 case $state in
@@ -283,6 +285,7 @@ _riot() {
             else
                 _arguments \
                     '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
+                    '--json[Emit machine-readable JSONL events]' \
                     '(-v --verbose)'{-v,--verbose}'[Verbose output]'
                 
                 case $state in

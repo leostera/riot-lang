@@ -27,12 +27,17 @@ let test_collect_bench_suites_filters_workspace_binaries = fun _ctx ->
   Ok ()
 
 let test_bench_event_to_json_serializes_summary = fun _ctx ->
-  match Riot_build.bench_event_to_json (Riot_build.Summary { total = 3; passed = 2; failed = 1 }) with
+  match Riot_build.bench_event_to_json
+    (Riot_build.Summary { total = 3; completed = 2; skipped = 4; failed = 1 }) with
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "BenchSummary"))
         ~actual:(List.assoc_opt "type" fields);
       Test.assert_equal ~expected:(Some (Data.Json.Int 3)) ~actual:(List.assoc_opt "total" fields);
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 2))
+        ~actual:(List.assoc_opt "completed" fields);
+      Test.assert_equal ~expected:(Some (Data.Json.Int 4)) ~actual:(List.assoc_opt "skipped" fields);
       Ok ()
   | Some json ->
       Error ("expected JSON object, got " ^ Data.Json.to_string json)

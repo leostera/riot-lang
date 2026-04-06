@@ -11,12 +11,55 @@ type test_request = {
   query: string option;
   extra_args: string list;
 }
+type test_case_type =
+  | Test
+  | Property of { examples: int }
+type test_case_status =
+  | Passed
+  | Failed of string
+  | Skipped
+type test_case_result = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  result: test_case_status;
+  duration_us: int;
+}
+type failed_test = {
+  suite: suite_binary;
+  name: string;
+  message: string;
+  duration_us: int;
+}
+type test_suite_summary = {
+  total: int;
+  passed: int;
+  failed: int;
+  skipped: int;
+  duration_us: int;
+  results: test_case_result list;
+}
 type test_event =
   | Build of Build_runtime.build_event
   | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
-  | Summary of { total: int; passed: int; failed: int }
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+      started_at_us: int option;
+      completed_at_us: int option;
+      duration_us: int option;
+      summary: test_suite_summary
+    }
+  | Summary of {
+      total: int;
+      passed: int;
+      failed: int;
+      skipped: int;
+      failed_tests: failed_test list
+    }
 type test_error =
   | BuildFailed of Build_runtime.build_error
   | ClientError of Client.error

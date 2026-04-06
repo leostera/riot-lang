@@ -37,12 +37,38 @@ let test_collect_test_suites_filters_by_suite_name = fun _ctx ->
   Ok ()
 
 let test_test_event_to_json_serializes_summary = fun _ctx ->
-  match Riot_build.test_event_to_json (Riot_build.Summary { total = 3; passed = 2; failed = 1 }) with
+  match Riot_build.test_event_to_json
+    (Riot_build.Summary {
+      total = 3;
+      passed = 2;
+      failed = 1;
+      skipped = 4;
+      failed_tests = [
+        Riot_build.{
+          suite = { package_name = "demo"; suite_name = "alpha_tests" };
+          name = "alpha fails";
+          message = "boom";
+          duration_us = 42;
+        }
+      ];
+    }) with
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "TestSummary"))
         ~actual:(List.assoc_opt "type" fields);
       Test.assert_equal ~expected:(Some (Data.Json.Int 3)) ~actual:(List.assoc_opt "total" fields);
+      Test.assert_equal ~expected:(Some (Data.Json.Int 4)) ~actual:(List.assoc_opt "skipped" fields);
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Array [
+          Data.Json.Object [
+            ("package", Data.Json.String "demo");
+            ("suite", Data.Json.String "alpha_tests");
+            ("name", Data.Json.String "alpha fails");
+            ("message", Data.Json.String "boom");
+            ("duration_us", Data.Json.Int 42);
+          ]
+        ]))
+        ~actual:(List.assoc_opt "failed_tests" fields);
       Ok ()
   | Some json ->
       Error ("expected JSON object, got " ^ Data.Json.to_string json)

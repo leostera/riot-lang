@@ -17,6 +17,10 @@ val command: Std.ArgParser.command
 val format_pm_event:
   seen_registry_updates:string Std.Collections.HashSet.t -> Riot_model.Event.kind -> string option
 
+val reset_json_clock: started_at:Std.Time.Instant.t -> unit
+
+val write_build_event_json: Riot_build.build_event -> unit
+
 val write_pm_event:
   mode:output_mode ->
   seen_registry_updates:string Std.Collections.HashSet.t ->

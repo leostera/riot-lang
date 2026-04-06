@@ -61,8 +61,32 @@ let streaming_event_label = function
   | Client.PlanningFailed _ -> "PlanningFailed"
   | Client.CycleDetected _ -> "CycleDetected"
 
+let json_clock_origin = ref None
+
+let reset_json_clock = fun ~started_at -> json_clock_origin := Some started_at
+
+let event_elapsed_us = fun () ->
+  match !json_clock_origin with
+  | Some origin -> Time.Instant.elapsed origin |> Time.Duration.to_micros
+  | None ->
+      let origin = Time.Instant.now () in
+      json_clock_origin := Some origin;
+      0
+
+let stamp_json_event = fun (json: Data.Json.t) ->
+  match json with
+  | Data.Json.Object fields ->
+      let fields =
+        if Option.is_some (List.assoc_opt "emitted_at_us" fields) then
+          fields
+        else
+          fields @ [ ("emitted_at_us", Data.Json.Int (event_elapsed_us ())) ]
+      in
+      Data.Json.Object fields
+  | other -> other
+
 let write_json_event = fun (json: Data.Json.t) ->
-  print (Data.Json.to_string json);
+  print (Data.Json.to_string (stamp_json_event json));
   print "\n"
 
 let write_build_event_json = fun event ->
@@ -436,6 +460,7 @@ let run_request = fun (request: request) ->
   let seen_registry_updates = HashSet.create () in
   let displayed_packages = HashSet.create () in
   let start_time = Time.Instant.now () in
+  reset_json_clock ~started_at:start_time;
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let result =

@@ -101,12 +101,60 @@ type test_request = Test_runtime.test_request = {
   extra_args: string list;
 }
 
+type test_case_type = Test_runtime.test_case_type =
+  | Test
+  | Property of { examples: int }
+
+type test_case_status = Test_runtime.test_case_status =
+  | Passed
+  | Failed of string
+  | Skipped
+
+type test_case_result = Test_runtime.test_case_result = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  result: test_case_status;
+  duration_us: int;
+}
+
+type failed_test = Test_runtime.failed_test = {
+  suite: suite_binary;
+  name: string;
+  message: string;
+  duration_us: int;
+}
+
+type test_suite_summary = Test_runtime.test_suite_summary = {
+  total: int;
+  passed: int;
+  failed: int;
+  skipped: int;
+  duration_us: int;
+  results: test_case_result list;
+}
+
 type test_event = Test_runtime.test_event =
   | Build of build_event
   | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
-  | Summary of { total: int; passed: int; failed: int }
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+      started_at_us: int option;
+      completed_at_us: int option;
+      duration_us: int option;
+      summary: test_suite_summary
+    }
+  | Summary of {
+      total: int;
+      passed: int;
+      failed: int;
+      skipped: int;
+      failed_tests: failed_test list
+    }
 
 type test_error = Test_runtime.test_error =
   | BuildFailed of build_error
@@ -130,12 +178,63 @@ type bench_request = Bench_runtime.bench_request = {
   extra_args: string list;
 }
 
+type bench_statistics = Bench_runtime.bench_statistics = {
+  min: Time.Duration.t;
+  max: Time.Duration.t;
+  mean: Time.Duration.t;
+  median: Time.Duration.t;
+  std_dev: Time.Duration.t;
+  iterations: int;
+  total_time: Time.Duration.t;
+}
+
+type bench_case_status = Bench_runtime.bench_case_status =
+  | Completed of bench_statistics
+  | Failed of string
+  | Skipped
+
+type bench_case_result = Bench_runtime.bench_case_result = {
+  index: int;
+  name: string;
+  result: bench_case_status;
+}
+
+type bench_comparison_case_result = Bench_runtime.bench_comparison_case_result = {
+  name: string;
+  statistics: bench_statistics;
+}
+
+type bench_comparison_result = Bench_runtime.bench_comparison_result = {
+  description: string;
+  case_results: bench_comparison_case_result list;
+  fastest: string;
+  speedup_ratios: (string * float) list;
+}
+
+type bench_suite_summary = Bench_runtime.bench_suite_summary = {
+  total: int;
+  completed: int;
+  skipped: int;
+  failed: int;
+}
+
 type bench_event = Bench_runtime.bench_event =
   | Build of build_event
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
-  | Summary of { total: int; passed: int; failed: int }
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+      started_at_us: int option;
+      completed_at_us: int option;
+      duration_us: int option;
+      results: bench_case_result list;
+      comparisons: bench_comparison_result list;
+      summary: bench_suite_summary
+    }
+  | Summary of { total: int; completed: int; skipped: int; failed: int }
 
 type bench_error = Bench_runtime.bench_error =
   | BuildFailed of build_error

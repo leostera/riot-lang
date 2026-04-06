@@ -10,12 +10,57 @@ type bench_request = {
   query: string option;
   extra_args: string list;
 }
+type bench_statistics = {
+  min: Time.Duration.t;
+  max: Time.Duration.t;
+  mean: Time.Duration.t;
+  median: Time.Duration.t;
+  std_dev: Time.Duration.t;
+  iterations: int;
+  total_time: Time.Duration.t;
+}
+type bench_case_status =
+  | Completed of bench_statistics
+  | Failed of string
+  | Skipped
+type bench_case_result = {
+  index: int;
+  name: string;
+  result: bench_case_status;
+}
+type bench_comparison_case_result = {
+  name: string;
+  statistics: bench_statistics;
+}
+type bench_comparison_result = {
+  description: string;
+  case_results: bench_comparison_case_result list;
+  fastest: string;
+  speedup_ratios: (string * float) list;
+}
+type bench_suite_summary = {
+  total: int;
+  completed: int;
+  skipped: int;
+  failed: int;
+}
 type bench_event =
   | Build of Build_runtime.build_event
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
-  | Summary of { total: int; passed: int; failed: int }
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+      started_at_us: int option;
+      completed_at_us: int option;
+      duration_us: int option;
+      results: bench_case_result list;
+      comparisons: bench_comparison_result list;
+      summary: bench_suite_summary
+    }
+  | Summary of { total: int; completed: int; skipped: int; failed: int }
 type bench_error =
   | BuildFailed of Build_runtime.build_error
   | ClientError of Client.error

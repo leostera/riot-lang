@@ -12,6 +12,16 @@ let parse_run = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_test = fun args ->
+  match ArgParser.get_matches Riot_cli.Test_cmd.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
+let parse_bench = fun args ->
+  match ArgParser.get_matches Riot_cli.Bench_cmd.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
 let parse_install = fun args ->
   match ArgParser.get_matches Riot_cli.Install.command args with
   | Ok matches -> Ok matches
@@ -49,6 +59,24 @@ let test_build_accepts_release_flag = fun _ctx ->
         Ok ()
       else
         Error "expected --release flag to be parsed"
+
+let test_test_accepts_json_flag = fun _ctx ->
+  match parse_test [ "test"; "--json"; "-p"; "riot-build" ] with
+  | Error err -> Error ("expected test args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected test --json flag to be parsed"
+
+let test_bench_accepts_json_flag = fun _ctx ->
+  match parse_bench [ "bench"; "--json"; "-p"; "std" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected bench --json flag to be parsed"
 
 let test_run_accepts_missing_name = fun _ctx ->
   match parse_run [ "run" ] with
@@ -99,11 +127,14 @@ let test_run_defaults_remote_binary_to_repo_name = fun _ctx ->
   Ok ()
 
 let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
-  match Riot_cli.Run.run_with_workspace_info ~workspace:None ~workspace_error:None
-    (parse_run [ "run"; "leostera/hello-world@" ] |> Result.expect ~msg:"expected run args to parse") with
+  match Riot_cli.Run.run_with_workspace_info
+    ~workspace:None
+    ~workspace_error:None (parse_run [ "run"; "leostera/hello-world@" ] |> Result.expect ~msg:"expected run args to parse") with
   | Ok () -> Error "expected trailing @ remote target to fail"
   | Error (Failure message) ->
-      if String.equal message "invalid remote target 'leostera/hello-world@': expected binary name after @" then
+      if
+        String.equal message "invalid remote target 'leostera/hello-world@': expected binary name after @"
+      then
         Ok ()
       else
         Error ("unexpected trailing @ error: " ^ message)
@@ -249,11 +280,9 @@ let test_pm_event_shows_installing_with_padding = fun _ctx ->
     ~seen_registry_updates
     (Riot_model.Event.SourceDependencyMaterializationStarted {
       source_locator = "leostera/hello-world";
-      ref_ = None;
+      ref_ = None
     }) in
-  Test.assert_equal
-    ~expected:(Some "  \027[1;34mInstalling\027[0m leostera/hello-world")
-    ~actual;
+  Test.assert_equal ~expected:(Some "  \027[1;34mInstalling\027[0m leostera/hello-world") ~actual;
   Ok ()
 
 let test_pm_event_shows_locked_package = fun _ctx ->
@@ -278,6 +307,8 @@ let tests =
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
+    case "test: parse --json flag" test_test_accepts_json_flag;
+    case "bench: parse --json flag" test_bench_accepts_json_flag;
     case "run: parse missing name" test_run_accepts_missing_name;
     case "run: parse --update flag" test_run_accepts_update_flag;
     case "install: parse missing name" test_install_accepts_missing_name;

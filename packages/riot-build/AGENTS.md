@@ -20,6 +20,9 @@
 14. Workspace-free `run`/`install` entrypoints belong here too. If the CLI resolves a remote source or registry package target, `riot-build` should own the typed PM-event emission, external workspace loading, and then delegate back into the normal local build/install/run path instead of reimplementing that flow in `riot-cli`.
 15. External installs only promote into `~/.riot/bin`. Do not force a project-root promotion for detached source or registry installs.
 16. External source `run` / `install` requests are cache-first by default. Carry an explicit `update` flag in the typed request when the caller wants to refresh a cached source checkout before building or running it.
+17. `test` and `bench` should execute suite binaries through their machine-readable runners (`run-tests --json` / `run-benchmarks --json`) and aggregate case-level results in `riot-build`. Do not treat suite exit codes as the summary source of truth when structured results are available. The final test summary event should include aggregated failed test cases so downstream JSON consumers can surface failures without rescanning the full suite stream.
+18. Keep per-suite stdout/stderr as structured payload in the runtime events, but leave human filtering decisions to `riot-cli`. `riot-build` should not reintroduce special-case pretty rendering for zero-match suites.
+19. Preserve timing metadata from suite JSON in the exported `test_event` / `bench_event` payloads. Test cases should carry `duration_us`, and suite-completed events should carry `started_at_us`, `completed_at_us`, and `duration_us`.
 
 ## Validate
 
