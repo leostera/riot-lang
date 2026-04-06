@@ -202,7 +202,7 @@ let get_toolchain_lib_dir ?(version = ocaml_version) ?(target = get_host_triple 
         "package.ml",
         "dep_graph.ml",
         "action.ml",
-        "main.ml",
+        "driver.ml",
     ]
 
     for file in source_files[1:]:  # Skip const.ml since it's generated

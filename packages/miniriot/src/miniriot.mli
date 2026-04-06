@@ -12,6 +12,8 @@ module Graph = Graph
 
 module Io = Io
 
+module Driver = Driver
+
 module Ocaml_platform = Ocaml_platform
 
 module Package = Package

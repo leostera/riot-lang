@@ -1,4 +1,3 @@
-open Miniriot
 open Stdlib
 
 (** Actors - Minimal OCaml build system
