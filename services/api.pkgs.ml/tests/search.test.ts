@@ -29,7 +29,7 @@ describe("registry search api", () => {
 
   test("indexed packages are searchable by exact name and provenance", async () => {
     const { env } = makeEnv();
-    await indexPublishedRelease(env, makeReleaseRecord(), makeManifest());
+    await indexPublishedRelease(env, makeReleaseRecord());
 
     const exact = await handleRequest(
       new Request("https://registry.test/v1/search?q=kernel"),
@@ -67,7 +67,7 @@ describe("registry search api", () => {
 
   test("search miss returns an empty result set instead of throwing", async () => {
     const { env } = makeEnv();
-    await indexPublishedRelease(env, makeReleaseRecord(), makeManifest());
+    await indexPublishedRelease(env, makeReleaseRecord());
 
     const response = await handleRequest(
       new Request("https://registry.test/v1/search?q=definitely-not-a-package-12345"),
@@ -114,19 +114,7 @@ describe("registry search api", () => {
       updated_at: release.published_at,
     });
     await writePublishedRelease(db as unknown as D1Database, release);
-    await indexPublishedRelease(env, release, makeManifest({
-      package_name: release.package_name,
-      package_version: release.package_version,
-      package_locator: "",
-      source_url: "",
-      package_subdir: ".",
-      artifact_sha256: release.artifact_sha256,
-      package_description: release.package_description,
-      package_root_module: release.package_root_module,
-      dependencies: [],
-      source_archive_key: release.source_archive_key,
-      manifest_key: release.manifest_key,
-    }));
+    await indexPublishedRelease(env, release);
 
     const byName = await handleRequest(
       new Request("https://registry.test/v1/search?q=std"),

@@ -87,6 +87,46 @@ export async function revokeApiToken(
   }
 }
 
+export async function yankPackageRelease(
+  request: Request,
+  packageName: string,
+  version: string,
+): Promise<{
+  package_name: string;
+  package_version: string;
+  yanked: boolean;
+  yanked_at?: string;
+  yanked_by_github_login?: string;
+}> {
+  const response = await fetchFromRegistry(
+    request,
+    `/v1/me/packages/${encodeURIComponent(packageName)}/versions/${encodeURIComponent(version)}/yank`,
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+      },
+    },
+  );
+
+  if (response.status === 401) {
+    throw new Error("unauthorized");
+  }
+
+  if (!response.ok) {
+    const payload = (await safeJson(response)) as { message?: string } | null;
+    throw new Error(payload?.message ?? `Release yank failed: ${response.status}`);
+  }
+
+  return (await response.json()) as {
+    package_name: string;
+    package_version: string;
+    yanked: boolean;
+    yanked_at?: string;
+    yanked_by_github_login?: string;
+  };
+}
+
 export function buildGitHubLoginUrl(returnTo: string): string {
   const { registryBaseUrl } = getConfig();
   return `${registryBaseUrl}/v1/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;

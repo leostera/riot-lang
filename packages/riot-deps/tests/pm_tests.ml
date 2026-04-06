@@ -43,7 +43,7 @@ let make_registry_cache = fun () ->
   Pkgs_ml.Registry_cache.create ~riot_home:(Path.v "/Users/example/.riot") ~registry_name:"pkgs.ml" ()
   |> Result.expect ~msg:"expected registry cache to initialize"
 
-let make_release = fun ?(dependencies = []) ~version () ->
+let make_release = fun ?(dependencies = []) ?(yanked = false) ~version () ->
   Pkgs_ml.Sparse_index.{
     version;
     published_at = "2026-04-01T00:00:00Z";
@@ -61,6 +61,9 @@ let make_release = fun ?(dependencies = []) ~version () ->
     manifest_key = "manifests/" ^ version ^ ".json";
     source_key = "sources/" ^ version ^ ".tar.gz";
     dependencies;
+    yanked;
+    yanked_at = if yanked then Some "2026-04-06T10:00:00.000Z" else None;
+    yanked_by_github_login = if yanked then Some "leostera" else None;
   }
 
 let make_registry_dependency = fun name ->
@@ -2596,6 +2599,41 @@ public = true
       | Error err ->
           Error ("expected registry workspace load to succeed: " ^ Riot_deps.package_error_message err))
 
+let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
+  with_tempdir "riot_deps_load_registry_workspace_yanked"
+    (fun root ->
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:Path.(root / Path.v ".riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let version = "0.1.0" in
+      let registry = Pkgs_ml.Registry.in_memory
+        ~cache:registry_cache
+        ~packages:[
+          make_registry_document
+            ~name:"demo"
+            ~latest:version
+            ~releases:[ make_release ~version ~yanked:true () ]
+            ()
+        ]
+        ()
+      in
+      match Riot_deps.load_registry_workspace ~registry ~spec:"demo@0.1.0" () with
+      | Error (Riot_deps.RegistryReleaseYanked { package; version; registry }) ->
+          if
+            String.equal package "demo"
+            && String.equal version "0.1.0"
+            && String.equal registry "pkgs.ml"
+          then
+            Ok ()
+          else
+            Error "expected yanked registry release error to preserve package identity"
+      | Error err ->
+          Error ("expected yanked registry release error, got: " ^ Riot_deps.package_error_message err)
+      | Ok _ ->
+          Error "expected yanked registry workspace load to fail")
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -2635,6 +2673,7 @@ let tests =
     case "ensure lock: reuses existing lock and repairs missing registry packages" test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages;
     case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
     case "package management: load registry workspace materializes release" test_load_registry_workspace_materializes_release;
+    case "package management: load registry workspace rejects yanked release" test_load_registry_workspace_rejects_yanked_release;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;

@@ -28,6 +28,9 @@ type release = {
   manifest_key: string;
   source_key: string;
   dependencies: dependency list;
+  yanked: bool;
+  yanked_at: string option;
+  yanked_by_github_login: string option;
 }
 type package_document = {
   schema_version: int;

@@ -486,7 +486,7 @@ async function publishDerivedManifest(
       release_created: true,
     }),
   );
-  const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
+  const indexResult = await indexPublishedRelease(env, releaseRecord);
   await env.PACKAGE_PUBLISHED_QUEUE.send({
     type: "package.published",
     ...releaseRecord,

@@ -48,6 +48,9 @@ export interface IndexedPackageRelease {
   manifest_key: string;
   source_key: string;
   dependencies: Array<Record<string, unknown>>;
+  yanked?: boolean;
+  yanked_at?: string;
+  yanked_by_github_login?: string;
 }
 
 export interface PackageIndexDocument {
@@ -128,6 +131,9 @@ export interface PackageOverviewDocument {
   download_count: number;
   categories: string[];
   keywords: string[];
+  yanked: boolean;
+  yanked_at?: string;
+  yanked_by_github_login?: string;
 }
 
 export interface PackageExampleSummary {
@@ -221,6 +227,17 @@ export interface WebPackageListItem {
   repository?: string;
   subdir: string;
   release_count: number;
+  yanked_release_count: number;
+  package_path: string;
+  releases: WebPackageReleaseListItem[];
+}
+
+export interface WebPackageReleaseListItem {
+  version: string;
+  published_at: string;
+  yanked: boolean;
+  yanked_at?: string;
+  yanked_by_github_login?: string;
   package_path: string;
 }
 

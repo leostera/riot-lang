@@ -898,6 +898,14 @@ let find_release = fun registry ~package_name ~version ->
             String.equal release.version version)
           document.releases
       with
+      | Some release when release.yanked ->
+          Error ("package '"
+          ^ package_name
+          ^ "@"
+          ^ version
+          ^ "' was yanked from registry '"
+          ^ name registry
+          ^ "'")
       | Some release -> Ok release
       | None -> Error ("package '"
       ^ package_name

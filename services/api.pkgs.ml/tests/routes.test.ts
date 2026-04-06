@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { writeBinaryDownloadRecord, writePackageDownloadRecord } from "../src/access-db.ts";
+import { buildSessionCookie } from "../src/auth.ts";
 import { readArchiveFileFromTarGz } from "../src/archive.ts";
 import { handleRequest } from "../src/routes.ts";
 import {
@@ -8,6 +9,9 @@ import {
   listPackageRegistryEvents,
   readPackageClaim,
   readPublishedRelease,
+  writePackageClaim,
+  writeSessionRecord,
+  writeUserRecord,
 } from "../src/metadata-db.ts";
 import { FakeExecutionContext, makeEnv, makeTarGz } from "./helpers.ts";
 
@@ -40,6 +44,7 @@ describe("riot package registry routes", () => {
         auth_logout: "/v1/auth/logout",
         me: "/v1/me",
         tokens: "/v1/me/tokens",
+        yank_release: "/v1/me/packages/<package-name>/versions/<version>/yank",
         search: "/v1/search?q=<query>",
         events: "/v1/events?limit=<count>&after=<event-id>",
         package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
@@ -74,6 +79,7 @@ describe("riot package registry routes", () => {
         auth_logout: "/auth/logout",
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
+        yank_release: "/api/v1/me/packages/<package-name>/versions/<version>/yank",
         search: "/api/v1/search?q=<query>",
         events: "/api/v1/events?limit=<count>&after=<event-id>",
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
@@ -741,6 +747,130 @@ describe("riot package registry routes", () => {
     expect(await readPublishedRelease(db as unknown as D1Database, "std", "0.2.0")).not.toBeNull();
     expect(queue.messages).toHaveLength(2);
     expect(indexedQueue.messages).toHaveLength(2);
+  });
+
+  test("owners can yank a release and latest moves to the highest non-yanked version", async () => {
+    const { env, db } = makeEnv();
+    expect((await publishArtifact(env, await makePackageArtifact({
+      packageName: "std",
+      packageVersion: "0.1.0",
+      description: "The Riot standard library",
+      license: "Apache-2.0",
+    }))).status).toBe(200);
+    expect((await publishArtifact(env, await makePackageArtifact({
+      packageName: "std",
+      packageVersion: "0.2.0",
+      description: "The Riot standard library",
+      license: "Apache-2.0",
+    }))).status).toBe(200);
+
+    await writeUserRecord(db as unknown as D1Database, {
+      user_id: "user-1",
+      github_id: 42,
+      github_login: "leostera",
+      github_name: "Leo Stera",
+      created_at: "2026-04-06T10:00:00.000Z",
+      updated_at: "2026-04-06T10:00:00.000Z",
+    });
+    await writeSessionRecord(db as unknown as D1Database, {
+      session_id: "session-1",
+      user_id: "user-1",
+      github_login: "leostera",
+      created_at: "2026-04-06T10:00:00.000Z",
+      expires_at: "2026-04-13T10:00:00.000Z",
+    });
+    await writePackageClaim(db as unknown as D1Database, {
+      package_name: "std",
+      package_locator: "",
+      source_url: "",
+      package_subdir: ".",
+      owner_user_id: "user-1",
+      owner_github_login: "leostera",
+      claimed_at: "2026-04-06T10:00:00.000Z",
+      updated_at: "2026-04-06T10:00:00.000Z",
+    });
+
+    const cookie = buildSessionCookie(env, {
+      session_id: "session-1",
+      user_id: "user-1",
+      github_login: "leostera",
+      created_at: "2026-04-06T10:00:00.000Z",
+      expires_at: "2026-04-13T10:00:00.000Z",
+    });
+
+    const yankResponse = await handleRequest(
+      new Request("https://registry.test/v1/me/packages/std/versions/0.2.0/yank", {
+        method: "POST",
+        headers: {
+          cookie,
+          accept: "application/json",
+        },
+      }),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(yankResponse.status).toBe(200);
+    expect(await readJson(yankResponse)).toMatchObject({
+      package_name: "std",
+      package_version: "0.2.0",
+      yanked: true,
+      yanked_by_github_login: "leostera",
+    });
+
+    const yankedRelease = await readPublishedRelease(db as unknown as D1Database, "std", "0.2.0");
+    expect(yankedRelease?.yanked_at).toBeDefined();
+    expect(yankedRelease?.yanked_by_github_login).toBe("leostera");
+
+    const indexResponse = await handleRequest(
+      new Request("https://registry.test/v1/index/3/s/std.json"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(indexResponse.status).toBe(200);
+    expect(await readJson(indexResponse)).toMatchObject({
+      latest: "0.1.0",
+      releases: [
+        expect.objectContaining({
+          version: "0.2.0",
+          yanked: true,
+          yanked_by_github_login: "leostera",
+        }),
+        expect.objectContaining({
+          version: "0.1.0",
+        }),
+      ],
+    });
+
+    const ownerResponse = await handleRequest(
+      new Request("https://registry.test/v1/views/owners/leostera/packages"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(ownerResponse.status).toBe(200);
+    const ownerPayload = await readJson(ownerResponse);
+    expect(ownerPayload).toMatchObject({
+      owner_github_login: "leostera",
+      packages: [
+        expect.objectContaining({
+          package_name: "std",
+          latest_version: "0.1.0",
+          yanked_release_count: 1,
+          releases: [
+            expect.objectContaining({
+              version: "0.2.0",
+              yanked: true,
+              yanked_by_github_login: "leostera",
+              yanked_at: expect.any(String),
+            }),
+            expect.objectContaining({
+              version: "0.1.0",
+              yanked: false,
+            }),
+          ],
+        }),
+      ],
+    });
   });
 
   test("artifact publish rejects packages without a description", async () => {

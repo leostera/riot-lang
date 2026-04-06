@@ -19,6 +19,12 @@ type t =
     }
   | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
+  | RegistryReleaseYanked of {
+      package: string;
+      registry: string;
+      version: string;
+      required_by: required_by option
+    }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }
   | RegistryVersionNotFound of {
@@ -81,6 +87,14 @@ let rec headline = function
       ^ error
   | RegistryLatestReleaseMissing { package; latest_version } ->
       "registry package '" ^ package ^ "' declares latest version '" ^ latest_version ^ "' but that release is missing from the sparse index document"
+  | RegistryReleaseYanked { package; registry; version; required_by=_ } ->
+      "package `"
+      ^ package
+      ^ "@"
+      ^ version
+      ^ "` was yanked from registry `"
+      ^ registry
+      ^ "`"
   | PackageMetadataReadFailed { package; error; _ } ->
       "failed to read package document for '" ^ package ^ "': " ^ error
   | PackageNotFound { package; registry; required_by=_ } ->
@@ -126,6 +140,8 @@ and detail_lines = function
         | Some required_by -> version_line @ [ format_required_by required_by ]
         | None -> version_line
       )
+  | RegistryReleaseYanked { required_by=Some required_by; _ } ->
+      [ format_required_by required_by ]
   | _ ->
       []
 
@@ -203,6 +219,27 @@ let rec to_json = function
     ("package", Json.String package);
     ("latest_version", Json.String latest_version);
   ]
+  | RegistryReleaseYanked { package; registry; version; required_by } ->
+      Json.Object [
+        ("kind", Json.String "RegistryReleaseYanked");
+        ("package", Json.String package);
+        ("registry", Json.String registry);
+        ("version", Json.String version);
+        (
+          "required_by",
+          (
+            match required_by with
+            | None -> Json.Null
+            | Some { package; path } ->
+                Json.Object [ ("package", Json.String package); (
+                    "path",
+                    match path with
+                    | Some path -> json_of_path path
+                    | None -> Json.Null
+                  ); ]
+          )
+        );
+      ]
   | PackageMetadataReadFailed { package; registry; error } -> Json.Object [
     ("kind", Json.String "PackageMetadataReadFailed");
     ("package", Json.String package);
@@ -368,6 +405,41 @@ let rec of_json = function
             latest_version
           })
           | _ -> Error "invalid RegistryLatestReleaseMissing"
+        )
+      | Some (Json.String "RegistryReleaseYanked") -> (
+          match
+            List.assoc_opt "package" fields,
+            List.assoc_opt "registry" fields,
+            List.assoc_opt "version" fields,
+            List.assoc_opt "required_by" fields
+          with
+          | Some (Json.String package), Some (Json.String registry), Some (Json.String version), required_by_json_opt ->
+              let required_by =
+                match required_by_json_opt with
+                | Some Json.Null
+                | None ->
+                    Ok None
+                | Some (Json.Object required_by_fields) -> (
+                    match List.assoc_opt "package" required_by_fields, List.assoc_opt "path" required_by_fields with
+                    | Some (Json.String package), Some path_json -> (
+                        match path_json with
+                        | Json.Null -> Ok (Some { package; path = None })
+                        | _ -> path_of_json path_json
+                        |> Result.map (fun path -> Some { package; path = Some path })
+                      )
+                    | _ -> Error "invalid RegistryReleaseYanked.required_by"
+                  )
+                | Some _ ->
+                    Error "invalid RegistryReleaseYanked.required_by"
+              in
+              required_by
+              |> Result.map (fun required_by -> RegistryReleaseYanked {
+                package;
+                registry;
+                version;
+                required_by;
+              })
+          | _ -> Error "invalid RegistryReleaseYanked"
         )
       | Some (Json.String "PackageMetadataReadFailed") -> (
           match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt

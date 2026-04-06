@@ -53,6 +53,7 @@ type error =
       registry: string;
       suggestions: suggested_package list
     }
+  | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }

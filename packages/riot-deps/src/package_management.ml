@@ -66,6 +66,7 @@ type error =
       registry: string;
       suggestions: suggested_package list
     }
+  | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
@@ -176,6 +177,8 @@ let error_message = function
             in
             base ^ "\nDid you mean:\n" ^ String.concat "\n" lines
       )
+  | RegistryReleaseYanked { package; version; registry } ->
+      "package '" ^ package ^ "@" ^ version ^ "' was yanked from registry '" ^ registry ^ "'"
   | RegistryVersionNotFound { package; requirement; registry } ->
       "package '"
       ^ package
@@ -435,6 +438,7 @@ let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_d
     List.filter_map
       (fun (release: Pkgs_ml.Sparse_index.release) ->
         match Std.Version.parse release.version with
+        | Ok _ when release.yanked -> None
         | Ok version when Std.Version.matches requirement version -> Some (version, release)
         | Ok _
         | Error _ -> None)
@@ -565,6 +569,9 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   let rec loop = function
     | [] -> false
     | release :: rest -> (
+        if release.Pkgs_ml.Sparse_index.yanked then
+          loop rest
+        else
         match Std.Version.parse release.Pkgs_ml.Sparse_index.version with
         | Ok version ->
             if Std.Version.matches requirement version then
@@ -575,6 +582,17 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
       )
   in
   loop document.Pkgs_ml.Sparse_index.releases
+
+let yanked_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
+  List.find_opt
+    (fun (release: Pkgs_ml.Sparse_index.release) ->
+      if not release.yanked then
+        false
+      else
+        match Std.Version.parse release.version with
+        | Ok version -> Std.Version.matches requirement version
+        | Error _ -> false)
+    document.releases
 
 let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) ->
   {
@@ -664,11 +682,21 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
       if dependency_exists ~package_name:parsed.name document requirement then
         Ok parsed
       else
-        Error (RegistryVersionNotFound {
-          package = parsed.name;
-          requirement = Std.Version.requirement_to_string requirement;
-          registry = registry_name
-        })
+        (
+          match yanked_release_of_document document requirement with
+          | Some release ->
+              Error (RegistryReleaseYanked {
+                package = parsed.name;
+                version = release.version;
+                registry = registry_name;
+              })
+          | None ->
+              Error (RegistryVersionNotFound {
+                package = parsed.name;
+                requirement = Std.Version.requirement_to_string requirement;
+                registry = registry_name
+              })
+        )
 
 let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = true) ~spec () ->
   let* parsed = Git_dependency.parse_spec spec
@@ -771,12 +799,21 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager
   let* release =
     match matching_release_of_document document requirement with
     | Some release -> Ok release
-    | None ->
-        Error (RegistryVersionNotFound {
-          package = parsed.name;
-          requirement = Std.Version.requirement_to_string requirement;
-          registry = registry_name
-        })
+    | None -> (
+        match yanked_release_of_document document requirement with
+        | Some release ->
+            Error (RegistryReleaseYanked {
+              package = parsed.name;
+              version = release.version;
+              registry = registry_name;
+            })
+        | None ->
+            Error (RegistryVersionNotFound {
+              package = parsed.name;
+              requirement = Std.Version.requirement_to_string requirement;
+              registry = registry_name
+            })
+      )
   in
   let lock_package = Riot_model.Lockfile.{
     id = {

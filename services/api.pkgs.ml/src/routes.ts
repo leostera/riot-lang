@@ -22,6 +22,7 @@ import {
   listPackageRegistryEvents,
   listApiTokenRecords,
   readCategoriesIndexDocument,
+  readPackageClaim,
   readPublishedRelease,
   readOwnerPackagesDocument,
   readPackageDownloadsDocument,
@@ -31,6 +32,8 @@ import {
   readRecentPackagesDocument,
   readRegistryStatsDashboardDocument,
   readRegistryStatsSummaryDocument,
+  writeRegistryEvent,
+  yankPublishedRelease,
 } from "./metadata-db.ts";
 import {
   listArchiveFilesFromTarGz,
@@ -38,6 +41,8 @@ import {
   readFirstArchiveFileFromTarGz,
 } from "./archive.ts";
 import { searchPackages } from "./search-db.ts";
+import { reindexPublishedRelease } from "./indexing.ts";
+import { v7 as uuidv7 } from "uuid";
 import {
   artifactManifestKey,
   artifactProxyUrl,
@@ -111,6 +116,7 @@ async function routeRequest(
         auth_logout: "/v1/auth/logout",
         me: "/v1/me",
         tokens: "/v1/me/tokens",
+        yank_release: "/v1/me/packages/<package-name>/versions/<version>/yank",
         search: "/v1/search?q=<query>",
         events: "/v1/events?limit=<count>&after=<event-id>",
         package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
@@ -145,6 +151,7 @@ async function routeRequest(
         auth_logout: "/auth/logout",
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
+        yank_release: "/api/v1/me/packages/<package-name>/versions/<version>/yank",
         search: "/api/v1/search?q=<query>",
         events: "/api/v1/events?limit=<count>&after=<event-id>",
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
@@ -300,6 +307,15 @@ async function routeRequest(
         : path.slice("api/v1/me/tokens/".length),
     );
     return await handleDeleteToken(request, env, tokenId);
+  }
+
+  const yankRoute = parseYankRoute(path);
+  if (yankRoute !== null) {
+    if (request.method !== "POST") {
+      return methodNotAllowed(["POST"]);
+    }
+
+    return await handleYankRelease(request, env, yankRoute.packageName, yankRoute.version);
   }
 
   if (matchesPath(path, "v1/publish", "api/v1/publish")) {
@@ -747,8 +763,70 @@ async function handleDeleteToken(
   });
 }
 
+async function handleYankRelease(
+  request: Request,
+  env: Env,
+  packageName: string,
+  version: string,
+): Promise<Response> {
+  const { user } = await requireAuthenticatedSession(request, env);
+  const claim = await readPackageClaim(env.SEARCH_DB, packageName);
+  if (
+    claim === null ||
+    claim.owner_github_login === undefined ||
+    claim.owner_github_login.toLowerCase() !== user.github_login.toLowerCase()
+  ) {
+    throw new HttpError(403, "forbidden", "Only the package owner can yank releases.");
+  }
+
+  const now = new Date().toISOString();
+  const release = await yankPublishedRelease(
+    env.SEARCH_DB,
+    packageName,
+    version,
+    user.github_login,
+    now,
+  );
+  if (release === null) {
+    throw new HttpError(404, "release_not_found", "Release does not exist.");
+  }
+
+  await reindexPublishedRelease(env, packageName, version, now);
+  await writeRegistryEvent(
+    env.SEARCH_DB,
+    {
+      event_id: uuidv7({
+        msecs: Date.parse(now),
+      }),
+      event_type: "package.yanked",
+      package_name: release.package_name,
+      package_version: release.package_version,
+      package_locator: release.package_locator,
+      payload: {
+        artifact_sha256: release.artifact_sha256,
+        yanked_at: release.yanked_at,
+        yanked_by_github_login: release.yanked_by_github_login,
+      },
+      created_at: now,
+    },
+  );
+
+  return json({
+    package_name: release.package_name,
+    package_version: release.package_version,
+    yanked: true,
+    yanked_at: release.yanked_at,
+    yanked_by_github_login: release.yanked_by_github_login,
+  });
+}
+
 interface ParsedPackageEventsRoute {
   packageName: string;
+}
+
+interface ParsedYankRoute {
+  packageName: string;
+  version: string;
 }
 
 type ParsedViewRoute =
@@ -763,6 +841,20 @@ type ParsedViewRoute =
   | { kind: "owner_packages"; ownerGithubLogin: string }
   | { kind: "stats_summary" }
   | { kind: "stats_dashboard" };
+
+function parseYankRoute(path: string): ParsedYankRoute | null {
+  const match = path.match(
+    /^(?:api\/)?v1\/me\/packages\/([^/]+)\/versions\/([^/]+)\/yank$/,
+  );
+  if (match === null) {
+    return null;
+  }
+
+  return {
+    packageName: decodeURIComponent(match[1] ?? ""),
+    version: decodeURIComponent(match[2] ?? ""),
+  };
+}
 
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
@@ -1072,7 +1164,7 @@ function sanitizePackageIndexDocument(document: PackageIndexDocument): PackageIn
 
   return {
     ...document,
-    latest: releases[0]?.version ?? document.latest,
+    latest: releases.find((release) => release.yanked !== true)?.version ?? releases[0]?.version ?? document.latest,
     updated_at: updatedAt === undefined ? document.updated_at : new Date(updatedAt).toISOString(),
     releases,
   };

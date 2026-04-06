@@ -3,16 +3,10 @@ import semver from "semver";
 import type {
   IndexedPackageRelease,
   PackageIndexDocument,
-  PackagePublicationManifest,
   PublishedReleaseRecord,
 } from "./types.ts";
 
-export function buildIndexedRelease(
-  release: PublishedReleaseRecord,
-  manifest: PackagePublicationManifest,
-): IndexedPackageRelease {
-  assertMatchingManifest(release, manifest);
-
+export function buildIndexedRelease(release: PublishedReleaseRecord): IndexedPackageRelease {
   return {
     version: release.package_version,
     published_at: release.published_at,
@@ -30,6 +24,13 @@ export function buildIndexedRelease(
     manifest_key: release.manifest_key,
     source_key: release.source_archive_key,
     dependencies: release.dependencies,
+    ...(release.yanked_at !== undefined
+      ? {
+          yanked: true,
+          yanked_at: release.yanked_at,
+          yanked_by_github_login: release.yanked_by_github_login,
+        }
+      : {}),
   };
 }
 
@@ -46,13 +47,13 @@ export function upsertPackageDocument(args: {
   if (existing === null) {
     return {
       changed: true,
-      document: {
-        schema_version: 1,
-        name: args.packageName,
-        latest: args.release.version,
-        updated_at: args.updatedAt,
-        releases: [args.release],
-      },
+        document: {
+          schema_version: 1,
+          name: args.packageName,
+          latest: args.release.version,
+          updated_at: args.updatedAt,
+          releases: [args.release],
+        },
     };
   }
 
@@ -84,7 +85,7 @@ export function upsertPackageDocument(args: {
   }
 
   releases.sort((left, right) => semver.rcompare(left.version, right.version));
-  const latest = releases[0]?.version;
+  const latest = releases.find((release) => release.yanked !== true)?.version ?? releases[0]?.version;
   if (latest === undefined) {
     throw new Error(`Package document ${args.packageName} has no releases after upsert.`);
   }
@@ -108,41 +109,6 @@ export function upsertPackageDocument(args: {
   };
 }
 
-function assertMatchingManifest(
-  release: PublishedReleaseRecord,
-  manifest: PackagePublicationManifest,
-): void {
-  if (!manifest.package_public) {
-    throw new Error(`Published manifest ${manifest.manifest_key} is not public.`);
-  }
-
-  if (semver.valid(manifest.package_version) === null) {
-    throw new Error(`Published release ${release.package_name}@${release.package_version} is not semver.`);
-  }
-
-  if (
-    release.package_name !== manifest.package_name ||
-    release.package_version !== manifest.package_version ||
-    release.package_locator !== manifest.package_locator ||
-    release.source_url !== manifest.source_url ||
-    release.package_subdir !== manifest.package_subdir ||
-    release.artifact_sha256 !== manifest.artifact_sha256 ||
-    release.package_description !== manifest.package_description ||
-    release.package_license !== manifest.package_license ||
-    release.package_homepage !== manifest.package_homepage ||
-    release.package_repository !== manifest.package_repository ||
-    release.package_root_module !== manifest.package_root_module ||
-    JSON.stringify(release.package_categories ?? []) !== JSON.stringify(manifest.package_categories ?? []) ||
-    JSON.stringify(release.package_keywords ?? []) !== JSON.stringify(manifest.package_keywords ?? []) ||
-    release.manifest_key !== manifest.manifest_key ||
-    release.source_archive_key !== manifest.source_archive_key
-  ) {
-    throw new Error(
-      `Published release ${release.package_name}@${release.package_version} does not match its source manifest.`,
-    );
-  }
-}
-
 function isSameIndexedRelease(left: IndexedPackageRelease, right: IndexedPackageRelease): boolean {
   return (
     left.version === right.version &&
@@ -160,6 +126,9 @@ function isSameIndexedRelease(left: IndexedPackageRelease, right: IndexedPackage
     JSON.stringify(left.keywords ?? []) === JSON.stringify(right.keywords ?? []) &&
     left.manifest_key === right.manifest_key &&
     left.source_key === right.source_key &&
-    JSON.stringify(left.dependencies) === JSON.stringify(right.dependencies)
+    JSON.stringify(left.dependencies) === JSON.stringify(right.dependencies) &&
+    left.yanked === right.yanked &&
+    left.yanked_at === right.yanked_at &&
+    left.yanked_by_github_login === right.yanked_by_github_login
   );
 }

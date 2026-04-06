@@ -22,6 +22,7 @@ import type {
   PackageRelationDependent,
   PackageOverviewDocument,
   WebPackageListItem,
+  WebPackageReleaseListItem,
   PackagePublicationManifest,
   PackageRelationsDocument,
   PopularPackagesDocument,
@@ -505,6 +506,8 @@ export async function readPublishedRelease(
       source_archive_key: publishedReleases.sourceArchiveKey,
       manifest_key: publishedReleases.manifestKey,
       published_at: publishedReleases.publishedAt,
+      yanked_at: publishedReleases.yankedAt,
+      yanked_by_github_login: publishedReleases.yankedByGithubLogin,
     })
     .from(publishedReleases)
     .where(
@@ -554,6 +557,8 @@ export async function writePublishedRelease(
       sourceArchiveKey: record.source_archive_key,
       manifestKey: record.manifest_key,
       publishedAt: record.published_at,
+      yankedAt: record.yanked_at ?? null,
+      yankedByGithubLogin: record.yanked_by_github_login ?? null,
     })
     .onConflictDoUpdate({
       target: [publishedReleases.packageName, publishedReleases.packageVersion],
@@ -573,8 +578,43 @@ export async function writePublishedRelease(
         sourceArchiveKey: record.source_archive_key,
         manifestKey: record.manifest_key,
         publishedAt: record.published_at,
+        yankedAt: record.yanked_at ?? null,
+        yankedByGithubLogin: record.yanked_by_github_login ?? null,
       },
     });
+}
+
+export async function yankPublishedRelease(
+  db: D1Database,
+  packageName: string,
+  version: string,
+  actorGithubLogin: string,
+  yankedAt: string,
+): Promise<PublishedReleaseRecord | null> {
+  const database = registryDb(db);
+  const release = await readPublishedRelease(db, packageName, version);
+  if (release === null) {
+    return null;
+  }
+
+  if (release.yanked_at !== undefined) {
+    return release;
+  }
+
+  await database
+    .update(publishedReleases)
+    .set({
+      yankedAt,
+      yankedByGithubLogin: actorGithubLogin,
+    })
+    .where(
+      and(
+        eq(publishedReleases.packageName, packageName),
+        eq(publishedReleases.packageVersion, version),
+      ),
+    );
+
+  return await readPublishedRelease(db, packageName, version);
 }
 
 export async function writeRegistryEvent(
@@ -721,6 +761,9 @@ export async function readPackageOverviewDocument(
     download_count: await readPackageDownloadCount(db, packageName),
     categories: snapshot.categories,
     keywords: snapshot.keywords,
+    yanked: snapshot.yanked,
+    yanked_at: snapshot.yanked_at ?? undefined,
+    yanked_by_github_login: snapshot.yanked_by_github_login ?? undefined,
   };
 }
 
@@ -757,6 +800,7 @@ export async function readPackageDownloadsDocument(
       package_version: publishedReleases.packageVersion,
       published_at: publishedReleases.publishedAt,
       artifact_sha256: publishedReleases.artifactSha256,
+      yanked_at: publishedReleases.yankedAt,
     })
     .from(publishedReleases)
     .where(eq(publishedReleases.packageName, packageName))
@@ -767,7 +811,10 @@ export async function readPackageDownloadsDocument(
   }
 
   const latestVersion = [...releaseRows]
-    .sort((left, right) => compareVersionRecordsDesc(left, right))[0]?.package_version ?? releaseRows[0]?.package_version ?? "";
+    .sort((left, right) => compareVersionRecordsDesc(left, right))
+    .find((release) => release.yanked_at === null || release.yanked_at === undefined)?.package_version
+    ?? releaseRows[0]?.package_version
+    ?? "";
   const [totalRow] = await database
     .select({ count: sql<number>`count(*)` })
     .from(packageDownloads)
@@ -1116,6 +1163,8 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
       source_archive_key: publishedReleases.sourceArchiveKey,
       manifest_key: publishedReleases.manifestKey,
       published_at: publishedReleases.publishedAt,
+      yanked_at: publishedReleases.yankedAt,
+      yanked_by_github_login: publishedReleases.yankedByGithubLogin,
     })
     .from(publishedReleases)
     .orderBy(asc(publishedReleases.packageName), desc(publishedReleases.publishedAt));
@@ -1132,13 +1181,21 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
 
   const snapshots = [...grouped.entries()].map(([packageName, releases]) => {
     releases.sort(compareReleaseVersionsDesc);
-    const latestRelease = releases[0];
+    const latestRelease = releases.find((release) => !isYankedRelease(release)) ?? releases[0];
     if (latestRelease === undefined) {
       throw new Error(`Package ${packageName} has no releases.`);
     }
 
     const claim = claims.get(packageName);
     const ownerGithubLogin = claim?.owner_github_login ?? parseOwnerFromLocator(latestRelease.package_locator);
+    const releaseSummaries = releases.map((release) => ({
+      version: release.package_version,
+      published_at: release.published_at,
+      yanked: isYankedRelease(release),
+      yanked_at: release.yanked_at,
+      yanked_by_github_login: release.yanked_by_github_login,
+      package_path: `/p/${packageName}/${release.package_version}`,
+    } satisfies WebPackageReleaseListItem));
     return {
       package_name: packageName,
       latest_version: latestRelease.package_version,
@@ -1162,6 +1219,11 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
       categories: latestRelease.package_categories ?? [],
       keywords: latestRelease.package_keywords ?? [],
       dependencies: normalizeDependencies(JSON.stringify(latestRelease.dependencies)),
+      releases: releaseSummaries,
+      yanked: isYankedRelease(latestRelease),
+      yanked_at: latestRelease.yanked_at,
+      yanked_by_github_login: latestRelease.yanked_by_github_login,
+      yanked_release_count: releases.filter((release) => isYankedRelease(release)).length,
     } satisfies PackageSnapshot;
   });
 
@@ -1617,8 +1679,14 @@ function toWebPackageListItem(
     repository: row.repository ?? undefined,
     subdir: row.subdir,
     release_count: row.release_count,
+    yanked_release_count: row.yanked_release_count,
     package_path: `/p/${row.package_name}`,
+    releases: row.releases,
   };
+}
+
+function isYankedRelease(release: PublishedReleaseRecord): boolean {
+  return release.yanked_at !== undefined && release.yanked_at !== null;
 }
 
 function toCount(value: unknown): number {
@@ -1768,6 +1836,11 @@ interface PackageSnapshot {
   categories: string[];
   keywords: string[];
   dependencies: PackageRelationDependency[];
+  releases: WebPackageReleaseListItem[];
+  yanked: boolean;
+  yanked_at?: string | null;
+  yanked_by_github_login?: string | null;
+  yanked_release_count: number;
 }
 
 interface ApiTokenRow {
@@ -1831,6 +1904,8 @@ interface PublishedReleaseRow {
   source_archive_key: string;
   manifest_key: string;
   published_at: string;
+  yanked_at?: string | null;
+  yanked_by_github_login?: string | null;
 }
 
 interface RegistryEventRow {
@@ -1913,6 +1988,8 @@ function parsePublishedReleaseRecord(row: PublishedReleaseRow): PublishedRelease
     source_archive_key: row.source_archive_key,
     manifest_key: row.manifest_key,
     published_at: row.published_at,
+    yanked_at: row.yanked_at ?? undefined,
+    yanked_by_github_login: row.yanked_by_github_login ?? undefined,
   };
 }
 

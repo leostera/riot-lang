@@ -237,6 +237,13 @@ let latest_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
         String.equal release.version document.latest)
       document.releases
   with
+  | Some release when release.yanked ->
+      Error (Error.RegistryReleaseYanked {
+        package = document.name;
+        registry = "pkgs.ml";
+        version = release.version;
+        required_by = None;
+      })
   | Some release -> Ok release
   | None -> Error (Error.RegistryLatestReleaseMissing {
     package = document.name;
@@ -1318,8 +1325,11 @@ let matching_registry_versions = fun (catalog: catalog) ~package_name ~ranges ->
       let rec loop acc = function
         | [] -> Ok acc
         | (release: Pkgs_ml.Sparse_index.release) :: rest ->
-            let* version = parse_registry_version ~package_name release.version in
-            loop (add_matching acc version) rest
+            if release.yanked then
+              loop acc rest
+            else
+              let* version = parse_registry_version ~package_name release.version in
+              loop (add_matching acc version) rest
       in
       loop versions document.releases
 
@@ -1367,6 +1377,12 @@ let provider_dependencies_of_registry_package = fun (catalog: catalog) ~package_
             ^ "@"
             ^ version_string
             ^ "' is unavailable"))
+            | Some release when release.yanked ->
+                Ok (Pubgrub.Provider.Unavailable ("package '"
+                ^ package_name
+                ^ "@"
+                ^ version_string
+                ^ "' was yanked"))
             | Some release ->
                 let rec loop acc = function
                   | [] -> Ok (Pubgrub.Provider.Available (List.rev acc))

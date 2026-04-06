@@ -475,7 +475,7 @@ async function indexSeededRelease(
   env: Parameters<typeof indexPublishedRelease>[0],
   db: D1Database,
   release: PublishedReleaseRecord,
-  manifest: PackagePublicationManifest,
+  _manifest: PackagePublicationManifest,
 ) {
   await applyMetadataMigrations(db);
   await writePackageClaim(db, {
@@ -488,5 +488,5 @@ async function indexSeededRelease(
     updated_at: release.published_at,
   });
   await writePublishedRelease(db, release);
-  return await indexPublishedRelease(env, release, manifest);
+  return await indexPublishedRelease(env, release);
 }

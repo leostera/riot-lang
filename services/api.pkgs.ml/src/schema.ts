@@ -120,6 +120,8 @@ export const publishedReleases = sqliteTable(
     sourceArchiveKey: text("source_archive_key").notNull(),
     manifestKey: text("manifest_key").notNull(),
     publishedAt: text("published_at").notNull(),
+    yankedAt: text("yanked_at"),
+    yankedByGithubLogin: text("yanked_by_github_login"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.packageName, table.packageVersion] }),

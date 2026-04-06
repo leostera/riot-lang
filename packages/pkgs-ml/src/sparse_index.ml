@@ -32,6 +32,9 @@ type release = {
   manifest_key: string;
   source_key: string;
   dependencies: dependency list;
+  yanked: bool;
+  yanked_at: string option;
+  yanked_by_github_login: string option;
 }
 
 type package_document = {
@@ -146,6 +149,14 @@ let release_of_json = fun json ->
       let* source_key = string_field ~context:"release" ~field:"source_key" fields in
       let* dependency_json = object_field ~context:"release" ~field:"dependencies" fields in
       let* dependencies = dependencies_of_json dependency_json in
+      let* yanked =
+        match List.assoc_opt "yanked" fields with
+        | None -> Ok false
+        | Some (Data.Json.Bool value) -> Ok value
+        | Some _ -> Error "release.yanked must be a boolean when present"
+      in
+      let* yanked_at = optional_string_field ~field:"yanked_at" fields in
+      let* yanked_by_github_login = optional_string_field ~field:"yanked_by_github_login" fields in
       Ok {
         version;
         published_at;
@@ -163,6 +174,9 @@ let release_of_json = fun json ->
         manifest_key;
         source_key;
         dependencies;
+        yanked;
+        yanked_at;
+        yanked_by_github_login;
       }
   | _ -> Error "release entries must be objects"
 

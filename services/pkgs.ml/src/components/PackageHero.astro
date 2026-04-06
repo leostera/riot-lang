@@ -198,15 +198,24 @@ const readmeProseClass =
         class="min-w-28 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground outline-none ring-0"
         data-package-name={document.name}
       >
-        {
-          document.releases.map((candidate) => (
-            <option value={candidate.version} selected={candidate.version === selectedVersion}>
-              v{candidate.version}
-            </option>
-          ))
-        }
+      {
+        document.releases.map((candidate) => (
+          <option value={candidate.version} selected={candidate.version === selectedVersion}>
+              v{candidate.version}{candidate.yanked ? " (yanked)" : ""}
+          </option>
+        ))
+      }
       </select>
     </nav>
+
+    {
+      release.yanked ? (
+        <div class="rounded-md border border-amber-700/20 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          This release was yanked{release.yanked_by_github_login ? ` by @${release.yanked_by_github_login}` : ""}.
+          Installing it should be treated as unsupported, even though the package page remains available for reference.
+        </div>
+      ) : null
+    }
 
     <div class="grid gap-4 rounded-md border border-border bg-card px-4 py-4 lg:flex lg:items-start lg:gap-4">
       {

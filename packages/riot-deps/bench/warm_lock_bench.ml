@@ -81,6 +81,9 @@ let make_release = fun ~name ~dependencies ->
     manifest_key = "manifests/" ^ name ^ "/" ^ registry_version ^ ".json";
     source_key = "sources/" ^ name ^ "/" ^ registry_version ^ ".tar.gz";
     dependencies = List.map registry_dependency dependencies;
+    yanked = false;
+    yanked_at = None;
+    yanked_by_github_login = None;
   }
 
 let make_document = fun ~name ~dependencies ->

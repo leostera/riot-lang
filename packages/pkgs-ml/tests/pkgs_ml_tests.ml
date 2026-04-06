@@ -51,6 +51,9 @@ let test_sparse_index_document_parsing = fun _ctx ->
       "artifact_sha256": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
       "manifest_key": "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
       "source_key": "sources/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      "yanked": true,
+      "yanked_at": "2026-04-06T10:00:00.000Z",
+      "yanked_by_github_login": "leostera",
       "dependencies": [{ "name": "std", "path": "../std" }]
     }
   ]
@@ -62,11 +65,48 @@ let test_sparse_index_document_parsing = fun _ctx ->
         String.equal document.name "kernel"
         && String.equal document.latest "0.0.1"
         && List.length document.releases = 1
+        && (List.hd document.releases).yanked
       then
         Ok ()
       else
         Error "unexpected sparse index document contents"
   | Error err -> Error err
+
+let test_registry_materialize_release_rejects_yanked_versions = fun _ctx ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~riot_home:(Path.v "/tmp/.riot")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let document =
+    Pkgs_ml.Sparse_index.package_document_of_string
+      {|{
+  "schema_version": 1,
+  "name": "kernel",
+  "latest": "0.0.1",
+  "updated_at": "2026-03-27T15:27:35Z",
+  "releases": [
+    {
+      "version": "0.0.1",
+      "published_at": "2026-03-27T15:27:35Z",
+      "canonical_locator": "github.com/leostera/riot-new/packages/kernel",
+      "repo_url": "https://github.com/leostera/riot-new",
+      "subdir": "packages/kernel",
+      "artifact_sha256": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      "manifest_key": "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      "source_key": "sources/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      "yanked": true,
+      "dependencies": []
+    }
+  ]
+}|}
+    |> Result.expect ~msg:"expected sparse index package to parse"
+  in
+  let registry = Pkgs_ml.Registry.in_memory ~cache ~packages:[ document ] () in
+  match Pkgs_ml.Registry.materialize_release registry ~package_name:"kernel" ~version:"0.0.1" with
+  | Error err when String.contains err "was yanked from registry" -> Ok ()
+  | Error err -> Error ("expected yanked materialization error, got: " ^ err)
+  | Ok _ -> Error "expected yanked release materialization to fail"
 
 let test_sparse_index_cached_reads = fun _ctx ->
   let config =

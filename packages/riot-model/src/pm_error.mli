@@ -18,6 +18,12 @@ type t =
     }
   | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
+  | RegistryReleaseYanked of {
+      package: string;
+      registry: string;
+      version: string;
+      required_by: required_by option
+    }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }
   | RegistryVersionNotFound of {
