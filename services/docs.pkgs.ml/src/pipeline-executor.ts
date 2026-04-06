@@ -1,31 +1,43 @@
-import { Container, getContainer } from "@cloudflare/containers";
+import { Buffer } from "node:buffer";
+import { Sandbox, getSandbox } from "@cloudflare/sandbox";
 import type {
   DocsPipelineProcessResult,
+  GeneratedDocsFile,
+  PackagePipelineCommandResult,
   PackagePipelineExecutor,
   PackagePipelineProcessRequest,
 } from "./pipeline-types.ts";
+
 export type {
   DocsPipelineProcessResult,
   PackagePipelineExecutor,
   PackagePipelineProcessRequest,
 } from "./pipeline-types.ts";
 
-export interface ContainerExecutorEnv {
+export interface SandboxExecutorEnv {
   DOCS_PIPELINE_CONTAINER?: DurableObjectNamespace;
 }
 
-export class DocsPipelineContainer extends Container {
-  defaultPort = 8080;
+const WORKSPACE_ROOT = "/workspace";
+const DEFAULT_TOOLCHAIN_VERSION = "5.5.0-riot.2";
+const DEFAULT_TARGET = "x86_64-unknown-linux-gnu";
+const RIOT_BIN_DIR = "/root/.riot/bin";
+const RIOT_BIN = `${RIOT_BIN_DIR}/riot`;
+const DOCS_PIPELINE_AGENT = "riot-docs-pipeline@1.0";
+const COMMAND_TIMEOUT_MS = 15 * 60 * 1000;
+const SANDBOX_STARTUP_RETRY_LIMIT = 8;
+const SANDBOX_STARTUP_RETRY_DELAY_MS = 2_000;
+
+export class DocsPipelineContainer extends Sandbox {
   sleepAfter = "5m";
   enableInternet = true;
-  pingEndpoint = "/health";
 
   override async onActivityExpired(): Promise<void> {
     await this.destroy();
   }
 
   override onError(error: unknown): never {
-    console.error("docs pipeline container error", error);
+    console.error("docs pipeline sandbox error", error);
     if (error instanceof Error) {
       throw error;
     }
@@ -34,8 +46,8 @@ export class DocsPipelineContainer extends Container {
   }
 }
 
-export class ContainerPackagePipelineExecutor implements PackagePipelineExecutor {
-  constructor(private readonly env: ContainerExecutorEnv) {}
+export class SandboxPackagePipelineExecutor implements PackagePipelineExecutor {
+  constructor(private readonly env: SandboxExecutorEnv) {}
 
   async processRelease(request: PackagePipelineProcessRequest): Promise<DocsPipelineProcessResult> {
     if (this.env.DOCS_PIPELINE_CONTAINER === undefined) {
@@ -47,32 +59,176 @@ export class ContainerPackagePipelineExecutor implements PackagePipelineExecutor
       request.package_version,
       request.artifact_sha256,
     );
-    const container = getContainer(
+    const sandbox = getSandbox(
       this.env.DOCS_PIPELINE_CONTAINER as unknown as DurableObjectNamespace<DocsPipelineContainer>,
       runnerId,
-    );
-    const response = await container.fetch(
-      new Request("http://container/process", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json; charset=utf-8",
+    ) as DocsPipelineContainer;
+    const env = commandEnv();
+    const packageDir = `${WORKSPACE_ROOT}/packages/${request.package_name}`;
+    const artifactPath = `/tmp/${request.package_name}-${request.package_version}.tar.gz`;
+    const docsOutputDir = `${WORKSPACE_ROOT}/_build/doc/${request.package_name}/${request.package_version}`;
+
+    try {
+      const upgradeCommand = [RIOT_BIN, "upgrade"] as const;
+      const upgradeStartedAt = Date.now();
+      const upgradeExec = await execWithStartupRetry(
+        sandbox,
+        shellCommand(upgradeCommand),
+        {
+          cwd: WORKSPACE_ROOT,
+          env,
+          timeout: COMMAND_TIMEOUT_MS,
         },
-        body: JSON.stringify(request),
-      }),
-    );
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `container runner returned ${response.status}: ${body.slice(0, 500)}`,
       );
-    }
+      const upgrade = buildCommandResult(
+        [...upgradeCommand],
+        upgradeExec,
+        Date.now() - upgradeStartedAt,
+      );
+      const probeCommand = [
+        "sh",
+        "-lc",
+        "printf 'glibc=%s\\n' \"$(getconf GNU_LIBC_VERSION 2>/dev/null || echo unknown)\" && printf 'riot=%s\\n' \"$(/root/.riot/bin/riot version 2>/dev/null || echo unavailable)\" && cat /etc/os-release",
+      ] as const;
+      const probeStartedAt = Date.now();
+      const probeExec = await execWithStartupRetry(
+        sandbox,
+        shellCommand(probeCommand),
+        {
+          cwd: WORKSPACE_ROOT,
+          env,
+          timeout: COMMAND_TIMEOUT_MS,
+        },
+      );
+      const environmentProbe = buildCommandResult(
+        [...probeCommand],
+        probeExec,
+        Date.now() - probeStartedAt,
+      );
 
-    return (await response.json()) as DocsPipelineProcessResult;
+      await sandbox.mkdir(WORKSPACE_ROOT, { recursive: true });
+      await sandbox.mkdir(`${WORKSPACE_ROOT}/packages`, { recursive: true });
+      await sandbox.mkdir(packageDir, { recursive: true });
+      await sandbox.setEnvVars(env);
+
+      await sandbox.writeFile(
+        `${WORKSPACE_ROOT}/ocaml-toolchain.toml`,
+        toolchainToml(),
+      );
+      await sandbox.writeFile(
+        `${WORKSPACE_ROOT}/riot.toml`,
+        workspaceManifest(request.package_name),
+      );
+
+      const downloadCommand = [
+        "sh",
+        "-lc",
+        `curl -fsSL --retry 3 --retry-delay 1 -H 'X-Riot-Agent: ${DOCS_PIPELINE_AGENT}' -o ${shellEscape(artifactPath)} ${shellEscape(request.source_archive_url)}`,
+      ] as const;
+      const downloadExec = await execWithStartupRetry(
+        sandbox,
+        shellCommand(downloadCommand),
+        {
+          cwd: WORKSPACE_ROOT,
+          env,
+          timeout: COMMAND_TIMEOUT_MS,
+        },
+      );
+      if (!downloadExec.success) {
+        throw new Error(
+          normalizeFailure(
+            "failed to download published package artifact",
+            downloadExec.stdout,
+            downloadExec.stderr,
+            downloadExec.exitCode,
+          ),
+        );
+      }
+
+      const extractCommand = ["tar", "-xzf", artifactPath, "-C", packageDir] as const;
+      const extractExec = await execWithStartupRetry(
+        sandbox,
+        shellCommand(extractCommand),
+        {
+          cwd: WORKSPACE_ROOT,
+          env,
+          timeout: COMMAND_TIMEOUT_MS,
+        },
+      );
+      if (!extractExec.success) {
+        throw new Error(
+          normalizeFailure(
+            "failed to extract published package artifact",
+            extractExec.stdout,
+            extractExec.stderr,
+            extractExec.exitCode,
+          ),
+        );
+      }
+
+      const result: DocsPipelineProcessResult = {
+        environment_probe: environmentProbe,
+        upgrade,
+      };
+
+      if (request.verify_build) {
+        const buildCommand = [RIOT_BIN, "build", "--json", request.package_name] as const;
+        const buildStartedAt = Date.now();
+        const buildExec = await execWithStartupRetry(
+          sandbox,
+          shellCommand(buildCommand),
+          {
+            cwd: WORKSPACE_ROOT,
+            env,
+            timeout: COMMAND_TIMEOUT_MS,
+          },
+        );
+        result.build = buildCommandResult(
+          [...buildCommand],
+          buildExec,
+          Date.now() - buildStartedAt,
+        );
+      }
+
+      if (request.generate_docs) {
+        const docsCommand = [RIOT_BIN, "doc", "--json", "--release", "-p", request.package_name] as const;
+        const docsStartedAt = Date.now();
+        const docsExec = await execWithStartupRetry(
+          sandbox,
+          shellCommand(docsCommand),
+          {
+            cwd: WORKSPACE_ROOT,
+            env,
+            timeout: COMMAND_TIMEOUT_MS,
+          },
+        );
+        const docs = buildCommandResult(
+          [...docsCommand],
+          docsExec,
+          Date.now() - docsStartedAt,
+        );
+
+        const files = docs.success
+          ? await collectGeneratedDocsFiles(sandbox, docsOutputDir)
+          : [];
+
+        result.docs = {
+          ...docs,
+          output_dir: docsOutputDir,
+          files,
+        };
+      }
+
+      return result;
+    } finally {
+      await sandbox.destroy().catch((error) => {
+        console.warn("failed to destroy docs pipeline sandbox", error);
+      });
+    }
   }
 }
 
-const RUNNER_REVISION = "v3";
+const RUNNER_REVISION = "v6";
 
 function buildRunnerId(packageName: string, packageVersion: string, artifactSha256: string): string {
   const identity = `${RUNNER_REVISION}-${packageName}-${packageVersion}-${artifactSha256.slice(0, 12)}`;
@@ -81,4 +237,181 @@ function buildRunnerId(packageName: string, packageVersion: string, artifactSha2
     .replaceAll(/[^a-z0-9-]+/g, "-")
     .replaceAll(/-+/g, "-")
     .replaceAll(/^-|-$/g, "");
+}
+
+function commandEnv(): Record<string, string> {
+  return {
+    HOME: "/root",
+    PATH: `${RIOT_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`,
+    RIOT_AGENT_HEADER: DOCS_PIPELINE_AGENT,
+  };
+}
+
+async function execWithStartupRetry(
+  sandbox: DocsPipelineContainer,
+  command: string,
+  options: {
+    cwd: string;
+    env: Record<string, string>;
+    timeout: number;
+  },
+) {
+  let attempt = 0;
+  let lastError: unknown;
+
+  while (attempt < SANDBOX_STARTUP_RETRY_LIMIT) {
+    try {
+      return await sandbox.exec(command, options);
+    } catch (error) {
+      if (!isSandboxStartingError(error)) {
+        throw error;
+      }
+
+      lastError = error;
+      attempt += 1;
+      if (attempt >= SANDBOX_STARTUP_RETRY_LIMIT) {
+        break;
+      }
+
+      await sleep(SANDBOX_STARTUP_RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError;
+}
+
+function isSandboxStartingError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.includes("Container is starting. Please retry in a moment.");
+}
+
+function sleep(durationMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, durationMs));
+}
+
+function toolchainToml(): string {
+  return [
+    "[toolchain]",
+    `version = "${DEFAULT_TOOLCHAIN_VERSION}"`,
+    `targets = ["${DEFAULT_TARGET}"]`,
+    "",
+  ].join("\n");
+}
+
+function workspaceManifest(packageName: string): string {
+  return [
+    "[workspace]",
+    `members = ["packages/${packageName}"]`,
+    "",
+  ].join("\n");
+}
+
+function shellCommand(command: readonly string[]): string {
+  return command.map(shellEscape).join(" ");
+}
+
+function shellEscape(value: string): string {
+  if (value.length === 0) {
+    return "''";
+  }
+
+  return `'${value.replaceAll("'", "'\"'\"'")}'`;
+}
+
+function normalizeFailure(prefix: string, stdout: string, stderr: string, exitCode: number): string {
+  const details = [stderr.trim(), stdout.trim()].filter((value) => value.length > 0).join("\n");
+  if (details.length > 0) {
+    return `${prefix}: ${details}`;
+  }
+
+  return `${prefix}: exit code ${exitCode}`;
+}
+
+function buildCommandResult(
+  command: string[],
+  result: { success: boolean; exitCode: number; stdout: string; stderr: string },
+  durationMs: number,
+): PackagePipelineCommandResult {
+  const parsed = parseJsonlStdout(result.stdout);
+
+  return {
+    success: result.success,
+    exit_code: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    duration_ms: durationMs,
+    command,
+    json_events: parsed.jsonEvents,
+    non_json_stdout_lines: parsed.nonJsonStdoutLines,
+  };
+}
+
+function parseJsonlStdout(stdout: string): {
+  jsonEvents: Record<string, unknown>[];
+  nonJsonStdoutLines: string[];
+} {
+  const jsonEvents: Record<string, unknown>[] = [];
+  const nonJsonStdoutLines: string[] = [];
+
+  for (const rawLine of stdout.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (line.length === 0) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        jsonEvents.push(parsed as Record<string, unknown>);
+      } else {
+        nonJsonStdoutLines.push(rawLine);
+      }
+    } catch {
+      nonJsonStdoutLines.push(rawLine);
+    }
+  }
+
+  return {
+    jsonEvents,
+    nonJsonStdoutLines,
+  };
+}
+
+async function collectGeneratedDocsFiles(
+  sandbox: Sandbox,
+  outputDir: string,
+): Promise<GeneratedDocsFile[]> {
+  const exists = await sandbox.exists(outputDir);
+  if (!exists.exists) {
+    return [];
+  }
+
+  const listed = await sandbox.listFiles(outputDir, {
+    recursive: true,
+    includeHidden: true,
+  });
+
+  const files: GeneratedDocsFile[] = [];
+  for (const file of listed.files) {
+    if (file.type !== "file") {
+      continue;
+    }
+
+    const read = await sandbox.readFile(file.absolutePath);
+    const contentBase64 =
+      read.encoding === "base64"
+        ? read.content
+        : Buffer.from(read.content, "utf8").toString("base64");
+
+    files.push({
+      path: file.relativePath,
+      content_base64: contentBase64,
+      content_type: read.mimeType,
+    });
+  }
+
+  return files.sort((left, right) => left.path.localeCompare(right.path));
 }

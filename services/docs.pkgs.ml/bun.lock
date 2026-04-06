@@ -6,7 +6,7 @@
       "name": "docs.pkgs.ml",
       "dependencies": {
         "@astrojs/starlight": "^0.38.2",
-        "@cloudflare/containers": "^0.2.2",
+        "@cloudflare/sandbox": "^0.8.4",
         "astro": "^6.0.1",
         "sharp": "^0.34.2",
         "uuid": "^13.0.0",
@@ -62,6 +62,8 @@
     "@cloudflare/containers": ["@cloudflare/containers@0.2.2", "", {}, "sha512-cfTSd7M96Z9NeCiaN4i3FuMb+i2Nzi0HbMuxvMAnUmkXwtWIZCQ3XLqUWQkdCKWNJZ/3BLMInC6ntFvpbTWIpA=="],
 
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.4.2", "", {}, "sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ=="],
+
+    "@cloudflare/sandbox": ["@cloudflare/sandbox@0.8.4", "", { "dependencies": { "@cloudflare/containers": "^0.2.2", "aws4fetch": "^1.0.20" }, "peerDependencies": { "@openai/agents": "^0.3.3", "@opencode-ai/sdk": "^1.1.40", "@xterm/xterm": ">=5.0.0" }, "optionalPeers": ["@openai/agents", "@opencode-ai/sdk", "@xterm/xterm"] }, "sha512-VQW0p1o060H+au+ae2N2MfMN5ZLt1ySiM0BQMe4gxBjfbPtO7z5aD2PuX3rfJMh3D8y1D12QryWF2dtBiEcMiQ=="],
 
     "@cloudflare/unenv-preset": ["@cloudflare/unenv-preset@2.16.0", "", { "peerDependencies": { "unenv": "2.0.0-rc.24", "workerd": "1.20260301.1 || ~1.20260302.1 || ~1.20260303.1 || ~1.20260304.1 || >1.20260305.0 <2.0.0-0" }, "optionalPeers": ["workerd"] }, "sha512-8ovsRpwzPoEqPUzoErAYVv8l3FMZNeBVQfJTvtzP4AgLSRGZISRfuChFxHWUQd3n6cnrwkuTGxT+2cGo8EsyYg=="],
 

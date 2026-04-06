@@ -17,6 +17,8 @@ export interface PackagePipelineCommandResult {
   stderr: string;
   duration_ms: number;
   command: string[];
+  json_events?: Record<string, unknown>[];
+  non_json_stdout_lines?: string[];
 }
 
 export interface GeneratedDocsFile {
@@ -26,6 +28,8 @@ export interface GeneratedDocsFile {
 }
 
 export interface DocsPipelineProcessResult {
+  environment_probe?: PackagePipelineCommandResult;
+  upgrade?: PackagePipelineCommandResult;
   docs?: PackagePipelineCommandResult & {
     output_dir: string;
     files: GeneratedDocsFile[];

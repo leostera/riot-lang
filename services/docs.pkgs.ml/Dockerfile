@@ -1,24 +1,35 @@
+FROM docker.io/cloudflare/sandbox:0.8.4 AS sandbox-base
+
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-WORKDIR /workspace
+ENV HOME=/root
+ENV PATH=/root/.riot/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
     git \
-    python3 \
-    tar \
+    libpcre2-dev \
     libssl-dev \
-    uuid-dev \
     libzstd-dev \
+    pkg-config \
+    tar \
+    uuid-dev \
+    xz-utils \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY src/container_server.py /usr/local/bin/docs-pipeline-server
+COPY --from=sandbox-base /container-server/sandbox /sandbox
 
-RUN chmod +x /usr/local/bin/docs-pipeline-server
+RUN curl -sSL https://get.riot.ml | sh - \
+    && /root/.riot/bin/riot version
 
-EXPOSE 8080
+RUN mkdir -p /workspace
 
-ENTRYPOINT ["python3", "/usr/local/bin/docs-pipeline-server"]
+WORKDIR /workspace
+
+EXPOSE 3000
+
+ENTRYPOINT ["/sandbox"]

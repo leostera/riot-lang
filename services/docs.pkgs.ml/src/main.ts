@@ -1,5 +1,6 @@
 import {
   claimPackageReleaseToProcess,
+  countActivePackageReleasesToProcess,
   enqueuePackageReleaseToProcess,
   listDuePackageReleasesToProcess,
   markPackageReleaseToProcessBlocked,
@@ -58,7 +59,8 @@ const CDN_BASE_URL = "https://cdn.pkgs.ml";
 const RIOT_INSTALL_SCRIPT_URL = "https://get.riot.ml";
 const RIOT_RELEASE_METADATA_URL = `${CDN_BASE_URL}/riot/latest.json`;
 const RELEASE_PROCESSING_BATCH_SIZE = 10;
-const RELEASE_PROCESSING_LEASE_MS = 5 * 60 * 1000;
+const RELEASE_PROCESSING_TARGET_CONCURRENCY = 3;
+const RELEASE_PROCESSING_LEASE_MS = 20 * 60 * 1000;
 const RELEASE_PROCESSING_RETRY_DELAY_MS = 5 * 60 * 1000;
 const RELEASE_PROCESSING_MAX_ATTEMPTS = 3;
 
@@ -117,7 +119,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         [
           `Package docs for ${match.packageName}@${match.version} have not been generated yet.`,
           `Current pipeline status: ${run.status}.`,
-          run.status_message ?? "A container-backed docs runner has not claimed this run yet.",
+          run.status_message ?? "A sandbox-backed docs runner has not claimed this run yet.",
         ].join(" "),
         {
           status: 404,
@@ -272,6 +274,8 @@ interface DocsRunContext {
   runId: string;
   outputPrefix: string;
   requestKey: string;
+  resultKey: string;
+  logsKey: string;
   sourceArchiveUrl: string;
   publicDocsUrl: string;
   request: DocsBuildRequest;
@@ -289,9 +293,9 @@ interface BuildRunContext {
 
 function buildRunnerNotes(): string[] {
   return [
-    "The timer worker claims a queued release, records the run in D1, and hands the artifact URL to a dedicated container runner.",
-    "The container downloads the published package artifact, installs Riot with `curl -sSL https://get.riot.ml | sh -`, unpacks it into a clean workspace, and runs `riot doc --release` and/or `riot build`.",
-    "Only the Worker writes to R2 and D1. The container never receives bucket credentials directly.",
+    "The timer worker claims a queued release, records the run in D1, and hands the artifact URL to a dedicated Cloudflare Sandbox runner.",
+    "The runner uses a custom Ubuntu 24.04 Sandbox image with the Cloudflare `/sandbox` entrypoint, installs Riot from `https://get.riot.ml` at image build time, upgrades to the latest Riot release at run start, unpacks the artifact into a clean workspace, runs `riot build --json` to resolve and verify the release, and then runs `riot doc --json --release` against that resolved workspace.",
+    "Only the Worker writes to R2 and D1. The sandbox never receives bucket credentials directly.",
   ];
 }
 
@@ -300,7 +304,10 @@ function buildDocsRunContext(
   createdAt = new Date().toISOString(),
 ): DocsRunContext {
   const outputPrefix = `docs/${event.package_name}/${event.package_version}/`;
-  const requestKey = `${outputPrefix}_pipeline/request.json`;
+  const pipelinePrefix = `pipelines/docs/${event.package_name}/${event.package_version}/${event.artifact_sha256}/`;
+  const requestKey = `${pipelinePrefix}request.json`;
+  const resultKey = `${pipelinePrefix}result.json`;
+  const logsKey = `${pipelinePrefix}command.log`;
   const sourceArchiveUrl = `${CDN_BASE_URL}/${event.source_archive_key}`;
   const publicDocsUrl = `${DOCS_WEB_BASE_URL}/p/${encodeURIComponent(event.package_name)}/${encodeURIComponent(event.package_version)}/`;
 
@@ -308,6 +315,8 @@ function buildDocsRunContext(
     runId: `docs:${event.package_name}:${event.package_version}:${event.artifact_sha256}`,
     outputPrefix,
     requestKey,
+    resultKey,
+    logsKey,
     sourceArchiveUrl,
     publicDocsUrl,
     request: {
@@ -322,9 +331,11 @@ function buildDocsRunContext(
       riot_install_url: RIOT_INSTALL_SCRIPT_URL,
       riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
       public_docs_url: publicDocsUrl,
-      command: ["riot", "doc", "--release", "-p", event.package_name],
+      result_key: resultKey,
+      logs_key: logsKey,
+      command: ["riot", "doc", "--json", "--release", "-p", event.package_name],
       runner: {
-        kind: "cloudflare-container",
+        kind: "cloudflare-sandbox",
         status: "pending_runner",
         notes: buildRunnerNotes(),
       },
@@ -339,15 +350,27 @@ function buildDocsRunContext(
         },
         {
           kind: "install-riot",
-          detail: `Install Riot inside the container by fetching ${RIOT_INSTALL_SCRIPT_URL}.`,
+          detail: `Bake Riot into the sandbox image by fetching ${RIOT_INSTALL_SCRIPT_URL}.`,
+        },
+        {
+          kind: "upgrade-riot",
+          detail: "Run `riot upgrade` so docs generation uses the latest published Riot binary.",
+        },
+        {
+          kind: "build-package",
+          detail: "Run `riot build --json <package>` first so the synthetic release workspace gets a resolved `riot.lock` and verified dependency graph before docs generation starts.",
         },
         {
           kind: "generate-docs",
-          detail: "Run `riot doc --release -p <package>` in the unpacked package workspace.",
+          detail: "Run `riot doc --json --release -p <package>` in the unpacked package workspace and capture the full JSONL event stream.",
         },
         {
           kind: "upload",
           detail: `Upload the generated static site into ${outputPrefix}.`,
+        },
+        {
+          kind: "upload-report",
+          detail: `Upload the structured command report to ${resultKey} and the raw command log to ${logsKey}.`,
         },
       ],
       created_at: createdAt,
@@ -385,9 +408,9 @@ function buildBuildRunContext(
       riot_release_metadata_url: RIOT_RELEASE_METADATA_URL,
       result_key: resultKey,
       logs_key: logsKey,
-      command: ["riot", "build", event.package_name],
+      command: ["riot", "build", "--json", event.package_name],
       runner: {
-        kind: "cloudflare-container",
+        kind: "cloudflare-sandbox",
         status: "pending_runner",
         notes: buildRunnerNotes(),
       },
@@ -402,11 +425,15 @@ function buildBuildRunContext(
         },
         {
           kind: "install-riot",
-          detail: `Install Riot inside the container by fetching ${RIOT_INSTALL_SCRIPT_URL}.`,
+          detail: `Bake Riot into the sandbox image by fetching ${RIOT_INSTALL_SCRIPT_URL}.`,
+        },
+        {
+          kind: "upgrade-riot",
+          detail: "Run `riot upgrade` so build verification uses the latest published Riot binary.",
         },
         {
           kind: "build-package",
-          detail: "Run `riot build <package>` in the unpacked package workspace to verify the published artifact builds in isolation.",
+          detail: "Run `riot build --json <package>` in the unpacked package workspace to verify the published artifact builds in isolation and capture the JSONL event stream.",
         },
         {
           kind: "upload-report",
@@ -435,7 +462,7 @@ function buildRunRecord(
     package_version: event.package_version,
     artifact_sha256: event.artifact_sha256,
     source_archive_key: event.source_archive_key,
-    runner_kind: "cloudflare-container",
+    runner_kind: "cloudflare-sandbox",
     status,
     output_prefix: outputPrefix,
     request_key: requestKey,
@@ -505,6 +532,7 @@ async function writeDocsArtifacts(
 async function writeBuildArtifacts(
   env: Env,
   event: PackagePublishedEvent,
+  execution: DocsPipelineProcessResult,
   build: NonNullable<DocsPipelineProcessResult["build"]>,
   buildRun: BuildRunContext,
 ): Promise<void> {
@@ -522,7 +550,36 @@ async function writeBuildArtifacts(
     artifact_sha256: event.artifact_sha256,
     source_archive_key: event.source_archive_key,
     generated_at: new Date().toISOString(),
+    environment_probe: execution.environment_probe,
+    upgrade: execution.upgrade,
     ...build,
+  });
+}
+
+async function writeDocsArtifactsReport(
+  env: Env,
+  event: PackagePublishedEvent,
+  execution: DocsPipelineProcessResult,
+  docs: NonNullable<DocsPipelineProcessResult["docs"]>,
+  docsRun: DocsRunContext,
+): Promise<void> {
+  const logBody = [
+    `$ ${docs.command.join(" ")}`,
+    "",
+    docs.stdout,
+    docs.stderr.length > 0 ? `\n[stderr]\n${docs.stderr}` : "",
+  ].join("\n");
+
+  await putText(env, docsRun.logsKey, logBody, "text/plain; charset=utf-8");
+  await putJson(env, docsRun.resultKey, {
+    package_name: event.package_name,
+    package_version: event.package_version,
+    artifact_sha256: event.artifact_sha256,
+    source_archive_key: event.source_archive_key,
+    generated_at: new Date().toISOString(),
+    environment_probe: execution.environment_probe,
+    upgrade: execution.upgrade,
+    ...docs,
   });
 }
 
@@ -542,10 +599,12 @@ async function recordDocsRunStarted(
       startedAt,
       docsRun.requestKey,
       docsRun.outputPrefix,
-      "Docs generation is running in a container-backed worker.",
+      "Docs generation is running in a sandbox-backed worker.",
       {
         source_archive_url: docsRun.sourceArchiveUrl,
         public_docs_url: docsRun.publicDocsUrl,
+        result_key: docsRun.resultKey,
+        logs_key: docsRun.logsKey,
       },
     ),
   );
@@ -567,7 +626,7 @@ async function recordBuildRunStarted(
       startedAt,
       buildRun.requestKey,
       buildRun.outputPrefix,
-      "Build verification is running in a container-backed worker.",
+      "Build verification is running in a sandbox-backed worker.",
       {
         source_archive_url: buildRun.sourceArchiveUrl,
         result_key: buildRun.resultKey,
@@ -600,16 +659,22 @@ async function selectPipelineExecutor(env: Env): Promise<PackagePipelineExecutor
     return env.PIPELINE_EXECUTOR;
   }
 
-  const { ContainerPackagePipelineExecutor } = await import("./pipeline-executor.ts");
-  return new ContainerPackagePipelineExecutor(env);
+  const { SandboxPackagePipelineExecutor } = await import("./pipeline-executor.ts");
+  return new SandboxPackagePipelineExecutor(env);
 }
 
 async function processQueuedReleases(env: Env): Promise<void> {
   const now = new Date().toISOString();
+  const activeReleases = await countActivePackageReleasesToProcess(env.SEARCH_DB, now);
+  const availableSlots = Math.max(0, RELEASE_PROCESSING_TARGET_CONCURRENCY - activeReleases);
+  if (availableSlots === 0) {
+    return;
+  }
+
   const dueReleases = await listDuePackageReleasesToProcess(
     env.SEARCH_DB,
     now,
-    RELEASE_PROCESSING_BATCH_SIZE,
+    Math.min(RELEASE_PROCESSING_BATCH_SIZE, availableSlots),
   );
 
   for (const release of dueReleases) {
@@ -628,7 +693,7 @@ async function processQueuedReleases(env: Env): Promise<void> {
     const buildRun = buildBuildRunContext(event);
     const releaseStartedAt = new Date().toISOString();
     const shouldGenerateDocs = !(await isDocsSatisfied(env, event));
-    const shouldVerifyBuild = !(await isBuildSatisfied(env, event));
+    const shouldVerifyBuild = shouldGenerateDocs || !(await isBuildSatisfied(env, event));
 
     try {
       await writeRegistryEvent(
@@ -655,12 +720,12 @@ async function processQueuedReleases(env: Env): Promise<void> {
         continue;
       }
 
-      if (shouldGenerateDocs) {
-        await recordDocsRunStarted(env, event, docsRun, toIso(releaseStartedAt, 1));
+      if (shouldVerifyBuild) {
+        await recordBuildRunStarted(env, event, buildRun, toIso(releaseStartedAt, 1));
       }
 
-      if (shouldVerifyBuild) {
-        await recordBuildRunStarted(env, event, buildRun, toIso(releaseStartedAt, 2));
+      if (shouldGenerateDocs) {
+        await recordDocsRunStarted(env, event, docsRun, toIso(releaseStartedAt, 2));
       }
 
       const execution = await (await selectPipelineExecutor(env)).processRelease({
@@ -675,91 +740,17 @@ async function processQueuedReleases(env: Env): Promise<void> {
         verify_build: shouldVerifyBuild,
       });
 
-      let releaseError: string | null = null;
+      const releaseErrors: string[] = [];
 
-      if (shouldGenerateDocs) {
-        const docsFinishedAt = new Date().toISOString();
-        const docs = execution.docs;
-
-        if (docs === undefined) {
-          releaseError = "docs runner returned no docs result";
-        } else if (!docs.success) {
-          releaseError = docs.stderr.length > 0 ? docs.stderr : "riot doc failed";
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "docs",
-                "failed",
-                docsFinishedAt,
-                docsRun.requestKey,
-                docsRun.outputPrefix,
-                "Docs generation failed in the container-backed runner.",
-                {
-                  source_archive_url: docsRun.sourceArchiveUrl,
-                  public_docs_url: docsRun.publicDocsUrl,
-                  stdout: docs.stdout,
-                  stderr: docs.stderr,
-                  exit_code: docs.exit_code,
-                },
-              ),
-              started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.docs.failed", docsFinishedAt, event, {
-              run_kind: "docs",
-              exit_code: docs.exit_code,
-            }),
-          );
-        } else {
-          const uploadedKeys = await writeDocsArtifacts(env, docs, docsRun);
-          await writePackagePipelineRunRecord(
-            env.SEARCH_DB,
-            {
-              ...buildRunRecord(
-                event,
-                "docs",
-                "succeeded",
-                docsFinishedAt,
-                docsRun.requestKey,
-                docsRun.outputPrefix,
-                "Package docs generated and uploaded successfully.",
-                {
-                  source_archive_url: docsRun.sourceArchiveUrl,
-                  public_docs_url: docsRun.publicDocsUrl,
-                  uploaded_keys: uploadedKeys,
-                  output_dir: docs.output_dir,
-                  stdout: docs.stdout,
-                  stderr: docs.stderr,
-                  exit_code: docs.exit_code,
-                },
-              ),
-              started_at: releaseStartedAt,
-            },
-          );
-          await writeRegistryEvent(
-            env.SEARCH_DB,
-            makePipelineEvent("package.docs.generated", docsFinishedAt, event, {
-              run_kind: "docs",
-              output_prefix: docsRun.outputPrefix,
-              public_docs_url: docsRun.publicDocsUrl,
-            }),
-          );
-        }
-      }
-
-      if (releaseError === null && shouldVerifyBuild) {
+      if (shouldVerifyBuild) {
         const buildFinishedAt = new Date().toISOString();
         const build = execution.build;
 
         if (build === undefined) {
-          releaseError = "build runner returned no build result";
+          releaseErrors.push("build runner returned no build result");
         } else if (!build.success) {
-          releaseError = build.stderr.length > 0 ? build.stderr : "riot build failed";
-          await writeBuildArtifacts(env, event, build, buildRun);
+          releaseErrors.push(summarizeCommandFailure(build));
+          await writeBuildArtifacts(env, event, execution, build, buildRun);
           await writePackagePipelineRunRecord(
             env.SEARCH_DB,
             {
@@ -770,14 +761,20 @@ async function processQueuedReleases(env: Env): Promise<void> {
                 buildFinishedAt,
                 buildRun.requestKey,
                 buildRun.outputPrefix,
-                "Build verification failed in the container-backed runner.",
+                "Build verification failed in the sandbox runner.",
                 {
                   source_archive_url: buildRun.sourceArchiveUrl,
                   result_key: buildRun.resultKey,
                   logs_key: buildRun.logsKey,
+                  environment_probe: execution.environment_probe,
                   stdout: build.stdout,
                   stderr: build.stderr,
                   exit_code: build.exit_code,
+                  json_event_count: jsonEventCount(build),
+                  non_json_stdout_count: nonJsonStdoutCount(build),
+                  last_json_event_type: lastJsonEventType(build),
+                  last_json_event: lastJsonEvent(build),
+                  failure_summary: summarizeCommandFailure(build),
                 },
               ),
               started_at: releaseStartedAt,
@@ -789,11 +786,20 @@ async function processQueuedReleases(env: Env): Promise<void> {
               run_kind: "build",
               result_key: buildRun.resultKey,
               logs_key: buildRun.logsKey,
+              environment_probe: execution.environment_probe,
               exit_code: build.exit_code,
+              json_event_count: jsonEventCount(build),
+              non_json_stdout_count: nonJsonStdoutCount(build),
+              json_events: build.json_events ?? [],
+              non_json_stdout_lines: build.non_json_stdout_lines ?? [],
+              stderr: build.stderr,
+              last_json_event_type: lastJsonEventType(build),
+              last_json_event: lastJsonEvent(build),
+              failure_summary: summarizeCommandFailure(build),
             }),
           );
         } else {
-          await writeBuildArtifacts(env, event, build, buildRun);
+          await writeBuildArtifacts(env, event, execution, build, buildRun);
           await writePackagePipelineRunRecord(
             env.SEARCH_DB,
             {
@@ -809,9 +815,14 @@ async function processQueuedReleases(env: Env): Promise<void> {
                   source_archive_url: buildRun.sourceArchiveUrl,
                   result_key: buildRun.resultKey,
                   logs_key: buildRun.logsKey,
+                  environment_probe: execution.environment_probe,
                   stdout: build.stdout,
                   stderr: build.stderr,
                   exit_code: build.exit_code,
+                  json_event_count: jsonEventCount(build),
+                  non_json_stdout_count: nonJsonStdoutCount(build),
+                  last_json_event_type: lastJsonEventType(build),
+                  last_json_event: lastJsonEvent(build),
                 },
               ),
               started_at: releaseStartedAt,
@@ -823,13 +834,123 @@ async function processQueuedReleases(env: Env): Promise<void> {
               run_kind: "build",
               result_key: buildRun.resultKey,
               logs_key: buildRun.logsKey,
+              json_event_count: jsonEventCount(build),
+              non_json_stdout_count: nonJsonStdoutCount(build),
+              last_json_event_type: lastJsonEventType(build),
             }),
           );
         }
       }
 
-      if (releaseError !== null) {
-        throw new Error(releaseError);
+      if (shouldGenerateDocs) {
+        const docsFinishedAt = new Date().toISOString();
+        const docs = execution.docs;
+
+        if (docs === undefined) {
+          releaseErrors.push("docs runner returned no docs result");
+        } else if (!docs.success) {
+          releaseErrors.push(summarizeCommandFailure(docs));
+          await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
+          await writePackagePipelineRunRecord(
+            env.SEARCH_DB,
+            {
+              ...buildRunRecord(
+                event,
+                "docs",
+                "failed",
+                docsFinishedAt,
+                docsRun.requestKey,
+                docsRun.outputPrefix,
+                "Docs generation failed in the sandbox runner.",
+                {
+                  source_archive_url: docsRun.sourceArchiveUrl,
+                  public_docs_url: docsRun.publicDocsUrl,
+                  result_key: docsRun.resultKey,
+                  logs_key: docsRun.logsKey,
+                  environment_probe: execution.environment_probe,
+                  stdout: docs.stdout,
+                  stderr: docs.stderr,
+                  exit_code: docs.exit_code,
+                  json_event_count: jsonEventCount(docs),
+                  non_json_stdout_count: nonJsonStdoutCount(docs),
+                  last_json_event_type: lastJsonEventType(docs),
+                  last_json_event: lastJsonEvent(docs),
+                  failure_summary: summarizeCommandFailure(docs),
+                },
+              ),
+              started_at: releaseStartedAt,
+            },
+          );
+          await writeRegistryEvent(
+            env.SEARCH_DB,
+            makePipelineEvent("package.docs.failed", docsFinishedAt, event, {
+              run_kind: "docs",
+              result_key: docsRun.resultKey,
+              logs_key: docsRun.logsKey,
+              environment_probe: execution.environment_probe,
+              exit_code: docs.exit_code,
+              json_event_count: jsonEventCount(docs),
+              non_json_stdout_count: nonJsonStdoutCount(docs),
+              json_events: docs.json_events ?? [],
+              non_json_stdout_lines: docs.non_json_stdout_lines ?? [],
+              stderr: docs.stderr,
+              last_json_event_type: lastJsonEventType(docs),
+              last_json_event: lastJsonEvent(docs),
+              failure_summary: summarizeCommandFailure(docs),
+            }),
+          );
+        } else {
+          const uploadedKeys = await writeDocsArtifacts(env, docs, docsRun);
+          await writeDocsArtifactsReport(env, event, execution, docs, docsRun);
+          await writePackagePipelineRunRecord(
+            env.SEARCH_DB,
+            {
+              ...buildRunRecord(
+                event,
+                "docs",
+                "succeeded",
+                docsFinishedAt,
+                docsRun.requestKey,
+                docsRun.outputPrefix,
+                "Package docs generated and uploaded successfully.",
+                {
+                  source_archive_url: docsRun.sourceArchiveUrl,
+                  public_docs_url: docsRun.publicDocsUrl,
+                  result_key: docsRun.resultKey,
+                  logs_key: docsRun.logsKey,
+                  environment_probe: execution.environment_probe,
+                  uploaded_keys: uploadedKeys,
+                  output_dir: docs.output_dir,
+                  stdout: docs.stdout,
+                  stderr: docs.stderr,
+                  exit_code: docs.exit_code,
+                  json_event_count: jsonEventCount(docs),
+                  non_json_stdout_count: nonJsonStdoutCount(docs),
+                  last_json_event_type: lastJsonEventType(docs),
+                  last_json_event: lastJsonEvent(docs),
+                },
+              ),
+              started_at: releaseStartedAt,
+            },
+          );
+          await writeRegistryEvent(
+            env.SEARCH_DB,
+            makePipelineEvent("package.docs.generated", docsFinishedAt, event, {
+              run_kind: "docs",
+              output_prefix: docsRun.outputPrefix,
+              public_docs_url: docsRun.publicDocsUrl,
+              result_key: docsRun.resultKey,
+              logs_key: docsRun.logsKey,
+              json_event_count: jsonEventCount(docs),
+              non_json_stdout_count: nonJsonStdoutCount(docs),
+              last_json_event_type: lastJsonEventType(docs),
+            }),
+          );
+        }
+      }
+
+      if (releaseErrors.length > 0) {
+        throw new Error(releaseErrors[0] ?? "package processing failed");
       }
 
       const finishedAt = new Date().toISOString();
@@ -899,6 +1020,54 @@ function normalizeBlockedPipelineError(error: unknown): string {
   }
 
   return "Release processing failed three times and is now blocked.";
+}
+
+function jsonEventCount(result: { json_events?: Record<string, unknown>[] }): number {
+  return result.json_events?.length ?? 0;
+}
+
+function nonJsonStdoutCount(result: { non_json_stdout_lines?: string[] }): number {
+  return result.non_json_stdout_lines?.length ?? 0;
+}
+
+function lastJsonEvent(result: { json_events?: Record<string, unknown>[] }): Record<string, unknown> | undefined {
+  return result.json_events?.at(-1);
+}
+
+function lastJsonEventType(result: { json_events?: Record<string, unknown>[] }): string | undefined {
+  const event = lastJsonEvent(result);
+  return typeof event?.type === "string" ? event.type : undefined;
+}
+
+function clipText(value: string, limit = 240): string {
+  if (value.length <= limit) {
+    return value;
+  }
+
+  return `${value.slice(0, limit - 1)}…`;
+}
+
+function summarizeCommandFailure(result: {
+  stderr: string;
+  non_json_stdout_lines?: string[];
+  json_events?: Record<string, unknown>[];
+}): string {
+  const stderr = result.stderr.trim();
+  if (stderr.length > 0) {
+    return clipText(stderr.replaceAll(/\s+/g, " "));
+  }
+
+  const nonJsonLine = result.non_json_stdout_lines?.find((line) => line.trim().length > 0);
+  if (nonJsonLine !== undefined) {
+    return clipText(nonJsonLine.trim());
+  }
+
+  const event = lastJsonEvent(result);
+  if (event !== undefined) {
+    return clipText(JSON.stringify(event));
+  }
+
+  return "The command failed without emitting a structured error payload.";
 }
 
 function toIso(baseIso: string, deltaMs: number): string {

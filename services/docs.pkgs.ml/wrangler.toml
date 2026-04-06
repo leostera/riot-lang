@@ -12,7 +12,7 @@ custom_domain = true
 class_name = "DocsPipelineContainer"
 image = "./Dockerfile"
 instance_type = "basic"
-max_instances = 4
+max_instances = 8
 
 [[durable_objects.bindings]]
 name = "DOCS_PIPELINE_CONTAINER"
@@ -21,6 +21,9 @@ class_name = "DocsPipelineContainer"
 [assets]
 binding = "ASSETS"
 directory = "./dist"
+
+[vars]
+SANDBOX_TRANSPORT = "http"
 
 [[r2_buckets]]
 binding = "ML_PKGS_CDN"

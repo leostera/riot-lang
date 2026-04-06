@@ -175,6 +175,27 @@ export async function listDuePackageReleasesToProcess(
   return rows.map(parsePackageReleaseToProcessRow);
 }
 
+export async function countActivePackageReleasesToProcess(
+  db: D1Database,
+  now: string,
+): Promise<number> {
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      count: sql<number>`count(*)`,
+    })
+    .from(packageReleasesToProcess)
+    .where(
+      and(
+        eq(packageReleasesToProcess.status, "processing"),
+        isNotNull(packageReleasesToProcess.leaseExpiresAt),
+        sql`${packageReleasesToProcess.leaseExpiresAt} > ${now}`,
+      ),
+    );
+
+  return Number(row?.count ?? 0);
+}
+
 export async function claimPackageReleaseToProcess(
   db: D1Database,
   releaseId: string,
