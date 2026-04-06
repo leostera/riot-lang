@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.15 - 2026-04-06
+
+### Added
+
+- Added cache-first external source workflows for `riot run` and `riot install`, with explicit `--update` refreshes and repo-name default binaries for remote sources.
+- Added detached single-package workspace synthesis so Riot commands can build, run, and install from a package root without an enclosing workspace manifest.
+- Added `riot yank` plus exact-version yank support in the `pkgs-ml` registry client.
+- Added structured test and benchmark suite timing output in microseconds, including per-test durations, suite lifecycle timing, and escaped JSON payloads that pipe cleanly into tools like `jq`.
+- Added aggregated case-level summaries in `riot test` and `riot bench`, including measured test time, slowest tests, and aggregated failed test lists in both human and JSON output.
+- Added package admin views in the `pkgs.ml` services and migrated `docs.riot.ml` to the new Astro/Starlight content layout.
+
+### Changed
+
+- `riot test` now rebuilds the familiar human suite output from structured runner events, suppresses zero-match suites for filtered runs, and emits richer machine-readable summary events.
+- `riot bench --json` and `riot test --json` now keep build events in the JSON stream instead of dropping compile progress when suites run in structured mode.
+- Workspace and package resolution for `riot build`, `riot run`, and `riot install` now prefer the nearest enclosing workspace but can fall back to a single package manifest discovered during the same upward scan.
+- RFD metadata and the docs content tree were cleaned up so implemented proposals and user-facing docs stay in sync with the current repo state.
+
+### Fixed
+
+- Fixed stale cached package archives and source materializations so corrupted archives are retried and warm cache flows stay usable.
+- Fixed bootstrap/miniriot wrapper drift that was breaking `./bootstrap.py && ./miniriot`.
+- Fixed invalid JSON serialization for control characters in suite stdout/stderr.
+- Fixed multiple docs and web regressions, including sandbox reruns, mobile navigation, accessibility, and builtin release docs rendering.
+
 ## 0.0.12 - 2026-04-06
 
 ### Added
