@@ -66,7 +66,12 @@ type package_error = Package_management.error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
-  | RegistryMaterializationFailed of { package: string; version: string; registry: string; error: string }
+  | RegistryMaterializationFailed of {
+      package: string;
+      version: string;
+      registry: string;
+      error: string
+    }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of {
       package: string;
@@ -98,6 +103,7 @@ val load_registry_workspace:
   spec:string ->
   unit ->
   (loaded_workspace, package_error) result
+
 val ensure_lock:
   ?emit:event_sink ->
   ?workspace_manager:Riot_model.Workspace_manager.t ->

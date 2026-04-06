@@ -1,0 +1,49 @@
+---
+import { getSectionLabelForPath } from "../../../docs-nav.mjs";
+
+const pathname = Astro.url.pathname;
+const activeSectionLabel = getSectionLabelForPath(pathname);
+const activeSection =
+  Astro.locals.starlightRoute.sidebar.find(
+    (entry) => entry.type === "group" && entry.label === activeSectionLabel,
+  ) ?? null;
+
+const rootEntries = Astro.props.entries ?? (activeSection?.type === "group" ? activeSection.entries : []);
+const nested = Astro.props.nested ?? false;
+---
+
+<div class="riot-sidebar-shell">
+  {
+    !nested && activeSectionLabel && (
+      <div class="riot-sidebar-section">
+        <div class="riot-sidebar-kicker">Section</div>
+        <div class="riot-sidebar-heading">{activeSectionLabel}</div>
+      </div>
+    )
+  }
+
+  <ul class:list={["riot-sidebar-list", { "riot-sidebar-list--nested": nested }]}>
+    {
+      rootEntries.map((entry) => (
+        <li class="riot-sidebar-item">
+          {
+            entry.type === "link" ? (
+              <a
+                class="riot-sidebar-link"
+                href={entry.href}
+                aria-current={entry.isCurrent ? "page" : undefined}
+              >
+                <span>{entry.label}</span>
+              </a>
+            ) : (
+              <div class="riot-sidebar-group">
+                <div class="riot-sidebar-group-title">{entry.label}</div>
+                <Astro.self entries={entry.entries} nested />
+              </div>
+            )
+          }
+        </li>
+      ))
+    }
+  </ul>
+</div>

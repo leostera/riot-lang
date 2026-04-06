@@ -46,7 +46,12 @@ type error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
-  | RegistryMaterializationFailed of { package: string; version: string; registry: string; error: string }
+  | RegistryMaterializationFailed of {
+      package: string;
+      version: string;
+      registry: string;
+      error: string
+    }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of {
       package: string;

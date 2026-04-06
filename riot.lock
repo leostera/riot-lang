@@ -379,6 +379,14 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
+name = "commonmark"
+root = "packages/commonmark"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "ceibo", package = { name = "ceibo" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
 name = "registry"
 root = "services/registry"
 provenance = { kind = "workspace" }

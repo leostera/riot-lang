@@ -27,6 +27,7 @@ let build_cli = fun () ->
         Toolchain_cmd.command;
         Upgrade.command;
         Update_cmd.command;
+        Yank.command;
         Doc.command;
         Lsp_cmd.command;
         command "version" |> about "Show riot version";
@@ -272,12 +273,16 @@ let run = fun ~args ->
               let workspace_scan = get_workspace_scan () in
               let workspace, workspace_error =
                 match workspace_scan with
-                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (Some workspace, None)
-                | Loaded (workspace, load_errors) ->
-                    (
-                      Some workspace,
-                      Some (String.concat "\n" (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
-                    )
+                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (
+                  Some workspace,
+                  None
+                )
+                | Loaded (workspace, load_errors) -> (
+                  Some workspace,
+                  Some (String.concat
+                    "\n"
+                    (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                )
                 | NoWorkspace -> (None, None)
                 | ScanFailed err -> (None, Some err)
               in
@@ -392,6 +397,8 @@ let run = fun ~args ->
               Login.run login_matches
           | Some ("logout", logout_matches) ->
               Logout.run logout_matches
+          | Some ("yank", yank_matches) ->
+              Yank.run yank_matches
           | Some ("init", init_matches) ->
               Riot_init.run init_matches
           | Some ("new", new_matches) ->
@@ -405,12 +412,16 @@ let run = fun ~args ->
               let workspace_scan = get_workspace_scan () in
               let workspace, workspace_error =
                 match workspace_scan with
-                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (Some workspace, None)
-                | Loaded (workspace, load_errors) ->
-                    (
-                      Some workspace,
-                      Some (String.concat "\n" (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
-                    )
+                | Loaded (workspace, load_errors) when List.is_empty load_errors -> (
+                  Some workspace,
+                  None
+                )
+                | Loaded (workspace, load_errors) -> (
+                  Some workspace,
+                  Some (String.concat
+                    "\n"
+                    (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                )
                 | NoWorkspace -> (None, None)
                 | ScanFailed err -> (None, Some err)
               in

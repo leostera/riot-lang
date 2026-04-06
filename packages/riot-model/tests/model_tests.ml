@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+
 let ( let* ) = Result.and_then
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
@@ -57,7 +58,10 @@ let with_tempdir = fun prefix fn ->
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
+  ^ syscall
+  ^ "' returned invalid UTF-8 path: "
+  ^ path
   | Path.SystemError error -> error
 
 let test_build_scope_drops_commands_and_runtime_outputs = fun _ctx ->
@@ -158,9 +162,7 @@ let test_src_main_autodiscovers_runtime_binary = fun _ctx ->
     (fun tmpdir ->
       let src_dir = Path.(tmpdir / Path.v "src") in
       Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
-      Result.expect
-        (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml"))
-        ~msg:"Failed to write main source";
+      Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write main source";
       let manifest =
         Std.Data.Toml.parse
           {|
@@ -187,10 +189,8 @@ version = "0.1.0"
             ^ name
             ^ " at "
             ^ Path.to_string path)
-      | binaries ->
-          Error ("expected exactly one autodiscovered runtime binary, got "
-          ^ Int.to_string (List.length binaries))
-    )
+      | binaries -> Error ("expected exactly one autodiscovered runtime binary, got "
+      ^ Int.to_string (List.length binaries)))
 
 let test_scan_sources_ignores_hidden_entries = fun _ctx ->
   with_tempdir "riot_model_hidden_sources"
@@ -696,8 +696,9 @@ let test_workspace_manager_synthesizes_single_package_workspace = fun _ctx ->
     let* () = Fs.create_dir_all root |> Result.map_error IO.error_message in
     let src_dir = Path.(root / Path.v "src") in
     let* () = Fs.create_dir_all src_dir |> Result.map_error IO.error_message in
-    let* () = Fs.write
-      {|
+    let* () =
+      Fs.write
+        {|
 [package]
 name = "demo"
 version = "0.1.0"
@@ -709,8 +710,8 @@ path = "src/demo.ml"
 name = "main"
 path = "src/demo.ml"
 |}
-      Path.(root / Path.v "riot.toml")
-    |> Result.map_error IO.error_message in
+        Path.(root / Path.v "riot.toml") |> Result.map_error IO.error_message
+    in
     let* () = Fs.write "let () = print_endline \"demo\"\n" Path.(src_dir / Path.v "demo.ml")
     |> Result.map_error IO.error_message in
     let* () = Env.set_current_dir root |> Result.map_error path_error_message in
@@ -736,13 +737,12 @@ path = "src/demo.ml"
                 ^ package.Riot_model.Package.name
                 ^ " relative="
                 ^ Path.to_string package.Riot_model.Package.relative_path)
-          | packages ->
-              Error ("expected one package, got "
-              ^ Int.to_string (List.length packages)
-              ^ " root="
-              ^ Path.to_string workspace.root
-              ^ " names="
-              ^ String.concat ", " (List.map (fun (pkg:Riot_model.Package.t) -> pkg.name) packages))
+          | packages -> Error ("expected one package, got "
+          ^ Int.to_string (List.length packages)
+          ^ " root="
+          ^ Path.to_string workspace.root
+          ^ " names="
+          ^ String.concat ", " (List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages))
   in
   let _ =
     match original_dir with

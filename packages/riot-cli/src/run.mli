@@ -11,11 +11,8 @@ type implicit_local_target = {
   package_name: string;
   binary_name: string;
 }
-
 val resolve_implicit_local_target:
-  ?package_filter:string ->
-  Riot_model.Workspace.t ->
-  (implicit_local_target, string) result
+  ?package_filter:string -> Riot_model.Workspace.t -> (implicit_local_target, string) result
 
 val run_with_workspace_info:
   workspace:Riot_model.Workspace.t option ->

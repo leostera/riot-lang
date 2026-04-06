@@ -62,8 +62,16 @@ let make_release = fun ?(dependencies = []) ?(yanked = false) ~version () ->
     source_key = "sources/" ^ version ^ ".tar.gz";
     dependencies;
     yanked;
-    yanked_at = if yanked then Some "2026-04-06T10:00:00.000Z" else None;
-    yanked_by_github_login = if yanked then Some "leostera" else None;
+    yanked_at =
+      if yanked then
+        Some "2026-04-06T10:00:00.000Z"
+      else
+        None;
+    yanked_by_github_login =
+      if yanked then
+        Some "leostera"
+      else
+        None;
   }
 
 let make_registry_dependency = fun name ->
@@ -1856,8 +1864,7 @@ let test_git_dependency_sync_checkout_skips_fetch_without_update = fun _ctx ->
         ~ref_:"main"
         ()
       |> Result.map_error Riot_deps.Git_dependency.message in
-      write_file
-        Path.(origin / Path.v "riot.toml")
+      write_file Path.(origin / Path.v "riot.toml")
         {|
 [package]
 name = "widgets-next"
@@ -1866,13 +1873,7 @@ description = "widgets-next"
 license = "Apache-2.0"
 public = true
 |};
-      let* _ = run_git_steps
-        ~cwd:origin
-        [
-          [ "add"; "." ];
-          [ "commit"; "-m"; "update" ];
-        ]
-      in
+      let* _ = run_git_steps ~cwd:origin [ [ "add"; "." ]; [ "commit"; "-m"; "update" ]; ] in
       let* _ = Riot_deps.Git_dependency.sync_checkout
         ~update:false
         ~repo_dir:checkout
@@ -2545,8 +2546,7 @@ let test_git_dependency_parse_source_locator_accepts_github_shorthand = fun _ctx
         Ok ()
       else
         Error "unexpected shorthand source locator decode"
-  | Error err ->
-      Error ("expected github shorthand to parse: " ^ Riot_deps.Git_dependency.message err)
+  | Error err -> Error ("expected github shorthand to parse: " ^ Riot_deps.Git_dependency.message err)
 
 let test_load_registry_workspace_materializes_release = fun _ctx ->
   with_tempdir "riot_deps_load_registry_workspace"
@@ -2557,17 +2557,10 @@ let test_load_registry_workspace_materializes_release = fun _ctx ->
         ()
       |> Result.expect ~msg:"expected registry cache to initialize" in
       let version = "0.1.0" in
-      let registry = Pkgs_ml.Registry.in_memory
-        ~cache:registry_cache
-        ~packages:[
-          make_registry_document
-            ~name:"demo"
-            ~latest:version
-            ~releases:[ make_release ~version () ]
-            ()
-        ]
-        ~releases:[
-          {
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
+        make_registry_document ~name:"demo" ~latest:version ~releases:[ make_release ~version () ] ()
+      ]
+        ~releases:[ {
             Pkgs_ml.Registry.package_name = "demo";
             version;
             manifest_toml =
@@ -2580,8 +2573,7 @@ license = "Apache-2.0"
 public = true
 |};
             files = [ { path = Path.v "src/demo.ml"; contents = "let answer = 42\n" } ];
-          }
-        ]
+          } ]
         ()
       in
       match Riot_deps.load_registry_workspace ~registry ~spec:"demo" () with
@@ -2596,8 +2588,8 @@ public = true
             Ok ()
           else
             Error "unexpected loaded registry workspace"
-      | Error err ->
-          Error ("expected registry workspace load to succeed: " ^ Riot_deps.package_error_message err))
+      | Error err -> Error ("expected registry workspace load to succeed: "
+      ^ Riot_deps.package_error_message err))
 
 let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
   with_tempdir "riot_deps_load_registry_workspace_yanked"
@@ -2617,22 +2609,18 @@ let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
             ~releases:[ make_release ~version ~yanked:true () ]
             ()
         ]
-        ()
-      in
+        () in
       match Riot_deps.load_registry_workspace ~registry ~spec:"demo@0.1.0" () with
       | Error (Riot_deps.RegistryReleaseYanked { package; version; registry }) ->
           if
-            String.equal package "demo"
-            && String.equal version "0.1.0"
-            && String.equal registry "pkgs.ml"
+            String.equal package "demo" && String.equal version "0.1.0" && String.equal registry "pkgs.ml"
           then
             Ok ()
           else
             Error "expected yanked registry release error to preserve package identity"
-      | Error err ->
-          Error ("expected yanked registry release error, got: " ^ Riot_deps.package_error_message err)
-      | Ok _ ->
-          Error "expected yanked registry workspace load to fail")
+      | Error err -> Error ("expected yanked registry release error, got: "
+      ^ Riot_deps.package_error_message err)
+      | Ok _ -> Error "expected yanked registry workspace load to fail")
 
 let tests =
   Test.[

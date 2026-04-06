@@ -170,8 +170,7 @@ let slot_owner_worker = fun slot -> Atomic.get slot.owner_worker
 let set_slot_owner_worker = fun slot worker_id ->
   Atomic.set slot.owner_worker worker_id
 
-let set_slot_blocking_lane = fun slot lane ->
-  slot.blocking_lane <- Some lane
+let set_slot_blocking_lane = fun slot lane -> slot.blocking_lane <- Some lane
 
 let mark_slot_dequeued = fun slot ->
   Atomic.set slot.queued false
@@ -542,11 +541,7 @@ let wait_for_blocking_work = fun t slot ->
   | Some lane ->
       let proc = slot_process slot in
       Mutex.lock lane.lock;
-      while
-        (not (Atomic.get t.stop))
-        && Process.is_alive proc
-        && not (Atomic.get slot.queued)
-      do
+      while (not (Atomic.get t.stop)) && Process.is_alive proc && not (Atomic.get slot.queued) do
         Condition.wait lane.cond lane.lock
       done;
       Mutex.unlock lane.lock;
@@ -909,11 +904,7 @@ let step_process = fun t ctx slot ->
 let spawn_blocked = fun t fn ->
   let proc = Process.make fn in
   let slot = create_process_slot proc ~owner_worker:Scheduler_id.zero ~placement:Blocking in
-  let lane = {
-    lock = Mutex.create ();
-    cond = Condition.create ();
-    domain = None;
-  } in
+  let lane = { lock = Mutex.create (); cond = Condition.create (); domain = None } in
   let ctx = { scheduler = t; worker_id = None; current_process = None } in
   let rec blocking_loop () =
     Domain.DLS.set current_context (Some ctx);
@@ -978,10 +969,8 @@ let steal_batch = fun (victim: worker) ->
       | None -> (List.rev stolen, List.rev kept)
       | Some slot -> (
           match slot_placement slot with
-          | Normal when wanted > 0 ->
-              scan (remaining - 1) (wanted - 1) (slot :: stolen) kept
-          | _ ->
-              scan (remaining - 1) wanted stolen (slot :: kept)
+          | Normal when wanted > 0 -> scan (remaining - 1) (wanted - 1) (slot :: stolen) kept
+          | _ -> scan (remaining - 1) wanted stolen (slot :: kept)
         )
   in
   let batch, kept = scan available steal_goal [] [] in

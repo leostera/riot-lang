@@ -41,9 +41,8 @@ let test_run_event_to_json_serializes_running_binary = fun _ctx ->
 let test_run_error_message_names_external_target_load_failure = fun _ctx ->
   Test.assert_equal
     ~expected:"failed to load external target 'leostera/riot': boom"
-    ~actual:
-      (Riot_build.run_error_message
-         (Riot_build.ExternalTargetLoadFailed { target = "leostera/riot"; reason = "boom" }));
+    ~actual:(Riot_build.run_error_message
+      (Riot_build.ExternalTargetLoadFailed { target = "leostera/riot"; reason = "boom" }));
   Ok ()
 
 let tests =

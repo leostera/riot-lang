@@ -82,8 +82,7 @@ let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
       let _ = HashMap.insert t.workspace_roots key result in
       result
 
-let rec find_scan_roots: t -> Path.t -> package_root:Path.t option -> (Path.t option * Path.t option)
-  = fun t start_dir ~package_root ->
+let rec find_scan_roots: t -> Path.t -> package_root:Path.t option -> (Path.t option * Path.t option) = fun t start_dir ~package_root ->
   let manifest_path = Path.(start_dir / riot_toml) in
   let next package_root =
     match Path.parent start_dir with
@@ -320,8 +319,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     all_errors
   )
 
-let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error list, string) result =
-  fun t package_root ->
+let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error list, string) result = fun t package_root ->
   let manifest_path = Path.(package_root / riot_toml) in
   match load_riot_toml t manifest_path with
   | Error err when String.starts_with ~prefix:"failed to read" err ->
@@ -339,22 +337,23 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
       | Error err -> Error ("Failed to parse package manifest: " ^ err)
       | Ok package ->
           let seen = Cell.create [ package.name ] in
-          let external_results =
-            List.map
-              (load_external_package
-                t
-                package_root
-                ~declared_from:package_root
-                ~seen
-                ~workspace_deps:[]
-                ~workspace_dev_deps:[]
-                ~workspace_build_deps:[]
-                ~dependant:(Some package.name))
-              (Package.all_dependencies package)
-          in
+          let external_results = List.map
+            (load_external_package
+              t
+              package_root
+              ~declared_from:package_root
+              ~seen
+              ~workspace_deps:[]
+              ~workspace_dev_deps:[]
+              ~workspace_build_deps:[]
+              ~dependant:(Some package.name))
+            (Package.all_dependencies package) in
           let external_packages = List.concat_map fst external_results in
           let external_errors = List.concat_map snd external_results in
-          Ok (Workspace.make ~root:package_root ~packages:(package :: external_packages) (), external_errors)
+          Ok (
+            Workspace.make ~root:package_root ~packages:((package :: external_packages)) (),
+            external_errors
+          )
     )
 
 let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun t path ->
@@ -394,7 +393,8 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
               let _ = HashMap.insert t.scans key result in
               result
         )
-    | None, None -> Error "No workspace root found"
+    | None, None ->
+        Error "No workspace root found"
   with
   | exn -> Error ("Scan failed: " ^ Exception.to_string exn)
 

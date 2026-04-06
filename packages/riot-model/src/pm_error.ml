@@ -88,13 +88,7 @@ let rec headline = function
   | RegistryLatestReleaseMissing { package; latest_version } ->
       "registry package '" ^ package ^ "' declares latest version '" ^ latest_version ^ "' but that release is missing from the sparse index document"
   | RegistryReleaseYanked { package; registry; version; required_by=_ } ->
-      "package `"
-      ^ package
-      ^ "@"
-      ^ version
-      ^ "` was yanked from registry `"
-      ^ registry
-      ^ "`"
+      "package `" ^ package ^ "@" ^ version ^ "` was yanked from registry `" ^ registry ^ "`"
   | PackageMetadataReadFailed { package; error; _ } ->
       "failed to read package document for '" ^ package ^ "': " ^ error
   | PackageNotFound { package; registry; required_by=_ } ->
@@ -407,12 +401,9 @@ let rec of_json = function
           | _ -> Error "invalid RegistryLatestReleaseMissing"
         )
       | Some (Json.String "RegistryReleaseYanked") -> (
-          match
-            List.assoc_opt "package" fields,
-            List.assoc_opt "registry" fields,
-            List.assoc_opt "version" fields,
-            List.assoc_opt "required_by" fields
-          with
+          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt
+            "version"
+            fields, List.assoc_opt "required_by" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String version), required_by_json_opt ->
               let required_by =
                 match required_by_json_opt with
@@ -433,12 +424,8 @@ let rec of_json = function
                     Error "invalid RegistryReleaseYanked.required_by"
               in
               required_by
-              |> Result.map (fun required_by -> RegistryReleaseYanked {
-                package;
-                registry;
-                version;
-                required_by;
-              })
+              |> Result.map
+                (fun required_by -> RegistryReleaseYanked { package; registry; version; required_by })
           | _ -> Error "invalid RegistryReleaseYanked"
         )
       | Some (Json.String "PackageMetadataReadFailed") -> (

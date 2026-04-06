@@ -29,7 +29,7 @@ type event =
       package: string;
       version: string;
       output_dir: Path.t;
-      error: string;
+      error: string
     }
   | PackageGenerationCompleted of generation
 
@@ -448,12 +448,9 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
   match result with
   | Ok _ as ok -> ok
   | Error error ->
-      let () = emit ~on_event (PackageGenerationFailed {
-        package = package.name;
-        version;
-        output_dir;
-        error;
-      }) in
+      let () = emit
+        ~on_event
+        (PackageGenerationFailed { package = package.name; version; output_dir; error }) in
       Error error
 
 let run = fun ?on_event (request: request) ->

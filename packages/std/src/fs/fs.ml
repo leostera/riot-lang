@@ -186,12 +186,9 @@ let write = fun content path ->
       Ok ()
     else
       match Kernel.Fs.File.write fd buf ~pos:offset ~len:remaining with
-      | Ok 0 ->
-          Error (IO.Unknown_error ("short write while writing '" ^ path_str ^ "'"))
-      | Ok written ->
-          write_loop (offset + written) (remaining - written)
-      | Error e ->
-          Error e
+      | Ok 0 -> Error (IO.Unknown_error ("short write while writing '" ^ path_str ^ "'"))
+      | Ok written -> write_loop (offset + written) (remaining - written)
+      | Error e -> Error e
   in
   close_with (write_loop 0 len)
 

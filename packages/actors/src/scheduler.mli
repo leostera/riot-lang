@@ -24,10 +24,7 @@ val spawn: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn a process on a scheduler chosen by runtime placement policy. *)
 val spawn_pinned:
-  ?worker_id:Scheduler_id.t ->
-  t ->
-  (unit -> (unit, Process.exit_reason) result) ->
-  Pid.t
+  ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn a process pinned to a single normal scheduler. *)
 val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t

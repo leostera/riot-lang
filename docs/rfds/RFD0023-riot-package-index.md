@@ -3,8 +3,6 @@
 - Feature Name: `riot_package_index`
 - Start Date: `2026-03-27`
 - Status: `implemented`
-- RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
-- Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 
 ## Summary
 [summary]: #summary

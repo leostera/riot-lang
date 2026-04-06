@@ -62,28 +62,7 @@ version = "5.5.0-riot.2"
 (** Create .gitignore *)
 let create_gitignore = fun target_dir ->
   let content = {|# Riot build artifacts
-3rdparty
-generated
-*.install
-*.bin
 _build
-target
-/riot
-.merlin
-*.cmi
-*.cmo
-*.cma
-/logs
-
-# OCaml
-*.beam
-*.trace
-_opam
-
-# IDEs
-.direnv
-.envrc
-.tmp
 |}
   in
   let path = Path.(target_dir / Path.v ".gitignore") in

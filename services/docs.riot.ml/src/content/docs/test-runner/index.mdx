@@ -13,6 +13,25 @@ Riot’s test story has four layers:
 The important thing is that these layers line up. You do not have to leave the Riot test runner just
 to get property tests, snapshot workflows, or benchmarks.
 
+<div class="home-grid home-grid--cards">
+  <a class="home-card" href="/test-runner/riot-test/">
+    <strong>riot test</strong>
+    <span>Run the workspace test loop, filter suites, inspect JSON output, and understand what the runner expects from test binaries.</span>
+  </a>
+  <a class="home-card" href="/test-runner/writing-tests/">
+    <strong>Writing Tests with Std.Test</strong>
+    <span>Learn the core suite model, assertions, fixtures, contexts, and CLI integration.</span>
+  </a>
+  <a class="home-card" href="/test-runner/property-testing-with-propane/">
+    <strong>Propane</strong>
+    <span>Add real property testing with generation and shrinking instead of manual example lists.</span>
+  </a>
+  <a class="home-card" href="/test-runner/std-bench/">
+    <strong>Std.Bench</strong>
+    <span>Define repeatable benchmarks, comparisons, and reporters using the same package workflow as tests.</span>
+  </a>
+</div>
+
 ## The mental model
 
 At the package level, you normally write test binaries that export:
@@ -57,3 +76,24 @@ Good Riot suites tend to have these properties:
 
 That progression is healthy. It means the package is becoming better specified without forcing you to
 adopt every testing feature at once.
+
+## Core loops in this section
+
+<ul class="home-list">
+  <li>
+    <strong>Suite-driven testing.</strong><br />
+    Use <a href="/test-runner/writing-tests/">Std.Test</a> to define cases, assertions, fixtures, contexts, and the shared CLI contract.
+  </li>
+  <li>
+    <strong>Property testing with Propane.</strong><br />
+    Use <a href="/test-runner/property-testing-with-propane/">Propane</a> when you need generation and shrinking rather than hand-authored examples.
+  </li>
+  <li>
+    <strong>Snapshot review.</strong><br />
+    Use <a href="/test-runner/std-test-snapshot/">Std.Test.Snapshot</a> and <a href="/test-runner/riot-snapshot/">riot snapshots</a> to review evolving text and structured outputs.
+  </li>
+  <li>
+    <strong>Benchmarking.</strong><br />
+    Use <a href="/test-runner/std-bench/">Std.Bench</a> and <a href="/test-runner/riot-bench/">riot bench</a> when performance behavior is part of the contract.
+  </li>
+</ul>

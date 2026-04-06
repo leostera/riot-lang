@@ -33,6 +33,13 @@ type published_release = {
   release: published_record;
   materialization: published_materialization;
 }
+type yanked_release = {
+  package_name: string;
+  package_version: string;
+  yanked: bool;
+  yanked_at: string option;
+  yanked_by_github_login: string option;
+}
 type release_file = {
   path: Path.t;
   contents: string;
@@ -86,3 +93,6 @@ val refresh_package_document:
 val materialize_release: t -> package_name:string -> version:string -> (materialize_result, string) result
 
 val publish_artifact: t -> api_token:string -> artifact:string -> (published_release, string) result
+
+val yank_release:
+  t -> api_token:string -> package_name:string -> version:string -> (yanked_release, string) result

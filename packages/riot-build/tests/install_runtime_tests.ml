@@ -38,9 +38,8 @@ let test_install_error_message_names_promotion_failure = fun _ctx ->
 let test_install_error_message_names_external_target_load_failure = fun _ctx ->
   Test.assert_equal
     ~expected:"failed to load external target 'demo': boom"
-    ~actual:
-      (Riot_build.install_error_message
-         (Riot_build.ExternalTargetLoadFailed { target = "demo"; reason = "boom" }));
+    ~actual:(Riot_build.install_error_message
+      (Riot_build.ExternalTargetLoadFailed { target = "demo"; reason = "boom" }));
   Ok ()
 
 let tests =

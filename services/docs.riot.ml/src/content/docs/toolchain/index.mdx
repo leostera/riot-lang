@@ -1,0 +1,129 @@
+---
+title: "Toolchain"
+description: "The main Riot surface: installation, quick start, daily commands, runtime facilities, and built-in batteries."
+---
+
+The `Toolchain` tab is the front door to Riot. It is where a user should be able to move from:
+
+- `what is this?`
+- `can I install it?`
+- `can I build something real?`
+- `what comes with it besides the CLI?`
+
+to a credible first success.
+
+<div class="home-grid home-grid--cards">
+  <a class="home-card" href="/toolchain/installation/">
+    <strong>Installation</strong>
+    <span>Install Riot, verify the binary, and make sure the local toolchain can build packages.</span>
+  </a>
+  <a class="home-card" href="/toolchain/quickstart/">
+    <strong>Quick Start</strong>
+    <span>Create a real workspace, build it, run it, and see the default Riot workflow end to end.</span>
+  </a>
+  <a class="home-card" href="/toolchain/riot-run/">
+    <strong>riot run</strong>
+    <span>Understand how Riot runs binaries and commands through the same package model as builds.</span>
+  </a>
+  <a class="home-card" href="/toolchain/actor-runtime/">
+    <strong>Actor Runtime</strong>
+    <span>See why Riot includes an actor-oriented runtime and where it changes how applications are structured.</span>
+  </a>
+</div>
+
+## The adoption path
+
+If you are still evaluating Riot, read these pages in order:
+
+1. [Installation](/toolchain/installation)
+2. [Quick Start](/toolchain/quickstart)
+3. [Editor Setup](/toolchain/editor-setup)
+4. [riot build](/toolchain/build)
+5. [riot run](/toolchain/riot-run)
+
+That is the shortest path from `what is this?` to `I can actually use this`.
+
+## The daily loop
+
+<div class="home-grid home-grid--cards">
+  <a class="home-card" href="/toolchain/build/">
+    <strong>riot build</strong>
+    <span>Plan and build packages with the same dependency model the rest of Riot understands.</span>
+  </a>
+  <a class="home-card" href="/toolchain/check/">
+    <strong>riot check</strong>
+    <span>Run the fast validation loop when you want correctness signals without a full publish flow.</span>
+  </a>
+  <a class="home-card" href="/toolchain/fix/">
+    <strong>riot fix</strong>
+    <span>Apply syntax-directed fixes and keep codebases moving without manual cleanup passes.</span>
+  </a>
+  <a class="home-card" href="/toolchain/fmt/">
+    <strong>riot fmt</strong>
+    <span>Format the workspace with the same toolchain assumptions Riot uses everywhere else.</span>
+  </a>
+</div>
+
+Once a workspace exists, the center of gravity usually becomes:
+
+- [riot build](/toolchain/build)
+- [riot check](/toolchain/check)
+- [riot fix](/toolchain/fix)
+- [riot fmt](/toolchain/fmt)
+- [riot run](/toolchain/riot-run)
+
+Those commands are not five unrelated features. Together they define the normal edit, validate, and
+execute rhythm of a Riot workspace.
+
+## Beyond commands
+
+<div class="home-grid home-grid--cards">
+  <a class="home-card" href="/toolchain/package-structure/">
+    <strong>Package Structure</strong>
+    <span>Understand the layout Riot expects from packages, interfaces, tests, examples, and assets.</span>
+  </a>
+  <a class="home-card" href="/toolchain/collections/">
+    <strong>Collections & Utilities</strong>
+    <span>See the batteries Riot brings into the standard library for day-to-day programming.</span>
+  </a>
+  <a class="home-card" href="/toolchain/server/">
+    <strong>Server & Networking</strong>
+    <span>Start with the server story, then drill into TCP and UDP when you need the lower-level transport view.</span>
+  </a>
+  <a class="home-card" href="/toolchain/json/">
+    <strong>Data Formats</strong>
+    <span>Use built-in JSON and TOML support without leaving the standard Riot workflow.</span>
+  </a>
+</div>
+
+Riot also has a broader story than just "CLI commands for OCaml":
+
+- [Actor Runtime](/toolchain/actor-runtime)
+- [Package Structure](/toolchain/package-structure)
+- [Collections & Utilities](/toolchain/collections)
+- [Server](/toolchain/server)
+- [TCP](/toolchain/tcp)
+- [UDP](/toolchain/udp)
+- [JSON](/toolchain/json)
+- [TOML](/toolchain/toml)
+- [Interop](/toolchain/interop)
+
+These pages are here because users evaluating Riot need to know whether the toolchain also brings a
+usable programming environment with it.
+
+## What to expect from this section
+
+<ul class="home-list">
+  <li>
+    <strong>Teach the mental model.</strong><br />
+    The page should explain what the command or subsystem is for before it lists flags or APIs.
+  </li>
+  <li>
+    <strong>Show the common workflow.</strong><br />
+    A useful page makes the normal developer loop visible instead of assuming the reader already has it.
+  </li>
+  <li>
+    <strong>Point deeper when needed.</strong><br />
+    When exact API details matter, the page should route you toward the next layer instead of pretending to be exhaustive.
+  </li>
+</ul>

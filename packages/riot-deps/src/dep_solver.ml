@@ -237,13 +237,12 @@ let latest_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
         String.equal release.version document.latest)
       document.releases
   with
-  | Some release when release.yanked ->
-      Error (Error.RegistryReleaseYanked {
-        package = document.name;
-        registry = "pkgs.ml";
-        version = release.version;
-        required_by = None;
-      })
+  | Some release when release.yanked -> Error (Error.RegistryReleaseYanked {
+    package = document.name;
+    registry = "pkgs.ml";
+    version = release.version;
+    required_by = None
+  })
   | Some release -> Ok release
   | None -> Error (Error.RegistryLatestReleaseMissing {
     package = document.name;
@@ -1372,11 +1371,12 @@ let provider_dependencies_of_registry_package = fun (catalog: catalog) ~package_
                   String.equal release.version version_string)
                 document.releases
             with
-            | None -> Ok (Pubgrub.Provider.Unavailable ("package '"
-            ^ package_name
-            ^ "@"
-            ^ version_string
-            ^ "' is unavailable"))
+            | None ->
+                Ok (Pubgrub.Provider.Unavailable ("package '"
+                ^ package_name
+                ^ "@"
+                ^ version_string
+                ^ "' is unavailable"))
             | Some release when release.yanked ->
                 Ok (Pubgrub.Provider.Unavailable ("package '"
                 ^ package_name

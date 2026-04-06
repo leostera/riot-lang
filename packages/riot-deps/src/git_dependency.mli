@@ -45,8 +45,4 @@ val sync_checkout:
   (checkout_status, error) result
 
 val materialize:
-  ?update:bool ->
-  source_locator:string ->
-  ref_:string option ->
-  unit ->
-  (materialized, error) result
+  ?update:bool -> source_locator:string -> ref_:string option -> unit -> (materialized, error) result

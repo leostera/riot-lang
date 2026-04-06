@@ -44,6 +44,14 @@ type published_release = {
   materialization: published_materialization;
 }
 
+type yanked_release = {
+  package_name: string;
+  package_version: string;
+  yanked: bool;
+  yanked_at: string option;
+  yanked_by_github_login: string option;
+}
+
 type release_file = {
   path: Path.t;
   contents: string;
@@ -389,11 +397,43 @@ let published_release_of_json = fun json ->
       }
   | _ -> Error "publish response must be an object"
 
+let yanked_release_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields ->
+      let* package_name = string_field ~context:"yank response" ~field:"package_name" fields in
+      let* package_version = string_field ~context:"yank response" ~field:"package_version" fields in
+      let* yanked = bool_field ~context:"yank response" ~field:"yanked" fields in
+      let* yanked_at = optional_string_field ~context:"yank response" ~field:"yanked_at" fields in
+      let* yanked_by_github_login = optional_string_field
+        ~context:"yank response"
+        ~field:"yanked_by_github_login"
+        fields in
+      Ok {
+        package_name;
+        package_version;
+        yanked;
+        yanked_at;
+        yanked_by_github_login;
+      }
+  | _ -> Error "yank response must be an object"
+
 let publish_artifact_url = fun ~registry_name ->
   let url = "https://api." ^ registry_name ^ "/v1/publish" in
   match Net.Uri.of_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
+
+let yank_release_url = fun ~registry_name ~package_name ~version ->
+  let url = "https://api."
+  ^ registry_name
+  ^ "/v1/me/packages/"
+  ^ package_name
+  ^ "/versions/"
+  ^ version
+  ^ "/yank" in
+  match Net.Uri.of_string url with
+  | Ok uri -> Ok uri
+  | Error _ -> Error ("failed to build yank url '" ^ url ^ "'")
 
 let search_url = fun ~registry_name ~query ~limit ->
   let url = "https://api."
@@ -898,14 +938,13 @@ let find_release = fun registry ~package_name ~version ->
             String.equal release.version version)
           document.releases
       with
-      | Some release when release.yanked ->
-          Error ("package '"
-          ^ package_name
-          ^ "@"
-          ^ version
-          ^ "' was yanked from registry '"
-          ^ name registry
-          ^ "'")
+      | Some release when release.yanked -> Error ("package '"
+      ^ package_name
+      ^ "@"
+      ^ version
+      ^ "' was yanked from registry '"
+      ^ name registry
+      ^ "'")
       | Some release -> Ok release
       | None -> Error ("package '"
       ^ package_name
@@ -954,7 +993,10 @@ let remove_cached_archive = fun archive_path ->
   | Ok true -> Fs.remove_file archive_path
   |> Result.map_error
     (fun err ->
-      "failed to remove cached package archive '" ^ Path.to_string archive_path ^ "': " ^ IO.error_message err)
+      "failed to remove cached package archive '"
+      ^ Path.to_string archive_path
+      ^ "': "
+      ^ IO.error_message err)
 
 let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
   match find_release registry ~package_name ~version with
@@ -995,11 +1037,10 @@ let materialize_release = fun registry ~package_name ~version ->
   in
   let ensure_cached_archive () =
     match Fs.exists archive_path with
-    | Error err ->
-        Error ("failed to check cached package archive '"
-        ^ Path.to_string archive_path
-        ^ "': "
-        ^ IO.error_message err)
+    | Error err -> Error ("failed to check cached package archive '"
+    ^ Path.to_string archive_path
+    ^ "': "
+    ^ IO.error_message err)
     | Ok true -> Ok ()
     | Ok false -> fetch_release_archive registry ~package_name ~version ~archive_path
   in
@@ -1007,8 +1048,10 @@ let materialize_release = fun registry ~package_name ~version ->
     let rec attempt remaining_retries =
       let* () = ensure_cached_archive () in
       match extract_cached_archive ~archive_path ~root with
-      | Ok () -> finalize_extracted_root ()
-      | Error _ as err when remaining_retries <= 0 -> err
+      | Ok () ->
+          finalize_extracted_root ()
+      | Error _ as err when remaining_retries <= 0 ->
+          err
       | Error _ ->
           let* () = reset_materialized_root root in
           let* () = remove_cached_archive archive_path in
@@ -1063,6 +1106,20 @@ let publish_artifact = fun registry ~api_token ~artifact ->
   match publish_artifact_url ~registry_name:(name registry) with
   | Error _ as err -> err
   | Ok uri -> publish_response registry uri ~api_token ~artifact
+
+let yank_response = fun registry uri ~api_token ->
+  match post_required registry uri ~headers:[ ("authorization", "Bearer " ^ api_token); ] ~body:"" with
+  | Error _ as err -> err
+  | Ok body -> (
+      match Data.Json.of_string body with
+      | Error err -> Error ("failed to parse yank response JSON: " ^ Data.Json.error_to_string err)
+      | Ok json -> yanked_release_of_json json
+    )
+
+let yank_release = fun registry ~api_token ~package_name ~version ->
+  match yank_release_url ~registry_name:(name registry) ~package_name ~version with
+  | Error _ as err -> err
+  | Ok uri -> yank_response registry uri ~api_token
 
 let publish_from_locator = fun registry ~locator:_ ~selector:_ ~api_token ~artifact ->
   publish_artifact registry ~api_token ~artifact

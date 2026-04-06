@@ -5,24 +5,17 @@ open ArgParser
 
 let command =
   let open ArgParser in
-  let open Arg in
-  command "run"
-  |> about "Run a binary"
-  |> ArgParser.allow_trailing_args
-  |> args
-       [
-         positional "name"
-         |> required false
-         |> help
-              "Binary name or remote source to run. Use -p/--package to disambiguate local binaries, or the legacy [package:]binary form";
-         option "package"
-         |> short 'p'
-         |> long "package"
-         |> help "Run a binary from a specific package";
-         flag "update" |> long "update" |> help "Refresh a cached remote source before running";
-         trailing "-- [args]..." |> help "Arguments to pass to the binary";
-         flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output for run" |> count;
-       ]
+    let open Arg in command "run"
+    |> about "Run a binary"
+    |> ArgParser.allow_trailing_args
+    |> args
+      [
+        positional "name" |> required false |> help "Binary name or remote source to run. Use -p/--package to disambiguate local binaries, or the legacy [package:]binary form";
+        option "package" |> short 'p' |> long "package" |> help "Run a binary from a specific package";
+        flag "update" |> long "update" |> help "Refresh a cached remote source before running";
+        trailing "-- [args]..." |> help "Arguments to pass to the binary";
+        flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output for run" |> count;
+      ]
 
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
@@ -43,28 +36,23 @@ type implicit_local_target = {
 
 let parse_local_target = fun ?package_filter name ->
   match String.split_on_char ':' name with
-  | [ package_name; binary_name ] -> (
+  | [package_name;binary_name] -> (
       match package_filter with
-      | Some expected_package when not (String.equal expected_package package_name) ->
-          Error
-            (Failure
-               ("conflicting package filters: got --package "
-               ^ expected_package
-               ^ " and binary target "
-               ^ name))
+      | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
+      ^ expected_package
+      ^ " and binary target "
+      ^ name))
       | _ -> Ok (Local { package_name = Some package_name; binary_name })
     )
   | _ -> Ok (Local { package_name = package_filter; binary_name = name })
 
 let split_remote_binary = fun raw ->
   match String.rindex_opt raw '@' with
-  | Some idx when idx = String.length raw - 1 ->
-      Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
-  | Some idx when idx > 0 && idx < String.length raw - 1 ->
-      Ok (
-        String.sub raw 0 idx,
-        Some (String.sub raw (idx + 1) (String.length raw - idx - 1))
-      )
+  | Some idx when idx = String.length raw - 1 -> Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
+  | Some idx when idx > 0 && idx < String.length raw - 1 -> Ok (
+    String.sub raw 0 idx,
+    Some (String.sub raw (idx + 1) (String.length raw - idx - 1))
+  )
   | _ -> Ok (raw, None)
 
 let default_remote_binary_name = fun source_spec ->
@@ -79,8 +67,7 @@ let parse_target = fun ?package_filter name ->
     | None -> (
         match split_remote_binary name with
         | Error _ as err -> err
-        | Ok (source_spec, binary_name) ->
-        Ok (Remote_source {
+        | Ok (source_spec, binary_name) -> Ok (Remote_source {
           source_spec;
           binary_name = Option.unwrap_or ~default:(default_remote_binary_name source_spec) binary_name
         })
@@ -89,32 +76,32 @@ let parse_target = fun ?package_filter name ->
     parse_local_target ?package_filter name
 
 let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
-  let package_matches_filter = fun (pkg: Riot_model.Package.t) ->
+  let package_matches_filter (pkg: Riot_model.Package.t) =
     match package_filter with
     | Some expected_package -> String.equal expected_package pkg.name
     | None -> true
   in
   workspace.packages
   |> List.filter package_matches_filter
-  |> List.concat_map (fun (pkg: Riot_model.Package.t) ->
-    Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg
-    |> List.map (fun (bin: Riot_model.Package.binary) ->
-      { package_name = pkg.name; binary_name = bin.name }))
+  |> List.concat_map
+    (fun (pkg: Riot_model.Package.t) ->
+      Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg
+      |> List.map
+        (fun (bin: Riot_model.Package.binary) -> { package_name = pkg.name; binary_name = bin.name }))
 
 let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   match implicit_local_targets ?package_filter workspace with
-  | [ { package_name; binary_name } ] -> Ok { package_name; binary_name }
+  | [ { package_name; binary_name } ] ->
+      Ok { package_name; binary_name }
   | [] -> (
       match package_filter with
       | Some package_name -> Error ("package '" ^ package_name ^ "' has no runnable binaries")
       | None -> Error "no runnable binaries found; pass a binary name"
     )
   | targets ->
-      let rendered =
-        targets
-        |> List.map (fun { package_name; binary_name } -> package_name ^ ":" ^ binary_name)
-        |> String.concat ", "
-      in
+      let rendered = targets
+      |> List.map (fun { package_name; binary_name } -> package_name ^ ":" ^ binary_name)
+      |> String.concat ", " in
       Error ("multiple runnable binaries found; pass a binary name or --package (" ^ rendered ^ ")")
 
 let json_requested_for_child = fun args ->
@@ -130,46 +117,46 @@ let write_json_event = fun (json: Data.Json.t) ->
 let run_error_to_json = fun (err: Riot_build.run_error) ->
   let details =
     match err with
-    | Riot_build.BinaryNotFound { binary_name } ->
-        [ ("kind", Data.Json.String "binary_not_found"); ("binary_name", Data.Json.String binary_name) ]
-    | Riot_build.BinaryNotFoundInPackage { package_name; binary_name } ->
-        [
-          ("kind", Data.Json.String "binary_not_found_in_package");
-          ("package_name", Data.Json.String package_name);
-          ("binary_name", Data.Json.String binary_name);
-        ]
-    | Riot_build.BuildFailed build_error ->
-        [
-          ("kind", Data.Json.String "build_failed");
-          ("message", Data.Json.String (Riot_build.build_error_message build_error));
-        ]
-    | Riot_build.ArtifactNotFound { package_name; binary_name; reason } ->
-        [
-          ("kind", Data.Json.String "artifact_not_found");
-          ("package_name", Data.Json.String package_name);
-          ("binary_name", Data.Json.String binary_name);
-          ("reason", Data.Json.String reason);
-        ]
-    | Riot_build.ProcessExited status ->
-        [ ("kind", Data.Json.String "process_exited"); ("status", Data.Json.String (Int.to_string status)) ]
-    | Riot_build.SystemError reason ->
-        [ ("kind", Data.Json.String "system_error"); ("reason", Data.Json.String reason) ]
-    | Riot_build.ExternalTargetLoadFailed { target; reason } ->
-        [
-          ("kind", Data.Json.String "external_target_load_failed");
-          ("target", Data.Json.String target);
-          ("reason", Data.Json.String reason);
-        ]
-    | Riot_build.ClientError client_error ->
-        [
-          ("kind", Data.Json.String "client_error");
-          ("message", Data.Json.String (Riot_build.Client.error_message client_error));
-        ]
+    | Riot_build.BinaryNotFound { binary_name } -> [
+      ("kind", Data.Json.String "binary_not_found");
+      ("binary_name", Data.Json.String binary_name)
+    ]
+    | Riot_build.BinaryNotFoundInPackage { package_name; binary_name } -> [
+      ("kind", Data.Json.String "binary_not_found_in_package");
+      ("package_name", Data.Json.String package_name);
+      ("binary_name", Data.Json.String binary_name);
+    ]
+    | Riot_build.BuildFailed build_error -> [
+      ("kind", Data.Json.String "build_failed");
+      ("message", Data.Json.String (Riot_build.build_error_message build_error));
+    ]
+    | Riot_build.ArtifactNotFound { package_name; binary_name; reason } -> [
+      ("kind", Data.Json.String "artifact_not_found");
+      ("package_name", Data.Json.String package_name);
+      ("binary_name", Data.Json.String binary_name);
+      ("reason", Data.Json.String reason);
+    ]
+    | Riot_build.ProcessExited status -> [
+      ("kind", Data.Json.String "process_exited");
+      ("status", Data.Json.String (Int.to_string status))
+    ]
+    | Riot_build.SystemError reason -> [
+      ("kind", Data.Json.String "system_error");
+      ("reason", Data.Json.String reason)
+    ]
+    | Riot_build.ExternalTargetLoadFailed { target; reason } -> [
+      ("kind", Data.Json.String "external_target_load_failed");
+      ("target", Data.Json.String target);
+      ("reason", Data.Json.String reason);
+    ]
+    | Riot_build.ClientError client_error -> [
+      ("kind", Data.Json.String "client_error");
+      ("message", Data.Json.String (Riot_build.Client.error_message client_error));
+    ]
   in
-  Data.Json.Object
-    (("type", Data.Json.String "run.error")
-    :: ("message", Data.Json.String (Riot_build.run_error_message err))
-    :: details)
+  Data.Json.Object (("type", Data.Json.String "run.error")
+  :: ("message", Data.Json.String (Riot_build.run_error_message err))
+  :: details)
 
 let write_run_event = fun ~mode (event: Riot_build.run_event) ->
   match mode with
@@ -177,8 +164,8 @@ let write_run_event = fun ~mode (event: Riot_build.run_event) ->
   | Build.Human -> (
       match event with
       | Riot_build.Build _ -> ()
-      | Riot_build.RunningBinary { package; binary; _ } ->
-          println ("    \027[1;32mBuilding\027[0m " ^ package ^ ":" ^ binary)
+      | Riot_build.RunningBinary { package; binary; _ } -> println
+        ("    \027[1;32mBuilding\027[0m " ^ package ^ ":" ^ binary)
     )
 
 let write_run_error = fun ~mode (err: Riot_build.run_error) ->
@@ -186,20 +173,19 @@ let write_run_error = fun ~mode (err: Riot_build.run_error) ->
   | Build.Json -> write_json_event (run_error_to_json err)
   | Build.Human -> (
       match err with
-      | Riot_build.BinaryNotFound { binary_name } -> println ("error: binary '" ^ binary_name ^ "' not found")
+      | Riot_build.BinaryNotFound { binary_name } -> println
+        ("error: binary '" ^ binary_name ^ "' not found")
       | err -> println ("error: " ^ Riot_build.run_error_message err)
     )
 
 let write_workspace_error = fun ~mode message ->
   match mode with
-  | Build.Json ->
-      write_json_event
-        (Data.Json.Object
-           [
-             ("type", Data.Json.String "run.error");
-             ("kind", Data.Json.String "workspace_error");
-             ("message", Data.Json.String message);
-           ])
+  | Build.Json -> write_json_event
+    (Data.Json.Object [
+      ("type", Data.Json.String "run.error");
+      ("kind", Data.Json.String "workspace_error");
+      ("message", Data.Json.String message);
+    ])
   | Build.Human -> println ("error: " ^ message)
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
@@ -220,18 +206,17 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     match event with
     | Riot_build.Build build_event -> (
         match build_event with
-        | Riot_build.Pm kind ->
-            Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
-        | Riot_build.BuildingTarget { target; host } ->
-            Build.write_building_target_event ~mode:output_mode ~target ~host
-        | Riot_build.CacheGc event ->
-            Build.write_cache_gc_event ~mode:output_mode event
-        | Riot_build.Streaming streaming_event ->
-            Build.write_streaming_event
-              ~mode:output_mode
-              ~displayed_packages
-              ~progress
-              streaming_event
+        | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+        | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+          ~mode:output_mode
+          ~target
+          ~host
+        | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+        | Riot_build.Streaming streaming_event -> Build.write_streaming_event
+          ~mode:output_mode
+          ~displayed_packages
+          ~progress
+          streaming_event
       )
     | _ -> write_run_event ~mode:output_mode event
   in
@@ -240,37 +225,39 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     | Some name -> parse_target ?package_filter:pkg_filter name
     | None -> (
         match workspace with
-        | Some workspace ->
-            resolve_implicit_local_target ?package_filter:pkg_filter workspace
-            |> Result.map (fun { package_name; binary_name } ->
-              Local { package_name = Some package_name; binary_name })
-            |> Result.map_error (fun err -> Failure err)
-        | None ->
-            Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+        | Some workspace -> resolve_implicit_local_target ?package_filter:pkg_filter workspace
+        |> Result.map
+          (fun { package_name; binary_name } ->
+            Local { package_name = Some package_name; binary_name })
+        |> Result.map_error (fun err -> Failure err)
+        | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
       )
   in
   match resolved_target with
   | Error (Failure message as err) ->
       write_workspace_error ~mode:output_mode message;
       Error err
-  | Error _ as err -> err
+  | Error _ as err ->
+      err
   | Ok target ->
       let result =
         match target with
-        | Remote_source { source_spec; binary_name } ->
-            Riot_build.run_source ~on_event { source_spec; binary_name; update; args = extra }
-            |> Result.map_error (fun err -> `Run err)
+        | Remote_source { source_spec; binary_name } -> Riot_build.run_source
+          ~on_event
+          { source_spec; binary_name; update; args = extra }
+        |> Result.map_error (fun err -> `Run err)
         | Local { package_name; binary_name } -> (
             match workspace with
-            | Some workspace ->
-                Riot_build.run ~on_event { workspace; package_name; binary_name; args = extra }
-                |> Result.map_error (fun err -> `Run err)
-            | None ->
-                Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+            | Some workspace -> Riot_build.run
+              ~on_event
+              { workspace; package_name; binary_name; args = extra }
+            |> Result.map_error (fun err -> `Run err)
+            | None -> Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
           )
       in
       match result with
-      | Ok () -> Ok ()
+      | Ok () ->
+          Ok ()
       | Error (`Cli message) ->
           write_workspace_error ~mode:output_mode message;
           Error (Failure message)

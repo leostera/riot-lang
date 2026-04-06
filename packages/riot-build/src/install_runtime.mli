@@ -38,11 +38,7 @@ val install_event_to_json: install_event -> Data.Json.t option
 val install: ?on_event:(install_event -> unit) -> install_request -> (unit, install_error) result
 
 val install_source:
-  ?on_event:(install_event -> unit) ->
-  source_install_request ->
-  (unit, install_error) result
+  ?on_event:(install_event -> unit) -> source_install_request -> (unit, install_error) result
 
 val install_registry:
-  ?on_event:(install_event -> unit) ->
-  registry_install_request ->
-  (unit, install_error) result
+  ?on_event:(install_event -> unit) -> registry_install_request -> (unit, install_error) result

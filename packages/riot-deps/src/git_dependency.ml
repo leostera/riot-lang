@@ -85,8 +85,7 @@ let looks_like_github_shorthand = fun raw ->
   && not (String.equal owner ".")
   && not (String.equal owner "..")
   && not (String.starts_with ~prefix:"." owner)
-  && not (String.starts_with ~prefix:"/" owner) ->
-      true
+  && not (String.starts_with ~prefix:"/" owner) -> true
   | _ -> false
 
 let looks_like_remote_spec = fun raw ->
@@ -115,15 +114,13 @@ let parse_source_locator = fun source_locator ->
   let normalized = normalize_source_locator source_locator in
   let normalized =
     match String.split_on_char '/' normalized with
-    | owner :: repo :: _
-      when not (String.equal owner "")
-      && not (String.equal repo "")
-      && not (String.equal owner ".")
-      && not (String.equal owner "..")
-      && not (String.starts_with ~prefix:"." owner)
-      && not (String.starts_with ~prefix:"/" owner)
-      && not (String.contains owner ".") ->
-        "github.com/" ^ normalized
+    | owner :: repo :: _ when not (String.equal owner "")
+    && not (String.equal repo "")
+    && not (String.equal owner ".")
+    && not (String.equal owner "..")
+    && not (String.starts_with ~prefix:"." owner)
+    && not (String.starts_with ~prefix:"/" owner)
+    && not (String.contains owner ".") -> "github.com/" ^ normalized
     | _ -> normalized
   in
   match String.split_on_char '/' normalized with
@@ -236,9 +233,12 @@ let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
     ~owner:locator.owner
     ~repo:locator.repo in
   let ref_ = Option.unwrap_or ~default:"main" ref_ in
-  let* checkout_status =
-    sync_checkout ~update ~repo_dir:repository_root ~remote_url:(remote_url_of_locator locator) ~ref_ ()
-  in
+  let* checkout_status = sync_checkout
+    ~update
+    ~repo_dir:repository_root
+    ~remote_url:(remote_url_of_locator locator)
+    ~ref_
+    () in
   let package_root =
     match locator.subdir with
     | Some subdir -> Path.(repository_root / subdir)
@@ -250,4 +250,10 @@ let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
   if not exists then
     Error (PackageRootMissing { path = package_root })
   else
-    Ok { source_locator; ref_; repository_root; package_root; checkout_status }
+    Ok {
+      source_locator;
+      ref_;
+      repository_root;
+      package_root;
+      checkout_status;
+    }

@@ -134,10 +134,7 @@ val spawn: (unit -> (unit, Process.exit_reason) result) -> Pid.t
 (** Spawn an actor pinned to one normal scheduler. When [scheduler] is omitted,
     the runtime prefers the current normal scheduler and otherwise falls back to
     normal placement policy. Pinned actors are not work-stolen. *)
-val spawn_pinned:
-  ?scheduler:int ->
-  (unit -> (unit, Process.exit_reason) result) ->
-  Pid.t
+val spawn_pinned: ?scheduler:int -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn an actor on a dedicated blocking lane outside the normal
     work-stealing scheduler pool. *)

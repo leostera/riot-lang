@@ -3,8 +3,6 @@
 - Feature Name: `ocaml_cross_compilation_snapshot`
 - Start Date: `2026-03-23`
 - Status: `implemented`
-- RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
-- Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 
 ## Summary
 [summary]: #summary

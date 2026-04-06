@@ -5,8 +5,7 @@ import { fileURLToPath } from "node:url";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const serviceDir = resolve(currentDir, "..");
 const sourceDir = resolve(serviceDir, "../../docs/rfds");
-const outputDir = resolve(serviceDir, "rfds");
-const docsConfigPath = resolve(serviceDir, "docs.json");
+const outputDir = resolve(serviceDir, "src/content/docs/rfds");
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -16,19 +15,11 @@ for (const entry of readdirSync(outputDir)) {
   }
 }
 
-const toSentenceCase = (value) =>
-  value
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
 const escapeMdxText = (value) =>
   value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
-
-const links = [];
-const pages = ["/rfds/index"];
 
 for (const entry of readdirSync(sourceDir).sort((left, right) => left.localeCompare(right))) {
   if (!/^RFD\d{4}-.+\.md$/i.test(entry)) {
@@ -49,8 +40,6 @@ for (const entry of readdirSync(sourceDir).sort((left, right) => left.localeComp
   const status = isTemplate ? "template" : rawStatus;
   const bodyWithoutTitle = lines.slice(lines.indexOf(titleLine) + 1).join("\n").trimStart();
   const body = isTemplate ? escapeMdxText(bodyWithoutTitle) : bodyWithoutTitle;
-  const repoPath = `docs/rfds/${entry}`;
-  const pagePath = `/rfds/${outputName.replace(/\.mdx$/i, "")}`;
 
   const frontmatter = [
     "---",
@@ -61,31 +50,4 @@ for (const entry of readdirSync(sourceDir).sort((left, right) => left.localeComp
   ].join("\n");
 
   writeFileSync(outputPath, `${frontmatter}\n${body}`);
-  links.push(`- [${title}](${pagePath}) · \`${toSentenceCase(status)}\``);
-  pages.push(pagePath);
-}
-
-const index = [
-  "---",
-  'title: "RFDs"',
-  'description: "Requests for Discussion synced from the Riot repository."',
-  "---",
-  "",
-  "RFDs capture design intent, tradeoffs, and architectural decisions for Riot.",
-  "",
-  "The pages below are synced from the canonical sources in `docs/rfds`.",
-  "",
-  ...links,
-  "",
-].join("\n");
-
-writeFileSync(join(outputDir, "index.mdx"), index);
-
-const docsConfig = JSON.parse(readFileSync(docsConfigPath, "utf8"));
-const rfdsTab = docsConfig.navigation.tabs.find((tab) => tab.tab == "RFDs");
-const rfdsGroup = rfdsTab?.groups?.find((group) => group.group == "Design Documents");
-
-if (rfdsGroup) {
-  rfdsGroup.pages = pages;
-  writeFileSync(docsConfigPath, `${JSON.stringify(docsConfig, null, 2)}\n`);
 }

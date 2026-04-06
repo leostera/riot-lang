@@ -1,32 +1,24 @@
 # Now
 
-* create leostera/create-riot-app
-
-* implement ./docs/rfds/RFD0008-macro.md
-
-* look into `typ`
-
-* riot lsp
-
 # Planned
-
-* treat every .ml file in ./tests as a test, ./examples as a binary, ./bench as a bench
-
-* `riot run <url>` downloads the url as a git repo or tarball, unpacks in the global cache, builds and runs the `main` binary if one is present, otherwise it supports `<url>@<bin>` to specify the binary name
-    `riot install <url>` does the same but promotes the binary to ~/.riot/bin/
-    * riot install <pkg> should actually install that package main binary from the registry
-
-* implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
-
-# Next
-
-* support single-package / non-workspace layouts
-
-* modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
 * riot test/bench should run the binaries with `--json` and parse their results to present a unified summary of the amount of test cases passsed/skipped/failed, not just the suite-level stats
 
-* enforce examples/binaries have a `val main : ~args:string list -> result` function
+# Next
+
+* riot/config.toml support a [target."str".runner] run command like `docker run -ti
+ubuntu` that can help us run cross-compiled binaries in a container so can configure
+  [target.linux.runner]
+  image = "ubuntu"
+
+  and this basically starts the container by mounting the binary and then runs the binary
+  in the container, streaming output
+
+* lint rule so modules namespaced with <pkg>_*.ml or <subdir>_*.ml we tell the user they don't have o
+
+* modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
+
+* enforce examples/binaries have a `val main : ~args:string list -> result` function by autoamtically wrapping/injecting a `let () = Actors.run ~main ~env:Std.Env.args ()` 
 
 * --release flag should also be usable in riot test and riot run
 
@@ -54,8 +46,6 @@
 * setup-riot: a container action for github actions that sets up everything for you
 
 * `riot init` should include a Dockerfile, and a .github/workflows/ci.yml template, and it should include a test!
-
-* if there's only one binary, `riot run` should run it!
 
 * `riot trace` -- instrument and dump traces for tests and programs? is this worth doing?
 

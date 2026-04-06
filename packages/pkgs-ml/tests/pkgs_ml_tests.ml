@@ -1033,11 +1033,11 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                   ~version:"0.1.0" in
                 Fs.create_dir_all Path.(tempdir / Path.v ".riot/registry/pkgs.ml/archive/std")
                 |> Result.expect ~msg:"expected archive directory to be created";
-                Fs.write "this is not a tarball" archive_path
-                |> Result.expect ~msg:"expected corrupt archive to be written";
+                Fs.write "this is not a tarball" archive_path |> Result.expect ~msg:"expected corrupt archive to be written";
                 let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
                 match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
-                | Error err -> Error err
+                | Error err ->
+                    Error err
                 | Ok `Already_present ->
                     Error "expected corrupt cached archive to be replaced and materialized"
                 | Ok `Materialized ->
@@ -1056,7 +1056,8 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                     && String.equal source "let answer = 42\n" ->
                         let requested = List.rev !requests |> List.map (fun request -> request.url) in
                         if
-                          requested = [
+                          requested
+                          = [
                             "https://cdn.pkgs.ml/index/v1/config.json";
                             "https://cdn.pkgs.ml/index/v1/3/s/std.json";
                             "https://cdn.pkgs.ml/sources/std/0.1.0/deadbeef.tar.gz";
@@ -1065,9 +1066,11 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                           Ok ()
                         else
                           Error "expected corrupt cache retry to fetch replacement archive"
-                    | Ok _, Ok _ -> Error "expected retried materialization to restore package root"
+                    | Ok _, Ok _ ->
+                        Error "expected retried materialization to restore package root"
                     | (Error err, _)
-                    | (_, Error err) -> Error (IO.error_message err)
+                    | (_, Error err) ->
+                        Error (IO.error_message err)
           ))
   with
   | Error err -> Error (IO.error_message err)
@@ -1165,6 +1168,57 @@ let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun 
       else
         Error ("unexpected publish artifact transport error: " ^ err)
 
+let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
+  with_riot_agent (Some "riot-cli@test")
+    (fun () ->
+      let cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:(Path.v "/tmp/.riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to be created" in
+      let fetch, requests =
+        make_fetch_recorder
+          ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+            Ok {
+              Pkgs_ml.Registry.status_code = 200;
+              body =
+                {|{
+  "package_name": "std",
+  "package_version": "0.1.0",
+  "yanked": true,
+  "yanked_at": "2026-04-06T10:00:00.000Z",
+  "yanked_by_github_login": "leostera"
+}|};
+            })
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+      in
+      let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+      match Pkgs_ml.Registry.yank_release registry ~api_token:"root-secret" ~package_name:"std" ~version:"0.1.0" with
+      | Error err -> Error err
+      | Ok yanked_release -> (
+          match List.rev !requests with
+          | [ request ] ->
+              let has_header name value =
+                List.exists
+                  (fun (header_name, header_value) ->
+                    String.equal header_name name && String.equal header_value value)
+                  request.headers
+              in
+              if
+                String.equal request.method_ "POST"
+                && String.equal request.url "https://api.pkgs.ml/v1/me/packages/std/versions/0.1.0/yank"
+                && request.body = Some ""
+                && has_header "authorization" "Bearer root-secret"
+                && has_header "X-Riot-Agent" "riot-cli@test"
+                && yanked_release.yanked
+                && yanked_release.yanked_by_github_login = Some "leostera"
+              then
+                Ok ()
+              else
+                Error "unexpected yank request or response"
+          | _ -> Error "expected exactly one yank request"
+        ))
+
 let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
   with_riot_agent (Some "riot-cli@default")
     (fun () ->
@@ -1250,6 +1304,7 @@ let tests =
     case "registry: filesystem registry replaces corrupt cached release archives" test_filesystem_registry_refetches_corrupt_cached_archive;
     case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
     case "registry: publish artifact bubbles transport exceptions as errors" test_registry_publish_artifact_bubbles_transport_exceptions_as_errors;
+    case "registry: yank release posts to yank route" test_registry_yank_release_posts_to_yank_route;
     case "registry: env riot agent override wins over default agent" test_registry_riot_agent_env_override_wins_over_default_agent;
   ]
 

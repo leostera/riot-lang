@@ -3,8 +3,6 @@
 - Feature Name: `actors_multicore_work_stealing_runtime`
 - Start Date: `2026-03-20`
 - Status: `implemented`
-- RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
-- Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
 
 ## Summary
 [summary]: #summary

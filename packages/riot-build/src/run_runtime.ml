@@ -92,10 +92,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ()
   |> Result.map_error
     (fun err ->
-      ExternalTargetLoadFailed {
-        target = source_spec;
-        reason = Riot_deps.package_error_message err
-      })
+      ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
   let find_binary_export (result: Riot_executor.Package_builder.build_result) =
@@ -201,5 +198,5 @@ let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
       workspace = loaded.workspace;
       package_name = Some loaded.package_name;
       binary_name = request.binary_name;
-      args = request.args;
+      args = request.args
     }
