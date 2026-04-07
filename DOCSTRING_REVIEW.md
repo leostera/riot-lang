@@ -44,7 +44,6 @@
 - [ ] packages/http/src/ws/parser.mli
 - [ ] packages/http/src/ws/frame.mli
 - [ ] packages/http/src/ws/ws.mli
-- [ ] packages/jsonrpc/src/jsonrpc.mli
 - [ ] packages/kernel/src/uchar.mli
 - [ ] packages/kernel/src/domain.mli
 - [ ] packages/kernel/src/crypto/crypto.mli
