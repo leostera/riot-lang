@@ -9,13 +9,8 @@ let var = fun id -> TypeRepr.make_var id
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
-let bare_named = fun name ->
-  TypeRepr.named ~type_constructor_id:None ~name:(IdentPath.of_name name) ~arguments:[]
-
 let qualified = fun module_name name ->
   IdentPath.append_name (IdentPath.of_name module_name) name
-
-let named = fun path -> TypeRepr.named ~type_constructor_id:None ~name:path ~arguments:[]
 
 let polymorphic_eq =
   let lhs = var 0 in
@@ -64,13 +59,21 @@ let result_error =
   let err_ty = var 1 in
   TypeScheme.of_explicit ~quantified:[ 1; 0 ] (arrow err_ty (TypeRepr.result ok_ty err_ty))
 
-let prelude_list_type_constructor_id = TypeConstructorId.of_int (-1)
+let prelude_list_type_constructor_id = BuiltinTypeConstructors.list_type_constructor_id
 
-let prelude_option_type_constructor_id = TypeConstructorId.of_int (-2)
+let prelude_option_type_constructor_id = BuiltinTypeConstructors.option_type_constructor_id
 
-let prelude_result_type_constructor_id = TypeConstructorId.of_int (-3)
+let prelude_result_type_constructor_id = BuiltinTypeConstructors.result_type_constructor_id
 
-let exn_type_constructor_id = TypeConstructorId.of_int (-4)
+let exn_type_constructor_id = BuiltinTypeConstructors.exn_type_constructor_id
+
+let type_constructor_of_path = BuiltinTypeConstructors.of_path
+
+let bare_named = fun name ->
+  let path = IdentPath.of_name name in
+  TypeRepr.named ~type_constructor:(type_constructor_of_path path) ~name:path ~arguments:[]
+
+let named = fun path -> TypeRepr.named ~type_constructor:(type_constructor_of_path path) ~name:path ~arguments:[]
 
 let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 

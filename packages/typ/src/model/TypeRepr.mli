@@ -10,6 +10,10 @@ type var = {
   mutable link: t option;
 }
 
+and named_type_constructor =
+  | Unresolved
+  | Resolved of TypeConstructorId.t
+
 and desc =
   | Int
   | Float
@@ -23,7 +27,7 @@ and desc =
   | List of t
   | Seq of t
   | Named of {
-      type_constructor_id: TypeConstructorId.t option;
+      type_constructor: named_type_constructor;
       name: IdentPath.t;
       arguments: t list
     }
@@ -60,8 +64,12 @@ val list: t -> t
 
 val seq: t -> t
 
+val unresolved_type_constructor: named_type_constructor
+
+val resolved_type_constructor: TypeConstructorId.t -> named_type_constructor
+
 val named:
-  type_constructor_id:TypeConstructorId.t option -> name:IdentPath.t -> arguments:t list -> t
+  type_constructor:named_type_constructor -> name:IdentPath.t -> arguments:t list -> t
 
 val tuple: t list -> t
 

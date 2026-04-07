@@ -10,6 +10,10 @@ type var = {
   mutable link: t option;
 }
 
+and named_type_constructor =
+  | Unresolved
+  | Resolved of TypeConstructorId.t
+
 and desc =
   | Int
   | Float
@@ -23,7 +27,7 @@ and desc =
   | List of t
   | Seq of t
   | Named of {
-      type_constructor_id: TypeConstructorId.t option;
+      type_constructor: named_type_constructor;
       name: IdentPath.t;
       arguments: t list
     }
@@ -94,8 +98,12 @@ let list = fun element -> of_desc (List element)
 
 let seq = fun element -> of_desc (Seq element)
 
-let named = fun ~type_constructor_id ~name ~arguments ->
-  of_desc (Named { type_constructor_id; name; arguments })
+let unresolved_type_constructor = Unresolved
+
+let resolved_type_constructor = fun type_constructor_id -> Resolved type_constructor_id
+
+let named = fun ~type_constructor ~name ~arguments ->
+  of_desc (Named { type_constructor; name; arguments })
 
 let tuple = fun members -> of_desc (Tuple members)
 

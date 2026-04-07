@@ -191,7 +191,7 @@ let dedupe_record_decls = fun record_decls ->
   let seen = Collections.HashSet.with_capacity (List.length record_decls) in
   record_decls |> List.filter
     (fun (record_decl: Label_env.record_decl) ->
-      let owner_id = TypeConstructorId.to_int record_decl.owner_type_constructor_id in
+      let owner_id = TypeConstructorId.to_int (Label_env.owner_type_constructor_id record_decl) in
       if Collections.HashSet.contains seen owner_id then
         false
       else

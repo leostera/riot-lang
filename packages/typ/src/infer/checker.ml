@@ -29,6 +29,8 @@ type variance = TypeDecl.variance
 
 type state = State.t
 
+module Label_name_map = Collections.Map.Make (String)
+
 let empty_span = Syn.Ceibo.Span.make ~start:0 ~end_:0
 
 let missing_record_decl_param_hole_id = (-200)
@@ -150,12 +152,12 @@ let substitute_type_vars = fun (state: state) ty mapping ->
           ty
         else
           make_type state (TypeRepr.Seq element')
-    | TypeRepr.Named { type_constructor_id; name; arguments } ->
+    | TypeRepr.Named { type_constructor; name; arguments } ->
         let arguments' = List.map loop arguments in
         if List.for_all2 Std.Ptr.equal arguments arguments' then
           ty
         else
-          make_type state (TypeRepr.Named { type_constructor_id; name; arguments = arguments' })
+          make_type state (TypeRepr.Named { type_constructor; name; arguments = arguments' })
     | TypeRepr.Hole hole_id ->
         make_type state (TypeRepr.Hole hole_id)
     | TypeRepr.Tuple members ->
@@ -223,30 +225,26 @@ let take_matching_argument = fun parameter_label arguments ->
   in
   loop [] arguments
 
-let last_segment_text = fun text ->
-  match IdentPath.of_string text |> IdentPath.last_name with
-  | Some segment -> segment
-  | None -> text
-
-let record_label_matches = fun requested candidate ->
-  String.equal requested candidate || String.equal (last_segment_text requested) candidate
-
 let visible_type_decl = fun (state: state) name ->
   Collections.HashMap.get state.visible_type_decl_by_path name
 
 let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
   Collections.HashMap.get state.visible_type_decl_by_id type_constructor_id
 
-let resolve_type_constructor_id = fun (state: state) type_constructor_id name ->
-  match type_constructor_id with
-  | Some type_constructor_id -> Some type_constructor_id
-  | None -> visible_type_decl state name
-  |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
+let resolve_type_constructor_id = fun (state: state) type_constructor name ->
+  match type_constructor with
+  | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
+  | TypeRepr.Unresolved -> (
+      match BuiltinTypeConstructors.of_path name with
+      | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
+      | TypeRepr.Unresolved -> visible_type_decl state name
+        |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
+    )
 
 let owner_of_type = fun (state: state) ty ->
   match view ty with
-  | TypeRepr.Named { type_constructor_id; name; _ } -> (
-      match resolve_type_constructor_id state type_constructor_id name with
+  | TypeRepr.Named { type_constructor; name; _ } -> (
+      match resolve_type_constructor_id state type_constructor name with
       | Some type_constructor_id -> Some { type_constructor_id }
       | None -> None
     )
@@ -287,41 +285,32 @@ let resolve_constructor_without_expected = fun env constructor ->
   | candidate :: _ -> Some candidate
   | [] -> None
 
-let record_decl_field = fun (record_decl: record_type_decl) label_name ->
-  List.find_opt
-    (fun (field: TypeDecl.label) -> record_label_matches label_name field.name)
-    record_decl.labels
-
-let record_decl_fields = fun (record_decl: record_type_decl) ->
-  List.map (fun (field: TypeDecl.label) -> field.name) record_decl.labels
-
-let record_decl_matches_fields = fun (record_decl: record_type_decl) field_names ->
-  List.for_all (fun field_name -> Option.is_some (record_decl_field record_decl field_name)) field_names
-
 let record_decl_matches_owner = fun (record_decl: record_type_decl) owner ->
-  TypeConstructorId.equal record_decl.owner_type_constructor_id owner.type_constructor_id
+  TypeConstructorId.equal (Env.Label_env.owner_type_constructor_id record_decl) owner.type_constructor_id
 
 let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl) ->
   let mapping = Collections.HashMap.with_capacity 8 in
   let () =
-    record_decl.param_ids
+    Env.Label_env.param_ids record_decl
     |> List.iter
       (fun quantified_id ->
         let _ = Collections.HashMap.insert mapping quantified_id (fresh_var state) in
         ())
   in
   let owner_path =
-    match Collections.HashMap.get state.visible_type_decl_by_id record_decl.owner_type_constructor_id with
+    match Collections.HashMap.get
+      state.visible_type_decl_by_id
+      (Env.Label_env.owner_type_constructor_id record_decl) with
     | Some type_decl -> qualify_name type_decl.scope_path type_decl.declaration.type_name
-    | None -> record_decl.owner_path
+    | None -> Env.Label_env.owner_path record_decl
   in
   let owner_ty = make_type state
     (
       TypeRepr.Named {
-        type_constructor_id = Some record_decl.owner_type_constructor_id;
+        type_constructor = TypeRepr.Resolved (Env.Label_env.owner_type_constructor_id record_decl);
         name = owner_path;
         arguments =
-          record_decl.param_ids |> List.map
+          Env.Label_env.param_ids record_decl |> List.map
             (fun quantified_id ->
               match Collections.HashMap.get mapping quantified_id with
               | Some ty -> ty
@@ -329,19 +318,18 @@ let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl)
       }
     )
   in
-  let field_types = record_decl.labels
-  |> List.map
-    (fun (field: TypeDecl.label) -> (field.name, substitute_type_vars state field.field_type mapping)) in
+  let field_types = Env.Label_env.labels record_decl
+  |> List.fold_left
+    (fun acc (field: TypeDecl.label) ->
+      Label_name_map.add
+        (Env.Label_env.lookup_name field.name)
+        (substitute_type_vars state field.field_type mapping)
+        acc)
+    Label_name_map.empty in
   (owner_ty, field_types)
 
 let record_field_type = fun field_types label_name ->
-  List.find_map
-    (fun (field_name, field_ty) ->
-      if record_label_matches label_name field_name then
-        Some field_ty
-      else
-        None)
-    field_types
+  Label_name_map.find_opt (Env.Label_env.lookup_name label_name) field_types
 
 let add_diagnostic = fun (state: state) diagnostic -> state.diagnostics <- diagnostic :: state.diagnostics
 
@@ -360,7 +348,7 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
     match field_names with
     | first_field :: remaining_fields -> Env.lookup_record_decls env first_field
     |> List.filter
-      (fun (record_decl: record_type_decl) -> record_decl_matches_fields record_decl remaining_fields)
+      (fun (record_decl: record_type_decl) -> Env.Label_env.matches_fields record_decl remaining_fields)
     | [] -> Env.record_decls env
   in
   let candidates =
@@ -570,9 +558,9 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
                     (variance, ok_ty) :: (variance, error_ty) :: rest
                 | TypeRepr.Array element ->
                     (TypeDecl.Invariant, element) :: rest
-                | TypeRepr.Named { type_constructor_id; name; arguments } ->
+                | TypeRepr.Named { type_constructor; name; arguments } ->
                     let parameter_variances =
-                      match resolve_type_constructor_id state type_constructor_id name with
+                      match resolve_type_constructor_id state type_constructor name with
                       | Some type_constructor_id -> (
                           match visible_type_decl_by_id state type_constructor_id with
                           | Some type_decl -> type_decl.declaration.param_variances
@@ -645,18 +633,18 @@ let rec unify_repr = fun (state: state) ~origin left right ->
     | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
         unify state ~origin left_element right_element
     | TypeRepr.Named {
-      type_constructor_id=left_type_constructor_id;
+      type_constructor=left_type_constructor;
       name=left_name;
       arguments=left_arguments
     }, TypeRepr.Named {
-      type_constructor_id=right_type_constructor_id;
+      type_constructor=right_type_constructor;
       name=right_name;
       arguments=right_arguments
     } ->
         if not
             (
-              match (left_type_constructor_id, right_type_constructor_id) with
-              | Some left_type_constructor_id, Some right_type_constructor_id -> TypeConstructorId.equal
+              match (left_type_constructor, right_type_constructor) with
+              | TypeRepr.Resolved left_type_constructor_id, TypeRepr.Resolved right_type_constructor_id -> TypeConstructorId.equal
                 left_type_constructor_id
                 right_type_constructor_id
               | _ -> IdentPath.equal left_name right_name
@@ -891,14 +879,16 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           | Some record_decl ->
               let (owner_ty, field_types) = instantiate_record_decl state record_decl in
               let () = try_unify state ~origin expected_ty owner_ty in
-              let missing_fields =
-                if open_ then
-                  []
-                else
-                  record_decl_fields record_decl
-                  |> List.filter
-                    (fun label_name ->
-                      not (List.exists (record_label_matches label_name) field_names))
+      let missing_fields =
+        if open_ then
+          []
+        else
+          Env.Label_env.field_names record_decl
+          |> List.filter
+            (fun label_name -> not (List.exists
+              (fun requested_name ->
+                String.equal (Env.Label_env.lookup_name requested_name) label_name)
+              field_names))
               in
               let () =
                 if not (List.is_empty missing_fields) then
@@ -1025,9 +1015,12 @@ and infer_record_expr = fun (state: state) env expr_id base_id fields ->
       let missing_fields =
         match base_id with
         | Some _ -> []
-        | None -> record_decl_fields record_decl
+        | None -> Env.Label_env.field_names record_decl
         |> List.filter
-          (fun label_name -> not (List.exists (record_label_matches label_name) field_names))
+          (fun label_name -> not (List.exists
+            (fun requested_name ->
+              String.equal (Env.Label_env.lookup_name requested_name) label_name)
+            field_names))
       in
       let () =
         if not (List.is_empty missing_fields) then
@@ -1266,7 +1259,7 @@ and infer_expr = fun (state: state) env expr_id ->
             let exn_ty = make_type
               state
               (TypeRepr.Named {
-                type_constructor_id = None;
+                type_constructor = TypeRepr.Resolved BuiltinTypeConstructors.exn_type_constructor_id;
                 name = IdentPath.of_name "exn";
                 arguments = []
               }) in

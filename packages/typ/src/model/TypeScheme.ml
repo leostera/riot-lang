@@ -69,12 +69,12 @@ let instantiate = fun ~fresh_var ~make scheme ->
             ty
           else
             make (TypeRepr.Seq element')
-      | TypeRepr.Named { type_constructor_id; name; arguments } ->
+      | TypeRepr.Named { type_constructor; name; arguments } ->
           let arguments' = map_preserving loop arguments in
           if Std.Ptr.equal arguments arguments' then
             ty
           else
-            make (TypeRepr.Named { type_constructor_id; name; arguments = arguments' })
+            make (TypeRepr.Named { type_constructor; name; arguments = arguments' })
       | TypeRepr.Tuple members ->
           let members' = map_preserving loop members in
           if Std.Ptr.equal members members' then

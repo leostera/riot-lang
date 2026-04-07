@@ -119,12 +119,12 @@ let rec type_to_json = fun ty ->
     ("tag", Data.Json.String "seq");
     ("element", type_to_json element);
   ]
-  | TypeRepr.Named { type_constructor_id; name; arguments } ->
+  | TypeRepr.Named { type_constructor; name; arguments } ->
       Data.Json.Object [ ("tag", Data.Json.String "named"); (
           "type_constructor_id",
-          match type_constructor_id with
-          | Some type_constructor_id -> Data.Json.Int (TypeConstructorId.to_int type_constructor_id)
-          | None -> Data.Json.Null
+          match type_constructor with
+          | TypeRepr.Resolved type_constructor_id -> Data.Json.Int (TypeConstructorId.to_int type_constructor_id)
+          | TypeRepr.Unresolved -> Data.Json.Null
         ); ("name", Data.Json.String (IdentPath.to_string name)); (
           "arguments",
           Data.Json.Array (List.map type_to_json arguments)
@@ -325,19 +325,25 @@ let rec type_of_json = fun json ->
       let* element = type_of_json element_json in
       Ok (TypeRepr.seq element)
   | "named" ->
-      let type_constructor_id =
+      let type_constructor =
         match List.assoc_opt "type_constructor_id" fields with
         | Some Data.Json.Null
-        | None -> Ok None
+        | None -> Ok TypeRepr.Unresolved
         | Some type_constructor_id_json ->
             let* type_constructor_id = get_int type_constructor_id_json in
-            Ok (Some (TypeConstructorId.of_int type_constructor_id))
+            Ok (TypeRepr.Resolved (TypeConstructorId.of_int type_constructor_id))
       in
       let* name_json = field "name" fields in
       let* name = get_string name_json in
+      let name = IdentPath.of_string name in
       let* arguments_json = field "arguments" fields in
       let* arguments_json = get_array arguments_json in
-      let* type_constructor_id = type_constructor_id in
+      let* type_constructor = type_constructor in
+      let type_constructor =
+        match type_constructor with
+        | TypeRepr.Resolved _ -> type_constructor
+        | TypeRepr.Unresolved -> BuiltinTypeConstructors.of_path name
+      in
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
         | head :: tail ->
@@ -345,7 +351,7 @@ let rec type_of_json = fun json ->
             loop (argument :: acc) tail
       in
       let* arguments = loop [] arguments_json in
-      Ok (TypeRepr.named ~type_constructor_id ~name:(IdentPath.of_string name) ~arguments)
+      Ok (TypeRepr.named ~type_constructor ~name ~arguments)
   | "tuple" ->
       let* members_json = field "members" fields in
       let* members_json = get_array members_json in

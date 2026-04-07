@@ -8,6 +8,7 @@ type record_decl = {
   owner_type_constructor_id: TypeConstructorId.t;
   param_ids: int list;
   labels: TypeDecl.label list;
+  label_index: TypeDecl.label Name_map.t;
 }
 
 type current = record_decl list Name_map.t
@@ -26,6 +27,31 @@ and t = {
 
 let empty = { current = Name_map.empty; layer = Nothing }
 
+let lookup_name = fun label_name ->
+  match String.rindex_opt label_name '.' with
+  | Some index ->
+      String.sub label_name (index + 1) (String.length label_name - index - 1)
+  | None -> label_name
+
+let owner_path = fun (record_decl: record_decl) -> record_decl.owner_path
+
+let owner_type_constructor_id = fun (record_decl: record_decl) -> record_decl.owner_type_constructor_id
+
+let param_ids = fun (record_decl: record_decl) -> record_decl.param_ids
+
+let labels = fun (record_decl: record_decl) -> record_decl.labels
+
+let field = fun (record_decl: record_decl) label_name ->
+  Name_map.find_opt (lookup_name label_name) record_decl.label_index
+
+let field_names = fun (record_decl: record_decl) ->
+  Name_map.bindings record_decl.label_index |> List.map fst
+
+let matches_fields = fun (record_decl: record_decl) field_names ->
+  List.for_all
+    (fun field_name -> Option.is_some (field record_decl field_name))
+    field_names
+
 let is_empty = fun env ->
   Name_map.is_empty env.current
   &&
@@ -37,12 +63,18 @@ let is_empty = fun env ->
 let record_decl_of_type_decl = fun (type_decl: FileSummary.type_decl) ->
   match type_decl.declaration.labels with
   | [] -> None
-  | labels -> Some {
-    owner_path = IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name;
-    owner_type_constructor_id = type_decl.declaration.type_constructor_id;
-    param_ids = type_decl.declaration.param_ids;
-    labels;
-  }
+  | labels ->
+      let label_index = labels |> List.fold_left
+        (fun acc (label: TypeDecl.label) ->
+          Name_map.add label.name label acc)
+        Name_map.empty in
+      Some {
+        owner_path = IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name;
+        owner_type_constructor_id = type_decl.declaration.type_constructor_id;
+        param_ids = type_decl.declaration.param_ids;
+        labels;
+        label_index;
+      }
 
 let prepend_record_decl = fun index record_decl ->
   record_decl.labels |> List.fold_left

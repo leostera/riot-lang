@@ -65,6 +65,15 @@ let annotate_type_decl_variances = fun type_decls ->
     let default =
       List.map (fun _ -> TypeDecl.Invariant) arguments
     in
+    let type_constructor_id =
+      match type_constructor_id with
+      | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
+      | TypeRepr.Unresolved -> (
+          match BuiltinTypeConstructors.of_path name with
+          | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
+          | TypeRepr.Unresolved -> None
+        )
+    in
     match type_constructor_id with
     | Some type_constructor_id when Collections.HashSet.contains visiting type_constructor_id ->
         default
@@ -106,10 +115,10 @@ let annotate_type_decl_variances = fun type_decls ->
         collect_type_variances_into visiting variance acc error_ty
     | TypeRepr.Array element ->
         collect_type_variances_into visiting TypeDecl.Invariant acc element
-    | TypeRepr.Named { type_constructor_id; name; arguments } ->
+    | TypeRepr.Named { type_constructor; name; arguments } ->
         let parameter_variances = parameter_variances_for_named_type
           visiting
-          type_constructor_id
+          type_constructor
           name
           arguments in
         let rec loop arguments parameter_variances =

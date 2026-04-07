@@ -12,7 +12,8 @@ let var = fun id -> TypeRepr.make_var id
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
 let bare_named = fun name ->
-  TypeRepr.named ~type_constructor_id:None ~name:(IdentPath.of_name name) ~arguments:[]
+  let path = IdentPath.of_name name in
+  TypeRepr.named ~type_constructor:(BuiltinTypeConstructors.of_path path) ~name:path ~arguments:[]
 
 let qualified_name = fun module_name name ->
   IdentPath.append_name (IdentPath.of_name module_name) name

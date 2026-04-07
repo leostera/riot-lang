@@ -43,8 +43,9 @@ let qualify_scoped_name = fun scope_path name ->
   IdentPath.append_name scope_path name
 
 let resolve_named_type_name = fun (state: state) name ->
+  let prelude_path = IdentPath.of_name name in
   let rec loop = function
-    | [] -> (IdentPath.of_name name, None)
+    | [] -> (prelude_path, BuiltinTypeConstructors.of_path prelude_path)
     | scope_path :: rest ->
         if
           List.exists
@@ -52,18 +53,18 @@ let resolve_named_type_name = fun (state: state) name ->
               String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path)
             state.declared_type_names
         then
-          let type_constructor_id =
+          let type_constructor =
             state.declared_type_names
             |> List.find_map
               (fun (candidate_name, candidate_scope_path, candidate_id) ->
                 if
                   String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path
                 then
-                  Some candidate_id
+                  Some (TypeRepr.Resolved candidate_id)
                 else
                   None)
           in
-          (qualify_scoped_name scope_path name, type_constructor_id)
+          (qualify_scoped_name scope_path name, Option.unwrap_or ~default:TypeRepr.Unresolved type_constructor)
         else
           loop rest
   in
@@ -76,11 +77,11 @@ let resolve_named_type_path = fun (state: state) path ->
       |> List.find_map
         (fun (candidate_name, candidate_scope_path, candidate_id) ->
           if String.equal candidate_name type_name && IdentPath.equal candidate_scope_path scope_path then
-            Some (path, Some candidate_id)
+            Some (path, TypeRepr.Resolved candidate_id)
           else
             None)
-      |> Option.unwrap_or ~default:(path, None)
-  | None -> (path, None)
+      |> Option.unwrap_or ~default:(path, BuiltinTypeConstructors.of_path path)
+  | None -> (path, BuiltinTypeConstructors.of_path path)
 
 let register_declared_type_name = fun (state: state) name ->
   match
@@ -195,12 +196,12 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
         | Some builtin -> builtin
         | None ->
             let segments = Cst.Ident.segments constructor_path in
-            let (name, type_constructor_id) =
+            let (name, type_constructor) =
               match segments with
               | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
               | _ -> resolve_named_type_path state name
             in
-            TypeRepr.named ~type_constructor_id ~name ~arguments
+            TypeRepr.named ~type_constructor ~name ~arguments
       end
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
       TypeRepr.arrow
@@ -482,7 +483,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
   let type_constructor_id = register_declared_type_name state type_name in
   let params = type_param_bindings declaration in
   let result_type = TypeRepr.named
-    ~type_constructor_id:(Some type_constructor_id)
+    ~type_constructor:(TypeRepr.Resolved type_constructor_id)
     ~name:(qualify_scoped_name state.scope_path type_name)
     ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
   let lowered_declaration =
@@ -561,7 +562,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
   let exn_type = TypeRepr.named
-    ~type_constructor_id:(Some LanguagePrelude.exn_type_constructor_id)
+    ~type_constructor:(TypeRepr.Resolved BuiltinTypeConstructors.exn_type_constructor_id)
     ~name:(IdentPath.of_name "exn")
     ~arguments:[] in
   let payload_type =
