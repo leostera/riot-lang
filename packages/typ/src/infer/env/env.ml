@@ -432,6 +432,21 @@ let env_of_summary =
   in
   loop
 
+let env_of_summary_relative =
+  let env_of_delta delta = bind (of_bindings delta.bindings) (of_type_decls delta.type_decls) in
+  let rec loop env = function
+    | Summary_empty -> env
+    | Summary_snapshot delta -> bind env (env_of_delta delta)
+    | Summary_bind (summary, introduced) -> bind (loop env summary) (env_of_summary introduced)
+    | Summary_bind_in_scope (summary, scope_path, introduced) ->
+        bind_in_scope (loop env summary) ~scope_path (env_of_summary introduced)
+    | Summary_open (summary, module_path) ->
+        with_local_open (loop env summary) module_path
+    | Summary_qualify (summary, scope_path) ->
+        qualify ~scope_path (loop env summary)
+  in
+  loop
+
 let scope_locals_of_summary = fun summary -> {
   summary;
   env = env_of_summary summary;
@@ -446,7 +461,7 @@ let scope_locals_for = fun scope scope_path ->
         |> List.fold_left
           (fun acc key ->
             match Path_map.find_opt key scope.locals with
-            | Some entries -> bind acc entries.env
+            | Some entries -> env_of_summary_relative acc entries.summary
             | None -> acc)
           empty
       in
@@ -463,7 +478,7 @@ let register_entries = fun scope ~scope_path (env: t) ->
   in
   let updated = {
     summary = summary_bind existing.summary env;
-    env = bind existing.env env;
+    env = env_of_summary_relative existing.env env.summary;
   } in
   { scope with locals = Path_map.add scope_path updated scope.locals; locals_cache = Path_map.empty }
 

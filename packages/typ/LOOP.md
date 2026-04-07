@@ -25,7 +25,6 @@ now".
 
 This is the current best guess for the next OCaml-parity batches.
 
-- [ ] make summary replay relative to the enclosing env, not `Env.empty`
 - [ ] make `Module_env` bindings carry authoritative per-namespace component
   tables so `add_open` and dotted lookup can consume them directly, without
   recomputing scope views or adding scope-wide cache plumbing
@@ -58,8 +57,9 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] only after the above, run a fresh profiler and treat the remaining cost as
   constant-factor work instead of missing-algorithm work
 
-- [ ] memoize `env_of_summary` reconstruction (or equivalent) so repeated summary
-  replay across scopes cannot rebuild equivalent environments repeatedly
+- [ ] memoize `env_of_summary` and `env_of_summary_relative` replay so repeated
+  replay of equivalent summary/base pairs does not rebuild equivalent
+  environments repeatedly
 
 ## How to analyze potential next items
 
