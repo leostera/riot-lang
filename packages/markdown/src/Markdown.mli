@@ -1,16 +1,23 @@
 open Std
 
+(** Stable error identifiers used by the markdown diagnostic system. *)
 module Error: sig
   type id = string
+
+  (** Format an error identifier as a string. *)
   val to_string: id -> string
 
+  (** Wrap a string as an error identifier. *)
   val of_string: string -> id
 
+  (** Encode an error identifier as JSON. *)
   val to_json: id -> Data.Json.t
 
+  (** Decode an error identifier from JSON. *)
   val from_json: Data.Json.t -> (id, string) result
 end
 
+(** Syntax kinds used by the green tree produced by the markdown parser. *)
 module Syntax_kind: sig
   type t =
     | Document
@@ -44,9 +51,12 @@ module Syntax_kind: sig
     | Raw_html
     | Text
     | Error
+
+  (** Render a syntax kind as a human-readable label. *)
   val to_string: t -> string
 end
 
+(** Markdown parse diagnostic types and helpers. *)
 module Diagnostic: sig
   type found_token = {
     kind: string;
@@ -62,63 +72,96 @@ module Diagnostic: sig
     kind: kind;
     span: Ceibo.Span.t;
   }
+
+  (** Create a diagnostic directly. *)
   val make: kind:kind -> span:Ceibo.Span.t -> t
 
+  (** Create an invalid-markdown diagnostic. *)
   val invalid_markdown: found:found_token -> span:Ceibo.Span.t -> t
 
+  (** Create an unsupported-feature diagnostic. *)
   val unsupported_feature: found:found_token -> feature:string -> span:Ceibo.Span.t -> t
 
+  (** Create an unclosed-fenced-code-block diagnostic. *)
   val unclosed_fenced_code_block: found:found_token -> opener:string -> span:Ceibo.Span.t -> t
 
+  (** Create an unexpected-control-character diagnostic. *)
   val unexpected_control_character: found:found_token -> code:int -> span:Ceibo.Span.t -> t
 
+  (** Create a parser-internal diagnostic. *)
   val parser_internal: found:found_token -> message:string -> span:Ceibo.Span.t -> t
 
+  (** Return the token that triggered the diagnostic. *)
   val found_token: t -> found_token
 
+  (** Return the stable error identifier for the diagnostic kind. *)
   val error_id: t -> Error.id
 
+  (** Return the string form of the error identifier. *)
   val id: t -> string
 
+  (** Return the expected-input message for the diagnostic. *)
   val expected_message: t -> string
 
+  (** Return an optional suggested fix message. *)
   val fix_message: t -> string option
 
+  (** Return a short hint message. *)
   val hint_message: t -> string
 
+  (** Return the main user-facing diagnostic message. *)
   val main_message: t -> string
 
+  (** Encode a diagnostic as JSON. *)
   val to_json: t -> Data.Json.t
 
+  (** Decode a diagnostic from JSON. *)
   val from_json: Data.Json.t -> (t, string) result
 end
 
+(** Render diagnostics in a source-oriented format. *)
 module Diagnostic_reporter: sig
+  (** Print formatted diagnostics to standard output. *)
   val print: file:string -> source:string -> Diagnostic.t list -> unit
 
+  (** Format diagnostics as a string. *)
   val format: file:string -> source:string -> Diagnostic.t list -> string
 end
 
+(** One CommonMark spec fixture. *)
 type fixture = {
   markdown: string;
   html: string;
   example: int option;
   section: string option;
 }
+
+(** High-level parse result returned by [parse] and [parse_gfm]. *)
 type parse_result = {
+  (** Root green syntax tree. *)
   root: (Syntax_kind.t, string) Ceibo.Green.node;
+  (** Original source text. *)
   source: string;
+  (** Parse diagnostics. *)
   diagnostics: Diagnostic.t list;
+  (** Lowered block representation. *)
   blocks: Markdown_parser.block_node list;
 }
+
+(** Parse markdown using baseline markdown rules. *)
 val parse: string -> parse_result
 
+(** Parse markdown using GitHub-Flavored Markdown rules. *)
 val parse_gfm: string -> parse_result
 
+(** Render a parsed markdown document to HTML. *)
 val to_html: parse_result -> string
 
+(** Parse and render baseline markdown to HTML. *)
 val compile: string -> string
 
+(** Parse and render GitHub-Flavored Markdown to HTML. *)
 val compile_gfm: string -> string
 
+(** Return all bundled CommonMark spec fixtures. *)
 val all_spec_fixtures: unit -> fixture list
