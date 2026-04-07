@@ -54,7 +54,8 @@ let blue_bold = "\027[1;34m"
 let reset = "\027[0m"
 
 let package_progress_line = fun label package_name ->
-  "   " ^ blue_bold ^ label ^ " " ^ package_name ^ reset ^ "\n"
+  let padding = String.make (Int.max 0 (12 - String.length label)) ' ' in
+  padding ^ blue_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
 
 let parse_jsonl = fun output ->
   output
@@ -574,7 +575,7 @@ let test_check_package_filter_human_output_shows_cached_dependency_progress = fu
               Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed";
               Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
               Test.assert_equal
-                ~expected:((package_progress_line "CheckCached" "std") ^ (package_progress_line "Check" "tty"))
+                ~expected:(package_progress_line "Check" "tty")
                 ~actual:(stderr_contents ());
               Ok ()
         ))

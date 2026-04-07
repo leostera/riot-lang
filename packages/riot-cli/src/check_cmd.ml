@@ -28,7 +28,8 @@ let emit_json = fun ~stdout ~workspace_root event ->
   stdout (Data.Json.to_string (Check.Event.to_json ~workspace_root event) ^ "\n")
 
 let package_progress_line = fun label package_name ->
-  "   " ^ blue_bold ^ label ^ " " ^ package_name ^ reset ^ "\n"
+  let padding = String.make (Int.max 0 (12 - String.length label)) ' ' in
+  padding ^ blue_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
 
 let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
   match event with
@@ -38,8 +39,7 @@ let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
       if not quiet then
         stderr (package_progress_line "Check" package_name)
   | Check.Event.PackageCached { package_name } ->
-      if not quiet then
-        stderr (package_progress_line "CheckCached" package_name)
+      ignore package_name
   | Check.Event.File checked_file ->
       let rendered = Check.Reporter.render_checked_file ~workspace_root checked_file in
       List.iter stdout rendered.stdout;
