@@ -2,85 +2,109 @@ open Std
 
 (** Mutable prototype type representation used inside one inference query. *)
 type label =
-  (** Ordinary unlabeled arrow parameter. *)
   | Nolabel
-  (** Labeled arrow parameter introduced with `~label:`. *)
   | Labelled of string
-  (** Optional arrow parameter introduced with `?label:`. *)
   | Optional of string
 type var = {
-  (** Stable inference-variable identity inside one query. *)
   id: int;
-  (** Query-local mutable link used by unification. *)
   mutable link: t option;
-  (** Region level where this inference variable was created. *)
-  mutable level: int;
-  (** Query-local reachability generation used by solver bookkeeping. *)
-  mutable mark: int;
-  (** First-visit order for the current mark generation. *)
-  mutable mark_order: int;
 }
 
-and t =
-  (** Built-in integer type. *)
+and desc =
   | Int
-  (** Built-in floating-point type. *)
   | Float
-  (** Built-in boolean type. *)
   | Bool
-  (** Built-in string type. *)
   | String
-  (** Built-in character type. *)
   | Char
-  (** Built-in unit type. *)
   | Unit
-  (** Built-in option type. *)
   | Option of t
-  (** Built-in result type. *)
   | Result of t * t
-  (** Built-in array type. *)
   | Array of t
-  (** Built-in list type. *)
   | List of t
-  (** Sequence type used by helpers such as [String.to_seq] and [List.of_seq]. *)
   | Seq of t
-  (** Named algebraic or abstract type, optionally applied to arguments. *)
-  | Named of { name: IdentPath.t; arguments: t list }
-  (** Tuple type. *)
+  | Named of {
+      type_constructor_id: TypeConstructorId.t option;
+      name: IdentPath.t;
+      arguments: t list
+    }
   | Tuple of t list
-  (** Function type. *)
   | Arrow of { label: label; lhs: t; rhs: t }
-  (** Inference variable. *)
   | Var of var
-  (** Recovery hole produced by lenient lowering or inference. *)
   | Hole of int
 
-(** Chase mutable links until a canonical representative is reached. *)
+and t = {
+  mutable desc: desc;
+  mutable level: int;
+  mutable mark: int;
+  mutable mark_order: int;
+}
+val int: t
+
+val float: t
+
+val bool: t
+
+val string: t
+
+val char: t
+
+val unit_: t
+
+val option: t -> t
+
+val result: t -> t -> t
+
+val array: t -> t
+
+val list: t -> t
+
+val seq: t -> t
+
+val named:
+  type_constructor_id:TypeConstructorId.t option -> name:IdentPath.t -> arguments:t list -> t
+
+val tuple: t list -> t
+
+val arrow: label:label -> lhs:t -> rhs:t -> t
+
+val hole: int -> t
+
+val of_desc: ?level:int -> desc -> t
+
 val prune: t -> t
 
-(** Construct one unlinked inference variable with the given id and level. *)
+val view: t -> desc
+
+val level: t -> int
+
+val set_level: t -> int -> unit
+
+val generic_level: int
+
+val is_generic_level: int -> bool
+
 val make_var: ?level:int -> int -> t
 
-(** Set-like union over integer identifiers while preserving left-to-right bias. *)
+val is_generic_var: t -> bool
+
+val set_generic_var: t -> unit
+
+val seal_levels: t -> unit
+
+val generalize_ids: int list -> t -> unit
+
+val generic_var_ids: t -> int list
+
 val union: int list -> int list -> int list
 
-(** Remove every element of the right list from the left list. *)
 val diff: int list -> int list -> int list
 
-(** Collect free inference-variable identifiers from a type. *)
 val free_vars: t -> int list
 
-(** Mark reachable inference variables for one solver generation in first-visit
-    order. *)
 val mark_reachable_vars: generation:int -> next_order:(unit -> int) -> t -> unit
 
-(** Collect the free inference-variable identifiers that occur only covariantly
-    in the type. *)
 val covariant_vars: t -> int list
 
-(** Check whether the given inference variable occurs inside the type. *)
 val occurs: int -> t -> bool
 
-(** Check whether the given inference variable occurs inside the type while
-    lowering any deeper unbound variables to the provided region level. *)
-val occurs_or_lower: needle:int -> level:int -> t -> bool
+val occurs_or_lower: generation:int -> needle:int -> level:int -> t -> bool

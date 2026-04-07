@@ -204,7 +204,11 @@ let render_pattern_desc = function
   | POr alternatives ->
       "or [" ^ render_ids PatId.to_string alternatives ^ "]"
   | PConstructor { constructor; arguments } ->
-      "constructor " ^ IdentPath.to_string constructor ^ " [" ^ render_ids PatId.to_string arguments ^ "]"
+      "constructor "
+      ^ IdentPath.to_string constructor
+      ^ " ["
+      ^ render_ids PatId.to_string arguments
+      ^ "]"
   | PRecord { fields; open_ } ->
       "record { "
       ^ (fields |> List.map render_record_pattern_field |> String.concat ", ")
@@ -626,9 +630,8 @@ let binding_to_json = fun (binding: binding) ->
     ("origin_id", Data.Json.Int (OriginId.to_int binding.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments binding.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments binding.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("name", name_json);
     ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));

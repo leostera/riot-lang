@@ -2,21 +2,21 @@ open Std
 open Model
 
 type ident = {
-  stamp: int;
+  local_id: int;
   name: string;
 }
 
-let make_ident = fun ~stamp ~name -> { stamp; name }
+let make_ident = fun ~local_id ~name -> { local_id; name }
 
 let ident_name = fun ident -> ident.name
 
-let ident_stamp = fun ident -> ident.stamp
+let ident_local_id = fun ident -> ident.local_id
 
 let same_ident = fun left right ->
-  Int.equal left.stamp right.stamp
+  Int.equal left.local_id right.local_id
 
 let compare_ident = fun left right ->
-  Int.compare left.stamp right.stamp
+  Int.compare left.local_id right.local_id
 
 type provenance =
   | Lowered_pattern of PatId.t

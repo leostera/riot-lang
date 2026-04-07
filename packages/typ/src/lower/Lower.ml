@@ -11,6 +11,9 @@ type state = {
   mutable next_expr_id: int;
   mutable next_binding_id: int;
   mutable next_item_id: int;
+  mutable next_type_constructor_id: int;
+  mutable next_constructor_id: int;
+  mutable next_label_id: int;
   mutable next_synthetic_name: int;
   mutable origins: OriginMap.origin list;
   mutable patterns: BodyArena.pattern_node list;
@@ -18,11 +21,16 @@ type state = {
   mutable bindings: BodyArena.binding list;
   mutable items: ItemTree.item list;
   mutable diagnostics: Typ_diagnostic.t list;
-  mutable declared_type_names: (string * IdentPath.t) list;
+  mutable declared_type_names: (string * IdentPath.t * TypeConstructorId.t) list;
 }
 
-let ident_path = fun path ->
-  path |> Cst.Ident.segments |> List.map Cst.Token.text |> IdentPath.of_segments
+let unresolved_type_parameter_hole_id = (-100)
+
+let unsupported_core_type_hole_id = (-101)
+
+let unsupported_record_constructor_payload_hole_id = (-102)
+
+let ident_path = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> IdentPath.of_segments
 
 let path_text = fun path -> path |> ident_path |> IdentPath.to_string
 
@@ -36,31 +44,53 @@ let qualify_scoped_name = fun scope_path name ->
 
 let resolve_named_type_name = fun (state: state) name ->
   let rec loop = function
-    | [] -> IdentPath.of_name name
+    | [] -> (IdentPath.of_name name, None)
     | scope_path :: rest ->
         if
           List.exists
-            (fun (candidate_name, candidate_scope_path) ->
+            (fun (candidate_name, candidate_scope_path, _) ->
               String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path)
             state.declared_type_names
         then
-          qualify_scoped_name scope_path name
+          let type_constructor_id =
+            state.declared_type_names
+            |> List.find_map
+              (fun (candidate_name, candidate_scope_path, candidate_id) ->
+                if
+                  String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path
+                then
+                  Some candidate_id
+                else
+                  None)
+          in
+          (qualify_scoped_name scope_path name, type_constructor_id)
         else
           loop rest
   in
   IdentPath.prefixes state.scope_path |> List.rev |> loop
 
 let register_declared_type_name = fun (state: state) name ->
-  let binding = (name, state.scope_path) in
-  if
-    List.exists
-      (fun (candidate_name, candidate_scope_path) ->
-        String.equal candidate_name name && IdentPath.equal candidate_scope_path state.scope_path)
-      state.declared_type_names
-  then
-    ()
-  else
-    state.declared_type_names <- binding :: state.declared_type_names
+  match
+    state.declared_type_names |> List.find_map
+      (fun (candidate_name, candidate_scope_path, candidate_id) ->
+        if
+          String.equal candidate_name name && IdentPath.equal candidate_scope_path state.scope_path
+        then
+          Some candidate_id
+        else
+          None)
+  with
+  | Some type_constructor_id -> type_constructor_id
+  | None ->
+      let type_constructor_id = TypeConstructorId.of_int state.next_type_constructor_id in
+      let () =
+        state.next_type_constructor_id <- state.next_type_constructor_id + 1
+      in
+      let binding = (name, state.scope_path, type_constructor_id) in
+      let () =
+        state.declared_type_names <- binding :: state.declared_type_names
+      in
+      type_constructor_id
 
 let is_module_name = fun name ->
   String.length name > 0
@@ -113,18 +143,18 @@ let type_param_bindings = fun (declaration: Cst.TypeDeclaration.t) ->
 
 let builtin_type_of_name = fun name arguments ->
   match (name, arguments) with
-  | ("int", []) -> Some TypeRepr.Int
-  | ("float", []) -> Some TypeRepr.Float
-  | ("bool", []) -> Some TypeRepr.Bool
-  | ("string", []) -> Some TypeRepr.String
-  | ("char", []) -> Some TypeRepr.Char
-  | ("unit", []) -> Some TypeRepr.Unit
-  | ("option", [ argument ]) -> Some (TypeRepr.Option argument)
-  | ("result", [ok_ty;error_ty]) -> Some (TypeRepr.Result (ok_ty, error_ty))
-  | ("array", [ argument ]) -> Some (TypeRepr.Array argument)
-  | ("list", [ argument ]) -> Some (TypeRepr.List argument)
+  | ("int", []) -> Some TypeRepr.int
+  | ("float", []) -> Some TypeRepr.float
+  | ("bool", []) -> Some TypeRepr.bool
+  | ("string", []) -> Some TypeRepr.string
+  | ("char", []) -> Some TypeRepr.char
+  | ("unit", []) -> Some TypeRepr.unit_
+  | ("option", [ argument ]) -> Some (TypeRepr.option argument)
+  | ("result", [ok_ty;error_ty]) -> Some (TypeRepr.result ok_ty error_ty)
+  | ("array", [ argument ]) -> Some (TypeRepr.array argument)
+  | ("list", [ argument ]) -> Some (TypeRepr.list argument)
   | ("Seq.t", [ argument ])
-  | ("Std.Seq.t", [ argument ]) -> Some (TypeRepr.Seq argument)
+  | ("Std.Seq.t", [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None
 
 let lower_arrow_label = fun (label: Cst.arrow_label option) ->
@@ -142,7 +172,7 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
   | Cst.CoreType.Var { name_token; _ } -> (
       match List.assoc_opt (Cst.Token.text name_token) type_params with
       | Some id -> TypeRepr.make_var id
-      | None -> TypeRepr.Hole (-100)
+      | None -> TypeRepr.hole unresolved_type_parameter_hole_id
     )
   | Cst.CoreType.Constr { constructor_path; arguments; _ } ->
       let name = ident_path constructor_path in
@@ -152,35 +182,30 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
         | Some builtin -> builtin
         | None ->
             let segments = Cst.Ident.segments constructor_path in
-            let name =
+            let (name, type_constructor_id) =
               match segments with
               | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
-              | _ -> name
+              | _ -> (name, None)
             in
-            TypeRepr.Named { name; arguments }
+            TypeRepr.named ~type_constructor_id ~name ~arguments
       end
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
-      TypeRepr.Arrow {
-        label = lower_arrow_label label;
-        lhs = lower_core_type state type_params parameter_type;
-        rhs = lower_core_type state type_params result_type
-      }
+      TypeRepr.arrow
+        ~label:(lower_arrow_label label)
+        ~lhs:(lower_core_type state type_params parameter_type)
+        ~rhs:(lower_core_type state type_params result_type)
   | Cst.CoreType.Tuple { elements; _ } ->
-      TypeRepr.Tuple (List.map (lower_core_type state type_params) elements)
+      TypeRepr.tuple (List.map (lower_core_type state type_params) elements)
   | _ ->
-      TypeRepr.Hole (-101)
+      TypeRepr.hole unsupported_core_type_hole_id
 
 let constructor_scheme = fun ~params ~result_type payload_type ->
   let body =
     match payload_type with
-    | Some payload_type -> TypeRepr.Arrow {
-      label = TypeRepr.Nolabel;
-      lhs = payload_type;
-      rhs = result_type
-    }
+    | Some payload_type -> TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:payload_type ~rhs:result_type
     | None -> result_type
   in
-  TypeScheme.Forall (List.map snd params, body)
+  TypeScheme.of_explicit ~quantified:(List.map snd params) body
 
 let variant_constructor_payload = fun (state: state) type_params (
   constructor: Cst.VariantConstructor.t
@@ -191,10 +216,10 @@ let variant_constructor_payload = fun (state: state) type_params (
       begin
         match members with
         | [ member ] -> Some member
-        | members -> Some (TypeRepr.Tuple members)
+        | members -> Some (TypeRepr.tuple members)
       end
   | Some (Cst.ConstructorArguments.Record _) ->
-      Some (TypeRepr.Hole (-102))
+      Some (TypeRepr.hole unsupported_record_constructor_payload_hole_id)
   | None -> (
       match Cst.VariantConstructor.payload_type constructor with
       | Some payload_type -> Some (lower_core_type state type_params payload_type)
@@ -210,6 +235,9 @@ let make_state = fun source ->
     next_expr_id = 0;
     next_binding_id = 0;
     next_item_id = 0;
+    next_type_constructor_id = 0;
+    next_constructor_id = 0;
+    next_label_id = 0;
     next_synthetic_name = 0;
     origins = [];
     patterns = [];
@@ -359,10 +387,16 @@ let add_item = fun (state: state) ~syntax_node item ->
 
 let lower_record_label = fun (state: state) type_params (field: Cst.RecordField.t) ->
   {
+    TypeDecl.label_id = LabelId.of_int state.next_label_id;
     TypeDecl.name = Cst.RecordField.name field;
     field_type = lower_core_type state type_params (Cst.RecordField.field_type field);
     mutable_ = Option.is_some (Cst.RecordField.mutable_token field)
   }
+  |> fun label ->
+    let () =
+      state.next_label_id <- state.next_label_id + 1
+    in
+    label
 
 let lower_poly_variant_bound = function
   | Cst.PolyVariantBound.Exact -> TypeDecl.Exact
@@ -419,7 +453,7 @@ let add_unsupported_signature_item = fun (state: state) syntax_node ->
   add_unsupported_item state ~context:Typ_diagnostic.SignatureItem syntax_node
 
 let rec register_type_declaration_names = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
-  let () = register_declared_type_name
+  let _ = register_declared_type_name
     state
     (Cst.Token.text (Cst.TypeDeclaration.name_token declaration)) in
   match Cst.TypeDeclaration.next_and_declaration declaration with
@@ -429,15 +463,17 @@ let rec register_type_declaration_names = fun (state: state) (declaration: Cst.T
 let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
   let syntax_node = Cst.TypeDeclaration.syntax_node declaration in
   let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
+  let type_constructor_id = register_declared_type_name state type_name in
   let params = type_param_bindings declaration in
-  let result_type = TypeRepr.Named {
-    name = qualify_scoped_name state.scope_path type_name;
-    arguments = params |> List.map (fun (_, id) -> TypeRepr.make_var id)
-  } in
+  let result_type = TypeRepr.named
+    ~type_constructor_id:(Some type_constructor_id)
+    ~name:(qualify_scoped_name state.scope_path type_name)
+    ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
   let lowered_declaration =
     match Cst.TypeDeclaration.type_definition declaration with
     | Cst.TypeDefinition.Abstract ->
         Some {
+          TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
           constructors = [];
@@ -446,6 +482,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
         }
     | Cst.TypeDefinition.Alias { manifest; _ } ->
         Some {
+          TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
           constructors = [];
@@ -454,6 +491,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
         }
     | Cst.TypeDefinition.Variant { constructors; _ } ->
         Some {
+          TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
           constructors =
@@ -461,14 +499,21 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
               (fun (constructor: Cst.VariantConstructor.t) ->
                 let payload_type = variant_constructor_payload state params constructor in
                 {
+                  TypeDecl.constructor_id = ConstructorId.of_int state.next_constructor_id;
                   TypeDecl.name = Cst.VariantConstructor.name constructor;
                   scheme = constructor_scheme ~params ~result_type payload_type
-                });
+                }
+                |> fun constructor ->
+                  let () =
+                    state.next_constructor_id <- state.next_constructor_id + 1
+                  in
+                  constructor);
           labels = [];
           manifest = None;
         }
     | Cst.TypeDefinition.Record { fields; _ } ->
         Some {
+          TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
           constructors = [];
@@ -477,6 +522,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
         }
     | Cst.TypeDefinition.PolyVariant poly_variant ->
         Some {
+          TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
           constructors = [];
@@ -493,7 +539,10 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
 
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
-  let exn_type = TypeRepr.Named { name = IdentPath.of_name "exn"; arguments = [] } in
+  let exn_type = TypeRepr.named
+    ~type_constructor_id:None
+    ~name:(IdentPath.of_name "exn")
+    ~arguments:[] in
   let payload_type =
     match declaration.rhs with
     | Some (Cst.Payload { payload_type; _ }) -> Some (lower_core_type state [] payload_type)
@@ -502,11 +551,9 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
   in
   let scheme =
     match payload_type with
-    | Some payload_type -> TypeScheme.Forall (
-      [],
-      TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = payload_type; rhs = exn_type }
-    )
-    | None -> TypeScheme.Forall ([], exn_type)
+    | Some payload_type -> TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:payload_type ~rhs:exn_type)
+    | None -> TypeScheme.of_type exn_type
   in
   let _ = add_item state ~syntax_node:declaration.syntax_node (`Exception (exception_name, scheme)) in
   ()
@@ -548,7 +595,7 @@ let rec collect_core_type_var_names = fun core_type ->
 let scheme_of_declared_core_type = fun (state: state) core_type ->
   let params = collect_core_type_var_names core_type |> List.mapi (fun index name -> (name, index)) in
   let ty = lower_core_type state params core_type in
-  TypeScheme.Forall (List.map snd params, ty)
+  TypeScheme.of_explicit ~quantified:(List.map snd params) ty
 
 let lower_value_declaration = fun (state: state) syntax_node name_tokens type_ ->
   let value_name = declared_value_name name_tokens in
@@ -1427,10 +1474,7 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
         | Some path when IdentPath.is_empty path ->
             ()
         | Some module_path ->
-            let _ = add_item
-              state
-              ~syntax_node
-              (`ModuleAlias (module_name, module_path)) in
+            let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
             ()
         | None ->
             add_unsupported_signature_item state syntax_node

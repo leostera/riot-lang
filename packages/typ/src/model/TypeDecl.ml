@@ -1,11 +1,13 @@
 open Std
 
 type constructor = {
+  constructor_id: ConstructorId.t;
   name: string;
   scheme: TypeScheme.t;
 }
 
 type label = {
+  label_id: LabelId.t;
   name: string;
   field_type: TypeRepr.t;
   mutable_: bool;
@@ -30,6 +32,7 @@ type manifest =
     }
 
 type t = {
+  type_constructor_id: TypeConstructorId.t;
   type_name: string;
   param_ids: int list;
   constructors: constructor list;
@@ -43,12 +46,14 @@ let constructor_entries = fun decl ->
 
 let constructor_to_json = fun (constructor: constructor) ->
   Data.Json.Object [
+    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
     ("name", Data.Json.String constructor.name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string constructor.scheme));
   ]
 
 let label_to_json = fun (label: label) ->
   Data.Json.Object [
+    ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
     ("name", Data.Json.String label.name);
     ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
     ("mutable", Data.Json.Bool label.mutable_);
@@ -88,6 +93,7 @@ let manifest_to_json = function
 
 let to_json = fun decl ->
   let fields = [
+    ("type_constructor_id", Data.Json.Int (TypeConstructorId.to_int decl.type_constructor_id));
     ("type_name", Data.Json.String decl.type_name);
     ("constructors", Data.Json.Array (List.map constructor_to_json decl.constructors));
   ] in
@@ -128,7 +134,11 @@ let to_string = fun decl ->
     | constructors -> constructors
     |> List.map
       (fun (constructor: constructor) ->
-        constructor.name ^ " : " ^ TypePrinter.scheme_to_string constructor.scheme)
+        ConstructorId.to_string constructor.constructor_id
+        ^ " "
+        ^ constructor.name
+        ^ " : "
+        ^ TypePrinter.scheme_to_string constructor.scheme)
     |> String.concat ", "
   in
   let labels =
@@ -143,12 +153,24 @@ let to_string = fun decl ->
               else
                 ""
             in
-            label.name ^ " : " ^ mutability ^ TypePrinter.type_to_string label.field_type) |> String.concat
-          ", "
+            LabelId.to_string label.label_id
+            ^ " "
+            ^ label.name
+            ^ " : "
+            ^ mutability
+            ^ TypePrinter.type_to_string label.field_type) |> String.concat ", "
   in
   let manifest =
     match decl.manifest with
     | Some manifest -> "; manifest = " ^ manifest_to_string manifest
     | None -> ""
   in
-  decl.type_name ^ " { constructors = " ^ constructors ^ "; labels = " ^ labels ^ manifest ^ " }"
+  TypeConstructorId.to_string decl.type_constructor_id
+  ^ " "
+  ^ decl.type_name
+  ^ " { constructors = "
+  ^ constructors
+  ^ "; labels = "
+  ^ labels
+  ^ manifest
+  ^ " }"

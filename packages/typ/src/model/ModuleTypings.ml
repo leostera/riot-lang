@@ -91,7 +91,7 @@ let label_to_json = function
   ]
 
 let rec type_to_json = fun ty ->
-  match TypeRepr.prune ty with
+  match TypeRepr.view (TypeRepr.prune ty) with
   | TypeRepr.Int -> Data.Json.Object [ ("tag", Data.Json.String "int") ]
   | TypeRepr.Float -> Data.Json.Object [ ("tag", Data.Json.String "float") ]
   | TypeRepr.Bool -> Data.Json.Object [ ("tag", Data.Json.String "bool") ]
@@ -119,11 +119,16 @@ let rec type_to_json = fun ty ->
     ("tag", Data.Json.String "seq");
     ("element", type_to_json element);
   ]
-  | TypeRepr.Named { name; arguments } -> Data.Json.Object [
-    ("tag", Data.Json.String "named");
-    ("name", Data.Json.String (IdentPath.to_string name));
-    ("arguments", Data.Json.Array (List.map type_to_json arguments));
-  ]
+  | TypeRepr.Named { type_constructor_id; name; arguments } ->
+      Data.Json.Object [ ("tag", Data.Json.String "named"); (
+          "type_constructor_id",
+          match type_constructor_id with
+          | Some type_constructor_id -> Data.Json.Int (TypeConstructorId.to_int type_constructor_id)
+          | None -> Data.Json.Null
+        ); ("name", Data.Json.String (IdentPath.to_string name)); (
+          "arguments",
+          Data.Json.Array (List.map type_to_json arguments)
+        ); ]
   | TypeRepr.Tuple members -> Data.Json.Object [
     ("tag", Data.Json.String "tuple");
     ("members", Data.Json.Array (List.map type_to_json members));
@@ -144,7 +149,8 @@ let rec type_to_json = fun ty ->
     ("id", Data.Json.Int id);
   ]
 
-let scheme_to_json = fun (TypeScheme.Forall (quantified, body)) ->
+let scheme_to_json = fun scheme ->
+  let quantified, body = TypeScheme.to_explicit scheme in
   Data.Json.Object [
     ("quantified", Data.Json.Array (List.map (fun id -> Data.Json.Int id) quantified));
     ("body", type_to_json body);
@@ -158,12 +164,14 @@ let exports_to_json = fun exports ->
 
 let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   Data.Json.Object [
+    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
     ("name", Data.Json.String constructor.name);
     ("scheme", scheme_to_json constructor.scheme);
   ]
 
 let label_decl_to_json = fun (label: TypeDecl.label) ->
   Data.Json.Object [
+    ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
     ("name", Data.Json.String label.name);
     ("field_type", type_to_json label.field_type);
     ("mutable", Data.Json.Bool label.mutable_);
@@ -201,9 +209,12 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   let fields = [
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments type_decl.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments type_decl.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
+    );
+    (
+      "type_constructor_id",
+      Data.Json.Int (TypeConstructorId.to_int type_decl.declaration.type_constructor_id)
     );
     ("type_name", Data.Json.String type_decl.declaration.type_name);
     (
@@ -274,44 +285,53 @@ let rec type_of_json = fun json ->
   let* tag = get_string tag_json in
   match tag with
   | "int" ->
-      Ok TypeRepr.Int
+      Ok TypeRepr.int
   | "float" ->
-      Ok TypeRepr.Float
+      Ok TypeRepr.float
   | "bool" ->
-      Ok TypeRepr.Bool
+      Ok TypeRepr.bool
   | "string" ->
-      Ok TypeRepr.String
+      Ok TypeRepr.string
   | "char" ->
-      Ok TypeRepr.Char
+      Ok TypeRepr.char
   | "unit" ->
-      Ok TypeRepr.Unit
+      Ok TypeRepr.unit_
   | "option" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
-      Ok (TypeRepr.Option element)
+      Ok (TypeRepr.option element)
   | "result" ->
       let* ok_json = field "ok" fields in
       let* error_json = field "error" fields in
       let* ok_ty = type_of_json ok_json in
       let* error_ty = type_of_json error_json in
-      Ok (TypeRepr.Result (ok_ty, error_ty))
+      Ok (TypeRepr.result ok_ty error_ty)
   | "array" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
-      Ok (TypeRepr.Array element)
+      Ok (TypeRepr.array element)
   | "list" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
-      Ok (TypeRepr.List element)
+      Ok (TypeRepr.list element)
   | "seq" ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
-      Ok (TypeRepr.Seq element)
+      Ok (TypeRepr.seq element)
   | "named" ->
+      let type_constructor_id =
+        match List.assoc_opt "type_constructor_id" fields with
+        | Some Data.Json.Null
+        | None -> Ok None
+        | Some type_constructor_id_json ->
+            let* type_constructor_id = get_int type_constructor_id_json in
+            Ok (Some (TypeConstructorId.of_int type_constructor_id))
+      in
       let* name_json = field "name" fields in
       let* name = get_string name_json in
       let* arguments_json = field "arguments" fields in
       let* arguments_json = get_array arguments_json in
+      let* type_constructor_id = type_constructor_id in
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
         | head :: tail ->
@@ -319,7 +339,7 @@ let rec type_of_json = fun json ->
             loop (argument :: acc) tail
       in
       let* arguments = loop [] arguments_json in
-      Ok (TypeRepr.Named { name = IdentPath.of_string name; arguments })
+      Ok (TypeRepr.named ~type_constructor_id ~name:(IdentPath.of_string name) ~arguments)
   | "tuple" ->
       let* members_json = field "members" fields in
       let* members_json = get_array members_json in
@@ -330,7 +350,7 @@ let rec type_of_json = fun json ->
             loop (member :: acc) tail
       in
       let* members = loop [] members_json in
-      Ok (TypeRepr.Tuple members)
+      Ok (TypeRepr.tuple members)
   | "arrow" ->
       let* label_json = field "label" fields in
       let* lhs_json = field "lhs" fields in
@@ -338,7 +358,7 @@ let rec type_of_json = fun json ->
       let* label = label_of_json label_json in
       let* lhs = type_of_json lhs_json in
       let* rhs = type_of_json rhs_json in
-      Ok (TypeRepr.Arrow { label; lhs; rhs })
+      Ok (TypeRepr.arrow ~label ~lhs ~rhs)
   | "var" ->
       let* id_json = field "id" fields in
       let* id = get_int id_json in
@@ -346,7 +366,7 @@ let rec type_of_json = fun json ->
   | "hole" ->
       let* id_json = field "id" fields in
       let* id = get_int id_json in
-      Ok (TypeRepr.Hole id)
+      Ok (TypeRepr.hole id)
   | other ->
       Error ("unknown module typings type tag " ^ other)
 
@@ -362,7 +382,7 @@ let scheme_of_json = function
           in
           begin
             match parse_quantified [] quantified_json, type_of_json body_json with
-            | Ok quantified, Ok body -> Ok (TypeScheme.Forall (quantified, body))
+            | Ok quantified, Ok body -> Ok (TypeScheme.of_explicit ~quantified body)
             | Error err, _ -> Error err
             | _, Error err -> Error err
           end
@@ -406,17 +426,23 @@ let string_list_of_json = fun json ->
 
 let constructor_of_json = fun json ->
   let* fields = get_object json in
+  let* constructor_id_json = field "constructor_id" fields in
   let* name_json = field "name" fields in
   let* scheme_json = field "scheme" fields in
+  let* constructor_id = get_int constructor_id_json in
   let* name = get_string name_json in
   let* scheme = scheme_of_json scheme_json in
-  Ok ({ TypeDecl.name = name; scheme }: TypeDecl.constructor)
+  Ok (
+    { TypeDecl.constructor_id = ConstructorId.of_int constructor_id; name; scheme }: TypeDecl.constructor
+  )
 
 let label_decl_of_json = fun json ->
   let* fields = get_object json in
+  let* label_id_json = field "label_id" fields in
   let* name_json = field "name" fields in
   let* field_type_json = field "field_type" fields in
   let* mutable_json = field "mutable" fields in
+  let* label_id = get_int label_id_json in
   let* name = get_string name_json in
   let* field_type = type_of_json field_type_json in
   let mutable_ =
@@ -425,7 +451,7 @@ let label_decl_of_json = fun json ->
     | other -> error_expected "bool" other
   in
   let* mutable_ = mutable_ in
-  Ok ({ TypeDecl.name = name; field_type; mutable_ }: TypeDecl.label)
+  Ok ({ TypeDecl.label_id = LabelId.of_int label_id; name; field_type; mutable_ }: TypeDecl.label)
 
 let poly_variant_tag_of_json = fun json ->
   let* fields = get_object json in
@@ -484,11 +510,13 @@ let manifest_of_json = fun json ->
 let type_decl_of_json = fun json ->
   let* fields = get_object json in
   let* scope_path_json = field "scope_path" fields in
+  let* type_constructor_id_json = field "type_constructor_id" fields in
   let* type_name_json = field "type_name" fields in
   let* param_ids_json = field "param_ids" fields in
   let* constructors_json = field "constructors" fields in
   let* labels_json = field "labels" fields in
   let* scope_path = string_list_of_json scope_path_json in
+  let* type_constructor_id = get_int type_constructor_id_json in
   let* type_name = get_string type_name_json in
   let* param_ids = int_list_of_json param_ids_json in
   let* constructors_json = get_array constructors_json in
@@ -517,6 +545,7 @@ let type_decl_of_json = fun json ->
     FileSummary.scope_path = IdentPath.of_segments scope_path;
     declaration =
       {
+        TypeDecl.type_constructor_id = TypeConstructorId.of_int type_constructor_id;
         TypeDecl.type_name = type_name;
         param_ids;
         constructors;

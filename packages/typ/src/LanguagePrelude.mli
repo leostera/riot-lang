@@ -11,3 +11,6 @@ type env = (IdentPath.t * TypeScheme.t) list
 
 (** Minimal intrinsic bindings used by the prototype checker. *)
 val bindings: env
+
+(** Minimal intrinsic type declarations used by the prototype checker. *)
+val type_decls: FileSummary.type_decl list

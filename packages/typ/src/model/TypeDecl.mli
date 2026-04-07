@@ -2,6 +2,8 @@ open Std
 
 (** One exported constructor recovered from a lowered type declaration. *)
 type constructor = {
+  (** Stable descriptor identity for this constructor. *)
+  constructor_id: ConstructorId.t;
   (** Stable constructor name as it will appear in the term environment. *)
   name: string;
   (** Constructor scheme derived from the declaration payload. *)
@@ -9,6 +11,8 @@ type constructor = {
 }
 (** One record label recovered from a lowered type declaration. *)
 type label = {
+  (** Stable descriptor identity for this label. *)
+  label_id: LabelId.t;
   (** Surface label name as it appears in record syntax. *)
   name: string;
   (** Field type derived from the declaration. *)
@@ -43,6 +47,8 @@ type manifest =
     during term inference, while preserving manifest alias and
     polymorphic-variant declaration detail explicitly for later slices. *)
 type t = {
+  (** Stable descriptor identity for this type constructor. *)
+  type_constructor_id: TypeConstructorId.t;
   (** Declared type name. *)
   type_name: string;
   (** Prototype-local type parameter identifiers used for later instantiation. *)

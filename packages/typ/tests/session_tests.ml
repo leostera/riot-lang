@@ -60,6 +60,10 @@ let diagnostic_strings = fun snapshot source_id ->
       | Query.Typing diagnostic -> Diagnostic.to_string diagnostic
     )
 
+let show_option = function
+  | Some value -> "Some(" ^ value ^ ")"
+  | None -> "None"
+
 let trace_debug = fun snapshot source_id ->
   match Query.analysis_of_source snapshot source_id with
   | None -> []
@@ -94,8 +98,7 @@ let exported_type_names = fun snapshot source_id ->
           if IdentPath.is_empty type_decl.scope_path then
             type_decl.declaration.type_name
           else
-            IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
-            |> IdentPath.to_string)
+            IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name |> IdentPath.to_string)
 
 let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
@@ -208,12 +211,15 @@ let test_snapshot_exposes_implicit_file_modules = fun _ctx ->
   let midpoint_type = inferred_type_at snapshot demo_source_id 34 in
   let label_type = inferred_type_at snapshot demo_source_id 58 in
   let color_exports = export_names (Query.export_of snapshot colors_source_id) in
-  let () = Test.assert_equal ~expected:[ "RGB.blend"; "to_string" ] ~actual:color_exports in
   if demo_has_unbound_name then
     Error (String.concat "\n" (demo_diagnostics @ trace_debug snapshot demo_source_id))
+  else if not (color_exports = [ "to_string"; "RGB.blend" ]) then
+    Error ("unexpected colors exports: " ^ String.concat ", " color_exports)
+  else if not (midpoint_type = Some "int -> int -> int") then
+    Error ("unexpected midpoint type: " ^ show_option midpoint_type)
+  else if not (label_type = Some "string -> string") then
+    Error ("unexpected label type: " ^ show_option label_type)
   else
-    let () = Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type in
-    let () = Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type in
     Ok ()
 
 let test_snapshot_exports_interface_declarations = fun _ctx ->
@@ -634,11 +640,16 @@ let test_snapshot_uses_sibling_source_record_types = fun _ctx ->
     let origin_type = export_scheme snapshot demo_source_id "origin" in
     let total_type = export_scheme snapshot demo_source_id "total" in
     let field_access_type = inferred_type_at snapshot demo_source_id field_access_offset in
-    let () = Test.assert_equal ~expected:[ "point" ] ~actual:type_decl_names in
-    let () = Test.assert_equal ~expected:(Some "Colors.point") ~actual:origin_type in
-    let () = Test.assert_equal ~expected:(Some "Colors.point -> int") ~actual:total_type in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:field_access_type in
-    Ok ()
+    if not (type_decl_names = [ "point" ]) then
+      Error ("unexpected type decl names: " ^ String.concat ", " type_decl_names)
+    else if not (origin_type = Some "Colors.point") then
+      Error ("unexpected origin type: " ^ show_option origin_type)
+    else if not (total_type = Some "Colors.point -> int") then
+      Error ("unexpected total type: " ^ show_option total_type)
+    else if not (field_access_type = Some "int") then
+      Error ("unexpected field access type: " ^ show_option field_access_type)
+    else
+      Ok ()
 
 let test_snapshot_uses_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
@@ -668,9 +679,12 @@ let test_snapshot_uses_loaded_module_record_types = fun _ctx ->
   else
     let origin_type = export_scheme snapshot source_id "origin" in
     let total_type = export_scheme snapshot source_id "total" in
-    let () = Test.assert_equal ~expected:(Some "Colors.point") ~actual:origin_type in
-    let () = Test.assert_equal ~expected:(Some "Colors.point -> int") ~actual:total_type in
-    Ok ()
+    if not (origin_type = Some "Colors.point") then
+      Error ("unexpected origin type: " ^ show_option origin_type)
+    else if not (total_type = Some "Colors.point -> int") then
+      Error ("unexpected total type: " ^ show_option total_type)
+    else
+      Ok ()
 
 let test_include_reexports_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
@@ -723,10 +737,17 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
     else
       let origin_type = export_scheme client_snapshot client_source_id "origin" in
       let total_type = export_scheme client_snapshot client_source_id "total" in
-      let () = Test.assert_equal ~expected:[ ([], "point") ] ~actual:exported_type_decls in
-      let () = Test.assert_equal ~expected:(Some "Consumer.point") ~actual:origin_type in
-      let () = Test.assert_equal ~expected:(Some "Consumer.point -> int") ~actual:total_type in
-      Ok ()
+      if not (exported_type_decls = [ ([], "point") ]) then
+        Error ("unexpected exported type decls: "
+        ^ String.concat
+          ", "
+          (List.map (fun (scope, name) -> "[" ^ String.concat "." scope ^ "]." ^ name) exported_type_decls))
+      else if not (origin_type = Some "Consumer.point") then
+        Error ("unexpected origin type: " ^ show_option origin_type)
+      else if not (total_type = Some "Consumer.point -> int") then
+        Error ("unexpected total type: " ^ show_option total_type)
+      else
+        Ok ()
 
 let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
@@ -779,10 +800,17 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
     else
       let origin_type = export_scheme client_snapshot client_source_id "origin" in
       let total_type = export_scheme client_snapshot client_source_id "total" in
-      let () = Test.assert_equal ~expected:[ ([ "Util" ], "point") ] ~actual:exported_type_decls in
-      let () = Test.assert_equal ~expected:(Some "Consumer.Util.point") ~actual:origin_type in
-      let () = Test.assert_equal ~expected:(Some "Consumer.Util.point -> int") ~actual:total_type in
-      Ok ()
+      if not (exported_type_decls = [ ([ "Util" ], "point") ]) then
+        Error ("unexpected exported type decls: "
+        ^ String.concat
+          ", "
+          (List.map (fun (scope, name) -> "[" ^ String.concat "." scope ^ "]." ^ name) exported_type_decls))
+      else if not (origin_type = Some "Consumer.Util.point") then
+        Error ("unexpected origin type: " ^ show_option origin_type)
+      else if not (total_type = Some "Consumer.Util.point -> int") then
+        Error ("unexpected total type: " ^ show_option total_type)
+      else
+        Ok ()
 
 let test_include_reexports_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
@@ -850,11 +878,16 @@ let test_module_alias_reexports_loaded_module_typings = fun _ctx ->
     let util_wrap_type = export_scheme snapshot source_id "Util.wrap" in
     let answer_type = export_scheme snapshot source_id "answer" in
     let exported_names = export_names (Query.export_of snapshot source_id) in
-    let () = Test.assert_equal ~expected:(Some "'a. 'a -> 'a") ~actual:util_id_type in
-    let () = Test.assert_equal ~expected:(Some "'a. 'a -> 'a option") ~actual:util_wrap_type in
-    let () = Test.assert_equal ~expected:(Some "int option") ~actual:answer_type in
-    let () = Test.assert_equal ~expected:[ "Util.id"; "Util.wrap"; "answer" ] ~actual:exported_names in
-    Ok ()
+    if not (exported_names = [ "answer"; "Util.id"; "Util.wrap" ]) then
+      Error ("unexpected exported names: " ^ String.concat ", " exported_names)
+    else if not (util_id_type = Some "'a. 'a -> 'a") then
+      Error ("unexpected Util.id type: " ^ show_option util_id_type)
+    else if not (util_wrap_type = Some "'a. 'a -> 'a option") then
+      Error ("unexpected Util.wrap type: " ^ show_option util_wrap_type)
+    else if not (answer_type = Some "int option") then
+      Error ("unexpected answer type: " ^ show_option answer_type)
+    else
+      Ok ()
 
 let test_module_alias_reexports_same_named_local_modules = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -876,10 +909,14 @@ let test_module_alias_reexports_same_named_local_modules = fun _ctx ->
     let create_type = export_scheme snapshot sync_source_id "Cell.create" in
     let answer_type = export_scheme snapshot sync_source_id "answer" in
     let exported_names = export_names (Query.export_of snapshot sync_source_id) in
-    let () = Test.assert_equal ~expected:(Some "'a. 'a -> 'a") ~actual:create_type in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:answer_type in
-    let () = Test.assert_equal ~expected:[ "Cell.create"; "answer" ] ~actual:exported_names in
-    Ok ()
+    if not (exported_names = [ "answer"; "Cell.create" ]) then
+      Error ("unexpected exported names: " ^ String.concat ", " exported_names)
+    else if not (create_type = Some "'a. 'a -> 'a") then
+      Error ("unexpected Cell.create type: " ^ show_option create_type)
+    else if not (answer_type = Some "int") then
+      Error ("unexpected answer type: " ^ show_option answer_type)
+    else
+      Ok ()
 
 let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
@@ -1272,9 +1309,12 @@ let test_match_guards_typecheck_in_pattern_scope = fun _ctx ->
     let guard_binding_offset = offset_of_substring source "n > 0" |> Option.expect ~msg:"expected match guard in test source" in
     let classify_type = export_scheme snapshot source_id "classify" in
     let guard_binding_type = inferred_type_at snapshot source_id guard_binding_offset in
-    let () = Test.assert_equal ~expected:(Some "(int option) -> int") ~actual:classify_type in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:guard_binding_type in
-    Ok ()
+    if not (classify_type = Some "(int option) -> int") then
+      Error ("unexpected classify type: " ^ show_option classify_type)
+    else if not (guard_binding_type = Some "int") then
+      Error ("unexpected guard binding type: " ^ show_option guard_binding_type)
+    else
+      Ok ()
 
 let test_optional_arguments_can_be_omitted_and_reordered = fun _ctx ->
   let session = Session.empty ~config:Config.default in

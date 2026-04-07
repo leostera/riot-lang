@@ -3,12 +3,6 @@ open Analysis
 open Diagnostics
 open Model
 
-type record_type_decl = {
-  owner_name: IdentPath.t;
-  param_ids: int list;
-  labels: TypeDecl.label list;
-}
-
 type variance =
   | Covariant
   | Contravariant
@@ -19,42 +13,20 @@ type t = {
   config: TypConfig.t;
   regions: Region.t;
   mutable next_type_var_id: int;
-  mutable next_binding_ident_stamp: int;
+  mutable next_binding_local_id: int;
   mutable next_hole_id: int;
   mutable diagnostics: Diagnostic.t list;
   mutable expr_traces: Check_result.expr_trace list;
   mutable item_traces: Check_result.item_trace list;
-  mutable record_types: record_type_decl list;
   mutable visible_type_decls: FileSummary.type_decl list;
-  visible_type_decl_index: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
-  declaration_variances: (IdentPath.t, variance list) Collections.HashMap.t;
+  visible_type_decl_by_path: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
+  visible_type_decl_by_id: (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t;
+  declaration_variances: (TypeConstructorId.t, variance list) Collections.HashMap.t;
   mutable forced_export_names: string list;
 }
 
 let qualify_name = fun scope_path name ->
   IdentPath.append_name scope_path name
-
-let record_type_of_summary_decl = fun (type_decl: FileSummary.type_decl) ->
-  match type_decl.declaration.labels with
-  | [] -> None
-  | labels -> Some {
-    owner_name = qualify_name type_decl.scope_path type_decl.declaration.type_name;
-    param_ids = type_decl.declaration.param_ids;
-    labels
-  }
-
-let unique_record_types = fun record_types ->
-  let seen = Collections.HashSet.with_capacity (List.length record_types) in
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | (record_decl: record_type_decl) :: rest ->
-        if Collections.HashSet.contains seen record_decl.owner_name then
-          loop acc rest
-        else
-          let () = Collections.HashSet.insert seen record_decl.owner_name |> ignore in
-          loop (record_decl :: acc) rest
-  in
-  loop [] record_types
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
   qualify_name type_decl.scope_path type_decl.declaration.type_name
@@ -88,11 +60,16 @@ let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decl
 let type_decls_for_module_alias = fun type_decls ~alias_name ~module_path ->
   aliases_for_type_decls type_decls module_path |> prefix_type_decls (IdentPath.of_name alias_name)
 
-let rebuild_visible_type_decl_index = fun (state: t) ->
-  let () = Collections.HashMap.clear state.visible_type_decl_index in
+let rebuild_visible_type_decl_indexes = fun (state: t) ->
+  let () = Collections.HashMap.clear state.visible_type_decl_by_path in
+  let () = Collections.HashMap.clear state.visible_type_decl_by_id in
   state.visible_type_decls |> List.iter
     (fun (type_decl: FileSummary.type_decl) ->
-      let _ = Collections.HashMap.insert state.visible_type_decl_index (type_decl_key type_decl) type_decl in
+      let _ = Collections.HashMap.insert state.visible_type_decl_by_path (type_decl_key type_decl) type_decl in
+      let _ = Collections.HashMap.insert
+        state.visible_type_decl_by_id
+        type_decl.declaration.type_constructor_id
+        type_decl in
       ())
 
 let reset_declaration_variances = fun (state: t) -> Collections.HashMap.clear state.declaration_variances
@@ -103,19 +80,19 @@ let make = fun ~config file ->
     config;
     regions = Region.create ();
     next_type_var_id = 0;
-    next_binding_ident_stamp = 0;
+    next_binding_local_id = 0;
     next_hole_id = 0;
     diagnostics = [];
     expr_traces = [];
     item_traces = [];
-    record_types = config.ambient_type_decls |> List.filter_map record_type_of_summary_decl |> unique_record_types;
     visible_type_decls = config.ambient_type_decls;
-    visible_type_decl_index = Collections.HashMap.with_capacity 32;
+    visible_type_decl_by_path = Collections.HashMap.with_capacity 32;
+    visible_type_decl_by_id = Collections.HashMap.with_capacity 32;
     declaration_variances = Collections.HashMap.with_capacity 32;
     forced_export_names = [];
   }
   in
-  let () = rebuild_visible_type_decl_index state in
+  let () = rebuild_visible_type_decl_indexes state in
   state
 
 let fresh_var = fun (state: t) ->
@@ -125,23 +102,25 @@ let fresh_var = fun (state: t) ->
   in
   Region.fresh_var state.regions id
 
-let fresh_binding_ident_stamp = fun (state: t) ->
-  let stamp = state.next_binding_ident_stamp in
+let make_type = fun (state: t) desc -> TypeRepr.of_desc desc |> Region.track_node state.regions
+
+let fresh_binding_local_id = fun (state: t) ->
+  let local_id = state.next_binding_local_id in
   let () =
-    state.next_binding_ident_stamp <- state.next_binding_ident_stamp + 1
+    state.next_binding_local_id <- state.next_binding_local_id + 1
   in
-  stamp
+  local_id
 
 let fresh_hole = fun (state: t) ->
   let hole_id = state.next_hole_id in
   let () =
     state.next_hole_id <- state.next_hole_id + 1
   in
-  TypeRepr.Hole hole_id
+  make_type state (TypeRepr.Hole hole_id)
 
 let set_visible_type_decls = fun (state: t) type_decls ->
   let () =
     state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls
   in
-  let () = rebuild_visible_type_decl_index state in
+  let () = rebuild_visible_type_decl_indexes state in
   reset_declaration_variances state

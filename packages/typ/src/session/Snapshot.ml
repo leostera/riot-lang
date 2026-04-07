@@ -42,8 +42,7 @@ let make = fun ~revision ~roots ~config ~sources ->
 let qualify_exports = fun module_name exports ->
   let module_path = IdentPath.of_name module_name in
   List.map
-    (fun (name, scheme) ->
-      (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
+    (fun (name, scheme) -> (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
     exports
 
 let qualify_type_decls = fun module_name type_decls ->

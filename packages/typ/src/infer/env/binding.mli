@@ -2,11 +2,11 @@ open Std
 open Model
 
 type ident
-val make_ident: stamp:int -> name:string -> ident
+val make_ident: local_id:int -> name:string -> ident
 
 val ident_name: ident -> string
 
-val ident_stamp: ident -> int
+val ident_local_id: ident -> int
 
 val same_ident: ident -> ident -> bool
 

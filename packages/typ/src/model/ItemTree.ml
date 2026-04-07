@@ -113,9 +113,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("declaration", TypeDecl.to_json item.declaration);
   ]
@@ -125,9 +124,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("exception_name", Data.Json.String item.exception_name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
@@ -138,9 +136,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     (
       "binding_ids",
@@ -156,9 +153,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("value_name", Data.Json.String item.value_name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
@@ -169,9 +165,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
   ]
@@ -181,9 +176,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
   ]
@@ -193,9 +187,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("alias_name", Data.Json.String item.alias_name);
     ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
@@ -206,9 +199,8 @@ let item_to_json = function
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array
-        (IdentPath.to_segments item.scope_path
-        |> List.map (fun segment -> Data.Json.String segment))
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
     );
     ("summary", Data.Json.String item.summary);
   ]
@@ -224,7 +216,10 @@ let to_string = fun items ->
           function
           | Type (item: type_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -235,7 +230,10 @@ let to_string = fun items ->
               ^ TypeDecl.to_string item.declaration
           | Exception (item: exception_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -248,7 +246,10 @@ let to_string = fun items ->
               ^ TypePrinter.scheme_to_string item.scheme
           | Value (item: value_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -262,7 +263,10 @@ let to_string = fun items ->
               ^ "]"
           | DeclaredValue (item: declared_value_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -275,7 +279,10 @@ let to_string = fun items ->
               ^ TypePrinter.scheme_to_string item.scheme
           | Open (item: open_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -286,7 +293,10 @@ let to_string = fun items ->
               ^ IdentPath.to_string item.module_path
           | Include (item: include_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -297,7 +307,10 @@ let to_string = fun items ->
               ^ IdentPath.to_string item.module_path
           | ModuleAlias (item: module_alias_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id
@@ -310,7 +323,10 @@ let to_string = fun items ->
               ^ IdentPath.to_string item.module_path
           | Unsupported (item: unsupported_item) ->
               let scope_prefix =
-                if IdentPath.is_empty item.scope_path then "" else IdentPath.to_string item.scope_path ^ " "
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
               in
               "  "
               ^ ItemId.to_string item.item_id

@@ -47,7 +47,7 @@ val entries_for_module_alias: t -> alias_name:string -> module_path:IdentPath.t 
 
 val export: TypConfig.t -> t -> t
 
-val export_with_forced_names: State.t -> t -> t
+val export_with_forced_names: config:TypConfig.t -> forced_export_names:string list -> t -> t
 
 val introduced_entries: t -> t -> t
 

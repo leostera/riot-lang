@@ -8,12 +8,9 @@ type label =
 type var = {
   id: int;
   mutable link: t option;
-  mutable level: int;
-  mutable mark: int;
-  mutable mark_order: int;
 }
 
-and t =
+and desc =
   | Int
   | Float
   | Bool
@@ -25,35 +22,121 @@ and t =
   | Array of t
   | List of t
   | Seq of t
-  | Named of { name: IdentPath.t; arguments: t list }
+  | Named of {
+      type_constructor_id: TypeConstructorId.t option;
+      name: IdentPath.t;
+      arguments: t list
+    }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
   | Hole of int
 
-let rec prune = function
+and t = {
+  mutable desc: desc;
+  mutable level: int;
+  mutable mark: int;
+  mutable mark_order: int;
+}
+
+let max_level = fun xs ->
+  List.fold_left
+    (fun acc ty ->
+      Int.max acc ty.level)
+    0
+    xs
+
+let level_of_desc = function
+  | Int
+  | Float
+  | Bool
+  | String
+  | Char
+  | Unit
+  | Hole _ -> 0
+  | Option element
+  | Array element
+  | List element
+  | Seq element -> element.level
+  | Result (ok_ty, error_ty) -> Int.max ok_ty.level error_ty.level
+  | Named { arguments; _ }
+  | Tuple arguments -> max_level arguments
+  | Arrow { lhs; rhs; _ } -> Int.max lhs.level rhs.level
+  | Var _ -> 0
+
+let of_desc = fun ?level desc ->
+  let level =
+    match level with
+    | Some level -> level
+    | None -> level_of_desc desc
+  in
+  { desc; level; mark = (-1); mark_order = (-1) }
+
+let int = of_desc Int
+
+let float = of_desc Float
+
+let bool = of_desc Bool
+
+let string = of_desc String
+
+let char = of_desc Char
+
+let unit_ = of_desc Unit
+
+let option = fun element -> of_desc (Option element)
+
+let result = fun ok_ty error_ty -> of_desc (Result (ok_ty, error_ty))
+
+let array = fun element -> of_desc (Array element)
+
+let list = fun element -> of_desc (List element)
+
+let seq = fun element -> of_desc (Seq element)
+
+let named = fun ~type_constructor_id ~name ~arguments ->
+  of_desc (Named { type_constructor_id; name; arguments })
+
+let tuple = fun members -> of_desc (Tuple members)
+
+let arrow = fun ~label ~lhs ~rhs -> of_desc (Arrow { label; lhs; rhs })
+
+let hole = fun hole_id -> of_desc (Hole hole_id)
+
+let rec prune = fun ty ->
+  match ty.desc with
   | Var ({ link=Some linked; _ } as var) ->
       let linked = prune linked in
       let () =
         var.link <- Some linked
       in
       linked
-  | ty -> ty
+  | _ -> ty
 
-let make_var = fun ?(level = 0) id ->
-  Var {
-    id;
-    link = None;
-    level;
-    mark = (-1);
-    mark_order = (-1);
-  }
+let view = fun ty -> ty.desc
 
-let add_unique = fun xs x ->
-  if List.mem x xs then
-    xs
-  else
-    x :: xs
+let level = fun ty -> ty.level
+
+let set_level = fun ty level -> ty.level <- level
+
+let generic_level = Int.max_int
+
+let is_generic_level = fun level ->
+  Int.equal level generic_level
+
+let make_var = fun ?(level = 0) id -> of_desc ~level (Var { id; link = None })
+
+let is_generic_var = fun ty ->
+  let ty = prune ty in
+  match ty.desc with
+  | Var _ -> is_generic_level ty.level
+  | _ -> false
+
+let set_generic_var = fun ty ->
+  let ty = prune ty in
+  match ty.desc with
+  | Var _ -> ty.level <- generic_level
+  | _ -> ()
 
 let union = fun left right ->
   if List.is_empty right then
@@ -91,13 +174,15 @@ let join_variance = fun left right ->
   match (left, right) with
   | (Invariant, _)
   | (_, Invariant) -> Invariant
-  | Covariant, Covariant -> Covariant
-  | Contravariant, Contravariant -> Contravariant
+  | (Covariant, Covariant) -> Covariant
+  | (Contravariant, Contravariant) -> Contravariant
   | (Covariant, Contravariant)
   | (Contravariant, Covariant) -> Invariant
 
 let free_vars =
-  let rec collect seen acc = function
+  let rec collect seen acc ty =
+    let ty = prune ty in
+    match ty.desc with
     | Int
     | Float
     | Bool
@@ -107,38 +192,80 @@ let free_vars =
     | Hole _ ->
         acc
     | Option element ->
-        collect seen acc (prune element)
+        collect seen acc element
     | Result (ok_ty, error_ty) ->
-        let acc = collect seen acc (prune ok_ty) in
-        collect seen acc (prune error_ty)
+        let acc = collect seen acc ok_ty in
+        collect seen acc error_ty
     | Array element ->
-        collect seen acc (prune element)
+        collect seen acc element
     | List element ->
-        collect seen acc (prune element)
+        collect seen acc element
     | Seq element ->
-        collect seen acc (prune element)
+        collect seen acc element
     | Named { arguments; _ } ->
-        List.fold_left (fun acc argument -> collect seen acc (prune argument)) acc arguments
+        List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
     | Tuple members ->
-        List.fold_left (fun acc member -> collect seen acc (prune member)) acc members
+        List.fold_left (fun acc member -> collect seen acc member) acc members
     | Arrow { lhs; rhs; _ } ->
-        let acc = collect seen acc (prune lhs) in
-        collect seen acc (prune rhs)
-    | Var var -> (
-        match var.link with
-        | Some linked -> collect seen acc linked
-        | None ->
-            if Collections.HashSet.contains seen var.id then
-              acc
-            else
-              let () = Collections.HashSet.insert seen var.id |> ignore in
-              var.id :: acc
-      )
+        let acc = collect seen acc lhs in
+        collect seen acc rhs
+    | Var { id; link=None; _ } ->
+        if Collections.HashSet.contains seen id then
+          acc
+        else
+          let () = Collections.HashSet.insert seen id |> ignore in
+          id :: acc
+    | Var { link=Some linked; _ } ->
+        collect seen acc linked
   in
   fun ty -> collect (Collections.HashSet.create ()) [] ty
 
-let mark_reachable_vars =
-  let rec loop ~generation ~next_order = function
+let seal_levels =
+  let rec loop ty =
+    let ty = prune ty in
+    let child_level =
+      match ty.desc with
+      | Int
+      | Float
+      | Bool
+      | String
+      | Char
+      | Unit
+      | Hole _ -> 0
+      | Option element
+      | Array element
+      | List element
+      | Seq element -> loop element
+      | Result (ok_ty, error_ty) -> Int.max (loop ok_ty) (loop error_ty)
+      | Named { arguments; _ }
+      | Tuple arguments ->
+          List.fold_left
+            (fun acc argument ->
+              Int.max acc (loop argument))
+            0
+            arguments
+      | Arrow { lhs; rhs; _ } -> Int.max (loop lhs) (loop rhs)
+      | Var { link=None; _ } -> ty.level
+      | Var { link=Some linked; _ } -> loop linked
+    in
+    let sealed_level =
+      match ty.desc with
+      | Var _ -> ty.level
+      | _ -> Int.max ty.level child_level
+    in
+    let () =
+      ty.level <- sealed_level
+    in
+    sealed_level
+  in
+  fun ty ->
+    let _ = loop ty in
+    ()
+
+let generalize_ids =
+  let rec loop generalized_ids ty =
+    let ty = prune ty in
+    match ty.desc with
     | Int
     | Float
     | Bool
@@ -148,33 +275,111 @@ let mark_reachable_vars =
     | Hole _ ->
         ()
     | Option element ->
-        loop ~generation ~next_order (prune element)
+        loop generalized_ids element
     | Result (ok_ty, error_ty) ->
-        let () = loop ~generation ~next_order (prune ok_ty) in
-        loop ~generation ~next_order (prune error_ty)
+        let () = loop generalized_ids ok_ty in
+        loop generalized_ids error_ty
     | Array element ->
-        loop ~generation ~next_order (prune element)
+        loop generalized_ids element
     | List element ->
-        loop ~generation ~next_order (prune element)
+        loop generalized_ids element
     | Seq element ->
-        loop ~generation ~next_order (prune element)
+        loop generalized_ids element
     | Named { arguments; _ } ->
-        List.iter (fun argument -> loop ~generation ~next_order (prune argument)) arguments
+        List.iter (loop generalized_ids) arguments
     | Tuple members ->
-        List.iter (fun member -> loop ~generation ~next_order (prune member)) members
+        List.iter (loop generalized_ids) members
     | Arrow { lhs; rhs; _ } ->
-        let () = loop ~generation ~next_order (prune lhs) in
-        loop ~generation ~next_order (prune rhs)
-    | Var ({ link=None; _ } as var) ->
-        if not (Int.equal var.mark generation) then
-          (
-            var.mark <- generation;
-            var.mark_order <- next_order ()
-          )
+        let () = loop generalized_ids lhs in
+        loop generalized_ids rhs
+    | Var { id; link=None; _ } ->
+        if Collections.HashSet.contains generalized_ids id then
+          set_generic_var ty
     | Var { link=Some linked; _ } ->
-        loop ~generation ~next_order linked
+        loop generalized_ids linked
   in
-  fun ~generation ~next_order ty -> loop ~generation ~next_order ty
+  fun ids ty ->
+    if not (List.is_empty ids) then
+      (
+        let () = loop (Collections.HashSet.of_list ids) ty in
+        seal_levels ty
+      )
+
+let generic_var_ids =
+  let rec collect seen acc ty =
+    let ty = prune ty in
+    match ty.desc with
+    | Int
+    | Float
+    | Bool
+    | String
+    | Char
+    | Unit
+    | Hole _ ->
+        acc
+    | Option element ->
+        collect seen acc element
+    | Result (ok_ty, error_ty) ->
+        let acc = collect seen acc ok_ty in
+        collect seen acc error_ty
+    | Array element ->
+        collect seen acc element
+    | List element ->
+        collect seen acc element
+    | Seq element ->
+        collect seen acc element
+    | Named { arguments; _ } ->
+        List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
+    | Tuple members ->
+        List.fold_left (fun acc member -> collect seen acc member) acc members
+    | Arrow { lhs; rhs; _ } ->
+        let acc = collect seen acc lhs in
+        collect seen acc rhs
+    | Var { id; link=None; _ } ->
+        if is_generic_var ty && not (Collections.HashSet.contains seen id) then
+          let () = Collections.HashSet.insert seen id |> ignore in
+          id :: acc
+        else
+          acc
+    | Var { link=Some linked; _ } ->
+        collect seen acc linked
+  in
+  fun ty -> collect (Collections.HashSet.create ()) [] ty |> List.rev
+
+let mark_reachable_vars = fun ~generation ~next_order ty ->
+  let rec loop = function
+    | [] -> ()
+    | ty :: rest ->
+        let ty = prune ty in
+        if Int.equal ty.mark generation then
+          loop rest
+        else
+          let () =
+            ty.mark <- generation;
+            ty.mark_order <- next_order ()
+          in
+          let rest =
+            match ty.desc with
+            | Int
+            | Float
+            | Bool
+            | String
+            | Char
+            | Unit
+            | Hole _
+            | Var _ -> rest
+            | Option element
+            | Array element
+            | List element
+            | Seq element -> element :: rest
+            | Result (ok_ty, error_ty) -> ok_ty :: error_ty :: rest
+            | Named { arguments; _ }
+            | Tuple arguments -> List.fold_right (fun argument acc -> argument :: acc) arguments rest
+            | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
+          in
+          loop rest
+  in
+  loop [ ty ]
 
 let add_variance = fun acc var_id variance ->
   match List.assoc_opt var_id acc with
@@ -185,41 +390,35 @@ let merge_variances = fun left right ->
   List.fold_left (fun acc (var_id, variance) -> add_variance acc var_id variance) left right
 
 let rec collect_variances = fun variance ty ->
-  match prune ty with
+  let ty = prune ty in
+  match ty.desc with
   | Int
   | Float
   | Bool
   | String
   | Char
   | Unit
-  | Hole _ ->
-      []
-  | Option element ->
-      collect_variances variance element
-  | Result (ok_ty, error_ty) ->
-      merge_variances (collect_variances variance ok_ty) (collect_variances variance error_ty)
-  | Array element ->
-      collect_variances Invariant element
-  | List element ->
-      collect_variances variance element
-  | Seq element ->
-      collect_variances variance element
-  | Named { arguments; _ } ->
-      List.fold_left
-        (fun acc argument -> merge_variances acc (collect_variances Invariant argument))
-        []
-        arguments
-  | Tuple members ->
-      List.fold_left (fun acc member -> merge_variances acc (collect_variances variance member)) [] members
-  | Arrow { lhs; rhs; _ } ->
-      merge_variances
-        (collect_variances (flip_variance variance) lhs)
-        (collect_variances variance rhs)
-  | Var var -> (
-      match var.link with
-      | Some linked -> collect_variances variance linked
-      | None -> [ (var.id, variance) ]
-    )
+  | Hole _ -> []
+  | Option element -> collect_variances variance element
+  | Result (ok_ty, error_ty) -> merge_variances
+    (collect_variances variance ok_ty)
+    (collect_variances variance error_ty)
+  | Array element -> collect_variances Invariant element
+  | List element -> collect_variances variance element
+  | Seq element -> collect_variances variance element
+  | Named { arguments; _ } -> List.fold_left
+    (fun acc argument -> merge_variances acc (collect_variances Invariant argument))
+    []
+    arguments
+  | Tuple members -> List.fold_left
+    (fun acc member -> merge_variances acc (collect_variances variance member))
+    []
+    members
+  | Arrow { lhs; rhs; _ } -> merge_variances
+    (collect_variances (flip_variance variance) lhs)
+    (collect_variances variance rhs)
+  | Var { id; link=None; _ } -> [ (id, variance) ]
+  | Var { link=Some linked; _ } -> collect_variances variance linked
 
 let covariant_vars = fun ty ->
   collect_variances Covariant ty |> List.filter_map
@@ -230,76 +429,66 @@ let covariant_vars = fun ty ->
       | Invariant -> None)
 
 let rec occurs = fun needle ty ->
-  match prune ty with
+  let ty = prune ty in
+  match ty.desc with
   | Int
   | Float
   | Bool
   | String
   | Char
   | Unit
-  | Hole _ ->
-      false
-  | Option element ->
-      occurs needle element
-  | Result (ok_ty, error_ty) ->
-      occurs needle ok_ty || occurs needle error_ty
-  | Array element ->
-      occurs needle element
-  | List element ->
-      occurs needle element
-  | Seq element ->
-      occurs needle element
-  | Named { arguments; _ } ->
-      List.exists (occurs needle) arguments
-  | Tuple members ->
-      List.exists (occurs needle) members
-  | Arrow { lhs; rhs; _ } ->
-      occurs needle lhs || occurs needle rhs
-  | Var var -> (
-      match var.link with
-      | Some linked -> occurs needle linked
-      | None -> var.id = needle
-    )
+  | Hole _ -> false
+  | Option element -> occurs needle element
+  | Result (ok_ty, error_ty) -> occurs needle ok_ty || occurs needle error_ty
+  | Array element -> occurs needle element
+  | List element -> occurs needle element
+  | Seq element -> occurs needle element
+  | Named { arguments; _ } -> List.exists (occurs needle) arguments
+  | Tuple members -> List.exists (occurs needle) members
+  | Arrow { lhs; rhs; _ } -> occurs needle lhs || occurs needle rhs
+  | Var { id; link=None; _ } -> Int.equal id needle
+  | Var { link=Some linked; _ } -> occurs needle linked
 
-let occurs_or_lower =
-  let rec loop needle level ty =
-    match prune ty with
-    | Int
-    | Float
-    | Bool
-    | String
-    | Char
-    | Unit
-    | Hole _ ->
-        false
-    | Option element ->
-        loop needle level element
-    | Result (ok_ty, error_ty) ->
-        loop needle level ok_ty || loop needle level error_ty
-    | Array element ->
-        loop needle level element
-    | List element ->
-        loop needle level element
-    | Seq element ->
-        loop needle level element
-    | Named { arguments; _ } ->
-        List.exists (loop needle level) arguments
-    | Tuple members ->
-        List.exists (loop needle level) members
-    | Arrow { lhs; rhs; _ } ->
-        loop needle level lhs || loop needle level rhs
-    | Var var -> (
-        match var.link with
-        | Some linked -> loop needle level linked
-        | None ->
-            if var.id = needle then
-              true
-            else
-              (
-                if var.level > level then
-                  var.level <- level;
-                false
-              )
-      )
+let occurs_or_lower = fun ~generation ~needle ~level ty ->
+  let rec loop = function
+    | [] -> false
+    | ty :: rest ->
+        let ty = prune ty in
+        if Int.equal ty.mark generation then
+          loop rest
+        else
+          let () =
+            ty.mark <- generation
+          in
+          match ty.desc with
+          | Var { id; link=None; _ } when Int.equal id needle -> true
+          | _ ->
+              let () =
+                if ty.level > level then
+                  ty.level <- level
+              in
+              let rest =
+                match ty.desc with
+                | Int
+                | Float
+                | Bool
+                | String
+                | Char
+                | Unit
+                | Hole _
+                | Var _ -> rest
+                | Option element
+                | Array element
+                | List element
+                | Seq element -> element :: rest
+                | Result (ok_ty, error_ty) -> ok_ty :: error_ty :: rest
+                | Named { arguments; _ }
+                | Tuple arguments -> List.fold_right
+                  (fun argument acc -> argument :: acc)
+                  arguments
+                  rest
+                | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
+              in
+              loop rest
   in
-  fun ~needle ~level ty -> loop needle level ty
+  loop [ ty ]

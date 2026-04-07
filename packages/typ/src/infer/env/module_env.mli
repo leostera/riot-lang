@@ -7,11 +7,27 @@ val empty: t
 
 val empty_scope: scope
 
-val make_scope: values:Value_env.t -> modules:t -> scope
+val make_scope:
+  values:Value_env.t ->
+  modules:t ->
+  types:Type_env.t ->
+  constructors:Constructor_env.t ->
+  labels:Label_env.t ->
+  scope
 
 val scope_values: scope -> Value_env.t
 
 val scope_modules: scope -> t
+
+val scope_types: scope -> Type_env.t
+
+val scope_constructors: scope -> Constructor_env.t
+
+val scope_labels: scope -> Label_env.t
+
+val scope_scopes: scope -> scope list
+
+val scopes: t -> scope list
 
 val scope_bindings: scope -> Binding.t list
 

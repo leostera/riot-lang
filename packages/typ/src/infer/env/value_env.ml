@@ -5,11 +5,7 @@ open Model
 module Name_map = Collections.Map.Make (String)
 
 let visible_name_for_lookup = function
-  | path -> (
-      match IdentPath.to_segments path with
-      | [ name ] when not (String.equal name "") -> Some name
-      | _ -> None
-    )
+  | path -> IdentPath.bare_name path
 
 type t = {
   bindings: Binding.t list;
@@ -117,15 +113,20 @@ let introduced_names = fun before after ->
         Some (IdentPath.to_string path))
 
 let bind = fun env introduced ->
-  let by_name =
-    Name_map.fold
-      (fun name introduced_bindings acc ->
-        let existing = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
-        Name_map.add name (introduced_bindings @ existing) acc)
-      introduced.by_name
-      env.by_name
-  in
-  { bindings = introduced.bindings @ env.bindings; by_name }
+  if List.is_empty introduced.bindings then
+    env
+  else if List.is_empty env.bindings then
+    introduced
+  else
+    let by_name =
+      Name_map.fold
+        (fun name introduced_bindings acc ->
+          let existing = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
+          Name_map.add name (introduced_bindings @ existing) acc)
+        introduced.by_name
+        env.by_name
+    in
+    { bindings = introduced.bindings @ env.bindings; by_name }
 
 let aliases_for_local_open = fun env module_path ->
   env.bindings |> List.filter_map
@@ -176,10 +177,10 @@ let export = fun config env ->
     (fun binding -> not (Collections.HashSet.contains hidden_name_set (Binding.path binding)))
   |> of_bindings
 
-let export_with_forced_names = fun (state: State.t) env ->
-  let hidden_names = prelude_names state.config @ ambient_names state.config in
+let export_with_forced_names = fun ~config ~forced_export_names env ->
+  let hidden_names = prelude_names config @ ambient_names config in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
-  let forced_name_set = Collections.HashSet.of_list state.forced_export_names in
+  let forced_name_set = Collections.HashSet.of_list forced_export_names in
   canonicalize env |> bindings |> List.filter
     (fun binding ->
       let path = Binding.path binding in

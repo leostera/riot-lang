@@ -36,7 +36,7 @@ let render_arrow_label = function
   | TypeRepr.Optional label -> "?" ^ label ^ ":"
 
 let rec render_type = fun state ~nested ty ->
-  match TypeRepr.prune ty with
+  match TypeRepr.view (TypeRepr.prune ty) with
   | TypeRepr.Int ->
       "int"
   | TypeRepr.Float ->
@@ -87,7 +87,7 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
-  | TypeRepr.Named { name; arguments } -> (
+  | TypeRepr.Named { name; arguments; _ } -> (
       match arguments with
       | [] -> IdentPath.to_string name
       | [ argument ] -> render_type state ~nested:true argument ^ " " ^ IdentPath.to_string name
@@ -116,9 +116,10 @@ let type_to_string = fun ty ->
   let state = make_render_state () in
   render_type state ~nested:false ty
 
-let scheme_to_string = fun (TypeScheme.Forall (quantified, body)) ->
+let scheme_to_string = fun scheme ->
   let state = make_render_state () in
-  let quantified_names = quantified |> List.rev |> List.map (name_for_var state) in
+  let quantified, body = TypeScheme.to_explicit scheme in
+  let quantified_names = quantified |> List.map (name_for_var state) in
   let body = render_type state ~nested:false body in
   match quantified_names with
   | [] -> body

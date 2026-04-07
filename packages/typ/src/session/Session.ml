@@ -203,7 +203,7 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
             else
               Syn.Deps.Env.add_path
                 env
-                ~path:(module_name :: IdentPath.to_segments type_decl.scope_path)
+                ~path:((module_name :: IdentPath.to_segments type_decl.scope_path))
                 ~free_names:[ module_name ])
           env
       in

@@ -12,12 +12,19 @@ let is_empty = function
   | Bare "" -> true
   | _ -> false
 
+let is_bare = function
+  | Bare name when not (String.equal name "") -> true
+  | _ -> false
+
+let bare_name = function
+  | Bare name when not (String.equal name "") -> Some name
+  | _ -> None
+
 let of_name = fun name -> Bare name
 
 let is_uppercase_ascii = fun ch -> ch >= 'A' && ch <= 'Z'
 
-let is_module_segment = fun segment ->
-  String.length segment > 0 && is_uppercase_ascii segment.[0]
+let is_module_segment = fun segment -> String.length segment > 0 && is_uppercase_ascii segment.[0]
 
 let of_segments = fun segments ->
   let rec loop = function
@@ -57,15 +64,20 @@ let to_string = fun path ->
 let rec equal = fun left right ->
   match (left, right) with
   | (Bare left_name, Bare right_name) -> String.equal left_name right_name
-  | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) ->
-      String.equal left_module right_module && equal left_tail right_tail
+  | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) -> String.equal
+    left_module
+    right_module
+  && equal left_tail right_tail
   | _ -> false
 
 let rec compare = fun left right ->
   match (left, right) with
-  | (Bare left_name, Bare right_name) -> String.compare left_name right_name
-  | (Bare _, Qualified _) -> -1
-  | (Qualified _, Bare _) -> 1
+  | (Bare left_name, Bare right_name) ->
+      String.compare left_name right_name
+  | (Bare _, Qualified _) ->
+      (-1)
+  | (Qualified _, Bare _) ->
+      1
   | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) -> (
       match String.compare left_module right_module with
       | 0 -> compare left_tail right_tail
@@ -84,33 +96,56 @@ let prepend_name = fun name path ->
   else
     Qualified (name, path)
 
-let append_path = fun left right ->
+let rec append_path = fun left right ->
   match (left, right) with
   | (path, other) when is_empty path -> other
   | (path, other) when is_empty other -> path
-  | _ ->
-      of_segments (to_segments left @ to_segments right)
+  | (Bare name, other) -> Qualified (name, other)
+  | (Qualified (module_name, tail), other) -> Qualified (module_name, append_path tail other)
 
-let last_name = fun path ->
-  match List.rev (to_segments path) with
-  | last :: _ -> Some last
-  | [] -> None
+let rec last_name = function
+  | Bare "" -> None
+  | Bare name -> Some name
+  | Qualified (_, tail) -> last_name tail
 
-let strip_prefix = fun ~prefix path ->
-  let rec loop prefix_segments path_segments =
-    match (prefix_segments, path_segments) with
-    | ([], rest) -> Some (of_segments rest)
-    | (prefix_segment :: prefix_rest, segment :: rest)
-      when String.equal prefix_segment segment -> loop prefix_rest rest
-    | _ -> None
-  in
-  loop (to_segments prefix) (to_segments path)
+let uncons = function
+  | Bare "" -> None
+  | Bare name -> Some (name, empty)
+  | Qualified (module_name, tail) -> Some (module_name, tail)
+
+let rec split_last = function
+  | Bare "" -> None
+  | Bare _ -> None
+  | Qualified (module_name, Bare name) -> Some (Bare module_name, name)
+  | Qualified (module_name, tail) -> split_last tail
+  |> Option.map (fun (prefix, name) -> (Qualified (module_name, prefix), name))
+
+let rec strip_prefix = fun ~prefix path ->
+  match (prefix, path) with
+  | (Bare "", path) -> Some path
+  | (Bare prefix_name, Bare path_name) ->
+      if String.equal prefix_name path_name then
+        Some empty
+      else
+        None
+  | (Bare prefix_name, Qualified (module_name, tail)) ->
+      if String.equal prefix_name module_name then
+        Some tail
+      else
+        None
+  | (Qualified (prefix_name, prefix_tail), Qualified (module_name, tail)) when String.equal
+    prefix_name
+    module_name -> strip_prefix ~prefix:prefix_tail tail
+  | _ -> None
 
 let prefixes = fun path ->
-  let rec loop acc current = function
-    | [] -> List.rev (empty :: acc)
-    | segment :: rest ->
-        let current = append_name current segment in
-        loop (current :: acc) current rest
+  let rec nonempty = function
+    | Bare "" ->
+        []
+    | Bare name ->
+        [ Bare name ]
+    | Qualified (module_name, tail) ->
+        let rest = nonempty tail in
+        Bare module_name :: List.map (prepend_name module_name) rest
   in
-  loop [] empty (to_segments path)
+  empty :: nonempty path

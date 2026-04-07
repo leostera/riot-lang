@@ -110,8 +110,7 @@ let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
       semantic_tree.item_tree |> ItemTree.items |> List.find_map
         (
           function
-          | ItemTree.DeclaredValue item when String.equal
-            export_name
+          | ItemTree.DeclaredValue item when String.equal export_name
             (qualified_name item.scope_path item.value_name |> IdentPath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
@@ -126,8 +125,7 @@ let find_type_decl_span = fun (analysis: SourceAnalysis.t) type_name ->
       semantic_tree.item_tree |> ItemTree.items |> List.find_map
         (
           function
-          | ItemTree.Type item when String.equal
-            type_name
+          | ItemTree.Type item when String.equal type_name
             (qualified_name item.scope_path item.declaration.type_name |> IdentPath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
