@@ -30,6 +30,8 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] make summary replay relative to the enclosing env, not `Env.empty`
 - [ ] cache visible env components so `add_open` does not need to recompute them
   recursively from symbolic layers
+- [ ] make visible env component caches lazy/query-local so `bind` and `map` do
+  not eagerly rebuild them on every env mutation
 - [ ] make `Module_env` a closer analogue of OCaml component tables
 - [ ] make dotted lookup always go through module components instead of fallback
   path rewriting
