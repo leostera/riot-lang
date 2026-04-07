@@ -1,4 +1,5 @@
 ---
+import AdminSidebar from "@/components/admin/AdminSidebar.astro";
 import {
   Card,
   CardContent,
@@ -6,7 +7,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import GitHubAvatar from "@/components/GitHubAvatar.astro";
 import SiteLayout from "../../layouts/SiteLayout.astro";
 import { fetchSession } from "../../lib/auth";
 import { fetchOwnerPackages } from "../../lib/web-views.ts";
@@ -47,45 +47,59 @@ const latestUpdate = ownerView?.latest_update_at
 
       <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div class="grid gap-4 lg:self-start">
-          <Card className="rounded-md shadow-none">
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-base">
-                <GitHubAvatar login={user} avatarUrl={ownerAvatarUrl} href={`/u/${user}`} />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 py-4">
-              <div class="grid gap-1">
-                <div class="text-sm text-muted-foreground">Published packages</div>
-                <div class="text-base font-medium text-foreground">
-                  {ownerView?.package_count ?? packages.length} package{(ownerView?.package_count ?? packages.length) === 1 ? "" : "s"}
-                </div>
-              </div>
+          {
+            isCurrentUser ? (
+              <AdminSidebar
+                user={user}
+                ownerAvatarUrl={ownerAvatarUrl}
+                packageCount={ownerView?.package_count ?? packages.length}
+                latestUpdateLabel={latestUpdate}
+                activeSection="overview"
+              />
+            ) : (
+              <Card className="rounded-md shadow-none">
+                <CardHeader className="border-b border-border">
+                  <CardTitle className="text-base">
+                    <a href={`/u/${user}`} class="text-foreground hover:text-primary">
+                      @{user}
+                    </a>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 py-4">
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">Published packages</div>
+                    <div class="text-base font-medium text-foreground">
+                      {ownerView?.package_count ?? packages.length} package{(ownerView?.package_count ?? packages.length) === 1 ? "" : "s"}
+                    </div>
+                  </div>
 
-              <div class="grid gap-1">
-                <div class="text-sm text-muted-foreground">Latest update</div>
-                <div class="text-base text-foreground">{latestUpdate}</div>
-              </div>
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">Latest update</div>
+                    <div class="text-base text-foreground">{latestUpdate}</div>
+                  </div>
 
-              <div class="grid gap-1">
-                <div class="text-sm text-muted-foreground">Source provider</div>
-                <div class="text-base text-foreground">GitHub</div>
-              </div>
+                  <div class="grid gap-1">
+                    <div class="text-sm text-muted-foreground">Source provider</div>
+                    <div class="text-base text-foreground">GitHub</div>
+                  </div>
 
-              <div class="grid gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-                <a
-                  href={`https://github.com/${user}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  class="hover:text-foreground"
-                >
-                  GitHub profile
-                </a>
-                <a href={`/?q=${encodeURIComponent(user)}`} class="hover:text-foreground">
-                  Search by owner
-                </a>
-              </div>
-            </CardContent>
-          </Card>
+                  <div class="grid gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+                    <a
+                      href={`https://github.com/${user}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      class="hover:text-foreground"
+                    >
+                      GitHub profile
+                    </a>
+                    <a href={`/?q=${encodeURIComponent(user)}`} class="hover:text-foreground">
+                      Search by owner
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          }
 
           {
             isCurrentUser ? (

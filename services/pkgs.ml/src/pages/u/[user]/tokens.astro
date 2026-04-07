@@ -1,10 +1,11 @@
 ---
-import GitHubAvatar from "@/components/GitHubAvatar.astro";
+import AdminSidebar from "@/components/admin/AdminSidebar.astro";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import SiteLayout from "../../../layouts/SiteLayout.astro";
 import { fetchApiTokens, fetchSession } from "../../../lib/auth";
+import { fetchOwnerPackages } from "../../../lib/web-views.ts";
 
 const user = Astro.params.user ?? "user";
 const session = await fetchSession(Astro.request);
@@ -17,6 +18,15 @@ if (session.user.github_login.toLowerCase() !== user.toLowerCase()) {
   return Astro.redirect(`/u/${session.user.github_login}/tokens`);
 }
 
+const ownerView = await fetchOwnerPackages(user);
+const packages = ownerView?.packages ?? [];
+const latestUpdate = ownerView?.latest_update_at
+  ? new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(ownerView.latest_update_at))
+  : "No packages yet";
 const tokenResponse = await fetchApiTokens(Astro.request);
 ---
 
@@ -30,105 +40,111 @@ const tokenResponse = await fetchApiTokens(Astro.request);
       <nav class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <a href="/" class="hover:text-foreground">All packages</a>
         <span>/</span>
-        <a href={`/u/${user}`} class="hover:text-foreground">{user}</a>
+        <a href={`/u/${user}`} class="hover:text-foreground">@{user}</a>
         <span>/</span>
         <span class="text-foreground">tokens</span>
       </nav>
 
-      <Card className="rounded-md shadow-none">
-        <CardHeader className="border-b border-border">
-          <CardTitle className="text-base">
-            <span class="inline-flex items-center gap-3">
-              <GitHubAvatar
-                login={session.user.github_login}
-                avatarUrl={session.user.github_avatar_url}
-              />
-              <span>API Tokens</span>
-            </span>
-          </CardTitle>
-          <CardDescription>
-            Create and revoke publish credentials used by <code>riot publish</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 py-4">
-          <form id="create-token-form" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <label class="grid gap-2 text-sm text-muted-foreground">
-              Token name
-              <Input
-                id="create-token-name"
-                name="name"
-                type="text"
-                placeholder="CI publish"
-                className="rounded-md text-base"
-                required
-              />
-            </label>
-            <Button id="create-token-button" type="submit" className="rounded-md">
-              Create token
-            </Button>
-          </form>
-
-          <div
-            id="token-error"
-            class="hidden rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+      <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div class="lg:self-start">
+          <AdminSidebar
+            user={user}
+            ownerAvatarUrl={ownerView?.owner_github_avatar_url ?? session.user.github_avatar_url}
+            packageCount={ownerView?.package_count ?? packages.length}
+            latestUpdateLabel={latestUpdate}
+            activeSection="tokens"
           />
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card className="rounded-md shadow-none">
-        <CardHeader className="border-b border-border">
-          <CardTitle className="text-base">Active tokens</CardTitle>
-          <CardDescription>
-            Token usage is tracked. Revocation is immediate.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 py-4">
-          {
-            tokenResponse.tokens.length === 0 ? (
-              <div
-                id="empty-token-state"
-                class="rounded-md border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground"
-              >
-                No active publish tokens yet.
-              </div>
-            ) : null
-          }
-
-          <div id="token-list" class="grid gap-3">
-            {tokenResponse.tokens.map((token) => (
-              <div
-                data-token-row
-                data-token-id={token.token_id}
-                class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
-              >
-                <div class="grid gap-1">
-                  <div class="text-base font-medium text-foreground">{token.name}</div>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
-                    <span>
-                      Last used{" "}
-                      {token.last_used_at
-                        ? new Date(token.last_used_at).toLocaleDateString("en")
-                        : "never"}
-                    </span>
-                    <span>{token.capabilities.join(", ")}</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-md"
-                  data-token-revoke
-                  data-token-id={token.token_id}
-                >
-                  Revoke
+        <div class="grid gap-4">
+          <Card className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-base">API Tokens</CardTitle>
+              <CardDescription>
+                Create and revoke publish credentials used by <code>riot publish</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 py-4">
+              <form id="create-token-form" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <label class="grid gap-2 text-sm text-muted-foreground">
+                  Token name
+                  <Input
+                    id="create-token-name"
+                    name="name"
+                    type="text"
+                    placeholder="CI publish"
+                    className="rounded-md text-base"
+                    required
+                  />
+                </label>
+                <Button id="create-token-button" type="submit" className="rounded-md">
+                  Create token
                 </Button>
+              </form>
+
+              <div
+                id="token-error"
+                class="hidden rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-md shadow-none">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-base">Active tokens</CardTitle>
+              <CardDescription>
+                Token usage is tracked. Revocation is immediate.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 py-4">
+              {
+                tokenResponse.tokens.length === 0 ? (
+                  <div
+                    id="empty-token-state"
+                    class="rounded-md border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground"
+                  >
+                    No active publish tokens yet.
+                  </div>
+                ) : null
+              }
+
+              <div id="token-list" class="grid gap-3">
+                {tokenResponse.tokens.map((token) => (
+                  <div
+                    data-token-row
+                    data-token-id={token.token_id}
+                    class="grid gap-3 rounded-md border border-border bg-background px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                  >
+                    <div class="grid gap-1">
+                      <div class="text-base font-medium text-foreground">{token.name}</div>
+                      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span>Created {new Date(token.created_at).toLocaleDateString("en")}</span>
+                        <span>
+                          Last used{" "}
+                          {token.last_used_at
+                            ? new Date(token.last_used_at).toLocaleDateString("en")
+                            : "never"}
+                        </span>
+                        <span>{token.capabilities.join(", ")}</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-md"
+                      data-token-revoke
+                      data-token-id={token.token_id}
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   </section>
 
