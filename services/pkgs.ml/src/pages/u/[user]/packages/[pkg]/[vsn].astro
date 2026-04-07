@@ -166,118 +166,67 @@ const dependencyCount = release?.dependencies.length ?? 0;
                 </CardContent>
               </Card>
 
-              <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
-                <Card className="rounded-md shadow-none">
-                  <CardHeader className="border-b border-border">
-                    <CardTitle className="text-base">Release metadata</CardTitle>
-                    <CardDescription>
-                      Inspect the stored install artifact and the release’s current status.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 py-4">
-                    <div class="grid gap-3 text-sm">
-                      <div class="grid gap-1 rounded-md border border-border px-4 py-3">
-                        <div class="text-muted-foreground">Package</div>
-                        <div class="font-medium text-foreground">{pkg.package_name}</div>
-                      </div>
-                      <div class="grid gap-1 rounded-md border border-border px-4 py-3">
-                        <div class="text-muted-foreground">Version</div>
-                        <div class="font-medium text-foreground">v{version}</div>
-                      </div>
-                      <div class="grid gap-1 rounded-md border border-border px-4 py-3">
-                        <div class="text-muted-foreground">Artifact SHA-256</div>
-                        <code class="overflow-x-auto text-xs text-foreground">
-                          {release?.artifact_sha256 ?? "Unavailable"}
-                        </code>
-                      </div>
-                      <div class="grid gap-1 rounded-md border border-border px-4 py-3">
-                        <div class="text-muted-foreground">Manifest key</div>
-                        <code class="overflow-x-auto text-xs text-foreground">
-                          {release?.manifest_key ?? "Unavailable"}
-                        </code>
-                      </div>
-                      <div class="grid gap-1 rounded-md border border-border px-4 py-3">
-                        <div class="text-muted-foreground">Source archive key</div>
-                        <code class="overflow-x-auto text-xs text-foreground">
-                          {release?.source_key ?? "Unavailable"}
-                        </code>
-                      </div>
-                      {
-                        releaseSummary.yanked ? (
-                          <div class="grid gap-1 rounded-md border border-amber-700/20 bg-amber-50 px-4 py-3 text-amber-950">
-                            <div class="font-medium">This version has been yanked.</div>
-                            <div class="text-sm">
-                              {releaseSummary.yanked_at
-                                ? `Yanked ${new Date(releaseSummary.yanked_at).toLocaleString("en")}`
-                                : "Yanked at an unknown time"}
-                              {releaseSummary.yanked_by_github_login
-                                ? ` by @${releaseSummary.yanked_by_github_login}`
-                                : ""}
-                              .
-                            </div>
-                          </div>
-                        ) : null
-                      }
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-md shadow-none">
-                  <CardHeader className="border-b border-border">
-                    <CardTitle className="text-base">Quick links</CardTitle>
-                    <CardDescription>
-                      Jump between the public page, admin package view, and version activity.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-2 py-4 text-sm">
-                    <a
-                      href={`/u/${user}/packages/${pkg.package_name}`}
-                      class="rounded-md px-3 py-2 text-foreground hover:bg-muted"
-                    >
-                      Package admin view
-                    </a>
-                    <a
-                      href={`/p/${pkg.package_name}/${version}`}
-                      class="rounded-md px-3 py-2 text-foreground hover:bg-muted"
-                    >
-                      Public release page
-                    </a>
-                    <a
-                      href={`/p/${pkg.package_name}/${version}/activity`}
-                      class="rounded-md px-3 py-2 text-foreground hover:bg-muted"
-                    >
-                      Public activity page
-                    </a>
-                    {
-                      examples && examples.examples.length > 0 ? (
-                        <a
-                          href={`https://play.riot.ml/p/${encodeURIComponent(pkg.package_name)}/${encodeURIComponent(version)}/examples/${encodeURIComponent(examples.examples[0]?.name ?? "")}`}
-                          class="rounded-md px-3 py-2 text-foreground hover:bg-muted"
-                        >
-                          Open first example in playground
-                        </a>
-                      ) : null
-                    }
-                  </CardContent>
-                </Card>
-              </div>
-
               <Card className="rounded-md shadow-none">
                 <CardHeader className="border-b border-border">
-                  <CardTitle className="text-base">Release activity</CardTitle>
+                  <CardTitle className="text-base">Release metadata</CardTitle>
                   <CardDescription>
-                    Registry events for this specific package version.
+                    Inspect the stored install artifact and the release’s current status.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="py-4">
-                  <PackageActivity
-                    events={events.events}
-                    title="Release activity"
-                    description="Registry events recorded for this specific package version."
-                    showListDisclosure={false}
-                  />
+                <CardContent className="grid gap-3 py-4">
+                  <div class="grid gap-3 text-sm">
+                    <div class="grid gap-1 rounded-md border border-border px-4 py-3">
+                      <div class="text-muted-foreground">Package</div>
+                      <div class="font-medium text-foreground">{pkg.package_name}</div>
+                    </div>
+                    <div class="grid gap-1 rounded-md border border-border px-4 py-3">
+                      <div class="text-muted-foreground">Version</div>
+                      <div class="font-medium text-foreground">v{version}</div>
+                    </div>
+                    <div class="grid gap-1 rounded-md border border-border px-4 py-3">
+                      <div class="text-muted-foreground">Artifact SHA-256</div>
+                      <code class="overflow-x-auto text-xs text-foreground">
+                        {release?.artifact_sha256 ?? "Unavailable"}
+                      </code>
+                    </div>
+                    <div class="grid gap-1 rounded-md border border-border px-4 py-3">
+                      <div class="text-muted-foreground">Manifest key</div>
+                      <code class="overflow-x-auto text-xs text-foreground">
+                        {release?.manifest_key ?? "Unavailable"}
+                      </code>
+                    </div>
+                    <div class="grid gap-1 rounded-md border border-border px-4 py-3">
+                      <div class="text-muted-foreground">Source archive key</div>
+                      <code class="overflow-x-auto text-xs text-foreground">
+                        {release?.source_key ?? "Unavailable"}
+                      </code>
+                    </div>
+                    {
+                      releaseSummary.yanked ? (
+                        <div class="grid gap-1 rounded-md border border-amber-700/20 bg-amber-50 px-4 py-3 text-amber-950">
+                          <div class="font-medium">This version has been yanked.</div>
+                          <div class="text-sm">
+                            {releaseSummary.yanked_at
+                              ? `Yanked ${new Date(releaseSummary.yanked_at).toLocaleString("en")}`
+                              : "Yanked at an unknown time"}
+                            {releaseSummary.yanked_by_github_login
+                              ? ` by @${releaseSummary.yanked_by_github_login}`
+                              : ""}
+                            .
+                          </div>
+                        </div>
+                      ) : null
+                    }
+                  </div>
                 </CardContent>
               </Card>
+
+              <PackageActivity
+                events={events.events}
+                title="Release activity"
+                description="Registry events for this specific package version."
+                showListDisclosure={false}
+              />
             </div>
           ) : (
             <Card className="rounded-md shadow-none">

@@ -8,6 +8,7 @@ interface Props {
   packageCount: number;
   latestUpdateLabel: string;
   activeSection: "overview" | "packages" | "tokens";
+  showSummary?: boolean;
 }
 
 const {
@@ -16,6 +17,7 @@ const {
   packageCount,
   latestUpdateLabel,
   activeSection,
+  showSummary = true,
 } = Astro.props;
 
 const navItems = [
@@ -32,19 +34,28 @@ const navItems = [
     </CardTitle>
   </CardHeader>
   <CardContent className="grid gap-4 py-4">
-    <div class="grid gap-1">
-      <div class="text-sm text-muted-foreground">Published packages</div>
-      <div class="text-base font-medium text-foreground">
-        {packageCount} package{packageCount === 1 ? "" : "s"}
-      </div>
-    </div>
+    {
+      showSummary ? (
+        <>
+          <div class="grid gap-1">
+            <div class="text-sm text-muted-foreground">Published packages</div>
+            <div class="text-base font-medium text-foreground">
+              {packageCount} package{packageCount === 1 ? "" : "s"}
+            </div>
+          </div>
 
-    <div class="grid gap-1">
-      <div class="text-sm text-muted-foreground">Latest update</div>
-      <div class="text-base text-foreground">{latestUpdateLabel}</div>
-    </div>
+          <div class="grid gap-1">
+            <div class="text-sm text-muted-foreground">Latest update</div>
+            <div class="text-base text-foreground">{latestUpdateLabel}</div>
+          </div>
+        </>
+      ) : null
+    }
 
-    <nav class="grid gap-1 border-t border-border pt-4 text-sm">
+    <nav class:list={[
+      "grid gap-1 text-sm",
+      showSummary ? "border-t border-border pt-4" : "",
+    ]}>
       {navItems.map((item) => (
         <a
           href={item.href}

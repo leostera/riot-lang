@@ -55,6 +55,7 @@ const latestUpdate = ownerView?.latest_update_at
                 packageCount={ownerView?.package_count ?? packages.length}
                 latestUpdateLabel={latestUpdate}
                 activeSection="overview"
+                showSummary={false}
               />
             ) : (
               <Card className="rounded-md shadow-none">
@@ -102,40 +103,6 @@ const latestUpdate = ownerView?.latest_update_at
           }
 
           {
-            isCurrentUser ? (
-              <Card className="rounded-md shadow-none">
-                <CardHeader className="border-b border-border">
-                  <CardTitle className="text-base">Administration</CardTitle>
-                  <CardDescription>
-                    Manage packages, releases, and publish credentials from a dedicated admin view.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3 py-4">
-                  <a
-                    href={`/u/${user}/packages`}
-                    class="rounded-md border border-border bg-muted/20 px-4 py-3 text-sm transition-colors hover:bg-muted"
-                  >
-                    <div class="font-medium text-foreground">Manage packages</div>
-                    <div class="mt-1 text-muted-foreground">
-                      Browse package versions, inspect release details, and yank a version.
-                    </div>
-                  </a>
-
-                  <a
-                    href={`/u/${user}/tokens`}
-                    class="rounded-md border border-border bg-muted/20 px-4 py-3 text-sm transition-colors hover:bg-muted"
-                  >
-                    <div class="font-medium text-foreground">Manage API tokens</div>
-                    <div class="mt-1 text-muted-foreground">
-                      Create and revoke publish credentials for local use and CI.
-                    </div>
-                  </a>
-                </CardContent>
-              </Card>
-            ) : null
-          }
-
-          {
             isCurrentUser ? null : (
               <Card className="rounded-md shadow-none">
                 <CardHeader className="border-b border-border">
@@ -158,11 +125,11 @@ const latestUpdate = ownerView?.latest_update_at
         <Card className="rounded-md shadow-none">
           <CardHeader className="border-b border-border">
             <CardTitle className="text-base">
-              {isCurrentUser ? "Recently updated packages" : "Recently published packages"}
+              {isCurrentUser ? "Your packages" : "Recently published packages"}
             </CardTitle>
             <CardDescription>
               {isCurrentUser
-                ? "Start in the package admin panel for per-release controls, then jump to public package pages when you need them."
+                ? "Open a package to inspect versions, yank releases, and follow its docs and build pipeline."
                 : "Public packages indexed from repositories owned by this user, ordered by latest release."}
             </CardDescription>
           </CardHeader>
