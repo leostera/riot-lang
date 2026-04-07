@@ -25,6 +25,12 @@ val current_level: t -> int
 (** Allocate one fresh query-local traversal mark generation. *)
 val next_mark: t -> int
 
+(** Mark each root and return the generation used for the traversal. *)
+val mark_roots: t -> TypeRepr.t list -> int
+
+(** Iterate nodes still owned by this frame. *)
+val iter_owned_nodes: frame -> (TypeRepr.t -> unit) -> unit
+
 (** Run a computation in one nested inference region. *)
 val with_region: t -> (frame -> 'a) -> 'a
 
@@ -33,7 +39,7 @@ val boundary_level: frame -> int
 
 (** Promote every reachable local variable in the given type to the generic
     solver level. *)
-val generalize_reachable_vars: t -> frame -> TypeRepr.t -> unit
+val generalize_reachable_vars: t -> frame -> TypeRepr.t list -> unit
 
 (** Return the reachable local variables for this region in first-occurrence
     order from the given type. *)

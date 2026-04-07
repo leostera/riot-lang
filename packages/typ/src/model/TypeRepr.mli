@@ -39,6 +39,7 @@ and desc =
 and t = {
   mutable desc: desc;
   mutable level: int;
+  mutable pool_level: int option;
   mutable mark: int;
   mutable mark_order: int;
 }
@@ -86,6 +87,10 @@ val view: t -> desc
 val level: t -> int
 
 val set_level: t -> int -> unit
+
+val pool_level: t -> int option
+
+val set_pool_level: t -> int option -> unit
 
 val generic_level: int
 

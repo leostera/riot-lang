@@ -56,6 +56,8 @@ let make_type = State.make_type
 
 let set_visible_type_decls = State.set_visible_type_decls
 
+let with_local_level_gen = State.with_local_level_gen
+
 let prelude_env = fun (state: state) (config: TypConfig.t) ->
   Env.bind
     (Env.of_entries ~make_ident:(fresh_binding_ident state) ~provenance:Binding.Prelude config.prelude)
@@ -476,26 +478,30 @@ and is_nonexpansive_binding = fun (state: state) binding_id ->
   | Some (binding: BodyArena.binding) -> is_nonexpansive_expr state binding.value_id
   | None -> false
 
-let generalize_binding = fun (state: state) (frame: Region.frame) ty ->
-  let () = Region.generalize_reachable_vars state.regions frame ty in
+let generalize_binding = fun (_state: state) (_frame: Region.frame) ty ->
   TypeScheme.of_type ty
+
+let generalize_entry_groups = fun (state: state) (frame: Region.frame) entry_groups ->
+  let roots = entry_groups |> List.concat_map
+    (fun entries -> entries |> List.map (fun entry -> TypeScheme.body (Binding.scheme entry))) in
+  let () =
+    if not (List.is_empty roots) then
+      Region.generalize_reachable_vars state.regions frame roots
+  in
+  entry_groups |> List.map
+    (fun entries ->
+      entries |> List.map
+        (fun entry ->
+          Binding.with_scheme
+            (generalize_binding state frame (TypeScheme.body (Binding.scheme entry)))
+            entry))
 
 let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr_id ty ->
   if is_nonexpansive_expr state expr_id then
     ()
   else
     let boundary_level = Region.boundary_level frame in
-    let generation = Region.next_mark state.regions in
-    let next_order =
-      let order = ref 0 in
-      fun () ->
-        let current = !order in
-        let () =
-          order := current + 1
-        in
-        current
-    in
-    let () = TypeRepr.mark_reachable_vars ~generation ~next_order ty in
+    let generation = Region.mark_roots state.regions [ ty ] in
     let seen = Collections.HashMap.with_capacity 16 in
     let rec lower = function
       | [] -> ()
@@ -579,7 +585,15 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
               in
               lower rest
     in
-    lower [ (TypeDecl.Covariant, ty) ]
+    let initial = ref [] in
+    let () =
+      Region.iter_owned_nodes frame
+        (fun node ->
+          let node = TypeRepr.prune node in
+          if Int.equal node.mark generation then
+            initial := (TypeDecl.Covariant, node) :: !initial)
+    in
+    lower !initial
 
 let origin_of_expr = fun (state: state) expr_id ->
   match SemanticTree.find_expr state.file expr_id with
@@ -1397,7 +1411,7 @@ and infer_binding_group = fun (state: state) env binding_ids ->
     infer_nonrecursive_group state env bindings
 
 and infer_nonrecursive_group = fun (state: state) env bindings ->
-  Region.with_region state.regions
+  with_local_level_gen state
     (fun frame ->
       let inferred_bindings =
         List.map
@@ -1405,22 +1419,24 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
             let value_ty = infer_expr state env binding.value_id in
             let () = lower_expansive_binding_vars state frame binding.value_id value_ty in
             let bound_entries = bind_pattern state env binding.pattern_id value_ty in
-            let generalized =
-              bound_entries
-              |> List.map
-                (fun entry ->
-                  Binding.with_scheme
-                    (generalize_binding state frame (TypeScheme.body (Binding.scheme entry)))
-                    entry)
-            in
-            (binding, generalized))
+            (binding, bound_entries))
           bindings
+      in
+      let generalized_bindings =
+        let generalized_groups = generalize_entry_groups
+          state
+          frame
+          (inferred_bindings |> List.map snd) in
+        List.map2
+          (fun (binding, _) generalized -> (binding, generalized))
+          inferred_bindings
+          generalized_groups
       in
       List.fold_left
         (fun env (_, entries) ->
           Env.extend env entries)
         env
-        inferred_bindings)
+        generalized_bindings)
 
 and infer_recursive_group = fun (state: state) env bindings ->
   let unsupported_bindings =
@@ -1429,7 +1445,7 @@ and infer_recursive_group = fun (state: state) env bindings ->
       bindings
   in
   if List.is_empty unsupported_bindings then
-    Region.with_region state.regions
+    with_local_level_gen state
       (fun frame ->
         let placeholders =
           bindings
@@ -1461,13 +1477,11 @@ and infer_recursive_group = fun (state: state) env bindings ->
             placeholders
         in
         let generalized =
-          List.map2
-            (fun (binding: BodyArena.binding) entry ->
-              Binding.with_scheme
-                (generalize_binding state frame (TypeScheme.body (Binding.scheme entry)))
-                entry)
-            bindings
-            placeholders
+          generalize_entry_groups
+            state
+            frame
+            (placeholders |> List.map (fun entry -> [ entry ]))
+          |> List.map List.hd
         in
         Env.extend env generalized)
   else

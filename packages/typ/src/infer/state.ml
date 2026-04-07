@@ -384,6 +384,9 @@ let fresh_hole = fun (state: t) ->
   in
   make_type state (TypeRepr.Hole hole_id)
 
+let with_local_level_gen = fun (state: t) f ->
+  Region.with_region state.regions f
+
 let set_visible_type_decls = fun (state: t) type_decls ->
   let () =
     state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls |> annotate_type_decl_variances

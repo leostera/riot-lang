@@ -39,6 +39,7 @@ and desc =
 and t = {
   mutable desc: desc;
   mutable level: int;
+  mutable pool_level: int option;
   mutable mark: int;
   mutable mark_order: int;
 }
@@ -74,7 +75,7 @@ let of_desc = fun ?level desc ->
     | Some level -> level
     | None -> level_of_desc desc
   in
-  { desc; level; mark = (-1); mark_order = (-1) }
+  { desc; level; pool_level = None; mark = (-1); mark_order = (-1) }
 
 let int = of_desc Int
 
@@ -126,6 +127,10 @@ let view = fun ty -> ty.desc
 let level = fun ty -> ty.level
 
 let set_level = fun ty level -> ty.level <- level
+
+let pool_level = fun ty -> ty.pool_level
+
+let set_pool_level = fun ty pool_level -> ty.pool_level <- pool_level
 
 let generic_level = Int.max_int
 

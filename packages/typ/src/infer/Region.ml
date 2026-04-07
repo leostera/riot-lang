@@ -13,7 +13,10 @@ type t = {
   mutable frames: frame list;
 }
 
-let create = fun () -> { current_level = 0; current_mark = 0; frames = [] }
+let create =
+  fun () ->
+    let root = { level = 0; boundary_level = 0; nodes = [] } in
+    { current_level = 0; current_mark = 0; frames = [ root ] }
 
 let current_frame = fun (regions: t) ->
   match regions.frames with
@@ -41,8 +44,16 @@ let rec frame_for_level = fun level frames ->
 let add_to_pool = fun (regions: t) ~level node ->
   let () =
     match frame_for_level level regions.frames with
-    | Some frame -> frame.nodes <- node :: frame.nodes
-    | None -> ()
+    | Some frame ->
+        if TypeRepr.pool_level node = Some frame.level then
+          ()
+        else
+          (
+            TypeRepr.set_pool_level node (Some frame.level);
+            frame.nodes <- node :: frame.nodes
+          )
+    | None ->
+        TypeRepr.set_pool_level node None
   in
   node
 
@@ -54,6 +65,12 @@ let fresh_var = fun (regions: t) id ->
 let exit_region = fun (regions: t) (child: frame) ->
   match regions.frames with
   | frame :: rest when Std.Ptr.equal frame child ->
+      let () =
+        child.nodes |> List.iter
+          (fun node ->
+            if TypeRepr.pool_level node = Some child.level then
+              TypeRepr.set_pool_level node None)
+      in
       let () =
         regions.frames <- rest
       in
@@ -83,11 +100,21 @@ let with_region = fun (regions: t) f ->
 
 let boundary_level = fun (frame: frame) -> frame.boundary_level
 
-let generalize_reachable_vars = fun (regions: t) (frame: frame) ty ->
+let mark_roots = fun (regions: t) roots ->
   let generation = next_mark regions in
   let next_order () = 0 in
-  let () = TypeRepr.mark_reachable_vars ~generation ~next_order ty in
+  let () = List.iter (TypeRepr.mark_reachable_vars ~generation ~next_order) roots in
+  generation
+
+let iter_owned_nodes = fun (frame: frame) f ->
   frame.nodes |> List.iter
+    (fun node ->
+      if TypeRepr.pool_level node = Some frame.level then
+        f node)
+
+let generalize_reachable_vars = fun (regions: t) (frame: frame) roots ->
+  let generation = mark_roots regions roots in
+  iter_owned_nodes frame
     (fun node ->
       let node = TypeRepr.prune node in
       if TypeRepr.level node > frame.boundary_level then
@@ -110,7 +137,7 @@ let local_reachable_vars = fun (regions: t) (frame: frame) ty ->
   frame.nodes |> List.filter_map
     (fun node ->
       let node = TypeRepr.prune node in
-      if TypeRepr.level node > frame.boundary_level then
+      if TypeRepr.pool_level node = Some frame.level && TypeRepr.level node > frame.boundary_level then
         match TypeRepr.view node with
         | TypeRepr.Var { id; _ } when Int.equal node.mark generation
         && not (TypeRepr.is_generic_var node) -> Some (node.mark_order, id)
