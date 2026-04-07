@@ -105,7 +105,7 @@ docker/
 
 - **Users**: See `example-app/README.md` for complete examples
 - **Developers**: See `README.md` for architecture details
-- **CI/CD**: Check `.github/workflows/docker-build.yml`
+- **CI/CD**: See `docker/setup-riot/README.md` for the installer-based GitHub Actions setup helper and `.github/workflows/docker-build.yml` for the disabled image-publish workflow snapshot
 
 ## 🐛 Troubleshooting
 

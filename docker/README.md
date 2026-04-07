@@ -214,10 +214,11 @@ disabled, so these tags are only as current as the last manual publish.
 
 ### GitHub Actions Example
 
-Use the pre-built image for faster CI/CD:
+Use the local `setup-riot` action to install Riot on the runner for the rest of
+the job:
 
 ```yaml
-name: Build with Docker
+name: Build with Riot
 
 on: [push]
 
@@ -226,19 +227,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Build application
-        run: |
-          docker run --rm -v $(pwd):/app \
-            ghcr.io/leostera/riot/riot-builder:latest \
-            build my-app
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: my-app
-          path: _build/debug/*/my-app
+
+      - uses: ./docker/setup-riot
+
+      - run: riot build my-app
+      - run: riot test my-app_tests
 ```
+
+The action runs the standard installer script, then adds `~/.riot/bin` to the
+job `PATH`. See `docker/setup-riot/README.md` for inputs and outputs.
 
 ### Using in docker-compose
 

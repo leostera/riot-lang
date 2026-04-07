@@ -1,14 +1,14 @@
 # Now
 
-# Planned
+* keep workign on making docs.riot.ml look great and writing the docs 
 
-* riot test/bench should run the binaries with `--json` and parse their results to present a unified summary of the amount of test cases passsed/skipped/failed, not just the suite-level stats
+# Planned
 
 # Next
 
-* riot fmt cache -- hash files after formatting them and save marks on the _build cache, if the file has been hashed-seen before, then it is a formatted file already!
+* how to make `riot test` more semantically aware? we can definitely build the graph of static dependencies into a test, could we use that to compute the tests that we _know_ need to be rerun?
 
-* Std.Test should be able to mark tests with size (small, large) and flakey, so the test runner konws about this and handles it well (flakey test runs up to .riot/config.toml [riot.test] flakey_max_retry = 3) and if a test is smarked as small it times out the tests after [riot.test] small_test_timeout = 500ms, long tests can run indefinitely) oh and `run test --small` `--flakey` and `--long` should be able to partition the tests set to only run tests with those configurations
+* riot fmt cache -- hash files after formatting them and save marks on the _build cache, if the file has been hashed-seen before, then it is a formatted file already!
 
 * riot/config.toml support a [target."str".runner] run command like `docker run -ti
 ubuntu` that can help us run cross-compiled binaries in a container so can configure
@@ -32,8 +32,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 
 * redefine the entire interface of all the collections in Kernel and Std
 
-* mark test cases as short, long tests so we can run only short tests by `riot test --short` 
-
 * riot build pipeline uses `syn` to cache at the CST level
 
 
@@ -47,7 +45,7 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 
 * riot fix: allow for disabling specific rules like [@fix.disable "rule id"]
 
-* setup-riot: a container action for github actions that sets up everything for you
+* setup-riot: an installer-based github action that runs `curl https://get.riot.ml | sh -` and adds `~/.riot/bin` to PATH
 
 * `riot init` should include a Dockerfile, and a .github/workflows/ci.yml template, and it should include a test!
 
@@ -83,19 +81,18 @@ Installing OCaml 5.5.0-riot.2 toolchains...
 * minttea test cases that let you specify inputs and assert outputs in _turns_
 
 * Std.BigInt
-* Std.Rational
 * Std.Decimal -- arbitrary precision arithmetic
+* Money package
+
+* Std.Rational
 * Std.Bitwise 
 * Std.Collections.Tuple
 * Std.Collections.Bag -- like set, but with duplicates
-* Money package
 * Std.Collections.Trees - RB, AVL, ...
-* Std.Time.Date
 
 * Fs.ls vs Fs.into_iter path
 
-* Std.Net.Udp.*
-* Std.Net.Ftp
+* `ftp` package
 
 * Consider dropping Std.Data.Csv/Xml/Sexp
 * Consider `crypto` package with bcrypt, argon, blake, etc
