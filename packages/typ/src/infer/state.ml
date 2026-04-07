@@ -19,6 +19,7 @@ type t = {
   config: TypConfig.t;
   regions: Region.t;
   mutable next_type_var_id: int;
+  mutable next_binding_ident_stamp: int;
   mutable next_hole_id: int;
   mutable diagnostics: Diagnostic.t list;
   mutable expr_traces: Check_result.expr_trace list;
@@ -102,6 +103,7 @@ let make = fun ~config file ->
     config;
     regions = Region.create ();
     next_type_var_id = 0;
+    next_binding_ident_stamp = 0;
     next_hole_id = 0;
     diagnostics = [];
     expr_traces = [];
@@ -122,6 +124,13 @@ let fresh_var = fun (state: t) ->
     state.next_type_var_id <- state.next_type_var_id + 1
   in
   Region.fresh_var state.regions id
+
+let fresh_binding_ident_stamp = fun (state: t) ->
+  let stamp = state.next_binding_ident_stamp in
+  let () =
+    state.next_binding_ident_stamp <- state.next_binding_ident_stamp + 1
+  in
+  stamp
 
 let fresh_hole = fun (state: t) ->
   let hole_id = state.next_hole_id in

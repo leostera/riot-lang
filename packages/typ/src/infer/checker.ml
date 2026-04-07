@@ -7,6 +7,7 @@ module Region = Region
 open State
 
 (* Use Super since open Std brings an Env module of its own that shadows ours *)
+
 module Env = Super.Env
 open Env
 
@@ -38,49 +39,59 @@ let make_state = State.make
 
 let fresh_var = State.fresh_var
 
+let fresh_binding_ident = fun state name ->
+  Binding.make_ident ~stamp:(State.fresh_binding_ident_stamp state) ~name
+
 let fresh_hole = State.fresh_hole
 
 let set_visible_type_decls = State.set_visible_type_decls
 
-let prelude_env = fun (config: TypConfig.t) ->
-  Env.of_entries ~provenance:Binding.Prelude config.prelude
+let prelude_env = fun (state: state) (config: TypConfig.t) ->
+  Env.of_entries ~make_ident:(fresh_binding_ident state) ~provenance:Binding.Prelude config.prelude
 
-let ambient_env = fun (config: TypConfig.t) ->
-  Env.of_entries ~provenance:Binding.Ambient config.ambient
+let ambient_env = fun (state: state) (config: TypConfig.t) ->
+  Env.of_entries ~make_ident:(fresh_binding_ident state) ~provenance:Binding.Ambient config.ambient
 
-let pattern_binding = fun pat_id ~name ~scheme ->
-  Binding.make ~path:(IdentPath.of_name name) ~scheme ~provenance:(Binding.Lowered_pattern pat_id)
+let pattern_binding = fun (state: state) pat_id ~name ~scheme ->
+  Binding.make
+    ~ident:(fresh_binding_ident state name)
+    ~path:(IdentPath.of_name name)
+    ~scheme
+    ~provenance:(Binding.Lowered_pattern pat_id)
 
-let generalized_pattern_binding = fun pat_id ~name ty ->
-  pattern_binding pat_id ~name ~scheme:(TypeScheme.Forall ([], ty))
+let generalized_pattern_binding = fun (state: state) pat_id ~name ty ->
+  pattern_binding state pat_id ~name ~scheme:(TypeScheme.Forall ([], ty))
 
-let type_constructor_bindings = fun (type_item: ItemTree.type_item) ->
+let type_constructor_bindings = fun (state: state) (type_item: ItemTree.type_item) ->
   type_item.declaration.constructors
   |> List.map
     (fun (constructor: TypeDecl.constructor) ->
       (IdentPath.of_name constructor.name, constructor.scheme))
   |> Env.of_entries
+    ~make_ident:(fresh_binding_ident state)
     ~provenance:(Binding.Type_constructor {
       type_name = type_item.declaration.type_name;
-      scope_path = type_item.scope_path;
+      scope_path = type_item.scope_path
     })
 
-let exception_bindings = fun (exception_item: ItemTree.exception_item) ->
+let exception_bindings = fun (state: state) (exception_item: ItemTree.exception_item) ->
   Env.singleton
+    ~make_ident:(fresh_binding_ident state)
     ~name:exception_item.exception_name
     ~scheme:exception_item.scheme
     ~provenance:(Binding.Exception {
       name = exception_item.exception_name;
-      scope_path = exception_item.scope_path;
+      scope_path = exception_item.scope_path
     })
 
-let declared_value_bindings = fun (declared_value_item: ItemTree.declared_value_item) ->
+let declared_value_bindings = fun (state: state) (declared_value_item: ItemTree.declared_value_item) ->
   Env.singleton
+    ~make_ident:(fresh_binding_ident state)
     ~name:declared_value_item.value_name
     ~scheme:declared_value_item.scheme
     ~provenance:(Binding.Declared_value {
       name = declared_value_item.value_name;
-      scope_path = declared_value_item.scope_path;
+      scope_path = declared_value_item.scope_path
     })
 
 let instantiate_type = fun ty mapping ->
@@ -200,11 +211,9 @@ let resolve_constructor_scheme = fun env constructor ~expected_ty ->
   | candidates -> (
       match owner_name_of_type expected_ty with
       | Some expected_owner -> (
-          match
-            List.filter
-              (fun binding -> owner_name_of_scheme (Binding.scheme binding) = Some expected_owner)
-              candidates
-          with
+          match List.filter
+            (fun binding -> owner_name_of_scheme (Binding.scheme binding) = Some expected_owner)
+            candidates with
           | [] -> Some (Binding.scheme (List.hd candidates))
           | binding :: _ -> Some (Binding.scheme binding)
         )
@@ -531,8 +540,9 @@ let rec is_nonexpansive_expr = fun (state: state) expr_id ->
                   true
               | Some "infix_expression" -> (
                   match SemanticTree.find_expr state.file callee_id with
-                  | Some { desc=BodyArena.EVar name; _ } when IdentPath.equal name (IdentPath.of_name "::") ->
-                      true
+                  | Some { desc=BodyArena.EVar name; _ } when IdentPath.equal
+                    name
+                    (IdentPath.of_name "::") -> true
                   | _ -> false
                 )
               | _ ->
@@ -776,7 +786,7 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
   | Some pattern -> (
       match pattern.desc with
       | BodyArena.PVar name ->
-          [ generalized_pattern_binding pat_id ~name expected_ty ]
+          [ generalized_pattern_binding state pat_id ~name expected_ty ]
       | BodyArena.PWildcard ->
           []
       | BodyArena.PInt _ ->
@@ -893,7 +903,7 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           |> List.flatten
       | BodyArena.PAlias { pattern_id; alias } ->
           let bindings = bind_pattern state env pattern_id expected_ty in
-          generalized_pattern_binding pat_id ~name:alias expected_ty :: bindings
+          generalized_pattern_binding state pat_id ~name:alias expected_ty :: bindings
       | BodyArena.PPolyVariant { payload; _ } -> (
           match payload with
           | Some payload_id -> bind_pattern state env payload_id (fresh_hole state)
@@ -1337,16 +1347,23 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
           (fun (binding: BodyArena.binding) ->
             let value_ty = infer_expr state env binding.value_id in
             let bound_entries = bind_pattern state env binding.pattern_id value_ty in
-            let generalized = bound_entries
-            |> List.map
-              (fun entry ->
-                match Binding.scheme entry with
-                | TypeScheme.Forall (_, ty) ->
-                    Binding.with_scheme (generalize_binding state frame binding.value_id ty) entry) in
+            let generalized =
+              bound_entries
+              |> List.map
+                (fun entry ->
+                  match Binding.scheme entry with
+                  | TypeScheme.Forall (_, ty) -> Binding.with_scheme
+                    (generalize_binding state frame binding.value_id ty)
+                    entry)
+            in
             (binding, generalized))
           bindings
       in
-      List.fold_left (fun env (_, entries) -> Env.extend env entries) env inferred_bindings)
+      List.fold_left
+        (fun env (_, entries) ->
+          Env.extend env entries)
+        env
+        inferred_bindings)
 
 and infer_recursive_group = fun (state: state) env bindings ->
   let unsupported_bindings =
@@ -1363,8 +1380,7 @@ and infer_recursive_group = fun (state: state) env bindings ->
           |> List.filter_map
             (fun ((binding: BodyArena.binding), ty) ->
               match binding.name with
-              | Some name ->
-                  Some (generalized_pattern_binding binding.pattern_id ~name ty)
+              | Some name -> Some (generalized_pattern_binding state binding.pattern_id ~name ty)
               | None -> None)
         in
         let provisional_env = Env.extend env placeholders in
@@ -1374,16 +1390,20 @@ and infer_recursive_group = fun (state: state) env bindings ->
               let value_ty = infer_expr state provisional_env binding.value_id in
               try_unify state ~origin:(origin_of_binding state binding) placeholder_ty value_ty)
             bindings
-            (placeholders |> List.map (fun entry ->
-              match Binding.scheme entry with
-              | TypeScheme.Forall (_, ty) -> ty))
+            (
+              placeholders |> List.map
+                (fun entry ->
+                  match Binding.scheme entry with
+                  | TypeScheme.Forall (_, ty) -> ty)
+            )
         in
         let generalized =
           List.map2
             (fun (binding: BodyArena.binding) entry ->
               match Binding.scheme entry with
-              | TypeScheme.Forall (_, ty) ->
-                  Binding.with_scheme (generalize_binding state frame binding.value_id ty) entry)
+              | TypeScheme.Forall (_, ty) -> Binding.with_scheme
+                (generalize_binding state frame binding.value_id ty)
+                entry)
             bindings
             placeholders
         in
@@ -1409,13 +1429,13 @@ and infer_recursive_group = fun (state: state) env bindings ->
 
 let infer_file = fun ~config file ->
   let state = make_state ~config file in
-  let initial_env = Env.bind (prelude_env config) (ambient_env config) in
+  let initial_env = Env.bind (prelude_env state config) (ambient_env state config) in
   let rec loop export_state type_decls scope = function
     | [] -> (export_state, type_decls)
     | item :: rest -> (
         match item with
         | ItemTree.Type type_item ->
-            let introduced = type_constructor_bindings type_item in
+            let introduced = type_constructor_bindings state type_item in
             let introduced_type_decls = [
               { FileSummary.scope_path = type_item.scope_path; declaration = type_item.declaration }
             ] in
@@ -1449,8 +1469,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export config export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
@@ -1464,7 +1483,7 @@ let infer_file = fun ~config file ->
             let () = set_visible_type_decls state type_decls in
             loop export_state type_decls scope rest
         | ItemTree.Exception exception_item ->
-            let introduced = exception_bindings exception_item in
+            let introduced = exception_bindings state exception_item in
             let visible_exports_before =
               if state.config.capture_traces then
                 Some (Env.export config export_state)
@@ -1476,7 +1495,9 @@ let infer_file = fun ~config file ->
                 (Env.bind export_state introduced, scope)
               else
                 (
-                  Env.bind export_state (Env.qualify ~scope_path:exception_item.scope_path introduced),
+                  Env.bind
+                    export_state
+                    (Env.qualify ~scope_path:exception_item.scope_path introduced),
                   Env.register_entries scope ~scope_path:exception_item.scope_path introduced
                 )
             in
@@ -1485,8 +1506,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export config export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
@@ -1521,8 +1541,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export config export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
@@ -1534,7 +1553,7 @@ let infer_file = fun ~config file ->
             in
             loop export_state type_decls scope rest
         | ItemTree.DeclaredValue declared_value_item ->
-            let introduced = declared_value_bindings declared_value_item in
+            let introduced = declared_value_bindings state declared_value_item in
             let visible_exports_before =
               if state.config.capture_traces then
                 Some (Env.export config export_state)
@@ -1546,7 +1565,9 @@ let infer_file = fun ~config file ->
                 (Env.bind export_state introduced, scope)
               else
                 (
-                  Env.bind export_state (Env.qualify ~scope_path:declared_value_item.scope_path introduced),
+                  Env.bind
+                    export_state
+                    (Env.qualify ~scope_path:declared_value_item.scope_path introduced),
                   Env.register_entries scope ~scope_path:declared_value_item.scope_path introduced
                 )
             in
@@ -1555,8 +1576,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export config export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
@@ -1572,9 +1592,10 @@ let infer_file = fun ~config file ->
             in
             loop export_state type_decls scope rest
         | ItemTree.Open open_item ->
-            let scope =
-              Env.register_open scope ~scope_path:open_item.scope_path ~module_path:open_item.module_path
-            in
+            let scope = Env.register_open
+              scope
+              ~scope_path:open_item.scope_path
+              ~module_path:open_item.module_path in
             let () =
               if state.config.capture_traces then
                 let exports_after = Env.export config export_state |> Env.render in
@@ -1611,8 +1632,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export config export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
@@ -1652,7 +1672,9 @@ let infer_file = fun ~config file ->
                 (Env.bind export_state introduced, scope)
               else
                 (
-                  Env.bind export_state (Env.qualify ~scope_path:module_alias_item.scope_path introduced),
+                  Env.bind
+                    export_state
+                    (Env.qualify ~scope_path:module_alias_item.scope_path introduced),
                   Env.register_entries scope ~scope_path:module_alias_item.scope_path introduced
                 )
             in
@@ -1661,8 +1683,7 @@ let infer_file = fun ~config file ->
                 alias_export_names
               else
                 List.map
-                  (fun name ->
-                    qualify_name module_alias_item.scope_path name |> IdentPath.to_string)
+                  (fun name -> qualify_name module_alias_item.scope_path name |> IdentPath.to_string)
                   alias_export_names
             in
             let () =
@@ -1673,8 +1694,7 @@ let infer_file = fun ~config file ->
                 let exports_after_env = Env.export_with_forced_names state export_state in
                 let binding_names =
                   match visible_exports_before with
-                  | Some visible_exports_before ->
-                      Env.introduced_names visible_exports_before exports_after_env
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in

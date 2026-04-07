@@ -3,23 +3,29 @@ open Analysis
 open Model
 
 module Binding: module type of Binding
+
+module Module_env: module type of Module_env
+
 module Value_env: module type of Value_env
 
 type bindings = Binding.t list
-
 type t
-
 type scope
-
 val empty: t
 
 val empty_scope: scope
 
-val of_entries: provenance:Binding.provenance -> TypConfig.env -> t
+val of_entries:
+  make_ident:(string -> Binding.ident) -> provenance:Binding.provenance -> TypConfig.env -> t
 
 val of_bindings: bindings -> t
 
-val singleton: name:string -> scheme:TypeScheme.t -> provenance:Binding.provenance -> t
+val singleton:
+  make_ident:(string -> Binding.ident) ->
+  name:string ->
+  scheme:TypeScheme.t ->
+  provenance:Binding.provenance ->
+  t
 
 val bindings: t -> bindings
 

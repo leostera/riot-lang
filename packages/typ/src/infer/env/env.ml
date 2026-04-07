@@ -2,90 +2,269 @@ open Std
 open Analysis
 open Model
 
+module Path_map = Collections.Map.Make (struct
+  type t = IdentPath.t
+
+  let compare = IdentPath.compare
+end)
+
 module Binding = Binding
+module Module_env = Module_env
 module Value_env = Value_env
 
 type bindings = Binding.t list
 
 type t = {
   values: Value_env.t;
+  modules: Module_env.t;
+  opened_modules: Module_env.scope list;
 }
 
 type scope = {
-  entries: Value_env.scope_entries;
-  opens: Value_env.scope_opens;
+  locals: t Path_map.t;
+  opens: IdentPath.t list Path_map.t;
 }
 
-let empty = { values = [] }
+let binding_name_of_path = fun path ->
+  match IdentPath.last_name path with
+  | Some name -> name
+  | None -> ""
 
-let empty_scope = { entries = []; opens = [] }
+let is_bare_path = fun path ->
+  match IdentPath.to_segments path with
+  | [ name ] when not (String.equal name "") -> true
+  | _ -> false
 
-let of_entries = fun ~provenance entries ->
-  { values = Value_env.of_entries ~provenance entries }
+let partition_bindings = fun bindings ->
+  bindings |> List.fold_left
+    (fun (bare, qualified) binding ->
+      if is_bare_path (Binding.path binding) then
+        (binding :: bare, qualified)
+      else
+        (bare, binding :: qualified))
+    ([], [])
 
-let of_bindings = fun values -> { values }
+let empty = { values = Value_env.empty; modules = Module_env.empty; opened_modules = [] }
 
-let singleton = fun ~name ~scheme ~provenance ->
-  { values = Value_env.singleton ~name ~scheme ~provenance }
+let empty_scope = { locals = Path_map.empty; opens = Path_map.empty }
 
-let bindings = fun env -> env.values
+let make = fun values modules -> { values; modules; opened_modules = [] }
 
-let unique = fun env -> { values = Value_env.unique env.values }
+let of_bindings = fun bindings ->
+  let (bare_bindings, qualified_bindings) = partition_bindings bindings in
+  make
+    (Value_env.of_bindings (List.rev bare_bindings))
+    (Module_env.of_bindings (List.rev qualified_bindings))
 
-let render = fun env -> Value_env.render env.values
+let of_entries = fun ~make_ident ~provenance entries ->
+  entries
+  |> List.map
+    (fun (path, scheme) ->
+      Binding.make ~ident:(make_ident (binding_name_of_path path)) ~path ~scheme ~provenance)
+  |> of_bindings
 
-let lookup = fun env path -> Value_env.lookup env.values path
+let singleton = fun ~make_ident ~name ~scheme ~provenance ->
+  of_bindings
+    [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
-let lookup_all = fun env path -> Value_env.lookup_all env.values path
+let bindings = fun env -> Value_env.bindings env.values @ Module_env.bindings env.modules
 
-let names = fun env -> Value_env.names env.values
+let unique = fun env ->
+  env |> bindings |> Value_env.of_bindings |> Value_env.unique |> Value_env.bindings |> of_bindings
+
+let render = fun env -> env |> bindings |> Value_env.of_bindings |> Value_env.render
+
+let split_module_lookup_path = fun path ->
+  match List.rev (IdentPath.to_segments path) with
+  | []
+  | [ _ ] -> None
+  | name :: rev_prefix -> Some (IdentPath.of_segments (List.rev rev_prefix), IdentPath.of_name name)
+
+let lookup_opened_value = fun env path ->
+  env.opened_modules |> List.find_map
+    (fun scope ->
+      Value_env.lookup (Module_env.scope_values scope) path)
+
+let lookup_all_opened_values = fun env path ->
+  env.opened_modules |> List.concat_map
+    (fun scope ->
+      Value_env.lookup_all (Module_env.scope_values scope) path)
+
+let lookup_opened_module = fun env module_path ->
+  env.opened_modules |> List.find_map
+    (fun scope ->
+      Module_env.lookup (Module_env.scope_modules scope) module_path)
+
+let lookup_module_scope = fun env module_path ->
+  match Module_env.lookup env.modules module_path with
+  | Some scope -> Some scope
+  | None -> lookup_opened_module env module_path
+
+let rec lookup_in_module_scope = fun scope path ->
+  match Value_env.lookup (Module_env.scope_values scope) path with
+  | Some binding -> Some binding
+  | None -> (
+      match split_module_lookup_path path with
+      | Some (module_path, relative_path) -> Option.and_then
+        (Module_env.lookup (Module_env.scope_modules scope) module_path)
+        (fun nested_scope -> lookup_in_module_scope nested_scope relative_path)
+      | None -> None
+    )
+
+let rec lookup_all_in_module_scope = fun scope path ->
+  let direct = Value_env.lookup_all (Module_env.scope_values scope) path in
+  if not (List.is_empty direct) then
+    direct
+  else
+    match split_module_lookup_path path with
+    | Some (module_path, relative_path) -> (
+        match Module_env.lookup (Module_env.scope_modules scope) module_path with
+        | Some nested_scope -> lookup_all_in_module_scope nested_scope relative_path
+        | None -> []
+      )
+    | None -> []
+
+let lookup = fun env path ->
+  match Value_env.lookup env.values path with
+  | Some binding -> Some binding
+  | None ->
+      if is_bare_path path then
+        lookup_opened_value env path
+      else
+        match split_module_lookup_path path with
+        | Some (module_path, relative_path) -> Option.and_then
+          (lookup_module_scope env module_path)
+          (fun module_scope -> lookup_in_module_scope module_scope relative_path)
+        | None -> None
+
+let lookup_all = fun env path ->
+  let direct = Value_env.lookup_all env.values path in
+  if not (List.is_empty direct) then
+    direct
+  else if is_bare_path path then
+    lookup_all_opened_values env path
+  else
+    match split_module_lookup_path path with
+    | Some (module_path, relative_path) -> (
+        match lookup_module_scope env module_path with
+        | Some module_scope -> lookup_all_in_module_scope module_scope relative_path
+        | None -> []
+      )
+    | None -> []
+
+let names = fun env -> env |> bindings |> Value_env.of_bindings |> Value_env.names
 
 let introduced_names = fun before after ->
-  Value_env.introduced_names before.values after.values
+  Value_env.introduced_names
+    (Value_env.of_bindings (bindings before))
+    (Value_env.of_bindings (bindings after))
 
 let bind = fun env introduced ->
-  { values = Value_env.bind env.values introduced.values }
+  {
+    values = Value_env.bind env.values introduced.values;
+    modules = Module_env.bind env.modules introduced.modules;
+    opened_modules = env.opened_modules
+  }
 
-let extend = fun env introduced ->
-  { values = Value_env.bind env.values introduced }
+let extend = fun env introduced -> bind env (of_bindings introduced)
 
 let with_local_open = fun env module_path ->
-  { values = Value_env.with_local_open env.values module_path }
+  match lookup_module_scope env module_path with
+  | Some scope -> { env with opened_modules = scope :: env.opened_modules }
+  | None -> env
 
 let entries_for_include = fun env module_path ->
-  { values = Value_env.entries_for_include env.values module_path }
+  match lookup_module_scope env module_path with
+  | Some scope ->
+      Module_env.scope_bindings scope |> List.map
+        (fun binding ->
+          Binding.with_provenance (Binding.Included { module_path }) binding) |> of_bindings |> unique
+  | None -> empty
 
 let export_names_for_module_alias = fun env ~alias_name ~module_path ->
-  Value_env.export_names_for_module_alias env.values ~alias_name ~module_path
+  match lookup_module_scope env module_path with
+  | Some scope ->
+      Module_env.scope_bindings scope |> List.map
+        (fun binding ->
+          Binding.with_path (IdentPath.prepend_name alias_name (Binding.path binding)) binding) |> Value_env.of_bindings |> Value_env.canonicalize |> Value_env.bindings |> List.map
+        (fun binding -> Binding.path binding |> IdentPath.to_string)
+  | None -> []
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
-  { values = Value_env.entries_for_module_alias env.values ~alias_name ~module_path }
+  match lookup_module_scope env module_path with
+  | Some scope -> {
+    values = Value_env.empty;
+    modules = Module_env.bind_alias Module_env.empty ~alias_name scope;
+    opened_modules = []
+  }
+  | None -> empty
 
 let export = fun config env ->
-  { values = Value_env.export config env.values }
+  env |> bindings |> Value_env.of_bindings |> Value_env.export config |> Value_env.bindings |> of_bindings
 
 let export_with_forced_names = fun state env ->
-  { values = Value_env.export_with_forced_names state env.values }
+  env
+  |> bindings
+  |> Value_env.of_bindings
+  |> Value_env.export_with_forced_names state
+  |> Value_env.bindings
+  |> of_bindings
 
 let introduced_entries = fun before after ->
-  { values = Value_env.introduced_entries before.values after.values }
+  Value_env.introduced_entries
+    (Value_env.of_bindings (bindings before))
+    (Value_env.of_bindings (bindings after))
+  |> Value_env.bindings
+  |> of_bindings
 
 let qualify = fun ~scope_path env ->
-  { values = Value_env.qualify_entries scope_path env.values }
+  if IdentPath.is_empty scope_path then
+    env
+  else
+    {
+      values = Value_env.empty;
+      modules = Module_env.merge_scope
+        Module_env.empty
+        ~module_path:scope_path
+        (Module_env.make_scope ~values:env.values ~modules:env.modules);
+      opened_modules = []
+    }
+
+let scope_locals_for = fun scope_locals scope_path ->
+  IdentPath.prefixes scope_path |> List.fold_left
+    (fun acc key ->
+      match Path_map.find_opt key scope_locals with
+      | Some entries -> bind acc entries
+      | None -> acc)
+    empty
 
 let register_entries = fun scope ~scope_path env ->
-  {
-    scope with
-    entries = Value_env.update_scope_entries scope.entries scope_path env.values;
-  }
+  let existing =
+    match Path_map.find_opt scope_path scope.locals with
+    | Some entries -> entries
+    | None -> empty
+  in
+  let updated = bind existing env in
+  { scope with locals = Path_map.add scope_path updated scope.locals }
+
+let scope_opens_for = fun scope_opens scope_path ->
+  IdentPath.prefixes scope_path |> List.fold_left
+    (fun acc key ->
+      match Path_map.find_opt key scope_opens with
+      | Some modules -> acc @ modules
+      | None -> acc)
+    []
 
 let register_open = fun scope ~scope_path ~module_path ->
-  {
-    scope with
-    opens = Value_env.update_scope_opens scope.opens scope_path module_path;
-  }
+  let existing =
+    match Path_map.find_opt scope_path scope.opens with
+    | Some modules -> modules
+    | None -> []
+  in
+  let updated = existing @ [ module_path ] in
+  { scope with opens = Path_map.add scope_path updated scope.opens }
 
 let for_item_scope = fun env scope ~scope_path ->
-  {
-    values = Value_env.for_item_scope env.values scope.entries scope.opens scope_path;
-  }
+  let locals = scope_locals_for scope.locals scope_path in
+  let base_env = bind env locals in
+  scope_opens_for scope.opens scope_path |> List.fold_left with_local_open base_env

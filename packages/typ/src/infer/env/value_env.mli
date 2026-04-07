@@ -2,15 +2,24 @@ open Std
 open Analysis
 open Model
 
-type t = Binding.t list
+type t
+val empty: t
 
-type scope_entries = (IdentPath.t * t) list
+val of_bindings: Binding.t list -> t
 
-type scope_opens = (IdentPath.t * IdentPath.t list) list
+val of_entries:
+  make_ident:(string -> Binding.ident) -> provenance:Binding.provenance -> TypConfig.env -> t
 
-val of_entries: provenance:Binding.provenance -> TypConfig.env -> t
+val singleton:
+  make_ident:(string -> Binding.ident) ->
+  name:string ->
+  scheme:TypeScheme.t ->
+  provenance:Binding.provenance ->
+  t
 
-val singleton: name:string -> scheme:TypeScheme.t -> provenance:Binding.provenance -> t
+val bindings: t -> Binding.t list
+
+val canonicalize: t -> t
 
 val unique: t -> t
 
@@ -43,9 +52,3 @@ val export_with_forced_names: State.t -> t -> t
 val introduced_entries: t -> t -> t
 
 val qualify_entries: IdentPath.t -> t -> t
-
-val update_scope_entries: scope_entries -> IdentPath.t -> t -> scope_entries
-
-val update_scope_opens: scope_opens -> IdentPath.t -> IdentPath.t -> scope_opens
-
-val for_item_scope: t -> scope_entries -> scope_opens -> IdentPath.t -> t
