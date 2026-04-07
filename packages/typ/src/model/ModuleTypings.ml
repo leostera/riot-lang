@@ -222,6 +222,13 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
       Data.Json.Array (List.map (fun id -> Data.Json.Int id) type_decl.declaration.param_ids)
     );
     (
+      "param_variances",
+      Data.Json.Array
+        (List.map
+          (fun variance -> Data.Json.String (TypeDecl.variance_to_string variance))
+          type_decl.declaration.param_variances)
+    );
+    (
       "constructors",
       Data.Json.Array (List.map constructor_to_json type_decl.declaration.constructors)
     );
@@ -513,12 +520,35 @@ let type_decl_of_json = fun json ->
   let* type_constructor_id_json = field "type_constructor_id" fields in
   let* type_name_json = field "type_name" fields in
   let* param_ids_json = field "param_ids" fields in
+  let param_variances_json = List.assoc_opt "param_variances" fields in
   let* constructors_json = field "constructors" fields in
   let* labels_json = field "labels" fields in
   let* scope_path = string_list_of_json scope_path_json in
   let* type_constructor_id = get_int type_constructor_id_json in
   let* type_name = get_string type_name_json in
   let* param_ids = int_list_of_json param_ids_json in
+  let param_variances =
+    match param_variances_json with
+    | Some param_variances_json ->
+        let* values = get_array param_variances_json in
+        let rec loop acc = function
+          | [] -> Ok (List.rev acc)
+          | value :: rest ->
+              let* variance_name = get_string value in
+              let* variance =
+                match variance_name with
+                | "covariant" -> Ok TypeDecl.Covariant
+                | "contravariant" -> Ok TypeDecl.Contravariant
+                | "invariant" -> Ok TypeDecl.Invariant
+                | other -> Error ("unknown module typings variance " ^ other)
+              in
+              loop (variance :: acc) rest
+        in
+        loop [] values
+    | None ->
+        Ok (List.map (fun _ -> TypeDecl.Invariant) param_ids)
+  in
+  let* param_variances = param_variances in
   let* constructors_json = get_array constructors_json in
   let rec parse_constructors acc = function
     | [] -> Ok (List.rev acc)
@@ -548,6 +578,7 @@ let type_decl_of_json = fun json ->
         TypeDecl.type_constructor_id = TypeConstructorId.of_int type_constructor_id;
         TypeDecl.type_name = type_name;
         param_ids;
+        param_variances;
         constructors;
         labels;
         manifest;

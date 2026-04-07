@@ -22,11 +22,10 @@ type t = {
 type record_type_decl = Env.Label_env.record_decl
 
 type named_owner = {
-  type_constructor_id: TypeConstructorId.t option;
-  name: IdentPath.t;
+  type_constructor_id: TypeConstructorId.t;
 }
 
-type variance = State.variance
+type variance = TypeDecl.variance
 
 type state = State.t
 
@@ -232,12 +231,27 @@ let last_segment_text = fun text ->
 let record_label_matches = fun requested candidate ->
   String.equal requested candidate || String.equal (last_segment_text requested) candidate
 
-let owner_of_type = fun ty ->
-  match view ty with
-  | TypeRepr.Named { type_constructor_id; name; _ } -> Some { type_constructor_id; name }
-  | _ -> None
+let visible_type_decl = fun (state: state) name ->
+  Collections.HashMap.get state.visible_type_decl_by_path name
 
-let owner_name_of_type = fun ty -> owner_of_type ty |> Option.map (fun owner -> owner.name)
+let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
+  Collections.HashMap.get state.visible_type_decl_by_id type_constructor_id
+
+let resolve_type_constructor_id = fun (state: state) type_constructor_id name ->
+  match type_constructor_id with
+  | Some type_constructor_id -> Some type_constructor_id
+  | None ->
+      visible_type_decl state name
+      |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
+
+let owner_of_type = fun (state: state) ty ->
+  match view ty with
+  | TypeRepr.Named { type_constructor_id; name; _ } -> (
+      match resolve_type_constructor_id state type_constructor_id name with
+      | Some type_constructor_id -> Some { type_constructor_id }
+      | None -> None
+    )
+  | _ -> None
 
 let rec result_type_of_type = fun ty ->
   let ty = TypeRepr.prune ty in
@@ -245,39 +259,32 @@ let rec result_type_of_type = fun ty ->
   | TypeRepr.Arrow { rhs; _ } -> result_type_of_type rhs
   | _ -> ty
 
-let owner_of_scheme = fun scheme -> owner_of_type (result_type_of_type (TypeScheme.body scheme))
-
-let resolve_constructor_scheme = fun env constructor ~expected_ty ->
+let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty ->
   let candidates = Env.lookup_constructors env constructor in
   match candidates with
   | [] ->
       None
   | [ candidate ] ->
-      Some (Env.Constructor_env.scheme candidate)
+      Some candidate
   | candidates -> (
-      match owner_of_type expected_ty with
+      match owner_of_type state expected_ty with
       | Some expected_owner -> (
           match
             List.filter
-              (fun candidate ->
-                match expected_owner.type_constructor_id with
-                | Some expected_type_constructor_id -> TypeConstructorId.equal
-                  expected_type_constructor_id
-                  (Env.Constructor_env.owner_type_constructor_id candidate)
-                | None -> IdentPath.equal
-                  expected_owner.name
-                  (Env.Constructor_env.owner_path candidate))
+              (fun candidate -> TypeConstructorId.equal
+                expected_owner.type_constructor_id
+                (Env.Constructor_env.owner_type_constructor_id candidate))
               candidates
           with
-          | [] -> Some (Env.Constructor_env.scheme (List.hd candidates))
-          | candidate :: _ -> Some (Env.Constructor_env.scheme candidate)
+          | [] -> Some (List.hd candidates)
+          | candidate :: _ -> Some candidate
         )
-      | None -> Some (Env.Constructor_env.scheme (List.hd candidates))
+      | None -> Some (List.hd candidates)
     )
 
 let resolve_constructor_without_expected = fun env constructor ->
   Env.lookup_constructors env constructor |> function
-  | candidate :: _ -> Some (Env.Constructor_env.scheme candidate)
+  | candidate :: _ -> Some candidate
   | [] -> None
 
 let record_decl_field = fun (record_decl: record_type_decl) label_name ->
@@ -292,9 +299,7 @@ let record_decl_matches_fields = fun (record_decl: record_type_decl) field_names
   List.for_all (fun field_name -> Option.is_some (record_decl_field record_decl field_name)) field_names
 
 let record_decl_matches_owner = fun (record_decl: record_type_decl) owner ->
-  match owner.type_constructor_id with
-  | Some type_constructor_id -> TypeConstructorId.equal record_decl.owner_type_constructor_id type_constructor_id
-  | None -> IdentPath.equal record_decl.owner_path owner.name
+  TypeConstructorId.equal record_decl.owner_type_constructor_id owner.type_constructor_id
 
 let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl) ->
   let mapping = Collections.HashMap.with_capacity 8 in
@@ -387,45 +392,6 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
         (Typ_diagnostic.AmbiguousRecordLabels field_names) in
       None
 
-let flip_variance = function
-  | Covariant -> Contravariant
-  | Contravariant -> Covariant
-  | Invariant -> Invariant
-
-let join_variance = fun left right ->
-  match (left, right) with
-  | (Invariant, _)
-  | (_, Invariant) -> Invariant
-  | (Covariant, Covariant) -> Covariant
-  | (Contravariant, Contravariant) -> Contravariant
-  | (Covariant, Contravariant)
-  | (Contravariant, Covariant) -> Invariant
-
-let compose_variance = fun outer inner ->
-  match (outer, inner) with
-  | (Invariant, _)
-  | (_, Invariant) -> Invariant
-  | (Covariant, variance) -> variance
-  | (Contravariant, Covariant) -> Contravariant
-  | (Contravariant, Contravariant) -> Covariant
-
-let add_variance = fun acc var_id variance ->
-  match Collections.HashMap.get acc var_id with
-  | Some existing ->
-      let joined = join_variance existing variance in
-      if joined != existing then
-        let _ = Collections.HashMap.insert acc var_id joined in
-        ()
-  | None ->
-      let _ = Collections.HashMap.insert acc var_id variance in
-      ()
-
-let visible_type_decl = fun (state: state) name ->
-  Collections.HashMap.get state.visible_type_decl_by_path name
-
-let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
-  Collections.HashMap.get state.visible_type_decl_by_id type_constructor_id
-
 let constructor_payload_types = fun (constructor: TypeDecl.constructor) ->
   let rec loop acc ty =
     match view ty with
@@ -433,131 +399,6 @@ let constructor_payload_types = fun (constructor: TypeDecl.constructor) ->
     | _ -> List.rev acc
   in
   loop [] (TypeScheme.body constructor.scheme)
-
-(* Relaxed value restriction needs declaration-aware variance for lowered
-   nominal types. Unknown or recursive declarations stay invariant so the
-   approximation remains sound. For expansive bindings, we lower variables that
-   appear in contravariant or invariant positions before ordinary level-based
-   generalization runs. *)
-
-let type_variance_helpers = fun (state: state) ->
-  let rec parameter_variances_for_named_type visiting type_constructor_id name arguments =
-    match type_constructor_id with
-    | Some type_constructor_id when Collections.HashSet.contains visiting type_constructor_id ->
-        List.map (fun _ -> Invariant) arguments
-    | Some type_constructor_id -> (
-        match Collections.HashMap.get state.declaration_variances type_constructor_id with
-        | Some variances -> variances
-        | None -> (
-            match visible_type_decl_by_id state type_constructor_id with
-            | Some type_decl ->
-                let () = Collections.HashSet.insert visiting type_constructor_id |> ignore in
-                let variances = declaration_param_variances visiting type_decl in
-                let () = Collections.HashSet.remove visiting type_constructor_id |> ignore in
-                let _ = Collections.HashMap.insert state.declaration_variances type_constructor_id variances in
-                variances
-            | None -> List.map (fun _ -> Invariant) arguments
-          )
-      )
-    | None -> (
-        match visible_type_decl state name with
-        | Some type_decl -> declaration_param_variances visiting type_decl
-        | None -> List.map (fun _ -> Invariant) arguments
-      )
-  and collect_type_variances_into visiting variance acc ty =
-    match view ty with
-    | TypeRepr.Int
-    | TypeRepr.Float
-    | TypeRepr.Bool
-    | TypeRepr.String
-    | TypeRepr.Char
-    | TypeRepr.Unit
-    | TypeRepr.Hole _ ->
-        ()
-    | TypeRepr.Option element
-    | TypeRepr.List element
-    | TypeRepr.Seq element ->
-        collect_type_variances_into visiting variance acc element
-    | TypeRepr.Result (ok_ty, error_ty) ->
-        let () = collect_type_variances_into visiting variance acc ok_ty in
-        collect_type_variances_into visiting variance acc error_ty
-    | TypeRepr.Array element ->
-        collect_type_variances_into visiting Invariant acc element
-    | TypeRepr.Named { type_constructor_id; name; arguments } ->
-        let parameter_variances = parameter_variances_for_named_type
-          visiting
-          type_constructor_id
-          name
-          arguments in
-        let rec loop acc arguments parameter_variances =
-          match (arguments, parameter_variances) with
-          | (argument :: rest_arguments, parameter_variance :: rest_variances) ->
-              let () = collect_type_variances_into
-                visiting
-                (compose_variance variance parameter_variance)
-                acc
-                argument in
-              loop acc rest_arguments rest_variances
-          | _ -> ()
-        in
-        loop acc arguments parameter_variances
-    | TypeRepr.Tuple members ->
-        List.iter (fun member -> collect_type_variances_into visiting variance acc member) members
-    | TypeRepr.Arrow { lhs; rhs; _ } ->
-        let () = collect_type_variances_into visiting (flip_variance variance) acc lhs in
-        collect_type_variances_into visiting variance acc rhs
-    | TypeRepr.Var var -> (
-        match var.link with
-        | Some linked -> collect_type_variances_into visiting variance acc linked
-        | None -> add_variance acc var.id variance
-      )
-  and declaration_param_variances visiting (type_decl: FileSummary.type_decl) =
-    let declaration = type_decl.declaration in
-    let variances = Collections.HashMap.with_capacity 8 in
-    let () =
-      match declaration.manifest with
-      | Some (TypeDecl.Alias manifest_type) ->
-          collect_type_variances_into visiting Covariant variances manifest_type
-      | Some (TypeDecl.PolyVariant { tags; inherited; _ }) ->
-          let () =
-            tags
-            |> List.iter
-              (fun (tag: TypeDecl.poly_variant_tag) ->
-                match tag.payload_type with
-                | Some payload_type -> collect_type_variances_into visiting Covariant variances payload_type
-                | None -> ())
-          in
-          inherited
-          |> List.iter
-            (fun inherited_type -> collect_type_variances_into visiting Covariant variances inherited_type)
-      | None ->
-          ()
-    in
-    let () = declaration.constructors
-    |> List.iter
-      (fun constructor ->
-        constructor_payload_types constructor
-        |> List.iter
-          (fun payload_type -> collect_type_variances_into visiting Covariant variances payload_type)) in
-    let () =
-      declaration.labels
-      |> List.iter
-        (fun (label: TypeDecl.label) ->
-          let field_variance =
-            if label.mutable_ then
-              Invariant
-            else
-              Covariant
-          in
-          collect_type_variances_into visiting field_variance variances label.field_type)
-    in
-    declaration.param_ids |> List.map
-      (fun param_id ->
-        match Collections.HashMap.get variances param_id with
-        | Some variance -> variance
-        | None -> Invariant)
-  in
-  parameter_variances_for_named_type
 
 let origin_label_of_expr = fun (state: state) expr_id ->
   match SemanticTree.find_expr state.file expr_id with
@@ -660,9 +501,7 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
   if is_nonexpansive_expr state expr_id then
     ()
   else
-    let parameter_variances_for_named_type = type_variance_helpers state in
     let boundary_level = Region.boundary_level frame in
-    let declaration_visiting = Collections.HashSet.create () in
     let generation = Region.next_mark state.regions in
     let next_order =
       let order = ref 0 in
@@ -686,7 +525,7 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
             let (should_process, variance) =
               match Collections.HashMap.get seen order with
               | Some seen_variance ->
-                  let joined = join_variance seen_variance variance in
+                  let joined = TypeDecl.join_variance seen_variance variance in
                   if joined = seen_variance then
                     (false, seen_variance)
                   else
@@ -697,15 +536,15 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
               | None ->
                   let _ = Collections.HashMap.insert seen order variance in
                   (true, variance)
-            in
-            if not should_process || TypeRepr.level ty <= boundary_level then
-              lower rest
-            else
+              in
+              if not should_process || TypeRepr.level ty <= boundary_level then
+                lower rest
+              else
               let () =
                 match variance with
-                | Covariant -> ()
-                | Contravariant
-                | Invariant ->
+                | TypeDecl.Covariant -> ()
+                | TypeDecl.Contravariant
+                | TypeDecl.Invariant ->
                     if TypeRepr.level ty > boundary_level then
                       TypeRepr.set_level ty boundary_level
               in
@@ -727,17 +566,21 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
                 | TypeRepr.Result (ok_ty, error_ty) ->
                     (variance, ok_ty) :: (variance, error_ty) :: rest
                 | TypeRepr.Array element ->
-                    (Invariant, element) :: rest
+                    (TypeDecl.Invariant, element) :: rest
                 | TypeRepr.Named { type_constructor_id; name; arguments } ->
-                    let parameter_variances = parameter_variances_for_named_type
-                      declaration_visiting
-                      type_constructor_id
-                      name
-                      arguments in
+                    let parameter_variances =
+                      match resolve_type_constructor_id state type_constructor_id name with
+                      | Some type_constructor_id -> (
+                          match visible_type_decl_by_id state type_constructor_id with
+                          | Some type_decl -> type_decl.declaration.param_variances
+                          | None -> List.map (fun _ -> TypeDecl.Invariant) arguments
+                        )
+                      | None -> List.map (fun _ -> TypeDecl.Invariant) arguments
+                    in
                     let rec add_arguments acc arguments parameter_variances =
                       match (arguments, parameter_variances) with
                       | (argument :: rest_arguments, parameter_variance :: rest_variances) -> add_arguments
-                        ((compose_variance variance parameter_variance, argument) :: acc)
+                        ((TypeDecl.compose_variance variance parameter_variance, argument) :: acc)
                         rest_arguments
                         rest_variances
                       | _ -> acc
@@ -746,11 +589,11 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
                 | TypeRepr.Tuple members ->
                     List.fold_left (fun acc member -> (variance, member) :: acc) rest members
                 | TypeRepr.Arrow { lhs; rhs; _ } ->
-                    (flip_variance variance, lhs) :: (variance, rhs) :: rest
+                    (TypeDecl.flip_variance variance, lhs) :: (variance, rhs) :: rest
               in
               lower rest
     in
-    lower [ (Covariant, ty) ]
+    lower [ (TypeDecl.Covariant, ty) ]
 
 let origin_of_expr = fun (state: state) expr_id ->
   match SemanticTree.find_expr state.file expr_id with
@@ -1011,10 +854,10 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
               | None -> []
         )
       | BodyArena.PConstructor { constructor; arguments } -> (
-          match resolve_constructor_scheme env constructor ~expected_ty with
-          | Some scheme ->
+          match resolve_constructor_entry state env constructor ~expected_ty with
+          | Some constructor_entry ->
               let origin = origin_of_pattern state pat_id in
-              let constructor_ty = instantiate state scheme in
+              let constructor_ty = instantiate state (Env.Constructor_env.scheme constructor_entry) in
               let (argument_types, result_ty) = constructor_pattern_argument_types
                 state
                 constructor_ty
@@ -1037,7 +880,7 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
             env
             state
             ~field_names
-            ~owner_hint:(owner_of_type expected_ty)
+            ~owner_hint:(owner_of_type state expected_ty)
             ~span:(diagnostic_span origin)
             ~context:Typ_diagnostic.RecordPattern with
           | Some record_decl ->
@@ -1157,7 +1000,7 @@ and infer_record_expr = fun (state: state) env expr_id base_id fields ->
     resolve_record_decl env state ~field_names
       ~owner_hint:((
         match base_ty with
-        | Some base_ty -> owner_of_type base_ty
+        | Some base_ty -> owner_of_type state base_ty
         | None -> None
       ))
       ~span:operation_span
@@ -1226,7 +1069,8 @@ and infer_expr = fun (state: state) env expr_id ->
                 | Some origin when String.equal origin.label "constructor_expression"
                 || String.equal origin.label "constructor_path_expression" -> (
                     match resolve_constructor_without_expected env name with
-                    | Some scheme -> instantiate state scheme
+                    | Some constructor_entry ->
+                        instantiate state (Env.Constructor_env.scheme constructor_entry)
                     | None ->
                         let hole = fresh_hole state in
                         let () = add_diagnostic
@@ -1363,7 +1207,7 @@ and infer_expr = fun (state: state) env expr_id ->
                 env
                 state
                 ~field_names
-                ~owner_hint:(owner_of_type receiver_ty)
+                ~owner_hint:(owner_of_type state receiver_ty)
                 ~span:(diagnostic_span (origin_of_expr state expr_id))
                 ~context:Typ_diagnostic.RecordFieldAccess with
               | Some record_decl ->
@@ -1458,9 +1302,11 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
           match origin_of_expr state expr_id with
           | Some origin when String.equal origin.label "constructor_expression"
           || String.equal origin.label "constructor_path_expression" -> (
-              match resolve_constructor_scheme env name ~expected_ty with
-              | Some scheme ->
-                  let inferred_type = instantiate state scheme in
+              match resolve_constructor_entry state env name ~expected_ty with
+              | Some constructor_entry ->
+                  let inferred_type =
+                    instantiate state (Env.Constructor_env.scheme constructor_entry)
+                  in
                   let () = try_unify state ~origin:(origin_of_expr state expr_id) expected_ty inferred_type in
                   inferred_type
               | None ->
@@ -1478,9 +1324,11 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
           | Some origin when String.equal origin.label "constructor_apply_expression" -> (
               match SemanticTree.find_expr state.file callee_id with
               | Some { desc=BodyArena.EVar constructor; _ } -> (
-                  match resolve_constructor_scheme env constructor ~expected_ty with
-                  | Some scheme ->
-                      let callee_ty = instantiate state scheme in
+                  match resolve_constructor_entry state env constructor ~expected_ty with
+                  | Some constructor_entry ->
+                      let callee_ty =
+                        instantiate state (Env.Constructor_env.scheme constructor_entry)
+                      in
                       let rec apply_with_known_type current_ty arguments =
                         match arguments with
                         | [] ->

@@ -120,6 +120,7 @@ let type_decls = [ {
         TypeDecl.type_constructor_id = prelude_list_type_constructor_id;
         type_name = "list";
         param_ids = [ 0 ];
+        param_variances = [ TypeDecl.Covariant ];
         constructors = [
           { TypeDecl.constructor_id = prelude_nil_constructor_id; name = "[]"; scheme = list_nil };
           { TypeDecl.constructor_id = prelude_cons_constructor_id; name = "::"; scheme = list_cons };
@@ -134,6 +135,7 @@ let type_decls = [ {
         TypeDecl.type_constructor_id = prelude_option_type_constructor_id;
         type_name = "option";
         param_ids = [ 0 ];
+        param_variances = [ TypeDecl.Covariant ];
         constructors = [
           {
             TypeDecl.constructor_id = prelude_none_constructor_id;
@@ -156,6 +158,7 @@ let type_decls = [ {
         TypeDecl.type_constructor_id = prelude_result_type_constructor_id;
         type_name = "result";
         param_ids = [ 0; 1 ];
+        param_variances = [ TypeDecl.Covariant; TypeDecl.Covariant ];
         constructors = [
           { TypeDecl.constructor_id = prelude_ok_constructor_id; name = "Ok"; scheme = result_ok };
           {

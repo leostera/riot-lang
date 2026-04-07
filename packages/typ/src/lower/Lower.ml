@@ -207,6 +207,9 @@ let constructor_scheme = fun ~params ~result_type payload_type ->
   in
   TypeScheme.of_explicit ~quantified:(List.map snd params) body
 
+let invariant_param_variances = fun params ->
+  List.map (fun _ -> TypeDecl.Invariant) params
+
 let variant_constructor_payload = fun (state: state) type_params (
   constructor: Cst.VariantConstructor.t
 ) ->
@@ -476,6 +479,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
           manifest = None;
@@ -485,6 +489,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
           manifest = Some (TypeDecl.Alias (lower_core_type state params manifest));
@@ -494,6 +499,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
           constructors =
             constructors |> List.map
               (fun (constructor: Cst.VariantConstructor.t) ->
@@ -516,6 +522,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
           constructors = [];
           labels = List.map (lower_record_label state params) fields;
           manifest = None;
@@ -525,6 +532,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           TypeDecl.type_constructor_id;
           TypeDecl.type_name = type_name;
           param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
           manifest = Some (lower_poly_variant_manifest state params poly_variant);

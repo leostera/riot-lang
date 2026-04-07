@@ -13,6 +13,38 @@ type label = {
   mutable_: bool;
 }
 
+type variance =
+  | Covariant
+  | Contravariant
+  | Invariant
+
+let flip_variance = function
+  | Covariant -> Contravariant
+  | Contravariant -> Covariant
+  | Invariant -> Invariant
+
+let join_variance = fun left right ->
+  match (left, right) with
+  | (Invariant, _)
+  | (_, Invariant) -> Invariant
+  | (Covariant, Covariant) -> Covariant
+  | (Contravariant, Contravariant) -> Contravariant
+  | (Covariant, Contravariant)
+  | (Contravariant, Covariant) -> Invariant
+
+let compose_variance = fun outer inner ->
+  match (outer, inner) with
+  | (Invariant, _)
+  | (_, Invariant) -> Invariant
+  | (Covariant, variance) -> variance
+  | (Contravariant, Covariant) -> Contravariant
+  | (Contravariant, Contravariant) -> Covariant
+
+let variance_to_string = function
+  | Covariant -> "covariant"
+  | Contravariant -> "contravariant"
+  | Invariant -> "invariant"
+
 type poly_variant_bound =
   | Exact
   | UpperBound
@@ -35,6 +67,7 @@ type t = {
   type_constructor_id: TypeConstructorId.t;
   type_name: string;
   param_ids: int list;
+  param_variances: variance list;
   constructors: constructor list;
   labels: label list;
   manifest: manifest option;
@@ -95,6 +128,10 @@ let to_json = fun decl ->
   let fields = [
     ("type_constructor_id", Data.Json.Int (TypeConstructorId.to_int decl.type_constructor_id));
     ("type_name", Data.Json.String decl.type_name);
+    (
+      "param_variances",
+      Data.Json.Array (List.map (fun variance -> Data.Json.String (variance_to_string variance)) decl.param_variances)
+    );
     ("constructors", Data.Json.Array (List.map constructor_to_json decl.constructors));
   ] in
   let fields =
@@ -128,6 +165,11 @@ let manifest_to_string = function
       "= [" ^ prefix ^ " " ^ String.concat " | " members ^ " ]"
 
 let to_string = fun decl ->
+  let param_variances =
+    match decl.param_variances with
+    | [] -> "none"
+    | param_variances -> param_variances |> List.map variance_to_string |> String.concat ", "
+  in
   let constructors =
     match decl.constructors with
     | [] -> "none"
@@ -168,7 +210,9 @@ let to_string = fun decl ->
   TypeConstructorId.to_string decl.type_constructor_id
   ^ " "
   ^ decl.type_name
-  ^ " { constructors = "
+  ^ " { param_variances = "
+  ^ param_variances
+  ^ "; constructors = "
   ^ constructors
   ^ "; labels = "
   ^ labels

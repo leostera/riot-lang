@@ -21,6 +21,24 @@ type label = {
   mutable_: bool;
 }
 (** Bound kind carried by lowered polymorphic-variant declarations. *)
+type variance =
+  | Covariant
+  | Contravariant
+  | Invariant
+
+(** Flip variance when moving across an arrow parameter. *)
+val flip_variance: variance -> variance
+
+(** Join two observations of the same parameter variance. *)
+val join_variance: variance -> variance -> variance
+
+(** Compose outer and inner variances through a type constructor argument. *)
+val compose_variance: variance -> variance -> variance
+
+(** One declared parameter variance, ordered to match [param_ids]. *)
+val variance_to_string: variance -> string
+
+(** Bound kind carried by lowered polymorphic-variant declarations. *)
 type poly_variant_bound =
   | Exact
   | UpperBound
@@ -53,6 +71,8 @@ type t = {
   type_name: string;
   (** Prototype-local type parameter identifiers used for later instantiation. *)
   param_ids: int list;
+  (** Precomputed declaration variance for each parameter. *)
+  param_variances: variance list;
   (** Constructors introduced by the declaration. *)
   constructors: constructor list;
   (** Record labels introduced by the declaration. *)
