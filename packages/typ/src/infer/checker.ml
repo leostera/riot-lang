@@ -634,9 +634,22 @@ let diagnostic_span = fun origin ->
 exception Unify_error of Typ_diagnostic.mismatch
 
 let unify = fun (state: state) ~origin left right ->
+  let resolved_named_type_constructors = Collections.HashMap.with_capacity 16 in
+  let resolve_named_type_constructor type_constructor name =
+    match type_constructor with
+    | TypeRepr.Resolved _ -> type_constructor
+    | TypeRepr.Unresolved -> (
+        match Collections.HashMap.get resolved_named_type_constructors name with
+        | Some resolved -> resolved
+        | None ->
+            let resolved = State.resolve_named_type_constructor state type_constructor name in
+            let _ = Collections.HashMap.insert resolved_named_type_constructors name resolved in
+            resolved
+      )
+  in
   let named_types_match left_type_constructor left_name right_type_constructor right_name =
-    let left_type_constructor = State.resolve_named_type_constructor state left_type_constructor left_name in
-    let right_type_constructor = State.resolve_named_type_constructor state right_type_constructor right_name in
+    let left_type_constructor = resolve_named_type_constructor left_type_constructor left_name in
+    let right_type_constructor = resolve_named_type_constructor right_type_constructor right_name in
     match (left_type_constructor, right_type_constructor) with
     | TypeRepr.Resolved left_type_constructor_id, TypeRepr.Resolved right_type_constructor_id -> TypeConstructorId.equal
       left_type_constructor_id

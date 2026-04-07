@@ -35,7 +35,11 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] make dotted lookup always go through module components instead of fallback
   path rewriting
 - [ ] push `IdentPath` to lowering, persistence, and printing boundaries only
-- [ ] remove remaining hot-path name/path fallback in named type comparison
+- [ ] canonicalize named type constructors across lowering and loaded summaries
+  so unify no longer needs mixed resolved/unresolved name-path fallback
+- [ ] make nominal owner and variance lookup consume canonical constructor ids
+  directly instead of allocating `State.resolve_type` copies or re-resolving by
+  name
 - [ ] make constructor resolution fully descriptor-first with no late candidate
   reconstruction
 - [ ] make label and record resolution fully descriptor-first with owner-indexed
