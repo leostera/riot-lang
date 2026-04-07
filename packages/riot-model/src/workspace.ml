@@ -6,6 +6,7 @@ open Std.IO
 
 (** Types *)
 type t = {
+  name: string option;
   root: Path.t;
   target_dir_root: Path.t;
   packages: Package.t list;
@@ -17,6 +18,7 @@ type t = {
 
 (** Workspace TOML parsing *)
 type manifest = {
+  name: string option;
   members: Path.t list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
@@ -191,6 +193,24 @@ let parse_members: Toml.value -> Path.t list = fun toml ->
     )
   | _ -> []
 
+let parse_workspace_name: Toml.value -> string option = fun toml ->
+  match toml with
+  | Toml.Table items -> (
+      match List.assoc_opt "workspace" items with
+      | Some (Toml.Table workspace_items) -> (
+          match List.assoc_opt "name" workspace_items with
+          | Some (Toml.String name) ->
+              let trimmed = String.trim name in
+              if String.is_empty trimmed then
+                None
+              else
+                Some trimmed
+          | _ -> None
+        )
+      | _ -> None
+    )
+  | _ -> None
+
 let parse_workspace_dependencies: Toml.value -> Package.dependency list = fun toml ->
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   parse_dependency_section "dependencies" toml |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
@@ -258,6 +278,7 @@ let parse_target_dir: Toml.value -> string option = fun toml ->
 
 let of_toml: Toml.value -> (manifest, string) result = fun toml ->
   let members = parse_members toml in
+  let name = parse_workspace_name toml in
   match parse_dependency_section "dependencies" toml with
   | Error _ as err -> err
   | Ok dependencies -> (
@@ -270,6 +291,7 @@ let of_toml: Toml.value -> (manifest, string) result = fun toml ->
               let profile_overrides = parse_profile_overrides toml in
               let target_dir = parse_target_dir toml in
               Ok {
+                name;
                 members;
                 dependencies;
                 dev_dependencies;
@@ -292,8 +314,9 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
+let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
   t = {
+  name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
   packages;
@@ -373,6 +396,22 @@ target_dir = "build-out"
       Ok ()
     else
       Error "expected [riot].target_dir to be parsed" [@test]
+
+  let test_parse_workspace_name (): (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[workspace]
+name = "riot"
+members = ["packages/foo"]
+|}
+      |> Result.expect ~msg:"expected test toml to parse"
+    in
+    let manifest = of_toml toml |> Result.expect ~msg:"expected workspace manifest" in
+    if manifest.name = Some "riot" then
+      Ok ()
+    else
+      Error "expected [workspace].name to be parsed" [@test]
 
   let test_make_uses_custom_target_dir (): (unit, string) result =
     let workspace = make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:"build-out" () in

@@ -24,6 +24,7 @@
 18. Repository-local operational policy belongs in `.riot/config.toml`, modeled by `Workspace_operational_config`. Keep it separate from `riot.toml` build/package semantics and `~/.riot/config.toml` user config. Test-runner policy such as `[riot.test].small_test_timeout` and `[riot.test].flaky_max_retries` belongs here too.
 19. `Workspace_manager.scan` should resolve the build root in one upward pass: prefer the nearest enclosing workspace manifest with `[workspace]`, but if none exists, fall back to the first package manifest with `[package]` and synthesize a one-package workspace so detached package roots still build.
 20. `Package.from_toml` should autodiscover a default runtime binary named after the package when `src/main.ml` exists and no explicit `[[bin]]` entries are declared. Keep that fallback minimal; tests/examples/bench autodiscovery remains separate.
+21. Workspace manifests may carry an optional `[workspace].name`. Preserve it across parse/load/make paths without turning it into execution policy.
 
 ## Validate
 

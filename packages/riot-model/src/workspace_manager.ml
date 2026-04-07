@@ -308,6 +308,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
   let all_errors = member_errors @ workspace_errors @ external_errors in
   (
     Workspace.make
+      ?name:workspace_manifest.name
       ~root:workspace_root
       ~packages:all_packages
       ~dependencies:workspace_manifest.dependencies

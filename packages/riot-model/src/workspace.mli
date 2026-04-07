@@ -1,6 +1,7 @@
 open Std
 
 type t = {
+  name: string option;
   root: Path.t;
   target_dir_root: Path.t;
   packages: Package.t list;
@@ -10,6 +11,7 @@ type t = {
   profile_overrides: (string * Package.profile_override) list;
 }
 type manifest = {
+  name: string option;
   members: Path.t list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
@@ -20,6 +22,7 @@ type manifest = {
 val of_toml: Std.Data.Toml.value -> (manifest, string) result
 
 val make:
+  ?name:string ->
   root:Path.t ->
   packages:Package.t list ->
   ?dependencies:Package.dependency list ->

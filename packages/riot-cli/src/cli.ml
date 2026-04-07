@@ -198,6 +198,34 @@ let is_lsp_invocation = fun args ->
   | _program :: rest -> loop rest
   | [] -> false
 
+let render_init_event = function
+  | Riot_init.WorkspaceInitializationStarted { name; target_dir } ->
+      println "";
+      println ("Creating workspace '" ^ name ^ "' in '" ^ Path.to_string target_dir ^ "'");
+      println ""
+  | Riot_init.ScaffoldCreated { path } ->
+      println ("✓ Created " ^ path)
+  | Riot_init.WorkspaceInitializationCompleted { next_steps; package_hints } ->
+      println "";
+      println "✓ Workspace initialized successfully!";
+      println "";
+      println "Next steps:";
+      List.iter (fun step -> println ("  " ^ step)) next_steps;
+      println "";
+      List.iteri
+        (fun idx (kind, command) ->
+          if idx > 0 then
+            println "";
+          let kind_name =
+            match kind with
+            | Riot_init.Library -> "library"
+            | Riot_init.Binary -> "binary"
+          in
+          println ("To add a new " ^ kind_name ^ " package run");
+          println ("  " ^ command))
+        package_hints;
+      println ""
+
 let run = fun ~args ->
   let () = Pkgs_ml.Registry.set_riot_agent (Some (Version_info.agent_string ())) in
   let normalized_args =
@@ -398,7 +426,7 @@ let run = fun ~args ->
           | Some ("yank", yank_matches) ->
               Yank.run yank_matches
           | Some ("init", init_matches) ->
-              Riot_init.run init_matches
+              Riot_init.run ~on_event:render_init_event init_matches
           | Some ("new", new_matches) ->
               New.run new_matches
           | Some ("publish", publish_matches) -> (

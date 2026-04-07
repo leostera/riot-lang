@@ -50,6 +50,7 @@
 43. `riot test --json` and `riot bench --json` should keep structured timing monotonic. Use `emitted_at_us` for generic build/progress events and `started_at_us` / `completed_at_us` / `duration_us` for suite lifecycle events instead of wall-clock timestamps.
 44. `riot check` should resolve explicit file and directory arguments against the process cwd before workspace/package lookup so relative paths keep the same package context as absolute paths.
 45. `riot build` should exit when the build is done. Do not hide synchronous post-build type-cache warmups or second workspace-preparation passes behind the build command.
+46. `riot init` should delegate scaffolding decisions to `riot-init` and only render the structured init event stream in the CLI. Keep package-creation hints and current-directory handling consistent with the emitted events rather than duplicating that policy in `cli.ml`.
 
 ## Validate
 
