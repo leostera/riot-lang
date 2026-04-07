@@ -68,6 +68,50 @@ let add_owner_entry = fun index entry ->
 
 let owner_index_of_entries = fun entries -> entries |> List.fold_left add_owner_entry Owner_map.empty
 
+let current_visible_components = fun env ->
+  {
+    by_name = env.current;
+    by_owner = env.by_owner;
+  }
+
+let merge_visible_by_name = fun dominant rest ->
+  Name_map.fold
+    (fun entry_name rest_entries acc ->
+      let current = Name_map.find_opt entry_name acc |> Option.unwrap_or ~default:[] in
+      Name_map.add entry_name (current @ rest_entries) acc)
+    rest
+    dominant
+
+let merge_visible_by_owner = fun dominant rest ->
+  Owner_map.fold
+    (fun owner_id rest_entries acc ->
+      let current = Owner_map.find_opt owner_id acc |> Option.unwrap_or ~default:Name_map.empty in
+      let merged =
+        Name_map.fold
+          (fun entry_name entry acc ->
+            if Name_map.mem entry_name acc then
+              acc
+            else
+              Name_map.add entry_name entry acc)
+          rest_entries
+          current
+      in
+      Owner_map.add owner_id merged acc)
+    rest
+    dominant
+
+let merge_visible_components = fun dominant rest ->
+  {
+    by_name = merge_visible_by_name dominant.by_name rest.by_name;
+    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner;
+  }
+
+let map_components = fun map_entry components ->
+  {
+    by_name = Name_map.map (List.map map_entry) components.by_name;
+    by_owner = Owner_map.map (Name_map.map map_entry) components.by_owner;
+  }
+
 let qualify_entry = fun root entry ->
   { entry with owner_path = IdentPath.append_path root entry.owner_path }
 
@@ -94,6 +138,18 @@ let of_type_decls = fun type_decls ->
 
 let current_entries = fun current -> Name_map.bindings current |> List.concat_map snd
 
+let rec visible_components = fun env ->
+  let current = current_visible_components env in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_entry; next } ->
+      current
+      |> merge_visible_components (visible_components next |> map_components map_entry)
+
 let entries =
   let rec loop acc env =
     let acc = List.rev_append (current_entries env.current) acc in
@@ -112,17 +168,6 @@ let local_only = fun env ->
     layer = Nothing
   }
 
-let visible_components_of_entries = fun entries ->
-  {
-    by_name =
-      entries |> List.rev |> List.fold_left
-        (fun acc entry ->
-          let existing = Name_map.find_opt (name entry) acc |> Option.unwrap_or ~default:[] in
-          Name_map.add (name entry) (entry :: existing) acc)
-        Name_map.empty;
-    by_owner = owner_index_of_entries entries;
-  }
-
 let map = fun map_entry env ->
   if is_empty env then
     env
@@ -133,7 +178,7 @@ let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     by_owner = Owner_map.empty;
-    layer = Open { root; components = visible_components_of_entries (entries opened); next = env }
+    layer = Open { root; components = visible_components opened; next = env }
   }
 
 let merge_current = fun introduced existing ->

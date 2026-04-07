@@ -65,6 +65,45 @@ let components_of_type_decls = fun type_decls ->
   let by_id = id_index_of_type_decls type_decls in
   { by_name; by_id }
 
+let current_visible_components = fun env ->
+  {
+    by_name =
+      Name_map.fold
+        (fun name type_decls acc ->
+          match type_decls with
+          | type_decl :: _ -> Name_map.add name type_decl acc
+          | [] -> acc)
+        env.current
+        Name_map.empty;
+    by_id = env.by_id;
+  }
+
+let merge_visible_by_name = fun dominant rest ->
+  Name_map.fold
+    (fun name type_decl acc ->
+      if Name_map.mem name acc then
+        acc
+      else
+        Name_map.add name type_decl acc)
+    rest
+    dominant
+
+let merge_visible_by_id = fun dominant rest ->
+  Id_map.fold
+    (fun id type_decl acc ->
+      if Id_map.mem id acc then
+        acc
+      else
+        Id_map.add id type_decl acc)
+    rest
+    dominant
+
+let merge_visible_components = fun dominant rest ->
+  {
+    by_name = merge_visible_by_name dominant.by_name rest.by_name;
+    by_id = merge_visible_by_id dominant.by_id rest.by_id;
+  }
+
 let of_type_decls = fun type_decls ->
   {
     current = current_of_type_decls type_decls;
@@ -73,6 +112,23 @@ let of_type_decls = fun type_decls ->
   }
 
 let current_type_decls = fun current -> Name_map.bindings current |> List.concat_map snd
+
+let rec visible_components = fun env ->
+  let current = current_visible_components env in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_decl; next } ->
+      let next_visible = visible_components next in
+      current
+      |> merge_visible_components
+        {
+          by_name = Name_map.map map_decl next_visible.by_name;
+          by_id = Id_map.map map_decl next_visible.by_id;
+        }
 
 let type_decls =
   let rec loop acc env =
@@ -103,7 +159,7 @@ let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     by_id = Id_map.empty;
-    layer = Open { root; components = components_of_type_decls (type_decls opened); next = env };
+    layer = Open { root; components = visible_components opened; next = env };
   }
 
 let merge_current = fun introduced existing ->

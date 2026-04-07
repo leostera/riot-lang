@@ -63,13 +63,24 @@ let current_of_bindings = fun bindings ->
 let same_of_bindings = fun bindings ->
   bindings |> List.fold_left add_same Id_map.empty
 
-let visible_components_of_bindings = fun bindings ->
-  bindings |> List.rev |> List.fold_left
-    (fun acc binding ->
-      match visible_name_for_lookup (Binding.path binding) with
-      | Some name -> Name_map.add name binding acc
-      | None -> acc)
+let current_visible_components = fun current ->
+  Name_map.fold
+    (fun name bindings acc ->
+      match bindings with
+      | binding :: _ -> Name_map.add name binding acc
+      | [] -> acc)
+    current
     Name_map.empty
+
+let merge_visible_components = fun dominant rest ->
+  Name_map.fold
+    (fun name binding acc ->
+      if Name_map.mem name acc then
+        acc
+      else
+        Name_map.add name binding acc)
+    rest
+    dominant
 
 let of_bindings = fun bindings ->
   {
@@ -90,6 +101,18 @@ let singleton = fun ~make_ident ~name ~scheme ~provenance ->
     [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
 let current_bindings = fun current -> Name_map.bindings current |> List.concat_map snd
+
+let rec visible_components = fun env ->
+  let current = current_visible_components env.current in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_binding; next } ->
+      current
+      |> merge_visible_components (visible_components next |> Name_map.map map_binding)
 
 let bindings =
   let rec loop acc env =
@@ -120,7 +143,7 @@ let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     same = Id_map.empty;
-    layer = Open { root; components = visible_components_of_bindings (bindings opened); next = env };
+    layer = Open { root; components = visible_components opened; next = env };
   }
 
 let merge_current = fun introduced existing ->

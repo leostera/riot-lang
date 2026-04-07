@@ -118,18 +118,34 @@ let visible_components_of_current = fun current ->
     current
     Name_map.empty
 
-let visible_components_of_bindings = fun bindings ->
-  bindings |> List.rev |> List.fold_left
-    (fun acc binding ->
-      Name_map.add binding.name binding.scope acc)
-    Name_map.empty
+let merge_visible_components = fun dominant rest ->
+  Name_map.fold
+    (fun name scope acc ->
+      if Name_map.mem name acc then
+        acc
+      else
+        Name_map.add name scope acc)
+    rest
+    dominant
+
+let rec visible_components = fun env ->
+  let current = visible_components_of_current env.current in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_scope; next } ->
+      current
+      |> merge_visible_components (visible_components next |> Name_map.map map_scope)
 
 let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     layer = Open {
       root;
-      components = visible_components_of_bindings (module_bindings opened);
+      components = visible_components opened;
       next = env
     }
   }

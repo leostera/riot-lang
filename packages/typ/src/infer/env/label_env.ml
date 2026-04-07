@@ -102,6 +102,42 @@ let owner_index_of_record_decls = fun record_decls ->
       Owner_map.add record_decl.owner_type_constructor_id record_decl acc)
     Owner_map.empty
 
+let current_visible_components = fun env ->
+  {
+    by_name = env.current;
+    by_owner = env.by_owner;
+  }
+
+let merge_visible_by_name = fun dominant rest ->
+  Name_map.fold
+    (fun label record_decls acc ->
+      let current = Name_map.find_opt label acc |> Option.unwrap_or ~default:[] in
+      Name_map.add label (current @ record_decls) acc)
+    rest
+    dominant
+
+let merge_visible_by_owner = fun dominant rest ->
+  Owner_map.fold
+    (fun owner_id record_decl acc ->
+      if Owner_map.mem owner_id acc then
+        acc
+      else
+        Owner_map.add owner_id record_decl acc)
+    rest
+    dominant
+
+let merge_visible_components = fun dominant rest ->
+  {
+    by_name = merge_visible_by_name dominant.by_name rest.by_name;
+    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner;
+  }
+
+let map_components = fun map_record_decl components ->
+  {
+    by_name = Name_map.map (List.map map_record_decl) components.by_name;
+    by_owner = Owner_map.map map_record_decl components.by_owner;
+  }
+
 let qualify_record_decl = fun root record_decl ->
   { record_decl with owner_path = IdentPath.append_path root record_decl.owner_path }
 
@@ -124,6 +160,18 @@ let current_record_decls = fun current ->
         let () = Collections.HashSet.insert dedupe owner_id |> ignore in
         true)
 
+let rec visible_components = fun env ->
+  let current = current_visible_components env in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_record_decl; next } ->
+      current
+      |> merge_visible_components (visible_components next |> map_components map_record_decl)
+
 let record_decls =
   let rec loop acc env =
     let acc = List.rev_append (current_record_decls env.current) acc in
@@ -142,12 +190,6 @@ let local_only = fun env ->
     layer = Nothing
   }
 
-let visible_components_of_record_decls = fun record_decls ->
-  {
-    by_name = record_decls |> List.rev |> List.fold_left prepend_record_decl Name_map.empty;
-    by_owner = owner_index_of_record_decls record_decls
-  }
-
 let map = fun map_record_decl env ->
   if is_empty env then
     env
@@ -164,7 +206,7 @@ let add_open = fun ~root opened env ->
     by_owner = Owner_map.empty;
     layer = Open {
       root;
-      components = visible_components_of_record_decls (record_decls opened);
+      components = visible_components opened;
       next = env
     }
   }
