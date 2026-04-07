@@ -79,7 +79,7 @@ This is the current best guess for the next OCaml-parity batches.
 - Riot: `time riot run riot -- check --json | grep check_summary`  
   `158.93s` user, `33.48s` system, `180%` cpu, `1:46.70` wall, summary
   `{"files":1719,"read_failures":1299,"diagnostics":6630,"warnings":2}`
-- commit: `TBD`
+- commit: `ae0be924d`
 ## How to analyze potential next items
 
 1. Analyze the code in ./packages/typ/
