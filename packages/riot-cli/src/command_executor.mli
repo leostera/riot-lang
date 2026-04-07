@@ -1,10 +1,13 @@
 open Std
 
-val execute: command_binary:Path.t -> args:string list -> (unit, exn) result
+(** Execute a compiled Riot command as a subprocess.
 
-(** Execute a command binary by delegating to it as a subprocess.
-    
-    @param command_binary Path to the compiled command binary
-    @param args Command-line arguments to pass to the command
-    @return Ok () on success, Error on failure
+    Use this helper when the CLI needs to hand off control to another command
+    binary while preserving the caller's argument list.
 *)
+val execute:
+  (** Path to the compiled command binary to run. *)
+  command_binary:Path.t ->
+  (** Command-line arguments forwarded to the subprocess. *)
+  args:string list ->
+  (unit, exn) result
