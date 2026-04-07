@@ -1,26 +1,25 @@
 (** Process mailbox for message passing.
 
     The mailbox is multi-producer/single-consumer:
-    - multiple schedulers may [queue] concurrently
-    - only the process owner scheduler should call [next]
-*)
+
+    - multiple schedulers may call [queue] concurrently
+    - only the owner scheduler should call [next] *)
 open Kernel
 
+(** Opaque mailbox type containing queued messages. *)
 type t
 
-(** Opaque mailbox type containing queued messages *)
+(** Create an empty mailbox. *)
 val create: unit -> t
 
-(** Create a new empty mailbox *)
+(** Queue a message envelope from any producer domain. *)
 val queue: t -> Message.envelope -> unit
 
-(** Add a message envelope to the mailbox from any producer domain. *)
+(** Return the next queued message, or [None] if the mailbox is empty. *)
 val next: t -> Message.envelope option
 
-(** Get the next message from the mailbox, returning None if empty *)
+(** Return the current number of queued messages. *)
 val size: t -> int
 
-(** Get the current number of messages in the mailbox *)
+(** Return `true` if the mailbox is empty. *)
 val is_empty: t -> bool
-
-(** Check if the mailbox is empty *)

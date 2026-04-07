@@ -12,11 +12,8 @@
 ## List of interfaces to review
 
 - [ ] packages/actors/src/runtime.mli
-- [ ] packages/actors/src/mailbox.mli
 - [ ] packages/actors/src/actors.mli
-- [ ] packages/actors/src/config.mli
 - [ ] packages/actors/src/scheduler.mli
-- [ ] packages/actors/src/process.mli
 - [ ] packages/actors/src/timer_wheel.mli
 - [ ] packages/blink/src/protocol.mli
 - [ ] packages/blink/src/connection.mli
