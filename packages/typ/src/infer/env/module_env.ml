@@ -168,6 +168,19 @@ let bindings = fun env -> bindings_with_prefix IdentPath.empty env
 let scope_components = fun scope ->
   scope.components
 
+let rec lookup_scope_components = fun scope module_path ->
+  match IdentPath.uncons module_path with
+  | None -> None
+  | Some (name, tail) -> (
+      match Name_map.find_opt name scope.components.by_name with
+      | None -> None
+      | Some nested_scope ->
+          if IdentPath.is_empty tail then
+            Some nested_scope
+          else
+            lookup_scope_components nested_scope tail
+    )
+
 let add_open = fun ~root ?components opened env ->
   {
     current = Name_map.empty;
@@ -351,7 +364,7 @@ let rec lookup = fun env module_path ->
           if IdentPath.is_empty tail then
             Some scope
           else
-            lookup scope.modules tail
+            lookup_scope_components scope tail
       | None -> None
     )
 
