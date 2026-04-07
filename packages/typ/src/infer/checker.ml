@@ -105,7 +105,11 @@ let declared_value_bindings = fun (state: state) (declared_value_item: ItemTree.
     })
 
 let instantiate = fun (state: state) scheme ->
-  TypeScheme.instantiate ~fresh_var:(fun () -> fresh_var state) ~make:(make_type state) scheme
+  TypeScheme.instantiate
+    ~fresh_var:(fun () -> fresh_var state)
+    ~make:(make_type state)
+    ~next_mark:(fun () -> Region.next_mark state.regions)
+    scheme
   |> State.resolve_type state
 
 let substitute_type_vars = fun (state: state) ty mapping ->

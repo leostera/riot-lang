@@ -132,6 +132,14 @@ let pool_level = fun ty -> ty.pool_level
 
 let set_pool_level = fun ty pool_level -> ty.pool_level <- pool_level
 
+let mark = fun ty -> ty.mark
+
+let set_mark = fun ty mark -> ty.mark <- mark
+
+let mark_order = fun ty -> ty.mark_order
+
+let set_mark_order = fun ty mark_order -> ty.mark_order <- mark_order
+
 let generic_level = Int.max_int
 
 let is_generic_level = fun level ->
@@ -468,6 +476,11 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
     | ty :: rest ->
         let ty = prune ty in
         if Int.equal ty.mark generation then
+          loop rest
+        else if ty.level < level then
+          let () =
+            ty.mark <- generation
+          in
           loop rest
         else
           let () =

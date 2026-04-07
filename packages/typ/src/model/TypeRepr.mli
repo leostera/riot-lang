@@ -92,6 +92,14 @@ val pool_level: t -> int option
 
 val set_pool_level: t -> int option -> unit
 
+val mark: t -> int
+
+val set_mark: t -> int -> unit
+
+val mark_order: t -> int
+
+val set_mark_order: t -> int -> unit
+
 val generic_level: int
 
 val is_generic_level: int -> bool
