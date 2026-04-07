@@ -9,7 +9,7 @@ let emit = fun ?on_event event ->
   | Some callback -> callback event
   | None -> ()
 
-let check_all = fun ~workspace ?package_filter ?on_start ?on_result paths ->
+let check_all = fun ~workspace ?package_filter ?on_start ?on_result ?on_event paths ->
   match Scope.resolve_targets ~workspace ?package_filter paths with
   | Error _ as err -> err
   | Ok target_files ->
@@ -21,7 +21,7 @@ let check_all = fun ~workspace ?package_filter ?on_start ?on_result paths ->
         | None -> ()
       in
       let _checked_files =
-        Session.check_target_files ~workspace ~scan_mode
+        Session.check_target_files ~workspace ~scan_mode ?on_event
           ~on_result:(fun checked_file ->
             summary := State.update_checked_summary !summary checked_file;
             match on_result with
@@ -40,7 +40,7 @@ let run = fun ?on_event ~workspace ~paths ~package_filter () ->
         let () = emit ?on_event (Event.File checked_file) in
         Event.diagnostic_events checked_file |> List.iter (emit ?on_event)
       in
-      match check_all ~workspace ?package_filter ~on_start ~on_result paths with
+      match check_all ~workspace ?package_filter ~on_start ~on_result ?on_event paths with
       | Error _ as err -> err
       | Ok { summary; _ } ->
           let () = emit ?on_event (Event.Summary { summary }) in

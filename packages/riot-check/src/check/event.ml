@@ -2,6 +2,8 @@ open Std
 
 type t =
   | Start of { target_count: int }
+  | Package of { package_name: string }
+  | PackageCached of { package_name: string }
   | File of State.checked_file
   | Diagnostic of { path: Path.t; diagnostic_index: int; diagnostic: Diagnostic.t }
   | Summary of { summary: State.checked_summary }
@@ -59,6 +61,14 @@ let to_json = fun ~workspace_root event ->
     ("type", Data.Json.String "check_start");
     ("workspace_root", Data.Json.String (Path.to_string workspace_root));
     ("target_count", Data.Json.Int target_count);
+  ]
+  | Package { package_name } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package");
+    ("package_name", Data.Json.String package_name);
+  ]
+  | PackageCached { package_name } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_cached");
+    ("package_name", Data.Json.String package_name);
   ]
   | File checked_file -> Data.Json.Object [
     ("type", Data.Json.String "check_file");

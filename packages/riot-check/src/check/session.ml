@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+module Check_event = Event
 module Check_error = Error
 open Riot_model
 module Typ_check_result = Typ.Analysis.Check_result
@@ -39,6 +40,11 @@ type checked_group = {
   checked_files: State.checked_file list;
   module_typings: Typ_module_typings.t list;
 }
+
+let emit_event = fun ?on_event event ->
+  match on_event with
+  | Some callback -> callback event
+  | None -> ()
 
 let default_registry_name = "pkgs.ml"
 
@@ -834,7 +840,7 @@ let workspace_dependency_packages = fun ~include_dev (workspace: Workspace.t) (p
       String.compare left.name right.name)
 
 let workspace_module_typings_for_package =
-  let rec load cache typ_store (workspace: Workspace.t) ?(visiting = []) (pkg: Package.t) =
+  let rec load cache typ_store (workspace: Workspace.t) ?on_event ?(visiting = []) (pkg: Package.t) =
     match List.assoc_opt pkg.name !cache with
     | Some typings ->
         typings
@@ -843,11 +849,16 @@ let workspace_module_typings_for_package =
     | None ->
         let dependency_typings = workspace_dependency_packages ~include_dev:false workspace pkg
         |> List.concat_map
-          (fun dependency_pkg -> load cache typ_store workspace ~visiting:((pkg.name :: visiting)) dependency_pkg) in
+          (fun dependency_pkg ->
+            load cache typ_store workspace ?on_event ~visiting:(pkg.name :: visiting) dependency_pkg)
+        in
         let package_typings =
           match load_package_module_typings_from_store typ_store pkg with
-          | Some typings -> typings
+          | Some typings ->
+              let () = emit_event ?on_event (Check_event.PackageCached { package_name = pkg.name }) in
+              typings
           | None ->
+              let () = emit_event ?on_event (Check_event.Package { package_name = pkg.name }) in
               let loaded_modules = merge_loaded_module_typings
                 dependency_typings
                 Typ.Config.default.loaded_modules in
@@ -872,7 +883,7 @@ let workspace_module_typings_for_package =
   in
   load
 
-let typ_config_for_source_group = fun ~workspace ~summary_cache paths ->
+let typ_config_for_source_group = fun ~workspace ~summary_cache ?on_event paths ->
   match paths with
   | [] -> Typ.Config.default |> Typ.Config.with_capture_traces ~capture_traces:false
   | path :: _ -> (
@@ -883,7 +894,8 @@ let typ_config_for_source_group = fun ~workspace ~summary_cache paths ->
           let dependency_typings = workspace_dependency_packages ~include_dev:true workspace pkg
           |> List.concat_map
             (fun dependency_pkg ->
-              workspace_module_typings_for_package summary_cache typ_store workspace dependency_pkg) in
+              workspace_module_typings_for_package summary_cache typ_store workspace ?on_event dependency_pkg)
+          in
           let loaded_modules = merge_loaded_module_typings dependency_typings Typ.Config.default.loaded_modules in
           Typ.Config.default
           |> Typ.Config.with_loaded_modules ~loaded_modules
@@ -1053,7 +1065,7 @@ let ordered_grouped_root_targets_for_session = fun prepared_by_path group_target
   |> List.filter (fun (module_name, _) -> not (List.mem module_name ordered_module_names)) in
   ordered_groups @ remaining_groups
 
-let check_target_files = fun ~workspace ~scan_mode ?on_result target_files ->
+let check_target_files = fun ~workspace ~scan_mode ?on_event ?on_result target_files ->
   let summary_cache = ref [] in
   let checked_by_path = ref [] in
   let emit checked_file =
@@ -1066,7 +1078,7 @@ let check_target_files = fun ~workspace ~scan_mode ?on_result target_files ->
     grouped_targets_for_session ~workspace target_files
     |> List.iter
       (fun (_, group_targets) ->
-        let config = typ_config_for_source_group ~workspace ~summary_cache group_targets in
+        let config = typ_config_for_source_group ~workspace ~summary_cache ?on_event group_targets in
         let emit_unreadable reason =
           group_targets |> List.iter
             (fun path -> emit (State.Unreadable { path; reason }))
@@ -1077,6 +1089,7 @@ let check_target_files = fun ~workspace ~scan_mode ?on_result target_files ->
             match Workspace.find_package_for_path workspace ~path with
             | None -> emit_unreadable "planner-backed source preparation requires a workspace package"
             | Some pkg -> (
+                let () = emit_event ?on_event (Check_event.Package { package_name = pkg.name }) in
                 match package_typ_sources_from_planner ~include_dev:true ~workspace ~pkg with
                 | None -> emit_unreadable ("failed to prepare planner-owned sources for package " ^ pkg.name)
                 | Some ordered_sources ->

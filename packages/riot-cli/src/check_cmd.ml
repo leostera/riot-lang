@@ -1,6 +1,9 @@
 open Std
 module Check = Riot_check.Check
 
+let blue_bold = "\027[1;34m"
+let reset = "\027[0m"
+
 let default_stdout = fun buf ->
   if String.ends_with ~suffix:"\n" buf then
     println (String.sub buf 0 (String.length buf - 1))
@@ -24,10 +27,19 @@ let fail = fun ?(stderr = default_stderr) err ->
 let emit_json = fun ~stdout ~workspace_root event ->
   stdout (Data.Json.to_string (Check.Event.to_json ~workspace_root event) ^ "\n")
 
+let package_progress_line = fun label package_name ->
+  "   " ^ blue_bold ^ label ^ " " ^ package_name ^ reset ^ "\n"
+
 let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
   match event with
   | Check.Event.Start _ ->
       ()
+  | Check.Event.Package { package_name } ->
+      if not quiet then
+        stderr (package_progress_line "Check" package_name)
+  | Check.Event.PackageCached { package_name } ->
+      if not quiet then
+        stderr (package_progress_line "CheckCached" package_name)
   | Check.Event.File checked_file ->
       let rendered = Check.Reporter.render_checked_file ~workspace_root checked_file in
       List.iter stdout rendered.stdout;

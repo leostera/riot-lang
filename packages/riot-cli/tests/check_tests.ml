@@ -50,6 +50,12 @@ let make_capture_writer = fun () ->
   let chunks = ref [] in
   ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.rev |> String.concat "")
 
+let blue_bold = "\027[1;34m"
+let reset = "\027[0m"
+
+let package_progress_line = fun label package_name ->
+  "   " ^ blue_bold ^ label ^ " " ^ package_name ^ reset ^ "\n"
+
 let parse_jsonl = fun output ->
   output
   |> String.split_on_char '\n'
@@ -230,7 +236,7 @@ let test_check_human_output_snapshot = fun ctx ->
                 Test.Snapshot.assert_text ~ctx ~actual:(stdout_contents ())
           ))
 
-let test_check_success_is_silent = fun _ctx ->
+let test_check_success_emits_package_progress = fun _ctx ->
   with_tempdir_result "riot_check_success_silent"
     (fun tmpdir ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
@@ -247,7 +253,7 @@ let test_check_success_is_silent = fun _ctx ->
           let stderr, stderr_contents = make_capture_writer () in
           Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"check simple file";
           Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
-          Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+          Test.assert_equal ~expected:(package_progress_line "Check" "demo") ~actual:(stderr_contents ());
           Ok ())
 
 let test_check_package_filter_limits_workspace_scan = fun _ctx ->
@@ -459,6 +465,119 @@ let test_check_package_filter_loads_workspace_dependency_summaries = fun _ctx ->
               Test.assert_equal ~expected:0 ~actual:diagnostic_count;
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ())
+
+let test_check_package_filter_emits_cached_dependency_package_events = fun _ctx ->
+  with_tempdir_result "riot_check_package_events_json"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let std_root = Path.(workspace_root / Path.v "packages/std") in
+      let tty_root = Path.(workspace_root / Path.v "packages/tty") in
+      let std_source = Path.(std_root / Path.v "src/std.ml") in
+      let tty_source = Path.(tty_root / Path.v "src/tty.ml") in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package
+            ~name:"std"
+            ~path:std_root
+            ~relative_path:(Path.v "packages/std")
+            ~sources:{ empty_sources with src = [ Path.v "src/std.ml" ] }
+            ();
+          make_package
+            ~name:"tty"
+            ~path:tty_root
+            ~relative_path:(Path.v "packages/tty")
+            ~dependencies:[ make_dependency "std" ]
+            ~sources:{ empty_sources with src = [ Path.v "src/tty.ml" ] }
+            ();
+        ] in
+      match write_file std_source "let twice x = x + x\n" with
+      | Error err -> Error err
+      | Ok () -> (
+          match write_file tty_source "let answer = Std.twice 21\n" with
+          | Error err -> Error err
+          | Ok () ->
+              let prime_matches =
+                parse_check [ "check"; "--json"; "-p"; "tty" ]
+                |> Result.expect ~msg:"parse priming check args"
+              in
+              let prime_stdout, _prime_stdout_contents = make_capture_writer () in
+              let prime_stderr, _prime_stderr_contents = make_capture_writer () in
+              Riot_cli.Check_cmd.run ~workspace ~stdout:prime_stdout ~stderr:prime_stderr prime_matches
+              |> Result.expect ~msg:"priming check should persist dependency typings";
+              let matches = parse_check [ "check"; "--json"; "-p"; "tty" ] |> Result.expect ~msg:"parse check args" in
+              let stdout, stdout_contents = make_capture_writer () in
+              let stderr, stderr_contents = make_capture_writer () in
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed";
+              let events = parse_jsonl (stdout_contents ()) in
+              let package_events =
+                events
+                |> List.filter_map
+                  (fun json ->
+                    let package_name =
+                      match Data.Json.get_field "package_name" json with
+                      | Some (Data.Json.String package_name) -> Some package_name
+                      | _ -> None
+                    in
+                    match Data.Json.get_field "type" json with
+                    | Some (Data.Json.String "check_package") -> package_name |> Option.map (fun name -> ("check_package", name))
+                    | Some (Data.Json.String "check_package_cached") ->
+                        package_name |> Option.map (fun name -> ("check_package_cached", name))
+                    | _ -> None)
+              in
+              Test.assert_equal
+                ~expected:[ ("check_package_cached", "std"); ("check_package", "tty") ]
+                ~actual:package_events;
+              Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+              Ok ()
+        ))
+
+let test_check_package_filter_human_output_shows_cached_dependency_progress = fun _ctx ->
+  with_tempdir_result "riot_check_package_events_human"
+    (fun tmpdir ->
+      let workspace_root = Path.(tmpdir / Path.v "workspace") in
+      let std_root = Path.(workspace_root / Path.v "packages/std") in
+      let tty_root = Path.(workspace_root / Path.v "packages/tty") in
+      let std_source = Path.(std_root / Path.v "src/std.ml") in
+      let tty_source = Path.(tty_root / Path.v "src/tty.ml") in
+      let workspace = make_workspace
+        workspace_root
+        [
+          make_package
+            ~name:"std"
+            ~path:std_root
+            ~relative_path:(Path.v "packages/std")
+            ~sources:{ empty_sources with src = [ Path.v "src/std.ml" ] }
+            ();
+          make_package
+            ~name:"tty"
+            ~path:tty_root
+            ~relative_path:(Path.v "packages/tty")
+            ~dependencies:[ make_dependency "std" ]
+            ~sources:{ empty_sources with src = [ Path.v "src/tty.ml" ] }
+            ();
+        ] in
+      match write_file std_source "let twice x = x + x\n" with
+      | Error err -> Error err
+      | Ok () -> (
+          match write_file tty_source "let answer = Std.twice 21\n" with
+          | Error err -> Error err
+          | Ok () ->
+              let prime_matches = parse_check [ "check"; "-p"; "tty" ] |> Result.expect ~msg:"parse priming check args" in
+              let prime_stdout, _prime_stdout_contents = make_capture_writer () in
+              let prime_stderr, _prime_stderr_contents = make_capture_writer () in
+              Riot_cli.Check_cmd.run ~workspace ~stdout:prime_stdout ~stderr:prime_stderr prime_matches
+              |> Result.expect ~msg:"priming check should persist dependency typings";
+              let matches = parse_check [ "check"; "-p"; "tty" ] |> Result.expect ~msg:"parse check args" in
+              let stdout, stdout_contents = make_capture_writer () in
+              let stderr, stderr_contents = make_capture_writer () in
+              Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed";
+              Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
+              Test.assert_equal
+                ~expected:((package_progress_line "CheckCached" "std") ^ (package_progress_line "Check" "tty"))
+                ~actual:(stderr_contents ());
+              Ok ()
+        ))
 
 let test_check_package_filter_loads_external_dependency_summaries = fun _ctx ->
   with_tempdir_result "riot_check_external_package_dependencies"
@@ -1691,11 +1810,13 @@ let tests =
     case "check: parse without path" test_check_accepts_no_path_without_explain;
     case "check: json streams a single explicit file without duplicates" test_check_json_streams_single_explicit_file_without_duplicates;
     case "check: human output snapshot" test_check_human_output_snapshot;
-    case "check: clean success is silent" test_check_success_is_silent;
+    case "check: clean success shows package progress" test_check_success_emits_package_progress;
     case "check: package filter limits workspace scan" test_check_package_filter_limits_workspace_scan;
     case "check: package filter uses sibling source exports during package scans" test_check_package_filter_uses_package_session_for_cross_file_exports;
     case "check: package filter uses sibling source record types during package scans" test_check_package_filter_uses_package_session_for_cross_file_record_types;
     case "check: package filter loads workspace dependency summaries" test_check_package_filter_loads_workspace_dependency_summaries;
+    case "check: package filter emits cached dependency package events" test_check_package_filter_emits_cached_dependency_package_events;
+    case "check: package filter human output shows cached dependency progress" test_check_package_filter_human_output_shows_cached_dependency_progress;
     case "check: package filter loads external dependency summaries" test_check_package_filter_loads_external_dependency_summaries;
     case "check: package filter persists module typings to store" test_check_package_filter_persists_module_typings_to_store;
     case "check: package filter persists interface-shaped module typings" test_check_package_filter_persists_interface_shaped_module_typings;

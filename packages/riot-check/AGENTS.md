@@ -20,7 +20,10 @@ typing flow.
 7. Keep `riot-check` event-driven. The library should emit structured events
    and typed errors; `riot-cli` decides how those events are rendered in human,
    JSON, or quiet modes.
-8. `riot check` is workspace-scoped. Do not reintroduce standalone
+8. Package-level check progress belongs in the event stream too. When `riot
+   check` reuses persisted package typings, emit a cache-hit package event
+   instead of silently skipping that package.
+9. `riot check` is workspace-scoped. Do not reintroduce standalone
    current-directory checking or side-channel warmup APIs such as
    `populate_workspace_typings`.
 
