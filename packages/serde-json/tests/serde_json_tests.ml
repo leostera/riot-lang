@@ -142,7 +142,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
         ~actual
         ~message:"expected serde-json decoder to parse a record and skip unknown fields"
   | Error err ->
-      Error ("decode failed: " ^ error_to_string err)
+      Error ("decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_unit_variant = fun _ctx ->
   let input =
@@ -162,7 +162,7 @@ let test_decodes_unit_variant = fun _ctx ->
         ~actual
         ~message:"expected serde-json decoder to handle string-form unit variants"
   | Error err ->
-      Error ("unit-variant decode failed: " ^ error_to_string err)
+      Error ("unit-variant decode failed: " ^ Serde.Error.to_string err)
 
 let test_matches_shared_prefix_fields = fun _ctx ->
   let input = {|{"help":1,"hello":2,"hellsinborg":3}|} in
@@ -174,7 +174,7 @@ let test_matches_shared_prefix_fields = fun _ctx ->
         ~actual
         ~message:"expected serde-json decoder to distinguish shared-prefix field names"
   | Error err ->
-      Error ("shared-prefix decode failed: " ^ error_to_string err)
+      Error ("shared-prefix decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_numeric_scalars = fun _ctx ->
   let expect_ok = fun decode input expected message ->
@@ -184,7 +184,7 @@ let test_decodes_numeric_scalars = fun _ctx ->
     | Ok _ ->
         Error message
     | Error err ->
-        Error ("numeric decode failed: " ^ error_to_string err)
+        Error ("numeric decode failed: " ^ Serde.Error.to_string err)
   in
   let* () =
     expect_ok
