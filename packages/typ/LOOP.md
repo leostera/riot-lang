@@ -25,12 +25,11 @@ now".
 
 This is the current best guess for the next OCaml-parity batches.
 
-- [x] make `Module_env` bindings carry authoritative per-namespace component
-  tables so `add_open` and dotted lookup can consume them directly, without
-  recomputing scope views or adding scope-wide cache plumbing
-- [x] make `Module_env` a closer analogue of OCaml component tables
-- [x] make dotted lookup always go through module components instead of fallback
-  path rewriting
+- [ ] make `Summary2` the only persisted/replay env summary format and delete
+  any remaining legacy-summary conversion paths outside `Infer`
+- [ ] make snapshot and module-typing hydration reuse `Summary2` / `Env`
+  replay directly instead of re-qualifying exported strings back into ambient
+  envs
 - [ ] push `IdentPath` to lowering, persistence, and printing boundaries only
 - [ ] canonicalize named type constructors across lowering and loaded summaries
   so unify no longer needs mixed resolved/unresolved name-path fallback
@@ -57,20 +56,32 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] only after the above, run a fresh profiler and treat the remaining cost as
   constant-factor work instead of missing-algorithm work
 
-- [ ] memoize `env_of_summary` and `env_of_summary_relative` replay so repeated
-  replay of equivalent summary/base pairs does not rebuild equivalent
-  environments repeatedly
+- [ ] make `Env` replay caches query-local so no summary replay cache state can
+  leak across snapshot/query boundaries
+- [ ] benchmark and then remove any remaining duplicate analysis work between
+  `Batch.check_source`, `Session.prepare_snapshot`, and fallback direct analysis
 
-- [ ] centralize `scope.components` propagation in Module_env operations so
-  `merge_scope`, `module_bindings`, and any future scope transforms never
-  recompute visible components opportunistically when input scopes are already
-  up-to-date
-- [ ] cache a root module component index for `Module_env.lookup` so dotted lookup
-  never starts with first-segment fallback traversal
-- [ ] review: make `Module_env` component tables include explicit namespace buckets
-  (values/types/constructors/labels/modules) and avoid full `components.by_name`
-  scans in fallback cases (align with OCaml component-table structure more
-  directly)
+## Last Checkpoint: `replace legacy Env with Summary2 and Env2 core`
+
+- status: complete
+- Orcaset: `time riot check --json | grep check_summary`  
+  `3.70s` user, `0.56s` system, `125%` cpu, `3.389s` wall, summary
+  `{"files":31,"read_failures":6,"diagnostics":829,"warnings":8}`
+- Riot: `time riot run riot -- check --json | grep check_summary`  
+  `152.61s` user, `33.23s` system, `236%` cpu, `1:18.43` wall, summary
+  `{"files":1723,"read_failures":1301,"diagnostics":6691,"warnings":2}`
+- commit: `TBD`
+
+## Last Checkpoint: `cache a root module component index for Module_env.lookup`
+
+- status: complete
+- Orcaset: `time riot check --json | grep check_summary`  
+  `3.53s` user, `0.45s` system, `136%` cpu, `2.909s` wall, summary
+  `{"files":31,"read_failures":6,"diagnostics":834,"warnings":8}`
+- Riot: `time riot run riot -- check --json | grep check_summary`  
+  `194.96s` user, `50.32s` system, `240%` cpu, `1:41.99` wall, summary
+  `{"files":1719,"read_failures":1299,"diagnostics":6689,"warnings":2}`
+- commit: unable to create `.git/index.lock` in this environment
 
 ## Last Checkpoint: `make Module_env a closer analogue of OCaml component tables`
 

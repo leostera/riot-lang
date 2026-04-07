@@ -1603,7 +1603,7 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () = set_visible_type_decls state type_decls in
+            let type_decls = set_visible_type_decls state type_decls in
             loop export_state type_decls scope rest
         | ItemTree.Exception exception_item ->
             let introduced = exception_bindings state exception_item in
@@ -1762,7 +1762,7 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () = set_visible_type_decls state type_decls in
+            let type_decls = set_visible_type_decls state type_decls in
             loop export_state type_decls scope rest
         | ItemTree.ModuleAlias module_alias_item ->
             let item_env = Env.for_item_scope export_state scope ~scope_path:module_alias_item.scope_path in
@@ -1828,7 +1828,7 @@ let infer_file = fun ~config file ->
                 :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
-            let () = set_visible_type_decls state type_decls in
+            let type_decls = set_visible_type_decls state type_decls in
             loop export_state type_decls scope rest
         | ItemTree.Unsupported unsupported_item ->
             let () =
@@ -1847,7 +1847,7 @@ let infer_file = fun ~config file ->
             loop export_state type_decls scope rest
       )
   in
-  let (exports, type_decls) = loop initial_env [] Env.empty_scope (ItemTree.items file.item_tree) in
+  let (exports, type_decls) = loop initial_env [] Env.empty_item_scope (ItemTree.items file.item_tree) in
   {
     exports = Env.export_with_forced_names
       ~config:state.config

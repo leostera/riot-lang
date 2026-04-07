@@ -172,6 +172,47 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   let resolve_type = resolve_type_with
     ~make:TypeRepr.of_desc
     ~resolve_named_type_constructor in
+  let canonicalize_type_decl = fun (type_decl: FileSummary.type_decl) ->
+    let declaration = type_decl.declaration in
+    let manifest =
+      match declaration.manifest with
+      | None -> None
+      | Some (TypeDecl.Alias manifest_type) ->
+          Some (TypeDecl.Alias (resolve_type manifest_type))
+      | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
+          Some (TypeDecl.PolyVariant {
+            bound;
+            tags = List.map
+              (fun (tag: TypeDecl.poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type -> {
+                  tag with
+                  payload_type = Some (resolve_type payload_type);
+                }
+                | None -> tag)
+              tags;
+            inherited = List.map resolve_type inherited;
+          })
+    in
+    let constructors = declaration.constructors
+      |> List.map (fun (constructor: TypeDecl.constructor) ->
+        let body = TypeScheme.body constructor.scheme in
+        let body' = resolve_type body in
+        if Std.Ptr.equal body body' then
+          constructor
+        else
+          { constructor with scheme = TypeScheme.of_type body' })
+    in
+    let labels = declaration.labels
+      |> List.map (fun (label: TypeDecl.label) ->
+        let field_type' = resolve_type label.field_type in
+        if Std.Ptr.equal label.field_type field_type' then
+          label
+        else
+          { label with field_type = field_type' })
+    in
+    { type_decl with declaration = { declaration with manifest; constructors; labels } }
+  in
   let rec parameter_variances_for_named_type visiting type_constructor_id name arguments =
     let default =
       List.map (fun _ -> TypeDecl.Invariant) arguments
@@ -326,12 +367,13 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   in
   type_decls |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
+      let canonical_type_decl = canonicalize_type_decl type_decl in
       let param_variances =
-        match cached_param_variances type_decl.declaration.type_constructor_id with
+        match cached_param_variances canonical_type_decl.declaration.type_constructor_id with
         | Some param_variances -> param_variances
-        | None -> declaration_param_variances (Collections.HashSet.create ()) type_decl
+        | None -> declaration_param_variances (Collections.HashSet.create ()) canonical_type_decl
       in
-      { type_decl with declaration = { type_decl.declaration with param_variances } })
+      { canonical_type_decl with declaration = { canonical_type_decl.declaration with param_variances } })
 
 let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
 
@@ -406,9 +448,12 @@ let with_local_level_gen = fun (state: t) f ->
   Region.with_region state.regions f
 
 let set_visible_type_decls = fun (state: t) type_decls ->
-  let () =
-    state.visible_type_decls <-
-      bind_type_decls state.config.ambient_type_decls type_decls
-      |> annotate_type_decl_variances ~cached_by_id:state.visible_type_decl_by_id
+  let type_decls =
+    annotate_type_decl_variances ~cached_by_id:state.visible_type_decl_by_id type_decls
   in
-  rebuild_visible_type_decl_indexes state
+  let visible_type_decls =
+    bind_type_decls state.config.ambient_type_decls type_decls
+  in
+  let () = state.visible_type_decls <- visible_type_decls in
+  let () = rebuild_visible_type_decl_indexes state in
+  type_decls

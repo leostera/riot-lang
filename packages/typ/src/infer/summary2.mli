@@ -1,9 +1,29 @@
-module Legacy_env = Env
-
 open Std
 open Model
 
-type bindings = Legacy_env.Binding.t list
+type ident = {
+  local_id: int;
+  name: string;
+}
+
+type provenance =
+  | Lowered_pattern of PatId.t
+  | Prelude
+  | Ambient
+  | Type_constructor of { type_name: string; scope_path: IdentPath.t }
+  | Exception of { name: string; scope_path: IdentPath.t }
+  | Declared_value of { name: string; scope_path: IdentPath.t }
+  | Included of { module_path: IdentPath.t }
+  | Module_alias of { alias_name: string; module_path: IdentPath.t }
+
+type binding = {
+  ident: ident;
+  path: IdentPath.t;
+  scheme: TypeScheme.t;
+  provenance: provenance;
+}
+
+type bindings = binding list
 
 type delta = {
   bindings: bindings;
@@ -29,7 +49,3 @@ val bind_in_scope: t -> scope_path:IdentPath.t -> t -> t
 val open_: t -> IdentPath.t -> t
 
 val qualify: t -> scope_path:IdentPath.t -> t
-
-val of_legacy_summary: Legacy_env.summary -> t
-
-val to_legacy_summary: t -> Legacy_env.summary
