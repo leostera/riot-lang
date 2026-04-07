@@ -53,7 +53,7 @@ let summary_to_json = fun (summary: Runner.summary) ->
   ]
 
 let timestamp_field = fun () ->
-  ("timestamp", Data.Json.String (Datetime.now_utc () |> Datetime.to_iso8601))
+  ("timestamp", Data.Json.String (DateTime.now_utc () |> DateTime.to_iso8601))
 
 let event_to_json = fun ~root ->
   function

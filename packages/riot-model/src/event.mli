@@ -180,7 +180,7 @@ type kind =
   | WritingFile of { path: string }
 (** Create a new event with current timestamp *)
 type t = {
-  timestamp: Std.Datetime.t;
+  timestamp: Std.DateTime.t;
   session_id: Session_id.t;
   level: level;
   kind: kind;

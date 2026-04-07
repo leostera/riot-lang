@@ -380,7 +380,7 @@ module Driver = struct
           before ^ "T" ^ after ^ "Z"
       | None -> str ^ "Z"
     in
-    Datetime.parse iso_str
+    DateTime.parse iso_str
 
   (* Parse PostgreSQL TIMESTAMPTZ format: "2025-11-21 14:30:00.123456+00" or with TZ name *)
 
@@ -396,7 +396,7 @@ module Driver = struct
           before ^ "T" ^ after
       | None -> str
     in
-    Datetime.parse iso_str
+    DateTime.parse iso_str
 
   let decode_value = fun (field: Protocol.Row.field) (value: string) ->
     match field.type_oid with
@@ -456,14 +456,14 @@ module Driver = struct
     | Protocol.TypeOid.Unknown _ ->
         Sqlx_driver.Value.string value
 
-  (* Format Datetime.t to PostgreSQL timestamp format *)
+  (* Format DateTime.t to PostgreSQL timestamp format *)
 
   let datetime_to_pg_format = fun dt ->
     let pad n width =
       let s = string_of_int n in
       String.make (max 0 (width - String.length s)) '0' ^ s
     in
-    let micros, _precision = dt.Datetime.microseconds in
+    let micros, _precision = dt.DateTime.microseconds in
     (* Format: YYYY-MM-DD HH:MM:SS.microseconds *)
     pad dt.year 4
     ^ "-"

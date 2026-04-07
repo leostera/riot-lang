@@ -23,8 +23,8 @@ let rec value_to_string = fun (v: Spec.value) ->
       string_of_float f
   | Spec.Uri uri ->
       Net.Uri.to_string uri
-  | Spec.Datetime dt ->
-      Datetime.to_iso8601 dt
+  | Spec.DateTime dt ->
+      DateTime.to_iso8601 dt
   | Spec.Path p ->
       Path.to_string p
   | Spec.Uuid uuid ->
@@ -57,8 +57,8 @@ let rec value_equal = fun (v1: Spec.value) (v2: Spec.value) ->
       f1 = f2
   | Spec.Uri u1, Spec.Uri u2 ->
       Net.Uri.equal u1 u2
-  | Spec.Datetime d1, Spec.Datetime d2 ->
-      Datetime.equal d1 d2
+  | Spec.DateTime d1, Spec.DateTime d2 ->
+      DateTime.equal d1 d2
   | Spec.Path p1, Spec.Path p2 ->
       Path.equal p1 p2
   | Spec.Uuid u1, Spec.Uuid u2 ->
@@ -260,11 +260,11 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
               | Some d -> Ok (Spec.Uri d)
               | None -> Error (field_name ^ ": no default")
       )
-    | Datetime { default } -> (
+    | DateTime { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match Datetime.parse s with
-            | Ok dt -> Ok (Spec.Datetime dt)
+            match DateTime.parse s with
+            | Ok dt -> Ok (Spec.DateTime dt)
             | Error _ -> Error (field_name ^ ": invalid datetime: " ^ s)
           )
         | Some _ ->
@@ -274,7 +274,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
               Error (field_name ^ ": required field missing")
             else
               match default with
-              | Some d -> Ok (Spec.Datetime d)
+              | Some d -> Ok (Spec.DateTime d)
               | None -> Error (field_name ^ ": no default")
       )
     | Path { default } -> (

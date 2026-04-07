@@ -1,5 +1,4 @@
 open Std
-module DateTime = Datetime
 
 let test_parse_utc_basic = fun _ctx ->
   match DateTime.parse "2025-08-27T14:07:31Z" with

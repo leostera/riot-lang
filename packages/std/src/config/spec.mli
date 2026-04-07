@@ -95,7 +95,7 @@ type value =
   (** IEEE 754 double-precision floating point *)
   | Uri of Net.Uri.t
   (** Parsed URI (e.g., "https://api.example.com/v1") *)
-  | Datetime of Datetime.t
+  | DateTime of DateTime.t
   (** Parsed datetime (ISO 8601 format) *)
   | Path of Path.t
   (** File system path *)
@@ -274,7 +274,7 @@ val uri: ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> field
     @param help Human-readable description
     @param name Field name
 *)
-val datetime: ?default:Datetime.t -> ?required:bool -> ?help:string -> string -> field_spec
+val datetime: ?default:DateTime.t -> ?required:bool -> ?help:string -> string -> field_spec
 
 (** Define a datetime field.
     
@@ -544,7 +544,7 @@ type field_type =
   | Bool of { default: bool option }
   | Float of { default: float option }
   | Uri of { default: Net.Uri.t option }
-  | Datetime of { default: Datetime.t option }
+  | DateTime of { default: DateTime.t option }
   | Path of { default: Path.t option }
   | Uuid of { default: Uuid.t option }
   | List of { item_spec: field; default: value list option }

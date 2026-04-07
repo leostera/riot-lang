@@ -21,7 +21,7 @@ open Minttea
 (* Model: Current time and timer reference *)
 
 type model = {
-  time: Datetime.t;
+  time: DateTime.t;
   timer_ref: Timer.id Ref.t;
 }
 
@@ -109,7 +109,7 @@ let update = fun event model ->
   | Event.Timer ref when Ref.equal ref model.timer_ref ->
       (* Update time and reset timer *)
       let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
-      let new_model = { time = Datetime.now (); timer_ref } in
+      let new_model = { time = DateTime.now (); timer_ref } in
       (new_model, timer_cmd)
   | _ ->
       (model, Command.Noop)
@@ -182,6 +182,6 @@ let app = App.make ~init ~update ~view ()
 (* Run it *)
 
 let () =
-  let initial_model = { time = Datetime.now (); timer_ref = Ref.make () } in
+  let initial_model = { time = DateTime.now (); timer_ref = Ref.make () } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

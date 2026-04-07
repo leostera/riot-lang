@@ -28,7 +28,7 @@ let build_failed_event_to_json = fun session_id failed_at errors ->
   Data.Json.Object [
     ("type", Data.Json.String "BuildFailed");
     ("session_id", Data.Json.String (Riot_model.Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
+    ("failed_at", Data.Json.String (DateTime.to_iso8601 failed_at));
     ("errors", package_results_to_json errors);
   ]
 
@@ -36,7 +36,7 @@ let build_completed_event_to_json = fun session_id completed_at stats results ->
   Data.Json.Object [
     ("type", Data.Json.String "BuildCompleted");
     ("session_id", Data.Json.String (Riot_model.Session_id.to_string session_id));
-    ("completed_at", Data.Json.String (Datetime.to_iso8601 completed_at));
+    ("completed_at", Data.Json.String (DateTime.to_iso8601 completed_at));
     ("stats", build_stats_to_json stats);
     ("results", package_results_to_json results);
   ]
@@ -45,7 +45,7 @@ let planning_failed_event_to_json = fun session_id failed_at reason ->
   Data.Json.Object [
     ("type", Data.Json.String "PlanningFailed");
     ("session_id", Data.Json.String (Riot_model.Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
+    ("failed_at", Data.Json.String (DateTime.to_iso8601 failed_at));
     ("reason", Data.Json.String reason);
   ]
 
@@ -53,7 +53,7 @@ let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
   Data.Json.Object [
     ("type", Data.Json.String "CycleDetected");
     ("session_id", Data.Json.String (Riot_model.Session_id.to_string session_id));
-    ("detected_at", Data.Json.String (Datetime.to_iso8601 detected_at));
+    ("detected_at", Data.Json.String (DateTime.to_iso8601 detected_at));
     ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
   ]
 

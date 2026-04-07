@@ -9,7 +9,7 @@ type value =
   | Bool of bool
   | Float of float
   | Uri of Net.Uri.t
-  | Datetime of Datetime.t
+  | DateTime of DateTime.t
   | Path of Path.t
   | Uuid of Uuid.t
   | List of value list
@@ -25,7 +25,7 @@ type field_type =
   | Bool of { default: bool option }
   | Float of { default: float option }
   | Uri of { default: Net.Uri.t option }
-  | Datetime of { default: Datetime.t option }
+  | DateTime of { default: DateTime.t option }
   | Path of { default: Path.t option }
   | Uuid of { default: Uuid.t option }
   | List of { item_spec: field; default: value list option }
@@ -135,7 +135,7 @@ let uri = fun ?default ?(required = false) ?help name ->
 let datetime = fun ?default ?(required = false) ?help name ->
   {
     name;
-    field_type = Datetime { default };
+    field_type = DateTime { default };
     required;
     help;
     allowed_values = None;

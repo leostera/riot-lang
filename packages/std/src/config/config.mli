@@ -374,7 +374,7 @@ val get_uri: Spec.value -> string -> Net.Uri.t
     
     @raise Panic if key not found or value is not a URI
 *)
-val get_datetime: Spec.value -> string -> Datetime.t
+val get_datetime: Spec.value -> string -> DateTime.t
 
 (** Extract a datetime value from a map.
     
@@ -493,9 +493,9 @@ val as_uri: Spec.value -> Net.Uri.t
     
     @raise Panic if the value is not a URI
 *)
-val as_datetime: Spec.value -> Datetime.t
+val as_datetime: Spec.value -> DateTime.t
 
-(** Extract the datetime from a Datetime value.
+(** Extract the datetime from a DateTime value.
     
     @raise Panic if the value is not a datetime
 *)

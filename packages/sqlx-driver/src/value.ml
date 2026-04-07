@@ -10,8 +10,8 @@ type t =
   | String of string
   | Bool of bool
   | Bytes of bytes
-  | Timestamp of Datetime.t
-  | TimestampWithTimezone of Datetime.t
+  | Timestamp of DateTime.t
+  | TimestampWithTimezone of DateTime.t
   | Date of int * int * int
   | Time of int * int * int * int
   | Uuid of string
@@ -126,9 +126,9 @@ let to_string = function
   | Bytes b ->
       "<bytes:" ^ string_of_int (Bytes.length b) ^ ">"
   | Timestamp dt ->
-      Datetime.to_iso8601 dt
+      DateTime.to_iso8601 dt
   | TimestampWithTimezone dt ->
-      Datetime.to_iso8601 dt
+      DateTime.to_iso8601 dt
   | Date (y, m, d) ->
       let pad n width =
         let s = string_of_int n in
@@ -158,8 +158,8 @@ let equal = fun a b ->
   | String x, String y -> x = y
   | Bool x, Bool y -> x = y
   | Bytes x, Bytes y -> Bytes.equal x y
-  | Timestamp x, Timestamp y -> Datetime.equal x y
-  | TimestampWithTimezone x, TimestampWithTimezone y -> Datetime.equal x y
+  | Timestamp x, Timestamp y -> DateTime.equal x y
+  | TimestampWithTimezone x, TimestampWithTimezone y -> DateTime.equal x y
   | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
   | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> h1 = h2
   && min1 = min2
@@ -193,9 +193,9 @@ let compare = fun a b ->
   | Bytes x, Bytes y ->
       Bytes.compare x y
   | Timestamp x, Timestamp y ->
-      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
+      Time.SystemTime.compare (DateTime.to_system_time x) (DateTime.to_system_time y)
   | TimestampWithTimezone x, TimestampWithTimezone y ->
-      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
+      Time.SystemTime.compare (DateTime.to_system_time x) (DateTime.to_system_time y)
   | Date (y1, m1, d1), Date (y2, m2, d2) -> (
       match Int.compare y1 y2 with
       | 0 -> (

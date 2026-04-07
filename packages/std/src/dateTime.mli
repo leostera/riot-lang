@@ -328,7 +328,7 @@ val parse: string -> (t, error) result
         | Invalid_time msg -> "Invalid time: " ^ msg
         | Invalid_timezone msg -> "Invalid timezone: " ^ msg)
 
-    (* Datetime with timezone offset *)
+    (* DateTime with timezone offset *)
     let dt = DateTime.parse "2025-08-27T14:07:31+05:30" |> Result.unwrap in
     (* dt.time_zone = Tz.Local, dt.utc_offset = 19800 *)
 
@@ -369,7 +369,7 @@ val parse: string -> (t, error) result
 
     - **Date separators**: Extended format uses `-`, basic format uses none
     - **Time separators**: Extended format uses `:`, basic format uses none
-    - **Datetime separator**: Either `T` or space (` `)
+    - **DateTime separator**: Either `T` or space (` `)
     - **Decimal separator**: Either `.` or `,` for fractional seconds
     - **Timezone**: `Z` for UTC, or `±HH:MM` / `±HHMM` for offsets
     - **Microseconds**: Up to 6 decimal places supported

@@ -233,7 +233,7 @@ val gregorian_days_to_date: int -> date
 (** Converts a date and time to seconds since year 0, midnight.
 
     Used for datetime arithmetic and comparisons. For working with
-    {!Datetime.naive}, extract the fields first.
+    {!DateTime.naive}, extract the fields first.
 
     ## Examples
 

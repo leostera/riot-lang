@@ -30,19 +30,19 @@ type streaming_event =
   | BuildEvent of Telemetry.event
   | BuildCompleted of {
       session_id: Session_id.t;
-      completed_at: Datetime.t;
+      completed_at: DateTime.t;
       stats: build_stats;
       results: Riot_executor.Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
-      failed_at: Datetime.t;
+      failed_at: DateTime.t;
       stats: build_stats;
       built: Riot_executor.Package_builder.build_result list;
       errors: Riot_executor.Package_builder.build_result list
     }
-  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string }
-  | CycleDetected of { session_id: Session_id.t; detected_at: Datetime.t; cycle_nodes: string list }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
+  | CycleDetected of { session_id: Session_id.t; detected_at: DateTime.t; cycle_nodes: string list }
 
 type build_target =
   BuildPackage of string

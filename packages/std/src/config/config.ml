@@ -162,7 +162,7 @@ let get_datetime = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
-      | Some (Spec.Datetime dt) -> dt
+      | Some (Spec.DateTime dt) -> dt
       | Some _ -> panic_wrong_type ~key ~expected:"datetime"
       | None -> panic_key_not_found key
     )
@@ -264,8 +264,8 @@ let as_uri = fun (value: Spec.value) ->
 
 let as_datetime = fun (value: Spec.value) ->
   match value with
-  | Spec.Datetime dt -> dt
-  | _ -> panic "Expected Datetime value"
+  | Spec.DateTime dt -> dt
+  | _ -> panic "Expected DateTime value"
 
 let as_path = fun (value: Spec.value) ->
   match value with

@@ -75,23 +75,23 @@ type request =
 type response =
   | Pong
   | WorkspaceScanned
-  | BuildStarted of { session_id: Session_id.t; started_at: Datetime.t }
+  | BuildStarted of { session_id: Session_id.t; started_at: DateTime.t }
   | BuildEvent of { session_id: Session_id.t; event: Telemetry.event }
   | BuildCompleted of {
       session_id: Session_id.t;
-      completed_at: Datetime.t;
+      completed_at: DateTime.t;
       stats: BuildStats.t;
       results: Riot_executor.Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
-      failed_at: Datetime.t;
+      failed_at: DateTime.t;
       stats: BuildStats.t;
       built: Riot_executor.Package_builder.build_result list;
       errors: Riot_executor.Package_builder.build_result list
     }
-  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string }
-  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: Datetime.t }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
+  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: DateTime.t }
   | WorkspaceConfig of { workspace: Workspace.t; toolchain: Riot_toolchain.t }
   | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list }
   | PackageGraph of { nodes: Package.t list }

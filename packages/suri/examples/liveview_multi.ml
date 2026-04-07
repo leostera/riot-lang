@@ -109,7 +109,7 @@ module Status = struct
     match event with
     | Custom (TimerTick Refresh)
     | App Refresh ->
-        let timestamp = Datetime.(now () |> to_iso8601) in
+        let timestamp = DateTime.(now () |> to_iso8601) in
         { state with updates = state.updates + 1; last_update = timestamp }
     | _ -> state
 

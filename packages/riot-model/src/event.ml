@@ -201,14 +201,14 @@ type kind =
   | WritingFile of { path: string }
 
 type t = {
-  timestamp: Datetime.t;
+  timestamp: DateTime.t;
   session_id: Session_id.t;
   level: level;
   kind: kind;
 }
 
 (** Create a new event with current timestamp *)
-let create = fun ~session_id ~level kind -> { timestamp = Datetime.now (); session_id; level; kind }
+let create = fun ~session_id ~level kind -> { timestamp = DateTime.now (); session_id; level; kind }
 
 (** Format timestamp for display *)
 
@@ -610,7 +610,7 @@ let display = function
 
 (** Convert to human-readable string with timestamp *)
 let to_string = fun event ->
-  let timestamp = Datetime.to_iso8601 event.timestamp in
+  let timestamp = DateTime.to_iso8601 event.timestamp in
   let level_str =
     match event.level with
     | Error -> "[ERROR]"
@@ -993,7 +993,7 @@ let kind_to_json = function
 
 (** Convert event to JSON *)
 let to_json = fun event ->
-  let timestamp = Datetime.to_iso8601 event.timestamp in
+  let timestamp = DateTime.to_iso8601 event.timestamp in
   (* Strip ANSI codes from the event before converting to JSON *)
   let clean_event =
     match event.kind with
@@ -2033,8 +2033,8 @@ let from_json = fun json ->
         match List.assoc_opt "timestamp" fields with
         | Some (Json.String _ts) ->
             (* For now, use current time - proper timestamp parsing can be added later *)
-            Datetime.now ()
-        | _ -> Datetime.now ()
+            DateTime.now ()
+        | _ -> DateTime.now ()
       in
       let session_id =
         match List.assoc_opt "session_id" fields with

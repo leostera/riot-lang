@@ -27,6 +27,7 @@
 21. `Std.Test` JSON output should include per-test `duration_us`, `size`, `reliability`, and retry/timeout status, plus suite-level `started_at_us`, `completed_at_us`, and `duration_us`. Use `Std.Time.Instant` for these monotonic offsets and durations rather than wall-clock timestamps.
 22. `Std.Bench` JSON output should include suite-level `started_at_us`, `completed_at_us`, and `duration_us` alongside the existing per-benchmark statistics, measured from `Std.Time.Instant`.
 23. Prefer `format Format.[ ... ]` for small diagnostic strings that stitch together primitives in `std`. Keep larger renderers and structured text generators on their own domain-specific builders instead of forcing everything through `Kernel.Format`.
+24. Keep `Std.Date` as the civil-date surface and `Std.DateTime` as the calendar datetime surface. Leave `Std.Calendar` as the lower-level Gregorian math helper rather than turning it into the primary application-facing API.
 
 ## Validate
 

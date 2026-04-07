@@ -182,10 +182,14 @@
     - {!Time.SystemTime} - **When:** Working with wall-clock time.
       For timestamps, logging, scheduling at specific times.
       *Example:* `let now = SystemTime.now () in SystemTime.to_unix now`
+
+    - {!Date} - **When:** Working with civil calendar dates.
+      For day arithmetic, date-only values, and ISO 8601 dates.
+      *Example:* `Date.of_iso8601 "2024-01-15"`
     
-    - {!Datetime} - **When:** Working with calendar dates and times.
+    - {!DateTime} - **When:** Working with calendar dates and times.
       For date arithmetic, formatting, parsing human-readable dates.
-      *Example:* `Datetime.parse "2024-01-15T10:30:00Z"`
+      *Example:* `DateTime.parse "2024-01-15T10:30:00Z"`
     
     - {!Timer} - **When:** Setting up timed events in actor systems.
       For periodic tasks, delayed execution, timeouts.
@@ -540,7 +544,7 @@
     → {!Fs.FileWatcher}
 
     **...Work with Dates**
-    → {!Datetime}, {!Time.SystemTime}
+    → {!Date}, {!DateTime}, {!Time.SystemTime}
 
     # Alphabetical Index
 
@@ -553,7 +557,8 @@
     - {!Command} - External program execution
     - {!Crypto} - Cryptographic hashing
     - {!Data} - Data format parsing (JSON, TOML, CSV, etc.)
-    - {!Datetime} - Calendar date and time
+    - {!Date} - Civil Gregorian dates
+    - {!DateTime} - Calendar date and time
     - {!Diff} - Compute differences in data structures
     - {!Encoding} - Binary/text and numeric encodings
     - {!Env} - Environment variables
@@ -628,7 +633,8 @@
     │   ├── Duration - Time spans
     │   ├── Instant - Monotonic time
     │   ├── SystemTime - Wall-clock time
-    │   ├── Datetime - Calendar operations
+    │   ├── Date - Civil dates
+    │   ├── DateTime - Calendar operations
     │   └── Timer - Timed events
     │
     ├── Filesystem
@@ -1040,11 +1046,21 @@ module Encoding = Encoding
     - Octal numeric fields → Octal *)
 module Calendar = Calendar
 
-module Datetime = Datetime
+(** **When to use:** Working with civil calendar dates
+
+    Use Date for date-only values, whole-day arithmetic, and ISO 8601 dates.
+
+    **Examples:**
+    - Birthdays and anniversaries
+    - Date-only config values
+    - Day-based retention windows *)
+module Date = Date
+
+module DateTime = DateTime
 
 (** **When to use:** Calendar dates and times
     
-    Use Datetime for human-readable dates, date arithmetic, formatting.
+    Use DateTime for human-readable dates, date arithmetic, formatting.
     
     **Examples:**
     - Parsing user-input dates

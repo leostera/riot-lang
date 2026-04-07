@@ -19,7 +19,7 @@ module Server = struct
   let format_event = fun event style ->
     match style with
     | Log_config.Full ->
-        let timestamp = Datetime.to_iso8601 event.Event.timestamp in
+        let timestamp = DateTime.to_iso8601 event.Event.timestamp in
         let level_str = Level.to_string event.Event.level in
         let meta_str = Metadata.to_string event.Event.metadata in
         let meta_part =

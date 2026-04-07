@@ -35,7 +35,7 @@ module File_log = struct
     Ok { path; sink }
 
   let write = fun t ~level message ->
-    let line = Datetime.to_iso8601 (Datetime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
+    let line = DateTime.to_iso8601 (DateTime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
     ignore ((Fs.File.write_all t.sink line: (unit, _) result));
     ignore ((Fs.File.sync_data t.sink: (unit, _) result))
 

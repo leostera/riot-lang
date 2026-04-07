@@ -26,7 +26,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     );
   send
     client_pid
-    (Protocol.ServerResponse (Protocol.BuildStarted { session_id; started_at = Datetime.now () }));
+    (Protocol.ServerResponse (Protocol.BuildStarted { session_id; started_at = DateTime.now () }));
   let stats = Protocol.BuildStats.make () in
   Protocol.BuildStats.mark_started stats;
   let handler_name = "build-worker-" ^ Session_id.to_string session_id in
@@ -83,7 +83,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
         client_pid
         (Protocol.ServerResponse (Protocol.PlanningFailed {
           session_id;
-          failed_at = Datetime.now ();
+          failed_at = DateTime.now ();
           reason = "Could not load external packages:\n" ^ error_msg
         }))
     )
@@ -212,7 +212,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   Protocol.ServerResponse (
                     Protocol.BuildFailed {
                       session_id;
-                      failed_at = Datetime.now ();
+                      failed_at = DateTime.now ();
                       stats;
                       built;
                       errors;
@@ -233,7 +233,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
               client_pid
               (Protocol.ServerResponse (Protocol.BuildCompleted {
                 session_id;
-                completed_at = Datetime.now ();
+                completed_at = DateTime.now ();
                 stats;
                 results = workspace_result.results
               }));
@@ -269,7 +269,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.CycleDetected {
                   session_id;
                   cycle_nodes = cycle;
-                  detected_at = Datetime.now ()
+                  detected_at = DateTime.now ()
                 }))
           | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
               Log.error "Planning failed: Missing dependencies";
@@ -300,7 +300,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 client_pid
                 (Protocol.ServerResponse (Protocol.PlanningFailed {
                   session_id;
-                  failed_at = Datetime.now ();
+                  failed_at = DateTime.now ();
                   reason = "Missing dependencies:\n" ^ error_msg
                 }))
           | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
@@ -313,7 +313,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 client_pid
                 (Protocol.ServerResponse (Protocol.PlanningFailed {
                   session_id;
-                  failed_at = Datetime.now ();
+                  failed_at = DateTime.now ();
                   reason = "Could not load external packages:\n  " ^ error_msg
                 }))
         )

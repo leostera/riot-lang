@@ -3,7 +3,7 @@ open Global
 (** Log events *)
 (** Create a log event *)
 type t = {
-  timestamp: Datetime.t;
+  timestamp: DateTime.t;
   level: Level.t;
   message: string;
   metadata: Metadata.t;

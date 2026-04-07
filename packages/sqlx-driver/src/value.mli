@@ -30,8 +30,8 @@ type t =
   | String of string
   | Bool of bool
   | Bytes of bytes
-  | Timestamp of Datetime.t
-  | TimestampWithTimezone of Datetime.t
+  | Timestamp of DateTime.t
+  | TimestampWithTimezone of DateTime.t
   | Date of int * int * int
   | Time of int * int * int * int
   | Uuid of string
@@ -54,9 +54,9 @@ val float: float -> t
 
 val bytes: bytes -> t
 
-val timestamp: Datetime.t -> t
+val timestamp: DateTime.t -> t
 
-val timestamp_with_timezone: Datetime.t -> t
+val timestamp_with_timezone: DateTime.t -> t
 
 val date: int -> int -> int -> t
 
@@ -83,9 +83,9 @@ val to_float: t -> float option
 
 val to_bytes: t -> bytes option
 
-val to_timestamp: t -> Datetime.t option
+val to_timestamp: t -> DateTime.t option
 
-val to_timestamp_with_timezone: t -> Datetime.t option
+val to_timestamp_with_timezone: t -> DateTime.t option
 
 val to_date: t -> (int * int * int) option
 
