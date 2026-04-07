@@ -31,15 +31,57 @@ and layer =
 and t = {
   current: current;
   layer: layer;
+  components: components;
 }
 
 let components_empty = { by_name = Name_map.empty }
 
-let components_of_modules = fun modules -> {
-  by_name = modules
-}
+let merge_visible_components = fun dominant rest ->
+  {
+    by_name =
+      Name_map.fold
+        (fun name scope acc ->
+          if Name_map.mem name acc then
+            acc
+          else
+            Name_map.add name scope acc)
+        rest.by_name
+        dominant.by_name;
+  }
 
-let empty = { current = Name_map.empty; layer = Nothing }
+let visible_components_of_current = fun current ->
+  {
+    by_name =
+      Name_map.fold
+        (fun name bindings acc ->
+          match bindings with
+          | binding :: _ -> Name_map.add name binding.scope acc
+          | [] -> acc)
+        current
+        Name_map.empty;
+  }
+
+let root_components = fun current layer ->
+  let current = visible_components_of_current current in
+  match layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components next.components
+  | Map { map_scope; next } ->
+      current
+      |> merge_visible_components {
+        by_name = Name_map.map map_scope next.components.by_name;
+      }
+
+let visible_components = fun env ->
+  root_components env.current env.layer
+
+let make = fun current layer ->
+  { current; layer; components = root_components current layer }
+
+let empty = make Name_map.empty Nothing
 
 let is_empty = fun env ->
   Name_map.is_empty env.current && match env.layer with
@@ -56,58 +98,18 @@ let empty_scope = {
   components = components_empty;
 }
 
-let merge_visible_components = fun dominant rest ->
-  {
-    by_name =
-      Name_map.fold
-        (fun name scope acc ->
-          if Name_map.mem name acc then
-            acc
-          else
-            Name_map.add name scope acc)
-        rest.by_name
-        dominant.by_name;
-  }
-
-let rec visible_components = fun env ->
-  let current = visible_components_of_current env.current in
-  match env.layer with
-  | Nothing -> current
-  | Open { components; next; _ } ->
-      current
-      |> merge_visible_components components
-      |> merge_visible_components (visible_components next)
-  | Map { map_scope; next } ->
-      let next_visible = visible_components next in
-      current
-      |> merge_visible_components {
-        by_name = Name_map.map map_scope next_visible.by_name;
-      }
-
-  and make_scope = fun ~values ~modules ~types ~constructors ~labels ->
+let rec make_scope = fun ~values ~modules ~types ~constructors ~labels ->
   {
     values;
     modules;
     types;
     constructors;
     labels;
-    components = components_of_modules (visible_components modules).by_name;
-  }
-
-and visible_components_of_current = fun current ->
-  {
-    by_name =
-      Name_map.fold
-        (fun name bindings acc ->
-          match bindings with
-          | binding :: _ -> Name_map.add name binding.scope acc
-          | [] -> acc)
-        current
-        Name_map.empty;
+    components = modules.components;
   }
 
 let scope_with_components = fun scope ->
-  { scope with components = components_of_modules (visible_components scope.modules).by_name }
+  { scope with components = scope.modules.components }
 
 let scope_values = fun scope -> scope.values
 
@@ -181,23 +183,22 @@ let rec lookup_scope_components = fun scope module_path ->
             lookup_scope_components nested_scope tail
     )
 
-let add_open = fun ~root ?components opened env ->
-  {
-    current = Name_map.empty;
-    layer = Open {
+let add_open : root:IdentPath.t -> ?components:components -> t -> t -> t = fun ~root ?components opened env ->
+  make
+    Name_map.empty
+    (Open {
       root;
       components = Option.unwrap_or
-        ~default:(components_of_modules (visible_components opened).by_name)
+        ~default:opened.components
         components;
       next = env
-    }
-  }
+    })
 
 let map = fun map_scope env ->
   if is_empty env then
     env
   else
-    { current = Name_map.empty; layer = Map { map_scope; next = env } }
+    make Name_map.empty (Map { map_scope; next = env })
 
 let visible_binding = fun env name ->
   match Name_map.find_opt name env.current with
@@ -206,11 +207,14 @@ let visible_binding = fun env name ->
 
 let replace_visible_binding = fun env binding ->
   match Name_map.find_opt binding.name env.current with
-  | Some (_ :: rest) -> {
-    env
-    with current = Name_map.add binding.name (binding :: rest) env.current
-  }
-  | _ -> { env with current = Name_map.add binding.name [ binding ] env.current }
+  | Some (_ :: rest) ->
+      make
+        (Name_map.add binding.name (binding :: rest) env.current)
+        env.layer
+  | _ ->
+      make
+        (Name_map.add binding.name [ binding ] env.current)
+        env.layer
 
 let rec bind_scope = fun existing introduced ->
   make_scope
@@ -243,47 +247,48 @@ and bind = fun env introduced ->
   else if is_empty env then
     introduced
   else
-    { current = merge_current introduced.current env.current; layer = env.layer }
+    make (merge_current introduced.current env.current) env.layer
 
 and merge_scope = fun env ~module_path introduced ->
   match IdentPath.uncons module_path with
   | None -> env
   | Some (name, tail) ->
+      let existing_binding = visible_binding env name in
       if IdentPath.is_empty tail then
-        match visible_binding env name with
+        match existing_binding with
         | Some existing ->
                 let updated = { existing with scope = bind_scope existing.scope introduced } in
                 replace_visible_binding env updated
         | None ->
             let binding = { name; scope = scope_with_components introduced } in
-            bind env { current = current_of_bindings [ binding ]; layer = Nothing }
+            make (merge_current (current_of_bindings [ binding ]) env.current) env.layer
       else
         let nested_modules =
-          match visible_binding env name with
+          match existing_binding with
           | Some existing -> merge_scope existing.scope.modules ~module_path:tail introduced
           | None -> merge_scope empty ~module_path:tail introduced
         in
         let nested_scope =
-          match visible_binding env name with
+          match existing_binding with
           | Some existing -> {
             existing.scope with
             modules = nested_modules;
-            components = components_of_modules (visible_components nested_modules).by_name
+            components = nested_modules.components
           }
           | None -> {
             empty_scope with
             modules = nested_modules;
-            components = components_of_modules (visible_components nested_modules).by_name;
+            components = nested_modules.components;
           }
         in
         let binding = { name; scope = nested_scope } in
-        match visible_binding env name with
+        match existing_binding with
         | Some _ -> replace_visible_binding env binding
-        | None -> bind env { current = current_of_bindings [ binding ]; layer = Nothing }
+        | None -> make (merge_current (current_of_bindings [ binding ]) env.current) env.layer
 
 let bind_alias = fun env ~alias_name scope ->
   let binding = { name = alias_name; scope = scope_with_components scope } in
-  bind env { current = current_of_bindings [ binding ]; layer = Nothing }
+  make (merge_current (current_of_bindings [ binding ]) env.current) env.layer
 
 let rec scope_of_binding = fun binding ->
   match IdentPath.uncons (Binding.path binding) with
@@ -339,23 +344,10 @@ let scopes = fun env ->
 
 let scope_bindings = fun scope -> scope_bindings_with_prefix IdentPath.empty scope
 
-let rec lookup_name = fun env name ->
-  match visible_binding env name with
-  | Some binding -> Some binding.scope
-  | None -> (
-      match env.layer with
-      | Nothing ->
-          None
-      | Open { components; next; _ } -> (
-          match Name_map.find_opt name components.by_name with
-          | Some scope -> Some scope
-          | None -> lookup_name next name
-        )
-      | Map { map_scope; next } ->
-          lookup_name next name |> Option.map map_scope
-    )
+let rec lookup_name : t -> string -> scope option = fun env name ->
+  Name_map.find_opt name env.components.by_name
 
-let rec lookup = fun env module_path ->
+let rec lookup : t -> IdentPath.t -> scope option = fun env module_path ->
   match IdentPath.uncons module_path with
   | None -> None
   | Some (name, tail) -> (

@@ -58,6 +58,10 @@ let binding_name_of_path = fun path ->
 
 let is_bare_path = fun path -> IdentPath.is_bare path
 
+let summary_cache : (summary, t) Collections.HashMap.t = Collections.HashMap.with_capacity 128
+
+let summary_relative_cache : ((summary * summary), t) Collections.HashMap.t = Collections.HashMap.with_capacity 128
+
 let partition_bindings = fun bindings ->
   bindings |> List.fold_left
     (fun (bare, qualified) binding ->
@@ -423,31 +427,49 @@ let summary_qualify = fun summary ~scope_path -> Summary_qualify (summary, scope
 
 let env_of_summary =
   let env_of_delta delta = bind (of_bindings delta.bindings) (of_type_decls delta.type_decls) in
-  let rec loop = function
-    | Summary_empty -> empty
-    | Summary_snapshot delta -> env_of_delta delta
-    | Summary_bind (summary, introduced) -> bind (loop summary) (loop introduced)
-    | Summary_bind_in_scope (summary, scope_path, introduced) -> bind_in_scope
-      (loop summary)
-      ~scope_path
-      (loop introduced)
-    | Summary_open (summary, module_path) -> with_local_open (loop summary) module_path
-    | Summary_qualify (summary, scope_path) -> qualify ~scope_path (loop summary)
+  let rec loop summary =
+    match Collections.HashMap.get summary_cache summary with
+    | Some cached -> cached
+    | None ->
+        let resolved =
+          match summary with
+          | Summary_empty -> empty
+          | Summary_snapshot delta -> env_of_delta delta
+          | Summary_bind (summary, introduced) -> bind (loop summary) (loop introduced)
+          | Summary_bind_in_scope (summary, scope_path, introduced) -> bind_in_scope
+            (loop summary)
+            ~scope_path
+            (loop introduced)
+          | Summary_open (summary, module_path) -> with_local_open (loop summary) module_path
+          | Summary_qualify (summary, scope_path) -> qualify ~scope_path (loop summary)
+        in
+        let _ = Collections.HashMap.insert summary_cache summary resolved in
+        resolved
   in
   loop
 
 let env_of_summary_relative =
   let env_of_delta delta = bind (of_bindings delta.bindings) (of_type_decls delta.type_decls) in
-  let rec loop env = function
-    | Summary_empty -> env
-    | Summary_snapshot delta -> bind env (env_of_delta delta)
-    | Summary_bind (summary, introduced) -> bind (loop env summary) (env_of_summary introduced)
-    | Summary_bind_in_scope (summary, scope_path, introduced) ->
-        bind_in_scope (loop env summary) ~scope_path (env_of_summary introduced)
-    | Summary_open (summary, module_path) ->
-        with_local_open (loop env summary) module_path
-    | Summary_qualify (summary, scope_path) ->
-        qualify ~scope_path (loop env summary)
+  let rec loop (env: t) summary =
+    let key = (env.summary, summary) in
+    match Collections.HashMap.get summary_relative_cache key with
+    | Some cached -> cached
+    | None ->
+        let resolved =
+          match summary with
+          | Summary_empty -> env
+          | Summary_snapshot delta -> bind env (env_of_delta delta)
+          | Summary_bind (summary, introduced) ->
+              bind (loop env summary) (env_of_summary introduced)
+          | Summary_bind_in_scope (summary, scope_path, introduced) ->
+              bind_in_scope (loop env summary) ~scope_path (env_of_summary introduced)
+          | Summary_open (summary, module_path) ->
+              with_local_open (loop env summary) module_path
+          | Summary_qualify (summary, scope_path) ->
+              qualify ~scope_path (loop env summary)
+        in
+        let _ = Collections.HashMap.insert summary_relative_cache key resolved in
+        resolved
   in
   loop
 

@@ -4,6 +4,10 @@ open Model
 
 module Env: module type of Env
 
+module Summary2: module type of Summary2
+
+module Env2: module type of Env2
+
 module Region: module type of Region
 
 (** Result of inferring types for one semantic tree. *)
