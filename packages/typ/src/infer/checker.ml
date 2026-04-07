@@ -619,126 +619,118 @@ let diagnostic_span = fun origin ->
 
 exception Unify_error of Typ_diagnostic.mismatch
 
-let rec unify_repr = fun (state: state) ~origin left right ->
-  if Std.Ptr.equal left right then
-    ()
-  else
-    match (TypeRepr.view left, TypeRepr.view right) with
-    | (TypeRepr.Int, TypeRepr.Int)
-    | (TypeRepr.Float, TypeRepr.Float)
-    | (TypeRepr.Bool, TypeRepr.Bool)
-    | (TypeRepr.String, TypeRepr.String)
-    | (TypeRepr.Char, TypeRepr.Char)
-    | (TypeRepr.Unit, TypeRepr.Unit) ->
-        ()
-    | TypeRepr.Option left_element, TypeRepr.Option right_element ->
-        unify state ~origin left_element right_element
-    | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
-        let () = unify state ~origin left_ok right_ok in
-        unify state ~origin left_error right_error
-    | (TypeRepr.Hole _, _)
-    | (_, TypeRepr.Hole _) ->
-        ()
-    | TypeRepr.Array left_element, TypeRepr.Array right_element ->
-        unify state ~origin left_element right_element
-    | TypeRepr.List left_element, TypeRepr.List right_element ->
-        unify state ~origin left_element right_element
-    | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
-        unify state ~origin left_element right_element
-    | TypeRepr.Named {
-      type_constructor=left_type_constructor;
-      name=left_name;
-      arguments=left_arguments
-    }, TypeRepr.Named {
-      type_constructor=right_type_constructor;
-      name=right_name;
-      arguments=right_arguments
-    } ->
-        let left_type_constructor = State.resolve_named_type_constructor state left_type_constructor left_name in
-        let right_type_constructor = State.resolve_named_type_constructor
-          state
-          right_type_constructor
-          right_name in
-        if not
-            (
-              match (left_type_constructor, right_type_constructor) with
-              | TypeRepr.Resolved left_type_constructor_id, TypeRepr.Resolved right_type_constructor_id -> TypeConstructorId.equal
-                left_type_constructor_id
-                right_type_constructor_id
-              | _ -> IdentPath.equal left_name right_name
-            ) then
-          raise
-            (Unify_error (Typ_diagnostic.ExpectedActual {
-              expected = TypePrinter.type_to_string left;
-              actual = TypePrinter.type_to_string right
-            }))
-        else if List.length left_arguments != List.length right_arguments then
-          raise
-            (Unify_error (Typ_diagnostic.ExpectedActual {
-              expected = TypePrinter.type_to_string left;
-              actual = TypePrinter.type_to_string right
-            }))
+let unify = fun (state: state) ~origin left right ->
+  let named_types_match = fun left_type_constructor left_name right_type_constructor right_name ->
+    let left_type_constructor = State.resolve_named_type_constructor state left_type_constructor left_name in
+    let right_type_constructor = State.resolve_named_type_constructor
+      state
+      right_type_constructor
+      right_name in
+    match (left_type_constructor, right_type_constructor) with
+    | TypeRepr.Resolved left_type_constructor_id, TypeRepr.Resolved right_type_constructor_id -> TypeConstructorId.equal
+      left_type_constructor_id
+      right_type_constructor_id
+    | _ -> IdentPath.equal left_name right_name
+  in
+  let mismatch = fun left right ->
+    Unify_error (Typ_diagnostic.ExpectedActual {
+      expected = TypePrinter.type_to_string left;
+      actual = TypePrinter.type_to_string right
+    })
+  in
+  let rec loop = function
+    | [] -> ()
+    | (left, right) :: rest ->
+        let left = TypeRepr.prune left in
+        let right = TypeRepr.prune right in
+        if Std.Ptr.equal left right then
+          loop rest
         else
-          List.iter2 (unify state ~origin) left_arguments right_arguments
-    | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
-        if List.length left_members != List.length right_members then
-          raise
-            (Unify_error (Typ_diagnostic.TupleArityMismatch {
-              left = TypePrinter.type_to_string left;
-              right = TypePrinter.type_to_string right;
-              left_arity = List.length left_members;
-              right_arity = List.length right_members
-            }));
-        List.iter2 (unify state ~origin) left_members right_members
-    | TypeRepr.Arrow { label=left_label; lhs=left_arg; rhs=left_res }, TypeRepr.Arrow {
-      label=right_label;
-      lhs=right_arg;
-      rhs=right_res
-    } ->
-        if not (labels_match left_label right_label) then
-          raise
-            (Unify_error (Typ_diagnostic.ExpectedActual {
-              expected = TypePrinter.type_to_string left;
-              actual = TypePrinter.type_to_string right
-            }));
-        let () = unify state ~origin left_arg right_arg in
-        unify state ~origin left_res right_res
-    | TypeRepr.Var left_var, TypeRepr.Var right_var when left_var.id = right_var.id ->
-        ()
-    | (TypeRepr.Var var, _)
-    | (_, TypeRepr.Var var) ->
-        let (var_ty, other_ty) =
-          match TypeRepr.view left with
-          | TypeRepr.Var _ -> (left, right)
-          | _ -> (right, left)
-        in
-        if
-          TypeRepr.occurs_or_lower
-            ~generation:(Region.next_mark state.regions)
-            ~needle:var.id
-            ~level:(TypeRepr.level var_ty)
-            ~on_lower:(fun ty ->
-              Region.add_to_pool state.regions ~level:(TypeRepr.level ty) ty |> ignore)
-            other_ty
-        then
-          raise
-            (Unify_error (Typ_diagnostic.OccursCheckFailed {
-              variable_id = var.id;
-              in_type = TypePrinter.type_to_string other_ty
-            }))
-        else
-          var.link <- Some other_ty
-    | _ ->
-        raise
-          (Unify_error (Typ_diagnostic.ExpectedActual {
-            expected = TypePrinter.type_to_string left;
-            actual = TypePrinter.type_to_string right
-          }))
-
-and unify = fun (state: state) ~origin left right ->
-  let left = TypeRepr.prune left in
-  let right = TypeRepr.prune right in
-  unify_repr state ~origin left right
+          match (TypeRepr.view left, TypeRepr.view right) with
+          | (TypeRepr.Int, TypeRepr.Int)
+          | (TypeRepr.Float, TypeRepr.Float)
+          | (TypeRepr.Bool, TypeRepr.Bool)
+          | (TypeRepr.String, TypeRepr.String)
+          | (TypeRepr.Char, TypeRepr.Char)
+          | (TypeRepr.Unit, TypeRepr.Unit) ->
+              loop rest
+          | TypeRepr.Option left_element, TypeRepr.Option right_element
+          | TypeRepr.Array left_element, TypeRepr.Array right_element
+          | TypeRepr.List left_element, TypeRepr.List right_element
+          | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
+              loop ((left_element, right_element) :: rest)
+          | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
+              loop ((left_ok, right_ok) :: (left_error, right_error) :: rest)
+          | (TypeRepr.Hole _, _)
+          | (_, TypeRepr.Hole _) ->
+              loop rest
+          | TypeRepr.Named {
+            type_constructor=left_type_constructor;
+            name=left_name;
+            arguments=left_arguments
+          }, TypeRepr.Named {
+            type_constructor=right_type_constructor;
+            name=right_name;
+            arguments=right_arguments
+          } ->
+              if not (named_types_match left_type_constructor left_name right_type_constructor right_name) then
+                raise (mismatch left right)
+              else if List.length left_arguments != List.length right_arguments then
+                raise (mismatch left right)
+              else
+                loop (List.rev_append (List.combine left_arguments right_arguments) rest)
+          | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
+              if List.length left_members != List.length right_members then
+                raise
+                  (Unify_error (Typ_diagnostic.TupleArityMismatch {
+                    left = TypePrinter.type_to_string left;
+                    right = TypePrinter.type_to_string right;
+                    left_arity = List.length left_members;
+                    right_arity = List.length right_members
+                  }))
+              else
+                loop (List.rev_append (List.combine left_members right_members) rest)
+          | TypeRepr.Arrow { label=left_label; lhs=left_arg; rhs=left_res }, TypeRepr.Arrow {
+            label=right_label;
+            lhs=right_arg;
+            rhs=right_res
+          } ->
+              if not (labels_match left_label right_label) then
+                raise (mismatch left right)
+              else
+                loop ((left_arg, right_arg) :: (left_res, right_res) :: rest)
+          | TypeRepr.Var left_var, TypeRepr.Var right_var when left_var.id = right_var.id ->
+              loop rest
+          | (TypeRepr.Var var, _)
+          | (_, TypeRepr.Var var) ->
+              let (var_ty, other_ty) =
+                match TypeRepr.view left with
+                | TypeRepr.Var _ -> (left, right)
+                | _ -> (right, left)
+              in
+              if
+                TypeRepr.occurs_or_lower
+                  ~generation:(Region.next_mark state.regions)
+                  ~needle:var.id
+                  ~level:(TypeRepr.level var_ty)
+                  ~on_lower:(fun ty ->
+                    Region.add_to_pool state.regions ~level:(TypeRepr.level ty) ty |> ignore)
+                  other_ty
+              then
+                raise
+                  (Unify_error (Typ_diagnostic.OccursCheckFailed {
+                    variable_id = var.id;
+                    in_type = TypePrinter.type_to_string other_ty
+                  }))
+              else
+                (
+                  var.link <- Some other_ty;
+                  loop rest
+                )
+          | _ ->
+              raise (mismatch left right)
+  in
+  loop [ (left, right) ]
 
 let try_unify = fun (state: state) ~origin left right ->
   try
