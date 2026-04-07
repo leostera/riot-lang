@@ -4,7 +4,12 @@ open Std
 type error =
   | File_system of { path: Path.t option; cause: Fs.error }
   | Invalid_glob of { path: Path.t; line: int; input: string; message: string; offset: int option }
-(** An ignore-aware walk plan. *)
+
+(** Ignore-aware walk plan.
+
+    A plan stores the traversal roots and ignore configuration so it can be
+    reused across [walk] and [to_list].
+*)
 type t
 
 (** Create a recursive walk plan with ignore-aware pruning.
@@ -18,17 +23,31 @@ type t
     - `ignore = true`
     - `git_ignore = true`
     - `custom_ignore_filenames = []`
-    - `overrides = []` *)
+    - `overrides = []`
+
+    Use [`overrides`] to force-include or force-exclude paths independently of
+    on-disk ignore files.
+*)
 val create:
+  (** Root paths to traverse. *)
   roots:Path.t list ->
+  (** Maximum worker concurrency. *)
   ?concurrency:int ->
+  (** Whether to sort entries before yielding them. *)
   ?sort:bool ->
+  (** Whether to follow symbolic links. *)
   ?follow_symlinks:bool ->
+  (** Whether hidden files should be included. *)
   ?hidden:bool ->
+  (** Whether ignore rules from parent directories should apply. *)
   ?parents:bool ->
+  (** Whether generic ignore files should be read. *)
   ?ignore:bool ->
+  (** Whether `.gitignore` files should be read. *)
   ?git_ignore:bool ->
+  (** Extra ignore filenames to load in each directory. *)
   ?custom_ignore_filenames:string list ->
+  (** Override globs applied on top of file-based ignore rules. *)
   ?overrides:string list ->
   unit ->
   (t, Glob.glob_error) Result.t
@@ -39,8 +58,14 @@ val create:
     Callback order is therefore not deterministic. The callback [f] may run
     concurrently on multiple worker actors and must therefore be thread-safe
     and free of order-sensitive side effects. [Skip_subtree] applies only to
-    the current directory branch, while [Stop] stops traversal globally. *)
+    the current directory branch, while [Stop] stops traversal globally.
+
+    Use this when you want streaming traversal with early pruning.
+*)
 val walk: t -> f:(Fs.Walker.FileItem.t -> Fs.Walker.step) -> (unit, error) Result.t
 
-(** Collect all yielded entries into a list. *)
+(** Collect all yielded entries into a list.
+
+    Use this when the full result set is small enough to materialize in memory.
+*)
 val to_list: t -> (Fs.Walker.FileItem.t list, error) Result.t
