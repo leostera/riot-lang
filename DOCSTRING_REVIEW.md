@@ -12,13 +12,10 @@
 ## List of interfaces to review
 
 - [ ] packages/ceibo/src/ceibo.mli
-- [ ] packages/fixme/src/diagnostic.mli
-- [ ] packages/fixme/src/explanation.mli
 - [ ] packages/fixme/src/rule.mli
 - [ ] packages/fixme/src/rule_test.mli
 - [ ] packages/fixme/src/fixme.mli
 - [ ] packages/fixme/src/traversal.mli
-- [ ] packages/fixme/src/fix.mli
 - [ ] packages/fixme/src/source_runner.mli
 - [ ] packages/gooey/src/element.mli
 - [ ] packages/gooey/src/viewport.mli
