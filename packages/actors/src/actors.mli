@@ -1,34 +1,30 @@
-(** Actors - multicore actor runtime with per-worker queues, work stealing,
-    and a dedicated reactor domain for timers and async I/O. *)
+(** Multicore actor runtime with per-worker queues, work stealing, and a
+    dedicated reactor domain for timers and async I/O. *)
 open Kernel
 
 module Exception: sig
-  (** Raised when a receive operation times out *)
+  (** Raised when a receive operation times out. *)
   exception Receive_timeout
 
-  (** Raised when a syscall operation times out *)
+  (** Raised when a syscall operation times out. *)
   exception Syscall_timeout
 end
 
-(** Runtime configuration *)
+(** Runtime configuration. *)
 module Config = Config
 
 module Runtime: sig
-  (** Runtime support for reduction counting *)
-
-  (** Reset the reduction count to a new value *)
+  (** Reset the process-local reduction count to a new value. *)
   val reset_reductions: int -> unit
 
-  (** Increment (actually decrement) the reduction count and yield if necessary.
-      Due to how OCaml's bytecode works, we decrement from an initial value
-      towards zero rather than counting up. The compiler-injected path shares
-      the same process-local reduction budget as manual [yield] calls. *)
+  (** Spend one cooperative reduction from the current process-local budget and
+      yield when the budget is exhausted. *)
   val increment_reduction_count: unit -> unit
 end
 
 module Pid = Pid
 
-(** Opaque worker/scheduler identifier type used by runtime internals. *)
+(** Opaque scheduler identifier used by runtime internals. *)
 module Scheduler_id = Scheduler_id
 
 module Message: sig
@@ -36,71 +32,79 @@ module Message: sig
 end
 
 module Process: sig
-  (** Process management *)
+  (** The reason a process exited. *)
   type exit_reason = exn
+
+  (** Process flags. *)
   type flag =
-    TrapExit of bool
+    | TrapExit of bool
+
+  (** Opaque reference to a monitor registration. *)
   type monitor_ref
+
   type Message.t +=
     | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
     | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
 
+  (** Scheduler-visible process state. *)
   type state =
-    private | Uninitialized
+    private
+    | Uninitialized
     | Runnable
     | Waiting_message
     | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t }
     | Running
     | Exited of (unit, exit_reason) result
     | Finalized
-  (** The process type *)
+
+  (** Opaque process handle. *)
   type t
 
-  (** Create a new process with the given function *)
+  (** Create a process from its entry function. *)
   val make: (unit -> (unit, exit_reason) result) -> t
 
-  (** Get the process ID *)
+  (** Return the process identifier. *)
   val pid: t -> Pid.t
 
-  (** Get the current state *)
+  (** Return the current process state. *)
   val state: t -> state
 
-  (** Check if process is alive (not exited or finalized) *)
+  (** Return `true` if the process is still alive. *)
   val is_alive: t -> bool
 
-  (** Check if process has messages in its mailbox *)
+  (** Return `true` if the process has pending messages. *)
   val has_messages: t -> bool
 
   (** Send a message to the process from any scheduler domain. *)
   val send_message: t -> Message.t -> unit
 
-  (** Mark process as waiting for I/O operation *)
+  (** Mark the process as waiting for the given I/O operation. *)
   val mark_as_awaiting_io: t -> name:string -> Kernel.Async.Token.t -> Kernel.Async.Source.t -> unit
 
-  (** Add a ready I/O token to the process *)
+  (** Record a ready I/O token for the process. *)
   val add_ready_token: t -> Kernel.Async.Token.t -> Kernel.Async.Source.t -> unit
 
-  (** Get a ready I/O token if available *)
+  (** Return a ready I/O token, if one is available. *)
   val get_ready_token: t -> (Kernel.Async.Token.t * Kernel.Async.Source.t) option
 
-  (** Consume all ready tokens with the given function *)
+  (** Consume all ready I/O tokens with the given callback. *)
   val consume_ready_tokens: t -> (Kernel.Async.Token.t * Kernel.Async.Source.t -> unit) -> unit
 
   module Monitor: sig
-    (** Monitor reference *)
+    (** Opaque monitor reference. *)
     type t = monitor_ref
   end
 
-  (** Link the current process to another process *)
+  (** Link the current process to another process. *)
   val link: Pid.t -> unit
 
-  (** Unlink the current process from another process *)
+  (** Unlink the current process from another process. *)
   val unlink: Pid.t -> unit
 
-  (** Monitor another process *)
+  (** Monitor another process. *)
   val monitor: Pid.t -> Monitor.t
 
-  (** Stop monitoring a process *)
+  (** Stop monitoring a process. *)
   val demonitor: Monitor.t -> unit
 
   (** Request that a process exit at its next scheduler boundary. *)
@@ -110,68 +114,74 @@ module Process: sig
   val set_flags: flag list -> unit
 end
 
-(** Opaque timer identifiers *)
+(** Opaque timer identifiers. *)
 module Timer_id = Timer_id
 
 module Timer: sig
-  (** Opaque timer identifier *)
+  (** Opaque timer identifier. *)
   type id = Timer_id.t
 
-  (** Send a message to a process after a delay (in seconds). Returns a timer ID
-      that can be used to cancel the timer. *)
+  (** Send a message to a process after the given delay in seconds. *)
   val send_after: Pid.t -> Message.t -> after:float -> id
 
-  (** Send a message to a process repeatedly at a given interval (in seconds).
-      Returns a timer ID that can be used to cancel the timer. *)
+  (** Send a message to a process repeatedly at the given interval in seconds. *)
   val send_interval: Pid.t -> Message.t -> interval:float -> id
 
-  (** Cancel a timer by its ID. If the timer has already fired or doesn't exist,
-      this is a no-op. *)
+  (** Cancel a timer. If the timer has already fired or does not exist, this is
+      a no-op. *)
   val cancel: id -> unit
 end
 
+(** Return the PID of the currently running process. *)
 val self: unit -> Pid.t
 
+(** Spawn an actor using the normal placement policy. *)
 val spawn: (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn an actor pinned to one normal scheduler. When [scheduler] is omitted,
     the runtime prefers the current normal scheduler and otherwise falls back to
-    normal placement policy. Pinned actors are not work-stolen. *)
+    the normal placement policy. Pinned actors are not work-stolen. *)
 val spawn_pinned: ?scheduler:int -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Spawn an actor on a dedicated blocking lane outside the normal
     work-stealing scheduler pool. *)
 val spawn_blocked: (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
+(** Spawn an actor and link it to the current process. *)
 val spawn_link: (unit -> (unit, Process.exit_reason) result) -> Pid.t
 
 (** Return the current normal scheduler identifier, or [None] when the caller
-    is not running on a normal scheduler worker. Blocking actors therefore
-    report [None]. *)
+    is not running on a normal scheduler worker. *)
 val current_scheduler_id: unit -> Scheduler_id.t option
 
+(** Send a message to the given PID. *)
 val send: Pid.t -> Message.t -> unit
 
-(** Spend one process-local cooperative reduction and yield to the scheduler
-    when the budget is exhausted. *)
+(** Spend one process-local cooperative reduction and yield when the budget is
+    exhausted. *)
 val yield: unit -> unit
 
+(** A mailbox selector that either returns a decoded message or skips the
+    current mailbox entry. *)
 type 'msg selector =
   Message.t -> [
     `select of 'msg
     | `skip
   ]
 
-(** Receive a message using a selector. Optionally times out after [timeout]
-    seconds, raising [Receive_timeout]. *)
+(** Receive a message selected by [`selector`]. Raises
+    [Exception.Receive_timeout] when [`timeout`] expires. *)
 val receive: selector:'value selector -> ?timeout:float -> unit -> 'value
 
-(** Receive any message. Optionally times out after [timeout] seconds, raising
-    [Receive_timeout]. *)
+(** Receive the next mailbox message. Raises [Exception.Receive_timeout] when
+    [`timeout`] expires. *)
 val receive_any: ?timeout:float -> unit -> Message.t
 
+(** Request runtime shutdown with the given exit status. *)
 val shutdown: status:int -> unit
 
+(** Wait for an async source to become ready, then run the continuation.
+    Raises [Exception.Syscall_timeout] when [`timeout`] expires. *)
 val syscall:
   ?timeout:float ->
   name:string ->
@@ -180,8 +190,8 @@ val syscall:
   (unit -> 'a) ->
   'a
 
-(** Start the runtime with optional configuration. Defaults to millisecond timer
-    resolution and [Config.default_scheduler_count] workers. *)
+(** Start the runtime with optional configuration. Defaults to millisecond
+    timer resolution and [Config.default_scheduler_count] workers. *)
 val run:
   main:(args:string list -> (unit, Process.exit_reason) result) ->
   args:string list ->
@@ -189,10 +199,10 @@ val run:
   unit ->
   unit
 
-(** Enable debug tracing *)
+(** Enable debug tracing. *)
 val enable_trace: unit -> unit
 
-(** Disable debug tracing *)
+(** Disable debug tracing. *)
 val disable_trace: unit -> unit
 
 (** Snapshot of runtime multicore scheduler counters. *)
@@ -203,7 +213,7 @@ type trace_counters = {
   duplicate_enqueue_races: int;
 }
 
-(** Return the current scheduler counter snapshot for the running runtime. *)
+(** Return the current scheduler counter snapshot. *)
 val trace_counters: unit -> trace_counters
 
 (** Reset scheduler counters for the running runtime. *)
