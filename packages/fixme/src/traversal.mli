@@ -1,116 +1,103 @@
 open Std
 
-(** Traversal Helpers for Syn CST
-    
-    This module provides utilities for traversing and querying Syn's
-    Concrete Syntax Trees (CST), reducing boilerplate in lint rules.
+(** Traversal helpers for Syn CST.
+
+    Use this module inside rules when you want common CST queries without
+    rewriting the same red-tree traversal code each time.
 *)
 type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
 type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
+
 (** {1 Finding Nodes} *)
-(** [find_nodes predicate tree] returns all nodes in [tree] that satisfy [predicate].
-    
+
+(** Return all nodes in [tree] that satisfy [predicate].
+
+    Use this when the selection logic is more specific than a syntax kind
+    match.
+
     Example:
-    {[
-      let open_nodes = find_nodes 
-        (fun n -> SyntaxNode.kind n = OPEN_STMT) 
+    ```ocaml
+    let open_nodes =
+      Traversal.find_nodes
+        (fun node -> Syn.Ceibo.Red.SyntaxNode.kind node = OPEN_STMT)
         tree
-    ]}
+    ```
 *)
 val find_nodes: (red_node -> bool) -> red_tree -> red_node list
 
-(** [find_by_kind kind tree] returns all nodes of the given [kind].
-    
-    Example:
-    {[
-      let open_stmts = find_by_kind OPEN_STMT tree in
-      List.iter check_open open_stmts
-    ]}
+(** Return all nodes of the given syntax kind.
+
+    Use this when a rule targets one specific CST node kind.
 *)
 val find_by_kind: Syn.SyntaxKind.t -> red_tree -> red_node list
 
-(** [find_by_kinds kinds tree] returns all nodes matching any of the given [kinds].
-    
-    Example:
-    {[
-      let exprs = find_by_kinds [PATH_EXPR; FIELD_ACCESS_EXPR] tree
-    ]}
+(** Return all nodes matching any of the given syntax kinds.
+
+    Use this when one rule needs to cover a small family of related nodes.
 *)
 val find_by_kinds: Syn.SyntaxKind.t list -> red_tree -> red_node list
 
 (** {1 Token Queries} *)
-(** [find_tokens predicate tree] returns all tokens that satisfy [predicate].
-    
-    Example:
-    {[
-      let comments = find_tokens
-        (fun t -> SyntaxToken.kind t = COMMENT)
-        tree
-    ]}
-*)
+
+(** Return all tokens in [tree] that satisfy [predicate]. *)
 val find_tokens: (red_token -> bool) -> red_tree -> red_token list
 
-(** [first_non_trivia_child node] returns the first child that is not whitespace,
-    comment, or docstring.
-    
-    Useful for extracting meaningful tokens from nodes.
+(** Return the first non-trivia child.
+
+    Use this when you need the first meaningful child and want to ignore
+    whitespace, comments, and docstrings.
 *)
 val first_non_trivia_child: red_node -> red_element option
 
-(** [first_non_trivia_token node] returns the first non-trivia token child.
-    
-    Returns [None] if the first non-trivia child is a node or doesn't exist.
-*)
+(** Return the first non-trivia token child, if it exists. *)
 val first_non_trivia_token: red_node -> red_token option
 
 (** {1 Visitor Pattern} *)
 
-(** Visitor for folding over the tree.
-    
-    Example:
-    {[
-      let count_identifiers = fold
-        {
-          visit_node = (fun _ acc -> acc);
-          visit_token = (fun tok acc ->
-            if SyntaxToken.kind tok = IDENT then acc + 1 else acc
-          );
-        }
-        0
-        tree
-    ]}
-*)
-(** [fold visitor init tree] folds over the tree with a visitor pattern.
-    
-    Traverses in pre-order: nodes before their children.
-*)
+(** Visitor used by [fold]. *)
 type 'acc visitor = {
   visit_node: red_node -> 'acc -> 'acc;
   visit_token: red_token -> 'acc -> 'acc;
 }
+
+(** Fold over a tree in preorder.
+
+    Use this when you need one pass that can see both nodes and tokens.
+
+    Example:
+    ```ocaml
+    let count_identifiers =
+      Traversal.fold
+        {
+          visit_node = (fun _ acc -> acc);
+          visit_token =
+            (fun tok acc ->
+              if Syn.Ceibo.Red.SyntaxToken.kind tok = IDENT then acc + 1 else acc);
+        }
+        0
+        tree
+    ```
+*)
 val fold: 'acc visitor -> 'acc -> red_tree -> 'acc
 
 (** {1 Utilities} *)
-(** [is_trivia kind] returns true if [kind] is whitespace, comment, or docstring. *)
+
+(** Return `true` if the syntax kind is trivia. *)
 val is_trivia: Syn.SyntaxKind.t -> bool
 
 (** {1 Typed CST Helpers} *)
-(** [expressions_of_structure_item item] returns the expressions reachable from
-    [item] in the same pre-order traversal used by lint rules.
 
-    The ordered structure-item list remains the canonical source-file body, so
-    callers should iterate the file's items and concatenate this helper's
-    results when they need recursive expression access.
+(** Return the expressions reachable from the structure item.
+
+    Use this when a rule operates over expressions but starts from typed CST
+    structure items.
 *)
 val expressions_of_structure_item: Syn.Cst.StructureItem.t -> Syn.Cst.Expression.t list
 
-(** [let_bindings_of_structure_item item] returns the already-lifted
-    [LetBinding.t] values reachable from [item], preserving item-local order.
+(** Return the already-lifted let bindings reachable from the structure item.
 
-    This does not synthesize a [LetBinding.t] for the primary binding inside
-    [Expression.Let] or [ClassExpression.Let]; those stay represented on the
-    enclosing expression nodes and must be inspected there when needed.
+    The returned list preserves item-local order.
 *)
 val let_bindings_of_structure_item: Syn.Cst.StructureItem.t -> Syn.Cst.LetBinding.t list
