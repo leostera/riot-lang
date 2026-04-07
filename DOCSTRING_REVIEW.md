@@ -12,8 +12,6 @@
 ## List of interfaces to review
 
 - [ ] packages/ceibo/src/ceibo.mli
-- [ ] packages/fixme/src/fixme.mli
-- [ ] packages/fixme/src/source_runner.mli
 - [ ] packages/gooey/src/element.mli
 - [ ] packages/gooey/src/viewport.mli
 - [ ] packages/gooey/src/terminal_renderer_fullscreen.mli
