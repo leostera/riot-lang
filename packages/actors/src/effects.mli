@@ -1,34 +1,43 @@
-(** Process effects for cooperative scheduling *)
 open Kernel
 
 module Exception: sig
+  (** Raised when a receive operation times out. *)
   exception Receive_timeout
 
-  (** Raised when a receive operation times out *)
+  (** Raised when a syscall operation times out. *)
   exception Syscall_timeout
-
-  (** Raised when a syscall operation times out *)
 end
 
+(** Cooperatively yield control to the scheduler so other processes can run. *)
 val yield: unit -> unit
 
-(** Yield control to the scheduler, allowing other processes to run *)
+(** Receive the next message from the mailbox.
+
+    Use [`timeout`] to abort after the given number of seconds. Raises
+    [Exception.Receive_timeout] on timeout. *)
 val receive_any: ?timeout:float -> unit -> Message.t
 
-(** Receive any message from the process mailbox. Optionally timeout after the
-    specified duration in seconds. Raises [Receive_timeout] on timeout. *)
+(** A mailbox selector that either returns a decoded message or skips the
+    current mailbox entry. *)
 type 'msg selector =
   Message.t -> [
     `select of 'msg
     | `skip
   ]
+
+(** Receive a message selected by [`selector`].
+
+    Use [`timeout`] to abort after the given number of seconds. Raises
+    [Exception.Receive_timeout] on timeout. *)
 val receive: selector:'a selector -> ?timeout:float -> unit -> 'a
 
-(** Receive a message using a selector function. Optionally timeout after the
-    specified duration in seconds. Raises [Receive_timeout] on timeout. *)
+(** Exit the current process normally. *)
 val exit: unit -> (unit, Process.exit_reason) result
 
-(** Exit the current process normally *)
+(** Wait for the async source to become ready, then run the continuation.
+
+    Use [`timeout`] to abort after the given number of seconds. Raises
+    [Exception.Syscall_timeout] on timeout. *)
 val syscall:
   ?timeout:float ->
   name:string ->
@@ -36,5 +45,3 @@ val syscall:
   source:Kernel.Async.Source.t ->
   (unit -> 'a) ->
   'a
-
-(** Perform a system call with I/O polling support *)
