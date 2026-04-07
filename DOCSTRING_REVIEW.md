@@ -11,12 +11,9 @@
 
 ## List of interfaces to review
 
-- [ ] packages/blink/src/protocol.mli
 - [ ] packages/blink/src/connection.mli
 - [ ] packages/blink/src/websocket.mli
-- [ ] packages/blink/src/sse.mli
 - [ ] packages/blink/src/transport.mli
-- [ ] packages/blink/src/error.mli
 - [ ] packages/blink/src/blink.mli
 - [ ] packages/ceibo/src/span.mli
 - [ ] packages/ceibo/src/builder.mli
