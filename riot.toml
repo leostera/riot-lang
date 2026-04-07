@@ -25,6 +25,8 @@ members = [
   "packages/pubgrub",
   "packages/sqlite",
   "packages/sqlx",
+  "packages/serde",
+  "packages/serde-json",
   "packages/sqlx-driver",
   "packages/std",
   "packages/suri",

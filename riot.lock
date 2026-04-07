@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "7ec2e73753d86c06"
+dependency_hash = "1de5b53e82eb00a5"
 
 [[packages]]
 name = "blink"
@@ -199,6 +199,22 @@ name = "sqlx"
 root = "packages/sqlx"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "serde"
+root = "packages/serde"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "serde-json"
+root = "packages/serde-json"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

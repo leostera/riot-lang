@@ -1,0 +1,10 @@
+[package]
+name = "serde"
+version = "0.0.15"
+
+[lib]
+path = "src/serde.ml"
+
+[dependencies]
+std = "*"
+# Add dependencies here

@@ -1,0 +1,10 @@
+[package]
+name = "serde-json"
+version = "0.0.15"
+
+[lib]
+path = "src/serde_json.ml"
+
+[dependencies]
+serde = { path = "../serde", version = "*" }
+std = { path = "../std", version = "*"}
