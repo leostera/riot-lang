@@ -8,7 +8,7 @@ type test_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
   suite_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 type test_case_type =

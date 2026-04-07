@@ -9,7 +9,7 @@ type test_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
   suite_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 
@@ -226,7 +226,8 @@ let test_reliability_of_json = fun fields ->
   | Some value ->
       let* reliability = get_string value in
       match reliability with
-      | "stable" -> Ok Stable
+      | "stable" ->
+          Ok Stable
       | "flaky" ->
           let retry_attempts =
             match List.assoc_opt "retry_attempts" fields with
@@ -234,7 +235,8 @@ let test_reliability_of_json = fun fields ->
             | None -> Ok 0
           in
           retry_attempts |> Result.map (fun retry_attempts -> Flaky { retry_attempts })
-      | other -> Error ("unknown test reliability " ^ other)
+      | other ->
+          Error ("unknown test reliability " ^ other)
 
 let test_status_of_json = fun json ->
   let* fields = get_object json in
@@ -334,6 +336,34 @@ let empty_suite_summary = {
 
 let is_blank = fun s ->
   String.equal (String.trim s) ""
+
+let summarize_output = fun value ->
+  let trimmed = String.trim value in
+  if String.equal trimmed "" then
+    "<empty>"
+  else
+    let limit = 200 in
+    if String.length trimmed <= limit then
+      trimmed
+    else
+      String.sub trimmed 0 limit ^ "..."
+
+let parse_failure_reason = fun ~suite ~(output: Command.output) reason ->
+  String.concat
+    ""
+    [
+      "failed to parse test results from suite '";
+      suite.suite_name;
+      "': ";
+      reason;
+      " (status=";
+      Int.to_string output.status;
+      ", stdout=";
+      summarize_output output.stdout;
+      ", stderr=";
+      summarize_output output.stderr;
+      ")"
+    ]
 
 let test_event_to_json = function
   | Build event ->
@@ -543,25 +573,20 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
           packages = requested_packages suites;
           targets = Build_runtime.Host;
           scope = Build_runtime.Dev;
-          profile = "debug";
+          profile = request.profile;
         }
     with
     | Error err -> Error (BuildFailed err)
     | Ok results ->
         let store = Riot_store.Store.create_for_lane
           ~workspace:request.workspace
-          ~profile:"debug"
+          ~profile:request.profile
           ~target:(Riot_model.Riot_dirs.host_target ()) in
         let total = ref 0 in
         let passed = ref 0 in
         let failed = ref 0 in
         let skipped = ref 0 in
         let failed_tests = ref [] in
-        let extra_args =
-          match request.query with
-          | None -> request.extra_args
-          | Some query -> query :: request.extra_args
-        in
         let rec loop = function
           | [] ->
               on_event
@@ -586,7 +611,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                   match run_suite_binary_capture
                     ~workspace_root:request.workspace.root
                     ~suite
-                    ~extra_args
+                    ~extra_args:request.extra_args
                     binary_path with
                   | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
                     suite;
@@ -604,10 +629,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                       match parsed_output with
                       | Error reason -> Error (SuiteExecutionError {
                         suite;
-                        reason = "failed to parse test results from suite '"
-                        ^ suite.suite_name
-                        ^ "': "
-                        ^ reason
+                        reason = parse_failure_reason ~suite ~output reason
                       })
                       | Ok (stdout, started_at_us, completed_at_us, duration_us, summary) ->
                           total := !total + summary.total;
@@ -629,7 +651,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                                     suite;
                                     name = result.name;
                                     message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
-                                    duration_us = result.duration_us;
+                                    duration_us = result.duration_us
                                   }
                                   | Passed
                                   | Skipped -> None)

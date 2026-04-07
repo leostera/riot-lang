@@ -8,7 +8,7 @@ type suite_binary = Test_runtime.suite_binary = {
 type bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 
@@ -503,24 +503,19 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
           packages = requested_packages suites;
           targets = Build_runtime.Host;
           scope = Build_runtime.Dev;
-          profile = "debug";
+          profile = request.profile;
         }
     with
     | Error err -> Error (BuildFailed err)
     | Ok results ->
         let store = Riot_store.Store.create_for_lane
           ~workspace:request.workspace
-          ~profile:"debug"
+          ~profile:request.profile
           ~target:(Riot_model.Riot_dirs.host_target ()) in
         let total = ref 0 in
         let completed = ref 0 in
         let skipped = ref 0 in
         let failed = ref 0 in
-        let extra_args =
-          match request.query with
-          | None -> request.extra_args
-          | Some query -> query :: request.extra_args
-        in
         let rec loop = function
           | [] ->
               on_event
@@ -539,7 +534,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);
-                  match run_suite_binary_capture ~extra_args binary_path with
+                  match run_suite_binary_capture ~extra_args:request.extra_args binary_path with
                   | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
                     suite;
                     reason

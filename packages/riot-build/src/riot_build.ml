@@ -42,12 +42,14 @@ type run_request = Run_runtime.run_request = {
   workspace: Riot_model.Workspace.t;
   package_name: string option;
   binary_name: string;
+  profile: string;
   args: string list;
 }
 
 type source_run_request = Run_runtime.source_run_request = {
   source_spec: string;
   binary_name: string;
+  profile: string;
   update: bool;
   args: string list;
 }
@@ -97,7 +99,7 @@ type test_request = Test_runtime.test_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
   suite_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 
@@ -180,7 +182,7 @@ let test = Test_runtime.test
 type bench_request = Bench_runtime.bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 

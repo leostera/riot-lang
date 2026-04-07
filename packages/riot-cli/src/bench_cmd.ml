@@ -13,7 +13,9 @@ let command =
         [ positional "pattern" |> required false |> help
             "Benchmark query passed to every benchmark suite binary. Use \
                -p/--package to limit execution to one package. Omit to run all \
-               benchmarks."; option "package" |> short 'p' |> long "package" |> help "Run benchmarks from a specific package"; flag
+               benchmarks."; option "package" |> short 'p' |> long "package" |> help "Run benchmarks from a specific package"; flag "release"
+          |> long "release"
+          |> help "Use the release build profile"; flag
             "json"
           |> long "json"
           |> help "Emit machine-readable JSONL events"; flag "verbose"
@@ -27,6 +29,12 @@ let trailing_args = fun matches ->
   match args with
   | "--" :: rest -> rest
   | _ -> args
+
+let profile_of_matches = fun matches ->
+  if ArgParser.get_flag matches "release" then
+    "release"
+  else
+    "debug"
 
 let print_command_output = fun (output: Command.output) ->
   if not (String.equal output.stdout "") then
@@ -218,6 +226,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
+  let profile = profile_of_matches matches in
   let request = Test_selection.parse_request
     ~pattern
     ~legacy_package
@@ -262,7 +271,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   in
   match Riot_build.bench
     ~on_event
-    { workspace; package_filter = request.package_filter; query = request.query; extra_args } with
+    { workspace; package_filter = request.package_filter; profile; extra_args } with
   | Ok () -> Ok ()
   | Error err ->
       (

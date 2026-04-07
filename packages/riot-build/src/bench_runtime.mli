@@ -7,7 +7,7 @@ type suite_binary = Test_runtime.suite_binary = {
 type bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
-  query: string option;
+  profile: string;
   extra_args: string list;
 }
 type bench_statistics = {

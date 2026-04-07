@@ -15,14 +15,13 @@ let command =
                -p/--package to limit execution to one package. Omit to run all tests."; option "package"
           |> short 'p'
           |> long "package"
-          |> help "Run tests from a specific package"; flag "small"
-          |> long "small"
-          |> help "Run only tests marked small"; flag "large"
+          |> help "Run tests from a specific package"; flag "release" |> long "release" |> help "Use the release build profile"; flag "small" |> long "small" |> help "Run only tests marked small"; flag
+            "large"
           |> long "large"
-          |> help "Run only tests marked large"; flag "flaky"
-          |> long "flaky"
-          |> help "Run only tests marked flaky"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
-            "verbose"
+          |> help "Run only tests marked large"; flag "flaky" |> long "flaky" |> help "Run only tests marked flaky"; flag
+            "json"
+          |> long "json"
+          |> help "Emit machine-readable JSONL events"; flag "verbose"
           |> short 'v'
           |> long "verbose"
           |> help "Enable verbose output for tests"
@@ -33,6 +32,12 @@ let trailing_args = fun matches ->
   match args with
   | "--" :: rest -> rest
   | _ -> args
+
+let profile_of_matches = fun matches ->
+  if ArgParser.get_flag matches "release" then
+    "release"
+  else
+    "debug"
 
 let print_command_output = fun (output: Command.output) ->
   if not (String.equal output.stdout "") then
@@ -112,8 +117,7 @@ let attempts_suffix = fun attempts ->
   else
     " after " ^ Int.to_string attempts ^ " attempts"
 
-let timeout_message = fun timeout_ms ->
-  "timed out after " ^ Int.to_string timeout_ms ^ "ms"
+let timeout_message = fun timeout_ms -> "timed out after " ^ Int.to_string timeout_ms ^ "ms"
 
 let record_suite_timing = fun (timing: timing_summary) ~suite_label (
   summary: Riot_build.test_suite_summary
@@ -145,8 +149,9 @@ let record_suite_timing = fun (timing: timing_summary) ~suite_label (
               suite_label;
               test_name = result.name;
               message = timeout_message timeout_ms;
-              duration_us = result.duration_us;
-            }: failed_test
+              duration_us = result.duration_us
+            }:
+              failed_test
           )
           | Riot_build.Passed
           | Riot_build.Skipped -> None)
@@ -334,9 +339,11 @@ let print_test_result = fun (result: Riot_build.test_case_result) ->
         | Riot_build.Test -> "ok"
         | Riot_build.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+      println
+        (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Riot_build.Failed message ->
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+      println
+        (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       if not (String.equal message "") then
         println ("       " ^ message)
   | Riot_build.Timed_out { timeout_ms } ->
@@ -446,6 +453,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let flaky_only = ArgParser.get_flag matches "flaky" in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
+  let profile = profile_of_matches matches in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
     Build.reset_json_clock ~started_at:command_started_at;
@@ -470,19 +478,15 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure message)
     | Ok operational_config ->
-          let size_filter =
-            if small_only then
-              Test_selection.Small
-            else if large_only then
-              Test_selection.Large
-            else
-              Test_selection.All
+        let size_filter =
+          if small_only then
+            Test_selection.Small
+          else if large_only then
+            Test_selection.Large
+          else
+            Test_selection.All
         in
-        let request = Test_selection.parse_request
-          ~pattern
-          ~legacy_package
-          ~size_filter
-          ~flaky_only in
+        let request = Test_selection.parse_request ~pattern ~legacy_package ~size_filter ~flaky_only in
         let extra_args = Test_selection.extra_args
           ~small_test_timeout:operational_config.test.small_test_timeout
           ~flaky_max_retries:operational_config.test.flaky_max_retries
@@ -497,7 +501,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               | Build.Json -> Build.write_build_event_json build_event
               | Build.Human -> (
                   match build_event with
-                  | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+                  | Riot_build.Pm kind -> Build.write_pm_event
+                    ~mode:output_mode
+                    ~seen_registry_updates
+                    kind
                   | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
                     ~mode:output_mode
                     ~target
@@ -526,7 +533,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               workspace;
               package_filter = request.package_filter;
               suite_filter = request.suite_filter;
-              query = request.query;
+              profile;
               extra_args;
             }
         with
