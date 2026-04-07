@@ -1,12 +1,22 @@
 open Std
 
+(** Store retention policy. *)
 type policy = Policy.t
+
 (** Generic content-addressable storage rooted at one filesystem directory. *)
 type t
+
+(** Store operation error. *)
 type error = string
 
 (** Create a content-addressable store rooted at [root]. *)
-val create: root:Path.t -> policy:policy -> unit -> t
+val create:
+  (** Root directory for stored content. *)
+  root:Path.t ->
+  (** Retention policy for the store. *)
+  policy:policy ->
+  unit ->
+  t
 
 (** Return the root directory backing this store. *)
 val root: t -> Path.t

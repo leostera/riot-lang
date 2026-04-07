@@ -13,9 +13,6 @@
 
 - [ ] packages/ceibo/src/ceibo.mli
 - [ ] packages/colors/src/colors.mli
-- [ ] packages/contentstore/src/store.mli
-- [ ] packages/contentstore/src/policy.mli
-- [ ] packages/contentstore/src/contentstore.mli
 - [ ] packages/fixme/src/diagnostic.mli
 - [ ] packages/fixme/src/explanation.mli
 - [ ] packages/fixme/src/rule.mli
