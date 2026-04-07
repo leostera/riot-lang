@@ -19,7 +19,9 @@ and binding = {
 
 and current = binding list Name_map.t
 
-and components = scope Name_map.t
+and components = {
+  by_name: scope Name_map.t;
+}
 
 and layer =
   | Nothing
@@ -29,6 +31,12 @@ and layer =
 and t = {
   current: current;
   layer: layer;
+}
+
+let components_empty = { by_name = Name_map.empty }
+
+let components_of_modules = fun modules -> {
+  by_name = modules
 }
 
 let empty = { current = Name_map.empty; layer = Nothing }
@@ -45,18 +53,21 @@ let empty_scope = {
   types = Type_env.empty;
   constructors = Constructor_env.empty;
   labels = Label_env.empty;
-  components = Name_map.empty;
+  components = components_empty;
 }
 
 let merge_visible_components = fun dominant rest ->
-  Name_map.fold
-    (fun name scope acc ->
-      if Name_map.mem name acc then
-        acc
-      else
-        Name_map.add name scope acc)
-    rest
-    dominant
+  {
+    by_name =
+      Name_map.fold
+        (fun name scope acc ->
+          if Name_map.mem name acc then
+            acc
+          else
+            Name_map.add name scope acc)
+        rest.by_name
+        dominant.by_name;
+  }
 
 let rec visible_components = fun env ->
   let current = visible_components_of_current env.current in
@@ -67,30 +78,36 @@ let rec visible_components = fun env ->
       |> merge_visible_components components
       |> merge_visible_components (visible_components next)
   | Map { map_scope; next } ->
+      let next_visible = visible_components next in
       current
-      |> merge_visible_components (visible_components next |> Name_map.map map_scope)
+      |> merge_visible_components {
+        by_name = Name_map.map map_scope next_visible.by_name;
+      }
 
-and make_scope = fun ~values ~modules ~types ~constructors ~labels ->
+  and make_scope = fun ~values ~modules ~types ~constructors ~labels ->
   {
     values;
     modules;
     types;
     constructors;
     labels;
-    components = visible_components modules;
+    components = components_of_modules (visible_components modules).by_name;
   }
 
 and visible_components_of_current = fun current ->
-  Name_map.fold
-    (fun name bindings acc ->
-      match bindings with
-      | binding :: _ -> Name_map.add name binding.scope acc
-      | [] -> acc)
-    current
-    Name_map.empty
+  {
+    by_name =
+      Name_map.fold
+        (fun name bindings acc ->
+          match bindings with
+          | binding :: _ -> Name_map.add name binding.scope acc
+          | [] -> acc)
+        current
+        Name_map.empty;
+  }
 
 let scope_with_components = fun scope ->
-  { scope with components = visible_components scope.modules }
+  { scope with components = components_of_modules (visible_components scope.modules).by_name }
 
 let scope_values = fun scope -> scope.values
 
@@ -156,7 +173,9 @@ let add_open = fun ~root ?components opened env ->
     current = Name_map.empty;
     layer = Open {
       root;
-      components = Option.unwrap_or ~default:(visible_components opened) components;
+      components = Option.unwrap_or
+        ~default:(components_of_modules (visible_components opened).by_name)
+        components;
       next = env
     }
   }
@@ -236,9 +255,13 @@ and merge_scope = fun env ~module_path introduced ->
           | Some existing -> {
             existing.scope with
             modules = nested_modules;
-            components = visible_components nested_modules
+            components = components_of_modules (visible_components nested_modules).by_name
           }
-          | None -> { empty_scope with modules = nested_modules; components = visible_components nested_modules }
+          | None -> {
+            empty_scope with
+            modules = nested_modules;
+            components = components_of_modules (visible_components nested_modules).by_name;
+          }
         in
         let binding = { name; scope = nested_scope } in
         match visible_binding env name with
@@ -311,7 +334,7 @@ let rec lookup_name = fun env name ->
       | Nothing ->
           None
       | Open { components; next; _ } -> (
-          match Name_map.find_opt name components with
+          match Name_map.find_opt name components.by_name with
           | Some scope -> Some scope
           | None -> lookup_name next name
         )

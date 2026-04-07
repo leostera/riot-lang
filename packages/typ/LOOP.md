@@ -28,7 +28,7 @@ This is the current best guess for the next OCaml-parity batches.
 - [x] make `Module_env` bindings carry authoritative per-namespace component
   tables so `add_open` and dotted lookup can consume them directly, without
   recomputing scope views or adding scope-wide cache plumbing
-- [ ] make `Module_env` a closer analogue of OCaml component tables
+- [x] make `Module_env` a closer analogue of OCaml component tables
 - [ ] make dotted lookup always go through module components instead of fallback
   path rewriting
 - [ ] push `IdentPath` to lowering, persistence, and printing boundaries only
@@ -65,7 +65,21 @@ This is the current best guess for the next OCaml-parity batches.
   `merge_scope`, `module_bindings`, and any future scope transforms never
   recompute visible components opportunistically when input scopes are already
   up-to-date
+- [ ] review: make `Module_env` component tables include explicit namespace buckets
+  (values/types/constructors/labels/modules) and avoid full `components.by_name`
+  scans in fallback cases (align with OCaml component-table structure more
+  directly)
 
+## Last Checkpoint: `make Module_env a closer analogue of OCaml component tables`
+
+- status: complete
+- Orcaset: `time riot check --json | grep check_summary`  
+  `3.80s` user, `0.48s` system, `107%` cpu, `3.987s` wall, summary
+  `{"files":31,"read_failures":6,"diagnostics":827,"warnings":8}`
+- Riot: `time riot run riot -- check --json | grep check_summary`  
+  `158.93s` user, `33.48s` system, `180%` cpu, `1:46.70` wall, summary
+  `{"files":1719,"read_failures":1299,"diagnostics":6630,"warnings":2}`
+- commit: `b81908bc4`
 ## How to analyze potential next items
 
 1. Analyze the code in ./packages/typ/
