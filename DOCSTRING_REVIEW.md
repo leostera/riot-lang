@@ -12,7 +12,6 @@
 ## List of interfaces to review
 
 - [ ] packages/ceibo/src/ceibo.mli
-- [ ] packages/colors/src/colors.mli
 - [ ] packages/fixme/src/diagnostic.mli
 - [ ] packages/fixme/src/explanation.mli
 - [ ] packages/fixme/src/rule.mli
