@@ -12,8 +12,6 @@
 ## List of interfaces to review
 
 - [ ] packages/ceibo/src/ceibo.mli
-- [ ] packages/ceibo/src/green.mli
-- [ ] packages/ceibo/src/red.mli
 - [ ] packages/colors/src/colors.mli
 - [ ] packages/contentstore/src/store.mli
 - [ ] packages/contentstore/src/policy.mli

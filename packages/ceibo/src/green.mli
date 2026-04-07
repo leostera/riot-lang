@@ -1,4 +1,4 @@
-(** Green tree representation - immutable, lossless syntax trees *)
+(** Immutable, lossless green-tree representation. *)
 open Std
 open Std.Collections
 
@@ -25,29 +25,54 @@ type ('kind, 'text) node = {
   children: ('kind, 'text) element list;
 }
 
-(** An element is either a token or a node *)
+(** A green-tree element: either a token or a node. *)
 and ('kind, 'text) element =
   | Token of ('kind, 'text) token
   | Node of ('kind, 'text) node
-val make_trivia: kind:'kind -> text:'text -> width:int -> ('kind, 'text) trivia
+
+(** Construct a trivia entry. *)
+val make_trivia:
+  (** Trivia kind. *)
+  kind:'kind ->
+  (** Trivia text. *)
+  text:'text ->
+  (** Trivia width in source units. *)
+  width:int ->
+  ('kind, 'text) trivia
 
 (** Create a token with the given kind, text, width, and leading trivia. *)
 val make_token:
+  (** Trivia that should appear immediately before the token body. *)
   leading_trivia:('kind, 'text) trivia list ->
+  (** Token kind. *)
   kind:'kind ->
+  (** Token text. *)
   text:'text ->
+  (** Token-body width in source units. *)
   width:int ->
   ('kind, 'text) token
 
-(** Create a node with the given kind and children. Width is computed automatically. *)
-val make_node: kind:'kind -> children:('kind, 'text) element list -> ('kind, 'text) node
+(** Create a node with the given kind and children.
 
-(** Create a node from a list of elements *)
-val make_node_list: kind:'kind -> ('kind, 'text) element list -> ('kind, 'text) node
+    Width is computed from the child elements. *)
+val make_node:
+  (** Node kind. *)
+  kind:'kind ->
+  (** Child elements. *)
+  children:('kind, 'text) element list ->
+  ('kind, 'text) node
 
-(** Get the width of an element *)
+(** Create a node from a list of child elements. *)
+val make_node_list:
+  (** Node kind. *)
+  kind:'kind ->
+  ('kind, 'text) element list ->
+  ('kind, 'text) node
+
+(** Return the total width of an element. *)
 val width: ('kind, 'text) element -> int
 
+(** Return the width of a trivia entry. *)
 val trivia_width: ('kind, 'text) trivia -> int
 
 (** Get only the token body width, excluding leading trivia. *)
@@ -59,38 +84,44 @@ val token_full_width: ('kind, 'text) token -> int
 (** Get the trivia owned by this token. *)
 val leading_trivia: ('kind, 'text) token -> ('kind, 'text) trivia list
 
-(** Get the kind of an element *)
-
-(** Get the text of an element (only for tokens) *)
+(** Return the kind of an element. *)
 val kind: ('kind, 'text) element -> 'kind
 
+(** Return the text of an element, or [None] for nodes. *)
 val text: ('kind, 'text) element -> 'text option
 
-(** Check if an element is a token *)
+(** Return `true` if the element is a token. *)
 val is_token: ('kind, 'text) element -> bool
 
-(** Check if an element is a node *)
+(** Return `true` if the element is a node. *)
 val is_node: ('kind, 'text) element -> bool
 
-(** Replace a child at the given index *)
+(** Return a copy of the node with one child replaced. *)
 val replace_child:
-  ('kind, 'text) node -> index:int -> child:('kind, 'text) element -> ('kind, 'text) node
+  ('kind, 'text) node ->
+  (** Child index to replace. *)
+  index:int ->
+  (** Replacement child. *)
+  child:('kind, 'text) element ->
+  ('kind, 'text) node
 
-(** Append a child to the node *)
+(** Return a copy of the node with one child appended. *)
 val append_child: ('kind, 'text) node -> child:('kind, 'text) element -> ('kind, 'text) node
 
-(** Get the number of children in a node *)
+(** Return the number of children in a node. *)
 val child_count: ('kind, 'text) node -> int
 
-(** Get the child at the given index *)
+(** Return the child at the given index, if it exists. *)
 val child: ('kind, 'text) node -> int -> ('kind, 'text) element option
 
 (** Get all non-trivia children of a node. *)
 val children: ('kind, 'text) node -> ('kind, 'text) element list
 
-(** Convert an element to JSON *)
+(** Encode an element as JSON. *)
 val to_json:
+  (** Encoder for element kinds. *)
   kind_to_json:('kind -> Data.Json.t) ->
+  (** Encoder for token text values. *)
   text_to_json:('text -> Data.Json.t) ->
   ('kind, 'text) element ->
   Data.Json.t

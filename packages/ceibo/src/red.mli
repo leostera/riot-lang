@@ -1,40 +1,44 @@
-(** Red tree representation - positioned syntax trees *)
+(** Positioned red-tree representation. *)
 open Std
 
-(** A syntax node with position information *)
+(** A syntax node with position information. *)
 type ('kind, 'text) syntax_node
-(** A syntax token with position information *)
+
+(** A syntax token with position information. *)
 type ('kind, 'text) syntax_token
+
+(** A trivia entry with position information. *)
 type ('kind, 'text) syntax_trivia
-(** A syntax element is either a node or token *)
+
+(** A syntax element: either a node or a token. *)
 type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
   | Token of ('kind, 'text) syntax_token
 
-(** Create a standalone red token at the given span *)
+(** Create a standalone red token at the given span. *)
 val new_token: ('kind, 'text) Green.token -> Span.t -> ('kind, 'text) syntax_token
 
 module SyntaxNode: sig
-  (** Get the underlying green node *)
+  (** Return the underlying green node. *)
   val green: ('kind, 'text) syntax_node -> ('kind, 'text) Green.node
 
-  (** Get the absolute offset *)
+  (** Return the absolute offset. *)
   val offset: ('kind, 'text) syntax_node -> int
 
-  (** Get the span *)
+  (** Return the span. *)
   val span: ('kind, 'text) syntax_node -> Span.t
 
-  (** Get the parent node *)
+  (** Return the parent node, if one exists. *)
   val parent: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node option
 
-  (** Get the number of children *)
+  (** Return the number of direct children. *)
   val child_count: ('kind, 'text) syntax_node -> int
 
   (** Fold over direct non-trivia children in source order. *)
   val fold_children:
     ('kind, 'text) syntax_node -> 'acc -> ('acc -> ('kind, 'text) syntax_element -> 'acc) -> 'acc
 
-  (** Get a child by index *)
+  (** Return the child at the given index, if it exists. *)
   val child: ('kind, 'text) syntax_node -> int -> ('kind, 'text) syntax_element option
 
   (** Get all non-trivia children.
@@ -46,72 +50,68 @@ module SyntaxNode: sig
   (** Alias for `children`. *)
   val children_list: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_element list
 
-  (** Get only the direct non-trivia token children *)
+  (** Return only the direct non-trivia token children. *)
   val direct_tokens: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
 
-  (** Get only the direct node children *)
+  (** Return only the direct node children. *)
   val direct_nodes: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
 
-  (** Get the syntax kind *)
-
-  (** Get the next sibling *)
+  (** Return the syntax kind. *)
   val kind: ('kind, 'text) syntax_node -> 'kind
 
+  (** Return the next sibling node, if one exists. *)
   val next_sibling: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node option
 
-  (** Get the previous sibling *)
+  (** Return the previous sibling node, if one exists. *)
   val prev_sibling: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node option
 
-  (** Get the first token *)
+  (** Return the first token in the subtree, if one exists. *)
   val first_token: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token option
 
-  (** Get the last token *)
+  (** Return the last token in the subtree, if one exists. *)
   val last_token: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token option
 
-  (** Traverse in preorder *)
+  (** Traverse the subtree in preorder. *)
   val preorder: ('kind, 'text) syntax_node -> (('kind, 'text) syntax_element -> unit) -> unit
 
-  (** Traverse in postorder *)
+  (** Traverse the subtree in postorder. *)
   val postorder: ('kind, 'text) syntax_node -> (('kind, 'text) syntax_element -> unit) -> unit
 
+  (** Return every token in the subtree in source order. *)
   val tokens: ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
-
-  (** Get every token in the subtree in source order *)
 end
 
-(** Create a new root node from a green node *)
 module SyntaxTrivia: sig
-  (** Get the underlying green trivia *)
+  (** Return the underlying green trivia. *)
   val green: ('kind, 'text) syntax_trivia -> ('kind, 'text) Green.trivia
 
-  (** Get the absolute offset *)
+  (** Return the absolute offset. *)
   val offset: ('kind, 'text) syntax_trivia -> int
 
-  (** Get the span *)
+  (** Return the span. *)
   val span: ('kind, 'text) syntax_trivia -> Span.t
 
-  (** Get the syntax kind *)
+  (** Return the syntax kind. *)
   val kind: ('kind, 'text) syntax_trivia -> 'kind
 
-  (** Get the text *)
+  (** Return the trivia text. *)
   val text: ('kind, 'text) syntax_trivia -> 'text
 end
 
 module SyntaxToken: sig
-  (** Get the underlying green token *)
+  (** Return the underlying green token. *)
   val green: ('kind, 'text) syntax_token -> ('kind, 'text) Green.token
 
-  (** Get the absolute offset *)
+  (** Return the absolute offset. *)
   val offset: ('kind, 'text) syntax_token -> int
 
-  (** Get the span *)
+  (** Return the span. *)
   val span: ('kind, 'text) syntax_token -> Span.t
 
-  (** Get the syntax kind *)
-
-  (** Get the text *)
+  (** Return the syntax kind. *)
   val kind: ('kind, 'text) syntax_token -> 'kind
 
+  (** Return the token text. *)
   val text: ('kind, 'text) syntax_token -> 'text
 
   (** Get the leading trivia attached to this token.
@@ -121,11 +121,14 @@ module SyntaxToken: sig
   val leading_trivia: ('kind, 'text) syntax_token -> ('kind, 'text) syntax_trivia list
 end
 
+(** Create a red root node from a green root node. *)
 val new_root: ('kind, 'text) Green.node -> ('kind, 'text) syntax_node
 
-(** Convert to JSON *)
+(** Encode a positioned syntax element as JSON. *)
 val to_json:
+  (** Encoder for syntax kinds. *)
   kind_to_json:('kind -> Data.Json.t) ->
+  (** Encoder for token text values. *)
   text_to_json:('text -> Data.Json.t) ->
   ('kind, 'text) syntax_element ->
   Data.Json.t
