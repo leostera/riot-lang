@@ -148,10 +148,18 @@ let resolve_type_with = fun ~make ~resolve_named_type_constructor ->
   in
   loop
 
-let annotate_type_decl_variances = fun type_decls ->
+let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   let by_path = Collections.HashMap.with_capacity 32 in
   let by_id = Collections.HashMap.with_capacity 32 in
   let computed = Collections.HashMap.with_capacity 32 in
+  let cached_param_variances = fun type_constructor_id ->
+    match cached_by_id with
+    | Some cached_by_id ->
+        Collections.HashMap.get cached_by_id type_constructor_id
+        |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.param_variances)
+    | None ->
+        None
+  in
   let () =
     type_decls
     |> List.iter
@@ -180,14 +188,20 @@ let annotate_type_decl_variances = fun type_decls ->
         match Collections.HashMap.get computed type_constructor_id with
         | Some variances -> variances
         | None -> (
-            match Collections.HashMap.get by_id type_constructor_id with
-            | Some type_decl ->
-                let () = Collections.HashSet.insert visiting type_constructor_id |> ignore in
-                let variances = declaration_param_variances visiting type_decl in
-                let _ = Collections.HashSet.remove visiting type_constructor_id in
+            match cached_param_variances type_constructor_id with
+            | Some variances ->
                 let _ = Collections.HashMap.insert computed type_constructor_id variances in
                 variances
-            | None -> default
+            | None -> (
+                match Collections.HashMap.get by_id type_constructor_id with
+                | Some type_decl ->
+                    let () = Collections.HashSet.insert visiting type_constructor_id |> ignore in
+                    let variances = declaration_param_variances visiting type_decl in
+                    let _ = Collections.HashSet.remove visiting type_constructor_id in
+                    let _ = Collections.HashMap.insert computed type_constructor_id variances in
+                    variances
+                | None -> default
+              )
           )
       )
     | None -> (
@@ -312,7 +326,11 @@ let annotate_type_decl_variances = fun type_decls ->
   in
   type_decls |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      let param_variances = declaration_param_variances (Collections.HashSet.create ()) type_decl in
+      let param_variances =
+        match cached_param_variances type_decl.declaration.type_constructor_id with
+        | Some param_variances -> param_variances
+        | None -> declaration_param_variances (Collections.HashSet.create ()) type_decl
+      in
       { type_decl with declaration = { type_decl.declaration with param_variances } })
 
 let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
@@ -389,6 +407,8 @@ let with_local_level_gen = fun (state: t) f ->
 
 let set_visible_type_decls = fun (state: t) type_decls ->
   let () =
-    state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls |> annotate_type_decl_variances
+    state.visible_type_decls <-
+      bind_type_decls state.config.ambient_type_decls type_decls
+      |> annotate_type_decl_variances ~cached_by_id:state.visible_type_decl_by_id
   in
   rebuild_visible_type_decl_indexes state
