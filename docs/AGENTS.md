@@ -5,6 +5,7 @@
 ## Routing
 
 - `docs/rfds/`: request for discussion documents, architecture snapshots, and design records
+- `docs/agents/`: shipped user-facing Codex skills for working with Riot projects
 - `docs/contributing/`: contributor-facing operational docs for repeatable release, packaging, and maintenance tasks
 
 ## Rules
