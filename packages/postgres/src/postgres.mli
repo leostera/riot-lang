@@ -1,161 +1,89 @@
 open Std
 
-(* PostgreSQL Database Driver
-   
-   This module provides a PostgreSQL driver implementation for SQLx.
-   PostgreSQL is a powerful, open-source object-relational database system
-   with strong support for complex queries, transactions, and concurrency.
-   
-   ## Features
-   
-   - Full ACID compliance
-   - Rich SQL support with extensions
-   - Advanced data types (JSON, arrays, custom types)
-   - Full-text search
-   - Concurrent access with MVCC
-   - Streaming replication
-   - Prepared statements for performance
-   
-   ## Wire Protocol
-   
-   This driver implements PostgreSQL's wire protocol v3.0, supporting:
-   - Simple and extended query protocols
-   - Prepared statements with parameter binding
-   - Binary and text format data transfer
-   - COPY protocol for bulk operations
-   - Asynchronous notifications (LISTEN/NOTIFY)
-   
-   ## Example Usage
-   
-   ```ocaml
-   open Sqlx
-   
-   (* Connect to PostgreSQL *)
-   let config = Postgres.Config.{
-     host = "localhost";
-     port = 5432;
-     database = "myapp";
-     user = "postgres";
-     password = "secret";
-     ssl_mode = `Prefer;
-     application_name = Some "my_app";
-     connect_timeout = Time.Duration.of_sec 10;
-     keepalives_idle = None;
-   } in
-   
-   let pool = Sqlx.connect ~driver:(module Postgres.Driver) config in
-   
-   (* Use PostgreSQL-specific features *)
-   Sqlx.exec pool 
-     "INSERT INTO users (data) VALUES ($1::jsonb)" 
-     [Sqlx.Value.string {|{"name": "Alice", "age": 30}|}]
-   ```
-   
-   ## Authentication Methods
-   
-   Currently supported:
-   - Password (cleartext) - not recommended
-   - MD5 password
-   - SCRAM-SHA-256 (planned)
-   
-   ## Connection Pooling
-   
-   PostgreSQL benefits greatly from connection pooling due to its
-   process-per-connection model. The SQLx pool handles this automatically.
+(** PostgreSQL driver support for [Sqlx].
+
+    Use this package when a Riot application needs to talk to PostgreSQL
+    through the shared SQL interface. The public surface here focuses on the
+    parts callers actually configure directly: connection settings, driver
+    wiring, and error rendering.
 *)
 
+(** PostgreSQL driver errors.
+
+    Use this module when a caller needs to render driver failures into logs,
+    JSON responses, or diagnostics.
+*)
 module Error: sig
   type t
+
+  (** Render a driver error as a human-readable string. *)
   val to_string: t -> string
 
+  (** Render a driver error as JSON. *)
   val to_json: t -> Data.Json.t
 end
 
-(* Configuration for PostgreSQL connections *)
+(** Connection settings for PostgreSQL.
 
+    This module is the main entry point for configuring how the driver connects
+    to a PostgreSQL server.
+*)
 module Config: sig
-  (* PostgreSQL connection configuration *)
-
+  (** SSL/TLS policy for the connection. *)
   type ssl_mode =
-    Disable
-    | Require
-    | Prefer
-  type t = {
-    host: string;
-    (* Database server hostname or IP address.
-       Use "localhost" for local connections, or "/var/run/postgresql" for Unix sockets. *)
-    port: int;  (* Database server port (default PostgreSQL port is 5432) *)
-    database: string;  (* Name of the database to connect to *)
-    user: string;  (* Username for authentication *)
-    password: string;
-    (* Password for authentication.
-       Consider using environment variables or secure vaults for production. *)
-    ssl_mode: ssl_mode;
-    (* SSL/TLS connection mode:
-       - `Disable`: Never use SSL (not recommended for production)
-       - `Require`: Always use SSL, fail if server doesn't support it
-       - `Prefer`: Try SSL first, fall back to non-SSL if unavailable
-    *)
-    application_name: string option;
-    (* Application name to report to PostgreSQL.
-       Visible in pg_stat_activity and useful for monitoring. *)
-    connect_timeout: Time.Duration.t;
-    (* Maximum time to wait when establishing a connection.
-       This includes DNS resolution, TCP connection, and authentication. *)
-    keepalives_idle: Time.Duration.t option;
-    (* Time before sending TCP keepalive probes on idle connections.
-       Helps detect broken connections behind firewalls/NAT.
-       `None` uses system defaults. *)
-  }
-  (* `default ()` creates a configuration with common default values.
-     
-     Default settings:
-     - host = "localhost"
-     - port = 5432
-     - database = "postgres"
-     - user = "postgres"
-     - password = "" (empty)
-     - ssl_mode = `Prefer`
-     - application_name = None
-     - connect_timeout = 10 seconds
-     - keepalives_idle = None (system default)
-     
-     You should override at least the database, user, and password fields.
-  *)
-  val default: unit -> t (* `from_string str` parses a connection string in either format:
-     
-     1. PostgreSQL URI format:
-        postgresql://user:password@host:port/database
-        postgres://user:password@host:port/database
-        
-     2. Simple colon-separated format:
-        host:port:database:user:password
-     
-     Examples:
-       - "postgresql://myuser:secret@localhost:5432/mydb"
-       - "localhost:5432:mydb:myuser:secret"
-     
-     Returns an error if the format is invalid or required components are missing.
-  *)
+    | (** Never attempt TLS. Use this only in trusted local environments. *)
+      Disable
+    | (** Require TLS and fail if the server cannot negotiate it. *)
+      Require
+    | (** Prefer TLS, but fall back to plain text if the server does not support it. *)
+      Prefer
 
-  (* `from_string str` parses a connection string in either format:
-     
-     1. PostgreSQL URI format:
-        postgresql://user:password@host:port/database
-        postgres://user:password@host:port/database
-        
-     2. Simple colon-separated format:
-        host:port:database:user:password
-     
-     Examples:
-       - "postgresql://myuser:secret@localhost:5432/mydb"
-       - "localhost:5432:mydb:myuser:secret"
-     
-     Returns an error if the format is invalid or required components are missing.
+  type t = {
+    (** Database server hostname, IP address, or Unix-socket directory. *)
+    host: string;
+    (** Database server port. PostgreSQL usually listens on [5432]. *)
+    port: int;
+    (** Name of the database to connect to. *)
+    database: string;
+    (** Username used during authentication. *)
+    user: string;
+    (** Password used during authentication. *)
+    password: string;
+    (** TLS policy used for the connection. *)
+    ssl_mode: ssl_mode;
+    (** Optional application name reported to PostgreSQL. *)
+    application_name: string option;
+    (** Maximum time allowed for establishing the connection. *)
+    connect_timeout: Time.Duration.t;
+    (** Optional idle timeout before TCP keepalive probes are sent. *)
+    keepalives_idle: Time.Duration.t option;
+  }
+
+  (** Build a configuration with development-friendly defaults.
+
+      Example return values:
+      - [host = "localhost"]
+      - [port = 5432]
+      - [database = "postgres"]
+      - [user = "postgres"]
+      - [ssl_mode = Prefer]
+
+      Override at least the database name and credentials before using the
+      result against a real server.
+  *)
+  val default: unit -> t
+
+  (** Parse a PostgreSQL connection string.
+
+      Supported formats:
+      - URI form, such as [postgresql://user:password@localhost:5432/app]
+      - Simple colon-separated form, such as [localhost:5432:app:user:password]
+
+      Use [from_string] when configuration comes from environment variables,
+      command-line flags, or secrets storage.
   *)
   val from_string: string -> (t, string) Result.t
 end
 
-(* PostgreSQL driver implementation for SQLx *)
-
+(** [Sqlx_driver] implementation backed by PostgreSQL. *)
 module Driver: Sqlx_driver.Driver.Intf with type config = Config.t
