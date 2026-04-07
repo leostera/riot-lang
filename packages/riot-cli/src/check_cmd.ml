@@ -1,7 +1,7 @@
 open Std
 module Check = Riot_check.Check
 
-let blue_bold = "\027[1;34m"
+let yellow_bold = "\027[1;33m"
 let reset = "\027[0m"
 
 let default_stdout = fun buf ->
@@ -29,7 +29,7 @@ let emit_json = fun ~stdout ~workspace_root event ->
 
 let package_progress_line = fun label package_name ->
   let padding = String.make (Int.max 0 (12 - String.length label)) ' ' in
-  padding ^ blue_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
+  padding ^ yellow_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
 
 let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
   match event with

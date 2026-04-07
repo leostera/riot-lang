@@ -50,12 +50,12 @@ let make_capture_writer = fun () ->
   let chunks = ref [] in
   ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.rev |> String.concat "")
 
-let blue_bold = "\027[1;34m"
+let yellow_bold = "\027[1;33m"
 let reset = "\027[0m"
 
 let package_progress_line = fun label package_name ->
   let padding = String.make (Int.max 0 (12 - String.length label)) ' ' in
-  padding ^ blue_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
+  padding ^ yellow_bold ^ label ^ reset ^ " " ^ package_name ^ "\n"
 
 let parse_jsonl = fun output ->
   output
