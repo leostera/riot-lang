@@ -582,6 +582,7 @@
     - {!Process} - Process state and operations
     - {!Ptr} - Physical equality and pointers
     - {!Random} - Random value generation
+    - {!Range} - Order-aware open and closed intervals
     - {!Ref} - Unique opaque references
     - {!Result} - Error handling with Result type
     - {!String} - UTF-8 string operations
@@ -1250,6 +1251,12 @@ module Ptr = Ptr
     - Load balancing
     - Sampling *)
 module Random = Random
+
+(** **When to use:** Representing open, closed, and unbounded intervals
+
+    Use Range for interval membership checks, interval intersection, and
+    carrying ordering semantics alongside interval endpoints. *)
+module Range = Range
 
 (** **When to use:** Unique, opaque, type-witnessing references
     

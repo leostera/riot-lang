@@ -39,6 +39,7 @@ module Pid = Pid
 module Process = Process
 module Ptr = Ptr
 module Random = Random
+module Range = Range
 module Regex = Regex
 module Ref = Ref
 module Result = Result
