@@ -155,7 +155,6 @@
 - [ ] packages/pubgrub/src/provider.mli
 - [ ] packages/pubgrub/src/new_solver.mli
 - [ ] packages/pubgrub/src/report.mli
-- [ ] packages/riot-build/src/event.mli
 - [ ] packages/riot-build/src/bench_runtime.mli
 - [ ] packages/riot-build/src/protocol.mli
 - [ ] packages/riot-build/src/server_config.mli
