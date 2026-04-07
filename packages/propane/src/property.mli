@@ -1,92 +1,158 @@
 open Std
 
-(** Property module for defining and checking properties.
-    
-    Properties are universally quantified statements about values.
-    This module provides the core property testing functionality.
+(** Define and run universally-quantified tests.
+
+    Use this module when an example-based test is too narrow and you want to
+    check that a rule holds across many generated inputs.
+
+    Example:
+    ```ocaml
+    let reverse_is_involutive =
+      Property.property
+        "list reverse is involutive"
+        Arbitrary.(list int)
+        (fun xs -> List.rev (List.rev xs) = xs)
+    ```
 *)
-(** {1 Core Types} *)
 
 type property_result =
-  | Success
-  | Failure of { counter_example: string; shrink_steps: int }
-  | Error of { exception_: exn; backtrace: string }
-  | Assumption_violated
-(** Result of running a property test. *)
+  | (** The property held for all generated inputs. *)
+    Success
+  | (** The property failed and Propane found a counter-example.
+
+         [counter_example] is the rendered failing input, and [shrink_steps]
+         tells you how many shrinking passes were needed to minimize it.
+
+         Example:
+         ```ocaml
+         Failure {
+           counter_example = "[0; 0; 0; 0]";
+           shrink_steps = 3;
+         }
+         ```
+     *)
+    Failure of {
+      counter_example: string;
+      shrink_steps: int;
+    }
+  | (** Running the property raised an exception.
+
+         Use this to distinguish "the property returned false" from
+         "the property code crashed".
+     *)
+    Error of {
+      exception_: exn;
+      backtrace: string;
+    }
+  | (** The generated input was discarded because an assumption did not hold. *)
+    Assumption_violated
+
+(** Result of running a property. *)
+
 type test_property
 
-(** An opaque property that can be tested. *)
-(** {1 Property Configuration} *)
+(** Opaque property value used by the lower-level execution API. *)
 
 type config = {
+  (** Number of random inputs to try before reporting success. *)
   test_count: int;
+  (** Maximum number of shrinking passes after a failure is found. *)
   max_shrink_steps: int;
+  (** Optional deterministic seed for reproducible runs. *)
   seed: int option;
+  (** Whether to print verbose progress while checking the property. *)
   verbose: bool;
 }
 
-(** Configuration for property testing.
-    - [test_count]: Number of test cases to generate (default: 100)
-    - [max_shrink_steps]: Maximum shrinking iterations (default: 1000)
-    - [seed]: Optional fixed seed for reproducibility
-    - [verbose]: Print verbose output (default: false) *)
+(** Runtime configuration for property checking. *)
+
+(** Default property-checking configuration.
+
+    The default configuration runs a moderate number of tests, shrinks failing
+    cases aggressively, and leaves the random seed unset.
+*)
 val default_config: config
 
-(** Default configuration with sensible defaults. *)
-(** {1 Creating Properties} *)
+(** Build a [Std.Test.test_case] from a property.
 
-val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Test.test_case
+    This is the main entry point for integrating Propane with [riot test] and
+    [Std.Test].
 
-(** [property name arb predicate] creates a Std.Test.test_case directly.
-    
     Example:
-    {[
-      let list_rev_prop = 
-        property "list reverse is involutive" 
-          Arbitrary.(list int) 
-          (fun lst -> List.rev (List.rev lst) = lst)
-      
-      let tests = [ list_rev_prop ]
-    ]} *)
+    ```ocaml
+    let tests =
+      [
+        Property.property
+          "append preserves length"
+          Arbitrary.(pair (list int) (list int))
+          (fun (left, right) ->
+            List.length (left @ right) = List.length left + List.length right);
+      ]
+    ```
+*)
+val property:
+  (** Human-readable test name shown by the test runner. *)
+  string ->
+  (** Arbitrary used to generate and shrink inputs. *)
+  'value Arbitrary.t ->
+  (** Predicate that should hold for every generated input. *)
+  ('value -> bool) ->
+  Test.test_case
+
+(** Build a property value without wrapping it into [Std.Test].
+
+    Use this when you need to call {!check} directly or build your own
+    execution flow around properties.
+*)
 val for_all: 'value Arbitrary.t -> ('value -> bool) -> test_property
 
-(** [for_all arb predicate] creates an internal property (for advanced use).
-    Prefer {!property} for normal usage. *)
-(** {1 Assumptions} *)
+(** Logical implication for conditional properties.
 
+    [implies precondition conclusion] returns [true] whenever the precondition
+    is false, and otherwise returns [conclusion].
+
+    Example:
+    ```ocaml
+    Property.implies (b != 0) (((a / b) * b) + (a mod b) = a)
+    ```
+*)
 val implies: bool -> bool -> bool
 
-(** [implies precondition conclusion] checks logical implication.
-    If [precondition] is false, the test case is skipped. *)
+(** Abort the current generated case when a precondition does not hold.
+
+    Use [assume] for properties that only make sense for a subset of the input
+    domain, such as non-empty lists or non-zero divisors.
+*)
 val assume: bool -> unit
 
-(** [assume cond] skips the current test case if [cond] is false.
-    
-    Example:
-    {[
-      property "division property"
-        Arbitrary.(pair int int)
-        (fun (a, b) ->
-          assume (b <> 0);
-          (a / b) * b + (a mod b) = a)
-    ]} *)
+(** Abort the current generated case immediately.
+
+    This is useful in pattern matches where only some branches are valid.
+*)
 val assume_fail: unit -> 'value
 
-(** [assume_fail ()] unconditionally fails the assumption.
-    Useful in pattern matching to skip certain branches. *)
-(** {1 Failure Reporting} *)
+(** Fail the current property run with a custom explanation.
 
+    Use this when returning [false] would hide the reason the property failed.
+*)
 val fail: string -> 'value
 
-(** [fail msg] fails the property test with a custom message. *)
-(** {1 Running Properties} *)
+(** Run a property and collect the result without raising exceptions.
 
-val check: ?config:config -> test_property -> property_result
+    Example return values:
+    - [Success] when every generated input satisfies the property.
+    - [Failure _] when a counter-example is found.
+    - [Error _] when the property function raises.
+*)
+val check:
+  (** Optional runtime configuration for the property run. *)
+  ?config:config ->
+  test_property ->
+  property_result
 
-(** [check ~config prop] runs the property test and returns the result.
-    This NEVER throws exceptions - all failures are returned as results. *)
-(** {1 Internal API} *)
+(** Return the display name of a property.
 
+    This is mainly useful when integrating Propane with other runners or
+    reporting layers.
+*)
 val get_name: test_property -> string
-
-(** Get the name of a property. Used by Test module. *)
