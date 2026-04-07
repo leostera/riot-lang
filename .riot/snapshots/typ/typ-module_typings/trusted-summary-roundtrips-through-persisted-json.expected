@@ -4,7 +4,7 @@
       "exports": [
         {
           "name": "const",
-          "scheme": "'a 'b. 'b -> 'a -> 'b"
+          "scheme": "'a 'b. 'a -> 'b -> 'a"
         },
         {
           "name": "id",

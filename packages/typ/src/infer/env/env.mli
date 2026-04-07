@@ -17,6 +17,25 @@ module Value_env: module type of Value_env
 type bindings = Binding.t list
 type t
 type scope
+type summary_delta = {
+  bindings: bindings;
+  type_decls: FileSummary.type_decl list;
+}
+type summary =
+  | Summary_empty
+  | Summary_snapshot of summary_delta
+  | Summary_bind of summary * summary
+  | Summary_bind_in_scope of summary * IdentPath.t * summary
+  | Summary_open of summary * IdentPath.t
+  | Summary_qualify of summary * IdentPath.t
+
+val empty_summary: summary
+val summary_snapshot: t -> summary
+val summary_bind: summary -> t -> summary
+val summary_bind_in_scope: summary -> scope_path:IdentPath.t -> t -> summary
+val summary_open: summary -> IdentPath.t -> summary
+val summary_qualify: summary -> scope_path:IdentPath.t -> summary
+val env_of_summary: summary -> t
 val empty: t
 
 val empty_scope: scope

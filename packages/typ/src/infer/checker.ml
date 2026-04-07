@@ -240,9 +240,8 @@ let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
 let resolve_type_constructor_id = fun (state: state) type_constructor_id name ->
   match type_constructor_id with
   | Some type_constructor_id -> Some type_constructor_id
-  | None ->
-      visible_type_decl state name
-      |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
+  | None -> visible_type_decl state name
+  |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
 
 let owner_of_type = fun (state: state) ty ->
   match view ty with
@@ -271,9 +270,10 @@ let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty 
       | Some expected_owner -> (
           match
             List.filter
-              (fun candidate -> TypeConstructorId.equal
-                expected_owner.type_constructor_id
-                (Env.Constructor_env.owner_type_constructor_id candidate))
+              (fun candidate ->
+                TypeConstructorId.equal
+                  expected_owner.type_constructor_id
+                  (Env.Constructor_env.owner_type_constructor_id candidate))
               candidates
           with
           | [] -> Some (List.hd candidates)
@@ -536,17 +536,20 @@ let lower_expansive_binding_vars = fun (state: state) (frame: Region.frame) expr
               | None ->
                   let _ = Collections.HashMap.insert seen order variance in
                   (true, variance)
-              in
-              if not should_process || TypeRepr.level ty <= boundary_level then
-                lower rest
-              else
+            in
+            if not should_process || TypeRepr.level ty <= boundary_level then
+              lower rest
+            else
               let () =
                 match variance with
                 | TypeDecl.Covariant -> ()
                 | TypeDecl.Contravariant
                 | TypeDecl.Invariant ->
                     if TypeRepr.level ty > boundary_level then
-                      TypeRepr.set_level ty boundary_level
+                      (
+                        TypeRepr.set_level ty boundary_level;
+                        Region.add_to_pool state.regions ~level:boundary_level ty |> ignore
+                      )
               in
               let rest =
                 match TypeRepr.view ty with
@@ -708,6 +711,8 @@ let rec unify_repr = fun (state: state) ~origin left right ->
             ~generation:(Region.next_mark state.regions)
             ~needle:var.id
             ~level:(TypeRepr.level var_ty)
+            ~on_lower:(fun ty ->
+              Region.add_to_pool state.regions ~level:(TypeRepr.level ty) ty |> ignore)
             other_ty
         then
           raise
@@ -1069,8 +1074,9 @@ and infer_expr = fun (state: state) env expr_id ->
                 | Some origin when String.equal origin.label "constructor_expression"
                 || String.equal origin.label "constructor_path_expression" -> (
                     match resolve_constructor_without_expected env name with
-                    | Some constructor_entry ->
-                        instantiate state (Env.Constructor_env.scheme constructor_entry)
+                    | Some constructor_entry -> instantiate
+                      state
+                      (Env.Constructor_env.scheme constructor_entry)
                     | None ->
                         let hole = fresh_hole state in
                         let () = add_diagnostic
@@ -1304,9 +1310,9 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
           || String.equal origin.label "constructor_path_expression" -> (
               match resolve_constructor_entry state env name ~expected_ty with
               | Some constructor_entry ->
-                  let inferred_type =
-                    instantiate state (Env.Constructor_env.scheme constructor_entry)
-                  in
+                  let inferred_type = instantiate
+                    state
+                    (Env.Constructor_env.scheme constructor_entry) in
                   let () = try_unify state ~origin:(origin_of_expr state expr_id) expected_ty inferred_type in
                   inferred_type
               | None ->
@@ -1326,9 +1332,9 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
               | Some { desc=BodyArena.EVar constructor; _ } -> (
                   match resolve_constructor_entry state env constructor ~expected_ty with
                   | Some constructor_entry ->
-                      let callee_ty =
-                        instantiate state (Env.Constructor_env.scheme constructor_entry)
-                      in
+                      let callee_ty = instantiate
+                        state
+                        (Env.Constructor_env.scheme constructor_entry) in
                       let rec apply_with_known_type current_ty arguments =
                         match arguments with
                         | [] ->

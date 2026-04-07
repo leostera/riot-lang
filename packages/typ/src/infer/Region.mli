@@ -16,6 +16,9 @@ val fresh_var: t -> int -> TypeRepr.t
 (** Register one newly created non-variable type node with the active frame. *)
 val track_node: t -> TypeRepr.t -> TypeRepr.t
 
+(** Re-register one node in the pool corresponding to its current level. *)
+val add_to_pool: t -> level:int -> TypeRepr.t -> TypeRepr.t
+
 (** Return the current region level. *)
 val current_level: t -> int
 

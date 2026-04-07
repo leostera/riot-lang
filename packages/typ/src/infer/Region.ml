@@ -2,6 +2,7 @@ open Std
 open Model
 
 type frame = {
+  level: int;
   boundary_level: int;
   mutable nodes: TypeRepr.t list;
 }
@@ -28,27 +29,27 @@ let next_mark = fun (regions: t) ->
   in
   generation
 
-let track_node = fun (regions: t) node ->
+let rec frame_for_level = fun level frames ->
+  match frames with
+  | [] -> None
+  | frame :: rest ->
+      if level >= frame.level then
+        Some frame
+      else
+        frame_for_level level rest
+
+let add_to_pool = fun (regions: t) ~level node ->
   let () =
-    match current_frame regions with
+    match frame_for_level level regions.frames with
     | Some frame -> frame.nodes <- node :: frame.nodes
     | None -> ()
   in
   node
 
+let track_node = fun (regions: t) node -> add_to_pool regions ~level:(TypeRepr.level node) node
+
 let fresh_var = fun (regions: t) id ->
   TypeRepr.make_var ~level:regions.current_level id |> track_node regions
-
-let merge_child_into_parent = fun (regions: t) (child: frame) ->
-  match regions.frames with
-  | parent :: _ ->
-      let survivors = child.nodes
-      |> List.filter
-        (fun node ->
-          TypeRepr.level node > parent.boundary_level
-          && not (TypeRepr.is_generic_level (TypeRepr.level node))) in
-      parent.nodes <- survivors @ parent.nodes
-  | [] -> ()
 
 let exit_region = fun (regions: t) (child: frame) ->
   match regions.frames with
@@ -56,14 +57,17 @@ let exit_region = fun (regions: t) (child: frame) ->
       let () =
         regions.frames <- rest
       in
-      let () = merge_child_into_parent regions child in
       regions.current_level <- child.boundary_level
   | _ -> raise (Failure "Region.exit_region")
 
 let with_region = fun (regions: t) f ->
-  let child = { boundary_level = regions.current_level; nodes = [] } in
+  let child = {
+    level = regions.current_level + 1;
+    boundary_level = regions.current_level;
+    nodes = [];
+  } in
   let () =
-    regions.current_level <- child.boundary_level + 1
+    regions.current_level <- child.level
   in
   let () =
     regions.frames <- child :: regions.frames

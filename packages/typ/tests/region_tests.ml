@@ -20,6 +20,8 @@ let test_local_reachable_vars_include_nested_escaped_vars = fun _ctx ->
               ~generation:(Region.next_mark regions)
               ~needle:0
               ~level:1
+              ~on_lower:(fun ty ->
+                Region.add_to_pool regions ~level:(TypeRepr.level ty) ty |> ignore)
               escaped_ty in
             if lowered then
               raise (Failure "escaping var unexpectedly occurred in the outer variable")

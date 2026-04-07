@@ -223,10 +223,9 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
     );
     (
       "param_variances",
-      Data.Json.Array
-        (List.map
-          (fun variance -> Data.Json.String (TypeDecl.variance_to_string variance))
-          type_decl.declaration.param_variances)
+      Data.Json.Array (List.map
+        (fun variance -> Data.Json.String (TypeDecl.variance_to_string variance))
+        type_decl.declaration.param_variances)
     );
     (
       "constructors",
@@ -545,8 +544,7 @@ let type_decl_of_json = fun json ->
               loop (variance :: acc) rest
         in
         loop [] values
-    | None ->
-        Ok (List.map (fun _ -> TypeDecl.Invariant) param_ids)
+    | None -> Ok (List.map (fun _ -> TypeDecl.Invariant) param_ids)
   in
   let* param_variances = param_variances in
   let* constructors_json = get_array constructors_json in

@@ -7,6 +7,8 @@ val empty: t
 
 val of_bindings: Binding.t list -> t
 
+val find_same: t -> Binding.ident -> Binding.t option
+
 val local_only: t -> t
 
 val of_entries:

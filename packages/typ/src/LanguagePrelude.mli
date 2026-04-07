@@ -14,3 +14,5 @@ val bindings: env
 
 (** Minimal intrinsic type declarations used by the prototype checker. *)
 val type_decls: FileSummary.type_decl list
+
+val exn_type_constructor_id: TypeConstructorId.t

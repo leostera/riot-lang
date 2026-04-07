@@ -70,6 +70,8 @@ let prelude_option_type_constructor_id = TypeConstructorId.of_int (-2)
 
 let prelude_result_type_constructor_id = TypeConstructorId.of_int (-3)
 
+let exn_type_constructor_id = TypeConstructorId.of_int (-4)
+
 let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 
 let prelude_cons_constructor_id = ConstructorId.of_int (-2)
@@ -148,6 +150,18 @@ let type_decls = [ {
             scheme = option_some
           };
         ];
+        labels = [];
+        manifest = None;
+      };
+  }; {
+    FileSummary.scope_path = IdentPath.empty;
+    declaration =
+      {
+        TypeDecl.type_constructor_id = exn_type_constructor_id;
+        type_name = "exn";
+        param_ids = [];
+        param_variances = [];
+        constructors = [];
         labels = [];
         manifest = None;
       };

@@ -130,7 +130,9 @@ let to_json = fun decl ->
     ("type_name", Data.Json.String decl.type_name);
     (
       "param_variances",
-      Data.Json.Array (List.map (fun variance -> Data.Json.String (variance_to_string variance)) decl.param_variances)
+      Data.Json.Array (List.map
+        (fun variance -> Data.Json.String (variance_to_string variance))
+        decl.param_variances)
     );
     ("constructors", Data.Json.Array (List.map constructor_to_json decl.constructors));
   ] in

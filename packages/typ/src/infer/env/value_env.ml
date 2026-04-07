@@ -4,24 +4,40 @@ open Model
 
 module Name_map = Collections.Map.Make (String)
 
+module Id_map = Collections.Map.Make (struct
+  type t = int
+
+  let compare = Int.compare
+end)
+
 type current = Binding.t list Name_map.t
+
+type same = Binding.t Id_map.t
+
 type components = Binding.t Name_map.t
 
 type layer =
   | Nothing
-  | Open of {
-      root: IdentPath.t;
-      components: components;
-      next: t;
-    }
+  | Open of { root: IdentPath.t; components: components; next: t }
+  | Map of { map_binding: Binding.t -> Binding.t; next: t }
 
 and t = {
-  bindings: Binding.t list;
   current: current;
+  same: same;
   layer: layer;
 }
 
-let empty = { bindings = []; current = Name_map.empty; layer = Nothing }
+let empty = { current = Name_map.empty; same = Id_map.empty; layer = Nothing }
+
+let is_empty = fun env ->
+  Name_map.is_empty env.current
+  &&
+  Id_map.is_empty env.same
+  &&
+  match env.layer with
+  | Nothing -> true
+  | Open _
+  | Map _ -> false
 
 let visible_name_for_lookup = fun path -> IdentPath.bare_name path
 
@@ -37,13 +53,18 @@ let prepend_binding = fun index binding ->
       Name_map.add name (binding :: existing) index
   | None -> index
 
-let index_of_bindings = fun bindings ->
+let add_same = fun acc binding ->
+  let local_id = Binding.ident binding |> Binding.ident_local_id in
+  Id_map.add local_id binding acc
+
+let current_of_bindings = fun bindings ->
   bindings |> List.rev |> List.fold_left prepend_binding Name_map.empty
 
+let same_of_bindings = fun bindings ->
+  bindings |> List.fold_left add_same Id_map.empty
+
 let visible_components_of_bindings = fun bindings ->
-  bindings
-  |> List.rev
-  |> List.fold_left
+  bindings |> List.rev |> List.fold_left
     (fun acc binding ->
       match visible_name_for_lookup (Binding.path binding) with
       | Some name -> Name_map.add name binding acc
@@ -51,36 +72,55 @@ let visible_components_of_bindings = fun bindings ->
     Name_map.empty
 
 let of_bindings = fun bindings ->
-  { bindings; current = index_of_bindings bindings; layer = Nothing }
+  {
+    current = current_of_bindings bindings;
+    same = same_of_bindings bindings;
+    layer = Nothing;
+  }
 
 let of_entries = fun ~make_ident ~provenance entries ->
-  entries
-  |> List.map
+  entries |> List.map
     (fun (path, scheme) ->
       let name = ident_name_of_path path in
       Binding.make ~ident:(make_ident name) ~path ~scheme ~provenance)
   |> of_bindings
 
 let singleton = fun ~make_ident ~name ~scheme ~provenance ->
-  [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
-  |> of_bindings
+  of_bindings
+    [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
-let bindings = fun env -> env.bindings
+let current_bindings = fun current -> Name_map.bindings current |> List.concat_map snd
 
-let local_only = fun env -> of_bindings env.bindings
+let bindings =
+  let rec loop acc env =
+    let acc = List.rev_append (current_bindings env.current) acc in
+    match env.layer with
+    | Nothing -> acc
+    | Open { next; _ } -> loop acc next
+    | Map { map_binding; next } -> loop acc next |> List.map map_binding
+  in
+  fun env -> loop [] env |> List.rev
+
+let local_only = fun env -> env |> bindings |> of_bindings
+
+let map = fun map_binding env ->
+  if is_empty env then
+    env
+  else
+    {
+      current = Name_map.empty;
+      same = Id_map.empty;
+      layer = Map { map_binding; next = env };
+    }
 
 let qualify_binding = fun root binding ->
   Binding.with_path (IdentPath.append_path root (Binding.path binding)) binding
 
 let add_open = fun ~root opened env ->
   {
-    bindings = env.bindings;
     current = Name_map.empty;
-    layer = Open {
-      root;
-      components = visible_components_of_bindings opened.bindings;
-      next = env;
-    };
+    same = Id_map.empty;
+    layer = Open { root; components = visible_components_of_bindings (bindings opened); next = env };
   }
 
 let merge_current = fun introduced existing ->
@@ -92,46 +132,51 @@ let merge_current = fun introduced existing ->
     existing
 
 let bind = fun env introduced ->
-  if List.is_empty introduced.bindings then
+  if is_empty introduced then
     env
-  else if List.is_empty env.bindings && env.layer = Nothing then
+  else if is_empty env then
     introduced
   else
     {
-      bindings = introduced.bindings @ env.bindings;
       current = merge_current introduced.current env.current;
+      same = Id_map.fold Id_map.add introduced.same env.same;
       layer = env.layer;
     }
 
+let rec find_same = fun env ident ->
+  let local_id = Binding.ident_local_id ident in
+  match Id_map.find_opt local_id env.same with
+  | Some binding -> Some binding
+  | None -> (
+      match env.layer with
+      | Nothing -> None
+      | Open { next; _ } -> find_same next ident
+      | Map { map_binding; next } -> find_same next ident |> Option.map map_binding
+    )
+
 let rec lookup_name = fun env name ->
   match Name_map.find_opt name env.current with
-  | Some (binding :: _) ->
-      Some binding
+  | Some (binding :: _) -> Some binding
   | _ -> (
       match env.layer with
-      | Nothing ->
-          None
+      | Nothing -> None
       | Open { root; components; next } -> (
           match Name_map.find_opt name components with
-          | Some binding ->
-              Some (qualify_binding root binding)
-          | None ->
-              lookup_name next name
+          | Some binding -> Some (qualify_binding root binding)
+          | None -> lookup_name next name
         )
+      | Map { map_binding; next } -> lookup_name next name |> Option.map map_binding
     )
 
 let lookup = fun env path ->
   match visible_name_for_lookup path with
-  | Some name ->
-      lookup_name env name
-  | None ->
-      None
+  | Some name -> lookup_name env name
+  | None -> None
 
 let rec lookup_all_name = fun env name ->
   let current = Name_map.find_opt name env.current |> Option.unwrap_or ~default:[] in
   match env.layer with
-  | Nothing ->
-      current
+  | Nothing -> current
   | Open { root; components; next } ->
       let opened =
         match Name_map.find_opt name components with
@@ -139,16 +184,16 @@ let rec lookup_all_name = fun env name ->
         | None -> []
       in
       current @ opened @ lookup_all_name next name
+  | Map { map_binding; next } ->
+      current @ (lookup_all_name next name |> List.map map_binding)
 
 let lookup_all = fun env path ->
   match visible_name_for_lookup path with
-  | Some name ->
-      lookup_all_name env name
-  | None ->
-      []
+  | Some name -> lookup_all_name env name
+  | None -> []
 
 let unique = fun env ->
-  let seen = Collections.HashSet.with_capacity (List.length env.bindings) in
+  let seen = Collections.HashSet.with_capacity 32 in
   let rec loop acc = function
     | [] -> List.rev acc
     | binding :: rest ->
@@ -158,19 +203,21 @@ let unique = fun env ->
           let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
           loop (binding :: acc) rest
   in
-  loop [] env.bindings |> of_bindings
+  loop [] (bindings env) |> of_bindings
 
 let canonicalize = fun env ->
   env
   |> unique
   |> bindings
-  |> List.sort (fun left right -> IdentPath.compare (Binding.path left) (Binding.path right))
+  |> List.sort
+    (fun left right ->
+      IdentPath.compare (Binding.path left) (Binding.path right))
   |> of_bindings
 
 let render = fun env -> canonicalize env |> bindings |> List.map Binding.render
 
 let visible_entries = fun env ->
-  let seen = Collections.HashSet.with_capacity (List.length env.bindings) in
+  let seen = Collections.HashSet.with_capacity 32 in
   let rec loop acc = function
     | [] -> List.rev acc
     | binding :: rest ->
@@ -180,7 +227,7 @@ let visible_entries = fun env ->
           let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
           loop (binding :: acc) rest
   in
-  loop [] env.bindings |> of_bindings
+  loop [] (bindings env) |> of_bindings
 
 let names = fun env ->
   canonicalize env
@@ -195,7 +242,7 @@ let introduced_names = fun before after ->
       (fun seen binding ->
         let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
         seen)
-      (Collections.HashSet.with_capacity (List.length (bindings before)))
+      (Collections.HashSet.with_capacity 32)
   in
   visible_entries after
   |> bindings
@@ -208,7 +255,7 @@ let introduced_names = fun before after ->
         Some (IdentPath.to_string path))
 
 let aliases_for_local_open = fun env module_path ->
-  env.bindings
+  bindings env
   |> List.filter_map
     (fun binding ->
       match IdentPath.strip_prefix ~prefix:module_path (Binding.path binding) with
@@ -224,12 +271,10 @@ let entries_for_include = fun env module_path ->
   aliases_for_local_open env module_path |> canonicalize
 
 let prefix_entries = fun prefix entries ->
-  entries
-  |> bindings
-  |> List.map
+  map
     (fun binding ->
       Binding.with_path (IdentPath.prepend_name prefix (Binding.path binding)) binding)
-  |> of_bindings
+    entries
 
 let export_names_for_module_alias = fun env ~alias_name ~module_path ->
   aliases_for_local_open env module_path
@@ -241,13 +286,11 @@ let export_names_for_module_alias = fun env ~alias_name ~module_path ->
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
   aliases_for_local_open env module_path
   |> canonicalize
-  |> bindings
-  |> List.map
+  |> map
     (fun binding ->
       binding
       |> Binding.with_path (IdentPath.prepend_name alias_name (Binding.path binding))
       |> Binding.with_provenance (Binding.Module_alias { alias_name; module_path }))
-  |> of_bindings
 
 let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
 
@@ -284,7 +327,7 @@ let introduced_entries = fun before after ->
       (fun seen binding ->
         let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
         seen)
-      (Collections.HashSet.with_capacity (List.length (bindings before)))
+      (Collections.HashSet.with_capacity 32)
   in
   visible_entries after
   |> bindings
@@ -293,9 +336,7 @@ let introduced_entries = fun before after ->
   |> of_bindings
 
 let qualify_entries = fun scope_path entries ->
-  entries
-  |> bindings
-  |> List.map
+  map
     (fun binding ->
       Binding.with_path (IdentPath.append_path scope_path (Binding.path binding)) binding)
-  |> of_bindings
+    entries

@@ -54,14 +54,17 @@ let annotate_type_decl_variances = fun type_decls ->
   let by_id = Collections.HashMap.with_capacity 32 in
   let computed = Collections.HashMap.with_capacity 32 in
   let () =
-    type_decls |> List.iter
+    type_decls
+    |> List.iter
       (fun (type_decl: FileSummary.type_decl) ->
         let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
         let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
         ())
   in
   let rec parameter_variances_for_named_type visiting type_constructor_id name arguments =
-    let default = List.map (fun _ -> TypeDecl.Invariant) arguments in
+    let default =
+      List.map (fun _ -> TypeDecl.Invariant) arguments
+    in
     match type_constructor_id with
     | Some type_constructor_id when Collections.HashSet.contains visiting type_constructor_id ->
         default
@@ -124,9 +127,7 @@ let annotate_type_decl_variances = fun type_decls ->
     | TypeRepr.Tuple members ->
         List.iter (fun member -> collect_type_variances_into visiting variance acc member) members
     | TypeRepr.Arrow { lhs; rhs; _ } ->
-        let () =
-          collect_type_variances_into visiting (TypeDecl.flip_variance variance) acc lhs
-        in
+        let () = collect_type_variances_into visiting (TypeDecl.flip_variance variance) acc lhs in
         collect_type_variances_into visiting variance acc rhs
     | TypeRepr.Var var -> (
         match var.link with
@@ -151,32 +152,38 @@ let annotate_type_decl_variances = fun type_decls ->
           collect_type_variances_into visiting TypeDecl.Covariant variances manifest_type
       | Some (TypeDecl.PolyVariant { tags; inherited; _ }) ->
           let () =
-            tags |> List.iter
+            tags
+            |> List.iter
               (fun (tag: TypeDecl.poly_variant_tag) ->
                 match tag.payload_type with
-                | Some payload_type ->
-                    collect_type_variances_into visiting TypeDecl.Covariant variances payload_type
+                | Some payload_type -> collect_type_variances_into
+                  visiting
+                  TypeDecl.Covariant
+                  variances
+                  payload_type
                 | None -> ())
           in
-          inherited |> List.iter
+          inherited
+          |> List.iter
             (fun inherited_type ->
               collect_type_variances_into visiting TypeDecl.Covariant variances inherited_type)
       | None ->
           ()
     in
-    let constructor_payload_types = declaration.constructors
-    |> List.concat_map
-      (fun (constructor: TypeDecl.constructor) ->
-        let rec loop acc ty =
-          match TypeRepr.view (TypeRepr.prune ty) with
-          | TypeRepr.Arrow { lhs; rhs; _ } -> loop (lhs :: acc) rhs
-          | _ -> List.rev acc
-        in
-        loop [] (TypeScheme.body constructor.scheme)) in
+    let constructor_payload_types =
+      declaration.constructors
+      |> List.concat_map
+        (fun (constructor: TypeDecl.constructor) ->
+          let rec loop acc ty =
+            match TypeRepr.view (TypeRepr.prune ty) with
+            | TypeRepr.Arrow { lhs; rhs; _ } -> loop (lhs :: acc) rhs
+            | _ -> List.rev acc
+          in
+          loop [] (TypeScheme.body constructor.scheme))
+    in
     let () = constructor_payload_types
     |> List.iter
-      (fun payload_type ->
-        collect_type_variances_into visiting TypeDecl.Covariant variances payload_type) in
+      (fun payload_type -> collect_type_variances_into visiting TypeDecl.Covariant variances payload_type) in
     let () =
       declaration.labels
       |> List.iter
@@ -197,9 +204,7 @@ let annotate_type_decl_variances = fun type_decls ->
   in
   type_decls |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      let param_variances =
-        declaration_param_variances (Collections.HashSet.create ()) type_decl
-      in
+      let param_variances = declaration_param_variances (Collections.HashSet.create ()) type_decl in
       { type_decl with declaration = { type_decl.declaration with param_variances } })
 
 let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
@@ -219,7 +224,7 @@ let rebuild_visible_type_decl_indexes = fun (state: t) ->
         type_decl in
       ())
 
-let make = fun ~(config: TypConfig.t) file ->
+let make = fun ~(config:TypConfig.t) file ->
   let visible_type_decls = annotate_type_decl_variances config.ambient_type_decls in
   let state = {
     file;
@@ -265,8 +270,6 @@ let fresh_hole = fun (state: t) ->
 
 let set_visible_type_decls = fun (state: t) type_decls ->
   let () =
-    state.visible_type_decls <-
-      bind_type_decls state.config.ambient_type_decls type_decls
-      |> annotate_type_decl_variances
+    state.visible_type_decls <- bind_type_decls state.config.ambient_type_decls type_decls |> annotate_type_decl_variances
   in
   rebuild_visible_type_decl_indexes state

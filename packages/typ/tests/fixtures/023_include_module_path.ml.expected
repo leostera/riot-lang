@@ -208,14 +208,6 @@
   },
   "exports": [
     {
-      "name": "Helpers.id",
-      "scheme": "'a. 'a -> 'a"
-    },
-    {
-      "name": "Helpers.wrap",
-      "scheme": "'a. 'a -> 'a option"
-    },
-    {
       "name": "answer",
       "scheme": "int option"
     },
@@ -225,6 +217,14 @@
     },
     {
       "name": "wrap",
+      "scheme": "'a. 'a -> 'a option"
+    },
+    {
+      "name": "Helpers.id",
+      "scheme": "'a. 'a -> 'a"
+    },
+    {
+      "name": "Helpers.wrap",
       "scheme": "'a. 'a -> 'a option"
     }
   ],
@@ -296,88 +296,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -392,46 +312,6 @@
           "scheme": "'a. 'a -> 'a option"
         },
         {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -444,16 +324,12 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "x",
-          "scheme": "'a"
+          "scheme": "'a. 'a"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
@@ -539,88 +415,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -635,46 +431,6 @@
           "scheme": "'a. 'a -> 'a option"
         },
         {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -687,12 +443,8 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
@@ -778,92 +530,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -876,46 +544,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -934,20 +562,20 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "value",
-          "scheme": "'a"
+          "scheme": "'a. 'a"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
         }
       ],
       "expr_id": 2,
@@ -1029,92 +657,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -1127,46 +671,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -1185,20 +689,20 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "value",
-          "scheme": "'a"
+          "scheme": "'a. 'a"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
         }
       ],
       "expr_id": 3,
@@ -1280,92 +784,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -1378,46 +798,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -1436,20 +816,20 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "value",
-          "scheme": "'a"
+          "scheme": "'a. 'a"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
         }
       ],
       "expr_id": 4,
@@ -1531,92 +911,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -1629,46 +925,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -1687,16 +943,16 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
         }
       ],
       "expr_id": 5,
@@ -1778,96 +1034,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -1880,46 +1048,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -1938,20 +1066,24 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "wrap",
           "scheme": "'a. 'a -> 'a option"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
+          "scheme": "'a. 'a -> 'a option"
         }
       ],
       "expr_id": 6,
@@ -2033,96 +1165,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -2135,46 +1179,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -2193,20 +1197,24 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "wrap",
           "scheme": "'a. 'a -> 'a option"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
+          "scheme": "'a. 'a -> 'a option"
         }
       ],
       "expr_id": 7,
@@ -2288,96 +1296,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -2390,46 +1310,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -2448,20 +1328,24 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "wrap",
           "scheme": "'a. 'a -> 'a option"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
+          "scheme": "'a. 'a -> 'a option"
         }
       ],
       "expr_id": 8,
@@ -2543,96 +1427,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -2645,46 +1441,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -2703,20 +1459,24 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "wrap",
           "scheme": "'a. 'a -> 'a option"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
+          "scheme": "'a. 'a -> 'a option"
         }
       ],
       "expr_id": 9,
@@ -2798,96 +1558,8 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Actors.run",
-          "scheme": "'a 'b. ~main:(~args:'a -> (unit, 'b) result) -> ~args:'a -> unit -> unit"
-        },
-        {
-          "name": "Array.length",
-          "scheme": "(_?-1 array) -> int"
-        },
-        {
-          "name": "Buffer.add_char",
-          "scheme": "Buffer.t -> char -> unit"
-        },
-        {
-          "name": "Buffer.contents",
-          "scheme": "Buffer.t -> string"
-        },
-        {
-          "name": "Buffer.create",
-          "scheme": "int -> Buffer.t"
-        },
-        {
           "name": "Error",
-          "scheme": "'a 'b. 'b -> ('a, 'b) result"
-        },
-        {
-          "name": "Failure",
-          "scheme": "string -> exn"
-        },
-        {
-          "name": "Float.cbrt",
-          "scheme": "float -> float"
-        },
-        {
-          "name": "Float.max",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.min",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.of_int",
-          "scheme": "int -> float"
-        },
-        {
-          "name": "Float.pow",
-          "scheme": "float -> float -> float"
-        },
-        {
-          "name": "Float.to_int",
-          "scheme": "float -> int"
-        },
-        {
-          "name": "Float.to_string",
-          "scheme": "float -> string"
-        },
-        {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Int.max",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.min",
-          "scheme": "int -> int -> int"
-        },
-        {
-          "name": "Int.of_string",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "Int.to_string",
-          "scheme": "int -> string"
-        },
-        {
-          "name": "List.map",
-          "scheme": "'a 'b. ('b -> 'a) -> ('b list) -> 'a list"
-        },
-        {
-          "name": "List.of_seq",
-          "scheme": "'a. ('a Seq.t) -> 'a list"
-        },
-        {
-          "name": "List.rev",
-          "scheme": "'a. ('a list) -> 'a list"
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
         },
         {
           "name": "None",
@@ -2900,46 +1572,6 @@
         {
           "name": "Some",
           "scheme": "'a. 'a -> 'a option"
-        },
-        {
-          "name": "Std.Env.args",
-          "scheme": "_?-2"
-        },
-        {
-          "name": "Std.println",
-          "scheme": "string -> unit"
-        },
-        {
-          "name": "String.concat",
-          "scheme": "string -> (string list) -> string"
-        },
-        {
-          "name": "String.contains",
-          "scheme": "string -> char -> bool"
-        },
-        {
-          "name": "String.escaped",
-          "scheme": "string -> string"
-        },
-        {
-          "name": "String.length",
-          "scheme": "string -> int"
-        },
-        {
-          "name": "String.make",
-          "scheme": "int -> char -> string"
-        },
-        {
-          "name": "String.starts_with",
-          "scheme": "~prefix:string -> string -> bool"
-        },
-        {
-          "name": "String.sub",
-          "scheme": "string -> int -> int -> string"
-        },
-        {
-          "name": "String.to_seq",
-          "scheme": "string -> char Seq.t"
         },
         {
           "name": "[]",
@@ -2958,20 +1590,24 @@
           "scheme": "bool -> bool"
         },
         {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
-        },
-        {
           "name": "wrap",
           "scheme": "'a. 'a -> 'a option"
         },
         {
           "name": "|>",
-          "scheme": "'a 'b. 'b -> ('b -> 'a) -> 'a"
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
+          "scheme": "'a. 'a -> 'a option"
         }
       ],
       "expr_id": 10,
@@ -2991,14 +1627,6 @@
     "export_result": {
       "exports": [
         {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "answer",
           "scheme": "int option"
         },
@@ -3008,6 +1636,14 @@
         },
         {
           "name": "wrap",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
           "scheme": "'a. 'a -> 'a option"
         }
       ],
@@ -3052,19 +1688,19 @@
       ],
       "exports_after": [
         {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "id",
           "scheme": "'a. 'a -> 'a"
         },
         {
           "name": "wrap",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
           "scheme": "'a. 'a -> 'a option"
         }
       ],
@@ -3076,14 +1712,6 @@
       ],
       "exports_after": [
         {
-          "name": "Helpers.id",
-          "scheme": "'a. 'a -> 'a"
-        },
-        {
-          "name": "Helpers.wrap",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "answer",
           "scheme": "int option"
         },
@@ -3093,6 +1721,14 @@
         },
         {
           "name": "wrap",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "Helpers.id",
+          "scheme": "'a. 'a -> 'a"
+        },
+        {
+          "name": "Helpers.wrap",
           "scheme": "'a. 'a -> 'a option"
         }
       ],

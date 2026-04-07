@@ -449,7 +449,7 @@ let rec occurs = fun needle ty ->
   | Var { id; link=None; _ } -> Int.equal id needle
   | Var { link=Some linked; _ } -> occurs needle linked
 
-let occurs_or_lower = fun ~generation ~needle ~level ty ->
+let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
   let rec loop = function
     | [] -> false
     | ty :: rest ->
@@ -465,7 +465,10 @@ let occurs_or_lower = fun ~generation ~needle ~level ty ->
           | _ ->
               let () =
                 if ty.level > level then
-                  ty.level <- level
+                  (
+                    ty.level <- level;
+                    on_lower ty
+                  )
               in
               let rest =
                 match ty.desc with

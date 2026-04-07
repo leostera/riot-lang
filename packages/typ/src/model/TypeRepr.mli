@@ -107,4 +107,5 @@ val covariant_vars: t -> int list
 
 val occurs: int -> t -> bool
 
-val occurs_or_lower: generation:int -> needle:int -> level:int -> t -> bool
+val occurs_or_lower:
+  generation:int -> needle:int -> level:int -> on_lower:(t -> unit) -> t -> bool

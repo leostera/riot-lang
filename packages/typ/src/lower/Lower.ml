@@ -69,6 +69,19 @@ let resolve_named_type_name = fun (state: state) name ->
   in
   IdentPath.prefixes state.scope_path |> List.rev |> loop
 
+let resolve_named_type_path = fun (state: state) path ->
+  match IdentPath.split_last path with
+  | Some (scope_path, type_name) ->
+      state.declared_type_names
+      |> List.find_map
+        (fun (candidate_name, candidate_scope_path, candidate_id) ->
+          if String.equal candidate_name type_name && IdentPath.equal candidate_scope_path scope_path then
+            Some (path, Some candidate_id)
+          else
+            None)
+      |> Option.unwrap_or ~default:(path, None)
+  | None -> (path, None)
+
 let register_declared_type_name = fun (state: state) name ->
   match
     state.declared_type_names |> List.find_map
@@ -185,7 +198,7 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
             let (name, type_constructor_id) =
               match segments with
               | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
-              | _ -> (name, None)
+              | _ -> resolve_named_type_path state name
             in
             TypeRepr.named ~type_constructor_id ~name ~arguments
       end
@@ -548,7 +561,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
   let exn_type = TypeRepr.named
-    ~type_constructor_id:None
+    ~type_constructor_id:(Some LanguagePrelude.exn_type_constructor_id)
     ~name:(IdentPath.of_name "exn")
     ~arguments:[] in
   let payload_type =

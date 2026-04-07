@@ -20,7 +20,8 @@
             "body": {
               "arguments": [],
               "name": "point",
-              "tag": "named"
+              "tag": "named",
+              "type_constructor_id": 0
             },
             "quantified": []
           }
@@ -38,6 +39,7 @@
             "field_type": {
               "tag": "int"
             },
+            "label_id": 0,
             "mutable": false,
             "name": "x"
           },
@@ -45,12 +47,15 @@
             "field_type": {
               "tag": "int"
             },
+            "label_id": 1,
             "mutable": false,
             "name": "y"
           }
         ],
         "param_ids": [],
+        "param_variances": [],
         "scope_path": [],
+        "type_constructor_id": 0,
         "type_name": "point"
       }
     ]
