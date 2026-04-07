@@ -116,15 +116,153 @@ let with_typ_store = fun f ->
       let store = Store.create contentstore () in
       f store) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
+let qualify_exports = fun module_name exports ->
+  let module_path = IdentPath.of_name module_name in
+  List.map
+    (fun (name, scheme) ->
+      (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
+    exports
+
+let qualify_type_decls = fun module_name type_decls ->
+  List.map
+    (fun (type_decl: FileSummary.type_decl) ->
+      {
+        FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
+        declaration = type_decl.declaration
+      })
+    type_decls
+
+let expect_cst = fun ~filename parse_result ->
+  match Syn.build_cst parse_result with
+  | Ok cst -> cst
+  | Error (Syn.Parse_diagnostics diagnostics) ->
+      panic
+        ("expected successful CST for "
+        ^ filename
+        ^ " but parser reported diagnostics: "
+        ^ String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics))
+  | Error (Syn.Cst_builder_error error) ->
+      panic ("expected successful CST for " ^ filename ^ " but CST build failed: " ^ error.message)
+
+let create_source = fun session ~kind ~origin ~text ->
+  let filename =
+    match origin with
+    | Source.Path path -> path
+    | Source.Label label -> Path.v label
+  in
+  let parse_result = Syn.parse ~filename text in
+  let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
+  let implicit_opens = [] in
+  Session.create_source
+    session
+    ~kind
+    ~module_name:(Source.infer_module_name origin)
+    ~implicit_opens
+    ~origin
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst
+
+let update_source_text = fun session source_id ~kind ~origin ~text ->
+  let filename =
+    match origin with
+    | Source.Path path -> path
+    | Source.Label label -> Path.v label
+  in
+  let parse_result = Syn.parse ~filename text in
+  let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
+  let implicit_opens = [] in
+  Session.update_source
+    session
+    source_id
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst
+
+let make_source_with_implicit_opens = fun ~implicit_opens ~source_id ~kind ~origin ~revision ~text ->
+  let filename =
+    match origin with
+    | Source.Path path -> path
+    | Source.Label label -> Path.v label
+  in
+  let parse_result = Syn.parse ~filename text in
+  let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
+  Source.make_prepared
+    ~source_id
+    ~kind
+    ~module_name:(Source.infer_module_name origin)
+    ~implicit_opens
+    ~origin
+    ~revision
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst
+
+let make_source = fun ~source_id ~kind ~origin ~revision ~text ->
+  make_source_with_implicit_opens ~implicit_opens:[] ~source_id ~kind ~origin ~revision ~text
+
+let prepared_source = fun ~filename ~text ->
+  let source_id = SourceId.of_int 0 in
+  let origin = Source.Label filename in
+  let kind = Source.File in
+  let parse_result = Syn.parse ~filename:(Path.v filename) text in
+  let cst = expect_cst ~filename parse_result in
+  let implicit_opens = [] in
+  Source.make_prepared
+    ~source_id
+    ~kind
+    ~module_name:(Source.infer_module_name origin)
+    ~implicit_opens
+    ~origin
+    ~revision:0
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst
+
+let check_source_text = fun ~filename text ->
+  let parse_result = Syn.parse ~filename text in
+  let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
+  Check.check_source ~filename ~parse_result ~cst
+
+let scheme_has_named_path =
+  let rec type_has_named_path ty =
+    match TypeRepr.view ty with
+    | TypeRepr.NamedPath _ -> true
+    | TypeRepr.Option item
+    | TypeRepr.Array item
+    | TypeRepr.List item
+    | TypeRepr.Seq item -> type_has_named_path item
+    | TypeRepr.Result (left, right) -> type_has_named_path left || type_has_named_path right
+    | TypeRepr.Named { arguments; _ }
+    | TypeRepr.Tuple arguments -> List.exists type_has_named_path arguments
+    | TypeRepr.Arrow { lhs; rhs; _ } -> type_has_named_path lhs || type_has_named_path rhs
+    | TypeRepr.Int
+    | TypeRepr.Float
+    | TypeRepr.Bool
+    | TypeRepr.String
+    | TypeRepr.Char
+    | TypeRepr.Unit
+    | TypeRepr.Var _
+    | TypeRepr.Hole _ -> false
+  in
+  fun scheme ->
+    let (_quantified, body) = TypeScheme.to_explicit scheme in
+    type_has_named_path body
+
 let test_source_id_stays_stable_across_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "stable.ml")
     ~text:"let x = 1" in
   let snapshot_before = Session.snapshot session in
-  let session = Session.update_source_text session source_id ~text:"let y = 2" in
+  let session = update_source_text
+    session
+    source_id
+    ~kind:Source.File
+    ~origin:(Source.Label "stable.ml")
+    ~text:"let y = 2" in
   let snapshot_after = Session.snapshot session in
   let before_names = export_names (Query.export_of snapshot_before source_id) in
   let after_names = export_names (Query.export_of snapshot_after source_id) in
@@ -134,13 +272,18 @@ let test_source_id_stays_stable_across_updates = fun _ctx ->
 
 let test_snapshots_remain_immutable_after_updates = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "immutable.ml")
     ~text:"let x = 1" in
   let snapshot_before = Session.snapshot session in
-  let session = Session.update_source_text session source_id ~text:"let x = true" in
+  let session = update_source_text
+    session
+    source_id
+    ~kind:Source.File
+    ~origin:(Source.Label "immutable.ml")
+    ~text:"let x = true" in
   let snapshot_after = Session.snapshot session in
   let before_type = inferred_type_at snapshot_before source_id 8 in
   let after_type = inferred_type_at snapshot_after source_id 8 in
@@ -151,7 +294,7 @@ let test_snapshots_remain_immutable_after_updates = fun _ctx ->
 let test_type_at_uses_smallest_indexed_expression = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "let id x = x\nlet answer = id 42\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "type_at.ml")
@@ -167,7 +310,7 @@ let test_snapshot_without_traces_still_reports_diagnostics_and_module_typings = 
   let config = Config.default |> Config.with_capture_traces ~capture_traces:false in
   let session = Session.empty ~config in
   let source = "let id x = x\nlet broken = missing\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "no_traces.ml")
@@ -195,12 +338,12 @@ let test_snapshot_without_traces_still_reports_diagnostics_and_module_typings = 
 
 let test_snapshot_exposes_implicit_file_modules = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, colors_source_id) = Session.create_source
+  let (session, colors_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"module RGB = struct let blend x y = x end\nlet to_string value = value\n" in
-  let (session, demo_source_id) = Session.create_source
+  let (session, demo_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "blend_demo.ml")
@@ -222,6 +365,106 @@ let test_snapshot_exposes_implicit_file_modules = fun _ctx ->
   else
     Ok ()
 
+let test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let helper_text = "let twice x = x + x\n" in
+  let helper_parse_result = Syn.parse ~filename:(Path.v "helper.ml") helper_text in
+  let helper_cst = expect_cst ~filename:"helper.ml" helper_parse_result in
+  let (session, _helper_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Colors__Helper"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "helper.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:helper_cst)
+    ~parse_result:helper_parse_result
+    ~cst:helper_cst in
+  let aliases_text = "module Helper = Colors__Helper\n" in
+  let aliases_parse_result = Syn.parse ~filename:(Path.v "Colors__Aliases.ml-gen") aliases_text in
+  let aliases_cst = expect_cst ~filename:"Colors__Aliases.ml-gen" aliases_parse_result in
+  let (session, _aliases_source_id) = Session.create_source
+    session
+    ~kind:Source.Generated
+    ~module_name:"Colors__Aliases"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "Colors__Aliases.ml-gen")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:aliases_cst)
+    ~parse_result:aliases_parse_result
+    ~cst:aliases_cst in
+  let colors_text = "let answer = Helper.twice 21\n" in
+  let colors_parse_result = Syn.parse ~filename:(Path.v "colors.ml") colors_text in
+  let colors_cst = expect_cst ~filename:"colors.ml" colors_parse_result in
+  let implicit_opens = [ IdentPath.of_string "Colors__Aliases" ] in
+  let (session, colors_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Colors"
+    ~implicit_opens
+    ~origin:(Source.Label "colors.ml")
+    ~source_hash:(Source.hash ~implicit_opens ~cst:colors_cst)
+    ~parse_result:colors_parse_result
+    ~cst:colors_cst in
+  match prepare_snapshot_or_error session ~roots:[ colors_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot colors_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let answer_type = export_scheme snapshot colors_source_id "answer" in
+        if not (answer_type = Some "int") then
+          Error ("unexpected answer type: " ^ show_option answer_type)
+        else
+          Ok ()
+
+let test_implicit_opens_do_not_leak_into_module_exports = fun _ctx ->
+  let config = Config.default |> Config.with_capture_traces ~capture_traces:true in
+  let session = Session.empty ~config in
+  let helper_text = "let twice x = x + x\n" in
+  let helper_parse_result = Syn.parse ~filename:(Path.v "helper.ml") helper_text in
+  let helper_cst = expect_cst ~filename:"helper.ml" helper_parse_result in
+  let aliases_text =
+    "module Helper = Colors__Helper\n"
+    ^ "\n"
+    ^ "module Super = struct\n"
+    ^ "  module Helper = Colors__Helper\n"
+    ^ "end\n"
+  in
+  let aliases_parse_result = Syn.parse ~filename:(Path.v "Colors__Aliases.ml-gen") aliases_text in
+  let aliases_cst = expect_cst ~filename:"Colors__Aliases.ml-gen" aliases_parse_result in
+  let (session, _aliases_source_id) = Session.create_source
+    session
+    ~kind:Source.Generated
+    ~module_name:"Colors__Aliases"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "Colors__Aliases.ml-gen")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:aliases_cst)
+    ~parse_result:aliases_parse_result
+    ~cst:aliases_cst in
+  let implicit_opens = [ IdentPath.of_string "Colors__Aliases" ] in
+  let (session, helper_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Colors__Helper"
+    ~implicit_opens
+    ~origin:(Source.Label "helper.ml")
+    ~source_hash:(Source.hash ~implicit_opens ~cst:helper_cst)
+    ~parse_result:helper_parse_result
+    ~cst:helper_cst in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot helper_source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let exports = export_names (Query.export_of snapshot helper_source_id) in
+    if not (exports = [ "twice" ]) then
+      Error ("unexpected helper exports: "
+      ^ String.concat ", " exports
+      ^ "\n"
+      ^ String.concat "\n" (trace_debug snapshot helper_source_id))
+    else
+      Ok ()
+
 let test_snapshot_exports_interface_declarations = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source =
@@ -235,7 +478,7 @@ let test_snapshot_exports_interface_declarations = fun _ctx ->
     ^ "  val paint : color -> color\n"
     ^ "end\n"
   in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "iface.mli")
@@ -258,7 +501,7 @@ let test_snapshot_exports_interface_declarations = fun _ctx ->
 let test_snapshot_exports_interface_externals = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "external strlen : string -> int = \"caml_strlen\"\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "externals.mli")
@@ -274,12 +517,12 @@ let test_snapshot_exports_interface_externals = fun _ctx ->
 
 let test_snapshot_collects_module_typings = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _) = Session.create_source
+  let (session, _) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "alpha.ml")
     ~text:"let id x = x\n" in
-  let (session, _) = Session.create_source
+  let (session, _) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "beta.ml")
@@ -308,12 +551,12 @@ let test_snapshot_collects_module_typings = fun _ctx ->
 
 let test_snapshot_module_typings_are_canonical_per_module = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _impl_source_id) = Session.create_source
+  let (session, _impl_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"let answer = 42\n" in
-  let (session, _intf_source_id) = Session.create_source
+  let (session, _intf_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.mli")
@@ -337,12 +580,12 @@ let test_snapshot_module_typings_are_canonical_per_module = fun _ctx ->
 
 let test_query_module_typings_of_uses_canonical_root_typings = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = Session.create_source
+  let (session, impl_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"let answer = 42\n" in
-  let (session, intf_source_id) = Session.create_source
+  let (session, intf_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.mli")
@@ -367,12 +610,12 @@ let test_query_module_typings_of_uses_canonical_root_typings = fun _ctx ->
 
 let test_paired_modules_export_interface_shaped_module_typings = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = Session.create_source
+  let (session, impl_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"let answer = 42\nlet hidden = true\n" in
-  let (session, intf_source_id) = Session.create_source
+  let (session, intf_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.mli")
@@ -389,12 +632,12 @@ let test_paired_modules_export_interface_shaped_module_typings = fun _ctx ->
 
 let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = Session.create_source
+  let (session, impl_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"let answer = true\n" in
-  let (session, intf_source_id) = Session.create_source
+  let (session, intf_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.mli")
@@ -422,19 +665,19 @@ let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
   Ok ()
 
 let test_source_input_hash_ignores_source_id_and_revision = fun _ctx ->
-  let source_a = Source.make
+  let source_a = make_source
     ~source_id:(SourceId.of_int 0)
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~revision:1
     ~text:"let id x = x\n" in
-  let source_b = Source.make
+  let source_b = make_source
     ~source_id:(SourceId.of_int 99)
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~revision:42
     ~text:"let id x = x\n" in
-  let source_c = Source.make
+  let source_c = make_source
     ~source_id:(SourceId.of_int 99)
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
@@ -449,9 +692,48 @@ let test_source_input_hash_ignores_source_id_and_revision = fun _ctx ->
   else
     Ok ()
 
+let test_source_input_hash_ignores_comments_and_docstrings = fun _ctx ->
+  let source_a = make_source
+    ~source_id:(SourceId.of_int 0)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:1
+    ~text:"let id x = x\n" in
+  let source_b = make_source
+    ~source_id:(SourceId.of_int 1)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:2
+    ~text:"(** docs *)\n(* banner *)\nlet id (* note *) x = x\n" in
+  let hash_a = Source.input_hash source_a |> Crypto.Digest.hex in
+  let hash_b = Source.input_hash source_b |> Crypto.Digest.hex in
+  Test.assert_equal ~expected:hash_a ~actual:hash_b;
+  Ok ()
+
+let test_source_input_hash_changes_with_implicit_opens = fun _ctx ->
+  let source_without_opens = make_source
+    ~source_id:(SourceId.of_int 0)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:1
+    ~text:"let id x = x\n" in
+  let source_with_opens = make_source_with_implicit_opens
+    ~implicit_opens:[ IdentPath.of_string "Colors__Aliases" ]
+    ~source_id:(SourceId.of_int 1)
+    ~kind:Source.File
+    ~origin:(Source.Label "colors.ml")
+    ~revision:2
+    ~text:"let id x = x\n" in
+  let hash_without_opens = Source.input_hash source_without_opens |> Crypto.Digest.hex in
+  let hash_with_opens = Source.input_hash source_with_opens |> Crypto.Digest.hex in
+  if String.equal hash_without_opens hash_with_opens then
+    Error "expected source input hash to change when implicit opens change"
+  else
+    Ok ()
+
 let test_snapshot_uses_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, colors_source_id) = Session.create_source
+  let (seed_session, colors_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
@@ -464,7 +746,7 @@ let test_snapshot_uses_loaded_module_typings = fun _ctx ->
   in
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ] in
   let session = Session.empty ~config in
-  let (session, demo_source_id) = Session.create_source
+  let (session, demo_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "blend_demo.ml")
@@ -498,7 +780,7 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
   with_typ_store
     (fun store ->
       let seed_session = Session.empty ~config:Config.default in
-      let (seed_session, colors_source_id) = Session.create_source
+      let (seed_session, colors_source_id) = create_source
         seed_session
         ~kind:Source.File
         ~origin:(Source.Label "colors.ml")
@@ -512,7 +794,7 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
       let _ = Store.save_module_typings store loaded_colors |> Result.expect ~msg:"save_module_typings should succeed" in
       let config = Config.default |> Config.with_store ~store:(Some store) in
       let session = Session.empty ~config in
-      let (session, demo_source_id) = Session.create_source
+      let (session, demo_source_id) = create_source
         session
         ~kind:Source.File
         ~origin:(Source.Label "blend_demo.ml")
@@ -533,12 +815,12 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
 
 let test_prepare_snapshot_includes_interface_sibling_dependencies = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = Session.create_source
+  let (session, impl_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"let answer value = value\n" in
-  let (session, intf_source_id) = Session.create_source
+  let (session, intf_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.mli")
@@ -564,7 +846,7 @@ let test_loaded_module_typings_override_store = fun _ctx ->
   with_typ_store
     (fun store ->
       let good_seed = Session.empty ~config:Config.default in
-      let (good_seed, good_source_id) = Session.create_source
+      let (good_seed, good_source_id) = create_source
         good_seed
         ~kind:Source.File
         ~origin:(Source.Label "colors.ml")
@@ -576,7 +858,7 @@ let test_loaded_module_typings_override_store = fun _ctx ->
         | None -> panic "expected good colors module typings"
       in
       let bad_seed = Session.empty ~config:Config.default in
-      let (bad_seed, bad_source_id) = Session.create_source
+      let (bad_seed, bad_source_id) = create_source
         bad_seed
         ~kind:Source.File
         ~origin:(Source.Label "colors.ml")
@@ -592,7 +874,7 @@ let test_loaded_module_typings_override_store = fun _ctx ->
       |> Config.with_store ~store:(Some store)
       |> Config.with_loaded_modules ~loaded_modules:[ good_colors ] in
       let session = Session.empty ~config in
-      let (session, demo_source_id) = Session.create_source
+      let (session, demo_source_id) = create_source
         session
         ~kind:Source.File
         ~origin:(Source.Label "blend_demo.ml")
@@ -610,13 +892,13 @@ let test_loaded_module_typings_override_store = fun _ctx ->
 
 let test_snapshot_uses_sibling_source_record_types = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, colors_source_id) = Session.create_source
+  let (session, colors_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"type point = { x: int; y: int }\n" in
   let source = "open Colors\n" ^ "let origin = { x = 0; y = 0 }\n" ^ "let total point = point.x + point.y\n" in
-  let (session, demo_source_id) = Session.create_source
+  let (session, demo_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "blend_demo.ml")
@@ -653,7 +935,7 @@ let test_snapshot_uses_sibling_source_record_types = fun _ctx ->
 
 let test_snapshot_uses_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, colors_source_id) = Session.create_source
+  let (seed_session, colors_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
@@ -667,7 +949,7 @@ let test_snapshot_uses_loaded_module_record_types = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ] in
   let session = Session.empty ~config in
   let source = "open Colors\n" ^ "let origin = { x = 0; y = 0 }\n" ^ "let total point = point.x + point.y\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -688,7 +970,7 @@ let test_snapshot_uses_loaded_module_record_types = fun _ctx ->
 
 let test_include_reexports_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = Session.create_source
+  let (seed_session, helpers_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "helpers.ml")
@@ -702,7 +984,7 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
   let consumer_config = Config.default
   |> Config.with_loaded_modules ~loaded_modules:[ loaded_helpers ] in
   let consumer_session = Session.empty ~config:consumer_config in
-  let (consumer_session, consumer_source_id) = Session.create_source
+  let (consumer_session, consumer_source_id) = create_source
     consumer_session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -725,7 +1007,7 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
     let client_source = "let origin = { x = 0; y = 0 }\nlet total point = point.x + point.y\n" in
-    let (client_session, client_source_id) = Session.create_source
+    let (client_session, client_source_id) = create_source
       client_session
       ~kind:Source.File
       ~origin:(Source.Label "client.ml")
@@ -751,7 +1033,7 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
 
 let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = Session.create_source
+  let (seed_session, helpers_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "helpers.ml")
@@ -765,7 +1047,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
   let consumer_config = Config.default
   |> Config.with_loaded_modules ~loaded_modules:[ loaded_helpers ] in
   let consumer_session = Session.empty ~config:consumer_config in
-  let (consumer_session, consumer_source_id) = Session.create_source
+  let (consumer_session, consumer_source_id) = create_source
     consumer_session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -788,7 +1070,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
     let client_source = "let origin = { x = 0; y = 0 }\nlet total point = point.x + point.y\n" in
-    let (client_session, client_source_id) = Session.create_source
+    let (client_session, client_source_id) = create_source
       client_session
       ~kind:Source.File
       ~origin:(Source.Label "client.ml")
@@ -814,7 +1096,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
 
 let test_include_reexports_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = Session.create_source
+  let (seed_session, helpers_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "helpers.ml")
@@ -828,7 +1110,7 @@ let test_include_reexports_loaded_module_typings = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_helpers ] in
   let session = Session.empty ~config in
   let source = "include Helpers\nlet answer = wrap (id 1)\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -848,9 +1130,425 @@ let test_include_reexports_loaded_module_typings = fun _ctx ->
     let () = Test.assert_equal ~expected:[ "answer"; "id"; "wrap" ] ~actual:exported_names in
     Ok ()
 
+let test_include_module_type_of_canonicalizes_loaded_nominal_types = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, actors_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "actors.mli")
+    ~text:"module Process: sig\n  type exit_reason = exn\nend\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_actors =
+    match Query.module_typings_of seed_snapshot actors_source_id with
+    | Some typings -> typings
+    | None -> panic "expected actors module typings"
+  in
+  let config = Config.default
+  |> Config.with_ambient
+    ~ambient:(qualify_exports (ModuleTypings.module_name loaded_actors) (ModuleTypings.exports loaded_actors))
+  |> Config.with_ambient_type_decls
+    ~ambient_type_decls:
+      (qualify_type_decls
+        (ModuleTypings.module_name loaded_actors)
+        (ModuleTypings.type_decls loaded_actors)) in
+  let source = prepared_source
+    ~filename:"process.mli"
+    ~text:(
+      "include module type of Actors.Process\n"
+      ^ "val spawn: (unit -> (unit, exit_reason) result) -> int\n"
+    ) in
+  let analysis = SourceAnalysis.analyze ~config source in
+  let diagnostics =
+    analysis.lowering_diagnostics @ analysis.typing_diagnostics
+    |> List.map Diagnostic.to_string in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match List.assoc_opt "spawn" (FileSummary.exports analysis.file_summary) with
+    | None -> Error "expected spawn export"
+    | Some spawn_scheme ->
+        if scheme_has_named_path spawn_scheme then
+          Error ("spawn scheme still contains symbolic named paths: "
+          ^ TypePrinter.scheme_to_string spawn_scheme)
+        else
+          (
+            try
+              let _ =
+                ModuleTypings.of_file_summary
+                  ~module_name:"Process"
+                  ~source_hash:(Source.input_hash source)
+                  analysis.file_summary
+                |> ModuleTypings.Json.to_json
+              in
+              Ok ()
+            with
+            | Failure message -> Error message
+          )
+
+let test_include_module_type_of_loaded_modules_canonicalizes_nominal_types = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, actors_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "actors.mli")
+    ~text:"module Process: sig\n  type exit_reason = exn\nend\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_actors =
+    match Query.module_typings_of seed_snapshot actors_source_id with
+    | Some typings -> typings
+    | None -> panic "expected actors module typings"
+  in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_actors ] in
+  let session = Session.empty ~config in
+  let source = "include module type of Actors.Process\n" ^ "val spawn: (unit -> (unit, exit_reason) result) -> int\n" in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "process.mli")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match Query.module_typings_of snapshot source_id with
+    | None -> Error "expected process module typings"
+    | Some typings ->
+        let exports = ModuleTypings.exports typings in
+        (
+          match List.assoc_opt "spawn" exports with
+          | None -> Error "expected spawn export"
+          | Some spawn_scheme when scheme_has_named_path spawn_scheme ->
+              Error ("spawn scheme still contains symbolic named paths: "
+              ^ TypePrinter.scheme_to_string spawn_scheme)
+          | Some _ ->
+              (
+                try
+                  let _ = ModuleTypings.Json.to_json typings in
+                  Ok ()
+                with
+                | Failure message -> Error message
+              )
+        )
+
+let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, actors_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "actors.mli")
+    ~text:"module Process: sig\n  type exit_reason = exn\nend\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_actors =
+    match Query.module_typings_of seed_snapshot actors_source_id with
+    | Some typings -> typings
+    | None -> panic "expected actors module typings"
+  in
+  let loaded_modules = [ loaded_actors ] in
+  let config = Config.default
+  |> Config.with_loaded_modules ~loaded_modules
+  |> Config.with_ambient
+    ~ambient:(loaded_modules
+    |> List.concat_map
+      (fun typings ->
+        qualify_exports (ModuleTypings.module_name typings) (ModuleTypings.exports typings)))
+  |> Config.with_ambient_type_decls
+    ~ambient_type_decls:(loaded_modules
+    |> List.concat_map
+      (fun typings ->
+        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))) in
+  let source = prepared_source
+    ~filename:"process.mli"
+    ~text:(
+      "include module type of Actors.Process\n"
+      ^ "val spawn: (unit -> (unit, exit_reason) result) -> int\n"
+    ) in
+  let analysis = SourceAnalysis.analyze ~config source in
+  let diagnostics =
+    analysis.lowering_diagnostics @ analysis.typing_diagnostics
+    |> List.map Diagnostic.to_string in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match List.assoc_opt "spawn" (FileSummary.exports analysis.file_summary) with
+    | None -> Error "expected spawn export"
+    | Some spawn_scheme ->
+        if scheme_has_named_path spawn_scheme then
+          Error ("spawn scheme still contains symbolic named paths: "
+          ^ TypePrinter.scheme_to_string spawn_scheme)
+        else
+          (
+            try
+              let _ =
+                ModuleTypings.of_file_summary
+                  ~module_name:"Process"
+                  ~source_hash:(Source.input_hash source)
+                  analysis.file_summary
+                |> ModuleTypings.Json.to_json
+              in
+              Ok ()
+            with
+            | Failure message -> Error message
+          )
+
+let test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, common_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "common.mli")
+    ~text:"type error = int\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_common =
+    match Query.module_typings_of seed_snapshot common_source_id with
+    | Some typings -> typings
+    | None -> panic "expected common module typings"
+  in
+  let loaded_modules = [ loaded_common ] in
+  let config = Config.default
+  |> Config.with_loaded_modules ~loaded_modules
+  |> Config.with_ambient
+    ~ambient:(loaded_modules
+    |> List.concat_map
+      (fun typings ->
+        qualify_exports (ModuleTypings.module_name typings) (ModuleTypings.exports typings)))
+  |> Config.with_ambient_type_decls
+    ~ambient_type_decls:(loaded_modules
+    |> List.concat_map
+      (fun typings ->
+        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))) in
+  let source = prepared_source
+    ~filename:"reader.mli"
+    ~text:(
+      "open Common\n"
+      ^ "val close: unit -> (unit, error) result\n"
+    ) in
+  let analysis = SourceAnalysis.analyze ~config source in
+  let diagnostics =
+    analysis.lowering_diagnostics @ analysis.typing_diagnostics
+    |> List.map Diagnostic.to_string in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match List.assoc_opt "close" (FileSummary.exports analysis.file_summary) with
+    | None -> Error "expected close export"
+    | Some close_scheme ->
+        if scheme_has_named_path close_scheme then
+          Error ("close scheme still contains symbolic named paths: "
+          ^ TypePrinter.scheme_to_string close_scheme)
+        else
+          (
+            try
+              let _ =
+                ModuleTypings.of_file_summary
+                  ~module_name:"Reader"
+                  ~source_hash:(Source.input_hash source)
+                  analysis.file_summary
+                |> ModuleTypings.Json.to_json
+              in
+              Ok ()
+            with
+            | Failure message -> Error message
+          )
+
+let test_snapshot_exports_opened_loaded_nominal_types_from_implementation = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, common_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "common.mli")
+    ~text:"type error = int\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_common =
+    match Query.module_typings_of seed_snapshot common_source_id with
+    | Some typings -> typings
+    | None -> panic "expected common module typings"
+  in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_common ] in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "reader.ml")
+    ~text:(
+      "open Common\n"
+      ^ "let close (): (unit, error) result = Ok ()\n"
+    ) in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match Query.module_typings_of snapshot source_id with
+    | None -> Error "expected reader module typings"
+    | Some typings ->
+        (
+          match List.assoc_opt "close" (ModuleTypings.exports typings) with
+          | None -> Error "expected close export"
+          | Some close_scheme when scheme_has_named_path close_scheme ->
+              Error ("close scheme still contains symbolic named paths: "
+              ^ TypePrinter.scheme_to_string close_scheme)
+          | Some _ ->
+              (
+                try
+                  let _ = ModuleTypings.Json.to_json typings in
+                  Ok ()
+                with
+                | Failure message -> Error message
+              )
+        )
+
+let test_snapshot_type_decls_use_opened_sibling_nominal_types = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, common_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "common.mli")
+    ~text:"type error = int\n" in
+  let (session, reader_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "reader.ml")
+    ~text:(
+      "open Common\n"
+      ^ "type wrapped = Wrap of error\n"
+    ) in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot reader_source_id in
+  let _ = common_source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    match Query.module_typings_of snapshot reader_source_id with
+    | None -> Error "expected reader module typings"
+    | Some typings ->
+        (
+          try
+            let _ = ModuleTypings.Json.to_json typings in
+            Ok ()
+          with
+          | Failure message -> Error message
+        )
+
+let test_prepare_snapshot_type_decls_use_opened_sibling_nominal_types = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _common_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "common.mli")
+    ~text:"type error = int\n" in
+  let (session, reader_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "reader.ml")
+    ~text:(
+      "open Common\n"
+      ^ "type wrapped = Wrap of error\n"
+    ) in
+  match prepare_snapshot_or_error session ~roots:[ reader_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot reader_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        match Query.module_typings_of snapshot reader_source_id with
+        | None -> Error "expected reader module typings"
+        | Some typings ->
+            (
+              try
+                let _ = ModuleTypings.Json.to_json typings in
+                Ok ()
+              with
+              | Failure message -> Error message
+            )
+
+let test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types = fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, common_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "common.mli")
+    ~text:"type error = int\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_common =
+    match Query.module_typings_of seed_snapshot common_source_id with
+    | Some typings -> typings
+    | None -> panic "expected common module typings"
+  in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_common ] in
+  let session = Session.empty ~config in
+  let (session, reader_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "reader.ml")
+    ~text:(
+      "open Common\n"
+      ^ "type wrapped = Wrap of error\n"
+    ) in
+  match prepare_snapshot_or_error session ~roots:[ reader_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot reader_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        match Query.module_typings_of snapshot reader_source_id with
+        | None -> Error "expected reader module typings"
+        | Some typings ->
+            (
+              try
+                let _ = ModuleTypings.Json.to_json typings in
+                Ok ()
+              with
+              | Failure message -> Error message
+            )
+
+let test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name =
+ fun _ctx ->
+  let seed_session = Session.empty ~config:Config.default in
+  let (seed_session, parser_source_id) = create_source
+    seed_session
+    ~kind:Source.File
+    ~origin:(Source.Label "markdown_parser.mli")
+    ~text:"type inline_node = Text of string\n" in
+  let seed_snapshot = Session.snapshot seed_session in
+  let loaded_parser =
+    match Query.module_typings_of seed_snapshot parser_source_id with
+    | Some typings -> typings
+    | None -> panic "expected markdown_parser module typings"
+  in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_parser ] in
+  let session = Session.empty ~config in
+  let (session, reader_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "markdown_lower.ml")
+    ~text:(
+      "open Markdown_parser\n"
+      ^ "type inline_stack_item = Inline_node of inline_node\n"
+    ) in
+  match prepare_snapshot_or_error session ~roots:[ reader_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot reader_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        match Query.module_typings_of snapshot reader_source_id with
+        | None -> Error "expected markdown_lower module typings"
+        | Some typings ->
+            (
+              try
+                let _ = ModuleTypings.Json.to_json typings in
+                Ok ()
+              with
+              | Failure message -> Error message
+            )
+
 let test_module_alias_reexports_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = Session.create_source
+  let (seed_session, helpers_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "helpers.ml")
@@ -864,7 +1562,7 @@ let test_module_alias_reexports_loaded_module_typings = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_helpers ] in
   let session = Session.empty ~config in
   let source = "module Util = Helpers\nlet answer = Util.wrap (Util.id 1)\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -891,12 +1589,12 @@ let test_module_alias_reexports_loaded_module_typings = fun _ctx ->
 
 let test_module_alias_reexports_same_named_local_modules = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _cell_source_id) = Session.create_source
+  let (session, _cell_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "cell.ml")
     ~text:"let create value = value\n" in
-  let (session, sync_source_id) = Session.create_source
+  let (session, sync_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "sync.ml")
@@ -920,17 +1618,17 @@ let test_module_alias_reexports_same_named_local_modules = fun _ctx ->
 
 let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, _cell_source_id) = Session.create_source
+  let (seed_session, _cell_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "cell.ml")
     ~text:"let create value = value\n" in
-  let (seed_session, _sync_source_id) = Session.create_source
+  let (seed_session, _sync_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "sync.ml")
     ~text:"module Cell = Cell\n" in
-  let (seed_session, std_source_id) = Session.create_source
+  let (seed_session, std_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "std.ml")
@@ -944,7 +1642,7 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
   let std_exported_names = ModuleTypings.exports std_summary |> List.map fst in
   let client_config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ std_summary ] in
   let client_session = Session.empty ~config:client_config in
-  let (client_session, client_source_id) = Session.create_source
+  let (client_session, client_source_id) = create_source
     client_session
     ~kind:Source.File
     ~origin:(Source.Label "client.ml")
@@ -966,7 +1664,7 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
 
 let test_sibling_source_uses_loaded_module_record_reexport = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = Session.create_source
+  let (seed_session, helpers_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "helpers.ml")
@@ -980,13 +1678,13 @@ let test_sibling_source_uses_loaded_module_record_reexport = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_helpers ] in
   let session = Session.empty ~config in
   let consumer_source = "include Helpers\n" ^ "let origin = { x = 0; y = 0 }\n" in
-  let (session, _consumer_source_id) = Session.create_source
+  let (session, _consumer_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
     ~text:consumer_source in
   let client_source = "let total = Consumer.origin.x + Consumer.origin.y\n" in
-  let (session, client_source_id) = Session.create_source
+  let (session, client_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "client.ml")
@@ -1009,12 +1707,12 @@ let test_sibling_source_uses_loaded_module_record_reexport = fun _ctx ->
 
 let test_prepare_snapshot_is_rooted = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, colors_source_id) = Session.create_source
+  let (session, colors_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
     ~text:"module RGB = struct let blend x y = x end\nlet to_string value = value\n" in
-  let (session, demo_source_id) = Session.create_source
+  let (session, demo_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "blend_demo.ml")
@@ -1057,7 +1755,7 @@ let test_prepare_snapshot_reports_missing_roots = fun _ctx ->
 
 let test_prepare_snapshot_reports_missing_module_summary = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "uses_missing_module.ml")
@@ -1081,12 +1779,12 @@ let test_prepare_snapshot_reports_missing_module_summary = fun _ctx ->
 
 let test_prepare_snapshot_collects_transitive_missing_modules = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "dependent.ml")
     ~text:"open Inner\nlet answer = 1\n" in
-  let (session, _inner_source_id) = Session.create_source
+  let (session, _inner_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "inner.ml")
@@ -1110,7 +1808,7 @@ let test_prepare_snapshot_collects_transitive_missing_modules = fun _ctx ->
 
 let test_prepare_snapshot_collects_missing_module_for_qualified_reference = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "qualified.ml")
@@ -1134,12 +1832,12 @@ let test_prepare_snapshot_collects_missing_module_for_qualified_reference = fun 
 
 let test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirements = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _provider_source_id) = Session.create_source
+  let (session, _provider_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "provider.ml")
     ~text:"module Missing_module = struct let value = 42 end\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -1163,7 +1861,7 @@ let test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirem
 
 let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, colors_source_id) = Session.create_source
+  let (seed_session, colors_source_id) = create_source
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
@@ -1176,7 +1874,7 @@ let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_re
   in
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_colors ] in
   let session = Session.empty ~config in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
@@ -1200,12 +1898,12 @@ let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_re
 
 let test_prepare_snapshot_canonicalizes_missing_requirements = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, first_source_id) = Session.create_source
+  let (session, first_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "first.ml")
     ~text:"open Missing_module\nlet first = 1\n" in
-  let (session, second_source_id) = Session.create_source
+  let (session, second_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "second.ml")
@@ -1247,12 +1945,12 @@ let test_prepare_snapshot_canonicalizes_missing_requirements = fun _ctx ->
 
 let test_prepare_snapshot_sorts_missing_modules_by_name = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, zed_source_id) = Session.create_source
+  let (session, zed_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "zed_consumer.ml")
     ~text:"open Zed\nlet z = 1\n" in
-  let (session, alpha_source_id) = Session.create_source
+  let (session, alpha_source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "alpha_consumer.ml")
@@ -1280,7 +1978,9 @@ let test_prepare_snapshot_sorts_missing_modules_by_name = fun _ctx ->
         Error (String.concat "\n" [ "expected"; expected; "actual"; actual ])
 
 let test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries = fun _ctx ->
-  let report = Check.check_source ~filename:(Path.v "uses_missing_module.ml") "open Missing_module\nlet answer = Missing_module.value 1\n" in
+  let report = check_source_text
+    ~filename:(Path.v "uses_missing_module.ml")
+    "open Missing_module\nlet answer = Missing_module.value 1\n" in
   let diagnostics = List.length report.parse_diagnostics
   + List.length report.lowering_diagnostics
   + List.length report.typing_diagnostics in
@@ -1296,7 +1996,7 @@ let test_match_guards_typecheck_in_pattern_scope = fun _ctx ->
   ^ "  | Some n when n > 0 -> n\n"
   ^ "  | Some _ -> 0\n"
   ^ "  | None -> 0\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "match_guard.ml")
@@ -1322,7 +2022,7 @@ let test_optional_arguments_can_be_omitted_and_reordered = fun _ctx ->
   ^ "let omitted = make_key 3\n"
   ^ "let reordered = make_key ~mods:4 3\n"
   ^ "let explicit = make_key ~kind:5 ~mods:6 7\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "optional_apply.ml")
@@ -1372,7 +2072,7 @@ let test_records_flow_through_snapshot_queries = fun _ctx ->
   ^ "let move_x point dx = { point with x = point.x + dx }\n"
   ^ "let total = fun { x; y } -> x + y\n"
   ^ "let answer = total (move_x origin 3)\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "records.ml")
@@ -1415,7 +2115,7 @@ let test_fun_cases_keep_preceding_parameters = fun _ctx ->
   ^ "  | false -> base\n"
   ^ "\n"
   ^ "let picked = choose 1 ~delta:2 true\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "fun_cases_with_params.ml")
@@ -1439,7 +2139,7 @@ let test_fun_cases_keep_preceding_parameters = fun _ctx ->
 let test_expansive_bindings_stay_monomorphic = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "let id x = x\n" ^ "let alias = id id\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "value_restriction.ml")
@@ -1458,7 +2158,7 @@ let test_expansive_bindings_stay_monomorphic = fun _ctx ->
 let test_nonexpansive_list_bindings_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "let empty = []\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "list_value_restriction.ml")
@@ -1475,7 +2175,7 @@ let test_nonexpansive_list_bindings_still_generalize = fun _ctx ->
 let test_expansive_covariant_lists_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "let make _ = []\n" ^ "let xs = make ()\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "relaxed_value_restriction.ml")
@@ -1492,7 +2192,7 @@ let test_expansive_covariant_lists_still_generalize = fun _ctx ->
 let test_expansive_covariant_nominal_types_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "type 'a box = Box of 'a list\n" ^ "let make _ = Box []\n" ^ "let boxed = make ()\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "nominal_value_restriction.ml")
@@ -1509,7 +2209,7 @@ let test_expansive_covariant_nominal_types_still_generalize = fun _ctx ->
 let test_expansive_covariant_record_types_still_generalize = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = "type 'a box = { items: 'a list }\n" ^ "let make _ = { items = [] }\n" ^ "let boxed = make ()\n" in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "record_value_restriction.ml")
@@ -1532,6 +2232,12 @@ let () =
         Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
         Test.case "snapshot without traces still reports diagnostics and module typings" test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
+        Test.case
+          "prepare_snapshot uses implicit-opened alias modules with internal names"
+          test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
+        Test.case
+          "implicit opens do not leak into module exports"
+          test_implicit_opens_do_not_leak_into_module_exports;
         Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
         Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
         Test.case "snapshot collects module typings" test_snapshot_collects_module_typings;
@@ -1540,6 +2246,8 @@ let () =
         Test.case "paired modules export interface-shaped module typings" test_paired_modules_export_interface_shaped_module_typings;
         Test.case "paired modules report signature inclusion mismatches" test_paired_modules_report_signature_inclusion_mismatches;
         Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
+        Test.case "source input hash ignores comments and docstrings" test_source_input_hash_ignores_comments_and_docstrings;
+        Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
         Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
@@ -1549,6 +2257,33 @@ let () =
         Test.case "include reexports loaded module record types" test_include_reexports_loaded_module_record_types;
         Test.case "module alias reexports loaded module record types" test_module_alias_reexports_loaded_module_record_types;
         Test.case "include reexports loaded module typings" test_include_reexports_loaded_module_typings;
+        Test.case
+          "include module type of canonicalizes loaded nominal types"
+          test_include_module_type_of_canonicalizes_loaded_nominal_types;
+        Test.case
+          "include module type of loaded modules canonicalizes nominal types"
+          test_include_module_type_of_loaded_modules_canonicalizes_nominal_types;
+        Test.case
+          "source analysis with loaded modules canonicalizes nominal types"
+          test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
+        Test.case
+          "source analysis with opened loaded module canonicalizes nominal types"
+          test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
+        Test.case
+          "snapshot exports opened loaded nominal types from implementation"
+          test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
+        Test.case
+          "snapshot type declarations use opened sibling nominal types"
+          test_snapshot_type_decls_use_opened_sibling_nominal_types;
+        Test.case
+          "prepare_snapshot type declarations use opened sibling nominal types"
+          test_prepare_snapshot_type_decls_use_opened_sibling_nominal_types;
+        Test.case
+          "prepare_snapshot type declarations use opened loaded nominal types"
+          test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types;
+        Test.case
+          "prepare_snapshot type declarations use opened loaded nominal types with underscored module name"
+          test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name;
         Test.case "module aliases reexport loaded module typings" test_module_alias_reexports_loaded_module_typings;
         Test.case "module aliases reexport same-named local modules" test_module_alias_reexports_same_named_local_modules;
         Test.case "loaded module typings preserve nested same-named alias exports" test_loaded_module_typings_preserve_nested_same_named_alias_exports;

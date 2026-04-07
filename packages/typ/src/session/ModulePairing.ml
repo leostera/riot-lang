@@ -13,19 +13,9 @@ type source_kind =
   | Other
 
 let source_kind = fun (source: Source.t) ->
-  match source.origin with
-  | Source.Path path -> (
-      match Path.extension path with
-      | Some ".mli" -> Interface
-      | Some ".ml" -> Implementation
-      | _ -> Other
-    )
-  | Source.Label label -> (
-      match Path.(Path.v label |> extension) with
-      | Some ".mli" -> Interface
-      | Some ".ml" -> Implementation
-      | _ -> Other
-    )
+  match source.cst with
+  | Syn.Cst.Interface _ -> Interface
+  | Syn.Cst.Implementation _ -> Implementation
 
 let prefer_source = fun current candidate ->
   match (source_kind current, source_kind candidate) with
@@ -54,9 +44,7 @@ let select_source = fun sources desired_kind ->
   loop None sources
 
 let source_span = fun (source: Source.t) ->
-  match source.cst with
-  | Ok cst -> Syn.Cst.syntax_node_of_source_file cst |> Syn.Cst.token_body_span
-  | Error _ -> Syn.Ceibo.Span.make ~start:0 ~end_:0
+  Syn.Cst.syntax_node_of_source_file source.cst |> Syn.Cst.token_body_span
 
 let qualified_name = fun scope_path name ->
   IdentPath.append_name scope_path name

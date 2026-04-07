@@ -103,6 +103,18 @@ let loaded_ambient_type_decls_for = fun (slot: analysis_slot) ->
       ModuleTypings.type_decls typings |> qualify_type_decls (ModuleTypings.module_name typings))
   |> List.flatten
 
+let module_dependencies_of_source = fun (source: Source.t) ->
+  match Syn.Deps.of_parse_result source.parse_result with
+  | Ok deps -> Syn.Deps.modules deps
+  | Error _ -> []
+
+let required_local_module_names = fun (slot: analysis_slot) ->
+  let names =
+    module_dependencies_of_source slot.source
+    @ (slot.source.implicit_opens |> List.map IdentPath.to_string)
+  in
+  names |> List.sort_uniq String.compare
+
 let visiting_key = fun visiting ->
   visiting
   |> List.map SourceId.to_int
@@ -146,8 +158,12 @@ and qualified_typings = fun (snapshot: t) ?(visiting = []) () ->
 
 and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   let current_module_name = Source.module_name slot.source in
+  let required_local_modules = required_local_module_names slot in
   let local_modules = module_results_for snapshot visiting
-  |> List.filter (fun (module_name, _result) -> not (String.equal current_module_name module_name))
+  |> List.filter
+    (fun (module_name, _result) ->
+      not (String.equal current_module_name module_name)
+      && List.mem module_name required_local_modules)
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.exports result.ModulePairing.module_typings |> qualify_exports module_name)
@@ -156,8 +172,12 @@ and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
 
 and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   let current_module_name = Source.module_name slot.source in
+  let required_local_modules = required_local_module_names slot in
   let local_type_decls = module_results_for snapshot visiting
-  |> List.filter (fun (module_name, _result) -> not (String.equal current_module_name module_name))
+  |> List.filter
+    (fun (module_name, _result) ->
+      not (String.equal current_module_name module_name)
+      && List.mem module_name required_local_modules)
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.type_decls result.ModulePairing.module_typings |> qualify_type_decls module_name)
@@ -190,7 +210,7 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
           if List.exists (SourceId.equal slot.source_id) visiting then
             force_base_analysis slot
           else
-            force_analysis snapshot ~visiting:((slot.source_id :: visiting)) slot
+            force_analysis snapshot ~visiting slot
         in
         (slot.source, analysis))
   in

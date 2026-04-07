@@ -25,6 +25,10 @@ let polymorphic_pipe =
   let output = var 1 in
   TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow input (arrow (arrow input output) output))
 
+let polymorphic_min_max =
+  let element = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow element (arrow element element))
+
 let int_binop = monomorphic (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.int))
 
 let float_binop = monomorphic (arrow TypeRepr.float (arrow TypeRepr.float TypeRepr.float))
@@ -67,13 +71,28 @@ let prelude_result_type_constructor_id = BuiltinTypeConstructors.result_type_con
 
 let exn_type_constructor_id = BuiltinTypeConstructors.exn_type_constructor_id
 
-let type_constructor_of_path = BuiltinTypeConstructors.of_path
+let type_head_of_path = BuiltinTypeConstructors.head_of_path
 
 let bare_named = fun name ->
   let path = IdentPath.of_name name in
-  TypeRepr.named ~type_constructor:(type_constructor_of_path path) ~name:path ~arguments:[]
+  let head =
+    match type_head_of_path path with
+    | Some head -> head
+    | None -> raise (Failure ("missing intrinsic type head " ^ IdentPath.to_string path))
+  in
+  TypeRepr.named ~head ~arguments:[]
 
-let named = fun path -> TypeRepr.named ~type_constructor:(type_constructor_of_path path) ~name:path ~arguments:[]
+let polymorphic_raise =
+  let result = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (bare_named "exn") result)
+
+let named = fun path ->
+  let head =
+    match type_head_of_path path with
+    | Some head -> head
+    | None -> raise (Failure ("missing intrinsic type head " ^ IdentPath.to_string path))
+  in
+  TypeRepr.named ~head ~arguments:[]
 
 let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 
@@ -116,6 +135,9 @@ let bindings = [
     IdentPath.of_name "^",
     monomorphic (arrow TypeRepr.string (arrow TypeRepr.string TypeRepr.string))
   );
+  (IdentPath.of_name "raise", polymorphic_raise);
+  (IdentPath.of_name "min", polymorphic_min_max);
+  (IdentPath.of_name "max", polymorphic_min_max);
 ]
 
 let type_decls = [ {
