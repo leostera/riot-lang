@@ -15,6 +15,7 @@
 9. Keep `Kernel.Fs.ReadDir` mechanical. It should expose cheap directory-entry kind hints from `readdir`, skip `.` and `..` at the kernel boundary, and leave metadata fallback policy to `std`.
 10. Keep `Kernel.Format` primitive-only. It should mechanically concatenate already-decided values into strings, not grow higher-level interpolation, styling, or domain-specific formatting policy.
 11. Kernel-owned autofixes should stay syntax-directed and conservative. Prefer explicit `Kernel.format` / `Format.format` rewrites over import-sensitive edits when scope is ambiguous.
+12. Keep UDP primitives mechanical. `Kernel.Net.Udp_socket` should expose bind/connect/send/recv operations and readiness sources, while packet parsing, retries, and handler orchestration stay above `kernel`.
 
 ## Validate
 

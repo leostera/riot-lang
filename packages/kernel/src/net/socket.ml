@@ -12,6 +12,11 @@ type stream_socket =
     `stream
   ]) socket
 
+type datagram_socket =
+  ([
+    `datagram
+  ]) socket
+
 let close = fun t -> Fd.close t
 
 let make = fun sock_domain sock_type ->

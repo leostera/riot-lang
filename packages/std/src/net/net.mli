@@ -48,13 +48,13 @@
     ## Key Features
 
     - **Non-blocking I/O**: All operations suspend the actor, not the scheduler
-    - **Process-based concurrency**: Spawn an actor per connection
+    - **Process-based concurrency**: Spawn an actor per connection or datagram
     - **Error handling**: Explicit Result types for all I/O operations
     - **Address parsing**: Type-safe network address handling
 
     ## When to Use
 
-    - Building network servers (HTTP, TCP protocols)
+    - Building network servers (HTTP, TCP, UDP protocols)
     - Network clients that need to be concurrent
     - Any I/O-bound network application with many connections
 
@@ -78,6 +78,12 @@ module TcpListener: module type of Tcp_listener
 
 (** TCP server that manages a listener and handles line-based protocols. *)
 module TcpServer: module type of Tcp_server
+
+(** UDP socket for datagram-oriented networking. *)
+module UdpSocket: module type of Udp_socket
+
+(** UDP server convenience wrapper for packet handlers. *)
+module UdpServer: module type of Udp_server
 
 (** TCP client for line-based protocols. *)
 module TcpClient: module type of Tcp_client

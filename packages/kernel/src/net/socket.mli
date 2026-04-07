@@ -7,6 +7,12 @@ type stream_socket =
   ([
     `stream
   ]) socket
+
+type datagram_socket =
+  ([
+    `datagram
+  ]) socket
+
 val close: 'kind socket -> unit
 
 val make: Unix.socket_domain -> Unix.socket_type -> 'kind socket

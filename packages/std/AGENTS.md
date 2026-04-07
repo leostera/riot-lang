@@ -29,6 +29,7 @@
 23. Prefer `format Format.[ ... ]` for small diagnostic strings that stitch together primitives in `std`. Keep larger renderers and structured text generators on their own domain-specific builders instead of forcing everything through `Kernel.Format`.
 24. Keep `Std.Date` as the civil-date surface and `Std.DateTime` as the calendar datetime surface. Leave `Std.Calendar` as the lower-level Gregorian math helper rather than turning it into the primary application-facing API.
 25. Keep `Std.Range` order-based and comparator-carrying. Interval operations should respect stored `Included` / `Excluded` / `Unbounded` bounds without growing a step or enumeration model into the core range type.
+26. Keep UDP support datagram-first. `Std.Net.UdpSocket` is the core surface; any `UdpServer` convenience wrapper should preserve packet boundaries and avoid pretending UDP has accept/listener semantics.
 
 ## Validate
 
