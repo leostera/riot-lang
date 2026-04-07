@@ -67,6 +67,10 @@ type color = [
 *)
 val to_string: color -> string
 
+(** ANSI palette helpers.
+
+    Use this module when you are starting from terminal palette indices and need
+    to move into RGB-based conversions. *)
 module ANSI: sig
   (** Convert an ANSI palette entry to RGB.
 
@@ -80,6 +84,7 @@ module ANSI: sig
   val to_rgb: ansi -> rgb
 end
 
+(** White-point definitions used by XYZ and LUV conversions. *)
 module White_reference: sig
   (** Standard D65 white point.
 
@@ -89,6 +94,11 @@ module White_reference: sig
   val d65: xyz
 end
 
+(** Helpers for working in linear RGB space.
+
+    Linear RGB is the calculation-friendly form of RGB with the display gamma
+    curve removed. Use it as the bridge between display RGB values and CIE
+    color spaces such as XYZ. *)
 module Linear_RGB: sig
   (** Remove the sRGB gamma curve and convert an RGB color to linear RGB.
 
@@ -116,6 +126,10 @@ module Linear_RGB: sig
   val to_xyz: lrgb -> xyz
 end
 
+(** Helpers for working in the CIE 1931 XYZ color space.
+
+    XYZ is device-independent and is the main bridge between RGB-style color
+    values and perceptually uniform spaces such as LUV. *)
 module XYZ: sig
   (** Convert XYZ to linear RGB.
 
@@ -144,6 +158,10 @@ module XYZ: sig
   val to_luv: xyz -> luv
 end
 
+(** Helpers for working in the CIE LUV color space.
+
+    LUV is useful when you want distances and interpolation to track perceived
+    color change more closely than raw RGB values do. *)
 module LUV: sig
   (** Convert LUV back to XYZ with an explicit white reference.
 
@@ -185,6 +203,11 @@ module LUV: sig
     luv
 end
 
+(** High-level RGB helpers.
+
+    Use this module when your application naturally works with ordinary RGB
+    colors but you still want conversions and blending that respect perceptual
+    color differences. *)
 module RGB: sig
   (** Blend two RGB colors in perceptually uniform LUV space.
 
