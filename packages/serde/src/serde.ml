@@ -10,6 +10,7 @@ type error =
   | `Io_error of IO.error ]
 
 exception Decode_error of error
+exception Encode_error of error
 
 module Fields = struct
   type 'tag case = {
@@ -373,6 +374,141 @@ let record = fun ~fields ~init ~step ~finish ->
 let variant = fun cases ->
   { run = fun backend state -> backend.variant state cases }
 
+module De = struct
+  module Fields = Fields
+
+  type 'value t = { run: 'state. 'state backend -> 'state -> 'value }
+
+  and 'value variant_case =
+    | Unit : string * 'value -> 'value variant_case
+    | Newtype : string * 'payload t * ('payload -> 'value) -> 'value variant_case
+
+  and 'value variant_cases = 'value variant_case list
+
+  and 'state backend = {
+    bool: 'state -> bool;
+    string: 'state -> string;
+    int: 'state -> int;
+    int32: 'state -> int32;
+    int64: 'state -> int64;
+    float: 'state -> float;
+    skip_any: 'state -> unit;
+    option:
+      'value.
+      'state ->
+      'value t ->
+      'value option;
+    list:
+      'value.
+      'state ->
+      'value t ->
+      'value list;
+    record:
+      'field 'acc 'value.
+      'state ->
+      fields:'field Fields.t ->
+      init:'acc ->
+      step:('acc -> 'field option -> 'acc) ->
+      finish:('acc -> 'value) ->
+      'value;
+    variant:
+      'value.
+      'state ->
+      'value variant_cases ->
+      'value;
+  }
+
+  type reader = {
+    read: 'value. 'value t -> 'value;
+  }
+
+  module Variant = struct
+    type 'value case = 'value variant_case =
+      | Unit : string * 'value -> 'value case
+      | Newtype : string * 'payload t * ('payload -> 'value) -> 'value case
+
+    type 'value cases = 'value case list
+
+    let unit = fun tag value ->
+      Unit (tag, value)
+
+    let newtype = fun tag decode wrap ->
+      Newtype (tag, decode, wrap)
+  end
+
+  let return = fun value ->
+    { run = fun _backend _state -> value }
+
+  let map = fun decode project ->
+    { run = fun backend state -> project (decode.run backend state) }
+
+  let bind = fun decode next ->
+    {
+      run =
+        fun backend state ->
+          let value = decode.run backend state in
+          (next value).run backend state;
+    }
+
+  let fail = fun error ->
+    { run = fun _backend _state -> raise (Decode_error error) }
+
+  let raise_error = fun error ->
+    raise (Decode_error error)
+
+  let missing_field = fun () ->
+    raise_error `missing_field
+
+  let read = fun reader decode ->
+    reader.read decode
+
+  let run = fun decode backend state ->
+    try Ok (decode.run backend state) with
+    | Decode_error error -> Error error
+
+  module Syntax = struct
+    let ( let* ) = bind
+
+    let ( let+ ) = map
+  end
+
+  let field = Fields.case
+  let fields = Fields.make
+
+  let bool: bool t = { run = fun backend state -> backend.bool state }
+  let string: string t = { run = fun backend state -> backend.string state }
+  let int: int t = { run = fun backend state -> backend.int state }
+  let int32: int32 t = { run = fun backend state -> backend.int32 state }
+  let int64: int64 t = { run = fun backend state -> backend.int64 state }
+  let float: float t = { run = fun backend state -> backend.float state }
+  let skip_any: unit t = { run = fun backend state -> backend.skip_any state }
+
+  let option = fun decode ->
+    { run = fun backend state -> backend.option state decode }
+
+  let list = fun decode ->
+    { run = fun backend state -> backend.list state decode }
+
+  let array = fun decode ->
+    map (list decode) array_of_list
+
+  let record = fun ~fields ~init ~step ~finish ->
+    {
+      run =
+        fun backend state ->
+          let reader = { read = fun decode -> decode.run backend state } in
+          backend.record
+            state
+            ~fields
+            ~init
+            ~step:(fun acc field -> step reader acc field)
+            ~finish;
+    }
+
+  let variant = fun cases ->
+    { run = fun backend state -> backend.variant state cases }
+end
+
 module Error = struct
   type t = error
 
@@ -384,4 +520,125 @@ module Error = struct
     | `invalid_tag -> "invalid_tag"
     | `Msg str -> String.concat "" [ "\""; str; "\"" ]
     | `Io_error err -> IO.error_message err
+end
+
+module Ser = struct
+  type 'value t = { run: 'state. 'state backend -> 'state -> 'value -> unit }
+
+  and 'value field =
+    | Field : string * 'field t * ('value -> 'field) -> 'value field
+
+  and 'value fields = 'value field array
+
+  and 'value variant_case =
+    | Unit : string * ('value -> bool) -> 'value variant_case
+    | Newtype :
+        string * 'payload t * ('value -> 'payload option) -> 'value variant_case
+
+  and 'value variant_cases = 'value variant_case array
+
+  and 'state backend = {
+    bool: 'state -> bool -> unit;
+    string: 'state -> string -> unit;
+    int: 'state -> int -> unit;
+    int32: 'state -> int32 -> unit;
+    int64: 'state -> int64 -> unit;
+    float: 'state -> float -> unit;
+    null: 'state -> unit;
+    option:
+      'value.
+      'state ->
+      'value t ->
+      'value option ->
+      unit;
+    list:
+      'value.
+      'state ->
+      'value t ->
+      'value list ->
+      unit;
+    array:
+      'value.
+      'state ->
+      'value t ->
+      'value array ->
+      unit;
+    record:
+      'value.
+      'state ->
+      'value fields ->
+      'value ->
+      unit;
+    variant:
+      'value.
+      'state ->
+      'value variant_cases ->
+      'value ->
+      unit;
+  }
+
+  module Field = struct
+    type nonrec 'value t = 'value field
+
+    let make = fun name encode get ->
+      Field (name, encode, get)
+  end
+
+  module Variant = struct
+    type 'value case = 'value variant_case =
+      | Unit : string * ('value -> bool) -> 'value case
+      | Newtype :
+          string * 'payload t * ('value -> 'payload option) -> 'value case
+
+    let unit = fun tag matches ->
+      Unit (tag, matches)
+
+    let newtype = fun tag encode unwrap ->
+      Newtype (tag, encode, unwrap)
+  end
+
+  let run = fun encode backend state value ->
+    try Ok (encode.run backend state value) with
+    | Encode_error error -> Error error
+
+  let contramap = fun project encode ->
+    {
+      run =
+        fun backend state value ->
+          encode.run backend state (project value);
+    }
+
+  let fail = fun error ->
+    {
+      run =
+        fun _backend _state _value ->
+          raise (Encode_error error);
+    }
+
+  let bool: bool t = { run = fun backend state value -> backend.bool state value }
+  let string: string t = { run = fun backend state value -> backend.string state value }
+  let int: int t = { run = fun backend state value -> backend.int state value }
+  let int32: int32 t = { run = fun backend state value -> backend.int32 state value }
+  let int64: int64 t = { run = fun backend state value -> backend.int64 state value }
+  let float: float t = { run = fun backend state value -> backend.float state value }
+  let null: unit t = { run = fun backend state () -> backend.null state }
+
+  let option = fun encode ->
+    { run = fun backend state value -> backend.option state encode value }
+
+  let list = fun encode ->
+    { run = fun backend state value -> backend.list state encode value }
+
+  let array = fun encode ->
+    { run = fun backend state value -> backend.array state encode value }
+
+  let field = Field.make
+  let fields = array_of_list
+
+  let record = fun fields ->
+    { run = fun backend state value -> backend.record state fields value }
+
+  let variant = fun cases ->
+    let cases = array_of_list cases in
+    { run = fun backend state value -> backend.variant state cases value }
 end

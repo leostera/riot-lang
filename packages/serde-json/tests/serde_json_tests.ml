@@ -1,7 +1,8 @@
 open Std
-open Serde
 
 module Test = Std.Test
+module De = Serde.De
+module Ser = Serde.Ser
 
 let ( let* ) = Result.and_then
 
@@ -38,77 +39,98 @@ type prefix_field =
   | Prefix_hellsinborg
 
 let person_fields =
-  fields [
-    field "name" Field_name;
-    field "age" Field_age;
-    field "active" Field_active;
-    field "tags" Field_tags;
-    field "nickname" Field_nickname;
-    field "pet" Field_pet;
+  De.fields [
+    De.field "name" Field_name;
+    De.field "age" Field_age;
+    De.field "active" Field_active;
+    De.field "tags" Field_tags;
+    De.field "nickname" Field_nickname;
+    De.field "pet" Field_pet;
   ]
 
 let prefix_fields =
-  fields [
-    field "help" Prefix_help;
-    field "hello" Prefix_hello;
-    field "hellsinborg" Prefix_hellsinborg;
+  De.fields [
+    De.field "help" Prefix_help;
+    De.field "hello" Prefix_hello;
+    De.field "hellsinborg" Prefix_hellsinborg;
   ]
 
 let pet_decode =
-  variant [
-    Variant.unit "Cat" Cat;
-    Variant.newtype "Dog" string (fun value -> Dog value);
+  De.variant [
+    De.Variant.unit "Cat" Cat;
+    De.Variant.newtype "Dog" De.string (fun value -> Dog value);
+  ]
+
+let pet_encode =
+  Ser.variant [
+    Ser.Variant.unit "Cat" (function
+      | Cat -> true
+      | Dog _ -> false);
+    Ser.Variant.newtype "Dog" Ser.string (function
+      | Dog value -> Some value
+      | Cat -> None);
   ]
 
 let person_decode =
-  record
+  De.record
     ~fields:person_fields
     ~init:(None, None, None, None, None, None)
     ~step:(fun reader (name, age, active, tags, nickname, pet) field ->
       match field with
       | Some Field_name ->
-          (Some (read reader string), age, active, tags, nickname, pet)
+          (Some (De.read reader De.string), age, active, tags, nickname, pet)
       | Some Field_age ->
-          (name, Some (read reader int), active, tags, nickname, pet)
+          (name, Some (De.read reader De.int), active, tags, nickname, pet)
       | Some Field_active ->
-          (name, age, Some (read reader bool), tags, nickname, pet)
+          (name, age, Some (De.read reader De.bool), tags, nickname, pet)
       | Some Field_tags ->
-          (name, age, active, Some (read reader (list string)), nickname, pet)
+          (name, age, active, Some (De.read reader (De.list De.string)), nickname, pet)
       | Some Field_nickname ->
-          (name, age, active, tags, Some (read reader (option string)), pet)
+          (name, age, active, tags, Some (De.read reader (De.option De.string)), pet)
       | Some Field_pet ->
-          (name, age, active, tags, nickname, Some (read reader pet_decode))
+          (name, age, active, tags, nickname, Some (De.read reader pet_decode))
       | None ->
-          let () = read reader skip_any in
+          let () = De.read reader De.skip_any in
           (name, age, active, tags, nickname, pet))
     ~finish:(fun (name, age, active, tags, nickname, pet) ->
       match (name, age, active, tags, nickname, pet) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet) ->
           { name; age; active; tags; nickname; pet }
       | _ ->
-          missing_field ())
+          De.missing_field ())
+
+let person_encode =
+  Ser.record
+    (Ser.fields [
+       Ser.field "name" Ser.string (fun value -> value.name);
+       Ser.field "age" Ser.int (fun value -> value.age);
+       Ser.field "active" Ser.bool (fun value -> value.active);
+       Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
+       Ser.field "nickname" (Ser.option Ser.string) (fun value -> value.nickname);
+       Ser.field "pet" pet_encode (fun value -> value.pet);
+     ])
 
 let prefix_decode =
-  record
+  De.record
     ~fields:prefix_fields
     ~init:(None, None, None)
     ~step:(fun reader (help, hello, hellsinborg) field ->
       match field with
       | Some Prefix_help ->
-          (Some (read reader int), hello, hellsinborg)
+          (Some (De.read reader De.int), hello, hellsinborg)
       | Some Prefix_hello ->
-          (help, Some (read reader int), hellsinborg)
+          (help, Some (De.read reader De.int), hellsinborg)
       | Some Prefix_hellsinborg ->
-          (help, hello, Some (read reader int))
+          (help, hello, Some (De.read reader De.int))
       | None ->
-          let () = read reader skip_any in
+          let () = De.read reader De.skip_any in
           (help, hello, hellsinborg))
     ~finish:(fun (help, hello, hellsinborg) ->
       match (help, hello, hellsinborg) with
       | (Some help, Some hello, Some hellsinborg) ->
           { help; hello; hellsinborg }
       | _ ->
-          missing_field ())
+          De.missing_field ())
 
 let expect_equal = fun ~expected ~actual ~message ->
   if actual = expected then
@@ -188,16 +210,81 @@ let test_decodes_numeric_scalars = fun _ctx ->
   in
   let* () =
     expect_ok
-      int
+      De.int
       "-12345"
       (-12345)
       "expected serde-json decoder to parse top-level ints"
   in
   expect_ok
-    float
+    De.float
     "1.25e3"
     1250.0
     "expected serde-json decoder to parse top-level floats with exponents"
+
+let test_encodes_record = fun _ctx ->
+  let person = {
+    name = "Leo";
+    age = 33;
+    active = true;
+    tags = [ "riot"; "serde" ];
+    nickname = None;
+    pet = Dog "Rex";
+  } in
+  let expected =
+    {|{"name":"Leo","age":33,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Rex"}}|} in
+  match Serde_json.to_string person_encode person with
+  | Ok actual ->
+      expect_equal
+        ~expected
+        ~actual
+        ~message:"expected serde-json encoder to serialize records using the promoted Serde.Ser API"
+  | Error err ->
+      Error ("encode failed: " ^ Serde.Error.to_string err)
+
+let test_encodes_escaped_strings = fun _ctx ->
+  let person = {
+    name = "Le\"o\n";
+    age = 33;
+    active = true;
+    tags = [ "ri\\ot" ];
+    nickname = Some "captain\t";
+    pet = Cat;
+  } in
+  let expected =
+    {|{"name":"Le\"o\n","age":33,"active":true,"tags":["ri\\ot"],"nickname":"captain\t","pet":"Cat"}|} in
+  match Serde_json.to_string person_encode person with
+  | Ok actual ->
+      expect_equal
+        ~expected
+        ~actual
+        ~message:"expected serde-json encoder to escape string contents correctly"
+  | Error err ->
+      Error ("escaped-string encode failed: " ^ Serde.Error.to_string err)
+
+let test_roundtrips_record = fun _ctx ->
+  let person = {
+    name = "Leo";
+    age = 33;
+    active = true;
+    tags = [ "riot"; "serde" ];
+    nickname = Some "captain";
+    pet = Cat;
+  } in
+  let* encoded =
+    match Serde_json.to_string person_encode person with
+    | Ok encoded ->
+        Ok encoded
+    | Error err ->
+        Error ("roundtrip encode failed: " ^ Serde.Error.to_string err)
+  in
+  match Serde_json.of_string person_decode encoded with
+  | Ok actual ->
+      expect_equal
+        ~expected:person
+        ~actual
+        ~message:"expected serde-json encode/decode to roundtrip person values"
+  | Error err ->
+      Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
 let tests =
   Test.[
@@ -205,6 +292,9 @@ let tests =
     case "serde-json handles unit variants" test_decodes_unit_variant;
     case "serde-json matches shared-prefix fields" test_matches_shared_prefix_fields;
     case "serde-json parses numeric scalars" test_decodes_numeric_scalars;
+    case "serde-json encodes records" test_encodes_record;
+    case "serde-json escapes encoded strings" test_encodes_escaped_strings;
+    case "serde-json roundtrips records" test_roundtrips_record;
   ]
 
 let () =

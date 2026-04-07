@@ -1,9 +1,10 @@
 open Std
-open Serde
 
 let ( let* ) = Result.and_then
 
 module Json = Data.Json
+module De = Serde.De
+module Ser = Serde.Ser
 
 type child = {
   owner: string;
@@ -51,6 +52,7 @@ type dataset_field =
 
 type fixture = {
   json: Json.t;
+  dataset: dataset;
   text: string;
   bytes: int;
 }
@@ -71,28 +73,28 @@ let normalize_json = function
   | value -> value
 
 let child_fields =
-  fields [
-    field "owner" Child_owner;
-    field "score" Child_score;
-    field "flags" Child_flags;
+  De.fields [
+    De.field "owner" Child_owner;
+    De.field "score" Child_score;
+    De.field "flags" Child_flags;
   ]
 
 let item_fields =
-  fields [
-    field "id" Item_id;
-    field "name" Item_name;
-    field "active" Item_active;
-    field "tags" Item_tags;
-    field "metrics" Item_metrics;
-    field "child" Item_child;
-    field "note" Item_note;
+  De.fields [
+    De.field "id" Item_id;
+    De.field "name" Item_name;
+    De.field "active" Item_active;
+    De.field "tags" Item_tags;
+    De.field "metrics" Item_metrics;
+    De.field "child" Item_child;
+    De.field "note" Item_note;
   ]
 
 let dataset_fields =
-  fields [
-    field "version" Dataset_version;
-    field "source" Dataset_source;
-    field "items" Dataset_items;
+  De.fields [
+    De.field "version" Dataset_version;
+    De.field "source" Dataset_source;
+    De.field "items" Dataset_items;
   ]
 
 let expect_field = fun name json ->
@@ -130,81 +132,109 @@ let expect_field_as = fun name json decode ->
   decode (normalize_json value)
 
 let child_decode =
-  record
+  De.record
     ~fields:child_fields
     ~init:(None, None, None)
     ~step:(fun reader (owner, score, flags) next ->
       match next with
       | Some Child_owner ->
-          (Some (read reader string), score, flags)
+          (Some (De.read reader De.string), score, flags)
       | Some Child_score ->
-          (owner, Some (read reader float), flags)
+          (owner, Some (De.read reader De.float), flags)
       | Some Child_flags ->
-          (owner, score, Some (read reader (list bool)))
+          (owner, score, Some (De.read reader (De.list De.bool)))
       | Some Child_unknown
       | None ->
-          let () = read reader skip_any in
+          let () = De.read reader De.skip_any in
           (owner, score, flags))
     ~finish:(fun (owner, score, flags) ->
       match (owner, score, flags) with
       | (Some owner, Some score, Some flags) ->
           { owner; score; flags }
       | _ ->
-          missing_field ())
+          De.missing_field ())
 
 let item_decode =
-  record
+  De.record
     ~fields:item_fields
     ~init:(None, None, None, None, None, None, None)
     ~step:(fun reader (id, name, active, tags, metrics, child, note) next ->
       match next with
       | Some Item_id ->
-          (Some (read reader int), name, active, tags, metrics, child, note)
+          (Some (De.read reader De.int), name, active, tags, metrics, child, note)
       | Some Item_name ->
-          (id, Some (read reader string), active, tags, metrics, child, note)
+          (id, Some (De.read reader De.string), active, tags, metrics, child, note)
       | Some Item_active ->
-          (id, name, Some (read reader bool), tags, metrics, child, note)
+          (id, name, Some (De.read reader De.bool), tags, metrics, child, note)
       | Some Item_tags ->
-          (id, name, active, Some (read reader (list string)), metrics, child, note)
+          (id, name, active, Some (De.read reader (De.list De.string)), metrics, child, note)
       | Some Item_metrics ->
-          (id, name, active, tags, Some (read reader (list int)), child, note)
+          (id, name, active, tags, Some (De.read reader (De.list De.int)), child, note)
       | Some Item_child ->
-          (id, name, active, tags, metrics, Some (read reader child_decode), note)
+          (id, name, active, tags, metrics, Some (De.read reader child_decode), note)
       | Some Item_note ->
-          (id, name, active, tags, metrics, child, Some (read reader (option string)))
+          (id, name, active, tags, metrics, child, Some (De.read reader (De.option De.string)))
       | Some Item_unknown
       | None ->
-          let () = read reader skip_any in
+          let () = De.read reader De.skip_any in
           (id, name, active, tags, metrics, child, note))
     ~finish:(fun (id, name, active, tags, metrics, child, note) ->
       match (id, name, active, tags, metrics, child, note) with
       | (Some id, Some name, Some active, Some tags, Some metrics, Some child, Some note) ->
           { id; name; active; tags; metrics; child; note }
       | _ ->
-          missing_field ())
+          De.missing_field ())
 
 let dataset_decode =
-  record
+  De.record
     ~fields:dataset_fields
     ~init:(None, None, None)
     ~step:(fun reader (version, source, items) next ->
       match next with
       | Some Dataset_version ->
-          (Some (read reader int), source, items)
+          (Some (De.read reader De.int), source, items)
       | Some Dataset_source ->
-          (version, Some (read reader string), items)
+          (version, Some (De.read reader De.string), items)
       | Some Dataset_items ->
-          (version, source, Some (read reader (list item_decode)))
+          (version, source, Some (De.read reader (De.list item_decode)))
       | Some Dataset_unknown
       | None ->
-          let () = read reader skip_any in
+          let () = De.read reader De.skip_any in
           (version, source, items))
     ~finish:(fun (version, source, items) ->
       match (version, source, items) with
       | (Some version, Some source, Some items) ->
           { version; source; items }
       | _ ->
-          missing_field ())
+          De.missing_field ())
+
+let child_encode =
+  Ser.record
+    (Ser.fields [
+       Ser.field "owner" Ser.string (fun value -> value.owner);
+       Ser.field "score" Ser.float (fun value -> value.score);
+       Ser.field "flags" (Ser.list Ser.bool) (fun value -> value.flags);
+     ])
+
+let item_encode =
+  Ser.record
+    (Ser.fields [
+       Ser.field "id" Ser.int (fun value -> value.id);
+       Ser.field "name" Ser.string (fun value -> value.name);
+       Ser.field "active" Ser.bool (fun value -> value.active);
+       Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
+       Ser.field "metrics" (Ser.list Ser.int) (fun value -> value.metrics);
+       Ser.field "child" child_encode (fun value -> value.child);
+       Ser.field "note" (Ser.option Ser.string) (fun value -> value.note);
+     ])
+
+let dataset_encode =
+  Ser.record
+    (Ser.fields [
+       Ser.field "version" Ser.int (fun value -> value.version);
+       Ser.field "source" Ser.string (fun value -> value.source);
+       Ser.field "items" (Ser.list item_encode) (fun value -> value.items);
+     ])
 
 let rec manual_bool_list = function
   | [] -> Ok []
@@ -278,6 +308,34 @@ let manual_dataset_of_json = fun json ->
   in
   Ok { version; source; items }
 
+let rec child_to_json = fun value ->
+  Json.Object [
+    ("owner", Json.String value.owner);
+    ("score", Json.Float value.score);
+    ("flags", Json.Array (List.map (fun flag -> Json.Bool flag) value.flags));
+  ]
+
+and item_to_json = fun value ->
+  Json.Object [
+    ("id", Json.Int value.id);
+    ("name", Json.String value.name);
+    ("active", Json.Bool value.active);
+    ("tags", Json.Array (List.map (fun tag -> Json.String tag) value.tags));
+    ("metrics", Json.Array (List.map (fun metric -> Json.Int metric) value.metrics));
+    ("child", child_to_json value.child);
+    ( "note"
+    , match value.note with
+      | None -> Json.Null
+      | Some note -> Json.String note );
+  ]
+
+let dataset_to_json = fun value ->
+  Json.Object [
+    ("version", Json.Int value.version);
+    ("source", Json.String value.source);
+    ("items", Json.Array (List.map item_to_json value.items));
+  ]
+
 let parse_json = fun text ->
   Json.of_string text |> Result.expect ~msg:"expected benchmark payload to parse as JSON"
 
@@ -290,11 +348,22 @@ let load_fixture = fun () ->
   let text = read_fixture_text () in
   let bytes = String.length text in
   let json = parse_json text in
-  { json; text; bytes }
+  let dataset =
+    manual_dataset_of_json json
+    |> Result.expect ~msg:"expected benchmark payload to decode into the typed dataset"
+  in
+  { json; dataset; text; bytes }
 
 let decode_serde = fun text ->
   Serde_json.of_string dataset_decode text
   |> Result.expect ~msg:"expected fast serde benchmark decode to succeed"
+
+let encode_manual = fun dataset ->
+  Json.to_string (dataset_to_json dataset)
+
+let encode_serde = fun dataset ->
+  Serde_json.to_string dataset_encode dataset
+  |> Result.expect ~msg:"expected fast serde benchmark encode to succeed"
 
 let decode_manual = fun text ->
   let json = parse_json text in
@@ -316,6 +385,12 @@ let bench_decode_manual = fun fixture () ->
 let bench_decode_serde = fun fixture () ->
   ignore (decode_serde fixture.text)
 
+let bench_encode_manual = fun fixture () ->
+  ignore (encode_manual fixture.dataset)
+
+let bench_encode_serde = fun fixture () ->
+  ignore (encode_serde fixture.dataset)
+
 let benchmark_suite = fun fixture ->
   let size = human_size fixture.bytes in
   Bench.[
@@ -325,6 +400,8 @@ let benchmark_suite = fun fixture ->
       (bench_decode_manual_tree fixture);
     with_config ~config:bench_config ("manual decode total (" ^ size ^ ")") (bench_decode_manual fixture);
     with_config ~config:bench_config ("serde decode total (" ^ size ^ ")") (bench_decode_serde fixture);
+    with_config ~config:bench_config ("manual encode total (" ^ size ^ ")") (bench_encode_manual fixture);
+    with_config ~config:bench_config ("serde encode total (" ^ size ^ ")") (bench_encode_serde fixture);
   ]
 
 let () =

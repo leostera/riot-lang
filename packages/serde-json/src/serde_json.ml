@@ -1,13 +1,208 @@
 open Std
 
+let ( let* ) = Result.and_then
+
+module De = Serde.De
+
+type encode_state = {
+  buffer: IO.Buffer.t;
+  scratch: IO.Buffer.t;
+  mutable escaped_literals: (string * string) list;
+}
+
+let write_char = fun state value ->
+  IO.Buffer.add_char state.buffer value
+
+let write_string = fun state value ->
+  IO.Buffer.add_string state.buffer value
+
+let scratch_write_char = fun state value ->
+  IO.Buffer.add_char state.scratch value
+
+let scratch_write_string = fun state value ->
+  IO.Buffer.add_string state.scratch value
+
+let hex_digit = fun value ->
+  match value with
+  | 0 -> '0'
+  | 1 -> '1'
+  | 2 -> '2'
+  | 3 -> '3'
+  | 4 -> '4'
+  | 5 -> '5'
+  | 6 -> '6'
+  | 7 -> '7'
+  | 8 -> '8'
+  | 9 -> '9'
+  | 10 -> 'A'
+  | 11 -> 'B'
+  | 12 -> 'C'
+  | 13 -> 'D'
+  | 14 -> 'E'
+  | 15 -> 'F'
+  | _ -> panic "Serde_json.hex_digit: invalid hex digit"
+
+let add_unicode_escape = fun write_str write_chr code ->
+  write_str "\\u";
+  write_chr (hex_digit ((code lsr 12) land 0xf));
+  write_chr (hex_digit ((code lsr 8) land 0xf));
+  write_chr (hex_digit ((code lsr 4) land 0xf));
+  write_chr (hex_digit (code land 0xf))
+
+let append_escaped_string = fun write_str write_chr value ->
+  write_chr '"';
+  String.iter
+    (
+      function
+      | '"' -> write_str "\\\""
+      | '\\' -> write_str "\\\\"
+      | '\b' -> write_str "\\b"
+      | '\012' -> write_str "\\f"
+      | '\n' -> write_str "\\n"
+      | '\r' -> write_str "\\r"
+      | '\t' -> write_str "\\t"
+      | c when Char.code c < 0x20 ->
+          add_unicode_escape write_str write_chr (Char.code c)
+      | c -> write_chr c
+    )
+    value;
+  write_chr '"'
+
+let write_escaped_string = fun state value ->
+  append_escaped_string (write_string state) (write_char state) value
+
+let write_cached_escaped_literal = fun state value ->
+  let rec lookup = function
+    | [] ->
+        IO.Buffer.clear state.scratch;
+        append_escaped_string (scratch_write_string state) (scratch_write_char state) value;
+        let escaped = IO.Buffer.contents state.scratch in
+        state.escaped_literals <- (value, escaped) :: state.escaped_literals;
+        write_string state escaped
+    | (key, escaped) :: _ when String.equal key value ->
+        write_string state escaped
+    | _ :: rest ->
+        lookup rest
+  in
+  lookup state.escaped_literals
+
+let float_to_json = fun value ->
+  if Float.is_nan value || Float.is_infinite value then
+    "null"
+  else
+    let text = Float.to_string value in
+    if String.ends_with ~suffix:"." text then
+      text ^ "0"
+    else
+      text
+
+let rec ser_list_backend: 'value. encode_state -> 'value Serde.Ser.t -> 'value list -> unit =
+ fun state encode values ->
+  write_char state '[';
+  let first = ref true in
+  List.iter
+    (fun value ->
+      if !first then
+        first := false
+      else
+        write_char state ',';
+      encode.run ser_backend state value)
+    values;
+  write_char state ']'
+
+and ser_array_backend:
+  'value. encode_state -> 'value Serde.Ser.t -> 'value array -> unit =
+ fun state encode values ->
+  write_char state '[';
+  for index = 0 to array__length values - 1 do
+    if not (Int.equal index 0) then
+      write_char state ',';
+    encode.run ser_backend state (array__get values index)
+  done;
+  write_char state ']'
+
+and ser_record_backend:
+  'value. encode_state -> 'value Serde.Ser.fields -> 'value -> unit =
+ fun state fields value ->
+  write_char state '{';
+  for index = 0 to array__length fields - 1 do
+    if not (Int.equal index 0) then
+      write_char state ',';
+    match array__get fields index with
+    | Serde.Ser.Field (name, encode, get) ->
+        write_cached_escaped_literal state name;
+        write_char state ':';
+        encode.run ser_backend state (get value)
+  done;
+  write_char state '}'
+
+and ser_variant_backend:
+  'value. encode_state -> 'value Serde.Ser.variant_cases -> 'value -> unit =
+ fun state cases value ->
+  let rec loop index =
+    if Int.equal index (array__length cases) then
+      raise (Serde.Encode_error `invalid_tag)
+    else
+      match array__get cases index with
+      | Serde.Ser.Unit (tag, matches) ->
+          if matches value then
+            write_cached_escaped_literal state tag
+          else
+            loop (index + 1)
+      | Serde.Ser.Newtype (tag, encode, unwrap) ->
+          (match unwrap value with
+          | Some payload ->
+              write_char state '{';
+              write_cached_escaped_literal state tag;
+              write_char state ':';
+              encode.run ser_backend state payload;
+              write_char state '}';
+          | None ->
+              loop (index + 1))
+  in
+  loop 0
+
+and ser_backend: encode_state Serde.Ser.backend = {
+  bool =
+    (fun state value ->
+      if value then
+        write_string state "true"
+      else
+        write_string state "false");
+  string = write_escaped_string;
+  int = (fun state value -> write_string state (Int.to_string value));
+  int32 = (fun state value -> write_string state (Int32.to_string value));
+  int64 = (fun state value -> write_string state (Int64.to_string value));
+  float = (fun state value -> write_string state (float_to_json value));
+  null = (fun state -> write_string state "null");
+  option =
+    (fun state encode value ->
+      match value with
+      | None ->
+          write_string state "null"
+      | Some payload ->
+          encode.run ser_backend state payload);
+  list = ser_list_backend;
+  array = ser_array_backend;
+  record = ser_record_backend;
+  variant = ser_variant_backend;
+}
+
+let to_string = fun encode value ->
+  let state = {
+    buffer = IO.Buffer.create 256;
+    scratch = IO.Buffer.create 64;
+    escaped_literals = [];
+  } in
+  let* () = Serde.Ser.run encode ser_backend state value in
+  Ok (IO.Buffer.contents state.buffer)
+
 type state = {
   input: string;
   len: int;
   mutable pos: int;
   scratch: IO.Buffer.t;
 }
-
-let ( let* ) = Result.and_then
 
 let error_at = fun pos message ->
   raise (Serde.Decode_error (`Msg (message ^ " at position " ^ Int.to_string pos)))
@@ -296,7 +491,7 @@ let read_field_tag = fun state cases ->
         let current = String.unsafe_get state.input state.pos in
         if Char.equal current '"' then (
           let tag =
-            Serde.Fields.match_slice
+            De.Fields.match_slice
               cases
               state.input
               ~offset:start
@@ -313,7 +508,7 @@ let read_field_tag = fun state cases ->
                 unexpected_end state "object key"
             | Some '"' ->
                 advance state;
-                Serde.Fields.match_buffer cases state.scratch
+                De.Fields.match_buffer cases state.scratch
             | Some '\\' ->
                 advance state;
                 (match current_char state with
@@ -601,8 +796,8 @@ let list_nth = fun values index ->
 let array_of_list = fun values ->
   array__init (List.length values) (fun index -> list_nth values index)
 
-let rec option_backend: 'value. state -> 'value Serde.t -> 'value option =
- fun state (decode : 'value Serde.t) ->
+let rec option_backend: 'value. state -> 'value De.t -> 'value option =
+ fun state (decode : 'value De.t) ->
   skip_whitespace state;
   match current_char state with
   | Some 'n' ->
@@ -611,8 +806,8 @@ let rec option_backend: 'value. state -> 'value Serde.t -> 'value option =
   | _ ->
       Some (decode.run backend state)
 
-and list_backend: 'value. state -> 'value Serde.t -> 'value list =
- fun state (decode : 'value Serde.t) ->
+and list_backend: 'value. state -> 'value De.t -> 'value list =
+ fun state (decode : 'value De.t) ->
   skip_then_expect_char state '[' "array";
   skip_whitespace state;
   match current_char state with
@@ -643,7 +838,7 @@ and list_backend: 'value. state -> 'value Serde.t -> 'value list =
 and record_backend:
   'field 'acc 'value.
   state ->
-  fields:'field Serde.Fields.t ->
+  fields:'field De.Fields.t ->
   init:'acc ->
   step:('acc -> 'field option -> 'acc) ->
   finish:('acc -> 'value) ->
@@ -681,12 +876,12 @@ and record_backend:
       done;
       finish !acc
 
-and variant_backend: 'value. state -> 'value Serde.variant_cases -> 'value =
- fun state (cases : 'value Serde.variant_cases) ->
+and variant_backend: 'value. state -> 'value De.variant_cases -> 'value =
+ fun state (cases : 'value De.variant_cases) ->
   let rec find_unit tag = function
     | [] ->
         raise (Serde.Decode_error `invalid_tag)
-    | Serde.Unit (expected, value) :: _ when String.equal expected tag ->
+    | De.Unit (expected, value) :: _ when String.equal expected tag ->
         value
     | _ :: rest ->
         find_unit tag rest
@@ -694,10 +889,10 @@ and variant_backend: 'value. state -> 'value Serde.variant_cases -> 'value =
   let rec find_object tag = function
     | [] ->
         raise (Serde.Decode_error `invalid_tag)
-    | Serde.Unit (expected, value) :: _ when String.equal expected tag ->
+    | De.Unit (expected, value) :: _ when String.equal expected tag ->
         parse_null state;
         value
-    | Serde.Newtype (expected, decode, wrap) :: _ when String.equal expected tag ->
+    | De.Newtype (expected, decode, wrap) :: _ when String.equal expected tag ->
         wrap (decode.run backend state)
     | _ :: rest ->
         find_object tag rest
@@ -719,7 +914,7 @@ and variant_backend: 'value. state -> 'value Serde.variant_cases -> 'value =
   | None ->
       unexpected_end state "variant"
 
-and backend: state Serde.backend = {
+and backend: state De.backend = {
   bool = parse_bool;
   string = parse_string;
   int = parse_int;
@@ -735,10 +930,9 @@ and backend: state Serde.backend = {
 
 let of_string = fun decode input ->
   let state = { input; len = String.length input; pos = 0; scratch = IO.Buffer.create 64 } in
-  let* value = Serde.run decode backend state in
+  let* value = De.run decode backend state in
   skip_whitespace state;
   if Int.equal state.pos state.len then
     Ok value
   else
     Error (`Msg ("extra input after JSON value at position " ^ Int.to_string state.pos))
-
