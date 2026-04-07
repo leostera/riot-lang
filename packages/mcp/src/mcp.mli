@@ -1,106 +1,157 @@
-(** Model Context Protocol (MCP) implementation for OCaml *)
+(** Model Context Protocol data types and JSON serialization.
+
+    Use this package when you need to parse, build, or serialize MCP requests,
+    responses, and notifications without hand-assembling JSON values.
+*)
 open Std
 
 (** {1 Core Types} *)
 
+(** MCP protocol version string, for example `"2024-11-05"`. *)
 type protocol_version = string
-(** Protocol version string (e.g., "2024-11-05") *)
+
+(** JSON payload type used by MCP messages. *)
 type json = Data.Json.t
 
-(** JSON type alias *)
-(** {2 JSON-RPC Base Types} *)
+(** {1 JSON-RPC Base Types} *)
 
+(** JSON-RPC request identifier used by MCP. *)
 type request_id =
-  String of string
+  | String of string
   | Number of int
+
+(** JSON-RPC error code. *)
 type error_code = int
-(** JSON-RPC error code *)
+
+(** JSON-RPC error object returned by MCP peers. *)
 type error = {
+  (** Numeric error code. *)
   code: error_code;
+  (** Human-readable error message. *)
   message: string;
+  (** Optional structured error data. *)
   data: json option;
 }
 
-(** JSON-RPC error *)
-(** {2 Client/Server Info} *)
+(** {1 Peer Identity} *)
 
+(** Information about the connecting client. *)
 type client_info = {
   name: string;
   version: string;
 }
+
+(** Information about the server. *)
 type server_info = {
   name: string;
   version: string;
 }
-(** {2 Capabilities} *)
 
+(** {1 Capabilities} *)
+
+(** Tool capability marker.
+
+    This is empty today but kept as its own type so the protocol surface can
+    grow without reshaping callers.
+*)
 type tool_capability = unit
-(** Empty for now, can be extended *)
+
+(** Resource capability flags. *)
 type resource_capability = {
+  (** Whether resource subscriptions are supported. *)
   subscribe: bool option;
+  (** Whether clients can be notified when resource lists change. *)
   list_changed: bool option;
 }
+
+(** Prompt capability marker. *)
 type prompt_capability = unit
-(** Empty for now, can be extended *)
+
+(** Sampling capability marker. *)
 type sampling_capability = unit
-(** Empty for now, can be extended *)
+
+(** Capabilities advertised by a client. *)
 type client_capabilities = {
   tools: tool_capability option;
   resources: resource_capability option;
   prompts: prompt_capability option;
   sampling: sampling_capability option;
 }
+
+(** Capabilities advertised by a server. *)
 type server_capabilities = {
   tools: tool_capability option;
   resources: resource_capability option;
   prompts: prompt_capability option;
 }
-(** {2 Tools} *)
 
+(** {1 Tools} *)
+
+(** JSON Schema describing tool input parameters. *)
 type tool_input_schema = json
-(** JSON Schema for tool parameters *)
+
+(** Tool definition exposed by an MCP server. *)
 type tool = {
+  (** Tool name used in MCP requests. *)
   name: string;
+  (** Optional human-readable description. *)
   description: string option;
+  (** Input schema describing accepted tool arguments. *)
   input_schema: tool_input_schema;
 }
-(** {2 Resources} *)
 
+(** {1 Resources} *)
+
+(** Resource URI. *)
 type resource_uri = string
+
+(** Resource payload returned by the server. *)
 type resource_contents =
   | TextContent of { text: string; mime_type: string option }
   | BlobContent of { data: string; mime_type: string }
+
+(** Resource descriptor. *)
 type resource = {
   uri: resource_uri;
   name: string option;
   description: string option;
   mime_type: string option;
 }
-(** {2 Prompts} *)
 
+(** {1 Prompts} *)
+
+(** Prompt argument definition. *)
 type prompt_argument = {
   name: string;
   description: string option;
   required: bool option;
 }
+
+(** Prompt definition exposed by a server. *)
 type prompt = {
   name: string;
   description: string option;
   arguments: prompt_argument list option;
 }
-(** {2 Messages} *)
 
+(** {1 Messages} *)
+
+(** Content carried by a chat-style MCP message. *)
 type message_content =
-  Text of string
+  | Text of string
   | Resource of resource_contents
+
+(** Chat-style message used by sampling flows. *)
 type message = {
-  role: string;  (** "user" or "assistant" *)
+  (** Sender role, usually `"user"` or `"assistant"`. *)
+  role: string;
+  (** Message payload. *)
   content: message_content;
 }
-(** {1 Protocol Messages} *)
 
-(** {2 Requests} *)
+(** {1 Requests} *)
 
+(** Well-known MCP request methods plus a custom escape hatch. *)
 type request_method =
   | Initialize
   | Initialized
@@ -114,6 +165,8 @@ type request_method =
   | CompleteSampling
   | Ping
   | Custom of string
+
+(** Decoded parameters for each supported request method. *)
 type request_params =
   | InitializeParams of {
       protocol_version: protocol_version;
@@ -140,14 +193,19 @@ type request_params =
     }
   | PingParams
   | CustomParams of json
+
+(** MCP request envelope. *)
 type request = {
-  jsonrpc: string;  (** Always "2.0" *)
+  (** Always `"2.0"`. *)
+  jsonrpc: string;
   id: request_id;
   method_name: string;
   params: request_params option;
 }
-(** {2 Responses} *)
 
+(** {1 Responses} *)
+
+(** Successful response payload for each supported request type. *)
 type response_result =
   | InitializeResult of {
       protocol_version: protocol_version;
@@ -170,19 +228,25 @@ type response_result =
     }
   | PingResult
   | CustomResult of json
+
+(** MCP response envelope. *)
 type response =
   | SuccessResponse of {
-      jsonrpc: string;  (** Always "2.0" *)
+      (** Always `"2.0"`. *)
+      jsonrpc: string;
       id: request_id;
       result: response_result;
     }
   | ErrorResponse of {
-      jsonrpc: string;  (** Always "2.0" *)
+      (** Always `"2.0"`. *)
+      jsonrpc: string;
       id: request_id;
       error: error;
     }
-(** {2 Notifications} *)
 
+(** {1 Notifications} *)
+
+(** Well-known notification methods plus a custom escape hatch. *)
 type notification_method =
   | ResourceListChanged
   | ToolListChanged
@@ -190,6 +254,8 @@ type notification_method =
   | Progress
   | LogMessage
   | CustomNotification of string
+
+(** Decoded notification parameters. *)
 type notification_params =
   | ResourceListChangedParams
   | ToolListChangedParams
@@ -197,40 +263,78 @@ type notification_params =
   | ProgressParams of { progress_token: string; progress: float; total: float option }
   | LogMessageParams of { level: string; logger: string option; data: json option; message: string }
   | CustomNotificationParams of json
+
+(** MCP notification envelope. *)
 type notification = {
-  jsonrpc: string;  (** Always "2.0" *)
+  (** Always `"2.0"`. *)
+  jsonrpc: string;
   method_name: string;
   params: notification_params option;
 }
+
 (** {1 Serialization} *)
+
+(** Encode a request as JSON. *)
 val request_to_json: request -> json
 
+(** Decode a request from JSON. *)
 val request_of_json: json -> (request, string) result
 
+(** Encode a response as JSON. *)
 val response_to_json: response -> json
 
+(** Decode a response from JSON. *)
 val response_of_json: json -> (response, string) result
 
+(** Encode a notification as JSON. *)
 val notification_to_json: notification -> json
 
+(** Decode a notification from JSON. *)
 val notification_of_json: json -> (notification, string) result
 
 (** {1 Helpers} *)
-val make_request: ?params:request_params -> request_id -> request_method -> request
 
+(** Build a request envelope from a method tag and optional params. *)
+val make_request:
+  (** Optional decoded params for the request. *)
+  ?params:request_params ->
+  request_id ->
+  request_method ->
+  request
+
+(** Build a successful response envelope. *)
 val make_success: request_id -> response_result -> response
 
+(** Build an error response envelope.
+
+    Use this when translating a local failure into an MCP reply.
+*)
 val make_error: request_id -> error_code -> string -> response
 
-val make_notification: ?params:notification_params -> notification_method -> notification
+(** Build a notification envelope from a method tag and optional params. *)
+val make_notification:
+  (** Optional decoded params for the notification. *)
+  ?params:notification_params ->
+  notification_method ->
+  notification
 
+(** Standard JSON-RPC parse error code.
+
+    Example:
+    ```ocaml
+    Mcp.parse_error = -32700
+    ```
+*)
 val parse_error: error_code
 
-(** Standard JSON-RPC error codes *)
+(** Standard JSON-RPC invalid-request error code. *)
 val invalid_request: error_code
 
+(** Standard JSON-RPC method-not-found error code. *)
 val method_not_found: error_code
 
+(** Standard JSON-RPC invalid-params error code. *)
 val invalid_params: error_code
 
+(** Standard JSON-RPC internal-error error code. *)
 val internal_error: error_code

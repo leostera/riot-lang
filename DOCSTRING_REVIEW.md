@@ -129,7 +129,6 @@
 - [ ] packages/markdown/src/Markdown.mli
 - [ ] packages/markdown/src/markdown_parser.mli
 - [ ] packages/markdown/src/markdown_token.mli
-- [ ] packages/mcp/src/mcp.mli
 - [ ] packages/miniriot/src/miniriot.mli
 - [ ] packages/minttea/src/event.mli
 - [ ] packages/minttea/src/app.mli
