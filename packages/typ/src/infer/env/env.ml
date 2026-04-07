@@ -41,7 +41,7 @@ type t = {
 
 type scope_locals = {
   summary: summary;
-  mutable cached: t option;
+  env: t;
 }
 
 type scope = {
@@ -432,7 +432,10 @@ let env_of_summary =
   in
   loop
 
-let scope_locals_of_summary = fun summary -> { summary; cached = None }
+let scope_locals_of_summary = fun summary -> {
+  summary;
+  env = env_of_summary summary;
+}
 
 let scope_locals_for = fun scope scope_path ->
   match Path_map.find_opt scope_path scope.locals_cache with
@@ -443,18 +446,7 @@ let scope_locals_for = fun scope scope_path ->
         |> List.fold_left
           (fun acc key ->
             match Path_map.find_opt key scope.locals with
-            | Some entries ->
-                let env =
-                  match entries.cached with
-                  | Some env -> env
-                  | None ->
-                      let env = env_of_summary entries.summary in
-                      let () =
-                        entries.cached <- Some env
-                      in
-                      env
-                in
-                bind acc env
+            | Some entries -> bind acc entries.env
             | None -> acc)
           empty
       in
@@ -469,7 +461,10 @@ let register_entries = fun scope ~scope_path (env: t) ->
     | Some entries -> entries
     | None -> scope_locals_of_summary empty_summary
   in
-  let updated = { summary = summary_bind existing.summary env; cached = None } in
+  let updated = {
+    summary = summary_bind existing.summary env;
+    env = bind existing.env env;
+  } in
   { scope with locals = Path_map.add scope_path updated scope.locals; locals_cache = Path_map.empty }
 
 let scope_opens_for = fun scope scope_path ->
