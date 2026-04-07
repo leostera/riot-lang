@@ -1,28 +1,40 @@
-(** Text spans and positions *)
+(** Source-text spans and offset-based position helpers. *)
 open Std
 
-(** A span represents a range in source text *)
-(** Create a span *)
+(** A range in source text.
+
+    Spans are represented as raw offsets into the original source. *)
 type t = {
   start: int;
   end_: int;
 }
-val make: start:int -> end_:int -> t
 
-(** Get the length of a span *)
+(** Create a span from two offsets. *)
+val make:
+  (** Start offset. *)
+  start:int ->
+  (** End offset. *)
+  end_:int ->
+  t
+
+(** Return the width of the span in offsets. *)
 val length: t -> int
 
-(** Check if a span contains an offset *)
-val contains: t -> int -> bool
+(** Return `true` if the span contains the given offset. *)
+val contains:
+  t ->
+  (** Offset to test. *)
+  int ->
+  bool
 
-(** Check if two spans overlap *)
+(** Return `true` if the two spans overlap. *)
 val overlaps: t -> t -> bool
 
-(** Get the union of two spans *)
+(** Return the smallest span that covers both inputs. *)
 val union: t -> t -> t
 
-(** Convert to string *)
+(** Format a span for debugging. *)
 val to_string: t -> string
 
-(** Convert to JSON *)
+(** Encode a span as JSON. *)
 val to_json: t -> Data.Json.t

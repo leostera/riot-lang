@@ -11,8 +11,6 @@
 
 ## List of interfaces to review
 
-- [ ] packages/ceibo/src/span.mli
-- [ ] packages/ceibo/src/builder.mli
 - [ ] packages/ceibo/src/ceibo.mli
 - [ ] packages/ceibo/src/green.mli
 - [ ] packages/ceibo/src/red.mli
