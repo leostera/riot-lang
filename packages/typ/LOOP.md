@@ -28,9 +28,9 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] make env summary and reconstruction the authoritative env model instead of
   a side API
 - [ ] make summary replay relative to the enclosing env, not `Env.empty`
-- [ ] make `Module_env` carry authoritative per-namespace component tables so
-  `add_open` can consume them directly, maintained incrementally instead of
-  recomputed in every `make_scope`
+- [ ] make `Module_env` bindings carry authoritative per-namespace component
+  tables so `add_open` and dotted lookup can consume them directly, without
+  recomputing scope views or adding scope-wide cache plumbing
 - [ ] make `Module_env` a closer analogue of OCaml component tables
 - [ ] make dotted lookup always go through module components instead of fallback
   path rewriting
