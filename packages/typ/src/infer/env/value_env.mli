@@ -7,6 +7,8 @@ val empty: t
 
 val of_bindings: Binding.t list -> t
 
+val local_only: t -> t
+
 val of_entries:
   make_ident:(string -> Binding.ident) -> provenance:Binding.provenance -> TypConfig.env -> t
 
@@ -36,6 +38,8 @@ val names: t -> string list
 val introduced_names: t -> t -> string list
 
 val bind: t -> t -> t
+
+val add_open: root:IdentPath.t -> t -> t -> t
 
 val with_local_open: t -> IdentPath.t -> t
 

@@ -9,12 +9,24 @@ type entry = {
   constructor: TypeDecl.constructor;
 }
 
-type t = {
+type current = entry list Name_map.t
+type components = entry list Name_map.t
+
+type layer =
+  | Nothing
+  | Open of {
+      root: IdentPath.t;
+      components: components;
+      next: t;
+    }
+
+and t = {
   entries: entry list;
-  by_name: entry list Name_map.t;
+  current: current;
+  layer: layer;
 }
 
-let empty = { entries = []; by_name = Name_map.empty }
+let empty = { entries = []; current = Name_map.empty; layer = Nothing }
 
 let name = fun entry -> entry.constructor.name
 
@@ -30,7 +42,11 @@ let prepend_entry = fun index entry ->
   let existing = Name_map.find_opt (name entry) index |> Option.unwrap_or ~default:[] in
   Name_map.add (name entry) (entry :: existing) index
 
-let index_of_entries = fun entries -> entries |> List.rev |> List.fold_left prepend_entry Name_map.empty
+let index_of_entries = fun entries ->
+  entries |> List.rev |> List.fold_left prepend_entry Name_map.empty
+
+let qualify_entry = fun root entry ->
+  { entry with owner_path = IdentPath.append_path root entry.owner_path }
 
 let of_type_decls = fun type_decls ->
   let entries =
@@ -44,27 +60,66 @@ let of_type_decls = fun type_decls ->
             {
               owner_path;
               owner_type_constructor_id = type_decl.declaration.type_constructor_id;
-              constructor
+              constructor;
             }))
   in
-  { entries; by_name = index_of_entries entries }
+  { entries; current = index_of_entries entries; layer = Nothing }
+
+let entries = fun env -> env.entries
+
+let local_only = fun env -> { env with layer = Nothing }
+
+let visible_components_of_entries = fun entries ->
+  entries
+  |> List.rev
+  |> List.fold_left
+    (fun acc entry ->
+      let existing = Name_map.find_opt (name entry) acc |> Option.unwrap_or ~default:[] in
+      Name_map.add (name entry) (entry :: existing) acc)
+    Name_map.empty
+
+let add_open = fun ~root opened env ->
+  {
+    entries = env.entries;
+    current = Name_map.empty;
+    layer = Open {
+      root;
+      components = visible_components_of_entries opened.entries;
+      next = env;
+    };
+  }
+
+let merge_current = fun introduced existing ->
+  Name_map.fold
+    (fun name introduced_entries acc ->
+      let current = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
+      Name_map.add name (introduced_entries @ current) acc)
+    introduced
+    existing
 
 let bind = fun env introduced ->
   if List.is_empty introduced.entries then
     env
-  else if List.is_empty env.entries then
+  else if List.is_empty env.entries && env.layer = Nothing then
     introduced
   else
-    let by_name =
-      Name_map.fold
-        (fun name introduced_entries acc ->
-          let existing = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
-          Name_map.add name (introduced_entries @ existing) acc)
-        introduced.by_name
-        env.by_name
-    in
-    { entries = introduced.entries @ env.entries; by_name }
+    {
+      entries = introduced.entries @ env.entries;
+      current = merge_current introduced.current env.current;
+      layer = env.layer;
+    }
 
-let entries = fun env -> env.entries
+let rec lookup_all_name = fun env name ->
+  let current = Name_map.find_opt name env.current |> Option.unwrap_or ~default:[] in
+  match env.layer with
+  | Nothing ->
+      current
+  | Open { root; components; next } ->
+      let opened =
+        Name_map.find_opt name components
+        |> Option.unwrap_or ~default:[]
+        |> List.map (qualify_entry root)
+      in
+      current @ opened @ lookup_all_name next name
 
-let lookup_all = fun env name -> Name_map.find_opt name env.by_name |> Option.unwrap_or ~default:[]
+let lookup_all = fun env name -> lookup_all_name env name

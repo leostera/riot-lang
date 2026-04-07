@@ -7,7 +7,11 @@ val empty: t
 
 val of_type_decls: FileSummary.type_decl list -> t
 
+val local_only: t -> t
+
 val bind: t -> t -> t
+
+val add_open: root:IdentPath.t -> t -> t -> t
 
 val entries: t -> entry list
 

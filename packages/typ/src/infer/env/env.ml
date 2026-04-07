@@ -23,7 +23,6 @@ type t = {
   types: Type_env.t;
   constructors: Constructor_env.t;
   labels: Label_env.t;
-  opened_modules: Module_env.scope list;
 }
 
 type scope = {
@@ -53,7 +52,6 @@ let empty = {
   types = Type_env.empty;
   constructors = Constructor_env.empty;
   labels = Label_env.empty;
-  opened_modules = [];
 }
 
 let empty_scope = { locals = Path_map.empty; opens = Path_map.empty }
@@ -65,7 +63,6 @@ let make = fun values modules types constructors labels ->
     types;
     constructors;
     labels;
-    opened_modules = [];
   }
 
 let of_bindings = fun bindings ->
@@ -88,9 +85,7 @@ let singleton = fun ~make_ident ~name ~scheme ~provenance ->
   of_bindings
     [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
-let direct_bindings = fun env -> Value_env.bindings env.values @ Module_env.bindings env.modules
-
-let bindings = fun env -> direct_bindings env
+let bindings = fun env -> Value_env.bindings env.values @ Module_env.bindings env.modules
 
 let type_decls = fun env -> Type_env.type_decls env.types
 
@@ -105,26 +100,53 @@ let split_module_lookup_path = fun path ->
   IdentPath.split_last path
   |> Option.map (fun (module_path, name) -> (module_path, IdentPath.of_name name))
 
-let lookup_opened_value = fun env path ->
-  env.opened_modules |> List.find_map
-    (fun scope ->
-      Value_env.lookup (Module_env.scope_values scope) path)
+let of_scope = fun (scope: Module_env.scope) ->
+  {
+    values = Module_env.scope_values scope;
+    modules = Module_env.scope_modules scope;
+    types = Module_env.scope_types scope;
+    constructors = Module_env.scope_constructors scope;
+    labels = Module_env.scope_labels scope;
+  }
 
-let lookup_all_opened_values = fun env path ->
-  env.opened_modules |> List.concat_map
-    (fun scope ->
-      Value_env.lookup_all (Module_env.scope_values scope) path)
+let lookup_module_scope = fun env module_path ->
+  Module_env.lookup env.modules module_path
 
-let lookup_opened_constructors = fun env path ->
-  let name = binding_name_of_path path in
-  env.opened_modules |> List.concat_map
-    (fun scope ->
-      Constructor_env.lookup_all (Module_env.scope_constructors scope) name)
+let rec lookup = fun env path ->
+  if is_bare_path path then
+    Value_env.lookup env.values path
+  else
+    match split_module_lookup_path path with
+    | Some (module_path, relative_path) -> (
+        match lookup_module_scope env module_path with
+        | Some module_scope -> lookup (of_scope module_scope) relative_path
+        | None -> None
+      )
+    | None -> None
 
-let lookup_opened_module = fun env module_path ->
-  env.opened_modules |> List.find_map
-    (fun scope ->
-      Module_env.lookup (Module_env.scope_modules scope) module_path)
+let rec lookup_all = fun env path ->
+  if is_bare_path path then
+    Value_env.lookup_all env.values path
+  else
+    match split_module_lookup_path path with
+    | Some (module_path, relative_path) -> (
+        match lookup_module_scope env module_path with
+        | Some module_scope -> lookup_all (of_scope module_scope) relative_path
+        | None -> []
+      )
+    | None -> []
+
+let rec lookup_constructors = fun env path ->
+  if is_bare_path path then
+    Constructor_env.lookup_all env.constructors (binding_name_of_path path)
+  else
+    match split_module_lookup_path path with
+    | Some (module_path, relative_path) -> (
+        match lookup_module_scope env module_path with
+        | Some module_scope -> lookup_constructors (of_scope module_scope) relative_path
+        | None -> []
+      )
+    | None -> []
 
 let dedupe_record_decls = fun record_decls ->
   let seen = Collections.HashSet.with_capacity (List.length record_decls) in
@@ -137,120 +159,9 @@ let dedupe_record_decls = fun record_decls ->
         let () = Collections.HashSet.insert seen owner_id |> ignore in
         true)
 
-let direct_module_scopes = fun env -> Module_env.scopes env.modules
+let lookup_record_decls = fun env label_name -> Label_env.lookup_all env.labels label_name |> dedupe_record_decls
 
-let visible_module_scopes = fun env -> direct_module_scopes env @ env.opened_modules
-
-let lookup_module_scope = fun env module_path ->
-  match Module_env.lookup env.modules module_path with
-  | Some scope -> Some scope
-  | None -> lookup_opened_module env module_path
-
-let rec lookup_in_module_scope = fun scope path ->
-  match Value_env.lookup (Module_env.scope_values scope) path with
-  | Some binding -> Some binding
-  | None -> (
-      match split_module_lookup_path path with
-      | Some (module_path, relative_path) -> Option.and_then
-        (Module_env.lookup (Module_env.scope_modules scope) module_path)
-        (fun nested_scope -> lookup_in_module_scope nested_scope relative_path)
-      | None -> None
-    )
-
-let rec lookup_all_in_module_scope = fun scope path ->
-  let direct = Value_env.lookup_all (Module_env.scope_values scope) path in
-  if not (List.is_empty direct) then
-    direct
-  else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match Module_env.lookup (Module_env.scope_modules scope) module_path with
-        | Some nested_scope -> lookup_all_in_module_scope nested_scope relative_path
-        | None -> []
-      )
-    | None -> []
-
-let rec lookup_constructors_in_module_scope = fun scope path ->
-  if is_bare_path path then
-    Constructor_env.lookup_all (Module_env.scope_constructors scope) (binding_name_of_path path)
-  else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match Module_env.lookup (Module_env.scope_modules scope) module_path with
-        | Some nested_scope -> lookup_constructors_in_module_scope nested_scope relative_path
-        | None -> []
-      )
-    | None -> []
-
-let lookup_direct = fun env path ->
-  Value_env.lookup env.values path
-
-let lookup = fun env path ->
-  match lookup_direct env path with
-  | Some binding -> Some binding
-  | None ->
-      if is_bare_path path then
-        lookup_opened_value env path
-      else
-        match split_module_lookup_path path with
-        | Some (module_path, relative_path) -> Option.and_then
-          (lookup_module_scope env module_path)
-          (fun module_scope -> lookup_in_module_scope module_scope relative_path)
-        | None -> None
-
-let lookup_all_direct = fun env path ->
-  Value_env.lookup_all env.values path
-
-let lookup_all = fun env path ->
-  let direct = lookup_all_direct env path in
-  if not (List.is_empty direct) then
-    direct
-  else if is_bare_path path then
-    lookup_all_opened_values env path
-  else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match lookup_module_scope env module_path with
-        | Some module_scope -> lookup_all_in_module_scope module_scope relative_path
-        | None -> []
-      )
-    | None -> []
-
-let lookup_direct_constructors = fun env name ->
-  Constructor_env.lookup_all env.constructors name
-
-let lookup_constructors = fun env path ->
-  if is_bare_path path then
-    let name = binding_name_of_path path in
-    let direct = lookup_direct_constructors env name in
-    if not (List.is_empty direct) then
-      direct
-    else
-      lookup_opened_constructors env path
-  else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match lookup_module_scope env module_path with
-        | Some module_scope -> lookup_constructors_in_module_scope module_scope relative_path
-        | None -> []
-      )
-    | None -> []
-
-let lookup_record_decls = fun env label_name ->
-  let direct = Label_env.lookup_all env.labels label_name in
-  let visible =
-    visible_module_scopes env
-    |> List.concat_map
-      (fun scope ->
-        Label_env.lookup_all (Module_env.scope_labels scope) label_name)
-  in
-  dedupe_record_decls (direct @ visible)
-
-let record_decls = fun env ->
-  let direct = Label_env.record_decls env.labels in
-  let visible = visible_module_scopes env
-  |> List.concat_map (fun scope -> Label_env.record_decls (Module_env.scope_labels scope)) in
-  dedupe_record_decls (direct @ visible)
+let record_decls = fun env -> Label_env.visible_record_decls env.labels |> dedupe_record_decls
 
 let names = fun env -> env |> bindings |> Value_env.of_bindings |> Value_env.names
 
@@ -266,7 +177,6 @@ let bind = fun env introduced ->
     types = Type_env.bind env.types introduced.types;
     constructors = Constructor_env.bind env.constructors introduced.constructors;
     labels = Label_env.bind env.labels introduced.labels;
-    opened_modules = env.opened_modules;
   }
 
 let bind_in_scope = fun env ~scope_path introduced ->
@@ -288,7 +198,6 @@ let bind_in_scope = fun env ~scope_path introduced ->
         types = Type_env.empty;
         constructors = Constructor_env.empty;
         labels = Label_env.empty;
-        opened_modules = [];
       }
 
 let env_of_local_type_decls = fun type_decls ->
@@ -305,6 +214,15 @@ let of_type_decls = fun type_decls ->
       if IdentPath.is_empty type_decl.scope_path then
         bind env introduced
       else
+        let env = bind env
+          {
+            values = Value_env.empty;
+            modules = Module_env.empty;
+            types = Type_env.empty;
+            constructors = introduced.constructors;
+            labels = introduced.labels;
+          }
+        in
         bind_in_scope env ~scope_path:type_decl.scope_path introduced)
     empty
 
@@ -312,7 +230,17 @@ let extend = fun env introduced -> bind env (of_bindings introduced)
 
 let with_local_open = fun env module_path ->
   match lookup_module_scope env module_path with
-  | Some scope -> { env with opened_modules = scope :: env.opened_modules }
+  | Some scope ->
+      {
+        values = Value_env.add_open ~root:module_path (Module_env.scope_values scope) env.values;
+        modules = Module_env.add_open ~root:module_path (Module_env.scope_modules scope) env.modules;
+        types = Type_env.add_open ~root:module_path (Module_env.scope_types scope) env.types;
+        constructors = Constructor_env.add_open
+          ~root:module_path
+          (Module_env.scope_constructors scope)
+          env.constructors;
+        labels = Label_env.add_open ~root:module_path (Module_env.scope_labels scope) env.labels;
+      }
   | None -> env
 
 let entries_for_include = fun env module_path ->
@@ -323,11 +251,11 @@ let entries_for_include = fun env module_path ->
           Module_env.scope_values scope |> Value_env.bindings |> List.map
             (fun binding ->
               Binding.with_provenance (Binding.Included { module_path }) binding) |> Value_env.of_bindings;
-        modules = Module_env.scope_modules scope;
-        types = Module_env.scope_types scope;
-        constructors = Module_env.scope_constructors scope;
-        labels = Module_env.scope_labels scope;
-        opened_modules = [];
+        modules = Module_env.local_only (Module_env.scope_modules scope);
+        types = Type_env.local_only (Module_env.scope_types scope);
+        constructors = Constructor_env.of_type_decls
+          (Type_env.type_decls (Module_env.scope_types scope));
+        labels = Label_env.of_type_decls (Type_env.type_decls (Module_env.scope_types scope));
       }
   | None -> empty
 
@@ -349,7 +277,6 @@ let entries_for_module_alias = fun env ~alias_name ~module_path ->
         types = Type_env.empty;
         constructors = Constructor_env.empty;
         labels = Label_env.empty;
-        opened_modules = [];
       }
   | None -> empty
 
@@ -389,7 +316,6 @@ let qualify = fun ~scope_path env ->
       types = Type_env.empty;
       constructors = Constructor_env.empty;
       labels = Label_env.empty;
-      opened_modules = [];
     }
 
 let scope_locals_for = fun scope_locals scope_path ->

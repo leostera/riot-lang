@@ -6,9 +6,13 @@ val empty: t
 
 val of_type_decls: FileSummary.type_decl list -> t
 
+val local_only: t -> t
+
 val type_decls: t -> FileSummary.type_decl list
 
 val bind: t -> t -> t
+
+val add_open: root:IdentPath.t -> t -> t -> t
 
 val lookup: t -> IdentPath.t -> FileSummary.type_decl option
 

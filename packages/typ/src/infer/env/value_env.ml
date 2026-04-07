@@ -4,15 +4,26 @@ open Model
 
 module Name_map = Collections.Map.Make (String)
 
-let visible_name_for_lookup = function
-  | path -> IdentPath.bare_name path
+type current = Binding.t list Name_map.t
+type components = Binding.t Name_map.t
 
-type t = {
+type layer =
+  | Nothing
+  | Open of {
+      root: IdentPath.t;
+      components: components;
+      next: t;
+    }
+
+and t = {
   bindings: Binding.t list;
-  by_name: Binding.t list Name_map.t;
+  current: current;
+  layer: layer;
 }
 
-let empty = { bindings = []; by_name = Name_map.empty }
+let empty = { bindings = []; current = Name_map.empty; layer = Nothing }
+
+let visible_name_for_lookup = fun path -> IdentPath.bare_name path
 
 let ident_name_of_path = fun path ->
   match IdentPath.last_name path with
@@ -29,18 +40,112 @@ let prepend_binding = fun index binding ->
 let index_of_bindings = fun bindings ->
   bindings |> List.rev |> List.fold_left prepend_binding Name_map.empty
 
-let of_bindings = fun bindings -> { bindings; by_name = index_of_bindings bindings }
+let visible_components_of_bindings = fun bindings ->
+  bindings
+  |> List.rev
+  |> List.fold_left
+    (fun acc binding ->
+      match visible_name_for_lookup (Binding.path binding) with
+      | Some name -> Name_map.add name binding acc
+      | None -> acc)
+    Name_map.empty
+
+let of_bindings = fun bindings ->
+  { bindings; current = index_of_bindings bindings; layer = Nothing }
 
 let of_entries = fun ~make_ident ~provenance entries ->
-  entries |> List.map
+  entries
+  |> List.map
     (fun (path, scheme) ->
       let name = ident_name_of_path path in
-      Binding.make ~ident:(make_ident name) ~path ~scheme ~provenance) |> of_bindings
+      Binding.make ~ident:(make_ident name) ~path ~scheme ~provenance)
+  |> of_bindings
 
 let singleton = fun ~make_ident ~name ~scheme ~provenance ->
-  [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ] |> of_bindings
+  [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
+  |> of_bindings
 
 let bindings = fun env -> env.bindings
+
+let local_only = fun env -> of_bindings env.bindings
+
+let qualify_binding = fun root binding ->
+  Binding.with_path (IdentPath.append_path root (Binding.path binding)) binding
+
+let add_open = fun ~root opened env ->
+  {
+    bindings = env.bindings;
+    current = Name_map.empty;
+    layer = Open {
+      root;
+      components = visible_components_of_bindings opened.bindings;
+      next = env;
+    };
+  }
+
+let merge_current = fun introduced existing ->
+  Name_map.fold
+    (fun name introduced_bindings acc ->
+      let current = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
+      Name_map.add name (introduced_bindings @ current) acc)
+    introduced
+    existing
+
+let bind = fun env introduced ->
+  if List.is_empty introduced.bindings then
+    env
+  else if List.is_empty env.bindings && env.layer = Nothing then
+    introduced
+  else
+    {
+      bindings = introduced.bindings @ env.bindings;
+      current = merge_current introduced.current env.current;
+      layer = env.layer;
+    }
+
+let rec lookup_name = fun env name ->
+  match Name_map.find_opt name env.current with
+  | Some (binding :: _) ->
+      Some binding
+  | _ -> (
+      match env.layer with
+      | Nothing ->
+          None
+      | Open { root; components; next } -> (
+          match Name_map.find_opt name components with
+          | Some binding ->
+              Some (qualify_binding root binding)
+          | None ->
+              lookup_name next name
+        )
+    )
+
+let lookup = fun env path ->
+  match visible_name_for_lookup path with
+  | Some name ->
+      lookup_name env name
+  | None ->
+      None
+
+let rec lookup_all_name = fun env name ->
+  let current = Name_map.find_opt name env.current |> Option.unwrap_or ~default:[] in
+  match env.layer with
+  | Nothing ->
+      current
+  | Open { root; components; next } ->
+      let opened =
+        match Name_map.find_opt name components with
+        | Some binding -> [ qualify_binding root binding ]
+        | None -> []
+      in
+      current @ opened @ lookup_all_name next name
+
+let lookup_all = fun env path ->
+  match visible_name_for_lookup path with
+  | Some name ->
+      lookup_all_name env name
+  | None ->
+      []
 
 let unique = fun env ->
   let seen = Collections.HashSet.with_capacity (List.length env.bindings) in
@@ -56,9 +161,11 @@ let unique = fun env ->
   loop [] env.bindings |> of_bindings
 
 let canonicalize = fun env ->
-  env |> unique |> bindings |> List.sort
-    (fun left right ->
-      IdentPath.compare (Binding.path left) (Binding.path right)) |> of_bindings
+  env
+  |> unique
+  |> bindings
+  |> List.sort (fun left right -> IdentPath.compare (Binding.path left) (Binding.path right))
+  |> of_bindings
 
 let render = fun env -> canonicalize env |> bindings |> List.map Binding.render
 
@@ -75,20 +182,6 @@ let visible_entries = fun env ->
   in
   loop [] env.bindings |> of_bindings
 
-let lookup = fun env path ->
-  match visible_name_for_lookup path with
-  | Some name -> (
-      match Name_map.find_opt name env.by_name with
-      | Some (binding :: _) -> Some binding
-      | _ -> None
-    )
-  | None -> None
-
-let lookup_all = fun env path ->
-  match visible_name_for_lookup path with
-  | Some name -> Name_map.find_opt name env.by_name |> Option.unwrap_or ~default:[]
-  | None -> []
-
 let names = fun env ->
   canonicalize env
   |> bindings
@@ -104,7 +197,9 @@ let introduced_names = fun before after ->
         seen)
       (Collections.HashSet.with_capacity (List.length (bindings before)))
   in
-  visible_entries after |> bindings |> List.filter_map
+  visible_entries after
+  |> bindings
+  |> List.filter_map
     (fun binding ->
       let path = Binding.path binding in
       if Collections.HashSet.contains before_name_set path then
@@ -112,39 +207,29 @@ let introduced_names = fun before after ->
       else
         Some (IdentPath.to_string path))
 
-let bind = fun env introduced ->
-  if List.is_empty introduced.bindings then
-    env
-  else if List.is_empty env.bindings then
-    introduced
-  else
-    let by_name =
-      Name_map.fold
-        (fun name introduced_bindings acc ->
-          let existing = Name_map.find_opt name acc |> Option.unwrap_or ~default:[] in
-          Name_map.add name (introduced_bindings @ existing) acc)
-        introduced.by_name
-        env.by_name
-    in
-    { bindings = introduced.bindings @ env.bindings; by_name }
-
 let aliases_for_local_open = fun env module_path ->
-  env.bindings |> List.filter_map
+  env.bindings
+  |> List.filter_map
     (fun binding ->
       match IdentPath.strip_prefix ~prefix:module_path (Binding.path binding) with
       | Some suffix when not (IdentPath.is_empty suffix) -> Some (Binding.with_path suffix binding)
-      | _ -> None) |> of_bindings
+      | _ -> None)
+  |> of_bindings
 
 let with_local_open = fun env module_path ->
   let aliases = aliases_for_local_open env module_path in
   bind env aliases
 
-let entries_for_include = fun env module_path -> aliases_for_local_open env module_path |> canonicalize
+let entries_for_include = fun env module_path ->
+  aliases_for_local_open env module_path |> canonicalize
 
 let prefix_entries = fun prefix entries ->
-  entries |> bindings |> List.map
+  entries
+  |> bindings
+  |> List.map
     (fun binding ->
-      Binding.with_path (IdentPath.prepend_name prefix (Binding.path binding)) binding) |> of_bindings
+      Binding.with_path (IdentPath.prepend_name prefix (Binding.path binding)) binding)
+  |> of_bindings
 
 let export_names_for_module_alias = fun env ~alias_name ~module_path ->
   aliases_for_local_open env module_path
@@ -181,12 +266,15 @@ let export_with_forced_names = fun ~config ~forced_export_names env ->
   let hidden_names = prelude_names config @ ambient_names config in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
   let forced_name_set = Collections.HashSet.of_list forced_export_names in
-  canonicalize env |> bindings |> List.filter
+  canonicalize env
+  |> bindings
+  |> List.filter
     (fun binding ->
       let path = Binding.path binding in
       let name = IdentPath.to_string path in
       not (Collections.HashSet.contains hidden_name_set path)
-      || Collections.HashSet.contains forced_name_set name) |> of_bindings
+      || Collections.HashSet.contains forced_name_set name)
+  |> of_bindings
 
 let introduced_entries = fun before after ->
   let before_name_set =
@@ -205,6 +293,9 @@ let introduced_entries = fun before after ->
   |> of_bindings
 
 let qualify_entries = fun scope_path entries ->
-  entries |> bindings |> List.map
+  entries
+  |> bindings
+  |> List.map
     (fun binding ->
-      Binding.with_path (IdentPath.append_path scope_path (Binding.path binding)) binding) |> of_bindings
+      Binding.with_path (IdentPath.append_path scope_path (Binding.path binding)) binding)
+  |> of_bindings

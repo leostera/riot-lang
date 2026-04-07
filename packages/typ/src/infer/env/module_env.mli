@@ -7,6 +7,8 @@ val empty: t
 
 val empty_scope: scope
 
+val local_only: t -> t
+
 val make_scope:
   values:Value_env.t ->
   modules:t ->
@@ -36,6 +38,8 @@ val bindings: t -> Binding.t list
 val of_bindings: Binding.t list -> t
 
 val bind: t -> t -> t
+
+val add_open: root:IdentPath.t -> t -> t -> t
 
 val lookup: t -> IdentPath.t -> scope option
 
