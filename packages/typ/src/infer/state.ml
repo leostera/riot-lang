@@ -49,6 +49,105 @@ let prefix_type_decls = fun prefix type_decls ->
       { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path })
     type_decls
 
+let same_named_type_constructor = fun left right ->
+  match (left, right) with
+  | (TypeRepr.Unresolved, TypeRepr.Unresolved) -> true
+  | (TypeRepr.Resolved left, TypeRepr.Resolved right) -> TypeConstructorId.equal left right
+  | _ -> false
+
+let map_preserving = fun loop xs ->
+  let rec walk changed acc = function
+    | [] ->
+        if changed then
+          List.rev acc
+        else
+          xs
+    | x :: rest ->
+        let x' = loop x in
+        walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+  in
+  walk false [] xs
+
+let resolve_named_type_constructor_in_index = fun by_path type_constructor name ->
+  match type_constructor with
+  | TypeRepr.Resolved _ -> type_constructor
+  | TypeRepr.Unresolved -> (
+      match BuiltinTypeConstructors.of_path name with
+      | TypeRepr.Resolved _ as resolved -> resolved
+      | TypeRepr.Unresolved ->
+          Collections.HashMap.get by_path name
+          |> Option.map (fun (type_decl: FileSummary.type_decl) ->
+            TypeRepr.Resolved type_decl.declaration.type_constructor_id)
+          |> Option.unwrap_or ~default:TypeRepr.Unresolved
+    )
+
+let resolve_type_with = fun ~make ~resolve_named_type_constructor ->
+  let rec loop ty =
+    let ty = TypeRepr.prune ty in
+    match TypeRepr.view ty with
+    | TypeRepr.Int
+    | TypeRepr.Float
+    | TypeRepr.Bool
+    | TypeRepr.String
+    | TypeRepr.Char
+    | TypeRepr.Unit
+    | TypeRepr.Hole _
+    | TypeRepr.Var _ ->
+        ty
+    | TypeRepr.Option element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Option element')
+    | TypeRepr.Result (ok_ty, error_ty) ->
+        let ok_ty' = loop ok_ty in
+        let error_ty' = loop error_ty in
+        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+          ty
+        else
+          make (TypeRepr.Result (ok_ty', error_ty'))
+    | TypeRepr.Array element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Array element')
+    | TypeRepr.List element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.List element')
+    | TypeRepr.Seq element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Seq element')
+    | TypeRepr.Named { type_constructor; name; arguments } ->
+        let type_constructor' = resolve_named_type_constructor type_constructor name in
+        let arguments' = map_preserving loop arguments in
+        if same_named_type_constructor type_constructor type_constructor' && Std.Ptr.equal arguments arguments' then
+          ty
+        else
+          make (TypeRepr.Named { type_constructor = type_constructor'; name; arguments = arguments' })
+    | TypeRepr.Tuple members ->
+        let members' = map_preserving loop members in
+        if Std.Ptr.equal members members' then
+          ty
+        else
+          make (TypeRepr.Tuple members')
+    | TypeRepr.Arrow { label; lhs; rhs } ->
+        let lhs' = loop lhs in
+        let rhs' = loop rhs in
+        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+          ty
+        else
+          make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+  in
+  loop
+
 let annotate_type_decl_variances = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity 32 in
   let by_id = Collections.HashMap.with_capacity 32 in
@@ -61,18 +160,18 @@ let annotate_type_decl_variances = fun type_decls ->
         let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
         ())
   in
+  let resolve_named_type_constructor = resolve_named_type_constructor_in_index by_path in
+  let resolve_type = resolve_type_with
+    ~make:TypeRepr.of_desc
+    ~resolve_named_type_constructor in
   let rec parameter_variances_for_named_type visiting type_constructor_id name arguments =
     let default =
       List.map (fun _ -> TypeDecl.Invariant) arguments
     in
     let type_constructor_id =
-      match type_constructor_id with
+      match resolve_named_type_constructor type_constructor_id name with
       | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
-      | TypeRepr.Unresolved -> (
-          match BuiltinTypeConstructors.of_path name with
-          | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
-          | TypeRepr.Unresolved -> None
-        )
+      | TypeRepr.Unresolved -> None
     in
     match type_constructor_id with
     | Some type_constructor_id when Collections.HashSet.contains visiting type_constructor_id ->
@@ -158,7 +257,7 @@ let annotate_type_decl_variances = fun type_decls ->
     let () =
       match declaration.manifest with
       | Some (TypeDecl.Alias manifest_type) ->
-          collect_type_variances_into visiting TypeDecl.Covariant variances manifest_type
+          collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type manifest_type)
       | Some (TypeDecl.PolyVariant { tags; inherited; _ }) ->
           let () =
             tags
@@ -169,13 +268,13 @@ let annotate_type_decl_variances = fun type_decls ->
                   visiting
                   TypeDecl.Covariant
                   variances
-                  payload_type
+                  (resolve_type payload_type)
                 | None -> ())
           in
           inherited
           |> List.iter
             (fun inherited_type ->
-              collect_type_variances_into visiting TypeDecl.Covariant variances inherited_type)
+              collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type inherited_type))
       | None ->
           ()
     in
@@ -192,7 +291,7 @@ let annotate_type_decl_variances = fun type_decls ->
     in
     let () = constructor_payload_types
     |> List.iter
-      (fun payload_type -> collect_type_variances_into visiting TypeDecl.Covariant variances payload_type) in
+      (fun payload_type -> collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type payload_type)) in
     let () =
       declaration.labels
       |> List.iter
@@ -203,7 +302,7 @@ let annotate_type_decl_variances = fun type_decls ->
             else
               TypeDecl.Covariant
           in
-          collect_type_variances_into visiting field_variance variances label.field_type)
+          collect_type_variances_into visiting field_variance variances (resolve_type label.field_type))
     in
     declaration.param_ids |> List.map
       (fun param_id ->
@@ -262,6 +361,14 @@ let fresh_var = fun (state: t) ->
   Region.fresh_var state.regions id
 
 let make_type = fun (state: t) desc -> TypeRepr.of_desc desc |> Region.track_node state.regions
+
+let resolve_named_type_constructor = fun (state: t) type_constructor name ->
+  resolve_named_type_constructor_in_index state.visible_type_decl_by_path type_constructor name
+
+let resolve_type = fun (state: t) ->
+  resolve_type_with
+    ~make:(make_type state)
+    ~resolve_named_type_constructor:(resolve_named_type_constructor state)
 
 let fresh_binding_local_id = fun (state: t) ->
   let local_id = state.next_binding_local_id in

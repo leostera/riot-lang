@@ -104,6 +104,7 @@ let declared_value_bindings = fun (state: state) (declared_value_item: ItemTree.
 
 let instantiate = fun (state: state) scheme ->
   TypeScheme.instantiate ~fresh_var:(fun () -> fresh_var state) ~make:(make_type state) scheme
+  |> State.resolve_type state
 
 let substitute_type_vars = fun (state: state) ty mapping ->
   let rec loop ty =
@@ -232,22 +233,16 @@ let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
   Collections.HashMap.get state.visible_type_decl_by_id type_constructor_id
 
 let resolve_type_constructor_id = fun (state: state) type_constructor name ->
-  match type_constructor with
+  match State.resolve_named_type_constructor state type_constructor name with
   | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
-  | TypeRepr.Unresolved -> (
-      match BuiltinTypeConstructors.of_path name with
-      | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
-      | TypeRepr.Unresolved -> visible_type_decl state name
-        |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_constructor_id)
-    )
+  | TypeRepr.Unresolved -> None
 
 let owner_of_type = fun (state: state) ty ->
-  match view ty with
-  | TypeRepr.Named { type_constructor; name; _ } -> (
-      match resolve_type_constructor_id state type_constructor name with
-      | Some type_constructor_id -> Some { type_constructor_id }
-      | None -> None
-    )
+  match view (State.resolve_type state ty) with
+  | TypeRepr.Named { type_constructor=TypeRepr.Resolved type_constructor_id; _ } ->
+      Some { type_constructor_id }
+  | TypeRepr.Named _ ->
+      None
   | _ -> None
 
 let rec result_type_of_type = fun ty ->
@@ -641,6 +636,11 @@ let rec unify_repr = fun (state: state) ~origin left right ->
       name=right_name;
       arguments=right_arguments
     } ->
+        let left_type_constructor = State.resolve_named_type_constructor state left_type_constructor left_name in
+        let right_type_constructor = State.resolve_named_type_constructor
+          state
+          right_type_constructor
+          right_name in
         if not
             (
               match (left_type_constructor, right_type_constructor) with
