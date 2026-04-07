@@ -244,11 +244,12 @@ let resolve_type_constructor_id = fun (state: state) type_constructor name ->
   | TypeRepr.Unresolved -> None
 
 let owner_of_type = fun (state: state) ty ->
-  match view (State.resolve_type state ty) with
-  | TypeRepr.Named { type_constructor=TypeRepr.Resolved type_constructor_id; _ } -> Some {
-    type_constructor_id
-  }
-  | TypeRepr.Named _ -> None
+  match view (TypeRepr.prune ty) with
+  | TypeRepr.Named { type_constructor; name; _ } -> (
+      match resolve_type_constructor_id state type_constructor name with
+      | Some type_constructor_id -> Some { type_constructor_id }
+      | None -> None
+    )
   | _ -> None
 
 let rec result_type_of_type = fun ty ->

@@ -37,9 +37,9 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] push `IdentPath` to lowering, persistence, and printing boundaries only
 - [ ] canonicalize named type constructors across lowering and loaded summaries
   so unify no longer needs mixed resolved/unresolved name-path fallback
-- [ ] make nominal owner and variance lookup consume canonical constructor ids
-  directly instead of allocating `State.resolve_type` copies or re-resolving by
-  name
+- [ ] make nominal variance lookup consume canonical constructor ids directly in
+  expansive lowering instead of re-resolving by name through visible type
+  indexes
 - [ ] make constructor resolution fully descriptor-first with no late candidate
   reconstruction
 - [ ] make label and record resolution fully descriptor-first with owner-indexed
