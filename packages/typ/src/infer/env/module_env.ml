@@ -9,6 +9,7 @@ type scope = {
   types: Type_env.t;
   constructors: Constructor_env.t;
   labels: Label_env.t;
+  components: components;
 }
 
 and binding = {
@@ -44,16 +45,52 @@ let empty_scope = {
   types = Type_env.empty;
   constructors = Constructor_env.empty;
   labels = Label_env.empty;
+  components = Name_map.empty;
 }
 
-let make_scope = fun ~values ~modules ~types ~constructors ~labels ->
+let merge_visible_components = fun dominant rest ->
+  Name_map.fold
+    (fun name scope acc ->
+      if Name_map.mem name acc then
+        acc
+      else
+        Name_map.add name scope acc)
+    rest
+    dominant
+
+let rec visible_components = fun env ->
+  let current = visible_components_of_current env.current in
+  match env.layer with
+  | Nothing -> current
+  | Open { components; next; _ } ->
+      current
+      |> merge_visible_components components
+      |> merge_visible_components (visible_components next)
+  | Map { map_scope; next } ->
+      current
+      |> merge_visible_components (visible_components next |> Name_map.map map_scope)
+
+and make_scope = fun ~values ~modules ~types ~constructors ~labels ->
   {
     values;
     modules;
     types;
     constructors;
     labels;
+    components = visible_components modules;
   }
+
+and visible_components_of_current = fun current ->
+  Name_map.fold
+    (fun name bindings acc ->
+      match bindings with
+      | binding :: _ -> Name_map.add name binding.scope acc
+      | [] -> acc)
+    current
+    Name_map.empty
+
+let scope_with_components = fun scope ->
+  { scope with components = visible_components scope.modules }
 
 let scope_values = fun scope -> scope.values
 
@@ -81,7 +118,9 @@ let rec module_bindings = fun env ->
   | Open { next; _ } -> current @ module_bindings next
   | Map { map_scope; next } -> current
   @ (module_bindings next
-  |> List.map (fun binding -> { binding with scope = map_scope binding.scope }))
+  |> List.map (fun binding ->
+    let scope = scope_with_components (map_scope binding.scope) in
+    { binding with scope }))
 
 let rec scope_bindings_with_prefix = fun prefix scope ->
   let values =
@@ -109,43 +148,15 @@ and bindings_with_prefix = fun prefix env ->
 
 let bindings = fun env -> bindings_with_prefix IdentPath.empty env
 
-let visible_components_of_current = fun current ->
-  Name_map.fold
-    (fun name bindings acc ->
-      match bindings with
-      | binding :: _ -> Name_map.add name binding.scope acc
-      | [] -> acc)
-    current
-    Name_map.empty
+let scope_components = fun scope ->
+  scope.components
 
-let merge_visible_components = fun dominant rest ->
-  Name_map.fold
-    (fun name scope acc ->
-      if Name_map.mem name acc then
-        acc
-      else
-        Name_map.add name scope acc)
-    rest
-    dominant
-
-let rec visible_components = fun env ->
-  let current = visible_components_of_current env.current in
-  match env.layer with
-  | Nothing -> current
-  | Open { components; next; _ } ->
-      current
-      |> merge_visible_components components
-      |> merge_visible_components (visible_components next)
-  | Map { map_scope; next } ->
-      current
-      |> merge_visible_components (visible_components next |> Name_map.map map_scope)
-
-let add_open = fun ~root opened env ->
+let add_open = fun ~root ?components opened env ->
   {
     current = Name_map.empty;
     layer = Open {
       root;
-      components = visible_components opened;
+      components = Option.unwrap_or ~default:(visible_components opened) components;
       next = env
     }
   }
@@ -170,13 +181,12 @@ let replace_visible_binding = fun env binding ->
   | _ -> { env with current = Name_map.add binding.name [ binding ] env.current }
 
 let rec bind_scope = fun existing introduced ->
-  {
-    values = Value_env.bind existing.values introduced.values;
-    modules = bind existing.modules introduced.modules;
-    types = Type_env.bind existing.types introduced.types;
-    constructors = Constructor_env.bind existing.constructors introduced.constructors;
-    labels = Label_env.bind existing.labels introduced.labels;
-  }
+  make_scope
+    ~values: (Value_env.bind existing.values introduced.values)
+    ~modules:(bind existing.modules introduced.modules)
+    ~types:(Type_env.bind existing.types introduced.types)
+    ~constructors:(Constructor_env.bind existing.constructors introduced.constructors)
+    ~labels:(Label_env.bind existing.labels introduced.labels)
 
 and merge_current = fun introduced existing ->
   Name_map.fold
@@ -186,7 +196,7 @@ and merge_current = fun introduced existing ->
         match (introduced_bindings, current) with
         | (introduced_binding :: introduced_rest, current_binding :: current_rest) -> {
           introduced_binding
-          with scope = bind_scope current_binding.scope introduced_binding.scope
+          with scope = scope_with_components (bind_scope current_binding.scope introduced_binding.scope)
         }
         :: (introduced_rest @ current_rest)
         | _ -> introduced_bindings @ current
@@ -210,10 +220,10 @@ and merge_scope = fun env ~module_path introduced ->
       if IdentPath.is_empty tail then
         match visible_binding env name with
         | Some existing ->
-            let updated = { existing with scope = bind_scope existing.scope introduced } in
-            replace_visible_binding env updated
+                let updated = { existing with scope = bind_scope existing.scope introduced } in
+                replace_visible_binding env updated
         | None ->
-            let binding = { name; scope = introduced } in
+            let binding = { name; scope = scope_with_components introduced } in
             bind env { current = current_of_bindings [ binding ]; layer = Nothing }
       else
         let nested_modules =
@@ -223,8 +233,12 @@ and merge_scope = fun env ~module_path introduced ->
         in
         let nested_scope =
           match visible_binding env name with
-          | Some existing -> { existing.scope with modules = nested_modules }
-          | None -> { empty_scope with modules = nested_modules }
+          | Some existing -> {
+            existing.scope with
+            modules = nested_modules;
+            components = visible_components nested_modules
+          }
+          | None -> { empty_scope with modules = nested_modules; components = visible_components nested_modules }
         in
         let binding = { name; scope = nested_scope } in
         match visible_binding env name with
@@ -232,7 +246,7 @@ and merge_scope = fun env ~module_path introduced ->
         | None -> bind env { current = current_of_bindings [ binding ]; layer = Nothing }
 
 let bind_alias = fun env ~alias_name scope ->
-  let binding = { name = alias_name; scope } in
+  let binding = { name = alias_name; scope = scope_with_components scope } in
   bind env { current = current_of_bindings [ binding ]; layer = Nothing }
 
 let rec scope_of_binding = fun binding ->
@@ -240,25 +254,23 @@ let rec scope_of_binding = fun binding ->
   | None ->
       empty_scope
   | Some (_, tail) when IdentPath.is_empty tail ->
-      {
-        values = Value_env.of_bindings [ binding ];
-        modules = empty;
-        types = Type_env.empty;
-        constructors = Constructor_env.empty;
-        labels = Label_env.empty;
-      }
+      make_scope
+        ~values:(Value_env.of_bindings [ binding ])
+        ~modules:empty
+        ~types:Type_env.empty
+        ~constructors:Constructor_env.empty
+        ~labels:Label_env.empty
   | Some (module_name, tail) ->
       let relative_binding = Binding.with_path tail binding in
-      {
-        values = Value_env.empty;
-        modules = merge_scope
+      make_scope
+        ~values:Value_env.empty
+        ~modules:(merge_scope
           empty
           ~module_path:(IdentPath.of_name module_name)
-          (scope_of_binding relative_binding);
-        types = Type_env.empty;
-        constructors = Constructor_env.empty;
-        labels = Label_env.empty;
-      }
+          (scope_of_binding relative_binding))
+        ~types:Type_env.empty
+        ~constructors:Constructor_env.empty
+        ~labels:Label_env.empty
 
 let of_bindings = fun bindings ->
   bindings |> List.fold_left

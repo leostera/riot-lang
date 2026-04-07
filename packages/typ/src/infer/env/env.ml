@@ -297,7 +297,11 @@ let with_local_open = fun (env: t) module_path ->
       {
         summary = Summary_open (env.summary, module_path);
         values = Value_env.add_open ~root:module_path (Module_env.scope_values scope) env.values;
-        modules = Module_env.add_open ~root:module_path (Module_env.scope_modules scope) env.modules;
+        modules = Module_env.add_open
+          ~root:module_path
+          ~components:(Module_env.scope_components scope)
+          (Module_env.scope_modules scope)
+          env.modules;
         types = Type_env.add_open ~root:module_path (Module_env.scope_types scope) env.types;
         constructors = Constructor_env.add_open
           ~root:module_path

@@ -3,6 +3,7 @@ open Model
 
 type scope
 type t
+type components
 val empty: t
 
 val empty_scope: scope
@@ -25,6 +26,8 @@ val scope_types: scope -> Type_env.t
 
 val scope_constructors: scope -> Constructor_env.t
 
+val scope_components: scope -> components
+
 val scope_labels: scope -> Label_env.t
 
 val scope_scopes: scope -> scope list
@@ -39,7 +42,7 @@ val of_bindings: Binding.t list -> t
 
 val bind: t -> t -> t
 
-val add_open: root:IdentPath.t -> t -> t -> t
+val add_open: root:IdentPath.t -> ?components:components -> t -> t -> t
 
 val map: (scope -> scope) -> t -> t
 

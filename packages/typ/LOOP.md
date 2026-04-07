@@ -25,7 +25,7 @@ now".
 
 This is the current best guess for the next OCaml-parity batches.
 
-- [ ] make `Module_env` bindings carry authoritative per-namespace component
+- [x] make `Module_env` bindings carry authoritative per-namespace component
   tables so `add_open` and dotted lookup can consume them directly, without
   recomputing scope views or adding scope-wide cache plumbing
 - [ ] make `Module_env` a closer analogue of OCaml component tables
@@ -60,6 +60,11 @@ This is the current best guess for the next OCaml-parity batches.
 - [ ] memoize `env_of_summary` and `env_of_summary_relative` replay so repeated
   replay of equivalent summary/base pairs does not rebuild equivalent
   environments repeatedly
+
+- [ ] centralize `scope.components` propagation in Module_env operations so
+  `merge_scope`, `module_bindings`, and any future scope transforms never
+  recompute visible components opportunistically when input scopes are already
+  up-to-date
 
 ## How to analyze potential next items
 
