@@ -23,6 +23,7 @@ The Riot CLI provides a one-shot interface to the Riot build system. Each comman
 
 ### Project Management
 
+- `riot init [path]` - Create a new workspace with starter package scaffolding
 - `riot new <name>` - Create a new package
 - `riot publish` - Publish workspace packages in dependency order
 - `riot publish -p <name>` - Publish a specific workspace package

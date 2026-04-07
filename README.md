@@ -60,7 +60,9 @@ curl -sSL https://get.riot.ml | sh
 riot --help
 ```
 
-To strat an empty workspace run `riot init` and follow the instructions.
+To start an empty workspace run `riot init` and follow the instructions. The
+generated workspace includes a starter package, test, Dockerfile, and GitHub
+Actions workflow.
 
 Or you can scaffold a starter Riot application by running:
 
