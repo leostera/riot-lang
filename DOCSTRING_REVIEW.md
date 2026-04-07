@@ -11,7 +11,6 @@
 
 ## List of interfaces to review
 
-- [ ] packages/blink/src/connection.mli
 - [ ] packages/ceibo/src/span.mli
 - [ ] packages/ceibo/src/builder.mli
 - [ ] packages/ceibo/src/ceibo.mli
