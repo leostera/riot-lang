@@ -42,6 +42,8 @@ and t = {
   mutable pool_level: int option;
   mutable mark: int;
   mutable mark_order: int;
+  mutable aux_mark: int;
+  mutable aux_order: int;
 }
 val int: t
 
@@ -100,6 +102,14 @@ val mark_order: t -> int
 
 val set_mark_order: t -> int -> unit
 
+val aux_mark: t -> int
+
+val set_aux_mark: t -> int -> unit
+
+val aux_order: t -> int
+
+val set_aux_order: t -> int -> unit
+
 val generic_level: int
 
 val is_generic_level: int -> bool
@@ -127,6 +137,10 @@ val mark_reachable_vars: generation:int -> next_order:(unit -> int) -> t -> unit
 val covariant_vars: t -> int list
 
 val occurs: int -> t -> bool
+
+val occurs_check: generation:int -> needle:int -> minimum_level:int -> t -> bool
+
+val lower_level: generation:int -> level:int -> on_lower:(t -> unit) -> t -> unit
 
 val occurs_or_lower:
   generation:int -> needle:int -> level:int -> on_lower:(t -> unit) -> t -> bool

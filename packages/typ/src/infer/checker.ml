@@ -638,12 +638,52 @@ let unify = fun (state: state) ~origin left right ->
       actual = TypePrinter.type_to_string right
     })
   in
+  let pair_generation = Region.next_mark state.regions in
+  let next_node_order =
+    let order = ref 0 in
+    fun () ->
+      let current = !order in
+      let () =
+        order := current + 1
+      in
+      current
+  in
+  let node_order = fun ty ->
+    let ty = TypeRepr.prune ty in
+    if Int.equal (TypeRepr.aux_mark ty) pair_generation then
+      TypeRepr.aux_order ty
+    else
+      let order = next_node_order () in
+      let () =
+        TypeRepr.set_aux_mark ty pair_generation;
+        TypeRepr.set_aux_order ty order
+      in
+      order
+  in
+  let seen_pairs = Collections.HashSet.with_capacity 128 in
+  let mark_pair_seen = fun left right ->
+    let left_order = node_order left in
+    let right_order = node_order right in
+    let key =
+      if left_order <= right_order then
+        (left_order, right_order)
+      else
+        (right_order, left_order)
+    in
+    if Collections.HashSet.contains seen_pairs key then
+      true
+    else
+      let () = Collections.HashSet.insert seen_pairs key |> ignore in
+      false
+  in
   let rec loop = function
     | [] -> ()
     | (left, right) :: rest ->
         let left = TypeRepr.prune left in
         let right = TypeRepr.prune right in
         if Std.Ptr.equal left right then
+          loop rest
+        else if mark_pair_seen left right then
           loop rest
         else
           match (TypeRepr.view left, TypeRepr.view right) with
@@ -708,15 +748,9 @@ let unify = fun (state: state) ~origin left right ->
                 | TypeRepr.Var _ -> (left, right)
                 | _ -> (right, left)
               in
-              if
-                TypeRepr.occurs_or_lower
-                  ~generation:(Region.next_mark state.regions)
-                  ~needle:var.id
-                  ~level:(TypeRepr.level var_ty)
-                  ~on_lower:(fun ty ->
-                    Region.add_to_pool state.regions ~level:(TypeRepr.level ty) ty |> ignore)
-                  other_ty
-              then
+              let level = TypeRepr.level var_ty in
+              let occurs_generation = Region.next_mark state.regions in
+              if TypeRepr.occurs_check ~generation:occurs_generation ~needle:var.id ~minimum_level:level other_ty then
                 raise
                   (Unify_error (Typ_diagnostic.OccursCheckFailed {
                     variable_id = var.id;
@@ -724,6 +758,15 @@ let unify = fun (state: state) ~origin left right ->
                   }))
               else
                 (
+                  let lower_generation = Region.next_mark state.regions in
+                  let () =
+                    TypeRepr.lower_level
+                      ~generation:lower_generation
+                      ~level
+                      ~on_lower:(fun ty ->
+                        Region.add_to_pool state.regions ~level:(TypeRepr.level ty) ty |> ignore)
+                      other_ty
+                  in
                   var.link <- Some other_ty;
                   loop rest
                 )

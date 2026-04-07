@@ -42,6 +42,8 @@ and t = {
   mutable pool_level: int option;
   mutable mark: int;
   mutable mark_order: int;
+  mutable aux_mark: int;
+  mutable aux_order: int;
 }
 
 let max_level = fun xs ->
@@ -75,7 +77,15 @@ let of_desc = fun ?level desc ->
     | Some level -> level
     | None -> level_of_desc desc
   in
-  { desc; level; pool_level = None; mark = (-1); mark_order = (-1) }
+  {
+    desc;
+    level;
+    pool_level = None;
+    mark = (-1);
+    mark_order = (-1);
+    aux_mark = (-1);
+    aux_order = (-1);
+  }
 
 let int = of_desc Int
 
@@ -139,6 +149,14 @@ let set_mark = fun ty mark -> ty.mark <- mark
 let mark_order = fun ty -> ty.mark_order
 
 let set_mark_order = fun ty mark_order -> ty.mark_order <- mark_order
+
+let aux_mark = fun ty -> ty.aux_mark
+
+let set_aux_mark = fun ty aux_mark -> ty.aux_mark <- aux_mark
+
+let aux_order = fun ty -> ty.aux_order
+
+let set_aux_order = fun ty aux_order -> ty.aux_order <- aux_order
 
 let generic_level = Int.max_int
 
@@ -470,22 +488,102 @@ let rec occurs = fun needle ty ->
   | Var { id; link=None; _ } -> Int.equal id needle
   | Var { link=Some linked; _ } -> occurs needle linked
 
+let occurs_check = fun ~generation ~needle ~minimum_level ty ->
+  let rec loop = function
+    | [] -> false
+    | ty :: rest ->
+        let ty = prune ty in
+        if Int.equal (mark ty) generation then
+          loop rest
+        else if ty.level < minimum_level then
+          let () = set_mark ty generation in
+          loop rest
+        else
+          let () = set_mark ty generation in
+          match ty.desc with
+          | Var { id; link=None; _ } when Int.equal id needle -> true
+          | Int
+          | Float
+          | Bool
+          | String
+          | Char
+          | Unit
+          | Hole _
+          | Var _ ->
+              loop rest
+          | Option element
+          | Array element
+          | List element
+          | Seq element ->
+              loop (element :: rest)
+          | Result (ok_ty, error_ty) ->
+              loop (ok_ty :: error_ty :: rest)
+          | Named { arguments; _ }
+          | Tuple arguments ->
+              loop (List.fold_right (fun argument acc -> argument :: acc) arguments rest)
+          | Arrow { lhs; rhs; _ } ->
+              loop (lhs :: rhs :: rest)
+  in
+  loop [ ty ]
+
+let lower_level = fun ~generation ~level ~on_lower ty ->
+  let rec loop = function
+    | [] -> ()
+    | ty :: rest ->
+        let ty = prune ty in
+        if Int.equal (mark ty) generation then
+          loop rest
+        else if ty.level < level then
+          let () = set_mark ty generation in
+          loop rest
+        else
+          let () = set_mark ty generation in
+          let () =
+            if ty.level > level then
+              (
+                ty.level <- level;
+                on_lower ty
+              )
+          in
+          let rest =
+            match ty.desc with
+            | Int
+            | Float
+            | Bool
+            | String
+            | Char
+            | Unit
+            | Hole _
+            | Var _ ->
+                rest
+            | Option element
+            | Array element
+            | List element
+            | Seq element -> element :: rest
+            | Result (ok_ty, error_ty) -> ok_ty :: error_ty :: rest
+            | Named { arguments; _ }
+            | Tuple arguments -> List.fold_right
+              (fun argument acc -> argument :: acc)
+              arguments
+              rest
+            | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
+          in
+          loop rest
+  in
+  loop [ ty ]
+
 let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
   let rec loop = function
     | [] -> false
     | ty :: rest ->
         let ty = prune ty in
-        if Int.equal ty.mark generation then
+        if Int.equal (mark ty) generation then
           loop rest
         else if ty.level < level then
-          let () =
-            ty.mark <- generation
-          in
+          let () = set_mark ty generation in
           loop rest
         else
-          let () =
-            ty.mark <- generation
-          in
+          let () = set_mark ty generation in
           match ty.desc with
           | Var { id; link=None; _ } when Int.equal id needle -> true
           | _ ->
