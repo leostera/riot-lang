@@ -27,6 +27,11 @@ let parse_install = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_info = fun args ->
+  match ArgParser.get_matches Riot_cli.Info_cmd.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
 let test_build_accepts_multiple_packages = fun _ctx ->
   match parse_build [ "build"; "syn"; "krasny"; "riot-cli" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
@@ -116,6 +121,15 @@ let test_install_accepts_package_flag = fun _ctx ->
   | Ok matches ->
       Test.assert_equal ~expected:(Some "riot-cli") ~actual:(ArgParser.get_one matches "package");
       Ok ()
+
+let test_info_accepts_json_flag = fun _ctx ->
+  match parse_info [ "info"; "--json" ] with
+  | Error err -> Error ("expected info args to parse with --json: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected info --json flag to be parsed"
 
 let test_run_defaults_remote_binary_to_repo_name = fun _ctx ->
   Test.assert_equal
@@ -314,6 +328,7 @@ let tests =
     case "install: parse missing name" test_install_accepts_missing_name;
     case "install: parse --update flag" test_install_accepts_update_flag;
     case "install: parse --package flag" test_install_accepts_package_flag;
+    case "info: parse --json flag" test_info_accepts_json_flag;
     case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
     case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;

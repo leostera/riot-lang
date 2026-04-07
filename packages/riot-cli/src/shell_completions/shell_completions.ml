@@ -151,6 +151,7 @@ _riot() {
         'yank:Yank a published package version'
         'new:Create new package'
         'search:Search registry packages'
+        'info:Show resolved workspace information'
         'toolchain:Manage OCaml toolchains'
         'toolchains:Manage OCaml toolchains'
         'completions:Generate shell completions'
@@ -302,6 +303,10 @@ _riot() {
                 '--json[Emit machine-readable JSON results]' \
                 '(-n --limit)'{-n,--limit}'[Maximum number of results to return]:limit:' \
                 ':query:'
+            ;;
+        info)
+            _arguments \
+                '--json[Emit machine-readable JSON output]'
             ;;
         toolchain|toolchains)
             if [[ $CURRENT -eq 3 ]]; then

@@ -13,6 +13,7 @@ let build_cli = fun () ->
         Completions.command;
         Fix_cmd.command;
         Riot_fmt.command;
+        Info_cmd.command;
         Riot_init.command;
         Install.command;
         Login.command;
@@ -398,6 +399,15 @@ let run = fun ~args ->
                   None
               in
               Riot_fmt.run ?workspace fmt_matches
+          | Some ("info", info_matches) -> (
+              let workspace_scan =
+                match get_workspace_scan () with
+                | NoWorkspace -> Info_cmd.NoWorkspace
+                | ScanFailed err -> Info_cmd.ScanFailed err
+                | Loaded (workspace, load_errors) -> Info_cmd.Loaded (workspace, load_errors)
+              in
+              Info_cmd.run ~workspace_scan info_matches
+            )
           | Some ("clean", clean_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Error _ as e -> e
