@@ -6,6 +6,7 @@
 
 - `specs/actors/AGENTS.md`: `packages/actors` runtime semantics, scheduler behavior, mailbox rules, timers, lifecycle, links, and monitors
 - `specs/riot/AGENTS.md`: `packages/riot-*` build planning, action scheduling, cache semantics, pipeline boundaries, and artifact materialization
+- `specs/riot-deps/AGENTS.md`: `packages/riot-deps`, `riot-model`, and `pubgrub` dependency-graph, lock, and package-feature semantics
 
 ## Rules
 
