@@ -167,7 +167,6 @@
 - [ ] packages/riot-build/src/build_server.mli
 - [ ] packages/riot-build/src/riot_build.mli
 - [ ] packages/riot-build/src/client.mli
-- [ ] packages/riot-check/src/riot_check.mli
 - [ ] packages/riot-cli/src/command_executor.mli
 - [ ] packages/riot-cli/src/shell_completions/shell_completions.mli
 - [ ] packages/riot-cli/src/build.mli
