@@ -11,7 +11,6 @@
 
 ## List of interfaces to review
 
-- [ ] packages/actors/src/runtime.mli
 - [ ] packages/blink/src/protocol.mli
 - [ ] packages/blink/src/connection.mli
 - [ ] packages/blink/src/websocket.mli
