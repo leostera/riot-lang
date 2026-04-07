@@ -125,7 +125,6 @@
 - [ ] packages/krasny/src/format_core.mli
 - [ ] packages/krasny/src/runner.mli
 - [ ] packages/krasny/src/report.mli
-- [ ] packages/miniriot/src/miniriot.mli
 - [ ] packages/minttea/src/event.mli
 - [ ] packages/minttea/src/app.mli
 - [ ] packages/minttea/src/util/ansi.mli
