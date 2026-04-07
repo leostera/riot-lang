@@ -1,53 +1,87 @@
 open Std
 open Riot_model
 
+(** Legacy typed messages shared by internal [riot-build] components.
+
+    Even though [riot-build] is now a local in-process orchestration layer,
+    these request and response types still define the structured contract used
+    by some internal runtime pieces.
+*)
+
 type build_scope =
-  Runtime
-  | Dev
+  | (** Build runtime artifacts needed to execute commands. *)
+    Runtime
+  | (** Build developer-facing artifacts such as normal package outputs. *)
+    Dev
+
 type target =
-  All
-  | Package of string
-  | Packages of string list
+  | (** Build every package in the workspace. *)
+    All
+  | (** Build a single named package. *)
+    Package of string
+  | (** Build an explicit set of packages. *)
+    Packages of string list
+
+(** Mutable build statistics recorded during a build session. *)
 module BuildStats: sig
   type t
+
+  (** Create an empty statistics accumulator. *)
   val make: unit -> t
 
+  (** Mark the build session as started. *)
   val mark_started: t -> unit
 
+  (** Mark the build session as completed. *)
   val mark_completed: t -> unit
 
+  (** Increment the number of successfully built packages. *)
   val inc_packages_built: t -> unit
 
+  (** Increment the number of failed packages. *)
   val inc_packages_failed: t -> unit
 
+  (** Increment the package-cache hit count. *)
   val inc_cache_hits: t -> unit
 
+  (** Increment the package-cache miss count. *)
   val inc_cache_misses: t -> unit
 
+  (** Increment the action-cache hit count. *)
   val inc_action_cache_hits: t -> unit
 
+  (** Increment the action-cache miss count. *)
   val inc_action_cache_misses: t -> unit
 
+  (** Record the total number of modules involved in the build. *)
   val set_total_modules: t -> int -> unit
 
-  val get_build_duration: t -> float (* seconds *)
+  (** Return the measured build duration in seconds. *)
+  val get_build_duration: t -> float
 
+  (** Return the number of successfully built packages. *)
   val get_packages_built: t -> int
 
+  (** Return the number of failed packages. *)
   val get_packages_failed: t -> int
 
+  (** Return the total number of modules seen in the build. *)
   val get_total_modules: t -> int
 
+  (** Return the number of package-cache hits. *)
   val get_cache_hits: t -> int
 
+  (** Return the number of package-cache misses. *)
   val get_cache_misses: t -> int
 
+  (** Return the number of action-cache hits. *)
   val get_action_cache_hits: t -> int
 
+  (** Return the number of action-cache misses. *)
   val get_action_cache_misses: t -> int
 end
 
-(** Request types that can be sent to the server *)
+(** Requests sent into the internal build runtime. *)
 type request =
   | Build of {
       client_pid: Pid.t;
@@ -55,7 +89,7 @@ type request =
       scope: build_scope;
       profile: string;
       target_arch: string option;
-      session_id: Session_id.t
+      session_id: Session_id.t;
     }
   | Ping of { client_pid: Pid.t }
   | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t }
@@ -65,13 +99,21 @@ type request =
   | FindExecutable of { client_pid: Pid.t; name: string }
   | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
   | FormatCode of { client_pid: Pid.t; code: string; file_path: Path.t option }
-  | FormatAll of { client_pid: Pid.t; mode: 
-        [
-          `check
-          | `write
-        ] }
-  | NewPackage of { client_pid: Pid.t; path: Path.t; name: string; is_library: bool }
-(** Response types from the server *)
+  | FormatAll of {
+      client_pid: Pid.t;
+      mode: [
+        | `check
+        | `write
+      ];
+    }
+  | NewPackage of {
+      client_pid: Pid.t;
+      path: Path.t;
+      name: string;
+      is_library: bool;
+    }
+
+(** Responses emitted by the internal build runtime. *)
 type response =
   | Pong
   | WorkspaceScanned
@@ -81,39 +123,58 @@ type response =
       session_id: Session_id.t;
       completed_at: DateTime.t;
       stats: BuildStats.t;
-      results: Riot_executor.Package_builder.build_result list
+      results: Riot_executor.Package_builder.build_result list;
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: DateTime.t;
       stats: BuildStats.t;
       built: Riot_executor.Package_builder.build_result list;
-      errors: Riot_executor.Package_builder.build_result list
+      errors: Riot_executor.Package_builder.build_result list;
     }
-  | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
-  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: DateTime.t }
-  | WorkspaceConfig of { workspace: Workspace.t; toolchain: Riot_toolchain.t }
-  | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list }
+  | PlanningFailed of {
+      session_id: Session_id.t;
+      failed_at: DateTime.t;
+      reason: string;
+    }
+  | CycleDetected of {
+      session_id: Session_id.t;
+      cycle_nodes: string list;
+      detected_at: DateTime.t;
+    }
+  | WorkspaceConfig of {
+      workspace: Workspace.t;
+      toolchain: Riot_toolchain.t;
+    }
+  | PackageInfo of {
+      package: Package.t;
+      sources: Path.t list;
+      dependencies: Package.t list;
+    }
   | PackageGraph of { nodes: Package.t list }
   | ExecutableFound of { package: string; binary: string }
   | ExecutableNotFound
   | FormatResult of { formatted_code: string; changed: bool }
   | FormatError of { error: string }
-  | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list }
+  | FormatAllResult of {
+      files_formatted: int;
+      files_failed: int;
+      errors: (string * string) list;
+    }
   | PackageCreated of { path: string; name: string }
   | PackageCreationError of { error: string }
   | PackageNotFound of {
       session_id: Session_id.t;
       package_name: string;
-      available_packages: string list
+      available_packages: string list;
     }
   | PackagesNotFound of {
       session_id: Session_id.t;
       package_names: string list;
-      available_packages: string list
+      available_packages: string list;
     }
 
-(** Message types for server communication *)
+(** Message constructors used for internal server communication. *)
 type Message.t +=
   | ServerRequest of request
   | ServerResponse of response
