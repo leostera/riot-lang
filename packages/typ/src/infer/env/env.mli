@@ -28,14 +28,20 @@ type summary =
   | Summary_bind_in_scope of summary * IdentPath.t * summary
   | Summary_open of summary * IdentPath.t
   | Summary_qualify of summary * IdentPath.t
-
 val empty_summary: summary
+
 val summary_snapshot: t -> summary
+
 val summary_bind: summary -> t -> summary
+
 val summary_bind_in_scope: summary -> scope_path:IdentPath.t -> t -> summary
+
 val summary_open: summary -> IdentPath.t -> summary
+
 val summary_qualify: summary -> scope_path:IdentPath.t -> summary
+
 val env_of_summary: summary -> t
+
 val empty: t
 
 val empty_scope: scope
@@ -70,7 +76,11 @@ val lookup_all: t -> IdentPath.t -> bindings
 
 val lookup_constructors: t -> IdentPath.t -> Constructor_env.entry list
 
+val lookup_owned_constructor: t -> IdentPath.t -> TypeConstructorId.t -> Constructor_env.entry option
+
 val lookup_record_decls: t -> string -> Label_env.record_decl list
+
+val lookup_record_decl_by_owner: t -> TypeConstructorId.t -> Label_env.record_decl option
 
 val record_decls: t -> Label_env.record_decl list
 

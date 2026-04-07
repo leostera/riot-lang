@@ -245,10 +245,10 @@ let resolve_type_constructor_id = fun (state: state) type_constructor name ->
 
 let owner_of_type = fun (state: state) ty ->
   match view (State.resolve_type state ty) with
-  | TypeRepr.Named { type_constructor=TypeRepr.Resolved type_constructor_id; _ } ->
-      Some { type_constructor_id }
-  | TypeRepr.Named _ ->
-      None
+  | TypeRepr.Named { type_constructor=TypeRepr.Resolved type_constructor_id; _ } -> Some {
+    type_constructor_id
+  }
+  | TypeRepr.Named _ -> None
   | _ -> None
 
 let rec result_type_of_type = fun ty ->
@@ -259,14 +259,11 @@ let rec result_type_of_type = fun ty ->
 
 let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty ->
   let candidates = Env.lookup_constructors env constructor in
-  match candidates with
-  | [] ->
-      None
-  | [ candidate ] ->
-      Some candidate
-  | candidates -> (
-      match owner_of_type state expected_ty with
-      | Some expected_owner -> (
+  match owner_of_type state expected_ty with
+  | Some expected_owner -> (
+      match Env.lookup_owned_constructor env constructor expected_owner.type_constructor_id with
+      | Some candidate -> Some candidate
+      | None -> (
           match
             List.filter
               (fun candidate ->
@@ -275,10 +272,18 @@ let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty 
                   (Env.Constructor_env.owner_type_constructor_id candidate))
               candidates
           with
-          | [] -> Some (List.hd candidates)
           | candidate :: _ -> Some candidate
+          | [] -> (
+              match candidates with
+              | candidate :: _ -> Some candidate
+              | [] -> None
+            )
         )
-      | None -> Some (List.hd candidates)
+    )
+  | None -> (
+      match candidates with
+      | candidate :: _ -> Some candidate
+      | [] -> None
     )
 
 let resolve_constructor_without_expected = fun env constructor ->
@@ -319,14 +324,16 @@ let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl)
       }
     )
   in
-  let field_types = Env.Label_env.labels record_decl
-  |> List.fold_left
-    (fun acc (field: TypeDecl.label) ->
-      Label_name_map.add
-        (Env.Label_env.lookup_name field.name)
-        (substitute_type_vars state field.field_type mapping)
-        acc)
-    Label_name_map.empty in
+  let field_types =
+    Env.Label_env.labels record_decl
+    |> List.fold_left
+      (fun acc (field: TypeDecl.label) ->
+        Label_name_map.add
+          (Env.Label_env.lookup_name field.name)
+          (substitute_type_vars state field.field_type mapping)
+          acc)
+      Label_name_map.empty
+  in
   (owner_ty, field_types)
 
 let record_field_type = fun field_types label_name ->
@@ -345,19 +352,26 @@ let add_or_pattern_bindings_mismatch = fun (state: state) ~span ~expected_names 
     (Typ_diagnostic.OrPatternBindingsMismatch { pattern_span = span; expected_names; actual_names })
 
 let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span ~context ->
-  let candidates =
+  let name_candidates =
     match field_names with
-    | first_field :: remaining_fields -> Env.lookup_record_decls env first_field
-    |> List.filter
-      (fun (record_decl: record_type_decl) -> Env.Label_env.matches_fields record_decl remaining_fields)
+    | first_field :: remaining_fields ->
+        Env.lookup_record_decls env first_field |> List.filter
+          (fun (record_decl: record_type_decl) ->
+            Env.Label_env.matches_fields record_decl remaining_fields)
     | [] -> Env.record_decls env
   in
   let candidates =
     match owner_hint with
-    | Some owner -> candidates
-    |> List.filter
-      (fun (record_decl: record_type_decl) -> record_decl_matches_owner record_decl owner)
-    | None -> candidates
+    | Some owner -> (
+        match Env.lookup_record_decl_by_owner env owner.type_constructor_id with
+        | Some record_decl when Env.Label_env.matches_fields record_decl field_names -> [
+          record_decl
+        ]
+        | _ -> name_candidates
+        |> List.filter
+          (fun (record_decl: record_type_decl) -> record_decl_matches_owner record_decl owner)
+      )
+    | None -> name_candidates
   in
   match candidates with
   | [ record_decl ] ->
@@ -482,11 +496,11 @@ and is_nonexpansive_binding = fun (state: state) binding_id ->
   | Some (binding: BodyArena.binding) -> is_nonexpansive_expr state binding.value_id
   | None -> false
 
-let generalize_binding = fun (_state: state) (_frame: Region.frame) ty ->
-  TypeScheme.of_type ty
+let generalize_binding = fun (_state: state) (_frame: Region.frame) ty -> TypeScheme.of_type ty
 
 let generalize_entry_groups = fun (state: state) (frame: Region.frame) entry_groups ->
-  let roots = entry_groups |> List.concat_map
+  let roots = entry_groups
+  |> List.concat_map
     (fun entries -> entries |> List.map (fun entry -> TypeScheme.body (Binding.scheme entry))) in
   let () =
     if not (List.is_empty roots) then
@@ -620,24 +634,19 @@ let diagnostic_span = fun origin ->
 exception Unify_error of Typ_diagnostic.mismatch
 
 let unify = fun (state: state) ~origin left right ->
-  let named_types_match = fun left_type_constructor left_name right_type_constructor right_name ->
+  let named_types_match left_type_constructor left_name right_type_constructor right_name =
     let left_type_constructor = State.resolve_named_type_constructor state left_type_constructor left_name in
-    let right_type_constructor = State.resolve_named_type_constructor
-      state
-      right_type_constructor
-      right_name in
+    let right_type_constructor = State.resolve_named_type_constructor state right_type_constructor right_name in
     match (left_type_constructor, right_type_constructor) with
     | TypeRepr.Resolved left_type_constructor_id, TypeRepr.Resolved right_type_constructor_id -> TypeConstructorId.equal
       left_type_constructor_id
       right_type_constructor_id
     | _ -> IdentPath.equal left_name right_name
   in
-  let mismatch = fun left right ->
-    Unify_error (Typ_diagnostic.ExpectedActual {
-      expected = TypePrinter.type_to_string left;
-      actual = TypePrinter.type_to_string right
-    })
-  in
+  let mismatch left right = Unify_error (Typ_diagnostic.ExpectedActual {
+    expected = TypePrinter.type_to_string left;
+    actual = TypePrinter.type_to_string right
+  }) in
   let pair_generation = Region.next_mark state.regions in
   let next_node_order =
     let order = ref 0 in
@@ -648,7 +657,7 @@ let unify = fun (state: state) ~origin left right ->
       in
       current
   in
-  let node_order = fun ty ->
+  let node_order ty =
     let ty = TypeRepr.prune ty in
     if Int.equal (TypeRepr.aux_mark ty) pair_generation then
       TypeRepr.aux_order ty
@@ -661,7 +670,7 @@ let unify = fun (state: state) ~origin left right ->
       order
   in
   let seen_pairs = Collections.HashSet.with_capacity 128 in
-  let mark_pair_seen = fun left right ->
+  let mark_pair_seen left right =
     let left_order = node_order left in
     let right_order = node_order right in
     let key =
@@ -694,10 +703,10 @@ let unify = fun (state: state) ~origin left right ->
           | (TypeRepr.Char, TypeRepr.Char)
           | (TypeRepr.Unit, TypeRepr.Unit) ->
               loop rest
-          | TypeRepr.Option left_element, TypeRepr.Option right_element
-          | TypeRepr.Array left_element, TypeRepr.Array right_element
-          | TypeRepr.List left_element, TypeRepr.List right_element
-          | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
+          | (TypeRepr.Option left_element, TypeRepr.Option right_element)
+          | (TypeRepr.Array left_element, TypeRepr.Array right_element)
+          | (TypeRepr.List left_element, TypeRepr.List right_element)
+          | (TypeRepr.Seq left_element, TypeRepr.Seq right_element) ->
               loop ((left_element, right_element) :: rest)
           | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
               loop ((left_ok, right_ok) :: (left_error, right_error) :: rest)
@@ -713,7 +722,10 @@ let unify = fun (state: state) ~origin left right ->
             name=right_name;
             arguments=right_arguments
           } ->
-              if not (named_types_match left_type_constructor left_name right_type_constructor right_name) then
+              if
+                not
+                  (named_types_match left_type_constructor left_name right_type_constructor right_name)
+              then
                 raise (mismatch left right)
               else if List.length left_arguments != List.length right_arguments then
                 raise (mismatch left right)
@@ -750,7 +762,13 @@ let unify = fun (state: state) ~origin left right ->
               in
               let level = TypeRepr.level var_ty in
               let occurs_generation = Region.next_mark state.regions in
-              if TypeRepr.occurs_check ~generation:occurs_generation ~needle:var.id ~minimum_level:level other_ty then
+              if
+                TypeRepr.occurs_check
+                  ~generation:occurs_generation
+                  ~needle:var.id
+                  ~minimum_level:level
+                  other_ty
+              then
                 raise
                   (Unify_error (Typ_diagnostic.OccursCheckFailed {
                     variable_id = var.id;
@@ -932,16 +950,19 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           | Some record_decl ->
               let (owner_ty, field_types) = instantiate_record_decl state record_decl in
               let () = try_unify state ~origin expected_ty owner_ty in
-      let missing_fields =
-        if open_ then
-          []
-        else
-          Env.Label_env.field_names record_decl
-          |> List.filter
-            (fun label_name -> not (List.exists
-              (fun requested_name ->
-                String.equal (Env.Label_env.lookup_name requested_name) label_name)
-              field_names))
+              let missing_fields =
+                if open_ then
+                  []
+                else
+                  Env.Label_env.field_names record_decl |> List.filter
+                    (fun label_name ->
+                      not
+                        (
+                          List.exists
+                            (fun requested_name ->
+                              String.equal (Env.Label_env.lookup_name requested_name) label_name)
+                            field_names
+                        ))
               in
               let () =
                 if not (List.is_empty missing_fields) then
@@ -1068,12 +1089,16 @@ and infer_record_expr = fun (state: state) env expr_id base_id fields ->
       let missing_fields =
         match base_id with
         | Some _ -> []
-        | None -> Env.Label_env.field_names record_decl
-        |> List.filter
-          (fun label_name -> not (List.exists
-            (fun requested_name ->
-              String.equal (Env.Label_env.lookup_name requested_name) label_name)
-            field_names))
+        | None ->
+            Env.Label_env.field_names record_decl |> List.filter
+              (fun label_name ->
+                not
+                  (
+                    List.exists
+                      (fun requested_name ->
+                        String.equal (Env.Label_env.lookup_name requested_name) label_name)
+                      field_names
+                  ))
       in
       let () =
         if not (List.is_empty missing_fields) then
@@ -1462,14 +1487,10 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
           bindings
       in
       let generalized_bindings =
-        let generalized_groups = generalize_entry_groups
-          state
-          frame
-          (inferred_bindings |> List.map snd) in
-        List.map2
-          (fun (binding, _) generalized -> (binding, generalized))
-          inferred_bindings
-          generalized_groups
+        let generalized_groups = generalize_entry_groups state frame
+          (inferred_bindings |> List.map snd)
+        in
+        List.map2 (fun (binding, _) generalized -> (binding, generalized)) inferred_bindings generalized_groups
       in
       List.fold_left
         (fun env (_, entries) ->
@@ -1516,9 +1537,7 @@ and infer_recursive_group = fun (state: state) env bindings ->
             placeholders
         in
         let generalized =
-          generalize_entry_groups
-            state
-            frame
+          generalize_entry_groups state frame
             (placeholders |> List.map (fun entry -> [ entry ]))
           |> List.map List.hd
         in

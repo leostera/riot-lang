@@ -17,6 +17,8 @@ val entries: t -> entry list
 
 val lookup_all: t -> string -> entry list
 
+val lookup_owned: t -> string -> TypeConstructorId.t -> entry option
+
 val name: entry -> string
 
 val constructor_id: entry -> ConstructorId.t

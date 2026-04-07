@@ -47,6 +47,8 @@ type scope_locals = {
 type scope = {
   locals: scope_locals Path_map.t;
   opens: IdentPath.t list Path_map.t;
+  mutable locals_cache: t Path_map.t;
+  mutable opens_cache: IdentPath.t list Path_map.t;
 }
 
 let binding_name_of_path = fun path ->
@@ -74,7 +76,12 @@ let empty = {
   labels = Label_env.empty;
 }
 
-let empty_scope = { locals = Path_map.empty; opens = Path_map.empty }
+let empty_scope = {
+  locals = Path_map.empty;
+  opens = Path_map.empty;
+  locals_cache = Path_map.empty;
+  opens_cache = Path_map.empty
+}
 
 let make = fun ?(summary = Summary_empty) values modules types constructors labels ->
   {
@@ -125,8 +132,7 @@ let visible_bindings = fun env ->
         true)
 
 let canonical_bindings = fun env ->
-  visible_bindings env
-  |> List.sort
+  visible_bindings env |> List.sort
     (fun left right ->
       IdentPath.compare (Binding.path left) (Binding.path right))
 
@@ -138,16 +144,6 @@ let split_module_lookup_path = fun path ->
   IdentPath.split_last path
   |> Option.map (fun (module_path, name) -> (module_path, IdentPath.of_name name))
 
-let of_scope = fun (scope: Module_env.scope) ->
-  {
-    summary = Summary_empty;
-    values = Module_env.scope_values scope;
-    modules = Module_env.scope_modules scope;
-    types = Module_env.scope_types scope;
-    constructors = Module_env.scope_constructors scope;
-    labels = Module_env.scope_labels scope;
-  }
-
 let lookup_module_scope = fun (env: t) module_path ->
   Module_env.lookup env.modules module_path
 
@@ -155,37 +151,34 @@ let rec lookup = fun (env: t) path ->
   if is_bare_path path then
     Value_env.lookup env.values path
   else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match lookup_module_scope env module_path with
-        | Some module_scope -> lookup (of_scope module_scope) relative_path
-        | None -> None
-      )
-    | None -> None
+    Module_env.lookup_value env.modules path
 
 let rec lookup_all = fun (env: t) path ->
   if is_bare_path path then
     Value_env.lookup_all env.values path
   else
-    match split_module_lookup_path path with
-    | Some (module_path, relative_path) -> (
-        match lookup_module_scope env module_path with
-        | Some module_scope -> lookup_all (of_scope module_scope) relative_path
-        | None -> []
-      )
-    | None -> []
+    Module_env.lookup_all_values env.modules path
 
 let rec lookup_constructors = fun (env: t) path ->
   if is_bare_path path then
     Constructor_env.lookup_all env.constructors (binding_name_of_path path)
   else
+    Module_env.lookup_constructors env.modules path
+
+let lookup_owned_constructor = fun (env: t) path owner_type_constructor_id ->
+  if is_bare_path path then
+    Constructor_env.lookup_owned env.constructors (binding_name_of_path path) owner_type_constructor_id
+  else
     match split_module_lookup_path path with
     | Some (module_path, relative_path) -> (
         match lookup_module_scope env module_path with
-        | Some module_scope -> lookup_constructors (of_scope module_scope) relative_path
-        | None -> []
+        | Some scope -> Constructor_env.lookup_owned
+          (Module_env.scope_constructors scope)
+          (binding_name_of_path relative_path)
+          owner_type_constructor_id
+        | None -> None
       )
-    | None -> []
+    | None -> None
 
 let dedupe_record_decls = fun record_decls ->
   let seen = Collections.HashSet.with_capacity (List.length record_decls) in
@@ -198,27 +191,25 @@ let dedupe_record_decls = fun record_decls ->
         let () = Collections.HashSet.insert seen owner_id |> ignore in
         true)
 
-let lookup_record_decls = fun (env: t) label_name ->
-  Label_env.lookup_all env.labels label_name |> dedupe_record_decls
+let lookup_record_decls = fun (env: t) label_name -> Label_env.lookup_all env.labels label_name |> dedupe_record_decls
+
+let lookup_record_decl_by_owner = fun (env: t) owner_type_constructor_id ->
+  Label_env.lookup_owned env.labels owner_type_constructor_id
 
 let record_decls = fun (env: t) -> Label_env.visible_record_decls env.labels |> dedupe_record_decls
 
 let names = fun (env: t) ->
-  env |> canonical_bindings |> List.map
-    (fun binding -> Binding.path binding |> IdentPath.to_string)
+  env |> canonical_bindings |> List.map (fun binding -> Binding.path binding |> IdentPath.to_string)
 
-let summary_delta_of_env = fun (env: t) ->
-  {
-    bindings = bindings env;
-    type_decls = type_decls env;
-  }
+let summary_delta_of_env = fun (env: t) -> { bindings = bindings env; type_decls = type_decls env }
 
 let snapshot_summary = fun (env: t) ->
   { env with summary = Summary_snapshot (summary_delta_of_env env) }
 
 let introduced_names = fun before after ->
   let before_name_set =
-    visible_bindings before |> List.fold_left
+    visible_bindings before
+    |> List.fold_left
       (fun seen binding ->
         let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
         seen)
@@ -319,44 +310,42 @@ let with_local_open = fun (env: t) module_path ->
 let entries_for_include = fun (env: t) module_path ->
   match lookup_module_scope env module_path with
   | Some scope ->
-      snapshot_summary {
-        summary = Summary_empty;
-        values =
-          Module_env.scope_values scope |> Value_env.bindings |> List.map
-            (fun binding ->
-              Binding.with_provenance (Binding.Included { module_path }) binding) |> Value_env.of_bindings;
-        modules = Module_env.local_only (Module_env.scope_modules scope);
-        types = Type_env.local_only (Module_env.scope_types scope);
-        constructors = Constructor_env.of_type_decls
-          (Type_env.type_decls (Module_env.scope_types scope));
-        labels = Label_env.of_type_decls (Type_env.type_decls (Module_env.scope_types scope));
-      }
+      snapshot_summary
+        {
+          summary = Summary_empty;
+          values =
+            Module_env.scope_values scope |> Value_env.bindings |> List.map
+              (fun binding ->
+                Binding.with_provenance (Binding.Included { module_path }) binding) |> Value_env.of_bindings;
+          modules = Module_env.local_only (Module_env.scope_modules scope);
+          types = Type_env.local_only (Module_env.scope_types scope);
+          constructors = Constructor_env.of_type_decls
+            (Type_env.type_decls (Module_env.scope_types scope));
+          labels = Label_env.of_type_decls (Type_env.type_decls (Module_env.scope_types scope));
+        }
   | None -> empty
 
 let export_names_for_module_alias = fun (env: t) ~alias_name ~module_path ->
   match lookup_module_scope env module_path with
   | Some scope ->
-      Module_env.scope_bindings scope
-      |> List.map
+      Module_env.scope_bindings scope |> List.map
         (fun binding ->
-          Binding.with_path (IdentPath.prepend_name alias_name (Binding.path binding)) binding)
-      |> of_bindings
-      |> canonical_bindings
-      |> List.map
+          Binding.with_path (IdentPath.prepend_name alias_name (Binding.path binding)) binding) |> of_bindings |> canonical_bindings |> List.map
         (fun binding -> Binding.path binding |> IdentPath.to_string)
   | None -> []
 
 let entries_for_module_alias = fun (env: t) ~alias_name ~module_path ->
   match lookup_module_scope env module_path with
   | Some scope ->
-      snapshot_summary {
-        summary = Summary_empty;
-        values = Value_env.empty;
-        modules = Module_env.bind_alias Module_env.empty ~alias_name scope;
-        types = Type_env.empty;
-        constructors = Constructor_env.empty;
-        labels = Label_env.empty;
-      }
+      snapshot_summary
+        {
+          summary = Summary_empty;
+          values = Value_env.empty;
+          modules = Module_env.bind_alias Module_env.empty ~alias_name scope;
+          types = Type_env.empty;
+          constructors = Constructor_env.empty;
+          labels = Label_env.empty;
+        }
   | None -> empty
 
 let hidden_name_set = fun (config: TypConfig.t) ->
@@ -367,32 +356,30 @@ let export = fun config (env: t) ->
   env
   |> canonical_bindings
   |> List.filter
-    (fun binding ->
-      not (Collections.HashSet.contains hidden_name_set (Binding.path binding)))
+    (fun binding -> not (Collections.HashSet.contains hidden_name_set (Binding.path binding)))
   |> of_bindings
 
 let export_with_forced_names = fun ~config ~forced_export_names env ->
   let hidden_name_set = hidden_name_set config in
   let forced_name_set = Collections.HashSet.of_list forced_export_names in
-  env
-  |> canonical_bindings
-  |> List.filter
+  env |> canonical_bindings |> List.filter
     (fun binding ->
       let path = Binding.path binding in
       let name = IdentPath.to_string path in
       not (Collections.HashSet.contains hidden_name_set path)
-      || Collections.HashSet.contains forced_name_set name)
-  |> of_bindings
+      || Collections.HashSet.contains forced_name_set name) |> of_bindings
 
 let introduced_entries = fun (before: t) (after: t) ->
   let before_name_set =
-    visible_bindings before |> List.fold_left
+    visible_bindings before
+    |> List.fold_left
       (fun seen binding ->
         let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
         seen)
       (Collections.HashSet.with_capacity 32)
   in
-  visible_bindings after |> List.filter
+  visible_bindings after
+  |> List.filter
     (fun binding -> not (Collections.HashSet.contains before_name_set (Binding.path binding)))
   |> of_bindings
 
@@ -431,17 +418,15 @@ let summary_open = fun summary module_path -> Summary_open (summary, module_path
 let summary_qualify = fun summary ~scope_path -> Summary_qualify (summary, scope_path)
 
 let env_of_summary =
-  let env_of_delta = fun delta ->
-    bind
-      (of_bindings delta.bindings)
-      (of_type_decls delta.type_decls)
-  in
+  let env_of_delta delta = bind (of_bindings delta.bindings) (of_type_decls delta.type_decls) in
   let rec loop = function
     | Summary_empty -> empty
     | Summary_snapshot delta -> env_of_delta delta
     | Summary_bind (summary, introduced) -> bind (loop summary) (loop introduced)
-    | Summary_bind_in_scope (summary, scope_path, introduced) ->
-        bind_in_scope (loop summary) ~scope_path (loop introduced)
+    | Summary_bind_in_scope (summary, scope_path, introduced) -> bind_in_scope
+      (loop summary)
+      ~scope_path
+      (loop introduced)
     | Summary_open (summary, module_path) -> with_local_open (loop summary) module_path
     | Summary_qualify (summary, scope_path) -> qualify ~scope_path (loop summary)
   in
@@ -449,22 +434,34 @@ let env_of_summary =
 
 let scope_locals_of_summary = fun summary -> { summary; cached = None }
 
-let scope_locals_for = fun scope_locals scope_path ->
-  IdentPath.prefixes scope_path |> List.fold_left
-    (fun acc key ->
-      match Path_map.find_opt key scope_locals with
-      | Some entries ->
-          let env =
-            match entries.cached with
-            | Some env -> env
-            | None ->
-                let env = env_of_summary entries.summary in
-                let () = entries.cached <- Some env in
-                env
-          in
-          bind acc env
-      | None -> acc)
-    empty
+let scope_locals_for = fun scope scope_path ->
+  match Path_map.find_opt scope_path scope.locals_cache with
+  | Some env -> env
+  | None ->
+      let env =
+        IdentPath.prefixes scope_path
+        |> List.fold_left
+          (fun acc key ->
+            match Path_map.find_opt key scope.locals with
+            | Some entries ->
+                let env =
+                  match entries.cached with
+                  | Some env -> env
+                  | None ->
+                      let env = env_of_summary entries.summary in
+                      let () =
+                        entries.cached <- Some env
+                      in
+                      env
+                in
+                bind acc env
+            | None -> acc)
+          empty
+      in
+      let () =
+        scope.locals_cache <- Path_map.add scope_path env scope.locals_cache
+      in
+      env
 
 let register_entries = fun scope ~scope_path (env: t) ->
   let existing =
@@ -473,15 +470,25 @@ let register_entries = fun scope ~scope_path (env: t) ->
     | None -> scope_locals_of_summary empty_summary
   in
   let updated = { summary = summary_bind existing.summary env; cached = None } in
-  { scope with locals = Path_map.add scope_path updated scope.locals }
+  { scope with locals = Path_map.add scope_path updated scope.locals; locals_cache = Path_map.empty }
 
-let scope_opens_for = fun scope_opens scope_path ->
-  IdentPath.prefixes scope_path |> List.fold_left
-    (fun acc key ->
-      match Path_map.find_opt key scope_opens with
-      | Some modules -> acc @ modules
-      | None -> acc)
-    []
+let scope_opens_for = fun scope scope_path ->
+  match Path_map.find_opt scope_path scope.opens_cache with
+  | Some opens -> opens
+  | None ->
+      let opens =
+        IdentPath.prefixes scope_path
+        |> List.fold_left
+          (fun acc key ->
+            match Path_map.find_opt key scope.opens with
+            | Some modules -> acc @ modules
+            | None -> acc)
+          []
+      in
+      let () =
+        scope.opens_cache <- Path_map.add scope_path opens scope.opens_cache
+      in
+      opens
 
 let register_open = fun scope ~scope_path ~module_path ->
   let existing =
@@ -490,9 +497,9 @@ let register_open = fun scope ~scope_path ~module_path ->
     | None -> []
   in
   let updated = existing @ [ module_path ] in
-  { scope with opens = Path_map.add scope_path updated scope.opens }
+  { scope with opens = Path_map.add scope_path updated scope.opens; opens_cache = Path_map.empty }
 
 let for_item_scope = fun env scope ~scope_path ->
-  let locals = scope_locals_for scope.locals scope_path in
+  let locals = scope_locals_for scope scope_path in
   let base_env = bind env locals in
-  scope_opens_for scope.opens scope_path |> List.fold_left with_local_open base_env
+  scope_opens_for scope scope_path |> List.fold_left with_local_open base_env

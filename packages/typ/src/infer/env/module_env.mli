@@ -41,7 +41,17 @@ val bind: t -> t -> t
 
 val add_open: root:IdentPath.t -> t -> t -> t
 
+val map: (scope -> scope) -> t -> t
+
 val lookup: t -> IdentPath.t -> scope option
+
+val lookup_value: t -> IdentPath.t -> Binding.t option
+
+val lookup_all_values: t -> IdentPath.t -> Binding.t list
+
+val lookup_type: t -> IdentPath.t -> FileSummary.type_decl option
+
+val lookup_constructors: t -> IdentPath.t -> Constructor_env.entry list
 
 val merge_scope: t -> module_path:IdentPath.t -> scope -> t
 

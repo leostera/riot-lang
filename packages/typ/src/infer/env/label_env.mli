@@ -19,6 +19,8 @@ val visible_record_decls: t -> record_decl list
 
 val lookup_all: t -> string -> record_decl list
 
+val lookup_owned: t -> TypeConstructorId.t -> record_decl option
+
 val lookup_name: string -> string
 
 val owner_path: record_decl -> IdentPath.t
