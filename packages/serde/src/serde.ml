@@ -1,15 +1,18 @@
 open Std
 
 type error =
-  [ `invalid_field_type
+[
+  `invalid_field_type
   | `missing_field
   | `no_more_data
   | `unimplemented
   | `invalid_tag
   | `Msg of string
-  | `Io_error of IO.error ]
+  | `Io_error of IO.error
+]
 
 exception Decode_error of error
+
 exception Encode_error of error
 
 module Fields = struct
@@ -40,14 +43,9 @@ module Fields = struct
     in
     loop values index
 
-  let case = fun key tag ->
-    {
-      key;
-      tag;
-    }
+  let case = fun key tag -> { key; tag }
 
-  let tag : 'tag. 'tag case -> 'tag = fun case ->
-    case.tag
+  let tag: 'tag. 'tag case -> 'tag = fun case -> case.tag
 
   type 'tag pending = {
     suffix: string;
@@ -68,7 +66,8 @@ module Fields = struct
       if left_len < right_len then
         left_len
       else
-        right_len in
+        right_len
+    in
     let rec loop index =
       if Int.equal index limit then
         index
@@ -80,8 +79,7 @@ module Fields = struct
     loop 0
 
   let longest_common_prefix_length = function
-    | [] ->
-        0
+    | [] -> 0
     | first :: rest ->
         List.fold_left
           (fun prefix_length entry ->
@@ -97,12 +95,9 @@ module Fields = struct
     let rec insert entry groups =
       let first = entry.suffix.[0] in
       match groups with
-      | [] ->
-          [ (first, [ entry ]) ]
-      | (current, group) :: rest when Char.equal current first ->
-          (current, entry :: group) :: rest
-      | head :: rest ->
-          head :: insert entry rest
+      | [] -> [ (first, [ entry ]) ]
+      | (current, group) :: rest when Char.equal current first -> (current, entry :: group) :: rest
+      | head :: rest -> head :: insert entry rest
     in
     List.fold_left (fun groups entry -> insert entry groups) [] entries
 
@@ -112,37 +107,28 @@ module Fields = struct
         (fun (tag, non_empty_entries) entry ->
           if Int.equal (String.length entry.suffix) 0 then
             match tag with
-            | None ->
-                (Some entry.tag, non_empty_entries)
-            | Some _ ->
-                panic ("Serde.Fast.Fields.make: duplicate field key " ^ entry.suffix)
+            | None -> (Some entry.tag, non_empty_entries)
+            | Some _ -> panic ("Serde.Fast.Fields.make: duplicate field key " ^ entry.suffix)
           else
             (tag, entry :: non_empty_entries))
         (None, [])
-        entries in
+        entries
+    in
     let edges =
       group_by_first non_empty_entries
-      |> List.map (fun (_first, group) ->
-           let group = List.rev group in
-           let prefix_length = longest_common_prefix_length group in
-           let label = String.sub (List.hd group).suffix 0 prefix_length in
-           let next_entries =
-             List.map
-               (fun entry -> {
-                 suffix = drop_prefix entry.suffix prefix_length;
-                 tag = entry.tag;
-               })
-               group in
-           {
-             first = label.[0];
-             label;
-             next = build_node next_entries;
-           })
+      |> List.map
+        (fun (_first, group) ->
+          let group = List.rev group in
+          let prefix_length = longest_common_prefix_length group in
+          let label = String.sub (List.hd group).suffix 0 prefix_length in
+          let next_entries =
+            List.map
+              (fun entry -> { suffix = drop_prefix entry.suffix prefix_length; tag = entry.tag })
+              group
+          in
+          { first = label.[0]; label; next = build_node next_entries })
     in
-    {
-      tag;
-      edges = array__init (List.length edges) (fun index -> list_nth edges index);
-    }
+    { tag; edges = array__init (List.length edges) (fun index -> list_nth edges index) }
 
   let string_equals_slice = fun source ~offset ~length other ->
     if not (Int.equal length (String.length other)) then
@@ -152,6 +138,20 @@ module Fields = struct
         if Int.equal index length then
           true
         else if Char.equal source.[offset + index] other.[index] then
+          loop (index + 1)
+        else
+          false
+      in
+      loop 0
+
+  let bytes_equals_string = fun source ~offset ~length other ->
+    if not (Int.equal length (String.length other)) then
+      false
+    else
+      let rec loop index =
+        if Int.equal index length then
+          true
+        else if Char.equal (IO.Bytes.unsafe_get source (offset + index)) other.[index] then
           loop (index + 1)
         else
           false
@@ -185,16 +185,14 @@ module Fields = struct
     in
     loop 0
 
-  let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option =
-   fun root source ~offset ~length ->
-    let rec loop (node : 'tag node) offset length =
+  let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun root source ~offset ~length ->
+    let rec loop (node: 'tag node) offset length =
       if Int.equal length 0 then
         node.tag
       else
         let first = source.[offset] in
         match find_edge node.edges first with
-        | None ->
-            None
+        | None -> None
         | Some edge ->
             let label_length = String.length edge.label in
             if label_length > length then
@@ -206,15 +204,33 @@ module Fields = struct
     in
     loop root offset length
 
+  let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun root source ~offset ~length ->
+    let rec loop (node: 'tag node) offset length =
+      if Int.equal length 0 then
+        node.tag
+      else
+        let first = IO.Bytes.unsafe_get source offset in
+        match find_edge node.edges first with
+        | None -> None
+        | Some edge ->
+            let label_length = String.length edge.label in
+            if label_length > length then
+              None
+            else if bytes_equals_string source ~offset ~length:label_length edge.label then
+              loop edge.next (offset + label_length) (length - label_length)
+            else
+              None
+    in
+    loop root offset length
+
   let match_buffer: 'tag. 'tag t -> IO.Buffer.t -> 'tag option = fun root buffer ->
-    let rec loop (node : 'tag node) offset length =
+    let rec loop (node: 'tag node) offset length =
       if Int.equal length 0 then
         node.tag
       else
         let first = IO.Buffer.nth buffer offset in
         match find_edge node.edges first with
-        | None ->
-            None
+        | None -> None
         | Some edge ->
             let label_length = String.length edge.label in
             if label_length > length then
@@ -226,16 +242,16 @@ module Fields = struct
     in
     loop root 0 (IO.Buffer.length buffer)
 
-  let make = fun cases ->
-    List.map (fun case -> { suffix = case.key; tag = case.tag }) cases
-    |> build_node
+  let make = fun cases -> List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node
 end
 
-type 'value t = { run: 'state. 'state backend -> 'state -> 'value }
+type 'value t = {
+  run: 'state. 'state backend -> 'state -> 'value;
+}
 
 and 'value variant_case =
-  | Unit : string * 'value -> 'value variant_case
-  | Newtype : string * 'payload t * ('payload -> 'value) -> 'value variant_case
+  | Unit: string * 'value -> 'value variant_case
+  | Newtype: string * 'payload t * ('payload -> 'value) -> 'value variant_case
 
 and 'value variant_cases = 'value variant_case list
 
@@ -247,29 +263,16 @@ and 'state backend = {
   int64: 'state -> int64;
   float: 'state -> float;
   skip_any: 'state -> unit;
-  option:
-    'value.
-    'state ->
-    'value t ->
-    'value option;
-  list:
-    'value.
-    'state ->
-    'value t ->
-    'value list;
+  option: 'value. 'state -> 'value t -> 'value option;
+  list: 'value. 'state -> 'value t -> 'value list;
   record:
-    'field 'acc 'value.
-    'state ->
+    'field 'acc 'value. 'state ->
     fields:'field Fields.t ->
     init:'acc ->
     step:('acc -> 'field option -> 'acc) ->
     finish:('acc -> 'value) ->
     'value;
-  variant:
-    'value.
-    'state ->
-    'value variant_cases ->
-    'value;
+  variant: 'value. 'state -> 'value variant_cases -> 'value;
 }
 
 type reader = {
@@ -278,23 +281,19 @@ type reader = {
 
 module Variant = struct
   type 'value case = 'value variant_case =
-    | Unit : string * 'value -> 'value case
-    | Newtype : string * 'payload t * ('payload -> 'value) -> 'value case
+    | Unit: string * 'value -> 'value case
+    | Newtype: string * 'payload t * ('payload -> 'value) -> 'value case
 
   type 'value cases = 'value case list
 
-  let unit = fun tag value ->
-    Unit (tag, value)
+  let unit = fun tag value -> Unit (tag, value)
 
-  let newtype = fun tag decode wrap ->
-    Newtype (tag, decode, wrap)
+  let newtype = fun tag decode wrap -> Newtype (tag, decode, wrap)
 end
 
-let return = fun value ->
-  { run = fun _backend _state -> value }
+let return = fun value -> { run = fun _backend _state -> value }
 
-let map = fun decode project ->
-  { run = fun backend state -> project (decode.run backend state) }
+let map = fun decode project -> { run = fun backend state -> project (decode.run backend state) }
 
 let bind = fun decode next ->
   {
@@ -304,17 +303,13 @@ let bind = fun decode next ->
         (next value).run backend state;
   }
 
-let fail = fun error ->
-  { run = fun _backend _state -> raise (Decode_error error) }
+let fail = fun error -> { run = fun _backend _state -> raise (Decode_error error) }
 
-let raise_error = fun error ->
-  raise (Decode_error error)
+let raise_error = fun error -> raise (Decode_error error)
 
-let missing_field = fun () ->
-  raise_error `missing_field
+let missing_field = fun () -> raise_error `missing_field
 
-let read = fun reader decode ->
-  reader.read decode
+let read = fun reader decode -> reader.read decode
 
 let run = fun decode backend state ->
   try Ok (decode.run backend state) with
@@ -327,21 +322,36 @@ module Syntax = struct
 end
 
 let field = Fields.case
+
 let fields = Fields.make
 
 let bool: bool t = { run = fun backend state -> backend.bool state }
+
 let string: string t = { run = fun backend state -> backend.string state }
+
 let int: int t = { run = fun backend state -> backend.int state }
+
 let int32: int32 t = { run = fun backend state -> backend.int32 state }
+
 let int64: int64 t = { run = fun backend state -> backend.int64 state }
+
 let float: float t = { run = fun backend state -> backend.float state }
+
 let skip_any: unit t = { run = fun backend state -> backend.skip_any state }
 
 let option = fun decode ->
-  { run = fun backend state -> backend.option state decode }
+  {
+    run =
+      fun backend state ->
+        backend.option state decode;
+  }
 
 let list = fun decode ->
-  { run = fun backend state -> backend.list state decode }
+  {
+    run =
+      fun backend state ->
+        backend.list state decode;
+  }
 
 let list_nth = fun values index ->
   let rec loop values index =
@@ -355,33 +365,38 @@ let list_nth = fun values index ->
 let array_of_list = fun values ->
   array__init (List.length values) (fun index -> list_nth values index)
 
-let array = fun decode ->
-  map (list decode) array_of_list
+let array = fun decode -> map (list decode) array_of_list
 
 let record = fun ~fields ~init ~step ~finish ->
   {
     run =
       fun backend state ->
-        let reader = { read = fun decode -> decode.run backend state } in
-        backend.record
-          state
-          ~fields
-          ~init
-          ~step:(fun acc field -> step reader acc field)
-          ~finish;
+        let reader = {
+          read =
+            fun decode ->
+              decode.run backend state;
+        }
+        in
+        backend.record state ~fields ~init ~step:(fun acc field -> step reader acc field) ~finish;
   }
 
 let variant = fun cases ->
-  { run = fun backend state -> backend.variant state cases }
+  {
+    run =
+      fun backend state ->
+        backend.variant state cases;
+  }
 
 module De = struct
   module Fields = Fields
 
-  type 'value t = { run: 'state. 'state backend -> 'state -> 'value }
+  type 'value t = {
+    run: 'state. 'state backend -> 'state -> 'value;
+  }
 
   and 'value variant_case =
-    | Unit : string * 'value -> 'value variant_case
-    | Newtype : string * 'payload t * ('payload -> 'value) -> 'value variant_case
+    | Unit: string * 'value -> 'value variant_case
+    | Newtype: string * 'payload t * ('payload -> 'value) -> 'value variant_case
 
   and 'value variant_cases = 'value variant_case list
 
@@ -393,29 +408,16 @@ module De = struct
     int64: 'state -> int64;
     float: 'state -> float;
     skip_any: 'state -> unit;
-    option:
-      'value.
-      'state ->
-      'value t ->
-      'value option;
-    list:
-      'value.
-      'state ->
-      'value t ->
-      'value list;
+    option: 'value. 'state -> 'value t -> 'value option;
+    list: 'value. 'state -> 'value t -> 'value list;
     record:
-      'field 'acc 'value.
-      'state ->
+      'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
       init:'acc ->
       step:('acc -> 'field option -> 'acc) ->
       finish:('acc -> 'value) ->
       'value;
-    variant:
-      'value.
-      'state ->
-      'value variant_cases ->
-      'value;
+    variant: 'value. 'state -> 'value variant_cases -> 'value;
   }
 
   type reader = {
@@ -424,23 +426,19 @@ module De = struct
 
   module Variant = struct
     type 'value case = 'value variant_case =
-      | Unit : string * 'value -> 'value case
-      | Newtype : string * 'payload t * ('payload -> 'value) -> 'value case
+      | Unit: string * 'value -> 'value case
+      | Newtype: string * 'payload t * ('payload -> 'value) -> 'value case
 
     type 'value cases = 'value case list
 
-    let unit = fun tag value ->
-      Unit (tag, value)
+    let unit = fun tag value -> Unit (tag, value)
 
-    let newtype = fun tag decode wrap ->
-      Newtype (tag, decode, wrap)
+    let newtype = fun tag decode wrap -> Newtype (tag, decode, wrap)
   end
 
-  let return = fun value ->
-    { run = fun _backend _state -> value }
+  let return = fun value -> { run = fun _backend _state -> value }
 
-  let map = fun decode project ->
-    { run = fun backend state -> project (decode.run backend state) }
+  let map = fun decode project -> { run = fun backend state -> project (decode.run backend state) }
 
   let bind = fun decode next ->
     {
@@ -450,17 +448,13 @@ module De = struct
           (next value).run backend state;
     }
 
-  let fail = fun error ->
-    { run = fun _backend _state -> raise (Decode_error error) }
+  let fail = fun error -> { run = fun _backend _state -> raise (Decode_error error) }
 
-  let raise_error = fun error ->
-    raise (Decode_error error)
+  let raise_error = fun error -> raise (Decode_error error)
 
-  let missing_field = fun () ->
-    raise_error `missing_field
+  let missing_field = fun () -> raise_error `missing_field
 
-  let read = fun reader decode ->
-    reader.read decode
+  let read = fun reader decode -> reader.read decode
 
   let run = fun decode backend state ->
     try Ok (decode.run backend state) with
@@ -473,40 +467,58 @@ module De = struct
   end
 
   let field = Fields.case
+
   let fields = Fields.make
 
   let bool: bool t = { run = fun backend state -> backend.bool state }
+
   let string: string t = { run = fun backend state -> backend.string state }
+
   let int: int t = { run = fun backend state -> backend.int state }
+
   let int32: int32 t = { run = fun backend state -> backend.int32 state }
+
   let int64: int64 t = { run = fun backend state -> backend.int64 state }
+
   let float: float t = { run = fun backend state -> backend.float state }
+
   let skip_any: unit t = { run = fun backend state -> backend.skip_any state }
 
   let option = fun decode ->
-    { run = fun backend state -> backend.option state decode }
+    {
+      run =
+        fun backend state ->
+          backend.option state decode;
+    }
 
   let list = fun decode ->
-    { run = fun backend state -> backend.list state decode }
+    {
+      run =
+        fun backend state ->
+          backend.list state decode;
+    }
 
-  let array = fun decode ->
-    map (list decode) array_of_list
+  let array = fun decode -> map (list decode) array_of_list
 
   let record = fun ~fields ~init ~step ~finish ->
     {
       run =
         fun backend state ->
-          let reader = { read = fun decode -> decode.run backend state } in
-          backend.record
-            state
-            ~fields
-            ~init
-            ~step:(fun acc field -> step reader acc field)
-            ~finish;
+          let reader = {
+            read =
+              fun decode ->
+                decode.run backend state;
+          }
+          in
+          backend.record state ~fields ~init ~step:(fun acc field -> step reader acc field) ~finish;
     }
 
   let variant = fun cases ->
-    { run = fun backend state -> backend.variant state cases }
+    {
+      run =
+        fun backend state ->
+          backend.variant state cases;
+    }
 end
 
 module Error = struct
@@ -523,17 +535,18 @@ module Error = struct
 end
 
 module Ser = struct
-  type 'value t = { run: 'state. 'state backend -> 'state -> 'value -> unit }
+  type 'value t = {
+    run: 'state. 'state backend -> 'state -> 'value -> unit;
+  }
 
   and 'value field =
-    | Field : string * 'field t * ('value -> 'field) -> 'value field
+    | Field: string * 'field t * ('value -> 'field) -> 'value field
 
   and 'value fields = 'value field array
 
   and 'value variant_case =
-    | Unit : string * ('value -> bool) -> 'value variant_case
-    | Newtype :
-        string * 'payload t * ('value -> 'payload option) -> 'value variant_case
+    | Unit: string * ('value -> bool) -> 'value variant_case
+    | Newtype: string * 'payload t * ('value -> 'payload option) -> 'value variant_case
 
   and 'value variant_cases = 'value variant_case array
 
@@ -545,56 +558,27 @@ module Ser = struct
     int64: 'state -> int64 -> unit;
     float: 'state -> float -> unit;
     null: 'state -> unit;
-    option:
-      'value.
-      'state ->
-      'value t ->
-      'value option ->
-      unit;
-    list:
-      'value.
-      'state ->
-      'value t ->
-      'value list ->
-      unit;
-    array:
-      'value.
-      'state ->
-      'value t ->
-      'value array ->
-      unit;
-    record:
-      'value.
-      'state ->
-      'value fields ->
-      'value ->
-      unit;
-    variant:
-      'value.
-      'state ->
-      'value variant_cases ->
-      'value ->
-      unit;
+    option: 'value. 'state -> 'value t -> 'value option -> unit;
+    list: 'value. 'state -> 'value t -> 'value list -> unit;
+    array: 'value. 'state -> 'value t -> 'value array -> unit;
+    record: 'value. 'state -> 'value fields -> 'value -> unit;
+    variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
 
   module Field = struct
     type nonrec 'value t = 'value field
 
-    let make = fun name encode get ->
-      Field (name, encode, get)
+    let make = fun name encode get -> Field (name, encode, get)
   end
 
   module Variant = struct
     type 'value case = 'value variant_case =
-      | Unit : string * ('value -> bool) -> 'value case
-      | Newtype :
-          string * 'payload t * ('value -> 'payload option) -> 'value case
+      | Unit: string * ('value -> bool) -> 'value case
+      | Newtype: string * 'payload t * ('value -> 'payload option) -> 'value case
 
-    let unit = fun tag matches ->
-      Unit (tag, matches)
+    let unit = fun tag matches -> Unit (tag, matches)
 
-    let newtype = fun tag encode unwrap ->
-      Newtype (tag, encode, unwrap)
+    let newtype = fun tag encode unwrap -> Newtype (tag, encode, unwrap)
   end
 
   let run = fun encode backend state value ->
@@ -608,37 +592,83 @@ module Ser = struct
           encode.run backend state (project value);
     }
 
-  let fail = fun error ->
-    {
-      run =
-        fun _backend _state _value ->
-          raise (Encode_error error);
-    }
+  let fail = fun error -> { run = fun _backend _state _value -> raise (Encode_error error) }
 
-  let bool: bool t = { run = fun backend state value -> backend.bool state value }
-  let string: string t = { run = fun backend state value -> backend.string state value }
-  let int: int t = { run = fun backend state value -> backend.int state value }
-  let int32: int32 t = { run = fun backend state value -> backend.int32 state value }
-  let int64: int64 t = { run = fun backend state value -> backend.int64 state value }
-  let float: float t = { run = fun backend state value -> backend.float state value }
+  let bool: bool t = {
+    run =
+      fun backend state value ->
+        backend.bool state value;
+  }
+
+  let string: string t = {
+    run =
+      fun backend state value ->
+        backend.string state value;
+  }
+
+  let int: int t = {
+    run =
+      fun backend state value ->
+        backend.int state value;
+  }
+
+  let int32: int32 t = {
+    run =
+      fun backend state value ->
+        backend.int32 state value;
+  }
+
+  let int64: int64 t = {
+    run =
+      fun backend state value ->
+        backend.int64 state value;
+  }
+
+  let float: float t = {
+    run =
+      fun backend state value ->
+        backend.float state value;
+  }
+
   let null: unit t = { run = fun backend state () -> backend.null state }
 
   let option = fun encode ->
-    { run = fun backend state value -> backend.option state encode value }
+    {
+      run =
+        fun backend state value ->
+          backend.option state encode value;
+    }
 
   let list = fun encode ->
-    { run = fun backend state value -> backend.list state encode value }
+    {
+      run =
+        fun backend state value ->
+          backend.list state encode value;
+    }
 
   let array = fun encode ->
-    { run = fun backend state value -> backend.array state encode value }
+    {
+      run =
+        fun backend state value ->
+          backend.array state encode value;
+    }
 
   let field = Field.make
+
   let fields = array_of_list
 
   let record = fun fields ->
-    { run = fun backend state value -> backend.record state fields value }
+    {
+      run =
+        fun backend state value ->
+          backend.record state fields value;
+    }
 
   let variant = fun cases ->
     let cases = array_of_list cases in
-    { run = fun backend state value -> backend.variant state cases value }
+    {
+      run =
+        fun backend state value ->
+          backend.variant state cases value;
+    }
 end
