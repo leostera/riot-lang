@@ -86,6 +86,8 @@ let remove = fun vector index ->
 
 let clear = fun vector -> vector.length <- 0
 
+let to_array = fun vector -> Array.sub vector.data 0 vector.length
+
 let iter = fun f vector ->
   let data = vector.data in
   for i = 0 to vector.length - 1 do

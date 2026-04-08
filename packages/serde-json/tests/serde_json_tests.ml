@@ -1,4 +1,5 @@
 open Std
+module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
@@ -39,6 +40,8 @@ let io_reader_of_string = fun ?(chunk_size = 1) value ->
               if to_read < len then
                 continue := false);
       Ok !total
+
+    let direct_string = fun _source -> None
   end in
   IO.Reader.of_read_src (module Read) value
 
@@ -73,7 +76,7 @@ type person = {
   name: string;
   age: int;
   active: bool;
-  tags: string list;
+  tags: string vec;
   nickname: string option;
   pet: pet;
 }
@@ -197,6 +200,19 @@ let expect_equal = fun ~expected ~actual ~message ->
   else
     Error message
 
+let vec_to_list = fun values ->
+  let items = ref [] in
+  Vector.iter (fun value -> items := value :: !items) values;
+  List.rev !items
+
+let equal_person = fun left right ->
+  String.equal left.name right.name
+  && Int.equal left.age right.age
+  && Bool.equal left.active right.active
+  && vec_to_list left.tags = vec_to_list right.tags
+  && left.nickname = right.nickname
+  && left.pet = right.pet
+
 let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
   let input = {|{
       "name":"Le\u006F",
@@ -212,13 +228,17 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot"; "serde" ];
+    tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Rex";
   }
   in
   match Serde_json.of_string person_decode input with
-  | Ok actual -> expect_equal ~expected ~actual ~message:"expected serde-json decoder to parse a record and skip unknown fields"
+  | Ok actual ->
+      if equal_person actual expected then
+        Ok ()
+      else
+        Error "expected serde-json decoder to parse a record and skip unknown fields"
   | Error err -> Error ("decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_unit_variant = fun _ctx ->
@@ -227,13 +247,17 @@ let test_decodes_unit_variant = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot" ];
+    tags = Vector.of_list [ "riot" ];
     nickname = Some "captain";
     pet = Cat;
   }
   in
   match Serde_json.of_string person_decode input with
-  | Ok actual -> expect_equal ~expected ~actual ~message:"expected serde-json decoder to handle string-form unit variants"
+  | Ok actual ->
+      if equal_person actual expected then
+        Ok ()
+      else
+        Error "expected serde-json decoder to handle string-form unit variants"
   | Error err -> Error ("unit-variant decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_from_reader = fun _ctx ->
@@ -242,14 +266,14 @@ let test_decodes_from_reader = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot" ];
+    tags = Vector.of_list [ "riot" ];
     nickname = Some "captain";
     pet = Cat;
   }
   in
   match Serde_json.of_reader person_decode (io_reader_of_string ~chunk_size:1 input) with
   | Ok actual ->
-      if actual = expected then
+      if equal_person actual expected then
         Ok ()
       else
         let actual_json =
@@ -282,7 +306,7 @@ let test_encodes_record = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot"; "serde" ];
+    tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Rex";
   }
@@ -297,7 +321,7 @@ let test_encodes_escaped_strings = fun _ctx ->
     name = "Le\"o\n";
     age = 33;
     active = true;
-    tags = [ "ri\\ot" ];
+    tags = Vector.of_list [ "ri\\ot" ];
     nickname = Some "captain\t";
     pet = Cat;
   }
@@ -312,7 +336,7 @@ let test_writes_to_writer = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot"; "serde" ];
+    tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Rex";
   }
@@ -328,7 +352,7 @@ let test_roundtrips_record = fun _ctx ->
     name = "Leo";
     age = 33;
     active = true;
-    tags = [ "riot"; "serde" ];
+    tags = Vector.of_list [ "riot"; "serde" ];
     nickname = Some "captain";
     pet = Cat;
   }
@@ -339,7 +363,11 @@ let test_roundtrips_record = fun _ctx ->
     | Error err -> Error ("roundtrip encode failed: " ^ Serde.Error.to_string err)
   in
   match Serde_json.of_string person_decode encoded with
-  | Ok actual -> expect_equal ~expected:person ~actual ~message:"expected serde-json encode/decode to roundtrip person values"
+  | Ok actual ->
+      if equal_person actual person then
+        Ok ()
+      else
+        Error "expected serde-json encode/decode to roundtrip person values"
   | Error err -> Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
 let tests =

@@ -108,6 +108,9 @@ val capacity: 'value t -> int
 (** [clear vector] removes all elements from the vector *)
 val clear: 'value t -> unit
 
+(** [to_array vector] copies the vector contents into a compact array. *)
+val to_array: 'value t -> 'value array
+
 (** [reserve vector additional] ensures the vector can hold at least
     [additional] more elements without reallocating. *)
 val reserve: 'value t -> int -> unit

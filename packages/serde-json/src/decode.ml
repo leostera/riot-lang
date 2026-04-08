@@ -1,4 +1,5 @@
 open Std
+module Vector = Collections.Vector
 
 let ( let* ) = Result.and_then
 
@@ -795,29 +796,17 @@ type scanned_number = {
 }
 
 let rec reader_append_digits = fun state reader ->
-  if reader.Input.pos >= reader.Input.limit && not (Input.refill reader) then
-    ()
-  else
-    (
-      let start = reader.Input.pos in
-      let rec scan pos =
-        if pos >= reader.Input.limit then
-          pos
-        else if is_digit (String.unsafe_get reader.Input.view pos) then
-          scan (pos + 1)
-        else
-          pos
-      in
-      let stop = scan start in
-      reader_append_range state.scratch reader start stop;
-      reader.Input.pos <- stop;
-      if reader.Input.pos >= reader.Input.limit && Input.refill reader then
-        match reader_current_char reader with
-        | Some digit when is_digit digit -> reader_append_digits state reader
-        | _ -> ()
-    )
+  match reader_current_char reader with
+  | Some digit when is_digit digit ->
+      IO.Buffer.add_char state.scratch digit;
+      reader_advance reader;
+      reader_append_digits state reader
+  | _ ->
+      ()
 
-let parse_number_text_reader = fun state reader ->
+exception Use_slow_number_path
+
+let parse_number_text_reader_slow = fun state reader ->
   reader_skip_whitespace reader;
   IO.Buffer.clear state.scratch;
   let append_char value =
@@ -891,43 +880,188 @@ let parse_number_text_reader = fun state reader ->
     );
   { text = IO.Buffer.contents state.scratch; is_float = !is_float }
 
+let parse_number_text_reader = fun state reader ->
+  let fallback () = parse_number_text_reader_slow state reader in
+  try
+    reader_skip_whitespace reader;
+    let start = reader.Input.pos in
+    let pos = ref start in
+    let current () =
+      if !pos < reader.Input.limit then
+        Some (String.unsafe_get reader.Input.view !pos)
+      else
+        None
+    in
+    let need_more () = !pos >= reader.Input.limit && not reader.Input.eof in
+    let advance () = pos := !pos + 1 in
+    let rec advance_digits () =
+      match current () with
+      | Some digit when is_digit digit ->
+          advance ();
+          advance_digits ()
+      | _ ->
+          ()
+    in
+    (
+      match current () with
+      | Some '-' -> advance ()
+      | _ -> ()
+    );
+    (
+      match current () with
+      | Some '0' ->
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path;
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | _ ->
+                ()
+          )
+      | Some ('1' .. '9') ->
+          advance ();
+          advance_digits ();
+          if need_more () then
+            raise Use_slow_number_path
+      | Some actual ->
+          error_at
+            (Input.position state.input)
+            ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+      | None ->
+          unexpected_end state "number"
+    );
+    let is_float = ref false in
+    (
+      match current () with
+      | Some '.' ->
+          is_float := true;
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path;
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                advance ();
+                advance_digits ();
+                if need_more () then
+                  raise Use_slow_number_path
+            | Some actual ->
+                error_at
+                  (Input.position state.input)
+                  ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+            | None ->
+                unexpected_end state "digit after decimal point"
+          )
+      | _ ->
+          ()
+    );
+    (
+      match current () with
+      | Some ('e' | 'E') ->
+          is_float := true;
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path;
+          (
+            match current () with
+            | Some ('+' | '-') ->
+                advance ();
+                if need_more () then
+                  raise Use_slow_number_path
+            | _ ->
+                ()
+          );
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                advance ();
+                advance_digits ();
+                if need_more () then
+                  raise Use_slow_number_path
+            | Some actual ->
+                error_at
+                  (Input.position state.input)
+                  ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
+            | None ->
+                unexpected_end state "digit after exponent"
+          )
+      | _ ->
+          ()
+    );
+    if !pos >= reader.Input.limit then
+      if reader.Input.eof then
+        (
+          reader.Input.pos <- !pos;
+          {
+            text = String.sub reader.Input.view start (!pos - start);
+            is_float = !is_float;
+          }
+        )
+      else
+        raise Use_slow_number_path
+    else
+      match current () with
+      | Some actual when is_value_delimiter (Some actual) ->
+          reader.Input.pos <- !pos;
+          {
+            text = String.sub reader.Input.view start (!pos - start);
+            is_float = !is_float;
+          }
+      | Some actual ->
+          unexpected_character state actual "number delimiter"
+      | None ->
+          reader.Input.pos <- !pos;
+          {
+            text = String.sub reader.Input.view start (!pos - start);
+            is_float = !is_float;
+          }
+  with
+  | Use_slow_number_path -> fallback ()
+
 let parse_number_text_generic = fun state ->
   Input.skip_whitespace state.input;
-  IO.Buffer.clear state.scratch;
-  let append_char value =
-    IO.Buffer.add_char state.scratch value;
-    Input.advance state.input
+  let input =
+    match state.input with
+    | Input.String_input state -> state.input
+    | Input.Reader_input _ -> panic "parse_number_text_generic: expected string input"
   in
-  let rec append_digits () =
-    let start = Input.position state.input in
-    match Input.scan_while state.input ~continue:is_digit with
-    | `Stop (stop, _) ->
-        append_current_range state start stop;
-        Input.set_position state.input stop
-    | `Boundary stop ->
-        append_current_range state start stop;
-        Input.set_position state.input stop;
-        append_digits ()
-    | `Eof stop ->
-        append_current_range state start stop;
-        Input.set_position state.input stop
+  let input_length = String.length input in
+  let start = Input.position state.input in
+  let pos = ref start in
+  let current () =
+    if !pos < input_length then
+      Some (String.unsafe_get input !pos)
+    else
+      None
+  in
+  let advance () = pos := !pos + 1 in
+  let rec advance_digits () =
+    match current () with
+    | Some digit when is_digit digit ->
+        advance ();
+        advance_digits ()
+    | _ ->
+        ()
   in
   (
-    match Input.current_char state.input with
-    | Some '-' -> append_char '-'
+    match current () with
+    | Some '-' -> advance ()
     | _ -> ()
   );
   (
-    match Input.current_char state.input with
+    match current () with
     | Some '0' ->
-        append_char '0';
+        advance ();
         (
-          match Input.current_char state.input with
+          match current () with
           | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | _ -> ()
         )
     | Some ('1' .. '9') ->
-        append_digits ()
+        advance ();
+        advance_digits ()
     | Some actual ->
         error_at
           (Input.position state.input)
@@ -937,13 +1071,15 @@ let parse_number_text_generic = fun state ->
   );
   let is_float = ref false in
   (
-    match Input.current_char state.input with
+    match current () with
     | Some '.' ->
         is_float := true;
-        append_char '.';
+        advance ();
         (
-          match Input.current_char state.input with
-          | Some digit when is_digit digit -> append_digits ()
+          match current () with
+          | Some digit when is_digit digit ->
+              advance ();
+              advance_digits ()
           | Some actual -> error_at
             (Input.position state.input)
             ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
@@ -952,18 +1088,20 @@ let parse_number_text_generic = fun state ->
     | _ -> ()
   );
   (
-    match Input.current_char state.input with
-    | Some ('e' | 'E' as exponent) ->
+    match current () with
+    | Some ('e' | 'E' as _exponent) ->
         is_float := true;
-        append_char exponent;
+        advance ();
         (
-          match Input.current_char state.input with
-          | Some ('+' | '-' as sign) -> append_char sign
+          match current () with
+          | Some ('+' | '-' as _sign) -> advance ()
           | _ -> ()
         );
         (
-          match Input.current_char state.input with
-          | Some digit when is_digit digit -> append_digits ()
+          match current () with
+          | Some digit when is_digit digit ->
+              advance ();
+              advance_digits ()
           | Some actual -> error_at
             (Input.position state.input)
             ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
@@ -971,13 +1109,17 @@ let parse_number_text_generic = fun state ->
         )
     | _ -> ()
   );
-  if not (is_value_delimiter (Input.current_char state.input)) then
+  if not (is_value_delimiter (current ())) then
     (
-      match Input.current_char state.input with
+      match current () with
       | Some actual -> unexpected_character state actual "number delimiter"
       | None -> ()
     );
-  { text = IO.Buffer.contents state.scratch; is_float = !is_float }
+  Input.set_position state.input !pos;
+  {
+    text = String.sub input start (!pos - start);
+    is_float = !is_float;
+  }
 
 let parse_number_text = fun state ->
   match state.input with
@@ -1141,18 +1283,6 @@ let rec skip_value = fun state ->
       | None ->
           unexpected_end state "JSON value"
 
-let list_nth = fun values index ->
-  let rec loop values index =
-    match (values, index) with
-    | (value :: _, 0) -> value
-    | (_ :: rest, _) -> loop rest (index - 1)
-    | ([], _) -> panic "Decode.list_nth: index out of bounds"
-  in
-  loop values index
-
-let array_of_list = fun values ->
-  array__init (List.length values) (fun index -> list_nth values index)
-
 let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun state decode ->
   match state.input with
   | Input.Reader_input reader ->
@@ -1174,7 +1304,7 @@ let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun stat
         | _ -> Some (decode.run backend state)
       )
 
-and list_backend: 'value. state -> 'value De.t -> 'value list = fun state decode ->
+and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   match state.input with
   | Input.Reader_input reader ->
       reader_skip_whitespace reader;
@@ -1184,27 +1314,26 @@ and list_backend: 'value. state -> 'value De.t -> 'value list = fun state decode
         match reader_current_char reader with
         | Some ']' ->
             reader_advance reader;
-            []
+            Vector.create ()
         | _ ->
-            let acc = ref [] in
+            let acc = Vector.with_capacity 8 in
             let finished = ref false in
             while not !finished do
               let value = decode.run backend state in
+              Vector.push acc value;
               reader_skip_whitespace reader;
               match reader_current_char reader with
               | Some ',' ->
-                  reader_advance reader;
-                  acc := value :: !acc
+                  reader_advance reader
               | Some ']' ->
                   reader_advance reader;
-                  acc := value :: !acc;
                   finished := true
               | Some actual ->
                   unexpected_character state actual "array delimiter"
               | None ->
                   unexpected_end state "array"
             done;
-            List.rev !acc
+            acc
       )
   | Input.String_input _ ->
       skip_then_expect_char state '[' "array";
@@ -1212,27 +1341,26 @@ and list_backend: 'value. state -> 'value De.t -> 'value list = fun state decode
       match Input.current_char state.input with
       | Some ']' ->
           Input.advance state.input;
-          []
+          Vector.create ()
       | _ ->
-          let acc = ref [] in
+          let acc = Vector.with_capacity 8 in
           let finished = ref false in
           while not !finished do
             let value = decode.run backend state in
+            Vector.push acc value;
             Input.skip_whitespace state.input;
             match Input.current_char state.input with
             | Some ',' ->
-                Input.advance state.input;
-                acc := value :: !acc
+                Input.advance state.input
             | Some ']' ->
                 Input.advance state.input;
-                acc := value :: !acc;
                 finished := true
             | Some actual ->
                 unexpected_character state actual "array delimiter"
             | None ->
                 unexpected_end state "array"
           done;
-          List.rev !acc
+          acc
 
 and record_backend:
   'field 'acc 'value. state ->
@@ -1398,4 +1526,9 @@ let of_input = fun decode input ->
 
 let of_string = fun decode input -> of_input decode (Input.of_string input)
 
-let of_reader = fun decode reader -> of_input decode (Input.of_reader reader)
+let of_reader = fun decode reader ->
+  match IO.Reader.direct_string reader with
+  | Some input ->
+      of_string decode input
+  | None ->
+      of_input decode (Input.of_reader reader)

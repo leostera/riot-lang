@@ -1,4 +1,5 @@
 open Std
+module Vector = Collections.Vector
 
 type error =
 [
@@ -264,7 +265,7 @@ and 'state backend = {
   float: 'state -> float;
   skip_any: 'state -> unit;
   option: 'value. 'state -> 'value t -> 'value option;
-  list: 'value. 'state -> 'value t -> 'value list;
+  list: 'value. 'state -> 'value t -> 'value vec;
   record:
     'field 'acc 'value. 'state ->
     fields:'field Fields.t ->
@@ -291,11 +292,11 @@ module Variant = struct
   let newtype = fun tag decode wrap -> Newtype (tag, decode, wrap)
 end
 
-let return = fun value -> { run = fun _backend _state -> value }
+let const = fun value -> { run = fun _backend _state -> value }
 
 let map = fun decode project -> { run = fun backend state -> project (decode.run backend state) }
 
-let bind = fun decode next ->
+let and_then = fun decode next ->
   {
     run =
       fun backend state ->
@@ -316,7 +317,7 @@ let run = fun decode backend state ->
   | Decode_error error -> Error error
 
 module Syntax = struct
-  let ( let* ) = bind
+  let ( let* ) = and_then
 
   let ( let+ ) = map
 end
@@ -365,7 +366,9 @@ let list_nth = fun values index ->
 let array_of_list = fun values ->
   array__init (List.length values) (fun index -> list_nth values index)
 
-let array = fun decode -> map (list decode) array_of_list
+let array_of_vec = fun values -> Vector.to_array values
+
+let array = fun decode -> map (list decode) array_of_vec
 
 let record = fun ~fields ~init ~step ~finish ->
   {
@@ -409,7 +412,7 @@ module De = struct
     float: 'state -> float;
     skip_any: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option;
-    list: 'value. 'state -> 'value t -> 'value list;
+    list: 'value. 'state -> 'value t -> 'value vec;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -436,11 +439,11 @@ module De = struct
     let newtype = fun tag decode wrap -> Newtype (tag, decode, wrap)
   end
 
-  let return = fun value -> { run = fun _backend _state -> value }
+  let const = fun value -> { run = fun _backend _state -> value }
 
   let map = fun decode project -> { run = fun backend state -> project (decode.run backend state) }
 
-  let bind = fun decode next ->
+  let and_then = fun decode next ->
     {
       run =
         fun backend state ->
@@ -461,7 +464,7 @@ module De = struct
     | Decode_error error -> Error error
 
   module Syntax = struct
-    let ( let* ) = bind
+    let ( let* ) = and_then
 
     let ( let+ ) = map
   end
@@ -498,7 +501,7 @@ module De = struct
           backend.list state decode;
     }
 
-  let array = fun decode -> map (list decode) array_of_list
+  let array = fun decode -> map (list decode) array_of_vec
 
   let record = fun ~fields ~init ~step ~finish ->
     {
@@ -559,8 +562,7 @@ module Ser = struct
     float: 'state -> float -> unit;
     null: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option -> unit;
-    list: 'value. 'state -> 'value t -> 'value list -> unit;
-    array: 'value. 'state -> 'value t -> 'value array -> unit;
+    list: 'value. 'state -> 'value t -> 'value vec -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -644,13 +646,6 @@ module Ser = struct
       run =
         fun backend state value ->
           backend.list state encode value;
-    }
-
-  let array = fun encode ->
-    {
-      run =
-        fun backend state value ->
-          backend.array state encode value;
     }
 
   let field = Field.make

@@ -69,7 +69,7 @@ module De: sig
     float: 'state -> float;
     skip_any: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option;
-    list: 'value. 'state -> 'value t -> 'value list;
+    list: 'value. 'state -> 'value t -> 'value vec;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -101,13 +101,13 @@ module De: sig
   end
 
   (** Build a decoder that always returns a fixed value. *)
-  val return: 'value -> 'value t
+  val const: 'value -> 'value t
 
   (** Map over the result of a decoder. *)
   val map: 'value t -> ('value -> 'next) -> 'next t
 
   (** Sequence decoders monadically. *)
-  val bind: 'value t -> ('value -> 'next t) -> 'next t
+  val and_then: 'value t -> ('value -> 'next t) -> 'next t
 
   (** Build a decoder that always fails. *)
   val fail: error -> 'value t
@@ -161,11 +161,8 @@ module De: sig
   (** Decode an optional value. *)
   val option: 'value t -> 'value option t
 
-  (** Decode a list of values. *)
-  val list: 'value t -> 'value list t
-
-  (** Decode an array of values. *)
-  val array: 'value t -> 'value array t
+  (** Decode a sequence of values into a vector. *)
+  val list: 'value t -> 'value vec t
 
   (** Decode a record-shaped value. *)
   val record:
@@ -220,8 +217,7 @@ module Ser: sig
     float: 'state -> float -> unit;
     null: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option -> unit;
-    list: 'value. 'state -> 'value t -> 'value list -> unit;
-    array: 'value. 'state -> 'value t -> 'value array -> unit;
+    list: 'value. 'state -> 'value t -> 'value vec -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -279,11 +275,8 @@ module Ser: sig
   (** Serialize an optional value. *)
   val option: 'value t -> 'value option t
 
-  (** Serialize a list of values. *)
-  val list: 'value t -> 'value list t
-
-  (** Serialize an array of values. *)
-  val array: 'value t -> 'value array t
+  (** Serialize a vector of values. *)
+  val list: 'value t -> 'value vec t
 
   (** Declare a single record field encoder. *)
   val field: string -> 'field t -> ('value -> 'field) -> 'value field

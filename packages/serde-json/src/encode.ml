@@ -1,4 +1,5 @@
 open Std
+module Vector = Collections.Vector
 
 let ( let* ) = Result.and_then
 
@@ -122,26 +123,17 @@ let float_to_json = fun value ->
     else
       text
 
-let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value list -> unit = fun state encode values ->
+let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_char state '[';
   let first = ref true in
-  List.iter
+  Vector.iter
     (fun value ->
       if !first then
         first := false
       else
         write_char state ',';
-        encode.run backend state value)
+      encode.run backend state value)
     values;
-  write_char state ']'
-
-and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
-  write_char state '[';
-  for index = 0 to array__length values - 1 do
-    if not (Int.equal index 0) then
-      write_char state ',';
-    encode.run backend state (array__get values index)
-  done;
   write_char state ']'
 
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
@@ -200,7 +192,6 @@ and backend: state Serde.Ser.backend = {
       | None -> write_string state "null"
       | Some payload -> encode.run backend state payload);
   list = list_backend;
-  array = array_backend;
   record = record_backend;
   variant = variant_backend;
 }
