@@ -5,7 +5,6 @@ type ident = {
   local_id: int;
   name: string;
 }
-
 type provenance =
   | Lowered_pattern of PatId.t
   | Prelude
@@ -15,21 +14,17 @@ type provenance =
   | Declared_value of { name: string; scope_path: IdentPath.t }
   | Included of { module_path: IdentPath.t }
   | Module_alias of { alias_name: string; module_path: IdentPath.t }
-
 type binding = {
   ident: ident;
   path: IdentPath.t;
   scheme: TypeScheme.t;
   provenance: provenance;
 }
-
 type bindings = binding list
-
 type delta = {
   bindings: bindings;
   type_decls: FileSummary.type_decl list;
 }
-
 type t =
   | Empty
   | Snapshot of delta
@@ -37,7 +32,6 @@ type t =
   | Bind_in_scope of t * IdentPath.t * t
   | Open of t * IdentPath.t
   | Qualify of t * IdentPath.t
-
 val empty: t
 
 val snapshot: bindings:bindings -> type_decls:FileSummary.type_decl list -> t

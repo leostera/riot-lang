@@ -21,9 +21,44 @@ let fixture_filter = fun path ->
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
   Path.join fixtures_dir ctx.fixture_relpath
 
+let parse_failure_report = fun ~filename ->
+  fun parse_result ->
+    fun error ->
+      let source_id = SourceId.of_int 0 in
+      let (parse_diagnostics, lowering_diagnostics) =
+        match error with
+        | Syn.Parse_diagnostics diagnostics -> (diagnostics, [])
+        | Syn.Cst_builder_error builder_error -> (
+          parse_result.Syn.Parser.diagnostics,
+          [ Diagnostic.CstBuilderError { builder_error } ]
+        )
+      in
+      {
+        Check_result.source_id;
+        filename;
+        parse_diagnostics;
+        item_tree = None;
+        body_arena = None;
+        origin_map = None;
+        semantic_tree = None;
+        lowering_diagnostics;
+        typing_diagnostics = [];
+        file_summary = FileSummary.missing ~source_id ();
+        type_index = TypeIndex.empty;
+        exports = [];
+        item_traces = [];
+        expr_traces = [];
+      }
+
+let check_source_text = fun ~filename text ->
+  let parse_result = Syn.parse ~filename text in
+  match Syn.build_cst parse_result with
+  | Ok cst -> Check.check_source ~filename ~parse_result ~cst
+  | Error error -> parse_failure_report ~filename parse_result error
+
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"fixture should exist" in
-  let report = Check.check_source ~filename:(stable_fixture_filename ctx) source in
+  let report = check_source_text ~filename:(stable_fixture_filename ctx) source in
   Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(Report.to_json report)
 
 let () =

@@ -1,0 +1,21 @@
+{
+  "lowering_diagnostics": [],
+  "parse_diagnostics": [],
+  "typing_diagnostics": [
+    {
+      "id": "TYP1012",
+      "match_span": {
+        "end": 61,
+        "start": 18
+      },
+      "message": "non-exhaustive match: missing case None",
+      "name": "nonexhaustive-match",
+      "severity": "warning",
+      "witness": {
+        "arguments": [],
+        "name": "None",
+        "tag": "constructor"
+      }
+    }
+  ]
+}

@@ -17,4 +17,4 @@ val type_decls: FileSummary.type_decl list
 
 val exn_type_constructor_id: TypeConstructorId.t
 
-val type_constructor_of_path: IdentPath.t -> TypeRepr.named_type_constructor
+val type_head_of_path: IdentPath.t -> TypeRepr.named_type_head option

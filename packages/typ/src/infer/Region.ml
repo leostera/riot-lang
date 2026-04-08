@@ -13,15 +13,9 @@ type t = {
   mutable frames: frame list;
 }
 
-let create =
-  fun () ->
-    let root = { level = 0; boundary_level = 0; nodes = [] } in
-    { current_level = 0; current_mark = 0; frames = [ root ] }
-
-let current_frame = fun (regions: t) ->
-  match regions.frames with
-  | frame :: _ -> Some frame
-  | [] -> None
+let create = fun () ->
+  let root = { level = 0; boundary_level = 0; nodes = [] } in
+  { current_level = 0; current_mark = 0; frames = [ root ] }
 
 let current_level = fun (regions: t) -> regions.current_level
 
@@ -47,26 +41,22 @@ let add_to_pool = fun (regions: t) ~level node ->
     | Some frame ->
         if TypeRepr.pool_level node = Some frame.level then
           ()
-        else
-          (
-            TypeRepr.set_pool_level node (Some frame.level);
-            frame.nodes <- node :: frame.nodes
-          )
-    | None ->
-        TypeRepr.set_pool_level node None
+        else (
+          TypeRepr.set_pool_level node (Some frame.level);
+          frame.nodes <- node :: frame.nodes
+        )
+    | None -> TypeRepr.set_pool_level node None
   in
   node
 
 let track_node = fun (regions: t) node -> add_to_pool regions ~level:(TypeRepr.level node) node
 
-let fresh_var = fun (regions: t) id ->
-  TypeRepr.make_var ~level:regions.current_level id |> track_node regions
-
 let exit_region = fun (regions: t) (child: frame) ->
   match regions.frames with
   | frame :: rest when Std.Ptr.equal frame child ->
       let () =
-        child.nodes |> List.iter
+        child.nodes
+        |> List.iter
           (fun node ->
             if TypeRepr.pool_level node = Some child.level then
               TypeRepr.set_pool_level node None)
@@ -77,11 +67,11 @@ let exit_region = fun (regions: t) (child: frame) ->
       regions.current_level <- child.boundary_level
   | _ -> raise (Failure "Region.exit_region")
 
-let with_region = fun (regions: t) f ->
+let with_region_finalize = fun (regions: t) ~finalize f ->
   let child = {
     level = regions.current_level + 1;
     boundary_level = regions.current_level;
-    nodes = [];
+    nodes = []
   } in
   let () =
     regions.current_level <- child.level
@@ -91,12 +81,16 @@ let with_region = fun (regions: t) f ->
   in
   try
     let result = f child in
+    let result = finalize child result in
     let () = exit_region regions child in
     result
   with
   | exn ->
       let () = exit_region regions child in
       raise exn
+
+let with_region = fun (regions: t) f ->
+  with_region_finalize regions ~finalize:(fun _ result -> result) f
 
 let boundary_level = fun (frame: frame) -> frame.boundary_level
 

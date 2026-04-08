@@ -25,6 +25,8 @@ type t = {
   ambient: env;
   (** Snapshot-scoped lowered type declarations synthesized from summaries. *)
   ambient_type_decls: FileSummary.type_decl list;
+  (** Snapshot-scoped visible type context built from [ambient_type_decls]. *)
+  ambient_visible_types: VisibleTypes.t;
 }
 
 (** Default host configuration used by the current prototype and tests.
@@ -42,6 +44,12 @@ val with_ambient: t -> ambient:env -> t
 (** Replace the snapshot ambient type declarations while preserving the base
     prelude, loaded modules, and ambient value environment. *)
 val with_ambient_type_decls: t -> ambient_type_decls:FileSummary.type_decl list -> t
+
+(** Replace the snapshot visible type context directly. This is the natural
+    entrypoint for hosts that already maintain an incremental visible-type view
+    and want to avoid rebuilding it from raw type-decl lists on every config
+    mutation. *)
+val with_ambient_visible_types: t -> ambient_visible_types:VisibleTypes.t -> t
 
 (** Replace the host-loaded reusable module typings while preserving the
     base prelude and snapshot ambient environment. *)

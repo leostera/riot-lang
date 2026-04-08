@@ -36,7 +36,11 @@ let id x = x
 let answer = id 42
 |}
 
-let result = Typ.Batch.check_source ~filename:(Path.v "example.ml") source
+let filename = Path.v "example.ml"
+let parse_result = Syn.parse ~filename source
+let cst = Syn.build_cst parse_result |> Result.expect ~msg:"expected successful CST"
+
+let result = Typ.Batch.check_source ~filename ~parse_result ~cst
 
 let () = println (Typ.Report.render_report result)
 ```
@@ -56,6 +60,7 @@ riot run -p typ check_source
 - `Typ.Query.type_at`
 - `Typ.Query.export_of`
 - `Typ.Batch.check_source`
+  expects host-prepared `Syn.parse` + `Syn.build_cst` artifacts
 
 ## Current status
 

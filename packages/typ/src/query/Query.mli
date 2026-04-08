@@ -11,6 +11,7 @@ type diagnostic =
   | Lowering of Diagnostic.t
   (** Inference diagnostic emitted by [typ]. *)
   | Typing of Diagnostic.t
+type definition = ModuleTypings.definition_site
 
 (** Fetch the full per-source analysis record for one [SourceId]. *)
 val analysis_of_source: Snapshot.t -> SourceId.t -> SourceAnalysis.t option
@@ -30,6 +31,9 @@ val export_of: Snapshot.t -> SourceId.t -> FileSummary.export_result option
 
 (** Find the smallest indexed expression containing one position and return its type. *)
 val type_at: Snapshot.t -> SourceId.t -> Position.t -> TypeRepr.t option
+
+(** Find the definition site for the smallest indexed expression containing one position. *)
+val definition_at: Snapshot.t -> SourceId.t -> Position.t -> definition option
 
 (** Fetch the lowered semantic layers for one source, when present. *)
 val semantic_tree_of_source: Snapshot.t -> SourceId.t -> SemanticTree.file option

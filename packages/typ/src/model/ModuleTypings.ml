@@ -1,28 +1,250 @@
 open Std
 
+type definition_site = {
+  origin: Source.origin;
+  span: Syn.Ceibo.Span.t;
+}
+
+type value_definition_target =
+  | Site of definition_site
+  | Export of IdentPath.t
+
+type value_definition = {
+  export_name: string;
+  target: value_definition_target;
+}
+
 type t = {
   module_name: string;
   source_hash: Crypto.hash;
   export_result: FileSummary.export_result;
   type_decls: FileSummary.type_decl list;
+  value_definitions: value_definition list;
 }
 
-let trusted = fun ~module_name ~source_hash ?(type_decls = []) exports ->
-  { module_name; source_hash; export_result = FileSummary.TrustedExport { exports }; type_decls }
+let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
+  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
 
-let errored = fun ~module_name ~source_hash ?(type_decls = []) exports ->
-  { module_name; source_hash; export_result = FileSummary.ErroredExport { exports }; type_decls }
+let map_preserving = fun loop xs ->
+  let rec walk changed acc = function
+    | [] ->
+        if changed then
+          List.rev acc
+        else
+          xs
+    | x :: rest ->
+        let x' = loop x in
+        walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+  in
+  walk false [] xs
 
-let missing = fun ~module_name ~source_hash ?(type_decls = []) () ->
-  { module_name; source_hash; export_result = FileSummary.NoExport; type_decls }
+let local_type_decl_index = fun type_decls ->
+  let by_path = Collections.HashMap.with_capacity (List.length type_decls) in
+  let () =
+    List.iter
+      (fun (type_decl: FileSummary.type_decl) ->
+        let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
+        ())
+      type_decls
+  in
+  by_path
 
-let of_file_summary = fun ~module_name ~source_hash (summary: FileSummary.t) ->
-  {
-    module_name;
-    source_hash;
-    export_result = summary.export_result;
-    type_decls = summary.type_decls
+let resolve_named_type_head_for_persistence = fun by_path name ->
+  let qualified_external_head =
+    match IdentPath.to_segments name with
+    | _ :: _ :: _ -> Some (TypeRepr.named_head
+      ~type_constructor_id:(TypeConstructorId.of_path name)
+      ~name)
+    | _ -> None
+  in
+  Collections.HashMap.get by_path name
+  |> Option.map
+    (fun (type_decl: FileSummary.type_decl) ->
+      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+  |> fun resolved ->
+    Option.or_else resolved
+      (fun () ->
+        Option.or_else
+          (BuiltinTypeConstructors.head_of_path name)
+          (fun () -> qualified_external_head))
+
+let canonicalize_type_for_persistence = fun by_path ->
+  let rec loop ty =
+    let ty = TypeRepr.prune ty in
+    match TypeRepr.view ty with
+    | TypeRepr.Int
+    | TypeRepr.Float
+    | TypeRepr.Bool
+    | TypeRepr.String
+    | TypeRepr.Char
+    | TypeRepr.Unit
+    | TypeRepr.Hole _
+    | TypeRepr.Var _ ->
+        ty
+    | TypeRepr.Option element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.option element'
+    | TypeRepr.Result (ok_ty, error_ty) ->
+        let ok_ty' = loop ok_ty in
+        let error_ty' = loop error_ty in
+        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+          ty
+        else
+          TypeRepr.result ok_ty' error_ty'
+    | TypeRepr.Array element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.array element'
+    | TypeRepr.List element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.list element'
+    | TypeRepr.Seq element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.seq element'
+    | TypeRepr.Named { head; arguments } ->
+        let arguments' = map_preserving loop arguments in
+        (
+          match BuiltinTypeConstructors.type_of_path head.name arguments' with
+          | Some builtin -> builtin
+          | None ->
+              if Std.Ptr.equal arguments arguments' then
+                ty
+              else
+                TypeRepr.named ~head ~arguments:arguments'
+        )
+    | TypeRepr.PolyVariant { bound; tags; inherited } ->
+        let tags' = map_preserving
+          (fun (tag: TypeRepr.poly_variant_tag) ->
+            match tag.payload_type with
+            | Some payload_type ->
+                let payload_type' = loop payload_type in
+                if Std.Ptr.equal payload_type payload_type' then
+                  tag
+                else
+                  { tag with payload_type = Some payload_type' }
+            | None -> tag)
+          tags in
+        let inherited' = map_preserving loop inherited in
+        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+          ty
+        else
+          TypeRepr.poly_variant ~bound ~tags:tags' ~inherited:inherited'
+    | TypeRepr.Tuple members ->
+        let members' = map_preserving loop members in
+        if Std.Ptr.equal members members' then
+          ty
+        else
+          TypeRepr.tuple members'
+    | TypeRepr.Arrow { label; lhs; rhs } ->
+        let lhs' = loop lhs in
+        let rhs' = loop rhs in
+        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+          ty
+        else
+          TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
+  in
+  loop
+
+let canonicalize_scheme_for_persistence = fun canonicalize_type scheme ->
+  let quantified, body = TypeScheme.to_explicit scheme in
+  let body' = canonicalize_type body in
+  if Std.Ptr.equal body body' then
+    scheme
+  else
+    TypeScheme.of_explicit ~quantified body'
+
+let canonicalize_type_decl_for_persistence = fun canonicalize_type (type_decl: FileSummary.type_decl) ->
+  let declaration = type_decl.declaration in
+  let manifest =
+    match declaration.manifest with
+    | None -> None
+    | Some (TypeDecl.Alias manifest_type) -> Some (TypeDecl.Alias (canonicalize_type manifest_type))
+    | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
+        Some (
+          TypeDecl.PolyVariant {
+            bound;
+            tags =
+              List.map
+                (fun (tag: TypeDecl.poly_variant_tag) ->
+                  match tag.payload_type with
+                  | Some payload_type -> {
+                    tag
+                    with payload_type = Some (canonicalize_type payload_type)
+                  }
+                  | None -> tag)
+                tags;
+            inherited = List.map canonicalize_type inherited;
+          }
+        )
+  in
+  let constructors = declaration.constructors
+  |> List.map
+    (fun (constructor: TypeDecl.constructor) ->
+      {
+        constructor
+        with scheme = canonicalize_scheme_for_persistence canonicalize_type constructor.scheme
+      }) in
+  let labels = declaration.labels
+  |> List.map
+    (fun (label: TypeDecl.label) -> { label with field_type = canonicalize_type label.field_type }) in
+  { type_decl with declaration = { declaration with manifest; constructors; labels } }
+
+let canonicalize_export_result_for_persistence = fun canonicalize_type export_result ->
+  match export_result with
+  | FileSummary.TrustedExport { exports } -> FileSummary.TrustedExport {
+    exports = List.map
+      (fun (name, scheme) -> (name, canonicalize_scheme_for_persistence canonicalize_type scheme))
+      exports
   }
+  | FileSummary.ErroredExport { exports } -> FileSummary.ErroredExport {
+    exports = List.map
+      (fun (name, scheme) -> (name, canonicalize_scheme_for_persistence canonicalize_type scheme))
+      exports
+  }
+  | FileSummary.NoExport -> FileSummary.NoExport
+
+let canonicalize_payload_for_persistence = fun ~export_result ~type_decls ->
+  let by_path = local_type_decl_index type_decls in
+  let canonicalize_type = canonicalize_type_for_persistence by_path in
+  (
+    canonicalize_export_result_for_persistence canonicalize_type export_result,
+    List.map (canonicalize_type_decl_for_persistence canonicalize_type) type_decls
+  )
+
+let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
+  let (export_result, type_decls) = canonicalize_payload_for_persistence
+    ~export_result:(FileSummary.TrustedExport { exports })
+    ~type_decls in
+  { module_name; source_hash; export_result; type_decls; value_definitions }
+
+let errored = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
+  let (export_result, type_decls) = canonicalize_payload_for_persistence
+    ~export_result:(FileSummary.ErroredExport { exports })
+    ~type_decls in
+  { module_name; source_hash; export_result; type_decls; value_definitions }
+
+let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) () ->
+  let (export_result, type_decls) = canonicalize_payload_for_persistence
+    ~export_result:FileSummary.NoExport
+    ~type_decls in
+  { module_name; source_hash; export_result; type_decls; value_definitions }
+
+let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (summary: FileSummary.t) ->
+  let (export_result, type_decls) = canonicalize_payload_for_persistence
+    ~export_result:summary.export_result
+    ~type_decls:summary.type_decls in
+  { module_name; source_hash; export_result; type_decls; value_definitions }
 
 let to_file_summary = fun ~source_id summary ->
   { FileSummary.source_id; export_result = summary.export_result; type_decls = summary.type_decls }
@@ -39,6 +261,16 @@ let exports = function
   | { export_result=FileSummary.NoExport; _ } -> []
 
 let type_decls = fun summary -> summary.type_decls
+
+let value_definitions = fun summary -> summary.value_definitions
+
+let find_value_definition = fun summary ~export_name ->
+  summary.value_definitions |> List.find_map
+    (fun (definition: value_definition) ->
+      if String.equal export_name definition.export_name then
+        Some definition.target
+      else
+        None)
 
 let rec json_type_name = function
   | Data.Json.Null -> "null"
@@ -68,6 +300,24 @@ let get_string = function
 let get_int = function
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
+
+let span_of_json = fun json ->
+  match get_object json with
+  | Error _ as err -> err
+  | Ok fields -> (
+      match List.assoc_opt "start" fields, List.assoc_opt "end" fields with
+      | Some start_json, Some end_json -> (
+          match get_int start_json with
+          | Error _ as err -> err
+          | Ok start -> (
+              match get_int end_json with
+              | Error _ as err -> err
+              | Ok end_ -> Ok (Syn.Ceibo.Span.make ~start ~end_)
+            )
+        )
+      | None, _ -> Error "missing field start"
+      | _, None -> Error "missing field end"
+    )
 
 let field = fun name fields ->
   match List.assoc_opt name fields with
@@ -119,16 +369,34 @@ let rec type_to_json = fun ty ->
     ("tag", Data.Json.String "seq");
     ("element", type_to_json element);
   ]
-  | TypeRepr.Named { type_constructor; name; arguments } ->
-      Data.Json.Object [ ("tag", Data.Json.String "named"); (
-          "type_constructor_id",
-          match type_constructor with
-          | TypeRepr.Resolved type_constructor_id -> Data.Json.Int (TypeConstructorId.to_int type_constructor_id)
-          | TypeRepr.Unresolved -> Data.Json.Null
-        ); ("name", Data.Json.String (IdentPath.to_string name)); (
-          "arguments",
-          Data.Json.Array (List.map type_to_json arguments)
-        ); ]
+  | TypeRepr.Named { head={ type_constructor_id; name }; arguments } -> Data.Json.Object [
+    ("tag", Data.Json.String "named");
+    ("type_constructor_id", TypeConstructorId.to_json type_constructor_id);
+    ("name", Data.Json.String (IdentPath.to_string name));
+    ("arguments", Data.Json.Array (List.map type_to_json arguments));
+  ]
+  | TypeRepr.PolyVariant { bound; tags; inherited } ->
+      let bound =
+        match bound with
+        | TypeRepr.Exact -> "exact"
+        | TypeRepr.UpperBound -> "upper"
+        | TypeRepr.LowerBound -> "lower"
+      in
+      let tag_to_json (tag: TypeRepr.poly_variant_tag) =
+        let fields = [ ("name", Data.Json.String tag.name) ] in
+        let fields =
+          match tag.payload_type with
+          | Some payload_type -> fields @ [ ("payload_type", type_to_json payload_type) ]
+          | None -> fields
+        in
+        Data.Json.Object fields
+      in
+      Data.Json.Object [
+        ("tag", Data.Json.String "poly_variant");
+        ("bound", Data.Json.String bound);
+        ("tags", Data.Json.Array (List.map tag_to_json tags));
+        ("inherited", Data.Json.Array (List.map type_to_json inherited));
+      ]
   | TypeRepr.Tuple members -> Data.Json.Object [
     ("tag", Data.Json.String "tuple");
     ("members", Data.Json.Array (List.map type_to_json members));
@@ -157,10 +425,15 @@ let scheme_to_json = fun scheme ->
   ]
 
 let exports_to_json = fun exports ->
-  Data.Json.Array (exports
-  |> List.map
-    (fun (name, scheme) ->
-      Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_to_json scheme); ]))
+  Data.Json.Array (
+    exports |> List.map
+      (fun (name, scheme) ->
+        let scheme_json =
+          try scheme_to_json scheme with
+          | Failure message -> raise (Failure ("module typings export " ^ name ^ ": " ^ message))
+        in
+        Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_json); ])
+  )
 
 let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   Data.Json.Object [
@@ -212,10 +485,7 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
       Data.Json.Array (IdentPath.to_segments type_decl.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
-    (
-      "type_constructor_id",
-      Data.Json.Int (TypeConstructorId.to_int type_decl.declaration.type_constructor_id)
-    );
+    ("type_constructor_id", TypeConstructorId.to_json type_decl.declaration.type_constructor_id);
     ("type_name", Data.Json.String type_decl.declaration.type_name);
     (
       "param_ids",
@@ -256,14 +526,51 @@ let export_result_to_json = function
     ("exports", Data.Json.Array []);
   ]
 
-let payload_to_json = fun ~export_result ~type_decls ->
+let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
+  Data.Json.Object [
+    ("start", Data.Json.Int span.start);
+    ("end", Data.Json.Int span.end_);
+  ]
+
+let source_origin_to_json = function
+  | Source.Path path -> Data.Json.Object [
+    ("tag", Data.Json.String "path");
+    ("value", Data.Json.String (Path.to_string path));
+  ]
+  | Source.Label label -> Data.Json.Object [
+    ("tag", Data.Json.String "label");
+    ("value", Data.Json.String label);
+  ]
+
+let value_definition_target_to_json = function
+  | Site { origin; span } -> Data.Json.Object [
+    ("tag", Data.Json.String "site");
+    ("origin", source_origin_to_json origin);
+    ("span", span_to_json span);
+  ]
+  | Export path -> Data.Json.Object [
+    ("tag", Data.Json.String "export");
+    ("path", Data.Json.String (IdentPath.to_string path));
+  ]
+
+let value_definition_to_json = fun (definition: value_definition) ->
+  Data.Json.Object [
+    ("export_name", Data.Json.String definition.export_name);
+    ("target", value_definition_target_to_json definition.target);
+  ]
+
+let value_definitions_to_json = fun value_definitions ->
+  Data.Json.Array (List.map value_definition_to_json value_definitions)
+
+let payload_to_json = fun ~export_result ~type_decls ~value_definitions ->
   Data.Json.Object [
     ("export_result", export_result_to_json export_result);
     ("type_decls", type_decls_to_json type_decls);
+    ("value_definitions", value_definitions_to_json value_definitions);
   ]
 
-let synthetic_source_hash = fun ~module_name ~export_result ~type_decls ->
-  payload_to_json ~export_result ~type_decls
+let synthetic_source_hash = fun ~module_name ~export_result ~type_decls ?(value_definitions = []) () ->
+  payload_to_json ~export_result ~type_decls ~value_definitions
   |> Data.Json.to_string
   |> fun json -> Crypto.hash_string ("typ-module-typings\x1f" ^ module_name ^ "\x1f" ^ json)
 
@@ -325,25 +632,13 @@ let rec type_of_json = fun json ->
       let* element = type_of_json element_json in
       Ok (TypeRepr.seq element)
   | "named" ->
-      let type_constructor =
-        match List.assoc_opt "type_constructor_id" fields with
-        | Some Data.Json.Null
-        | None -> Ok TypeRepr.Unresolved
-        | Some type_constructor_id_json ->
-            let* type_constructor_id = get_int type_constructor_id_json in
-            Ok (TypeRepr.Resolved (TypeConstructorId.of_int type_constructor_id))
-      in
+      let* type_constructor_json = field "type_constructor_id" fields in
+      let* type_constructor_id = TypeConstructorId.of_json type_constructor_json in
       let* name_json = field "name" fields in
       let* name = get_string name_json in
       let name = IdentPath.of_string name in
       let* arguments_json = field "arguments" fields in
       let* arguments_json = get_array arguments_json in
-      let* type_constructor = type_constructor in
-      let type_constructor =
-        match type_constructor with
-        | TypeRepr.Resolved _ -> type_constructor
-        | TypeRepr.Unresolved -> BuiltinTypeConstructors.of_path name
-      in
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
         | head :: tail ->
@@ -351,7 +646,45 @@ let rec type_of_json = fun json ->
             loop (argument :: acc) tail
       in
       let* arguments = loop [] arguments_json in
-      Ok (TypeRepr.named ~type_constructor ~name ~arguments)
+      Ok (TypeRepr.named ~head:(TypeRepr.named_head ~type_constructor_id ~name) ~arguments)
+  | "poly_variant" ->
+      let* bound_json = field "bound" fields in
+      let* tags_json = field "tags" fields in
+      let* inherited_json = field "inherited" fields in
+      let* bound = get_string bound_json in
+      let bound =
+        match bound with
+        | "exact" -> Ok TypeRepr.Exact
+        | "upper" -> Ok TypeRepr.UpperBound
+        | "lower" -> Ok TypeRepr.LowerBound
+        | other -> Error ("unknown module typings structural poly-variant bound " ^ other)
+      in
+      let* bound = bound in
+      let* tags_json = get_array tags_json in
+      let rec parse_tags acc = function
+        | [] -> Ok (List.rev acc)
+        | value :: rest ->
+            let* fields = get_object value in
+            let* name_json = field "name" fields in
+            let* name = get_string name_json in
+            let payload_type =
+              match List.assoc_opt "payload_type" fields with
+              | Some payload_type_json -> type_of_json payload_type_json |> Result.map Option.some
+              | None -> Ok None
+            in
+            let* payload_type = payload_type in
+            parse_tags (TypeRepr.poly_variant_tag ?payload_type name :: acc) rest
+      in
+      let* tags = parse_tags [] tags_json in
+      let* inherited_json = get_array inherited_json in
+      let rec parse_inherited acc = function
+        | [] -> Ok (List.rev acc)
+        | value :: rest ->
+            let* inherited_type = type_of_json value in
+            parse_inherited (inherited_type :: acc) rest
+      in
+      let* inherited = parse_inherited [] inherited_json in
+      Ok (TypeRepr.poly_variant ~bound ~tags ~inherited)
   | "tuple" ->
       let* members_json = field "members" fields in
       let* members_json = get_array members_json in
@@ -529,7 +862,7 @@ let type_decl_of_json = fun json ->
   let* constructors_json = field "constructors" fields in
   let* labels_json = field "labels" fields in
   let* scope_path = string_list_of_json scope_path_json in
-  let* type_constructor_id = get_int type_constructor_id_json in
+  let* type_constructor_id = TypeConstructorId.of_json type_constructor_id_json in
   let* type_name = get_string type_name_json in
   let* param_ids = int_list_of_json param_ids_json in
   let param_variances =
@@ -579,7 +912,7 @@ let type_decl_of_json = fun json ->
     FileSummary.scope_path = IdentPath.of_segments scope_path;
     declaration =
       {
-        TypeDecl.type_constructor_id = TypeConstructorId.of_int type_constructor_id;
+        TypeDecl.type_constructor_id = type_constructor_id;
         TypeDecl.type_name = type_name;
         param_ids;
         param_variances;
@@ -611,6 +944,62 @@ let export_result_of_json = fun json ->
   | "no_export" -> Ok FileSummary.NoExport
   | other -> Error ("unknown module typings export_result tag " ^ other)
 
+let source_origin_of_json = fun json ->
+  let* fields = get_object json in
+  let* tag_json = field "tag" fields in
+  let* value_json = field "value" fields in
+  let* tag = get_string tag_json in
+  let* value = get_string value_json in
+  match tag with
+  | "path" -> (
+      match Path.of_string value with
+      | Ok path -> Ok (Source.Path path)
+      | Error (Path.InvalidUtf8 { path }) -> Error ("invalid utf-8 path " ^ path)
+      | Error (Path.SystemInvalidUtf8 { syscall; path }) ->
+          Error ("invalid utf-8 path from " ^ syscall ^ ": " ^ path)
+      | Error (Path.SystemError message) -> Error message
+    )
+  | "label" -> Ok (Source.Label value)
+  | other -> Error ("unknown module typings source origin tag " ^ other)
+
+let value_definition_target_of_json = fun json ->
+  let* fields = get_object json in
+  let* tag_json = field "tag" fields in
+  let* tag = get_string tag_json in
+  match tag with
+  | "site" ->
+      let* origin_json = field "origin" fields in
+      let* span_json = field "span" fields in
+      let* origin = source_origin_of_json origin_json in
+      let* span = span_of_json span_json in
+      Ok (Site { origin; span })
+  | "export" ->
+      let* path_json = field "path" fields in
+      let* path = get_string path_json in
+      Ok (Export (IdentPath.of_string path))
+  | other ->
+      Error ("unknown module typings value definition target tag " ^ other)
+
+let value_definition_of_json = fun json ->
+  let* fields = get_object json in
+  let* export_name_json = field "export_name" fields in
+  let* target_json = field "target" fields in
+  let* export_name = get_string export_name_json in
+  let* target = value_definition_target_of_json target_json in
+  Ok { export_name; target }
+
+let value_definitions_of_json = function
+  | Data.Json.Array values ->
+      let rec loop acc = function
+        | [] -> Ok (List.rev acc)
+        | value :: rest ->
+            let* definition = value_definition_of_json value in
+            loop (definition :: acc) rest
+      in
+      loop [] values
+  | other ->
+      error_expected "array" other
+
 let hash_of_hex = fun hex ->
   match Encoding.Hex.decode_bytes hex with
   | Ok bytes -> Ok (Crypto.Hash.of_bytes bytes)
@@ -623,6 +1012,7 @@ module Json = struct
       ("source_hash", Data.Json.String (Crypto.Digest.hex summary.source_hash));
       ("export_result", export_result_to_json summary.export_result);
       ("type_decls", type_decls_to_json summary.type_decls);
+      ("value_definitions", value_definitions_to_json summary.value_definitions);
     ]
 
   let of_json = fun json ->
@@ -639,6 +1029,12 @@ module Json = struct
       | Some type_decls_json -> type_decls_of_json type_decls_json
       | None -> Ok []
     in
+    let value_definitions =
+      match List.assoc_opt "value_definitions" fields with
+      | Some value_definitions_json -> value_definitions_of_json value_definitions_json
+      | None -> Ok []
+    in
     let* type_decls = type_decls in
-    Ok { module_name; source_hash; export_result; type_decls }
+    let* value_definitions = value_definitions in
+    Ok { module_name; source_hash; export_result; type_decls; value_definitions }
 end

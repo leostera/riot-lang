@@ -21,10 +21,44 @@ These are intentionally aggressive. They are useful because they force us to
 keep looking for algorithmic waste instead of settling for "fast enough for
 now".
 
+## Current Focus
+
+We now have two useful benchmark floors under
+`packages/riot-check/tests/workspace_fixtures/`:
+
+- `no_deps_single`: one package, one file, no deps
+- `no_deps_pair`: two packages, no `std`, one local package edge
+
+Those fixtures are the "did we make the checker itself slower?" guardrail.
+
+The first real package we should make semantically trusted is now `kernel`.
+`colors` is not an honest compiler target until `kernel -> actors -> std`
+becomes trusted, because `riot check` currently allows downstream packages to
+consume `ErroredExport` dependency summaries for recovery/LSP behavior.
+
+For builtin deps such as `stdlib`, `unix`, and `dynlink`, do not try to find
+and type the toolchain `.mli` files. Instead, keep a Riot-owned stub surface
+such as `OCamlStdlib.ml` / builtin module summaries that define exactly the
+types and values `typ` needs for checking. The point is to make builtin
+interfaces explicit and controllable, not to depend on where the host OCaml
+installation stores interface files.
+
 ## Items
 
 This is the current best guess for the next OCaml-parity batches.
 
+- [ ] make `kernel` the first trusted real package and use it as the compiler
+  correctness ladder below `actors`, `std`, and `colors`
+- [ ] introduce an `OCamlStdlib` builtin stub surface for `stdlib`, `unix`,
+  and `dynlink` so builtin deps come from Riot-owned summaries instead of
+  external toolchain `.mli` discovery
+- [ ] expand bootstrap/builtin module summaries to cover the first `kernel`
+  slice (`Bytes`, `Hashtbl`, `Buffer`, `Array`, `Obj`, `Unix`, and other
+  modules that currently show up as `TYP2001` unbound names)
+- [ ] make builtin dependency summaries authoritative and explicitly separate
+  them from workspace package summaries in `riot-check` / `typ`
+- [ ] use the no-deps fixtures as a hard perf guardrail before and after every
+  meaningful checker batch
 - [ ] make `Summary2` the only persisted/replay env summary format and delete
   any remaining legacy-summary conversion paths outside `Infer`
 - [ ] make snapshot and module-typing hydration reuse `Summary2` / `Env`
@@ -71,6 +105,27 @@ This is the current best guess for the next OCaml-parity batches.
   `152.61s` user, `33.23s` system, `236%` cpu, `1:18.43` wall, summary
   `{"files":1723,"read_failures":1301,"diagnostics":6691,"warnings":2}`
 - commit: `TBD`
+
+## Current Investigation: `make kernel semantically trusted`
+
+- status: in progress
+- no-deps single floor:
+  `time riot check -p solo --json | grep check_summary`
+  `0.040s` wall, summary `{"files":1,"read_failures":0,"diagnostics":0,"warnings":0}`
+- no-deps pair floor:
+  `time riot check -p leaf --json | grep check_summary`
+  `0.036s` wall, summary `{"files":1,"read_failures":0,"diagnostics":0,"warnings":0}`
+- kernel build floor:
+  `time riot build kernel`
+  `0.105s` wall
+- kernel check baseline:
+  `time riot check -p kernel --json | grep check_summary`
+  `11.724s` wall, summary `{"files":176,"read_failures":2,"diagnostics":3018,"warnings":2}`
+- notes:
+  `kernel` is currently dominated by missing builtin/toolchain surface
+  (`Unix.*`, `Bytes.*`, `Hashtbl.*`, `Buffer.*`, `Array.of_list`, `Obj.magic`,
+  etc.) plus unsupported lowering forms. This is a correctness project first,
+  not a constant-factor optimization project yet.
 
 ## Last Checkpoint: `cache a root module component index for Module_env.lookup`
 
@@ -172,6 +227,21 @@ Specifically watch:
 A faster run with different diagnostics might be a correctness regression, not a
 win.
 
+Before and after any meaningful checker rewrite, also run the no-deps floors:
+
+```sh
+cd /Users/leostera/Developer/github.com/leostera/riot/packages/riot-check/tests/workspace_fixtures/no_deps_single
+time riot check -p solo --json | grep check_summary
+```
+
+```sh
+cd /Users/leostera/Developer/github.com/leostera/riot/packages/riot-check/tests/workspace_fixtures/no_deps_pair
+time riot check -p leaf --json | grep check_summary
+```
+
+Those runs tell us whether we made the checker itself slower independently of
+real workspace complexity or broken package surfaces.
+
 ## How to commit your work
 
 If a batch is clean, commit it immediately, with messages like this:
@@ -207,6 +277,8 @@ These have held up well so far:
 - env work should move toward symbolic namespace tables, not ad hoc flattening
 - descriptor work should move toward ids in hot paths, not strings or paths
 - solver work should move toward levels, pools, and local copy scopes
+- builtin deps should come from Riot-owned stub summaries, not from trying to
+  chase host toolchain interface files
 - correctness comes before speed, but correctness fixes should still be
   benchmarked
 - architectural parity with OCaml is usually more valuable than guessing at a

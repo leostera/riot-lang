@@ -18,47 +18,53 @@ type t = {
   source_id: SourceId.t;
   (** Host-declared source category. *)
   kind: kind;
+  (** Canonical module identity for this logical source inside the current
+      host-owned session graph. *)
+  module_name: string;
+  (** Semantic equivalent of host-side compiler `-open` flags applied before
+      checking this source. *)
+  implicit_opens: IdentPath.t list;
   (** Host-owned origin label. *)
   origin: origin;
-  (** Stable hash for the exact input that produced this source revision. *)
+  (** Stable typing-input hash for this source revision. *)
   source_hash: Crypto.hash;
   (** Monotonic revision number for this source snapshot. *)
   revision: int;
   (** Prepared parse result for this exact source text. *)
   parse_result: Syn.Parser.parse_result;
   (** Prepared CST lift for this exact source text. *)
-  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
+  cst: Syn.Cst.source_file;
 }
 
-(** Build one logical source record from raw text. *)
-val make: source_id:SourceId.t -> kind:kind -> origin:origin -> revision:int -> text:string -> t
-
-(** Compute the stable hash for one source input text. *)
-val hash_text: kind:kind -> origin:origin -> text:string -> Crypto.hash
+(** Compute the stable hash for one prepared typing input. *)
+val hash: implicit_opens:IdentPath.t list -> cst:Syn.Cst.source_file -> Crypto.hash
 
 (** Build one logical source record from host-prepared parse and CST
     artifacts. *)
 val make_prepared:
   source_id:SourceId.t ->
   kind:kind ->
+  module_name:string ->
+  implicit_opens:IdentPath.t list ->
   origin:origin ->
   revision:int ->
   source_hash:Crypto.hash ->
   parse_result:Syn.Parser.parse_result ->
-  cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
+  cst:Syn.Cst.source_file ->
   t
 
-(** Replace the source text while preserving [source_id]. *)
-val update_text: t -> revision:int -> text:string -> t
+(** Host-side fallback for simple file-backed inputs that do not already know a
+    richer planner/module identity. *)
+val infer_module_name: origin -> string
 
-(** Derive the implicit module name for this logical source. *)
+(** Read the canonical module name for this logical source. *)
 val module_name: t -> string
 
 (** Compute a stable content hash for cacheing the source's exported summary.
 
-    The hash is based on the source kind, derived module name, and current text,
-    but not on [source_id] or [revision], so equivalent logical sources can
-    reuse cached summaries across sessions. *)
+    The hash is based on the prepared semantic syntax plus ambient implicit
+    opens, but not on [source_id] or [revision], so equivalent logical sources
+    can reuse cached summaries across sessions. *)
 val input_hash: t -> Crypto.hash
 
 (** Render the best available human-facing label for this source. *)

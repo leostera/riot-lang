@@ -1,0 +1,16 @@
+{
+  "lowering_diagnostics": [],
+  "parse_diagnostics": [],
+  "typing_diagnostics": [
+    {
+      "case_span": {
+        "end": 61,
+        "start": 54
+      },
+      "id": "TYP1013",
+      "message": "match case is redundant",
+      "name": "redundant-match-case",
+      "severity": "warning"
+    }
+  ]
+}

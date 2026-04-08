@@ -22,6 +22,18 @@ let export_to_json = fun (name, scheme) ->
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string scheme));
   ]
 
+let check_source_text = fun ~filename text ->
+  let parse_result = Syn.parse ~filename text in
+  match Syn.build_cst parse_result with
+  | Ok cst -> Check.check_source ~filename ~parse_result ~cst
+  | Error (Syn.Parse_diagnostics diagnostics) -> panic
+    ("expected CST for "
+    ^ Path.to_string filename
+    ^ ": "
+    ^ String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics))
+  | Error (Syn.Cst_builder_error error) -> panic
+    ("expected CST for " ^ Path.to_string filename ^ ": " ^ error.message)
+
 let manifest_to_json = function
   | TypeDecl.Alias manifest_type -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
@@ -311,6 +323,21 @@ let expected_poly_variant_type_lowering_json = Data.Json.Object [
   ("lowering_diagnostics", Data.Json.Array []);
 ]
 
+let expected_include_module_type_of_lowering_json = Data.Json.Object [
+  (
+    "items",
+    Data.Json.Array [
+      Data.Json.Object [ ("tag", Data.Json.String "include") ];
+      Data.Json.Object [
+        ("tag", Data.Json.String "declared_value");
+        ("value_name", Data.Json.String "spawn");
+        ("scheme", Data.Json.String "(unit -> (unit, exit_reason) result) -> Pid.t");
+      ];
+    ]
+  );
+  ("lowering_diagnostics", Data.Json.Array []);
+]
+
 let test_fun_cases_preserve_preceding_parameters = fun ctx ->
   let source = String.concat
     "\n"
@@ -323,17 +350,17 @@ let test_fun_cases_preserve_preceding_parameters = fun ctx ->
       "let picked = choose 1 ~delta:2 true";
       "";
     ] in
-  let report = Check.check_source ~filename:(Path.v "packages/typ/tests/fun_cases_with_params.ml") source in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/fun_cases_with_params.ml") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_lowering_json report) ~expected:expected_lowering_json
 
 let test_abstract_type_declarations_lower_to_type_items = fun ctx ->
   let source = String.concat "\n" [ "type t"; "type ('a, 'b) pair"; "let value = ()"; "" ] in
-  let report = Check.check_source ~filename:(Path.v "packages/typ/tests/abstract_types.ml") source in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/abstract_types.ml") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_abstract_type_lowering_json
 
 let test_manifest_type_aliases_lower_to_type_items = fun ctx ->
   let source = String.concat "\n" [ "type name = string"; "let value = \"riot\""; "" ] in
-  let report = Check.check_source ~filename:(Path.v "packages/typ/tests/type_alias_recovery.ml") source in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/type_alias_recovery.ml") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_manifest_alias_lowering_json
 
 let test_arrow_type_aliases_preserve_labels_during_lowering = fun ctx ->
@@ -344,7 +371,7 @@ let test_arrow_type_aliases_preserve_labels_during_lowering = fun ctx ->
       "  'input -> step:('input -> 'output) -> ?fallback:'output -> 'output";
       "";
     ] in
-  let report = Check.check_source ~filename:(Path.v "packages/typ/tests/arrow_type_alias.ml") source in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/arrow_type_alias.ml") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_arrow_manifest_alias_lowering_json
 
 let test_poly_variant_type_declarations_lower_to_type_items = fun ctx ->
@@ -356,8 +383,19 @@ let test_poly_variant_type_declarations_lower_to_type_items = fun ctx ->
       "type color = [ ansi | rgb | `hex ]";
       "";
     ] in
-  let report = Check.check_source ~filename:(Path.v "packages/typ/tests/poly_variant_types.ml") source in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/poly_variant_types.ml") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_poly_variant_type_lowering_json
+
+let test_include_module_type_of_lowers_to_include_item = fun ctx ->
+  let source = String.concat
+    "\n"
+    [
+      "include module type of Actors.Process";
+      "val spawn : (unit -> (unit, exit_reason) result) -> Pid.t";
+      "";
+    ] in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_module_type_of.mli") source in
+  Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_include_module_type_of_lowering_json
 
 let () =
   Actors.run
@@ -368,6 +406,7 @@ let () =
         Test.case "manifest type aliases lower to type items" test_manifest_type_aliases_lower_to_type_items;
         Test.case "arrow type aliases preserve labels during lowering" test_arrow_type_aliases_preserve_labels_during_lowering;
         Test.case "polymorphic-variant type declarations lower to type items" test_poly_variant_type_declarations_lower_to_type_items;
+        Test.case "include module type of lowers to include items" test_include_module_type_of_lowers_to_include_item;
       ] in
       Test.Cli.main ~name:"typ:lowering" ~tests ~args)
     ~args:Env.args

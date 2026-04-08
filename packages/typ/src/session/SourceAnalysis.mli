@@ -11,8 +11,8 @@ type t = {
   (** Parser diagnostics collected before CST building. *)
   parse_diagnostics: Syn.Diagnostic.t list;
   (** Successful CST snapshot retained for source-backed tooling. *)
-  cst: Syn.Cst.source_file option;
-  (** Lowered semantic layers when CST building and lowering succeeded. *)
+  cst: Syn.Cst.source_file;
+  (** Lowered semantic layers when lowering succeeded. *)
   semantic_tree: SemanticTree.file option;
   (** Diagnostics emitted during lowering. *)
   lowering_diagnostics: Diagnostic.t list;
@@ -20,6 +20,8 @@ type t = {
   typing_diagnostics: Diagnostic.t list;
   (** Export-facing summary for this analyzed source. *)
   file_summary: FileSummary.t;
+  (** Export-facing binding references retained for definition queries. *)
+  export_bindings: Check_result.binding_ref list;
   (** Query-oriented expression-type index derived from the inferred source. *)
   type_index: TypeIndex.t;
   (** Per-item export snapshots from inference. *)
@@ -33,3 +35,12 @@ val analyze: config:TypConfig.t -> Source.t -> t
 
 (** Extract the export environment, or [[]] when no export was produced. *)
 val exports: t -> FileSummary.exports
+
+(** Resolve one binding reference to a local definition site or an exported path. *)
+val definition_target_of_binding_ref:
+  t ->
+  Check_result.binding_ref ->
+  ModuleTypings.value_definition_target option
+
+(** Build exported definition targets for this analyzed source. *)
+val export_definitions: t -> ModuleTypings.value_definition list

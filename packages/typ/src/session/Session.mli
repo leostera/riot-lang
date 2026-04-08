@@ -38,6 +38,13 @@ val create_source:
   cst:Syn.Cst.source_file ->
   t * SourceId.t
 
+(** Register one additional module-name alias for an existing source.
+
+    Hosts use this when planner-owned sources have an internal canonical module
+    name but should also satisfy local dependency discovery through shorter
+    package-relative names such as [Cell] or [Sync.Cell]. *)
+val register_source_alias: t -> SourceId.t -> module_name:string -> t
+
 (** Replace one existing source while preserving its [SourceId]. *)
 val update_source:
   t ->

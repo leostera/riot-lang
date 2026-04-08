@@ -33,10 +33,7 @@ module Error: module type of Error
     human output.
 *)
 val run:
-  (** Workspace used to resolve packages, ignores, and relative paths. *)
   workspace:Riot_model.Workspace.t ->
-  (** Optional callback for structured progress and diagnostic events. *)
   ?on_event:(Check.Event.t -> unit) ->
-  (** Parsed command-line matches for [riot check]. *)
   ArgParser.matches ->
   (unit, Error.t) result

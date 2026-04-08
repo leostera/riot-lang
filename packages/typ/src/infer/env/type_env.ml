@@ -30,11 +30,7 @@ and t = {
 let empty = { current = Name_map.empty; by_id = Id_map.empty; layer = Nothing }
 
 let is_empty = fun env ->
-  Name_map.is_empty env.current
-  &&
-  Id_map.is_empty env.by_id
-  &&
-  match env.layer with
+  Name_map.is_empty env.current && Id_map.is_empty env.by_id && match env.layer with
   | Nothing -> true
   | Open _
   | Map _ -> false
@@ -57,7 +53,9 @@ let id_index_of_type_decls = fun type_decls ->
 
 let components_of_type_decls = fun type_decls ->
   let by_name =
-    type_decls |> List.rev |> List.fold_left
+    type_decls
+    |> List.rev
+    |> List.fold_left
       (fun acc (type_decl: FileSummary.type_decl) ->
         Name_map.add (decl_name type_decl) type_decl acc)
       Name_map.empty
@@ -101,14 +99,14 @@ let merge_visible_by_id = fun dominant rest ->
 let merge_visible_components = fun dominant rest ->
   {
     by_name = merge_visible_by_name dominant.by_name rest.by_name;
-    by_id = merge_visible_by_id dominant.by_id rest.by_id;
+    by_id = merge_visible_by_id dominant.by_id rest.by_id
   }
 
 let of_type_decls = fun type_decls ->
   {
     current = current_of_type_decls type_decls;
     by_id = id_index_of_type_decls type_decls;
-    layer = Nothing;
+    layer = Nothing
   }
 
 let current_type_decls = fun current -> Name_map.bindings current |> List.concat_map snd
@@ -116,7 +114,8 @@ let current_type_decls = fun current -> Name_map.bindings current |> List.concat
 let rec visible_components = fun env ->
   let current = current_visible_components env in
   match env.layer with
-  | Nothing -> current
+  | Nothing ->
+      current
   | Open { components; next; _ } ->
       current
       |> merge_visible_components components
@@ -127,7 +126,7 @@ let rec visible_components = fun env ->
       |> merge_visible_components
         {
           by_name = Name_map.map map_decl next_visible.by_name;
-          by_id = Id_map.map map_decl next_visible.by_id;
+          by_id = Id_map.map map_decl next_visible.by_id
         }
 
 let type_decls =
@@ -149,17 +148,13 @@ let map = fun map_decl env ->
   if is_empty env then
     env
   else
-    {
-      current = Name_map.empty;
-      by_id = Id_map.empty;
-      layer = Map { map_decl; next = env };
-    }
+    { current = Name_map.empty; by_id = Id_map.empty; layer = Map { map_decl; next = env } }
 
 let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     by_id = Id_map.empty;
-    layer = Open { root; components = visible_components opened; next = env };
+    layer = Open { root; components = visible_components opened; next = env }
   }
 
 let merge_current = fun introduced existing ->
@@ -179,7 +174,7 @@ let bind = fun env introduced ->
     {
       current = merge_current introduced.current env.current;
       by_id = Id_map.fold Id_map.add introduced.by_id env.by_id;
-      layer = env.layer;
+      layer = env.layer
     }
 
 let rec lookup_name = fun env name ->
@@ -187,13 +182,15 @@ let rec lookup_name = fun env name ->
   | Some (type_decl :: _) -> Some type_decl
   | _ -> (
       match env.layer with
-      | Nothing -> None
+      | Nothing ->
+          None
       | Open { root; components; next } -> (
           match Name_map.find_opt name components.by_name with
           | Some type_decl -> Some (qualify_type_decl root type_decl)
           | None -> lookup_name next name
         )
-      | Map { map_decl; next } -> lookup_name next name |> Option.map map_decl
+      | Map { map_decl; next } ->
+          lookup_name next name |> Option.map map_decl
     )
 
 let lookup = fun env path ->
@@ -206,13 +203,15 @@ let rec lookup_by_id = fun env type_constructor_id ->
   | Some type_decl -> Some type_decl
   | None -> (
       match env.layer with
-      | Nothing -> None
+      | Nothing ->
+          None
       | Open { root; components; next } -> (
           match Id_map.find_opt type_constructor_id components.by_id with
           | Some type_decl -> Some (qualify_type_decl root type_decl)
           | None -> lookup_by_id next type_constructor_id
         )
-      | Map { map_decl; next } -> lookup_by_id next type_constructor_id |> Option.map map_decl
+      | Map { map_decl; next } ->
+          lookup_by_id next type_constructor_id |> Option.map map_decl
     )
 
 let qualify_entries = fun prefix env -> map (qualify_type_decl prefix) env
@@ -222,9 +221,7 @@ let entries_for_include = fun env module_path ->
     (fun (type_decl: FileSummary.type_decl) ->
       match IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path with
       | Some scope_path -> Some { type_decl with scope_path }
-      | None -> None)
-  |> of_type_decls
+      | None -> None) |> of_type_decls
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
-  entries_for_include env module_path
-  |> qualify_entries (IdentPath.of_name alias_name)
+  entries_for_include env module_path |> qualify_entries (IdentPath.of_name alias_name)

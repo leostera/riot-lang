@@ -6,16 +6,13 @@ open Model
 type t = {
   file: SemanticTree.file;
   config: TypConfig.t;
-  regions: Region.t;
-  mutable next_type_var_id: int;
+  solver: Solver.t;
   mutable next_binding_local_id: int;
   mutable next_hole_id: int;
   mutable diagnostics: Diagnostic.t list;
   mutable expr_traces: Check_result.expr_trace list;
   mutable item_traces: Check_result.item_trace list;
-  mutable visible_type_decls: FileSummary.type_decl list;
-  visible_type_decl_by_path: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
-  visible_type_decl_by_id: (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t;
+  mutable visible_types: VisibleTypes.t;
   mutable forced_export_names: string list;
 }
 
@@ -28,20 +25,17 @@ let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
 let bind_type_decls = fun type_decls introduced ->
   List.fold_left
     (fun acc (type_decl: FileSummary.type_decl) ->
-      let key = type_decl_key type_decl in
+      let key = qualify_name type_decl.scope_path type_decl.declaration.type_name in
       let acc =
-        List.filter (fun candidate -> not (IdentPath.equal (type_decl_key candidate) key)) acc
+        List.filter
+          (fun (candidate: FileSummary.type_decl) ->
+            not
+              (IdentPath.equal (qualify_name candidate.scope_path candidate.declaration.type_name) key))
+          acc
       in
       acc @ [ type_decl ])
     type_decls
     introduced
-
-let aliases_for_type_decls = fun type_decls module_path ->
-  type_decls |> List.filter_map
-    (fun (type_decl: FileSummary.type_decl) ->
-      match IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path with
-      | Some scope_path -> Some { type_decl with scope_path }
-      | None -> None)
 
 let prefix_type_decls = fun prefix type_decls ->
   List.map
@@ -49,11 +43,8 @@ let prefix_type_decls = fun prefix type_decls ->
       { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path })
     type_decls
 
-let same_named_type_constructor = fun left right ->
-  match (left, right) with
-  | (TypeRepr.Unresolved, TypeRepr.Unresolved) -> true
-  | (TypeRepr.Resolved left, TypeRepr.Resolved right) -> TypeConstructorId.equal left right
-  | _ -> false
+let same_named_head = fun left right ->
+  TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
 
 let map_preserving = fun loop xs ->
   let rec walk changed acc = function
@@ -68,20 +59,135 @@ let map_preserving = fun loop xs ->
   in
   walk false [] xs
 
-let resolve_named_type_constructor_in_index = fun by_path type_constructor name ->
-  match type_constructor with
-  | TypeRepr.Resolved _ -> type_constructor
-  | TypeRepr.Unresolved -> (
-      match BuiltinTypeConstructors.of_path name with
-      | TypeRepr.Resolved _ as resolved -> resolved
-      | TypeRepr.Unresolved ->
-          Collections.HashMap.get by_path name
-          |> Option.map (fun (type_decl: FileSummary.type_decl) ->
-            TypeRepr.Resolved type_decl.declaration.type_constructor_id)
-          |> Option.unwrap_or ~default:TypeRepr.Unresolved
-    )
+let resolve_named_type_head_in_index = fun by_path name ->
+  let qualified_external_head =
+    match IdentPath.to_segments name with
+    | _ :: _ :: _ -> Some (TypeRepr.named_head
+      ~type_constructor_id:(TypeConstructorId.of_path name)
+      ~name)
+    | _ -> None
+  in
+  Collections.HashMap.get by_path name
+  |> Option.map
+    (fun (type_decl: FileSummary.type_decl) ->
+      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+  |> fun resolved ->
+    Option.or_else resolved
+      (fun () ->
+        Option.or_else
+          (BuiltinTypeConstructors.head_of_path name)
+          (fun () -> qualified_external_head))
 
-let resolve_type_with = fun ~make ~resolve_named_type_constructor ->
+let substitute_type_vars_with = fun ~make ty mapping ->
+  let rec loop ty =
+    let ty = TypeRepr.prune ty in
+    match TypeRepr.view ty with
+    | TypeRepr.Int
+    | TypeRepr.Float
+    | TypeRepr.Bool
+    | TypeRepr.String
+    | TypeRepr.Char
+    | TypeRepr.Unit
+    | TypeRepr.Hole _ ->
+        ty
+    | TypeRepr.Option element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Option element')
+    | TypeRepr.Result (ok_ty, error_ty) ->
+        let ok_ty' = loop ok_ty in
+        let error_ty' = loop error_ty in
+        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+          ty
+        else
+          make (TypeRepr.Result (ok_ty', error_ty'))
+    | TypeRepr.Array element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Array element')
+    | TypeRepr.List element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.List element')
+    | TypeRepr.Seq element ->
+        let element' = loop element in
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          make (TypeRepr.Seq element')
+    | TypeRepr.Named { head; arguments } ->
+        let arguments' = map_preserving loop arguments in
+        if Std.Ptr.equal arguments arguments' then
+          ty
+        else
+          make (TypeRepr.Named { head; arguments = arguments' })
+    | TypeRepr.PolyVariant { bound; tags; inherited } ->
+        let tags' = map_preserving
+          (fun (tag: TypeRepr.poly_variant_tag) ->
+            match tag.payload_type with
+            | Some payload_type ->
+                let payload_type' = loop payload_type in
+                if Std.Ptr.equal payload_type payload_type' then
+                  tag
+                else
+                  { tag with payload_type = Some payload_type' }
+            | None -> tag)
+          tags in
+        let inherited' = map_preserving loop inherited in
+        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+          ty
+        else
+          make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' })
+    | TypeRepr.Tuple members ->
+        let members' = map_preserving loop members in
+        if Std.Ptr.equal members members' then
+          ty
+        else
+          make (TypeRepr.Tuple members')
+    | TypeRepr.Arrow { label; lhs; rhs } ->
+        let lhs' = loop lhs in
+        let rhs' = loop rhs in
+        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+          ty
+        else
+          make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+    | TypeRepr.Var { id; link=None; _ } -> (
+        match Collections.HashMap.get mapping id with
+        | Some replacement -> replacement
+        | None -> ty
+      )
+    | TypeRepr.Var { link=Some linked; _ } ->
+        loop linked
+  in
+  loop ty
+
+let instantiate_alias_manifest = fun ~make (type_decl: FileSummary.type_decl) arguments ->
+  match type_decl.declaration.manifest with
+  | Some (TypeDecl.Alias manifest_type) when List.length type_decl.declaration.param_ids
+  = List.length arguments ->
+      let mapping = Collections.HashMap.with_capacity 8 in
+      let () =
+        List.iter2
+          (fun param_id argument ->
+            let _ = Collections.HashMap.insert mapping param_id argument in
+            ())
+          type_decl.declaration.param_ids
+          arguments
+      in
+      Some (substitute_type_vars_with ~make manifest_type mapping)
+  | _ -> None
+
+let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_head ->
+  let same_head = fun left right ->
+    TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
+    && IdentPath.equal left.TypeRepr.name right.TypeRepr.name
+  in
   let rec loop ty =
     let ty = TypeRepr.prune ty in
     match TypeRepr.view ty with
@@ -125,13 +231,55 @@ let resolve_type_with = fun ~make ~resolve_named_type_constructor ->
           ty
         else
           make (TypeRepr.Seq element')
-    | TypeRepr.Named { type_constructor; name; arguments } ->
-        let type_constructor' = resolve_named_type_constructor type_constructor name in
+    | TypeRepr.Named { head; arguments } ->
         let arguments' = map_preserving loop arguments in
-        if same_named_type_constructor type_constructor type_constructor' && Std.Ptr.equal arguments arguments' then
+        let resolved_head =
+          match resolve_named_type_head head.name with
+          | Some resolved_head -> resolved_head
+          | None -> head
+        in
+        (
+          match resolve_named_type_decl head.name with
+          | Some type_decl -> (
+              match instantiate_alias_manifest ~make type_decl arguments' with
+              | Some manifest -> loop manifest
+              | None -> (
+                  match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
+                  | Some builtin -> builtin
+                  | None ->
+                  if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                    ty
+                  else
+                    make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+                )
+            )
+          | None -> (
+              match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
+              | Some builtin -> builtin
+              | None ->
+              if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                ty
+              else
+                make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+            )
+        )
+    | TypeRepr.PolyVariant { bound; tags; inherited } ->
+        let tags' = map_preserving
+          (fun (tag: TypeRepr.poly_variant_tag) ->
+            match tag.payload_type with
+            | Some payload_type ->
+                let payload_type' = loop payload_type in
+                if Std.Ptr.equal payload_type payload_type' then
+                  tag
+                else
+                  { tag with payload_type = Some payload_type' }
+            | None -> tag)
+          tags in
+        let inherited' = map_preserving loop inherited in
+        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
           ty
         else
-          make (TypeRepr.Named { type_constructor = type_constructor'; name; arguments = arguments' })
+          make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' })
     | TypeRepr.Tuple members ->
         let members' = map_preserving loop members in
         if Std.Ptr.equal members members' then
@@ -148,17 +296,23 @@ let resolve_type_with = fun ~make ~resolve_named_type_constructor ->
   in
   loop
 
+let canonicalize_scheme_with = fun canonicalize_type scheme ->
+  let quantified, body = TypeScheme.to_explicit scheme in
+  let body' = canonicalize_type body in
+  if Std.Ptr.equal body body' then
+    scheme
+  else
+    TypeScheme.of_explicit ~quantified body'
+
 let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   let by_path = Collections.HashMap.with_capacity 32 in
   let by_id = Collections.HashMap.with_capacity 32 in
   let computed = Collections.HashMap.with_capacity 32 in
-  let cached_param_variances = fun type_constructor_id ->
+  let cached_param_variances type_constructor_id =
     match cached_by_id with
-    | Some cached_by_id ->
-        Collections.HashMap.get cached_by_id type_constructor_id
-        |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.param_variances)
-    | None ->
-        None
+    | Some cached_by_id -> Collections.HashMap.get cached_by_id type_constructor_id
+    |> Option.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.param_variances)
+    | None -> None
   in
   let () =
     type_decls
@@ -168,59 +322,63 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
         ())
   in
-  let resolve_named_type_constructor = resolve_named_type_constructor_in_index by_path in
-  let resolve_type = resolve_type_with
-    ~make:TypeRepr.of_desc
-    ~resolve_named_type_constructor in
-  let canonicalize_type_decl = fun (type_decl: FileSummary.type_decl) ->
+  let resolve_named_type_head = resolve_named_type_head_in_index by_path in
+  let resolve_type =
+    resolve_type_with ~make:TypeRepr.of_desc
+      ~resolve_named_type_decl:(fun name ->
+        Collections.HashMap.get by_path name)
+      ~resolve_named_type_head
+  in
+  let canonicalize_type_decl (type_decl: FileSummary.type_decl) =
     let declaration = type_decl.declaration in
     let manifest =
       match declaration.manifest with
       | None -> None
-      | Some (TypeDecl.Alias manifest_type) ->
-          Some (TypeDecl.Alias (resolve_type manifest_type))
+      | Some (TypeDecl.Alias manifest_type) -> Some (TypeDecl.Alias (resolve_type manifest_type))
       | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
-          Some (TypeDecl.PolyVariant {
-            bound;
-            tags = List.map
-              (fun (tag: TypeDecl.poly_variant_tag) ->
-                match tag.payload_type with
-                | Some payload_type -> {
-                  tag with
-                  payload_type = Some (resolve_type payload_type);
-                }
-                | None -> tag)
-              tags;
-            inherited = List.map resolve_type inherited;
-          })
+          Some (
+            TypeDecl.PolyVariant {
+              bound;
+              tags =
+                List.map
+                  (fun (tag: TypeDecl.poly_variant_tag) ->
+                    match tag.payload_type with
+                    | Some payload_type -> {
+                      tag
+                      with payload_type = Some (resolve_type payload_type)
+                    }
+                    | None -> tag)
+                  tags;
+              inherited = List.map resolve_type inherited;
+            }
+          )
     in
-    let constructors = declaration.constructors
-      |> List.map (fun (constructor: TypeDecl.constructor) ->
-        let body = TypeScheme.body constructor.scheme in
-        let body' = resolve_type body in
-        if Std.Ptr.equal body body' then
-          constructor
-        else
-          { constructor with scheme = TypeScheme.of_type body' })
+    let constructors =
+      declaration.constructors
+      |> List.map
+        (fun (constructor: TypeDecl.constructor) ->
+          let body = TypeScheme.body constructor.scheme in
+          let body' = resolve_type body in
+          if Std.Ptr.equal body body' then
+            constructor
+          else
+            { constructor with scheme = TypeScheme.of_type body' })
     in
-    let labels = declaration.labels
-      |> List.map (fun (label: TypeDecl.label) ->
-        let field_type' = resolve_type label.field_type in
-        if Std.Ptr.equal label.field_type field_type' then
-          label
-        else
-          { label with field_type = field_type' })
+    let labels =
+      declaration.labels
+      |> List.map
+        (fun (label: TypeDecl.label) ->
+          let field_type' = resolve_type label.field_type in
+          if Std.Ptr.equal label.field_type field_type' then
+            label
+          else
+            { label with field_type = field_type' })
     in
     { type_decl with declaration = { declaration with manifest; constructors; labels } }
   in
-  let rec parameter_variances_for_named_type visiting type_constructor_id name arguments =
+  let rec parameter_variances_for_named_type visiting ~name ~type_constructor_id arguments =
     let default =
       List.map (fun _ -> TypeDecl.Invariant) arguments
-    in
-    let type_constructor_id =
-      match resolve_named_type_constructor type_constructor_id name with
-      | TypeRepr.Resolved type_constructor_id -> Some type_constructor_id
-      | TypeRepr.Unresolved -> None
     in
     match type_constructor_id with
     | Some type_constructor_id when Collections.HashSet.contains visiting type_constructor_id ->
@@ -269,11 +427,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         collect_type_variances_into visiting variance acc error_ty
     | TypeRepr.Array element ->
         collect_type_variances_into visiting TypeDecl.Invariant acc element
-    | TypeRepr.Named { type_constructor; name; arguments } ->
+    | TypeRepr.Named { head={ type_constructor_id; name }; arguments } ->
         let parameter_variances = parameter_variances_for_named_type
           visiting
-          type_constructor
-          name
+          ~name
+          ~type_constructor_id:(Some type_constructor_id)
           arguments in
         let rec loop arguments parameter_variances =
           match (arguments, parameter_variances) with
@@ -287,6 +445,16 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
           | _ -> ()
         in
         loop arguments parameter_variances
+    | TypeRepr.PolyVariant { tags; inherited; _ } ->
+        let () =
+          tags |> List.iter
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  collect_type_variances_into visiting variance acc payload_type
+              | None -> ())
+        in
+        List.iter (fun inherited_type -> collect_type_variances_into visiting variance acc inherited_type) inherited
     | TypeRepr.Tuple members ->
         List.iter (fun member -> collect_type_variances_into visiting variance acc member) members
     | TypeRepr.Arrow { lhs; rhs; _ } ->
@@ -312,7 +480,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
     let () =
       match declaration.manifest with
       | Some (TypeDecl.Alias manifest_type) ->
-          collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type manifest_type)
+          collect_type_variances_into
+            visiting
+            TypeDecl.Covariant
+            variances
+            (resolve_type manifest_type)
       | Some (TypeDecl.PolyVariant { tags; inherited; _ }) ->
           let () =
             tags
@@ -329,7 +501,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
           inherited
           |> List.iter
             (fun inherited_type ->
-              collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type inherited_type))
+              collect_type_variances_into
+                visiting
+                TypeDecl.Covariant
+                variances
+                (resolve_type inherited_type))
       | None ->
           ()
     in
@@ -346,7 +522,8 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
     in
     let () = constructor_payload_types
     |> List.iter
-      (fun payload_type -> collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type payload_type)) in
+      (fun payload_type ->
+        collect_type_variances_into visiting TypeDecl.Covariant variances (resolve_type payload_type)) in
     let () =
       declaration.labels
       |> List.iter
@@ -357,7 +534,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
             else
               TypeDecl.Covariant
           in
-          collect_type_variances_into visiting field_variance variances (resolve_type label.field_type))
+          collect_type_variances_into
+            visiting
+            field_variance
+            variances
+            (resolve_type label.field_type))
     in
     declaration.param_ids |> List.map
       (fun param_id ->
@@ -373,62 +554,100 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         | Some param_variances -> param_variances
         | None -> declaration_param_variances (Collections.HashSet.create ()) canonical_type_decl
       in
-      { canonical_type_decl with declaration = { canonical_type_decl.declaration with param_variances } })
+      {
+        canonical_type_decl
+        with declaration = { canonical_type_decl.declaration with param_variances }
+      })
 
-let type_decls_for_include = fun type_decls module_path -> aliases_for_type_decls type_decls module_path
+let type_decls_for_include = fun visible_types module_path ->
+  VisibleTypes.type_decls_for_include visible_types module_path
 
-let type_decls_for_module_alias = fun type_decls ~alias_name ~module_path ->
-  aliases_for_type_decls type_decls module_path |> prefix_type_decls (IdentPath.of_name alias_name)
-
-let rebuild_visible_type_decl_indexes = fun (state: t) ->
-  let () = Collections.HashMap.clear state.visible_type_decl_by_path in
-  let () = Collections.HashMap.clear state.visible_type_decl_by_id in
-  state.visible_type_decls |> List.iter
-    (fun (type_decl: FileSummary.type_decl) ->
-      let _ = Collections.HashMap.insert state.visible_type_decl_by_path (type_decl_key type_decl) type_decl in
-      let _ = Collections.HashMap.insert
-        state.visible_type_decl_by_id
-        type_decl.declaration.type_constructor_id
-        type_decl in
-      ())
+let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
+  VisibleTypes.type_decls_for_module_alias visible_types ~alias_name ~module_path
 
 let make = fun ~(config:TypConfig.t) file ->
-  let visible_type_decls = annotate_type_decl_variances config.ambient_type_decls in
   let state = {
     file;
     config;
-    regions = Region.create ();
-    next_type_var_id = 0;
+    solver = Solver.create ();
     next_binding_local_id = 0;
     next_hole_id = 0;
     diagnostics = [];
     expr_traces = [];
     item_traces = [];
-    visible_type_decls;
-    visible_type_decl_by_path = Collections.HashMap.with_capacity 32;
-    visible_type_decl_by_id = Collections.HashMap.with_capacity 32;
+    visible_types = config.ambient_visible_types;
     forced_export_names = [];
   }
   in
-  let () = rebuild_visible_type_decl_indexes state in
   state
 
-let fresh_var = fun (state: t) ->
-  let id = state.next_type_var_id in
-  let () =
-    state.next_type_var_id <- state.next_type_var_id + 1
+let fresh_var = fun (state: t) -> Solver.fresh_var state.solver
+
+let make_type = fun (state: t) desc ->
+  Solver.make_type state.solver desc
+
+let resolve_named_type_head = fun (state: t) name ->
+  VisibleTypes.resolve_named_type_head state.visible_types name
+
+let canonicalize_type = fun (state: t) -> VisibleTypes.canonicalize_type state.visible_types
+
+let canonicalize_scheme = fun (state: t) scheme ->
+  canonicalize_scheme_with (canonicalize_type state) scheme
+
+let canonicalize_scheme_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head scheme ->
+  canonicalize_scheme_with
+    (resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head)
+    scheme
+
+let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head (
+  type_decl: FileSummary.type_decl
+) ->
+  let canonicalize_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
+  let declaration = type_decl.declaration in
+  let manifest =
+    match declaration.manifest with
+    | None -> None
+    | Some (TypeDecl.Alias manifest_type) -> Some (TypeDecl.Alias (canonicalize_type manifest_type))
+    | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
+        Some (
+          TypeDecl.PolyVariant {
+            bound;
+            tags =
+              List.map
+                (fun (tag: TypeDecl.poly_variant_tag) ->
+                  match tag.payload_type with
+                  | Some payload_type -> {
+                    tag
+                    with payload_type = Some (canonicalize_type payload_type)
+                  }
+                  | None -> tag)
+                tags;
+            inherited = List.map canonicalize_type inherited;
+          }
+        )
   in
-  Region.fresh_var state.regions id
+  let constructors = declaration.constructors
+  |> List.map
+    (fun (constructor: TypeDecl.constructor) ->
+      { constructor with scheme = canonicalize_scheme_with canonicalize_type constructor.scheme }) in
+  let labels = declaration.labels
+  |> List.map
+    (fun (label: TypeDecl.label) -> { label with field_type = canonicalize_type label.field_type }) in
+  { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
-let make_type = fun (state: t) desc -> TypeRepr.of_desc desc |> Region.track_node state.regions
+let canonicalize_scheme_with_named_type_head = fun resolve_named_type_head scheme ->
+  canonicalize_scheme_with_name_resolution
+    ~resolve_named_type_decl:(fun _ -> None)
+    ~resolve_named_type_head
+    scheme
 
-let resolve_named_type_constructor = fun (state: t) type_constructor name ->
-  resolve_named_type_constructor_in_index state.visible_type_decl_by_path type_constructor name
+let visible_type_decls = fun (state: t) -> VisibleTypes.type_decls state.visible_types
 
-let resolve_type = fun (state: t) ->
-  resolve_type_with
-    ~make:(make_type state)
-    ~resolve_named_type_constructor:(resolve_named_type_constructor state)
+let visible_type_decl = fun (state: t) name ->
+  VisibleTypes.lookup state.visible_types name
+
+let visible_type_decl_by_id = fun (state: t) type_constructor_id ->
+  VisibleTypes.lookup_by_id state.visible_types type_constructor_id
 
 let fresh_binding_local_id = fun (state: t) ->
   let local_id = state.next_binding_local_id in
@@ -444,16 +663,11 @@ let fresh_hole = fun (state: t) ->
   in
   make_type state (TypeRepr.Hole hole_id)
 
-let with_local_level_gen = fun (state: t) f ->
-  Region.with_region state.regions f
-
 let set_visible_type_decls = fun (state: t) type_decls ->
-  let type_decls =
-    annotate_type_decl_variances ~cached_by_id:state.visible_type_decl_by_id type_decls
+  let local_visible_types = VisibleTypes.of_type_decls
+    ~cached_by_id:(VisibleTypes.by_id state.visible_types)
+    type_decls in
+  let () =
+    state.visible_types <- VisibleTypes.merge state.config.ambient_visible_types local_visible_types
   in
-  let visible_type_decls =
-    bind_type_decls state.config.ambient_type_decls type_decls
-  in
-  let () = state.visible_type_decls <- visible_type_decls in
-  let () = rebuild_visible_type_decl_indexes state in
-  type_decls
+  VisibleTypes.type_decls local_visible_types

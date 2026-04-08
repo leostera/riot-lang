@@ -5,6 +5,7 @@ open Syn
 
 type state = {
   source: Source.t;
+  source_owner: string;
   mutable scope_path: IdentPath.t;
   mutable next_origin_id: int;
   mutable next_pattern_id: int;
@@ -42,10 +43,15 @@ let last_path_segment_text = fun path ->
 let qualify_scoped_name = fun scope_path name ->
   IdentPath.append_name scope_path name
 
+let source_owner = fun (source: Source.t) ->
+  match source.origin with
+  | Source.Path path -> Path.remove_extension path |> Path.to_string
+  | Source.Label label -> Path.v label |> Path.remove_extension |> Path.to_string
+
 let resolve_named_type_name = fun (state: state) name ->
   let prelude_path = IdentPath.of_name name in
   let rec loop = function
-    | [] -> (prelude_path, BuiltinTypeConstructors.of_path prelude_path)
+    | [] -> BuiltinTypeConstructors.head_of_path prelude_path
     | scope_path :: rest ->
         if
           List.exists
@@ -53,35 +59,46 @@ let resolve_named_type_name = fun (state: state) name ->
               String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path)
             state.declared_type_names
         then
-          let type_constructor =
+          let type_constructor_id =
             state.declared_type_names
             |> List.find_map
               (fun (candidate_name, candidate_scope_path, candidate_id) ->
                 if
                   String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path
                 then
-                  Some (TypeRepr.Resolved candidate_id)
+                  Some candidate_id
                 else
                   None)
           in
-          (qualify_scoped_name scope_path name, Option.unwrap_or ~default:TypeRepr.Unresolved type_constructor)
+          type_constructor_id
+          |> Option.map
+            (fun type_constructor_id ->
+              TypeRepr.named_head ~type_constructor_id ~name:(qualify_scoped_name scope_path name))
         else
           loop rest
   in
   IdentPath.prefixes state.scope_path |> List.rev |> loop
 
 let resolve_named_type_path = fun (state: state) path ->
+  let external_head () = TypeRepr.named_head
+    ~type_constructor_id:(TypeConstructorId.of_path path)
+    ~name:path in
   match IdentPath.split_last path with
   | Some (scope_path, type_name) ->
-      state.declared_type_names
-      |> List.find_map
+      state.declared_type_names |> List.find_map
         (fun (candidate_name, candidate_scope_path, candidate_id) ->
-          if String.equal candidate_name type_name && IdentPath.equal candidate_scope_path scope_path then
-            Some (path, TypeRepr.Resolved candidate_id)
+          if
+            String.equal candidate_name type_name && IdentPath.equal candidate_scope_path scope_path
+          then
+            Some (TypeRepr.named_head ~type_constructor_id:candidate_id ~name:path)
           else
-            None)
-      |> Option.unwrap_or ~default:(path, BuiltinTypeConstructors.of_path path)
-  | None -> (path, BuiltinTypeConstructors.of_path path)
+            None) |> fun resolved ->
+        Option.or_else resolved
+          (fun () ->
+            Option.or_else
+              (BuiltinTypeConstructors.head_of_path path)
+              (fun () -> Some (external_head ())))
+  | None -> BuiltinTypeConstructors.head_of_path path
 
 let register_declared_type_name = fun (state: state) name ->
   match
@@ -96,7 +113,7 @@ let register_declared_type_name = fun (state: state) name ->
   with
   | Some type_constructor_id -> type_constructor_id
   | None ->
-      let type_constructor_id = TypeConstructorId.of_int state.next_type_constructor_id in
+      let type_constructor_id = TypeConstructorId.make ~owner:state.source_owner ~local_id:state.next_type_constructor_id in
       let () =
         state.next_type_constructor_id <- state.next_type_constructor_id + 1
       in
@@ -195,13 +212,16 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
         match builtin_type_of_name (IdentPath.to_string name) arguments with
         | Some builtin -> builtin
         | None ->
-            let segments = Cst.Ident.segments constructor_path in
-            let (name, type_constructor) =
-              match segments with
+            let head =
+              match Cst.Ident.segments constructor_path with
               | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
               | _ -> resolve_named_type_path state name
             in
-            TypeRepr.named ~type_constructor ~name ~arguments
+            (
+              match head with
+              | Some head -> TypeRepr.named ~head ~arguments
+              | None -> TypeRepr.named_path ~name ~arguments
+            )
       end
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
       TypeRepr.arrow
@@ -246,6 +266,7 @@ let variant_constructor_payload = fun (state: state) type_params (
 let make_state = fun source ->
   {
     source;
+    source_owner = source_owner source;
     scope_path = IdentPath.empty;
     next_origin_id = 0;
     next_pattern_id = 0;
@@ -483,8 +504,9 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
   let type_constructor_id = register_declared_type_name state type_name in
   let params = type_param_bindings declaration in
   let result_type = TypeRepr.named
-    ~type_constructor:(TypeRepr.Resolved type_constructor_id)
-    ~name:(qualify_scoped_name state.scope_path type_name)
+    ~head:(TypeRepr.named_head
+      ~type_constructor_id
+      ~name:(qualify_scoped_name state.scope_path type_name))
     ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
   let lowered_declaration =
     match Cst.TypeDeclaration.type_definition declaration with
@@ -562,8 +584,9 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
 let lower_exception_declaration = fun (state: state) (declaration: Cst.exception_declaration) ->
   let exception_name = Cst.Token.text declaration.name_token in
   let exn_type = TypeRepr.named
-    ~type_constructor:(TypeRepr.Resolved BuiltinTypeConstructors.exn_type_constructor_id)
-    ~name:(IdentPath.of_name "exn")
+    ~head:(TypeRepr.named_head
+      ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
+      ~name:(IdentPath.of_name "exn"))
     ~arguments:[] in
   let payload_type =
     match declaration.rhs with
@@ -614,6 +637,45 @@ let rec collect_core_type_var_names = fun core_type ->
   | Cst.CoreType.Tuple { elements; _ } -> collect_many elements
   | _ -> []
 
+let rec first_unsupported_core_type = fun core_type ->
+  let find_many items =
+    items |> List.find_map first_unsupported_core_type
+  in
+  match core_type with
+  | Cst.CoreType.Parenthesized { inner; _ }
+  | Cst.CoreType.Attribute { type_=inner; _ }
+  | Cst.CoreType.Alias { type_=inner; _ } -> first_unsupported_core_type inner
+  | Cst.CoreType.Var _ -> None
+  | Cst.CoreType.Constr { arguments; _ } -> find_many arguments
+  | Cst.CoreType.Arrow { parameter_type; result_type; _ } -> Option.or_else
+    (first_unsupported_core_type parameter_type)
+    (fun () -> first_unsupported_core_type result_type)
+  | Cst.CoreType.Tuple { elements; _ } -> find_many elements
+  | Cst.CoreType.Wildcard _
+  | Cst.CoreType.Class _
+  | Cst.CoreType.Extension _
+  | Cst.CoreType.Poly _
+  | Cst.CoreType.PolyVariant _
+  | Cst.CoreType.Record _
+  | Cst.CoreType.FirstClassModule _
+  | Cst.CoreType.Object _ -> Some core_type
+
+let add_unsupported_declared_core_type_diagnostic = fun (state: state) core_type ->
+  match first_unsupported_core_type core_type with
+  | None -> ()
+  | Some unsupported_core_type ->
+      let syntax_node = Cst.CoreType.syntax_node unsupported_core_type in
+      add_diagnostic state
+        (
+          Typ_diagnostic.UnsupportedSyntax {
+            syntax_span = Cst.token_body_span syntax_node;
+            syntax_kind = Cst.syntax_kind syntax_node;
+            context = Typ_diagnostic.SignatureItem;
+            recovery = Typ_diagnostic.PlaceholderItem;
+            reason = None
+          }
+        )
+
 let scheme_of_declared_core_type = fun (state: state) core_type ->
   let params = collect_core_type_var_names core_type |> List.mapi (fun index name -> (name, index)) in
   let ty = lower_core_type state params core_type in
@@ -621,6 +683,7 @@ let scheme_of_declared_core_type = fun (state: state) core_type ->
 
 let lower_value_declaration = fun (state: state) syntax_node name_tokens type_ ->
   let value_name = declared_value_name name_tokens in
+  let () = add_unsupported_declared_core_type_diagnostic state type_ in
   let scheme = scheme_of_declared_core_type state type_ in
   let _ = add_item state ~syntax_node (`DeclaredValue (value_name, scheme)) in
   ()
@@ -1190,8 +1253,22 @@ and lower_expr = fun (state: state) expression ->
       add_expr state ~syntax_node ~label:"sequence_expression" (BodyArena.ESequence element_ids)
   | Cst.Expression.Parenthesized { inner; _ } ->
       lower_expr state inner
-  | Cst.Expression.TypeAscription { expression; _ } ->
-      lower_expr state expression
+  | Cst.Expression.TypeAscription { syntax_node; expression; kind; _ } -> (
+      match kind with
+      | Cst.Coerce { type_; _ } ->
+          let value_id = lower_expr state expression in
+          add_expr
+            state
+            ~syntax_node
+            ~label:"coercion_expression"
+            (BodyArena.ECoerce {
+              value_id;
+              target_type = lower_core_type state [] type_;
+            })
+      | Cst.Type _
+      | Cst.ConstraintCoerce _ ->
+          lower_expr state expression
+    )
   | Cst.Expression.Polymorphic { syntax_node; expression; _ } ->
       let () = add_diagnostic
         state
@@ -1438,6 +1515,9 @@ and lower_signature_include_statement = fun (state: state) (include_statement: C
       match module_type with
       | Cst.ModuleType.Path path ->
           let _ = add_item state ~syntax_node (`Include (ident_path path)) in
+          ()
+      | Cst.ModuleType.TypeOf { module_path; _ } ->
+          let _ = add_item state ~syntax_node (`Include (ident_path module_path)) in
           ()
       | Cst.ModuleType.Parenthesized { inner; _ }
       | Cst.ModuleType.Attribute { module_type=inner; _ } ->

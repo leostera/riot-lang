@@ -24,6 +24,10 @@ open Std
 
     - `Typ.Batch.check_source`
     - `Typ.Check.check_source`
+
+    These one-shot wrappers still require host-prepared `Syn.parse` and
+    successful `Syn.build_cst` artifacts; `typ` no longer reparses source text
+    internally.
 *)
 module Model: module type of Model
 

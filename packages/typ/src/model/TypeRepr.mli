@@ -10,9 +10,20 @@ type var = {
   mutable link: t option;
 }
 
-and named_type_constructor =
-  | Unresolved
-  | Resolved of TypeConstructorId.t
+and named_type_head = {
+  type_constructor_id: TypeConstructorId.t;
+  name: IdentPath.t;
+}
+
+and poly_variant_bound =
+  | Exact
+  | UpperBound
+  | LowerBound
+
+and poly_variant_tag = {
+  name: string;
+  payload_type: t option;
+}
 
 and desc =
   | Int
@@ -26,11 +37,8 @@ and desc =
   | Array of t
   | List of t
   | Seq of t
-  | Named of {
-      type_constructor: named_type_constructor;
-      name: IdentPath.t;
-      arguments: t list
-    }
+  | Named of { head: named_type_head; arguments: t list }
+  | PolyVariant of { bound: poly_variant_bound; tags: poly_variant_tag list; inherited: t list }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
@@ -67,12 +75,15 @@ val list: t -> t
 
 val seq: t -> t
 
-val unresolved_type_constructor: named_type_constructor
+val named_head: type_constructor_id:TypeConstructorId.t -> name:IdentPath.t -> named_type_head
 
-val resolved_type_constructor: TypeConstructorId.t -> named_type_constructor
+val named: head:named_type_head -> arguments:t list -> t
 
-val named:
-  type_constructor:named_type_constructor -> name:IdentPath.t -> arguments:t list -> t
+val named_path: name:IdentPath.t -> arguments:t list -> t
+
+val poly_variant_tag: ?payload_type:t -> string -> poly_variant_tag
+
+val poly_variant: bound:poly_variant_bound -> tags:poly_variant_tag list -> inherited:t list -> t
 
 val tuple: t list -> t
 
@@ -142,5 +153,4 @@ val occurs_check: generation:int -> needle:int -> minimum_level:int -> t -> bool
 
 val lower_level: generation:int -> level:int -> on_lower:(t -> unit) -> t -> unit
 
-val occurs_or_lower:
-  generation:int -> needle:int -> level:int -> on_lower:(t -> unit) -> t -> bool
+val occurs_or_lower: generation:int -> needle:int -> level:int -> on_lower:(t -> unit) -> t -> bool

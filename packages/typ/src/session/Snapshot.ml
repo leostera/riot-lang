@@ -109,11 +109,13 @@ let module_dependencies_of_source = fun (source: Source.t) ->
   | Error _ -> []
 
 let required_local_module_names = fun (slot: analysis_slot) ->
-  let names =
-    module_dependencies_of_source slot.source
-    @ (slot.source.implicit_opens |> List.map IdentPath.to_string)
-  in
+  let names = module_dependencies_of_source slot.source
+  @ (slot.source.implicit_opens |> List.map IdentPath.to_string) in
   names |> List.sort_uniq String.compare
+
+let matches_required_local_module = fun ~current_module_name ~required_module_name candidate_module_name ->
+  String.equal candidate_module_name required_module_name
+  || String.equal candidate_module_name (current_module_name ^ "." ^ required_module_name)
 
 let visiting_key = fun visiting ->
   visiting
@@ -163,7 +165,13 @@ and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   |> List.filter
     (fun (module_name, _result) ->
       not (String.equal current_module_name module_name)
-      && List.mem module_name required_local_modules)
+      && List.exists
+        (fun required_module_name ->
+          matches_required_local_module
+            ~current_module_name
+            ~required_module_name
+            module_name)
+        required_local_modules)
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.exports result.ModulePairing.module_typings |> qualify_exports module_name)
@@ -177,7 +185,13 @@ and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   |> List.filter
     (fun (module_name, _result) ->
       not (String.equal current_module_name module_name)
-      && List.mem module_name required_local_modules)
+      && List.exists
+        (fun required_module_name ->
+          matches_required_local_module
+            ~current_module_name
+            ~required_module_name
+            module_name)
+        required_local_modules)
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.type_decls result.ModulePairing.module_typings |> qualify_type_decls module_name)
@@ -226,6 +240,11 @@ let module_result_of_source = fun snapshot source_id ->
       let module_name = Source.module_name slot.source in
       (module_name, (module_results_for snapshot [] |> List.assoc_opt module_name)))
 
+let loaded_module_typings = fun snapshot ->
+  match snapshot.analyses with
+  | [] -> []
+  | slot :: _ -> slot.config.loaded_modules
+
 let is_root = fun snapshot source_id -> snapshot.roots |> List.exists (SourceId.equal source_id)
 
 let analyses = fun snapshot ->
@@ -255,6 +274,12 @@ let find_module_typings = fun snapshot source_id ->
     | Some (_module_name, Some result) -> Some result.ModulePairing.module_typings
     | Some (_, None)
     | None -> None
+
+let find_module_typings_by_name = fun snapshot module_name ->
+  match module_results_for snapshot [] |> List.assoc_opt module_name with
+  | Some result -> Some result.ModulePairing.module_typings
+  | None -> loaded_module_typings snapshot |> List.find_opt
+    (fun typings -> String.equal module_name (ModuleTypings.module_name typings))
 
 let find_analysis = fun snapshot source_id ->
   if not (is_root snapshot source_id) then

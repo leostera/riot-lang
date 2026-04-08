@@ -10,9 +10,20 @@ type var = {
   mutable link: t option;
 }
 
-and named_type_constructor =
-  | Unresolved
-  | Resolved of TypeConstructorId.t
+and named_type_head = {
+  type_constructor_id: TypeConstructorId.t;
+  name: IdentPath.t;
+}
+
+and poly_variant_bound =
+  | Exact
+  | UpperBound
+  | LowerBound
+
+and poly_variant_tag = {
+  name: string;
+  payload_type: t option;
+}
 
 and desc =
   | Int
@@ -26,11 +37,8 @@ and desc =
   | Array of t
   | List of t
   | Seq of t
-  | Named of {
-      type_constructor: named_type_constructor;
-      name: IdentPath.t;
-      arguments: t list
-    }
+  | Named of { head: named_type_head; arguments: t list }
+  | PolyVariant of { bound: poly_variant_bound; tags: poly_variant_tag list; inherited: t list }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
@@ -53,6 +61,17 @@ let max_level = fun xs ->
     0
     xs
 
+let poly_variant_max_level = fun tags inherited ->
+  let tag_max =
+    tags |> List.fold_left
+      (fun acc (tag: poly_variant_tag) ->
+        match tag.payload_type with
+        | Some payload_type -> Int.max acc payload_type.level
+        | None -> acc)
+      0
+  in
+  Int.max tag_max (max_level inherited)
+
 let level_of_desc = function
   | Int
   | Float
@@ -68,6 +87,7 @@ let level_of_desc = function
   | Result (ok_ty, error_ty) -> Int.max ok_ty.level error_ty.level
   | Named { arguments; _ }
   | Tuple arguments -> max_level arguments
+  | PolyVariant { tags; inherited; _ } -> poly_variant_max_level tags inherited
   | Arrow { lhs; rhs; _ } -> Int.max lhs.level rhs.level
   | Var _ -> 0
 
@@ -109,12 +129,17 @@ let list = fun element -> of_desc (List element)
 
 let seq = fun element -> of_desc (Seq element)
 
-let unresolved_type_constructor = Unresolved
+let named_head = fun ~type_constructor_id ~name -> { type_constructor_id; name }
 
-let resolved_type_constructor = fun type_constructor_id -> Resolved type_constructor_id
+let named = fun ~head ~arguments -> of_desc (Named { head; arguments })
 
-let named = fun ~type_constructor ~name ~arguments ->
-  of_desc (Named { type_constructor; name; arguments })
+let named_path = fun ~name ~arguments ->
+  let head = named_head ~type_constructor_id:(TypeConstructorId.of_path name) ~name in
+  named ~head ~arguments
+
+let poly_variant_tag = fun ?payload_type name -> { name; payload_type }
+
+let poly_variant = fun ~bound ~tags ~inherited -> of_desc (PolyVariant { bound; tags; inherited })
 
 let tuple = fun members -> of_desc (Tuple members)
 
@@ -243,6 +268,16 @@ let free_vars =
         collect seen acc element
     | Named { arguments; _ } ->
         List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
+    | PolyVariant { tags; inherited; _ } ->
+        let acc =
+          tags |> List.fold_left
+            (fun acc (tag: poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type -> collect seen acc payload_type
+              | None -> acc)
+            acc
+        in
+        List.fold_left (fun acc inherited_type -> collect seen acc inherited_type) acc inherited
     | Tuple members ->
         List.fold_left (fun acc member -> collect seen acc member) acc members
     | Arrow { lhs; rhs; _ } ->
@@ -283,6 +318,22 @@ let seal_levels =
               Int.max acc (loop argument))
             0
             arguments
+      | PolyVariant { tags; inherited; _ } ->
+          let tag_level =
+            tags |> List.fold_left
+              (fun acc (tag: poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type -> Int.max acc (loop payload_type)
+                | None -> acc)
+              0
+          in
+          Int.max
+            tag_level
+            (List.fold_left
+              (fun acc inherited_type ->
+                Int.max acc (loop inherited_type))
+              0
+              inherited)
       | Arrow { lhs; rhs; _ } -> Int.max (loop lhs) (loop rhs)
       | Var { link=None; _ } -> ty.level
       | Var { link=Some linked; _ } -> loop linked
@@ -326,6 +377,15 @@ let generalize_ids =
         loop generalized_ids element
     | Named { arguments; _ } ->
         List.iter (loop generalized_ids) arguments
+    | PolyVariant { tags; inherited; _ } ->
+        let () =
+          tags |> List.iter
+            (fun (tag: poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type -> loop generalized_ids payload_type
+              | None -> ())
+        in
+        List.iter (loop generalized_ids) inherited
     | Tuple members ->
         List.iter (loop generalized_ids) members
     | Arrow { lhs; rhs; _ } ->
@@ -369,6 +429,16 @@ let generic_var_ids =
         collect seen acc element
     | Named { arguments; _ } ->
         List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
+    | PolyVariant { tags; inherited; _ } ->
+        let acc =
+          tags |> List.fold_left
+            (fun acc (tag: poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type -> collect seen acc payload_type
+              | None -> acc)
+            acc
+        in
+        List.fold_left (fun acc inherited_type -> collect seen acc inherited_type) acc inherited
     | Tuple members ->
         List.fold_left (fun acc member -> collect seen acc member) acc members
     | Arrow { lhs; rhs; _ } ->
@@ -414,6 +484,17 @@ let mark_reachable_vars = fun ~generation ~next_order ty ->
             | Result (ok_ty, error_ty) -> ok_ty :: error_ty :: rest
             | Named { arguments; _ }
             | Tuple arguments -> List.fold_right (fun argument acc -> argument :: acc) arguments rest
+            | PolyVariant { tags; inherited; _ } ->
+                let rest =
+                  List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
+                in
+                List.fold_right
+                  (fun (tag: poly_variant_tag) acc ->
+                    match tag.payload_type with
+                    | Some payload_type -> payload_type :: acc
+                    | None -> acc)
+                  tags
+                  rest
             | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
           in
           loop rest
@@ -449,6 +530,18 @@ let rec collect_variances = fun variance ty ->
     (fun acc argument -> merge_variances acc (collect_variances Invariant argument))
     []
     arguments
+  | PolyVariant { tags; inherited; _ } ->
+      let acc = tags |> List.fold_left
+        (fun acc (tag: poly_variant_tag) ->
+          match tag.payload_type with
+          | Some payload_type -> merge_variances acc (collect_variances variance payload_type)
+          | None -> acc)
+        []
+      in
+      List.fold_left
+        (fun acc inherited_type -> merge_variances acc (collect_variances variance inherited_type))
+        acc
+        inherited
   | Tuple members -> List.fold_left
     (fun acc member -> merge_variances acc (collect_variances variance member))
     []
@@ -483,6 +576,14 @@ let rec occurs = fun needle ty ->
   | List element -> occurs needle element
   | Seq element -> occurs needle element
   | Named { arguments; _ } -> List.exists (occurs needle) arguments
+  | PolyVariant { tags; inherited; _ } ->
+      List.exists
+        (fun (tag: poly_variant_tag) ->
+          match tag.payload_type with
+          | Some payload_type -> occurs needle payload_type
+          | None -> false)
+        tags
+      || List.exists (occurs needle) inherited
   | Tuple members -> List.exists (occurs needle) members
   | Arrow { lhs; rhs; _ } -> occurs needle lhs || occurs needle rhs
   | Var { id; link=None; _ } -> Int.equal id needle
@@ -509,20 +610,30 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
           | Char
           | Unit
           | Hole _
-          | Var _ ->
-              loop rest
+          | Var _ -> loop rest
           | Option element
           | Array element
           | List element
-          | Seq element ->
-              loop (element :: rest)
-          | Result (ok_ty, error_ty) ->
-              loop (ok_ty :: error_ty :: rest)
+          | Seq element -> loop (element :: rest)
+          | Result (ok_ty, error_ty) -> loop (ok_ty :: error_ty :: rest)
           | Named { arguments; _ }
-          | Tuple arguments ->
-              loop (List.fold_right (fun argument acc -> argument :: acc) arguments rest)
-          | Arrow { lhs; rhs; _ } ->
-              loop (lhs :: rhs :: rest)
+          | Tuple arguments -> loop
+            (List.fold_right (fun argument acc -> argument :: acc) arguments rest)
+          | PolyVariant { tags; inherited; _ } ->
+              let rest =
+                List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
+              in
+                let rest =
+                  List.fold_right
+                    (fun (tag: poly_variant_tag) acc ->
+                      match tag.payload_type with
+                      | Some payload_type -> payload_type :: acc
+                      | None -> acc)
+                    tags
+                    rest
+                in
+              loop rest
+          | Arrow { lhs; rhs; _ } -> loop (lhs :: rhs :: rest)
   in
   loop [ ty ]
 
@@ -554,18 +665,25 @@ let lower_level = fun ~generation ~level ~on_lower ty ->
             | Char
             | Unit
             | Hole _
-            | Var _ ->
-                rest
+            | Var _ -> rest
             | Option element
             | Array element
             | List element
             | Seq element -> element :: rest
             | Result (ok_ty, error_ty) -> ok_ty :: error_ty :: rest
             | Named { arguments; _ }
-            | Tuple arguments -> List.fold_right
-              (fun argument acc -> argument :: acc)
-              arguments
-              rest
+            | Tuple arguments -> List.fold_right (fun argument acc -> argument :: acc) arguments rest
+            | PolyVariant { tags; inherited; _ } ->
+                let rest =
+                  List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
+                in
+                List.fold_right
+                  (fun (tag: poly_variant_tag) acc ->
+                    match tag.payload_type with
+                    | Some payload_type -> payload_type :: acc
+                    | None -> acc)
+                  tags
+                  rest
             | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
           in
           loop rest
@@ -614,6 +732,17 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
                   (fun argument acc -> argument :: acc)
                   arguments
                   rest
+                | PolyVariant { tags; inherited; _ } ->
+                    let rest =
+                      List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
+                    in
+                    List.fold_right
+                      (fun (tag: poly_variant_tag) acc ->
+                        match tag.payload_type with
+                        | Some payload_type -> payload_type :: acc
+                        | None -> acc)
+                      tags
+                      rest
                 | Arrow { lhs; rhs; _ } -> lhs :: rhs :: rest
               in
               loop rest

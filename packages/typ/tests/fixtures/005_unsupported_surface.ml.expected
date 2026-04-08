@@ -207,8 +207,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "value",
@@ -326,8 +338,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -445,8 +469,20 @@
           "scheme": "'a. 'a -> 'a"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -564,8 +600,20 @@
           "scheme": "'a. 'a -> 'a"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -683,8 +731,20 @@
           "scheme": "'a. 'a -> 'a"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",

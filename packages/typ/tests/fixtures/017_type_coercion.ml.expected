@@ -4,20 +4,20 @@
       {
         "binding_id": 0,
         "name": "midpoint",
-        "origin_id": 2,
+        "origin_id": 9,
         "pattern_id": 0,
         "recursive": false,
         "scope_path": [],
-        "value_id": 0
+        "value_id": 4
       },
       {
         "binding_id": 1,
-        "name": "label",
-        "origin_id": 8,
+        "name": "as_color",
+        "origin_id": 14,
         "pattern_id": 1,
         "recursive": false,
         "scope_path": [],
-        "value_id": 3
+        "value_id": 6
       }
     ],
     "expressions": [
@@ -27,39 +27,61 @@
           "tag": "int"
         },
         "expr_id": 0,
-        "origin_id": 1
+        "origin_id": 4
       },
       {
         "desc": {
-          "name": "Int.to_string",
-          "tag": "var"
+          "digits": "2",
+          "tag": "int"
         },
         "expr_id": 1,
         "origin_id": 5
       },
       {
         "desc": {
-          "name": "midpoint",
-          "tag": "var"
+          "digits": "3",
+          "tag": "int"
         },
         "expr_id": 2,
         "origin_id": 6
       },
       {
         "desc": {
-          "arguments": [
-            {
-              "label": {
-                "tag": "positional"
-              },
-              "value_id": 2
-            }
+          "elements": [
+            0,
+            1,
+            2
           ],
-          "callee_id": 1,
-          "tag": "apply"
+          "tag": "tuple"
         },
         "expr_id": 3,
         "origin_id": 7
+      },
+      {
+        "desc": {
+          "payload": 3,
+          "tag": "poly_variant",
+          "variant_tag": "rgb"
+        },
+        "expr_id": 4,
+        "origin_id": 8
+      },
+      {
+        "desc": {
+          "name": "midpoint",
+          "tag": "var"
+        },
+        "expr_id": 5,
+        "origin_id": 12
+      },
+      {
+        "desc": {
+          "tag": "coerce",
+          "target_type": "color",
+          "value_id": 5
+        },
+        "expr_id": 6,
+        "origin_id": 13
       }
     ],
     "patterns": [
@@ -68,27 +90,27 @@
           "name": "midpoint",
           "tag": "var"
         },
-        "origin_id": 0,
+        "origin_id": 3,
         "pat_id": 0
       },
       {
         "desc": {
-          "name": "label",
+          "name": "as_color",
           "tag": "var"
         },
-        "origin_id": 4,
+        "origin_id": 11,
         "pat_id": 1
       }
     ]
   },
   "exports": [
     {
-      "name": "label",
-      "scheme": "'a. 'a"
+      "name": "as_color",
+      "scheme": "color"
     },
     {
       "name": "midpoint",
-      "scheme": "int"
+      "scheme": "rgb"
     }
   ],
   "expr_traces": [
@@ -183,8 +205,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -193,6 +227,234 @@
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
         }
       ],
       "expr_id": 0,
@@ -200,12 +462,12 @@
       "origin": {
         "label": "int_literal",
         "span": {
-          "end": 16,
-          "start": 14
+          "end": 129,
+          "start": 128
         },
         "syntax_kind": "INT_LITERAL"
       },
-      "origin_id": 1
+      "origin_id": 4
     },
     {
       "env_before": [
@@ -298,12 +560,20 @@
           "scheme": "string -> string -> string"
         },
         {
-          "name": "midpoint",
-          "scheme": "int"
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -312,17 +582,245 @@
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
         }
       ],
       "expr_id": 1,
-      "inferred_type": "_?0",
+      "inferred_type": "int",
       "origin": {
-        "label": "qualified_path_expression",
+        "label": "int_literal",
         "span": {
-          "end": 42,
-          "start": 28
+          "end": 132,
+          "start": 130
         },
-        "syntax_kind": "FIELD_ACCESS_EXPR"
+        "syntax_kind": "INT_LITERAL"
       },
       "origin_id": 5
     },
@@ -417,12 +915,20 @@
           "scheme": "string -> string -> string"
         },
         {
-          "name": "midpoint",
-          "scheme": "int"
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -431,17 +937,245 @@
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
         }
       ],
       "expr_id": 2,
       "inferred_type": "int",
       "origin": {
-        "label": "path_expression",
+        "label": "int_literal",
         "span": {
-          "end": 53,
-          "start": 45
+          "end": 135,
+          "start": 133
         },
-        "syntax_kind": "IDENT_EXPR"
+        "syntax_kind": "INT_LITERAL"
       },
       "origin_id": 6
     },
@@ -536,12 +1270,20 @@
           "scheme": "string -> string -> string"
         },
         {
-          "name": "midpoint",
-          "scheme": "int"
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -550,39 +1292,1355 @@
         {
           "name": "||",
           "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
         }
       ],
       "expr_id": 3,
-      "inferred_type": "'a",
+      "inferred_type": "int * int * int",
       "origin": {
-        "label": "apply_expression",
+        "label": "tuple_expression",
         "span": {
-          "end": 64,
-          "start": 28
+          "end": 135,
+          "start": 128
         },
-        "syntax_kind": "APPLY_EXPR"
+        "syntax_kind": "TUPLE_EXPR"
       },
       "origin_id": 7
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        }
+      ],
+      "expr_id": 4,
+      "inferred_type": "rgb",
+      "origin": {
+        "label": "poly_variant_expression",
+        "span": {
+          "end": 136,
+          "start": 121
+        },
+        "syntax_kind": "POLY_VARIANT_EXPR"
+      },
+      "origin_id": 8
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "midpoint",
+          "scheme": "rgb"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        }
+      ],
+      "expr_id": 5,
+      "inferred_type": "rgb",
+      "origin": {
+        "label": "path_expression",
+        "span": {
+          "end": 161,
+          "start": 153
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      "origin_id": 12
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> ('a list) -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "Error",
+          "scheme": "'a 'b. 'a -> ('b, 'a) result"
+        },
+        {
+          "name": "None",
+          "scheme": "'a. 'a option"
+        },
+        {
+          "name": "Ok",
+          "scheme": "'a 'b. 'a -> ('a, 'b) result"
+        },
+        {
+          "name": "Some",
+          "scheme": "'a. 'a -> 'a option"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "midpoint",
+          "scheme": "rgb"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Buffer.add_char",
+          "scheme": "Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Buffer.add_string",
+          "scheme": "Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Buffer.contents",
+          "scheme": "Buffer.t -> string"
+        },
+        {
+          "name": "Buffer.create",
+          "scheme": "int -> Buffer.t"
+        },
+        {
+          "name": "Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Float.to_string",
+          "scheme": "?precision:int -> float -> string"
+        },
+        {
+          "name": "Int.of_string",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Int.to_string",
+          "scheme": "int -> string"
+        },
+        {
+          "name": "List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.Array.length",
+          "scheme": "'a. ('a array) -> int"
+        },
+        {
+          "name": "Stdlib.Buffer.add_char",
+          "scheme": "Stdlib.Buffer.t -> char -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.add_string",
+          "scheme": "Stdlib.Buffer.t -> string -> unit"
+        },
+        {
+          "name": "Stdlib.Buffer.contents",
+          "scheme": "Stdlib.Buffer.t -> string"
+        },
+        {
+          "name": "Stdlib.Buffer.create",
+          "scheme": "int -> Stdlib.Buffer.t"
+        },
+        {
+          "name": "Stdlib.Float.cbrt",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.max",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.min",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.of_int",
+          "scheme": "int -> float"
+        },
+        {
+          "name": "Stdlib.Float.pow",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "Stdlib.Float.round",
+          "scheme": "float -> float"
+        },
+        {
+          "name": "Stdlib.Float.to_int",
+          "scheme": "float -> int"
+        },
+        {
+          "name": "Stdlib.List.filter_map",
+          "scheme": "'a 'b. ('a -> 'b option) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.for_all",
+          "scheme": "'a. ('a -> bool) -> ('a list) -> bool"
+        },
+        {
+          "name": "Stdlib.List.map",
+          "scheme": "'a 'b. ('a -> 'b) -> ('a list) -> 'b list"
+        },
+        {
+          "name": "Stdlib.List.of_seq",
+          "scheme": "'a. ('a Seq.t) -> 'a list"
+        },
+        {
+          "name": "Stdlib.List.rev",
+          "scheme": "'a. ('a list) -> 'a list"
+        },
+        {
+          "name": "Stdlib.Printexc.to_string",
+          "scheme": "exn -> string"
+        },
+        {
+          "name": "Stdlib.String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "Stdlib.String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "Stdlib.String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "Stdlib.String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "Stdlib.String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "Stdlib.String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "Stdlib.String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "Stdlib.String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "Stdlib.String.to_seq",
+          "scheme": "string -> char Seq.t"
+        },
+        {
+          "name": "String.concat",
+          "scheme": "string -> (string list) -> string"
+        },
+        {
+          "name": "String.escaped",
+          "scheme": "string -> string"
+        },
+        {
+          "name": "String.get",
+          "scheme": "string -> int -> char"
+        },
+        {
+          "name": "String.length",
+          "scheme": "string -> int"
+        },
+        {
+          "name": "String.make",
+          "scheme": "int -> char -> string"
+        },
+        {
+          "name": "String.split_on_char",
+          "scheme": "char -> string -> string list"
+        },
+        {
+          "name": "String.starts_with",
+          "scheme": "~prefix:string -> string -> bool"
+        },
+        {
+          "name": "String.sub",
+          "scheme": "string -> int -> int -> string"
+        },
+        {
+          "name": "String.to_seq",
+          "scheme": "string -> char Seq.t"
+        }
+      ],
+      "expr_id": 6,
+      "inferred_type": "color",
+      "origin": {
+        "label": "coercion_expression",
+        "span": {
+          "end": 171,
+          "start": 151
+        },
+        "syntax_kind": "COERCE_EXPR"
+      },
+      "origin_id": 13
     }
   ],
   "file_summary": {
     "export_result": {
       "exports": [
         {
-          "name": "label",
-          "scheme": "'a. 'a"
+          "name": "as_color",
+          "scheme": "color"
         },
         {
           "name": "midpoint",
-          "scheme": "int"
+          "scheme": "rgb"
         }
       ],
-      "tag": "errored_export"
+      "tag": "trusted_export"
     },
     "source_id": 0
   },
   "filename": "packages/typ/tests/fixtures/017_type_coercion.ml",
   "item_traces": [
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 0
+    },
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 1
+    },
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 2
+    },
     {
       "binding_names": [
         "midpoint"
@@ -590,35 +2648,111 @@
       "exports_after": [
         {
           "name": "midpoint",
-          "scheme": "int"
+          "scheme": "rgb"
         }
       ],
-      "item_id": 0
+      "item_id": 3
     },
     {
       "binding_names": [
-        "label"
+        "as_color"
       ],
       "exports_after": [
         {
-          "name": "label",
-          "scheme": "'a. 'a"
+          "name": "as_color",
+          "scheme": "color"
         },
         {
           "name": "midpoint",
-          "scheme": "int"
+          "scheme": "rgb"
         }
       ],
-      "item_id": 1
+      "item_id": 4
     }
   ],
   "item_tree": [
     {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "bound": "exact",
+          "inherited": [],
+          "tag": "poly_variant",
+          "tags": [
+            {
+              "name": "ansi",
+              "payload_type": "int"
+            }
+          ]
+        },
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 0,
+          "owner": "packages/typ/tests/fixtures/017_type_coercion"
+        },
+        "type_name": "ansi"
+      },
+      "item_id": 0,
+      "origin_id": 0,
+      "scope_path": [],
+      "tag": "type"
+    },
+    {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "bound": "exact",
+          "inherited": [],
+          "tag": "poly_variant",
+          "tags": [
+            {
+              "name": "rgb",
+              "payload_type": "int * int * int"
+            }
+          ]
+        },
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 1,
+          "owner": "packages/typ/tests/fixtures/017_type_coercion"
+        },
+        "type_name": "rgb"
+      },
+      "item_id": 1,
+      "origin_id": 1,
+      "scope_path": [],
+      "tag": "type"
+    },
+    {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "bound": "exact",
+          "inherited": [
+            "ansi",
+            "rgb"
+          ],
+          "tag": "poly_variant",
+          "tags": []
+        },
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 2,
+          "owner": "packages/typ/tests/fixtures/017_type_coercion"
+        },
+        "type_name": "color"
+      },
+      "item_id": 2,
+      "origin_id": 2,
+      "scope_path": [],
+      "tag": "type"
+    },
+    {
       "binding_ids": [
         0
       ],
-      "item_id": 0,
-      "origin_id": 3,
+      "item_id": 3,
+      "origin_id": 10,
       "recursive": false,
       "scope_path": [],
       "tag": "value"
@@ -627,8 +2761,8 @@
       "binding_ids": [
         1
       ],
-      "item_id": 1,
-      "origin_id": 9,
+      "item_id": 4,
+      "origin_id": 15,
       "recursive": false,
       "scope_path": [],
       "tag": "value"
@@ -637,57 +2771,9 @@
   "lowering_diagnostics": [],
   "origin_map": [
     {
-      "kind": "pattern",
-      "label": "identifier_pattern",
-      "origin_id": 0,
-      "semantic_id": {
-        "id": 0,
-        "tag": "pattern"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 12,
-        "start": 3
-      },
-      "syntax_kind": "IDENT_PATTERN"
-    },
-    {
-      "kind": "expr",
-      "label": "int_literal",
-      "origin_id": 1,
-      "semantic_id": {
-        "id": 0,
-        "tag": "expr"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 16,
-        "start": 14
-      },
-      "syntax_kind": "INT_LITERAL"
-    },
-    {
-      "kind": "binding",
-      "label": "binding",
-      "origin_id": 2,
-      "semantic_id": {
-        "id": 0,
-        "tag": "binding"
-      },
-      "source_id": 0,
-      "source_revision": 0,
-      "span": {
-        "end": 16,
-        "start": 0
-      },
-      "syntax_kind": "LET_BINDING"
-    },
-    {
       "kind": "item",
       "label": "item",
-      "origin_id": 3,
+      "origin_id": 0,
       "semantic_id": {
         "id": 0,
         "tag": "item"
@@ -695,30 +2781,78 @@
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 16,
+        "end": 30,
         "start": 0
       },
-      "syntax_kind": "LET_BINDING"
+      "syntax_kind": "TYPE_DECL"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 1,
+      "semantic_id": {
+        "id": 1,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 72,
+        "start": 30
+      },
+      "syntax_kind": "TYPE_DECL"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 2,
+      "semantic_id": {
+        "id": 2,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 105,
+        "start": 72
+      },
+      "syntax_kind": "TYPE_DECL"
     },
     {
       "kind": "pattern",
       "label": "identifier_pattern",
-      "origin_id": 4,
+      "origin_id": 3,
       "semantic_id": {
-        "id": 1,
+        "id": 0,
         "tag": "pattern"
       },
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 26,
-        "start": 20
+        "end": 119,
+        "start": 110
       },
       "syntax_kind": "IDENT_PATTERN"
     },
     {
       "kind": "expr",
-      "label": "qualified_path_expression",
+      "label": "int_literal",
+      "origin_id": 4,
+      "semantic_id": {
+        "id": 0,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 129,
+        "start": 128
+      },
+      "syntax_kind": "INT_LITERAL"
+    },
+    {
+      "kind": "expr",
+      "label": "int_literal",
       "origin_id": 5,
       "semantic_id": {
         "id": 1,
@@ -727,14 +2861,14 @@
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 42,
-        "start": 28
+        "end": 132,
+        "start": 130
       },
-      "syntax_kind": "FIELD_ACCESS_EXPR"
+      "syntax_kind": "INT_LITERAL"
     },
     {
       "kind": "expr",
-      "label": "path_expression",
+      "label": "int_literal",
       "origin_id": 6,
       "semantic_id": {
         "id": 2,
@@ -743,14 +2877,14 @@
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 53,
-        "start": 45
+        "end": 135,
+        "start": 133
       },
-      "syntax_kind": "IDENT_EXPR"
+      "syntax_kind": "INT_LITERAL"
     },
     {
       "kind": "expr",
-      "label": "apply_expression",
+      "label": "tuple_expression",
       "origin_id": 7,
       "semantic_id": {
         "id": 3,
@@ -759,15 +2893,111 @@
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 64,
-        "start": 28
+        "end": 135,
+        "start": 128
       },
-      "syntax_kind": "APPLY_EXPR"
+      "syntax_kind": "TUPLE_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "poly_variant_expression",
+      "origin_id": 8,
+      "semantic_id": {
+        "id": 4,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 136,
+        "start": 121
+      },
+      "syntax_kind": "POLY_VARIANT_EXPR"
     },
     {
       "kind": "binding",
       "label": "binding",
-      "origin_id": 8,
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 0,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 136,
+        "start": 105
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 10,
+      "semantic_id": {
+        "id": 3,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 136,
+        "start": 105
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 11,
+      "semantic_id": {
+        "id": 1,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 149,
+        "start": 140
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 12,
+      "semantic_id": {
+        "id": 5,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 161,
+        "start": 153
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "coercion_expression",
+      "origin_id": 13,
+      "semantic_id": {
+        "id": 6,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 171,
+        "start": 151
+      },
+      "syntax_kind": "COERCE_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 14,
       "semantic_id": {
         "id": 1,
         "tag": "binding"
@@ -775,24 +3005,24 @@
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 64,
-        "start": 16
+        "end": 171,
+        "start": 136
       },
       "syntax_kind": "LET_BINDING"
     },
     {
       "kind": "item",
       "label": "item",
-      "origin_id": 9,
+      "origin_id": 15,
       "semantic_id": {
-        "id": 1,
+        "id": 4,
         "tag": "item"
       },
       "source_id": 0,
       "source_revision": 0,
       "span": {
-        "end": 64,
-        "start": 16
+        "end": 171,
+        "start": 136
       },
       "syntax_kind": "LET_BINDING"
     }
@@ -803,10 +3033,19 @@
     {
       "expr_id": 0,
       "inferred_type": "int",
-      "origin_id": 1,
+      "origin_id": 4,
       "span": {
-        "end": 16,
-        "start": 14
+        "end": 129,
+        "start": 128
+      }
+    },
+    {
+      "expr_id": 1,
+      "inferred_type": "int",
+      "origin_id": 5,
+      "span": {
+        "end": 132,
+        "start": 130
       }
     },
     {
@@ -814,40 +3053,46 @@
       "inferred_type": "int",
       "origin_id": 6,
       "span": {
-        "end": 53,
-        "start": 45
-      }
-    },
-    {
-      "expr_id": 1,
-      "inferred_type": "_?0",
-      "origin_id": 5,
-      "span": {
-        "end": 42,
-        "start": 28
+        "end": 135,
+        "start": 133
       }
     },
     {
       "expr_id": 3,
-      "inferred_type": "'a",
+      "inferred_type": "int * int * int",
       "origin_id": 7,
       "span": {
-        "end": 64,
-        "start": 28
+        "end": 135,
+        "start": 128
+      }
+    },
+    {
+      "expr_id": 5,
+      "inferred_type": "rgb",
+      "origin_id": 12,
+      "span": {
+        "end": 161,
+        "start": 153
+      }
+    },
+    {
+      "expr_id": 4,
+      "inferred_type": "rgb",
+      "origin_id": 8,
+      "span": {
+        "end": 136,
+        "start": 121
+      }
+    },
+    {
+      "expr_id": 6,
+      "inferred_type": "color",
+      "origin_id": 13,
+      "span": {
+        "end": 171,
+        "start": 151
       }
     }
   ],
-  "typing_diagnostics": [
-    {
-      "id": "TYP2001",
-      "message": "unbound name: Int.to_string",
-      "name": "unbound-name",
-      "name_text": "Int.to_string",
-      "reference_span": {
-        "end": 42,
-        "start": 28
-      },
-      "severity": "error"
-    }
-  ]
+  "typing_diagnostics": []
 }

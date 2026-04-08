@@ -12,21 +12,14 @@ type origin =
 type t = {
   source_id: SourceId.t;
   kind: kind;
+  module_name: string;
+  implicit_opens: IdentPath.t list;
   origin: origin;
   source_hash: Crypto.hash;
   revision: int;
   parse_result: Syn.Parser.parse_result;
-  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
+  cst: Syn.Cst.source_file;
 }
-
-let filename_of_origin = function
-  | Path path -> path
-  | Label label -> Path.of_string label |> Result.unwrap_or ~default:(Path.v "<fragment>")
-
-let prepare = fun ~origin ~text ->
-  let parse_result = Syn.parse ~filename:(filename_of_origin origin) text in
-  let cst = Syn.build_cst parse_result in
-  (parse_result, cst)
 
 let module_name_of_origin = function
   | Path path -> Path.remove_extension path |> Path.basename
@@ -41,27 +34,30 @@ let sanitize_module_name = fun name ->
         ch)
     name
 
-let kind_tag = function
-  | File -> "file"
-  | Fragment -> "fragment"
-  | Generated -> "generated"
-
-let hash_text = fun ~kind ~origin ~text ->
+let hash = fun ~implicit_opens ~cst ->
   let module H = Crypto.Sha256 in
   let state = H.create () in
-  let () = H.write state (kind_tag kind) in
-  let () = H.write state "\x1f" in
   let () = H.write state
-    (module_name_of_origin origin |> sanitize_module_name |> String.capitalize_ascii)
+    (Syn.Cst.semantic_hash cst |> Crypto.Digest.hex)
   in
   let () = H.write state "\x1f" in
-  let () = H.write state text in
+  let () =
+    implicit_opens
+    |> List.iter
+      (fun module_path ->
+        H.write state (IdentPath.to_string module_path);
+        H.write state "\x1f")
+  in
   H.finish state
 
-let make_prepared = fun ~source_id ~kind ~origin ~revision ~source_hash ~parse_result ~cst ->
+let infer_module_name = fun origin -> sanitize_module_name (module_name_of_origin origin) |> String.capitalize_ascii
+
+let make_prepared = fun ~source_id ~kind ~module_name ~implicit_opens ~origin ~revision ~source_hash ~parse_result ~cst ->
   {
     source_id;
     kind;
+    module_name;
+    implicit_opens;
     origin;
     source_hash;
     revision;
@@ -69,16 +65,7 @@ let make_prepared = fun ~source_id ~kind ~origin ~revision ~source_hash ~parse_r
     cst;
   }
 
-let make = fun ~source_id ~kind ~origin ~revision ~text ->
-  let (parse_result, cst) = prepare ~origin ~text in
-  let source_hash = hash_text ~kind ~origin ~text in
-  make_prepared ~source_id ~kind ~origin ~revision ~source_hash ~parse_result ~cst
-
-let update_text = fun source ~revision ~text ->
-  make ~source_id:source.source_id ~kind:source.kind ~origin:source.origin ~revision ~text
-
-let module_name = fun source ->
-  sanitize_module_name (module_name_of_origin source.origin) |> String.capitalize_ascii
+let module_name = fun source -> source.module_name
 
 let input_hash = fun source -> source.source_hash
 

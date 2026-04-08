@@ -96,6 +96,43 @@ let filename_of_document = fun (document: document) ->
   | Some path -> path
   | None -> filename_of_uri document.uri
 
+let prepared_parse_artifacts = fun ~filename text ->
+  let parse_result = Syn.parse ~filename text in
+  match Syn.build_cst parse_result with
+  | Ok cst -> Some (parse_result, cst)
+  | Error _ -> None
+
+let add_prepared_typ_source = fun session ->
+  fun ~kind ->
+    fun ~origin ->
+      fun ~revision ->
+        fun ~text ->
+          fun ~parse_result ->
+            fun ~cst ->
+              let implicit_opens = [] in
+              let source_hash = Source.hash ~implicit_opens ~cst in
+              let module_name = Source.infer_module_name origin in
+              let (session, source_id) = Typ.Session.create_source
+                session
+                ~kind
+                ~module_name
+                ~implicit_opens
+                ~origin
+                ~source_hash
+                ~parse_result
+                ~cst in
+              let source = Source.make_prepared
+                ~source_id
+                ~kind
+                ~module_name
+                ~implicit_opens
+                ~origin
+                ~revision
+                ~source_hash
+                ~parse_result
+                ~cst in
+              (session, source_id, source)
+
 let typ_source_origin_of_document = fun (document: document) ->
   match document.path with
   | Some path -> Source.Path path
@@ -254,7 +291,8 @@ let merge_module_typings = fun preferred fallback ->
   let source_hash = ModuleTypings.synthetic_source_hash
     ~module_name
     ~export_result:(ModuleTypings.export_result template)
-    ~type_decls in
+    ~type_decls
+    () in
   typings_with_payload template ~source_hash ~exports ~type_decls
 
 let merge_loaded_module_typings = fun preferred fallback ->
@@ -284,25 +322,18 @@ let typ_session_with_paths = fun ~config paths ->
       match Fs.read path with
       | Error _ -> (session, source_ids, sources)
       | Ok text ->
-          let parse_result = Syn.parse ~filename:path text in
-          let cst = Syn.build_cst parse_result in
-          let source_hash = Source.hash_text ~kind:Source.File ~origin:(Source.Path path) ~text in
-          let (session, source_id) = Typ.Session.create_prepared_source
-            session
-            ~kind:Source.File
-            ~origin:(Source.Path path)
-            ~source_hash
-            ~parse_result
-            ~cst in
-          let source = Source.make_prepared
-            ~source_id
-            ~kind:Source.File
-            ~origin:(Source.Path path)
-            ~revision:0
-            ~source_hash
-            ~parse_result
-            ~cst in
-          (session, source_ids @ [ source_id ], sources @ [ source ]))
+          match prepared_parse_artifacts ~filename:path text with
+          | None -> (session, source_ids, sources)
+          | Some (parse_result, cst) ->
+              let (session, source_id, source) = add_prepared_typ_source
+                session
+                ~kind:Source.File
+                ~origin:(Source.Path path)
+                ~revision:0
+                ~text
+                ~parse_result
+                ~cst in
+              (session, source_ids @ [ source_id ], sources @ [ source ]))
     (Typ.Session.empty ~config, [], [])
 
 let module_typings_for_roots = fun session roots ->
@@ -471,37 +502,30 @@ let typ_analysis_for_document = fun state ->
           match text_for_path state path with
           | None -> (session, current_source_id, sources)
           | Some text ->
-              let parse_result = Syn.parse ~filename:path text in
-              let cst = Syn.build_cst parse_result in
-              let source_hash = Source.hash_text ~kind:Source.File ~origin:(Source.Path path) ~text in
-              let (session, source_id) = Typ.Session.create_prepared_source
-                session
-                ~kind:Source.File
-                ~origin:(Source.Path path)
-                ~source_hash
-                ~parse_result
-                ~cst in
-              let revision =
-                match current_key with
-                | Some key when String.equal key
-                  (Path.normalize path |> Path.to_string) -> document.version
-                | _ -> 0
-              in
-              let source = Source.make_prepared
-                ~source_id
-                ~kind:Source.File
-                ~origin:(Source.Path path)
-                ~revision
-                ~source_hash
-                ~parse_result
-                ~cst in
-              let current_source_id =
-                match current_key with
-                | Some key when String.equal key
-                  (Path.normalize path |> Path.to_string) -> Some source_id
-                | _ -> current_source_id
-              in
-              (session, current_source_id, sources @ [ source ]))
+              match prepared_parse_artifacts ~filename:path text with
+              | None -> (session, current_source_id, sources)
+              | Some (parse_result, cst) ->
+                  let revision =
+                    match current_key with
+                    | Some key when String.equal key
+                      (Path.normalize path |> Path.to_string) -> document.version
+                    | _ -> 0
+                  in
+                  let (session, source_id, source) = add_prepared_typ_source
+                    session
+                    ~kind:Source.File
+                    ~origin:(Source.Path path)
+                    ~revision
+                    ~text
+                    ~parse_result
+                    ~cst in
+                  let current_source_id =
+                    match current_key with
+                    | Some key when String.equal key
+                      (Path.normalize path |> Path.to_string) -> Some source_id
+                    | _ -> current_source_id
+                  in
+                  (session, current_source_id, sources @ [ source ]))
         initial
         paths
     in
@@ -520,44 +544,36 @@ let typ_analysis_for_document = fun state ->
             |> fun snapshot ->
               Typ.Query.analysis_of_source snapshot source_id
       )
-    | (session, None, sources) ->
-        let parse_result = Syn.parse ~filename:(filename_of_document document) document.text in
-        let cst = Syn.build_cst parse_result in
-        let origin = typ_source_origin_of_document document in
-        let source_hash = Source.hash_text ~kind:Source.File ~origin ~text:document.text in
-        let (session, source_id) = Typ.Session.create_prepared_source
-          session
-          ~kind:Source.File
-          ~origin
-          ~source_hash
-          ~parse_result
-          ~cst in
-        let source = Source.make_prepared
-          ~source_id
-          ~kind:Source.File
-          ~origin
-          ~revision:document.version
-          ~source_hash
-          ~parse_result
-          ~cst in
-        (
-          match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-          | Ok snapshot ->
-              let () =
-                match config.Typ.Config.store with
-                | None -> ()
-                | Some store -> persist_module_typings_for_source store snapshot source_id
-              in
-              Typ.Query.analysis_of_source snapshot source_id
-          | Error _ ->
-              Snapshot.make
-                ~revision:document.version
-                ~roots:[ source_id ]
-                ~config
-                ~sources:((sources @ [ source ]))
-              |> fun snapshot ->
+    | (session, None, sources) -> (
+        match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
+        | None -> None
+        | Some (parse_result, cst) ->
+            let origin = typ_source_origin_of_document document in
+            let (session, source_id, source) = add_prepared_typ_source
+              session
+              ~kind:Source.File
+              ~origin
+              ~revision:document.version
+              ~text:document.text
+              ~parse_result
+              ~cst in
+            match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
+            | Ok snapshot ->
+                let () =
+                  match config.Typ.Config.store with
+                  | None -> ()
+                  | Some store -> persist_module_typings_for_source store snapshot source_id
+                in
                 Typ.Query.analysis_of_source snapshot source_id
-        )
+            | Error _ ->
+                Snapshot.make
+                  ~revision:document.version
+                  ~roots:[ source_id ]
+                  ~config
+                  ~sources:((sources @ [ source ]))
+                |> fun snapshot ->
+                  Typ.Query.analysis_of_source snapshot source_id
+      )
 
 let diagnostic_to_lsp = fun text ->
   fun (diagnostic: Syn.Diagnostic.t) ->

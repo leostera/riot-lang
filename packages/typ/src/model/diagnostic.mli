@@ -51,6 +51,12 @@ type signature_mismatch =
   | ValueTypeMismatch of { name: string; expected: string; actual: string }
   | MissingTypeDeclaration of { name: string }
   | TypeDeclarationMismatch of { name: string; expected: string; actual: string }
+type match_witness =
+  | WildcardWitness
+  | BoolWitness of bool
+  | UnitWitness
+  | TupleWitness of match_witness list
+  | ConstructorWitness of { name: string; arguments: match_witness list }
 type t =
   | CstBuilderError of { builder_error: Syn.CstBuilder.error }
   | UnsupportedSyntax of {
@@ -88,6 +94,11 @@ type t =
       counterpart_span: Syn.Ceibo.Span.t option;
       mismatch: signature_mismatch
     }
+  | NonexhaustiveMatch of {
+      match_span: Syn.Ceibo.Span.t;
+      witness: match_witness
+    }
+  | RedundantMatchCase of { case_span: Syn.Ceibo.Span.t }
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
 val code: t -> string

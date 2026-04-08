@@ -126,7 +126,7 @@ let manifest_to_json = function
 
 let to_json = fun decl ->
   let fields = [
-    ("type_constructor_id", Data.Json.Int (TypeConstructorId.to_int decl.type_constructor_id));
+    ("type_constructor_id", TypeConstructorId.to_json decl.type_constructor_id);
     ("type_name", Data.Json.String decl.type_name);
     (
       "param_variances",

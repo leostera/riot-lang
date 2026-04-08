@@ -102,11 +102,7 @@ let owner_index_of_record_decls = fun record_decls ->
       Owner_map.add record_decl.owner_type_constructor_id record_decl acc)
     Owner_map.empty
 
-let current_visible_components = fun env ->
-  {
-    by_name = env.current;
-    by_owner = env.by_owner;
-  }
+let current_visible_components = fun env -> { by_name = env.current; by_owner = env.by_owner }
 
 let merge_visible_by_name = fun dominant rest ->
   Name_map.fold
@@ -129,13 +125,13 @@ let merge_visible_by_owner = fun dominant rest ->
 let merge_visible_components = fun dominant rest ->
   {
     by_name = merge_visible_by_name dominant.by_name rest.by_name;
-    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner;
+    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner
   }
 
 let map_components = fun map_record_decl components ->
   {
     by_name = Name_map.map (List.map map_record_decl) components.by_name;
-    by_owner = Owner_map.map map_record_decl components.by_owner;
+    by_owner = Owner_map.map map_record_decl components.by_owner
   }
 
 let qualify_record_decl = fun root record_decl ->
@@ -153,7 +149,7 @@ let current_record_decls = fun current ->
   let dedupe = Collections.HashSet.create () in
   Name_map.bindings current |> List.concat_map snd |> List.filter
     (fun record_decl ->
-      let owner_id = TypeConstructorId.to_int record_decl.owner_type_constructor_id in
+      let owner_id = record_decl.owner_type_constructor_id in
       if Collections.HashSet.contains dedupe owner_id then
         false
       else
@@ -164,13 +160,12 @@ let rec visible_components = fun env ->
   let current = current_visible_components env in
   match env.layer with
   | Nothing -> current
-  | Open { components; next; _ } ->
-      current
-      |> merge_visible_components components
-      |> merge_visible_components (visible_components next)
+  | Open { components; next; _ } -> current
+  |> merge_visible_components components
+  |> merge_visible_components (visible_components next)
   | Map { map_record_decl; next } ->
-      current
-      |> merge_visible_components (visible_components next |> map_components map_record_decl)
+      current |> merge_visible_components
+        (visible_components next |> map_components map_record_decl)
 
 let record_decls =
   let rec loop acc env =
@@ -204,11 +199,7 @@ let add_open = fun ~root opened env ->
   {
     current = Name_map.empty;
     by_owner = Owner_map.empty;
-    layer = Open {
-      root;
-      components = visible_components opened;
-      next = env
-    }
+    layer = Open { root; components = visible_components opened; next = env }
   }
 
 let merge_current = fun introduced existing ->
@@ -268,7 +259,7 @@ let rec lookup_owned = fun env owner_type_constructor_id ->
 let visible_record_decls = fun env ->
   let seen = Collections.HashSet.create () in
   let add_record_decl acc record_decl =
-    let owner_id = TypeConstructorId.to_int record_decl.owner_type_constructor_id in
+    let owner_id = record_decl.owner_type_constructor_id in
     if Collections.HashSet.contains seen owner_id then
       acc
     else

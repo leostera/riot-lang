@@ -59,16 +59,22 @@ let replace_source = fun sources updated ->
       else
         source)
 
-let add_source_indexes = fun session (source: Source.t) ->
-  let _ = Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source in
-  let module_name = Source.module_name source in
+let add_module_name_index = fun session ~module_name ~source_id ->
   let source_ids =
     match Collections.HashMap.get session.source_ids_by_module_name module_name with
-    | Some source_ids -> source_ids @ [ source.source_id ]
-    | None -> [ source.source_id ]
+    | Some source_ids when List.exists (SourceId.equal source_id) source_ids ->
+        source_ids
+    | Some source_ids ->
+        source_ids @ [ source_id ]
+    | None ->
+        [ source_id ]
   in
   let _ = Collections.HashMap.insert session.source_ids_by_module_name module_name source_ids in
   session
+
+let add_source_indexes = fun session (source: Source.t) ->
+  let _ = Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source in
+  add_module_name_index session ~module_name:(Source.module_name source) ~source_id:source.source_id
 
 let update_source_indexes = fun session (source: Source.t) ->
   let _ = Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source in
@@ -76,15 +82,25 @@ let update_source_indexes = fun session (source: Source.t) ->
 
 let remove_source_indexes = fun session (source: Source.t) ->
   let _ = Collections.HashMap.remove session.sources_by_id (SourceId.to_int source.source_id) in
-  let module_name = Source.module_name source in
-  let remaining_source_ids = source_ids_of_module session module_name
-  |> List.filter (fun current_source_id -> not (SourceId.equal current_source_id source.source_id)) in
-  if List.is_empty remaining_source_ids then
-    let _ = Collections.HashMap.remove session.source_ids_by_module_name module_name in
-    session
-  else
-    let _ = Collections.HashMap.insert session.source_ids_by_module_name module_name remaining_source_ids in
-    session
+  let module_names = Collections.HashMap.keys session.source_ids_by_module_name in
+  let () =
+    module_names
+    |> List.iter
+      (fun module_name ->
+        let remaining_source_ids = source_ids_of_module session module_name
+        |> List.filter
+          (fun current_source_id -> not (SourceId.equal current_source_id source.source_id)) in
+        if List.is_empty remaining_source_ids then
+          let _ = Collections.HashMap.remove session.source_ids_by_module_name module_name in
+          ()
+        else
+          let _ = Collections.HashMap.insert
+            session.source_ids_by_module_name
+            module_name
+            remaining_source_ids in
+          ())
+  in
+  session
 
 let loaded_modules_key = fun loaded_modules ->
   loaded_modules
@@ -96,8 +112,7 @@ let loaded_modules_key = fun loaded_modules ->
   |> List.sort String.compare
   |> String.concat "|"
 
-let create_source =
-  fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
+let create_source = fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
   let source = Source.make_prepared
     ~source_id
@@ -117,6 +132,11 @@ let create_source =
   }
   |> fun session -> add_source_indexes session source in
   (session, source_id)
+
+let register_source_alias = fun session source_id ~module_name ->
+  match source_of_id session source_id with
+  | None -> session
+  | Some _ -> add_module_name_index session ~module_name ~source_id
 
 let merge_loaded_modules = fun preferred fallback ->
   let rec loop order merged remaining =
@@ -227,13 +247,15 @@ let declared_modules = fun session (source: Source.t) ->
             implementation.Syn.Cst.items |> List.filter_map
               (fun (item: Syn.Cst.StructureItem.t) ->
                 match item with
-                | Syn.Cst.StructureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleStructure.name declaration)
+                | Syn.Cst.StructureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleStructure.name
+                  declaration)
                 | _ -> None)
         | Syn.Cst.Interface interface ->
             interface.Syn.Cst.items |> List.filter_map
               (fun (item: Syn.Cst.SignatureItem.t) ->
                 match item with
-                | Syn.Cst.SignatureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleSignature.name declaration)
+                | Syn.Cst.SignatureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleSignature.name
+                  declaration)
                 | _ -> None)
       in
       let _ = Collections.HashMap.insert session.declared_modules_by_source_hash key modules in
@@ -257,12 +279,9 @@ let collect_missing_module_summaries = fun session roots ->
   let loaded_module_names = session.config.loaded_modules
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
-  let implicit_open_module_names (source: Source.t) =
-    source.implicit_opens |> List.map IdentPath.to_string
-  in
-  let implicit_open_source_ids source =
-    implicit_open_module_names source |> List.concat_map (source_ids_of_module session)
-  in
+  let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map IdentPath.to_string in
+  let implicit_open_source_ids source = implicit_open_module_names source
+  |> List.concat_map (source_ids_of_module session) in
   let local_nested_module_prefixes module_name = source_ids_of_module session module_name
   |> List.filter_map (source_of_id session)
   |> List.concat_map (declared_modules session)
@@ -354,8 +373,7 @@ let collect_missing_module_summaries = fun session roots ->
                       in
                       local_nested_modules @ loaded_nested_modules)
                   |> fun nested_modules ->
-                  nested_modules @ implicit_open_nested_modules source
-                  |> List.sort_uniq String.compare
+                    nested_modules @ implicit_open_nested_modules source |> List.sort_uniq String.compare
                 in
                 let (missing', additional) =
                   source_modules
@@ -391,11 +409,9 @@ let local_source_closure = fun session roots ->
   let loaded_module_names = session.config.loaded_modules
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
-  let implicit_open_source_ids (source: Source.t) =
-    source.implicit_opens
-    |> List.map IdentPath.to_string
-    |> List.concat_map (source_ids_of_module session)
-  in
+  let implicit_open_source_ids (source: Source.t) = source.implicit_opens
+  |> List.map IdentPath.to_string
+  |> List.concat_map (source_ids_of_module session) in
   let initial_source_ids =
     roots
     |> List.filter_map
@@ -425,10 +441,10 @@ let local_source_closure = fun session roots ->
             | Some source ->
                 let additional = (implicit_open_source_ids source)
                 @ (module_dependencies session ~deps_env_key ~deps_env source
-                  |> List.filter
-                    (fun module_name ->
-                      not (Collections.HashSet.contains loaded_module_names module_name))
-                  |> List.concat_map (source_ids_of_module session)) in
+                |> List.filter
+                  (fun module_name ->
+                    not (Collections.HashSet.contains loaded_module_names module_name))
+                |> List.concat_map (source_ids_of_module session)) in
                 discover (additional @ rest) seen
           )
   in

@@ -71,6 +71,7 @@ type expr_desc =
   | EMatch of ExprId.t * match_case list
   | ETry of ExprId.t * match_case list
   | EPolyVariant of { tag: string; payload: ExprId.t option }
+  | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   | EUnsupported of string
   | EHole of string
@@ -328,6 +329,11 @@ let render_expr_desc = function
       | Some expr_id -> "poly_variant `" ^ tag ^ " " ^ ExprId.to_string expr_id
       | None -> "poly_variant `" ^ tag
     )
+  | ECoerce { value_id; target_type } ->
+      "coerce "
+      ^ ExprId.to_string value_id
+      ^ " :> "
+      ^ TypePrinter.type_to_string target_type
   | ELocalOpen { module_path; body_id } ->
       "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
@@ -591,6 +597,11 @@ let expr_desc_to_json = function
           | None -> Data.Json.Null
         );
       ]
+  | ECoerce { value_id; target_type } -> Data.Json.Object [
+    ("tag", Data.Json.String "coerce");
+    ("value_id", Data.Json.Int (ExprId.to_int value_id));
+    ("target_type", Data.Json.String (TypePrinter.type_to_string target_type));
+  ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
     ("module_path", Data.Json.String (IdentPath.to_string module_path));

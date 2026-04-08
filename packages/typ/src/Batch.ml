@@ -1,24 +1,30 @@
 open Std
 open Model
 
-let check_source = fun ~filename source ->
+let check_source = fun ~filename ~parse_result ~cst ->
   let config = TypConfig.default in
   let session = Session.empty ~config in
-  let parse_result = Syn.parse ~filename source in
-  let cst = Syn.build_cst parse_result in
-  let (session, source_id) = Session.create_prepared_source
+  let origin = Source.Path filename in
+  let module_name = Source.infer_module_name origin in
+  let implicit_opens = [] in
+  let source_hash = Source.hash ~implicit_opens ~cst in
+  let (session, source_id) = Session.create_source
     session
     ~kind:Source.File
-    ~origin:(Source.Path filename)
-    ~source_hash:(Source.hash_text ~kind:Source.File ~origin:(Source.Path filename) ~text:source)
+    ~module_name
+    ~implicit_opens
+    ~origin
+    ~source_hash
     ~parse_result
     ~cst in
   let source = Source.make_prepared
     ~source_id
     ~kind:Source.File
-    ~origin:(Source.Path filename)
+    ~module_name
+    ~implicit_opens
+    ~origin
     ~revision:0
-    ~source_hash:(Source.hash_text ~kind:Source.File ~origin:(Source.Path filename) ~text:source)
+    ~source_hash
     ~parse_result
     ~cst in
   let fallback_analysis = Session.SourceAnalysis.analyze ~config source in

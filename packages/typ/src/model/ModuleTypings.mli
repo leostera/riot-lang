@@ -6,6 +6,17 @@ open Std
     cache layers persist, reload, merge, and hand back into new [Session]s.
     It carries the exported typing facts for one module together with the
     module identity and source hash a host needs for provenance and reuse. *)
+type definition_site = {
+  origin: Source.origin;
+  span: Syn.Ceibo.Span.t;
+}
+type value_definition_target =
+  | Site of definition_site
+  | Export of IdentPath.t
+type value_definition = {
+  export_name: string;
+  target: value_definition_target;
+}
 type t
 
 (** Build trusted module typings. *)
@@ -13,6 +24,7 @@ val trusted:
   module_name:string ->
   source_hash:Crypto.hash ->
   ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
   FileSummary.exports ->
   t
 
@@ -21,6 +33,7 @@ val errored:
   module_name:string ->
   source_hash:Crypto.hash ->
   ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
   FileSummary.exports ->
   t
 
@@ -29,11 +42,17 @@ val missing:
   module_name:string ->
   source_hash:Crypto.hash ->
   ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
   unit ->
   t
 
 (** Lift one per-source [FileSummary] into canonical module typings. *)
-val of_file_summary: module_name:string -> source_hash:Crypto.hash -> FileSummary.t -> t
+val of_file_summary:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?value_definitions:value_definition list ->
+  FileSummary.t ->
+  t
 
 (** Recover one per-source [FileSummary] from module typings.
 
@@ -48,6 +67,8 @@ val synthetic_source_hash:
   module_name:string ->
   export_result:FileSummary.export_result ->
   type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  unit ->
   Crypto.hash
 
 (** Recover the module name associated with these typings. *)
@@ -64,6 +85,12 @@ val exports: t -> FileSummary.exports
 
 (** Extract the exported lowered type declarations carried by these typings. *)
 val type_decls: t -> FileSummary.type_decl list
+
+(** Extract exported definition targets carried by these typings. *)
+val value_definitions: t -> value_definition list
+
+(** Find one exported definition target by export name. *)
+val find_value_definition: t -> export_name:string -> value_definition_target option
 
 module Json: sig
   (** Encode module typings as structured JSON. *)

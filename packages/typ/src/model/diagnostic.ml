@@ -54,6 +54,13 @@ type signature_mismatch =
   | MissingTypeDeclaration of { name: string }
   | TypeDeclarationMismatch of { name: string; expected: string; actual: string }
 
+type match_witness =
+  | WildcardWitness
+  | BoolWitness of bool
+  | UnitWitness
+  | TupleWitness of match_witness list
+  | ConstructorWitness of { name: string; arguments: match_witness list }
+
 type t =
   | CstBuilderError of { builder_error: Syn.CstBuilder.error }
   | UnsupportedSyntax of {
@@ -91,6 +98,11 @@ type t =
       counterpart_span: Syn.Ceibo.Span.t option;
       mismatch: signature_mismatch
     }
+  | NonexhaustiveMatch of {
+      match_span: Syn.Ceibo.Span.t;
+      witness: match_witness
+    }
+  | RedundantMatchCase of { case_span: Syn.Ceibo.Span.t }
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
 
@@ -108,6 +120,8 @@ let code = function
   | ApplicationLabelMismatch _ -> "TYP2005"
   | RecordResolutionError _ -> "TYP2006"
   | OrPatternBindingsMismatch _ -> "TYP2007"
+  | NonexhaustiveMatch _ -> "TYP1012"
+  | RedundantMatchCase _ -> "TYP1013"
   | SignatureInclusionError _ -> "TYP2011"
   | UnsupportedSemanticExpression _ -> "TYP2010"
   | RecursiveGroupRequiresSimpleVariableBinders _ -> "TYP2004"
@@ -126,6 +140,8 @@ let name = function
   | ApplicationLabelMismatch _ -> "application-label-mismatch"
   | RecordResolutionError _ -> "record-resolution-error"
   | OrPatternBindingsMismatch _ -> "or-pattern-bindings-mismatch"
+  | NonexhaustiveMatch _ -> "nonexhaustive-match"
+  | RedundantMatchCase _ -> "redundant-match-case"
   | SignatureInclusionError _ -> "signature-inclusion-error"
   | UnsupportedSemanticExpression _ -> "unsupported-semantic-expression"
   | RecursiveGroupRequiresSimpleVariableBinders _ -> "recursive-group-requires-simple-variable-binders"
@@ -146,7 +162,9 @@ let severity = function
   | ParameterLoweredAsPositional _
   | ApplicationArgumentLoweredAsPositional _
   | IgnoredTypeAscription _
-  | UnsupportedInterfaceFile _ -> Warning
+  | UnsupportedInterfaceFile _
+  | NonexhaustiveMatch _
+  | RedundantMatchCase _ -> Warning
 
 let severity_to_string = function
   | Error -> "error"
@@ -166,6 +184,8 @@ let primary_span = function
   | ApplicationLabelMismatch { application_span; _ } -> application_span
   | RecordResolutionError { operation_span; _ } -> operation_span
   | OrPatternBindingsMismatch { pattern_span; _ } -> pattern_span
+  | NonexhaustiveMatch { match_span; _ } -> match_span
+  | RedundantMatchCase { case_span } -> case_span
   | SignatureInclusionError { mismatch_span; _ } -> mismatch_span
   | UnsupportedSemanticExpression { expression_span; _ } -> expression_span
   | RecursiveGroupRequiresSimpleVariableBinders { binding_span } -> binding_span
@@ -229,6 +249,31 @@ let signature_mismatch_name = function
   | ValueTypeMismatch { name; _ } -> "value " ^ name
   | MissingTypeDeclaration { name } -> "type " ^ name
   | TypeDeclarationMismatch { name; _ } -> "type " ^ name
+
+let rec match_witness_to_string = function
+  | WildcardWitness -> "_"
+  | BoolWitness value -> Bool.to_string value
+  | UnitWitness -> "()"
+  | TupleWitness elements -> "("
+    ^ String.concat ", " (List.map match_witness_to_string elements)
+    ^ ")"
+  | ConstructorWitness { name = "::"; arguments = [ head; tail ] } ->
+      match_witness_atom_to_string head ^ " :: " ^ match_witness_atom_to_string tail
+  | ConstructorWitness { name; arguments=[] } -> name
+  | ConstructorWitness { name; arguments=[ argument ] } ->
+      name ^ " " ^ match_witness_atom_to_string argument
+  | ConstructorWitness { name; arguments } ->
+      name
+      ^ " ("
+      ^ String.concat ", " (List.map match_witness_to_string arguments)
+      ^ ")"
+
+and match_witness_atom_to_string = function
+  | WildcardWitness as witness -> match_witness_to_string witness
+  | BoolWitness _ as witness -> match_witness_to_string witness
+  | UnitWitness as witness -> match_witness_to_string witness
+  | ConstructorWitness { arguments=[]; _ } as witness -> match_witness_to_string witness
+  | witness -> "(" ^ match_witness_to_string witness ^ ")"
 
 let message = function
   | CstBuilderError { builder_error } ->
@@ -320,6 +365,10 @@ let message = function
       ^ "; actual: "
       ^ render_binding_names actual_names
       ^ ")"
+  | NonexhaustiveMatch { witness; _ } ->
+      "non-exhaustive match: missing case " ^ match_witness_to_string witness
+  | RedundantMatchCase _ ->
+      "match case is redundant"
   | SignatureInclusionError { mismatch=MissingValue { name }; _ } ->
       "signature inclusion failed: implementation does not export value " ^ name
   | SignatureInclusionError { mismatch=ValueTypeMismatch { name; expected; actual }; _ } ->
@@ -404,6 +453,28 @@ let record_resolution_reason_to_json = function
   ]
 
 let names_to_json = fun names -> Data.Json.Array (List.map (fun name -> Data.Json.String name) names)
+
+let rec match_witness_to_json = function
+  | WildcardWitness ->
+      Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
+  | BoolWitness value ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "bool");
+        ("value", Data.Json.Bool value);
+      ]
+  | UnitWitness ->
+      Data.Json.Object [ ("tag", Data.Json.String "unit") ]
+  | TupleWitness elements ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "tuple");
+        ("elements", Data.Json.Array (List.map match_witness_to_json elements));
+      ]
+  | ConstructorWitness { name; arguments } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "constructor");
+        ("name", Data.Json.String name);
+        ("arguments", Data.Json.Array (List.map match_witness_to_json arguments));
+      ]
 
 let signature_mismatch_to_json = function
   | MissingValue { name } -> Data.Json.Object [
@@ -497,6 +568,13 @@ let fields_to_json = function
         ("expected_names", names_to_json expected_names);
         ("actual_names", names_to_json actual_names);
       ]
+  | NonexhaustiveMatch { match_span; witness } ->
+      [
+        ("match_span", span_to_json match_span);
+        ("witness", match_witness_to_json witness);
+      ]
+  | RedundantMatchCase { case_span } ->
+      [ ("case_span", span_to_json case_span); ]
   | SignatureInclusionError { mismatch_span; counterpart_span; mismatch } ->
       let counterpart_json =
         match counterpart_span with

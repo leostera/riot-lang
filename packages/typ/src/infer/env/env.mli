@@ -14,11 +14,9 @@ module Value_env: module type of Value_env
 
 type bindings = Binding.t list
 type summary = Summary2.t
-
 type t
 type module_scope
 type item_scope
-
 val empty: t
 
 val empty_summary: summary

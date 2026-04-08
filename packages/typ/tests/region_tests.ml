@@ -10,19 +10,20 @@ let test_local_reachable_vars_include_nested_escaped_vars = fun _ctx ->
   let regions = Region.create () in
   Region.with_region regions
     (fun outer ->
-      let outer_ty = Region.fresh_var regions 0 in
+      let outer_ty = TypeRepr.make_var ~level:1 0 |> Region.track_node regions in
       let escaped_ty =
         Region.with_region regions
           (fun _inner ->
-            let escaped_ty = Region.fresh_var regions 1 in
-            let _dead_ty = Region.fresh_var regions 2 in
-            let lowered = TypeRepr.occurs_or_lower
-              ~generation:(Region.next_mark regions)
-              ~needle:0
-              ~level:1
-              ~on_lower:(fun ty ->
-                Region.add_to_pool regions ~level:(TypeRepr.level ty) ty |> ignore)
-              escaped_ty in
+            let escaped_ty = TypeRepr.make_var ~level:2 1 |> Region.track_node regions in
+            let _dead_ty = TypeRepr.make_var ~level:2 2 |> Region.track_node regions in
+            let lowered =
+              TypeRepr.occurs_or_lower
+                ~generation:(Region.next_mark regions)
+                ~needle:0
+                ~level:1
+                ~on_lower:(fun ty -> Region.add_to_pool regions ~level:(TypeRepr.level ty) ty |> ignore)
+                escaped_ty
+            in
             if lowered then
               raise (Failure "escaping var unexpectedly occurred in the outer variable")
             else

@@ -21,7 +21,10 @@
               "arguments": [],
               "name": "point",
               "tag": "named",
-              "type_constructor_id": 0
+              "type_constructor_id": {
+                "local_id": 0,
+                "owner": "persisted_summary"
+              }
             },
             "quantified": []
           }
@@ -29,8 +32,8 @@
       ],
       "tag": "trusted_export"
     },
-    "module_name": "Module_typings",
-    "source_hash": "bca2edbfabac0bb14a3c0c76e9448ea2de4deff4013213df4fcd623de1227588",
+    "module_name": "Persisted_summary",
+    "source_hash": "a39cd7623b6eda1a35bb68ef4d01173b9f61ee4d4bc5e5e2d0b346e20ad0ee2b",
     "type_decls": [
       {
         "constructors": [],
@@ -55,8 +58,27 @@
         "param_ids": [],
         "param_variances": [],
         "scope_path": [],
-        "type_constructor_id": 0,
+        "type_constructor_id": {
+          "local_id": 0,
+          "owner": "persisted_summary"
+        },
         "type_name": "point"
+      }
+    ],
+    "value_definitions": [
+      {
+        "export_name": "origin",
+        "target": {
+          "origin": {
+            "tag": "label",
+            "value": "persisted_summary.ml"
+          },
+          "span": {
+            "end": 42,
+            "start": 35
+          },
+          "tag": "site"
+        }
       }
     ]
   }

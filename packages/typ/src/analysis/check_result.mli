@@ -3,6 +3,19 @@ open Model
 
 (** Shared output types for a single prototype type-check run. *)
 type env = (string * TypeScheme.t) list
+type binding_provenance =
+  | Lowered_pattern of PatId.t
+  | Prelude
+  | Ambient
+  | Type_constructor of { type_name: string; scope_path: IdentPath.t }
+  | Exception of { name: string; scope_path: IdentPath.t }
+  | Declared_value of { name: string; scope_path: IdentPath.t }
+  | Included of { module_path: IdentPath.t }
+  | Module_alias of { alias_name: string; module_path: IdentPath.t }
+type binding_ref = {
+  path: IdentPath.t;
+  provenance: binding_provenance;
+}
 (** Environment snapshot captured before an expression is inferred. *)
 type expr_trace = {
   (** Expression traced by this snapshot. *)
@@ -11,6 +24,8 @@ type expr_trace = {
   origin_id: OriginId.t;
   (** Visible environment before the expression was inferred. *)
   env_before: env;
+  (** Binding resolved for variable-like references, when available. *)
+  resolved_binding: binding_ref option;
   (** Final inferred type for the expression. *)
   inferred_type: TypeRepr.t;
 }

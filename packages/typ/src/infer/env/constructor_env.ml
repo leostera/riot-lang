@@ -68,11 +68,7 @@ let add_owner_entry = fun index entry ->
 
 let owner_index_of_entries = fun entries -> entries |> List.fold_left add_owner_entry Owner_map.empty
 
-let current_visible_components = fun env ->
-  {
-    by_name = env.current;
-    by_owner = env.by_owner;
-  }
+let current_visible_components = fun env -> { by_name = env.current; by_owner = env.by_owner }
 
 let merge_visible_by_name = fun dominant rest ->
   Name_map.fold
@@ -103,13 +99,13 @@ let merge_visible_by_owner = fun dominant rest ->
 let merge_visible_components = fun dominant rest ->
   {
     by_name = merge_visible_by_name dominant.by_name rest.by_name;
-    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner;
+    by_owner = merge_visible_by_owner dominant.by_owner rest.by_owner
   }
 
 let map_components = fun map_entry components ->
   {
     by_name = Name_map.map (List.map map_entry) components.by_name;
-    by_owner = Owner_map.map (Name_map.map map_entry) components.by_owner;
+    by_owner = Owner_map.map (Name_map.map map_entry) components.by_owner
   }
 
 let qualify_entry = fun root entry ->
@@ -142,13 +138,12 @@ let rec visible_components = fun env ->
   let current = current_visible_components env in
   match env.layer with
   | Nothing -> current
-  | Open { components; next; _ } ->
-      current
-      |> merge_visible_components components
-      |> merge_visible_components (visible_components next)
+  | Open { components; next; _ } -> current
+  |> merge_visible_components components
+  |> merge_visible_components (visible_components next)
   | Map { map_entry; next } ->
-      current
-      |> merge_visible_components (visible_components next |> map_components map_entry)
+      current |> merge_visible_components
+        (visible_components next |> map_components map_entry)
 
 let entries =
   let rec loop acc env =

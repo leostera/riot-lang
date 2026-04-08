@@ -17,4 +17,6 @@ val instantiate:
   t ->
   TypeRepr.t
 
+val copy: t -> t
+
 val free_vars: t -> int list

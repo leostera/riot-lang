@@ -46,6 +46,9 @@ val module_typings: t -> ModuleTypings.t list
     module. *)
 val find_module_typings: t -> SourceId.t -> ModuleTypings.t option
 
+(** Find visible module typings for one module name within this snapshot. *)
+val find_module_typings_by_name: t -> string -> ModuleTypings.t option
+
 (** Find the analysis for one logical source within this snapshot.
 
     For paired [.ml]/[.mli] modules, the returned analysis includes any

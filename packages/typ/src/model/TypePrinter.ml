@@ -35,6 +35,11 @@ let render_arrow_label = function
   | TypeRepr.Labelled label -> "~" ^ label ^ ":"
   | TypeRepr.Optional label -> "?" ^ label ^ ":"
 
+let render_poly_variant_bound = function
+  | TypeRepr.Exact -> ""
+  | TypeRepr.UpperBound -> ">"
+  | TypeRepr.LowerBound -> "<"
+
 let rec render_type = fun state ~nested ty ->
   match TypeRepr.view (TypeRepr.prune ty) with
   | TypeRepr.Int ->
@@ -87,7 +92,7 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
-  | TypeRepr.Named { name; arguments; _ } -> (
+  | TypeRepr.Named { head={ name; _ }; arguments } -> (
       match arguments with
       | [] -> IdentPath.to_string name
       | [ argument ] -> render_type state ~nested:true argument ^ " " ^ IdentPath.to_string name
@@ -96,6 +101,21 @@ let rec render_type = fun state ~nested ty ->
       ^ ") "
       ^ IdentPath.to_string name
     )
+  | TypeRepr.PolyVariant { bound; tags; inherited } ->
+      let members = (tags |> List.map (render_poly_variant_tag state))
+      @ (inherited |> List.map (render_type state ~nested:false)) in
+      let prefix = render_poly_variant_bound bound in
+      let prefix =
+        if String.equal prefix "" then
+          ""
+        else
+          prefix ^ " "
+      in
+      let text = "[ " ^ prefix ^ String.concat " | " members ^ " ]" in
+      if nested then
+        "(" ^ text ^ ")"
+      else
+        text
   | TypeRepr.Tuple members ->
       members |> List.map (render_type state ~nested:true) |> String.concat " * " |> fun text ->
         if nested then
@@ -111,6 +131,11 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
+
+and render_poly_variant_tag = fun state (tag: TypeRepr.poly_variant_tag) ->
+  match tag.payload_type with
+  | Some payload_type -> "`" ^ tag.name ^ " of " ^ render_type state ~nested:false payload_type
+  | None -> "`" ^ tag.name
 
 let type_to_string = fun ty ->
   let state = make_render_state () in

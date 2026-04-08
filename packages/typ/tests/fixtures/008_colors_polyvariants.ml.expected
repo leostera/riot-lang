@@ -617,11 +617,11 @@
   "exports": [
     {
       "name": "blue",
-      "scheme": "_?6"
+      "scheme": "color"
     },
     {
       "name": "to_string",
-      "scheme": "'a. 'a -> string"
+      "scheme": "color -> string"
     }
   ],
   "expr_traces": [
@@ -716,12 +716,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -733,7 +745,7 @@
         }
       ],
       "expr_id": 0,
-      "inferred_type": "'a",
+      "inferred_type": "color",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -836,15 +848,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -959,15 +983,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1082,15 +1118,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1205,15 +1253,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1225,7 +1285,7 @@
         }
       ],
       "expr_id": 4,
-      "inferred_type": "_?1",
+      "inferred_type": "_?0",
       "origin": {
         "label": "qualified_path_expression",
         "span": {
@@ -1328,15 +1388,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1348,7 +1420,7 @@
         }
       ],
       "expr_id": 5,
-      "inferred_type": "_?0",
+      "inferred_type": "int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -1451,15 +1523,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1574,15 +1658,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1697,15 +1793,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1820,15 +1928,27 @@
         },
         {
           "name": "i",
-          "scheme": "_?0"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -1943,11 +2063,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -1955,11 +2083,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2074,11 +2206,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2086,11 +2226,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2205,11 +2349,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2217,11 +2369,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2336,11 +2492,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2348,11 +2512,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2364,7 +2532,7 @@
         }
       ],
       "expr_id": 13,
-      "inferred_type": "_?3",
+      "inferred_type": "_?1",
       "origin": {
         "label": "qualified_path_expression",
         "span": {
@@ -2467,11 +2635,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2479,11 +2655,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2495,7 +2675,7 @@
         }
       ],
       "expr_id": 14,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -2598,11 +2778,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2610,11 +2798,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2729,11 +2921,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2741,11 +2941,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2860,11 +3064,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -2872,11 +3084,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -2991,11 +3207,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3003,11 +3227,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3122,11 +3350,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3134,11 +3370,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3150,7 +3390,7 @@
         }
       ],
       "expr_id": 19,
-      "inferred_type": "_?4",
+      "inferred_type": "_?2",
       "origin": {
         "label": "qualified_path_expression",
         "span": {
@@ -3253,11 +3493,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3265,11 +3513,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3281,7 +3533,7 @@
         }
       ],
       "expr_id": 20,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -3384,11 +3636,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3396,11 +3656,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3515,11 +3779,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3527,11 +3799,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3646,11 +3922,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3658,11 +3942,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3777,11 +4065,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3789,11 +4085,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3908,11 +4208,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -3920,11 +4228,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -3936,7 +4248,7 @@
         }
       ],
       "expr_id": 25,
-      "inferred_type": "_?5",
+      "inferred_type": "_?3",
       "origin": {
         "label": "qualified_path_expression",
         "span": {
@@ -4039,11 +4351,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4051,11 +4371,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4067,7 +4391,7 @@
         }
       ],
       "expr_id": 26,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -4170,11 +4494,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4182,11 +4514,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4301,11 +4637,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4313,11 +4657,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4432,11 +4780,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4444,11 +4800,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4563,11 +4923,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4575,11 +4943,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4694,11 +5066,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4706,11 +5086,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4825,11 +5209,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4837,11 +5229,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -4956,11 +5352,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -4968,11 +5372,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -5087,11 +5495,19 @@
         },
         {
           "name": "b",
-          "scheme": "'a"
+          "scheme": "int"
         },
         {
           "name": "g",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
         },
         {
           "name": "not",
@@ -5099,11 +5515,15 @@
         },
         {
           "name": "r",
-          "scheme": "'a"
+          "scheme": "int"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -5217,12 +5637,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "t",
-          "scheme": "'a. 'a"
+          "scheme": "color"
         },
         {
           "name": "|>",
@@ -5336,8 +5768,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
+        },
+        {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -5349,7 +5793,7 @@
         }
       ],
       "expr_id": 36,
-      "inferred_type": "'a -> string",
+      "inferred_type": "color -> string",
       "origin": {
         "label": "fun_expression",
         "span": {
@@ -5451,12 +5895,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         },
         {
           "name": "|>",
@@ -5570,12 +6026,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         },
         {
           "name": "|>",
@@ -5689,12 +6157,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         },
         {
           "name": "|>",
@@ -5808,12 +6288,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         },
         {
           "name": "|>",
@@ -5927,12 +6419,24 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "max",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
+          "name": "min",
+          "scheme": "'a. 'a -> 'a -> 'a"
+        },
+        {
           "name": "not",
           "scheme": "bool -> bool"
         },
         {
+          "name": "raise",
+          "scheme": "'a. exn -> 'a"
+        },
+        {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         },
         {
           "name": "|>",
@@ -5944,7 +6448,7 @@
         }
       ],
       "expr_id": 41,
-      "inferred_type": "_?6",
+      "inferred_type": "color",
       "origin": {
         "label": "poly_variant_expression",
         "span": {
@@ -5961,11 +6465,11 @@
       "exports": [
         {
           "name": "blue",
-          "scheme": "_?6"
+          "scheme": "color"
         },
         {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         }
       ],
       "tag": "errored_export"
@@ -5991,7 +6495,7 @@
       "exports_after": [
         {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         }
       ],
       "item_id": 2
@@ -6003,11 +6507,11 @@
       "exports_after": [
         {
           "name": "blue",
-          "scheme": "_?6"
+          "scheme": "color"
         },
         {
           "name": "to_string",
-          "scheme": "'a. 'a -> string"
+          "scheme": "color -> string"
         }
       ],
       "item_id": 3
@@ -6040,7 +6544,10 @@
           ]
         },
         "param_variances": [],
-        "type_constructor_id": 0,
+        "type_constructor_id": {
+          "local_id": 0,
+          "owner": "packages/typ/tests/fixtures/008_colors_polyvariants"
+        },
         "type_name": "color"
       },
       "item_id": 1,
@@ -7014,7 +7521,7 @@
     },
     {
       "expr_id": 0,
-      "inferred_type": "'a",
+      "inferred_type": "color",
       "origin_id": 4,
       "span": {
         "end": 105,
@@ -7023,7 +7530,7 @@
     },
     {
       "expr_id": 5,
-      "inferred_type": "_?0",
+      "inferred_type": "int",
       "origin_id": 11,
       "span": {
         "end": 151,
@@ -7032,7 +7539,7 @@
     },
     {
       "expr_id": 14,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin_id": 25,
       "span": {
         "end": 204,
@@ -7041,7 +7548,7 @@
     },
     {
       "expr_id": 20,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin_id": 31,
       "span": {
         "end": 228,
@@ -7050,7 +7557,7 @@
     },
     {
       "expr_id": 26,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin_id": 37,
       "span": {
         "end": 252,
@@ -7140,7 +7647,7 @@
     },
     {
       "expr_id": 4,
-      "inferred_type": "_?1",
+      "inferred_type": "_?0",
       "origin_id": 10,
       "span": {
         "end": 149,
@@ -7149,7 +7656,7 @@
     },
     {
       "expr_id": 13,
-      "inferred_type": "_?3",
+      "inferred_type": "_?1",
       "origin_id": 24,
       "span": {
         "end": 202,
@@ -7158,7 +7665,7 @@
     },
     {
       "expr_id": 19,
-      "inferred_type": "_?4",
+      "inferred_type": "_?2",
       "origin_id": 30,
       "span": {
         "end": 226,
@@ -7167,7 +7674,7 @@
     },
     {
       "expr_id": 25,
-      "inferred_type": "_?5",
+      "inferred_type": "_?3",
       "origin_id": 36,
       "span": {
         "end": 250,
@@ -7212,7 +7719,7 @@
     },
     {
       "expr_id": 41,
-      "inferred_type": "_?6",
+      "inferred_type": "color",
       "origin_id": 55,
       "span": {
         "end": 287,
@@ -7374,7 +7881,7 @@
     },
     {
       "expr_id": 36,
-      "inferred_type": "'a -> string",
+      "inferred_type": "color -> string",
       "origin_id": 47,
       "span": {
         "end": 258,

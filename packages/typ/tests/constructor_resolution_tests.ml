@@ -5,6 +5,36 @@ open Typ.Diagnostics
 open Typ.Model
 open Typ.Session
 
+let expect_cst = fun ~filename parse_result ->
+  match Syn.build_cst parse_result with
+  | Ok cst -> cst
+  | Error (Syn.Parse_diagnostics diagnostics) -> panic
+    ("expected successful CST for "
+    ^ filename
+    ^ " but parser reported diagnostics: "
+    ^ String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics))
+  | Error (Syn.Cst_builder_error error) -> panic
+    ("expected successful CST for " ^ filename ^ " but CST build failed: " ^ error.message)
+
+let create_source = fun session ~kind ~origin ~text ->
+  let filename =
+    match origin with
+    | Source.Path path -> path
+    | Source.Label label -> Path.v label
+  in
+  let parse_result = Syn.parse ~filename text in
+  let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
+  let implicit_opens = [] in
+  Session.create_source
+    session
+    ~kind
+    ~module_name:(Source.infer_module_name origin)
+    ~implicit_opens
+    ~origin
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst
+
 let inferred_type_at = fun snapshot source_id offset ->
   Query.type_at snapshot source_id (Position.make ~offset) |> function
   | Some ty -> Some (TypePrinter.type_to_string ty)
@@ -83,7 +113,7 @@ let test_constructor_resolution_uses_expected_type = fun _ctx ->
     ]
   in
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = Session.create_source
+  let (session, source_id) = create_source
     session
     ~kind:Source.File
     ~origin:(Source.Label "constructor_resolution.ml")

@@ -129,13 +129,13 @@ should jump the queue.
    `riot check` and `riot-lsp` now build a `Typ.Store` on top of
    `Contentstore`, pass it through `Typ.Config`, hydrate from persisted module
    typings, and persist newly produced module typings back into the store.
-2. [ ] Implement real `.mli` / signature checking.
+2. [x] Implement real `.mli` / signature checking.
    When an interface exists, the exported module view should be shaped by the
    interface, not only by the implementation.
-3. [ ] Add `definition_at`.
+3. [x] Add `definition_at`.
    `ModuleTypings` should carry enough exported symbol origin data to answer
    cross-module jumps precisely.
-4. [ ] Add match coverage diagnostics.
+4. [x] Add match coverage diagnostics.
    Exhaustiveness and redundancy should become structured diagnostics, not just
    future nice-to-haves.
 5. [ ] Keep climbing the real package ladder.
@@ -165,7 +165,7 @@ should jump the queue.
 
 ### Interfaces and exports
 
-- [ ] Implement real `.mli` / signature checking.
+- [x] Implement real `.mli` / signature checking.
   Exported module views should come from the interface when present.
 - [ ] Make persisted module typings carry the real export facts needed by
   downstream checking and editor queries.
@@ -176,7 +176,7 @@ should jump the queue.
 
 - [ ] Keep `diagnostics` stable over rooted snapshots.
 - [ ] Make `type_at` and related index-backed queries line up with the manual.
-- [ ] Add `definition_at` support built on origins and exported symbol data.
+- [x] Add `definition_at` support built on origins and exported symbol data.
 - [ ] Add `hover` and richer scope/environment queries.
 - [ ] Keep `riot-lsp` aligned with rooted snapshots instead of relying forever
   on the compatibility `Session.snapshot` path.
@@ -192,7 +192,7 @@ should jump the queue.
   - one pattern rule
   - one labeled-argument behavior
   - one module/signature behavior
-- [ ] Add real match coverage diagnostics.
+- [x] Add real match coverage diagnostics.
   Exhaustiveness and redundancy need both semantics and diagnostics coverage.
 - [ ] Add polymorphic variants.
 - [ ] Add GADT-aware pattern refinement.

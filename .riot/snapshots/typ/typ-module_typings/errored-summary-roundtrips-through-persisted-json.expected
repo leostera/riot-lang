@@ -27,8 +27,24 @@
       ],
       "tag": "errored_export"
     },
-    "module_name": "Module_typings",
-    "source_hash": "8ef059276907e7836d8bc73d4140a01f90966eb02e8fcfd3152586aa21f45328",
-    "type_decls": []
+    "module_name": "Persisted_summary",
+    "source_hash": "5fa24e540d17f08739f567bf41cae0bea51a87786863781f9cecd8289beacf04",
+    "type_decls": [],
+    "value_definitions": [
+      {
+        "export_name": "broken",
+        "target": {
+          "origin": {
+            "tag": "label",
+            "value": "persisted_summary.ml"
+          },
+          "span": {
+            "end": 10,
+            "start": 3
+          },
+          "tag": "site"
+        }
+      }
+    ]
   }
 }

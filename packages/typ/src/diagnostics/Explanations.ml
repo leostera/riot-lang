@@ -77,6 +77,23 @@ let all_entries = [
       "This usually points to a gap between parse recovery and the lossless CST builder, rather than an inference failure.";
     ];
   entry
+    ~diagnostic_id:"TYP1012"
+    ~name:"nonexhaustive-match"
+    ~summary:"A match expression leaves part of the scrutinee space uncovered."
+    ~details:[
+      "The prototype currently reports a structured witness pattern for the first ordinary case shape it can still see as missing.";
+      "Guarded clauses do not count as total coverage on their own.";
+      "This initial slice is intentionally narrower than full OCaml pattern analysis and skips advanced pattern families it cannot analyze soundly yet.";
+    ];
+  entry
+    ~diagnostic_id:"TYP1013"
+    ~name:"redundant-match-case"
+    ~summary:"A match clause cannot run because earlier clauses already cover its reachable pattern space."
+    ~details:[
+      "This first slice only reports fully redundant clauses, not redundant subpatterns inside otherwise useful clauses.";
+      "Guarded clauses are checked against earlier unguarded coverage, but they do not contribute total coverage for later clauses.";
+    ];
+  entry
     ~diagnostic_id:"TYP2001"
     ~name:"unbound-name"
     ~summary:"A value name was referenced without any visible binding in the current typing environment."

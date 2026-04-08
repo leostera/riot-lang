@@ -117,6 +117,8 @@ type expr_desc =
   | ETry of ExprId.t * match_case list
   (** Lenient polymorphic-variant expression with an optional payload. *)
   | EPolyVariant of { tag: string; payload: ExprId.t option }
+  (** Explicit coercion expression lowered from `(expr :> target)`. *)
+  | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
   (** Local module open expression with the lowered body expression. *)
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   (** Unsupported semantic node that still reached the inferencer. *)
