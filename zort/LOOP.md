@@ -16,8 +16,8 @@ Stop starting a later subsystem if an earlier one misses its exit criteria.
 Commands:
 
 - `zig build test`
-- `zig build bench -- --iters 200000`
-- `zig build bench -- --iters 200000 --filter=<substring>` for focused benches.
+- `zig build bench -- --iters 1000`
+- `zig build bench -- --iters 1000 --filter=<substring>` for focused benches.
 
 ## Loop Objective
 
@@ -123,15 +123,20 @@ Refs:
 - [`spec/string-semantics.md`](./spec/string-semantics.md)
 
 Tasks:
-- Introduce a mutator capability/subsystem for allocation and writes.
-- Route tuple/string/boxed writes through one mutation path.
-- Separate constructor entry points from raw storage mutation.
-- Add explicit typed initialization/write APIs for fields and byte buffers.
-- Ensure future write barriers and debug checks can only run on this path.
+- [x] Introduce a mutator capability/subsystem for allocation and writes.
+- [x] Route tuple/string/boxed writes through one mutation path.
+- [x] Separate constructor entry points from raw storage mutation.
+- [x] Add explicit typed initialization/write APIs for fields and byte buffers.
+- [x] Ensure future write barriers and debug checks can only run on this path.
 
 Exit criteria:
 - No heap mutation bypasses a single mutator API.
 - Allocation and mutation are not implicit runtime internals.
+
+Status:
+- Done.
+- `Runtime` exposes a `Mutator` view and delegates allocation plus heap writes through it.
+- The mutator owns typed allocation, tuple field initialization/mutation, and string write paths.
 
 ### 4. Root Registry
 
@@ -141,15 +146,20 @@ Refs:
 - [`spec/effects-and-continuations.md`](./spec/effects-and-continuations.md)
 
 Tasks:
-- Replace ad hoc root lists with explicit `RootRegistry`.
-- Add scoped root handles with clear ownership.
-- Keep generation counters and debug verification enabled.
-- Distinguish explicit roots from derived root providers.
-- Expose root ownership in tests.
+- [x] Replace ad hoc root lists with explicit `RootRegistry`.
+- [x] Add scoped root handles with clear ownership.
+- [x] Keep generation counters and debug verification enabled.
+- [x] Distinguish explicit roots from derived root providers.
+- [x] Expose root ownership in tests.
 
 Exit criteria:
 - Every long-lived live value has a clear owner.
 - Root add/remove is explicit, testable, and safe.
+
+Status:
+- Done.
+- `Runtime` delegates explicit root ownership and debug verification to `RootRegistry`.
+- Scoped root handles exist for explicit lifetime-owned roots.
 
 ### 5. Collector Baseline
 
@@ -159,15 +169,20 @@ Refs:
 - [`spec/gc-control-and-stats.md`](./spec/gc-control-and-stats.md)
 
 Tasks:
-- Implement mark-sweep against `HeapStore` and `RootRegistry` interfaces.
-- Keep mark-sweep as the first correct collector.
-- Consume roots from providers instead of hard-coded runtime fields.
-- Preserve allocation failure and recovery behavior.
-- Make reclamation a heap concern and strategy selection a collector concern.
+- [x] Implement mark-sweep against `HeapStore` and `RootRegistry` interfaces.
+- [x] Keep mark-sweep as the first correct collector.
+- [x] Consume roots from providers instead of hard-coded runtime fields.
+- [x] Preserve allocation failure and recovery behavior.
+- [x] Make reclamation a heap concern and strategy selection a collector concern.
 
 Exit criteria:
 - Mark-sweep runs through clean interfaces.
 - Collector policy can switch without storage rewrites.
+
+Status:
+- Done.
+- `Runtime.collect()` delegates to `Collector`, which owns mark-sweep and bump/reset policy.
+- `Collector` traces explicit roots from `RootRegistry` and reclaims through `HeapStore`.
 
 ### 6. Language Surface Semantics
 

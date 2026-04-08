@@ -81,3 +81,19 @@
   - are forwarding states observable?
   - are finalizers and ephemerons phase-coupled?
   - how do blocking threads still participate in global coordination?
+
+## zort collector baseline notes
+
+- zort currently uses a deliberately simpler collector baseline than OCaml:
+  - `Collector` is a dedicated subsystem in `src/collector.zig`
+  - `HeapStore` owns storage and reclamation primitives
+  - `RootRegistry` owns explicit roots and root enumeration
+- The baseline `mark_sweep` strategy:
+  - traces from explicit roots only
+  - walks tuple edges transitively
+  - reclaims through `HeapStore.reclaimSlot`
+- The experimental `bump` strategy:
+  - clears all tracked heap objects regardless of roots
+  - resets the fixed arena when one is configured
+- This is an intentional divergence from OCaml's phased generational collector.
+- Future work must add more root providers, richer object tracing, and stronger policy hooks without collapsing storage and collection back into `Runtime`.

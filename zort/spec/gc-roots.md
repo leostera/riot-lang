@@ -85,3 +85,15 @@
   - when mutation is legal
   - how major-to-young references are tracked
   - whether deletion during iteration is supported
+
+## zort RootRegistry notes
+
+- Explicit roots now live in `zort/src/root_registry.zig`, not inline in `Runtime`.
+- `RootRegistry` owns:
+  - root slot storage,
+  - generation counters,
+  - registration/unregistration bookkeeping,
+  - scoped root handles,
+  - debug validation through an external validity hook.
+- `Runtime` consumes registered roots through `RootRegistry.items()` during collection.
+- Scoped root handles are an ownership tool only; they do not yet model stack roots, callback roots, or effect-parent roots.

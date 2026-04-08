@@ -71,3 +71,15 @@
 - Reclaim increments slot generation and records slot index for reuse.
 - Reuse order is deterministic (last reclaimed slot first, LIFO).
 - Fixed-arena collection path reuses slots without deallocating payload buffers (`collectBump` path only).
+
+## zort Mutator notes (Loop 3)
+
+- Allocation and GC-relevant writes now flow through `zort/src/mutator.zig`.
+- `Mutator` owns:
+  - typed tuple/string/boxed allocation entrypoints,
+  - compatibility-tag allocation dispatch,
+  - tuple field initialization,
+  - tuple field mutation,
+  - string fill and bytes writes.
+- The distinction between initialize-vs-mutate is represented explicitly in the mutator write path, even though both phases currently share the same low-level behavior.
+- `Runtime` delegates allocation and mutation to `Mutator` instead of mutating heap objects inline.

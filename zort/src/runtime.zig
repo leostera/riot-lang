@@ -1,6 +1,9 @@
 const std = @import("std");
 const value = @import("value.zig");
 const heap_store = @import("heap_store.zig");
+const collector_mod = @import("collector.zig");
+const mutator = @import("mutator.zig");
+const root_registry = @import("root_registry.zig");
 
 pub const Value = value.Value;
 pub const Tag = value.Tag;
@@ -8,14 +11,14 @@ pub const HeapRef = value.HeapRef;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
-
-pub const Error = error{
-    OutOfMemory,
-    InvalidValue,
-};
+pub const Collector = collector_mod.Collector;
+pub const Mutator = mutator.Mutator;
+pub const RootRegistry = root_registry.RootRegistry;
+pub const RootHandle = root_registry.RootHandle;
+pub const Error = mutator.Error;
 
 pub const Runtime = struct {
-    pub const GcStrategy = enum { mark_sweep, bump };
+    pub const GcStrategy = collector_mod.GcStrategy;
 
     pub const Config = struct {
         debugRootChecks: bool = false,
@@ -35,15 +38,11 @@ pub const Runtime = struct {
 
     allocator: std.mem.Allocator,
     heap_store: HeapStore,
-    root_allocator: std.mem.Allocator,
-    roots: std.ArrayListUnmanaged(*const Value) = .{},
+    root_registry: RootRegistry,
     debug_root_checks: bool = false,
     fixed_arena: ?std.heap.FixedBufferAllocator = null,
     gc_strategy: GcStrategy = .mark_sweep,
     fixed_arena_buffer: ?[]u8 = null,
-    root_generation: usize = 0,
-    root_registrations: usize = 0,
-    root_unregistrations: usize = 0,
     collect_generations: usize = 0,
 
     pub fn init(allocator: std.mem.Allocator) Runtime {
@@ -54,13 +53,12 @@ pub const Runtime = struct {
         var runtime = Runtime{
             .allocator = allocator,
             .heap_store = HeapStore.init(allocator),
-            .root_allocator = allocator,
+            .root_registry = RootRegistry.init(allocator),
             .debug_root_checks = config.debugRootChecks,
         };
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
             runtime.fixed_arena_buffer = buffer;
-            runtime.allocator = runtime.fixed_arena.?.allocator();
         }
         runtime.gc_strategy = config.gcStrategy;
         return runtime;
@@ -73,58 +71,41 @@ pub const Runtime = struct {
     }
 
     pub fn rootStats(self: *Runtime) Stats {
+        const stats = self.root_registry.stats();
         return .{
-            .root_generation = self.root_generation,
-            .root_registrations = self.root_registrations,
-            .root_unregistrations = self.root_unregistrations,
+            .root_generation = stats.root_generation,
+            .root_registrations = stats.root_registrations,
+            .root_unregistrations = stats.root_unregistrations,
             .collect_generations = self.collect_generations,
         };
     }
 
     pub fn deinit(self: *Runtime) void {
         self.heap_store.deinit(self.fixed_arena_buffer != null);
-        self.roots.deinit(self.root_allocator);
+        self.root_registry.deinit();
     }
 
     pub fn objectCount(self: *Runtime) usize {
         return self.heap_store.count();
     }
 
+    pub fn collector(self: *Runtime) Collector {
+        return Collector.init(
+            &self.heap_store,
+            self.root_registry.items(),
+            &self.fixed_arena,
+            self.fixed_arena_buffer,
+            self.gc_strategy,
+        );
+    }
+
+    pub fn mutator(self: *Runtime) Mutator {
+        return Mutator.init(self.currentAllocator(), &self.heap_store);
+    }
+
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
-        var values: ?[]Value = null;
-        var bytes: ?[]u8 = null;
-
-        errdefer {
-            if (values) |payload| self.allocator.free(payload);
-            if (bytes) |payload| self.allocator.free(payload);
-        }
-
-        const obj = switch (tag) {
-            .tuple => blk: {
-                if (arity > 0) {
-                    values = try self.allocator.alloc(Value, arity);
-                    @memset(values.?, Value.fromInt(0));
-                }
-                break :blk Object.initTuple(values orelse &.{});
-            },
-            .string => blk: {
-                bytes = try self.allocator.alloc(u8, arity + 1);
-                @memset(bytes.?, 0);
-                break :blk Object.initString(arity, bytes.?);
-            },
-            .int64 => Object.initBoxedI64(0),
-            .double => Object.initBoxedF64(0),
-            .custom => blk: {
-                bytes = try self.allocator.alloc(u8, arity);
-                if (arity > 0) @memset(bytes.?, 0);
-                break :blk Object.initCustom(bytes.?);
-            },
-        };
-        values = null;
-        bytes = null;
-
-        const handle = try self.heap_store.add(obj);
-        return Value.fromHeapRef(handle);
+        var writer = self.mutator();
+        return writer.allocCompat(arity, tag);
     }
 
     pub fn allocTuple(self: *Runtime, len: usize) !Value {
@@ -133,12 +114,10 @@ pub const Runtime = struct {
 
     /// Allocate a tuple and initialize all fields from `fields`.
     pub fn tuple(self: *Runtime, fields: []const Value) !Value {
-        const result = try self.allocTuple(fields.len);
+        var writer = self.mutator();
+        const result = try writer.allocTuple(fields.len);
         if (fields.len == 0) return result;
-
-        const obj = self.objectFrom(result) orelse unreachable;
-        const storage = obj.tupleFields() orelse unreachable;
-        @memcpy(storage, fields);
+        try writer.initTupleFromSlice(result, fields);
         return result;
     }
 
@@ -147,25 +126,23 @@ pub const Runtime = struct {
     }
 
     pub fn allocStringWithFill(self: *Runtime, len: usize, fill: u8) !Value {
-        const string = try self.alloc(len, .string);
-        const storage = try self.stringBytesMutable(string);
-        if (storage.len > 1) {
-            @memset(storage[0 .. storage.len - 1], fill);
-        }
-        storage[storage.len - 1] = 0;
+        var writer = self.mutator();
+        const string = try writer.allocStringLen(len);
+        try writer.fillString(string, fill);
         return string;
     }
 
     pub fn allocStringWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
         if (initial_bytes.len > len) return Error.OutOfMemory;
-        const string = try self.alloc(len, .string);
-        try self.setStringBytes(string, initial_bytes);
+        var writer = self.mutator();
+        const string = try writer.allocStringLen(len);
+        try writer.initStringBytes(string, initial_bytes);
         return string;
     }
 
     pub fn allocI64(self: *Runtime, n: i64) !Value {
-        const handle = try self.heap_store.add(Object.initBoxedI64(n));
-        return Value.fromHeapRef(handle);
+        var writer = self.mutator();
+        return writer.allocBoxedI64(n);
     }
 
     pub fn allocInt64(self: *Runtime, n: i64) !Value {
@@ -181,8 +158,8 @@ pub const Runtime = struct {
     }
 
     pub fn allocF64(self: *Runtime, number: f64) !Value {
-        const handle = try self.heap_store.add(Object.initBoxedF64(number));
-        return Value.fromHeapRef(handle);
+        var writer = self.mutator();
+        return writer.allocBoxedF64(number);
     }
 
     pub fn allocDouble(self: *Runtime, number: f64) !Value {
@@ -197,23 +174,13 @@ pub const Runtime = struct {
     }
 
     pub fn setField(self: *Runtime, block_value: Value, idx: usize, next: Value) !void {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        const fields = obj.tupleFields() orelse return Error.InvalidValue;
-        if (idx >= fields.len) return Error.InvalidValue;
-        fields[idx] = next;
+        var writer = self.mutator();
+        try writer.writeField(block_value, idx, next);
     }
 
     pub fn setStringBytes(self: *Runtime, block_value: Value, bytes: []const u8) !void {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        const storage = obj.stringBufferMut() orelse return Error.InvalidValue;
-        const len = obj.wosize();
-        if (bytes.len > len) return Error.OutOfMemory;
-
-        if (bytes.len < storage.len - 1) {
-            @memset(storage[bytes.len .. storage.len - 1], 0);
-        }
-        @memcpy(storage[0..bytes.len], bytes);
-        storage[storage.len - 1] = 0;
+        var writer = self.mutator();
+        try writer.writeStringBytes(block_value, bytes);
     }
 
     pub fn stringLength(self: *Runtime, block_value: Value) !usize {
@@ -233,61 +200,22 @@ pub const Runtime = struct {
     }
 
     pub fn registerRoot(self: *Runtime, slot: *const Value) !void {
-        try self.roots.append(self.root_allocator, slot);
-        self.root_generation +%= 1;
-        self.root_registrations +%= 1;
+        try self.root_registry.register(slot);
+    }
+
+    pub fn scopedRoot(self: *Runtime, slot: *const Value) !RootHandle {
+        return self.root_registry.scoped(slot);
     }
 
     pub fn unregisterRoot(self: *Runtime, slot: *const Value) void {
-        var i: usize = 0;
-        while (i < self.roots.items.len) {
-            if (self.roots.items[i] == slot) {
-                _ = self.roots.swapRemove(i);
-                self.root_generation +%= 1;
-                self.root_unregistrations +%= 1;
-                return;
-            }
-            i += 1;
-        }
+        self.root_registry.unregister(slot);
     }
 
     pub fn collect(self: *Runtime) void {
         if (self.debug_root_checks) self.verifyRoots();
         self.collect_generations +%= 1;
-        switch (self.gc_strategy) {
-            .mark_sweep => self.collectMarkSweep(),
-            .bump => self.collectBump(),
-        }
-    }
-
-    fn collectMarkSweep(self: *Runtime) void {
-        for (self.roots.items) |slot| {
-            self.mark(slot.*);
-        }
-
-        const fixed_arena = self.fixed_arena_buffer != null;
-        const slots = self.heap_store.slotsMut();
-        for (slots, 0..) |*slot, slot_index| {
-            if (!slot.alive) continue;
-            if (!slot.object.marked) {
-                self.heap_store.reclaimSlot(slot_index, fixed_arena);
-            } else {
-                slot.object.marked = false;
-            }
-        }
-    }
-
-    fn collectBump(self: *Runtime) void {
-        if (self.fixed_arena_buffer != null) {
-            if (self.fixed_arena_buffer) |buffer| {
-                self.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
-                self.allocator = self.fixed_arena.?.allocator();
-            }
-            self.heap_store.clear(true);
-            return;
-        }
-        self.heap_store.clear(false);
-        // Experimental full-reset behavior: all tracked objects are dropped regardless of roots.
+        var gc = self.collector();
+        gc.collect();
     }
 
     fn objectFrom(self: *Runtime, block_value: Value) ?*Object {
@@ -295,31 +223,20 @@ pub const Runtime = struct {
         return self.heap_store.get(handle);
     }
 
-    fn mark(self: *Runtime, block_value: Value) void {
-        const obj = self.objectFrom(block_value) orelse return;
-        if (obj.marked) return;
-        obj.marked = true;
-
-        if (obj.tupleFields()) |fields| {
-            for (fields) |child| {
-                self.mark(child);
-            }
-        }
-    }
-
     fn verifyRoots(self: *Runtime) void {
-        for (self.roots.items) |slot| {
-            if (slot.*.isBlock() and self.objectFrom(slot.*) == null) {
-                @panic("zort: root points to non-runtime object");
-            }
-        }
+        self.root_registry.verify(self, isValidRootedValue);
     }
 
-    fn stringBytesMutable(self: *Runtime, block_value: Value) ![]u8 {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        return obj.stringBufferMut() orelse Error.InvalidValue;
+    fn currentAllocator(self: *Runtime) std.mem.Allocator {
+        // Derive the allocator from the live fixed-arena state so the runtime
+        // never holds an allocator interface tied to a pre-move stack address.
+        if (self.fixed_arena) |*arena| return arena.allocator();
+        return self.allocator;
     }
 
+    fn isValidRootedValue(self: *Runtime, rooted: Value) bool {
+        return self.objectFrom(rooted) != null;
+    }
 };
 
 test "runtime: tuple allocation and fields" {
@@ -692,6 +609,20 @@ test "runtime: register/unregister roots control liveness" {
     try std.testing.expectEqual(Value.fromInt(42), try rt.field(second_root, 0));
 
     rt.unregisterRoot(&second_root);
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
+    rt.deinit();
+}
+
+test "runtime: scoped root handle keeps and releases liveness" {
+    var rt = Runtime.init(std.testing.allocator);
+    var rooted = try rt.allocTuple(1);
+    var handle = try rt.scopedRoot(&rooted);
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
+
+    handle.deinit();
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
     rt.deinit();

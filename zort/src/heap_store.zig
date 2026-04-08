@@ -157,9 +157,9 @@ pub const Object = struct {
     pub fn deinit(self: *Object, allocator: std.mem.Allocator, fixed_arena: bool) void {
         if (!fixed_arena) {
             switch (self.payload) {
-                .tuple => |fields| allocator.free(fields),
+                .tuple => |fields| if (fields.len > 0) allocator.free(fields),
                 .string => |storage| allocator.free(storage.buffer),
-                .custom => |bytes| allocator.free(bytes),
+                .custom => |bytes| if (bytes.len > 0) allocator.free(bytes),
                 .none, .boxed_i64, .boxed_f64 => {},
             }
         }

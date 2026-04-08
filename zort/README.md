@@ -67,13 +67,13 @@ Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 - `cd zort && zig build test`
 - `cd zort && zig build bench`
-- `cd zort && zig build bench -- --iters 100000`
-- `cd zort && zig build bench -- --iters 200000 --gc-strategy=bump`
-- `cd zort && zig build bench -- --iters 200000 --gc-strategy=both`
+- `cd zort && zig build bench -- --iters 1000`
+- `cd zort && zig build bench -- --iters 1000 --gc-strategy=bump`
+- `cd zort && zig build bench -- --iters 1000 --gc-strategy=both`
 - `cd zort && zig build bench -- --filter=string`
 - `cd zort && zig build bench -- --filter=alloc-pressure-small`
-- `cd zort && zig build bench -- --iters 200000 --filter=root-churn --gc-strategy=both`
-- `cd zort && zig build bench -- --iters 200000 --filter=long-lived-sweep`
+- `cd zort && zig build bench -- --iters 1000 --filter=root-churn --gc-strategy=both`
+- `cd zort && zig build bench -- --iters 1000 --filter=long-lived-sweep`
 - `--filter=<substring>` runs only matching benchmark labels (for example `tuple`, `string`, `gc`).
 - `--gc-strategy=<mark-sweep|bump|mark_sweep|both>` selects collection mode (default: `mark-sweep`).
   - `--gc-strategy=both` runs the full suite once per strategy and prints separate strategy labels.

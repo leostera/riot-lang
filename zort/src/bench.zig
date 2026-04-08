@@ -4,7 +4,7 @@ const runtime = @import("runtime.zig");
 const Runtime = runtime.Runtime;
 const Value = runtime.Value;
 
-const DefaultIters = 200_000;
+const DefaultIters = 1_000;
 const GraphDepth = 64;
 const RootChurnSlots = 256;
 const LongLivedChainDepth = 512;
