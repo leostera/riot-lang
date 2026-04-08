@@ -5,6 +5,8 @@ module Token: sig
   val equal: ?eq:('a -> 'a -> bool) -> t -> t -> bool
 
   val make: 'value -> t
+
+  val unsafe_to_value: t -> 'value
 end
 
 module Interest: sig

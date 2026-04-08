@@ -17,3 +17,4 @@ module Async = Async
 module Fs = Fs
 module Time = Time
 module Net = Net
+module Env = Env
