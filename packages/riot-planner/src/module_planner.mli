@@ -15,6 +15,8 @@ type plan_input = {
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
   planning_root: Path.t;
+  allowed_source_files: Path.t list;
+  root_mode: Module_graph.root_mode;
   depset: Dependency.t list;
   store: Riot_store.Store.t;
 }

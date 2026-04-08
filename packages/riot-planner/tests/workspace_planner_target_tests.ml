@@ -31,6 +31,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
 
 let make_workspace = fun packages ->
   Workspace.{
+    name = None;
     root = Path.v "/tmp/workspace_planner_target_tests";
     target_dir_root = Path.v "/tmp/workspace_planner_target_tests/_build";
     packages;

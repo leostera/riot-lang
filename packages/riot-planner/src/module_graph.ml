@@ -35,10 +35,15 @@ open Std.Collections
 open Riot_model
 module G = Std.Graph.SimpleGraph
 
+type root_mode =
+  | Library_root of { library_name: string }
+  | Loose_sources
+
 type config = {
   root: Path.t;
   source_dir: Path.t;
   allowed_source_files: Path.t list;
+  root_mode: root_mode;
   namespace: string;
   package: Package.t;
   toolchain: Riot_toolchain.t;
@@ -48,6 +53,7 @@ type config = {
 type analyzed_module = {
   display_path: Path.t;
   source_hash: Crypto.hash;
+  implicit_opens: string list;
   parse_result: Syn.Parser.parse_result;
   cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
@@ -96,16 +102,20 @@ let sanitize_module_name = fun name ->
         ch)
     name
 
-let source_hash = fun ~kind_tag ~module_name ~text ->
+let source_hash = fun ~implicit_opens ~cst ->
   let module H = Crypto.Sha256 in
   let state = H.create () in
-  let () = H.write state kind_tag in
-  let () = H.write state "\x1f" in
   let () = H.write state
-    (sanitize_module_name module_name |> String.capitalize_ascii)
+    (Syn.Cst.semantic_hash cst |> Crypto.Digest.hex)
   in
   let () = H.write state "\x1f" in
-  let () = H.write state text in
+  let () =
+    implicit_opens
+    |> List.iter
+      (fun module_name ->
+        H.write state module_name;
+        H.write state "\x1f")
+  in
   H.finish state
 
 let rec filter_entries = fun ~allowed entries ->
@@ -370,7 +380,9 @@ let scan_sources = fun t (sources: Module_scanner.entry list) ->
   let root_node = Module_node.make_root () in
   let root = G.add_node t.graph root_node in
   let ctx = { ns = Namespace.empty; parent_impl = root; parent_intf = root; aliases = [] } in
-  handle_library ~t ~ctx t.config.source_dir t.config.package.name sources
+  match t.config.root_mode with
+  | Library_root { library_name } -> handle_library ~t ~ctx t.config.source_dir library_name sources
+  | Loose_sources -> do_scan ~t ~ctx sources
 
 let create = fun config ->
   let entries = Module_scanner.scan ~root:config.root ~source_dir:config.source_dir
@@ -409,15 +421,17 @@ let create = fun config ->
       order *)
 let wire_dependencies = fun t ->
   let () = HashMap.clear t.analyzed_modules in
-  let injected_open_lines (open_modules: Module_node.t G.node list) =
+  let implicit_open_modules (open_modules: Module_node.t G.node list) =
     open_modules
     |> List.filter_map
       (fun (node: Module_node.t G.node) ->
         match node.value.kind with
         | Module_node.ML mod_
-        | Module_node.MLI mod_ -> Some ("open " ^ Module.namespaced_name mod_)
+        | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
         | _ -> None)
   in
+  let injected_open_lines open_modules = implicit_open_modules open_modules
+  |> List.map (fun module_name -> "open " ^ module_name) in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = function
       | [] -> (List.rev acc, has_ml)
@@ -481,7 +495,7 @@ let wire_dependencies = fun t ->
     ^ " during dependency analysis: "
     ^ err.message
   in
-  let effective_source_text (node: Module_node.t G.node) =
+  let raw_source_text (node: Module_node.t G.node) =
     let source_result =
       match node.value.file with
       | Module_node.Concrete path ->
@@ -508,35 +522,7 @@ let wire_dependencies = fun t ->
       ^ " for dependency analysis: "
       ^ IO.error_message err
     })
-    | Ok (raw_text, display_path) ->
-        let prelude = injected_open_lines node.value.open_modules in
-        let text =
-          if List.is_empty prelude then
-            raw_text
-          else
-            String.concat "\n" (prelude @ [ ""; raw_text ])
-        in
-        Ok (text, display_path)
-  in
-  let source_origin_and_hash text (node: Module_node.t G.node) =
-    match node.value.kind, node.value.file with
-    | Module_node.ML mod_, Module_node.Concrete _ -> Some (
-      Module_name.canonical_ml (Module.module_name mod_),
-      source_hash ~kind_tag:"file" ~module_name:(Module.qualified_name mod_) ~text
-    )
-    | Module_node.MLI mod_, Module_node.Concrete _ -> Some (
-      Module_name.canonical_mli (Module.module_name mod_),
-      source_hash ~kind_tag:"file" ~module_name:(Module.qualified_name mod_) ~text
-    )
-    | Module_node.ML mod_, Module_node.Generated _ -> Some (
-      Module_name.canonical_ml (Module.module_name mod_),
-      source_hash ~kind_tag:"generated" ~module_name:(Module.qualified_name mod_) ~text
-    )
-    | Module_node.MLI mod_, Module_node.Generated _ -> Some (
-      Module_name.canonical_mli (Module.module_name mod_),
-      source_hash ~kind_tag:"generated" ~module_name:(Module.qualified_name mod_) ~text
-    )
-    | _ -> None
+    | Ok source -> Ok source
   in
   let file_namespace path =
     let file_str = Path.to_string path in
@@ -561,20 +547,29 @@ let wire_dependencies = fun t ->
     List.fold_left Namespace.append namespace subdir_parts
   in
   let analyze_node path (node: Module_node.t G.node) =
-    match effective_source_text node with
+    match raw_source_text node with
     | Error _ as err -> err
-    | Ok (text, display_path) ->
-        let parse_result = Syn.parse ~filename:display_path text in
+    | Ok (raw_text, display_path) ->
+        let implicit_opens = implicit_open_modules node.value.open_modules in
+        let deps_text =
+          let prelude = injected_open_lines node.value.open_modules in
+          if List.is_empty prelude then
+            raw_text
+          else
+            String.concat "\n" (prelude @ [ ""; raw_text ])
+        in
+        let parse_result = Syn.parse ~filename:display_path raw_text in
         let cst = Syn.build_cst parse_result in
-        let deps = Syn.Deps.of_parse_result parse_result in
+        let deps = Syn.Deps.of_parse_result (Syn.parse ~filename:display_path deps_text) in
         let source_hash =
-          match source_origin_and_hash text node with
-          | Some (_origin, source_hash) -> source_hash
-          | None -> Crypto.hash_string ""
+          match cst with
+          | Ok cst -> source_hash ~implicit_opens ~cst
+          | Error _ -> Crypto.hash_string ""
         in
         let analyzed = {
           display_path;
           source_hash;
+          implicit_opens;
           parse_result;
           cst;
           deps;

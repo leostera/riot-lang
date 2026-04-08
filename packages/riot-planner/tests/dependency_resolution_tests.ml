@@ -74,6 +74,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");
@@ -91,6 +92,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
+            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
             namespace = "Pkg";
             package;
             toolchain;

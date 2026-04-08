@@ -581,6 +581,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       toolchain;
                       workspace;
                       planning_root = Path.v "src";
+                      allowed_source_files = package.sources.src;
+                      root_mode = Module_graph.Library_root { library_name = package.name };
                       depset;
                       store;
                     }
@@ -675,6 +677,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   toolchain;
                   workspace;
                   planning_root = Path.v "src";
+                  allowed_source_files = package.sources.src;
+                  root_mode = Module_graph.Library_root { library_name = package.name };
                   depset;
                   store;
                 }

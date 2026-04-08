@@ -3,10 +3,14 @@ open Riot_model
 
 module G = Std.Graph.SimpleGraph
 
+type root_mode =
+  | Library_root of { library_name: string }
+  | Loose_sources
 type config = {
   root: Path.t;
   source_dir: Path.t;
   allowed_source_files: Path.t list;
+  root_mode: root_mode;
   namespace: string;
   package: Package.t;
   toolchain: Riot_toolchain.t;
@@ -15,6 +19,7 @@ type config = {
 type analyzed_module = {
   display_path: Path.t;
   source_hash: Crypto.hash;
+  implicit_opens: string list;
   parse_result: Syn.Parser.parse_result;
   cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;

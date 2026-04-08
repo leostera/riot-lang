@@ -12,6 +12,8 @@ type plan_input = {
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
   planning_root: Path.t;
+  allowed_source_files: Path.t list;
+  root_mode: Module_graph.root_mode;
   depset: Dependency.t list;
   store: Riot_store.Store.t;
 }
@@ -29,7 +31,8 @@ let plan_node = fun input ->
     Module_graph.{
       root = input.package.path;
       source_dir = input.planning_root;
-      allowed_source_files = input.package.sources.src;
+      allowed_source_files = input.allowed_source_files;
+      root_mode = input.root_mode;
       namespace;
       package = input.package;
       toolchain = input.toolchain;
