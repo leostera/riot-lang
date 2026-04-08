@@ -795,6 +795,30 @@ type scanned_number = {
   is_float: bool;
 }
 
+exception Use_slow_number_path
+
+let pow10 = function
+  | 0 -> 1.
+  | 1 -> 10.
+  | 2 -> 100.
+  | 3 -> 1_000.
+  | 4 -> 10_000.
+  | 5 -> 100_000.
+  | 6 -> 1_000_000.
+  | 7 -> 10_000_000.
+  | 8 -> 100_000_000.
+  | 9 -> 1_000_000_000.
+  | 10 -> 10_000_000_000.
+  | 11 -> 100_000_000_000.
+  | 12 -> 1_000_000_000_000.
+  | 13 -> 10_000_000_000_000.
+  | 14 -> 100_000_000_000_000.
+  | 15 -> 1_000_000_000_000_000.
+  | 16 -> 10_000_000_000_000_000.
+  | 17 -> 100_000_000_000_000_000.
+  | 18 -> 1_000_000_000_000_000_000.
+  | _ -> raise Use_slow_number_path
+
 let rec reader_append_digits = fun state reader ->
   match reader_current_char reader with
   | Some digit when is_digit digit ->
@@ -803,8 +827,6 @@ let rec reader_append_digits = fun state reader ->
       reader_append_digits state reader
   | _ ->
       ()
-
-exception Use_slow_number_path
 
 let parse_number_text_reader_slow = fun state reader ->
   reader_skip_whitespace reader;
@@ -882,10 +904,11 @@ let parse_number_text_reader_slow = fun state reader ->
 
 let parse_number_text_reader = fun state reader ->
   let fallback () = parse_number_text_reader_slow state reader in
+  let start = ref reader.Input.pos in
   try
     reader_skip_whitespace reader;
-    let start = reader.Input.pos in
-    let pos = ref start in
+    start := reader.Input.pos;
+    let pos = ref !start in
     let current () =
       if !pos < reader.Input.limit then
         Some (String.unsafe_get reader.Input.view !pos)
@@ -995,7 +1018,7 @@ let parse_number_text_reader = fun state reader ->
         (
           reader.Input.pos <- !pos;
           {
-            text = String.sub reader.Input.view start (!pos - start);
+            text = String.sub reader.Input.view !start (!pos - !start);
             is_float = !is_float;
           }
         )
@@ -1006,7 +1029,7 @@ let parse_number_text_reader = fun state reader ->
       | Some actual when is_value_delimiter (Some actual) ->
           reader.Input.pos <- !pos;
           {
-            text = String.sub reader.Input.view start (!pos - start);
+            text = String.sub reader.Input.view !start (!pos - !start);
             is_float = !is_float;
           }
       | Some actual ->
@@ -1014,11 +1037,13 @@ let parse_number_text_reader = fun state reader ->
       | None ->
           reader.Input.pos <- !pos;
           {
-            text = String.sub reader.Input.view start (!pos - start);
+            text = String.sub reader.Input.view !start (!pos - !start);
             is_float = !is_float;
           }
   with
-  | Use_slow_number_path -> fallback ()
+  | Use_slow_number_path ->
+      reader.Input.pos <- !start;
+      fallback ()
 
 let parse_number_text_generic = fun state ->
   Input.skip_whitespace state.input;
@@ -1126,34 +1151,386 @@ let parse_number_text = fun state ->
   | Input.Reader_input reader -> parse_number_text_reader state reader
   | Input.String_input _ -> parse_number_text_generic state
 
+let invalid_field_type = fun () -> raise (Serde.Decode_error `invalid_field_type)
+
+let float_from_parts = fun ~negative ~significand ~scale ->
+  let value = Float.of_int significand /. pow10 scale in
+  if negative then
+    -.value
+  else
+    value
+
+let parse_int_generic = fun state ->
+  Input.skip_whitespace state.input;
+  let input =
+    match state.input with
+    | Input.String_input state -> state.input
+    | Input.Reader_input _ -> panic "parse_int_generic: expected string input"
+  in
+  let input_length = String.length input in
+  let pos = ref (Input.position state.input) in
+  let current () =
+    if !pos < input_length then
+      Some (String.unsafe_get input !pos)
+    else
+      None
+  in
+  let advance () = pos := !pos + 1 in
+  let negative =
+    match current () with
+    | Some '-' ->
+        advance ();
+        true
+    | _ ->
+        false
+  in
+  let limit =
+    if negative then
+      Int.min_int
+    else
+      Int.neg Int.max_int
+  in
+  let cutoff = limit / 10 in
+  let acc = ref 0 in
+  let push_digit digit =
+    if !acc < cutoff then
+      invalid_field_type ();
+    let next = (!acc * 10) - digit in
+    if next < limit then
+      invalid_field_type ();
+    acc := next
+  in
+  let advance_digit digit =
+    push_digit digit;
+    advance ()
+  in
+  let rec advance_digits () =
+    match current () with
+    | Some digit when is_digit digit ->
+        advance_digit (Char.code digit - Char.code '0');
+        advance_digits ()
+    | _ ->
+        ()
+  in
+  (
+    match current () with
+    | Some '0' ->
+        advance ();
+        (
+          match current () with
+          | Some digit when is_digit digit ->
+              error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+          | Some ('.' | 'e' | 'E') ->
+              invalid_field_type ()
+          | _ ->
+              ()
+        )
+    | Some ('1' .. '9' as digit) ->
+        advance_digit (Char.code digit - Char.code '0');
+        advance_digits ();
+        (
+          match current () with
+          | Some ('.' | 'e' | 'E') ->
+              invalid_field_type ()
+          | _ ->
+              ()
+        )
+    | Some actual ->
+        error_at
+          (Input.position state.input)
+          ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+    | None ->
+        unexpected_end state "number"
+  );
+  if not (is_value_delimiter (current ())) then
+    (
+      match current () with
+      | Some actual ->
+          unexpected_character state actual "number delimiter"
+      | None ->
+          ()
+    );
+  Input.set_position state.input !pos;
+  if negative then
+    !acc
+  else
+    Int.neg !acc
+
+let parse_int_reader = fun state reader ->
+  let fallback () =
+    let number = parse_number_text_reader_slow state reader in
+    if number.is_float then
+      invalid_field_type ()
+    else
+      try Int.of_string number.text with
+      | _ -> invalid_field_type ()
+  in
+  let start = ref reader.Input.pos in
+  try
+    reader_skip_whitespace reader;
+    start := reader.Input.pos;
+    let pos = ref reader.Input.pos in
+    let current () =
+      if !pos < reader.Input.limit then
+        Some (String.unsafe_get reader.Input.view !pos)
+      else
+        None
+    in
+    let need_more () = !pos >= reader.Input.limit && not reader.Input.eof in
+    let advance () = pos := !pos + 1 in
+    let negative =
+      match current () with
+      | Some '-' ->
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path;
+          true
+      | _ ->
+          false
+    in
+    let limit =
+      if negative then
+        Int.min_int
+      else
+        Int.neg Int.max_int
+    in
+    let cutoff = limit / 10 in
+    let acc = ref 0 in
+    let push_digit digit =
+      if !acc < cutoff then
+        invalid_field_type ();
+      let next = (!acc * 10) - digit in
+      if next < limit then
+        invalid_field_type ();
+      acc := next
+    in
+    let advance_digit digit =
+      push_digit digit;
+      advance ()
+    in
+    let rec advance_digits () =
+      match current () with
+      | Some digit when is_digit digit ->
+          advance_digit (Char.code digit - Char.code '0');
+          advance_digits ()
+      | _ ->
+          ()
+    in
+    (
+      match current () with
+      | Some '0' ->
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path;
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | Some ('.' | 'e' | 'E') ->
+                invalid_field_type ()
+            | _ ->
+                ()
+          )
+      | Some ('1' .. '9' as digit) ->
+          advance_digit (Char.code digit - Char.code '0');
+          advance_digits ();
+          if need_more () then
+            raise Use_slow_number_path;
+          (
+            match current () with
+            | Some ('.' | 'e' | 'E') ->
+                invalid_field_type ()
+            | _ ->
+                ()
+          )
+      | Some actual ->
+          error_at
+            (Input.position state.input)
+            ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+      | None ->
+          unexpected_end state "number"
+    );
+    if not (is_value_delimiter (current ())) then
+      (
+        match current () with
+        | Some actual ->
+            unexpected_character state actual "number delimiter"
+        | None ->
+            ()
+      );
+    reader.Input.pos <- !pos;
+    if negative then
+      !acc
+    else
+      Int.neg !acc
+  with
+  | Use_slow_number_path ->
+      reader.Input.pos <- !start;
+      fallback ()
+
 let parse_int64 = fun state ->
   let number = parse_number_text state in
   if number.is_float then
-    raise (Serde.Decode_error `invalid_field_type)
+    invalid_field_type ()
   else
     try Int64.of_string number.text with
-    | _ -> raise (Serde.Decode_error `invalid_field_type)
+    | _ -> invalid_field_type ()
 
 let parse_int = fun state ->
-  let number = parse_number_text state in
-  if number.is_float then
-    raise (Serde.Decode_error `invalid_field_type)
-  else
-    try Int.of_string number.text with
-    | _ -> raise (Serde.Decode_error `invalid_field_type)
+  match state.input with
+  | Input.Reader_input reader -> parse_int_reader state reader
+  | Input.String_input _ -> parse_int_generic state
 
 let parse_int32 = fun state ->
   let number = parse_number_text state in
   if number.is_float then
-    raise (Serde.Decode_error `invalid_field_type)
+    invalid_field_type ()
   else
     try Int32.of_string number.text with
-    | _ -> raise (Serde.Decode_error `invalid_field_type)
+    | _ -> invalid_field_type ()
+
+let parse_float_generic = fun state ->
+  let fallback () =
+    let number = parse_number_text_generic state in
+    try Float.of_string number.text with
+    | _ -> invalid_field_type ()
+  in
+  Input.skip_whitespace state.input;
+  let start_pos = Input.position state.input in
+  try
+    let input =
+      match state.input with
+      | Input.String_input state -> state.input
+      | Input.Reader_input _ -> panic "parse_float_generic: expected string input"
+    in
+    let input_length = String.length input in
+    let pos = ref start_pos in
+    let current () =
+      if !pos < input_length then
+        Some (String.unsafe_get input !pos)
+      else
+        None
+    in
+    let advance () = pos := !pos + 1 in
+    let negative =
+      match current () with
+      | Some '-' ->
+          advance ();
+          true
+      | _ ->
+          false
+    in
+    let significand = ref 0 in
+    let scale = ref 0 in
+    let cutoff = Int.max_int / 10 in
+    let push_digit digit =
+      if !significand > cutoff then
+        raise Use_slow_number_path;
+      let next = (!significand * 10) + digit in
+      if next < !significand then
+        raise Use_slow_number_path;
+      significand := next
+    in
+    let saw_integer_digit = ref false in
+    (
+      match current () with
+      | Some '0' ->
+          saw_integer_digit := true;
+          advance ();
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | _ ->
+                ()
+          )
+      | Some ('1' .. '9' as digit) ->
+          saw_integer_digit := true;
+          push_digit (Char.code digit - Char.code '0');
+          advance ();
+          while (
+            match current () with
+            | Some digit when is_digit digit ->
+                push_digit (Char.code digit - Char.code '0');
+                advance ();
+                true
+            | _ ->
+                false
+          ) do
+            ()
+          done
+      | Some actual ->
+          error_at
+            (Input.position state.input)
+            ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+      | None ->
+          unexpected_end state "number"
+    );
+    if not !saw_integer_digit then
+      invalid_field_type ();
+    (
+      match current () with
+      | Some '.' ->
+          advance ();
+          (
+            match current () with
+            | Some digit when is_digit digit ->
+                push_digit (Char.code digit - Char.code '0');
+                scale := !scale + 1;
+                advance ();
+                while (
+                  match current () with
+                  | Some digit when is_digit digit ->
+                      push_digit (Char.code digit - Char.code '0');
+                      scale := !scale + 1;
+                      advance ();
+                      true
+                  | _ ->
+                      false
+                ) do
+                  ()
+                done
+            | Some actual ->
+                error_at
+                  (Input.position state.input)
+                  ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+            | None ->
+                unexpected_end state "digit after decimal point"
+          )
+      | _ ->
+          ()
+    );
+    (
+      match current () with
+      | Some ('e' | 'E') ->
+          raise Use_slow_number_path
+      | _ ->
+          ()
+    );
+    if not (is_value_delimiter (current ())) then
+      (
+        match current () with
+        | Some actual ->
+            unexpected_character state actual "number delimiter"
+        | None ->
+            ()
+      );
+    Input.set_position state.input !pos;
+    float_from_parts ~negative ~significand:!significand ~scale:!scale
+  with
+  | Use_slow_number_path ->
+      Input.set_position state.input start_pos;
+      fallback ()
+
+let parse_float_reader = fun state reader ->
+  let number = parse_number_text_reader_slow state reader in
+  try Float.of_string number.text with
+  | _ -> invalid_field_type ()
 
 let parse_float = fun state ->
-  let number = parse_number_text state in
-  try Float.of_string number.text with
-  | _ -> raise (Serde.Decode_error `invalid_field_type)
+  match state.input with
+  | Input.Reader_input reader -> parse_float_reader state reader
+  | Input.String_input _ -> parse_float_generic state
 
 let rec skip_value_reader = fun state reader ->
   reader_skip_whitespace reader;
