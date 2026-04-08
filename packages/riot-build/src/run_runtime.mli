@@ -4,13 +4,20 @@ type run_request = {
   workspace: Riot_model.Workspace.t;
   package_name: string option;
   binary_name: string;
+  profile: string;
   args: string list;
 }
 type source_run_request = {
   source_spec: string;
   binary_name: string;
+  profile: string;
   update: bool;
   args: string list;
+}
+type runnable_binary = {
+  package_name: string;
+  binary_name: string;
+  source_path: Path.t;
 }
 type run_event =
   | Build of Build_runtime.build_event
@@ -26,6 +33,8 @@ type run_error =
   | ClientError of Client.error
 val build_scope_for_binary:
   Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Build_runtime.build_scope
+
+val list_binaries: Riot_model.Workspace.t -> ?package_filter:string -> unit -> runnable_binary list
 
 val run_error_message: run_error -> string
 

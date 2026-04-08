@@ -5,7 +5,6 @@ open Std
     This package no longer models a long-lived daemon, but some internal
     runtime code still needs a small typed configuration surface.
 *)
-
 type t
 
 (** Default local build-runtime configuration. *)

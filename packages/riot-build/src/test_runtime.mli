@@ -35,6 +35,19 @@ type test_case_result = {
   result: test_case_status;
   duration_us: int;
 }
+type listed_test_case = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  size: test_case_size;
+  reliability: test_case_reliability;
+  skip: bool;
+}
+type listed_test_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  tests: listed_test_case list;
+}
 type failed_test = {
   suite: suite_binary;
   name: string;
@@ -76,5 +89,11 @@ val collect_suite_binaries:
 val test_error_message: test_error -> string
 
 val test_event_to_json: test_event -> Data.Json.t option
+
+val list_tests:
+  ?on_suite:(listed_test_suite -> unit) ->
+  ?on_suite_error:(suite_binary -> test_error -> unit) ->
+  test_request ->
+  (listed_test_suite list, test_error) result
 
 val test: ?on_event:(test_event -> unit) -> test_request -> (unit, test_error) result

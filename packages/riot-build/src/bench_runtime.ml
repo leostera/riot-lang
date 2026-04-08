@@ -102,7 +102,9 @@ type Message.t +=
   | ListedBenchmarksReady of (suite_binary * (listed_bench_suite, bench_error) result)
 
 let no_event: bench_event -> unit = fun _ -> ()
+
 let no_listed_suite: listed_bench_suite -> unit = fun _ -> ()
+
 let no_list_error: suite_binary -> bench_error -> unit = fun _ _ -> ()
 
 let is_benchmark_binary_name = fun name ->
@@ -353,7 +355,15 @@ let listed_bench_item_of_json = fun json ->
   in
   let* skip = skip in
   let* cases = cases in
-  Ok { index; name; kind; iterations; warmup; skip; cases }
+  Ok {
+    index;
+    name;
+    kind;
+    iterations;
+    warmup;
+    skip;
+    cases;
+  }
 
 let comparison_case_result_of_json = fun json ->
   let* fields = get_object json in
@@ -605,26 +615,23 @@ let parse_listed_benchmarks_output = fun stdout ->
 
 let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args binary_path ->
   match list_suite_binary_capture ~extra_args binary_path with
-  | Error (Command.SystemError reason) ->
-      Error (SuiteExecutionError { suite; reason })
+  | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       match parse_listed_benchmarks_output output.stdout with
       | Error reason -> Error (SuiteExecutionError {
         suite;
-        reason = "failed to parse benchmark results from suite '"
-        ^ suite.suite_name
-        ^ "': "
-        ^ reason
+        reason = "failed to parse benchmark results from suite '" ^ suite.suite_name ^ "': " ^ reason
       })
-      | Ok benchmarks ->
-          Ok {
-            suite;
-            source_path = find_suite_source_path ~workspace suite;
-            benchmarks;
-          }
+      | Ok benchmarks -> Ok {
+        suite;
+        source_path = find_suite_source_path ~workspace suite;
+        benchmarks
+      }
     )
 
-let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (request: bench_request) ->
+let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (
+  request: bench_request
+) ->
   let suites = collect_suite_binaries
     request.workspace
     ?package_filter:request.package_filter
@@ -662,9 +669,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
             )
         in
         let suite_binaries, missing_suites = resolve_binaries [] suites in
-        List.iter
-          (fun (suite, err) -> on_suite_error suite err)
-          missing_suites;
+        List.iter (fun (suite, err) -> on_suite_error suite err) missing_suites;
         if suite_binaries = [] then
           Ok []
         else
@@ -685,8 +690,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             ~workspace:request.workspace
                             ~suite
                             ~extra_args:request.extra_args
-                            binary_path
-                          with
+                            binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite;
                             reason = Exception.to_string exn
@@ -701,12 +705,14 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
             if active <= 0 then
               Ok (List.rev acc)
             else
-              let suite, result = receive
-                ~selector:(fun (msg: Message.t) ->
-                  match msg with
-                  | ListedBenchmarksReady payload -> `select payload
-                  | _ -> `skip)
-                () in
+              let suite, result =
+                receive
+                  ~selector:(fun (msg: Message.t) ->
+                    match msg with
+                    | ListedBenchmarksReady payload -> `select payload
+                    | _ -> `skip)
+                  ()
+              in
               let acc =
                 match result with
                 | Ok listed ->
@@ -727,8 +733,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             ~workspace:request.workspace
                             ~suite:next_suite
                             ~extra_args:request.extra_args
-                            next_binary_path
-                          with
+                            next_binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite = next_suite;
                             reason = Exception.to_string exn

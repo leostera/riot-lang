@@ -4,14 +4,22 @@ type run_request = {
   workspace: Riot_model.Workspace.t;
   package_name: string option;
   binary_name: string;
+  profile: string;
   args: string list;
 }
 
 type source_run_request = {
   source_spec: string;
   binary_name: string;
+  profile: string;
   update: bool;
   args: string list;
+}
+
+type runnable_binary = {
+  package_name: string;
+  binary_name: string;
+  source_path: Path.t;
 }
 
 type run_event =
@@ -47,6 +55,33 @@ let build_scope_for_binary = fun (workspace: Riot_model.Workspace.t) ~package_na
       | Some Riot_model.Package.Build
       | None -> Build_runtime.Runtime
     )
+
+let is_listed_runnable = fun (bin: Riot_model.Package.binary) ->
+  let path = Path.to_string bin.path in
+  (not (String.starts_with ~prefix:"tests/" path)
+  && not (String.starts_with ~prefix:"examples/" path)
+  && not (String.starts_with ~prefix:"bench/" path))
+  || String.starts_with ~prefix:"examples/" path
+
+let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
+  workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
+    (fun (pkg: Riot_model.Package.t) ->
+      match package_filter with
+      | None -> true
+      | Some package_name -> String.equal package_name pkg.name) |> List.concat_map
+    (fun (pkg: Riot_model.Package.t) ->
+      pkg.binaries |> List.filter is_listed_runnable |> List.map
+        (fun (bin: Riot_model.Package.binary) ->
+          {
+            package_name = pkg.name;
+            binary_name = bin.name;
+            source_path =
+              Path.(pkg.path / bin.path);
+          })) |> List.sort
+    (fun left right ->
+      String.compare
+        (left.package_name ^ ":" ^ left.binary_name)
+        (right.package_name ^ ":" ^ right.binary_name))
 
 let run_error_message = function
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found"
@@ -154,14 +189,14 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
                       packages = [ package_name ];
                       targets = Build_runtime.Host;
                       scope;
-                      profile = "debug";
+                      profile = request.profile;
                     }
                 with
                 | Error err -> Error (BuildFailed err)
                 | Ok results -> (
                     let store = Riot_store.Store.create_for_lane
                       ~workspace:request.workspace
-                      ~profile:"debug"
+                      ~profile:request.profile
                       ~target:(Riot_model.Riot_dirs.host_target ()) in
                     match find_built_binary_path
                       ~store
@@ -192,11 +227,11 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
 
 let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
   let* loaded = load_source_workspace ~on_event ~source_spec:request.source_spec ~update:request.update in
-  run
-    ~on_event
+  run ~on_event
     {
       workspace = loaded.workspace;
       package_name = Some loaded.package_name;
       binary_name = request.binary_name;
-      args = request.args
+      profile = request.profile;
+      args = request.args;
     }

@@ -5,25 +5,24 @@ open Std
     This module discovers benchmark suites, runs them through the shared build
     pipeline, and emits structured per-suite and final summary events.
 *)
-
 type suite_binary = Test_runtime.suite_binary = {
   (** Package that owns the benchmark suite binary. *)
   package_name: string;
   (** Suite name reported by the benchmark binary. *)
   suite_name: string;
 }
-
 type bench_request = {
   (** Workspace providing the packages and build configuration. *)
   workspace: Riot_model.Workspace.t;
   (** Optional package filter narrowing which suites should run. *)
   package_filter: string option;
+  (** Optional suite filter narrowing which benchmark binary should run. *)
+  suite_filter: string option;
   (** Build profile used for the benchmark run. *)
   profile: string;
   (** Additional CLI arguments forwarded to each suite binary. *)
   extra_args: string list;
 }
-
 type bench_statistics = {
   (** Fastest measured iteration. *)
   min: Time.Duration.t;
@@ -40,15 +39,10 @@ type bench_statistics = {
   (** Total wall-clock time spent benchmarking the case. *)
   total_time: Time.Duration.t;
 }
-
 type bench_case_status =
-  | (** Benchmark case completed successfully with timing statistics. *)
-    Completed of bench_statistics
-  | (** Benchmark case failed. The string carries the reported reason. *)
-    Failed of string
-  | (** Benchmark case was skipped by the suite. *)
-    Skipped
-
+  | Completed of bench_statistics
+  | Failed of string
+  | Skipped
 type bench_case_result = {
   (** Case index within the suite output. *)
   index: int;
@@ -57,14 +51,29 @@ type bench_case_result = {
   (** Final result for the case. *)
   result: bench_case_status;
 }
-
+type listed_bench_item_kind =
+  | Benchmark
+  | Comparison
+type listed_bench_item = {
+  index: int;
+  name: string;
+  kind: listed_bench_item_kind;
+  iterations: int;
+  warmup: int;
+  skip: bool;
+  cases: string list;
+}
+type listed_bench_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  benchmarks: listed_bench_item list;
+}
 type bench_comparison_case_result = {
   (** Name of a case participating in the comparison. *)
   name: string;
   (** Timing statistics for that case. *)
   statistics: bench_statistics;
 }
-
 type bench_comparison_result = {
   (** Description reported by the benchmark suite. *)
   description: string;
@@ -75,7 +84,6 @@ type bench_comparison_result = {
   (** Relative speedup ratios keyed by case name. *)
   speedup_ratios: (string * float) list;
 }
-
 type bench_suite_summary = {
   (** Number of benchmark cases seen in the suite. *)
   total: int;
@@ -86,16 +94,11 @@ type bench_suite_summary = {
   (** Number of failed benchmark cases. *)
   failed: int;
 }
-
 type bench_event =
-  | (** Nested build event emitted while preparing benchmark binaries. *)
-    Build of Build_runtime.build_event
-  | (** No benchmark suites matched the request. *)
-    NoSuitesFound of { package_name: string option }
-  | (** A benchmark suite is about to run. *)
-    RunningSuite of suite_binary
-  | (** A benchmark suite finished and reported structured results. *)
-    SuiteCompleted of {
+  | Build of Build_runtime.build_event
+  | NoSuitesFound of { package_name: string option }
+  | RunningSuite of suite_binary
+  | SuiteCompleted of {
       suite: suite_binary;
       status: int;
       stdout: string;
@@ -105,16 +108,9 @@ type bench_event =
       duration_us: int option;
       results: bench_case_result list;
       comparisons: bench_comparison_result list;
-      summary: bench_suite_summary;
+      summary: bench_suite_summary
     }
-  | (** Final aggregate summary across all matched benchmark suites. *)
-    Summary of {
-      total: int;
-      completed: int;
-      skipped: int;
-      failed: int;
-    }
-
+  | Summary of { total: int; completed: int; skipped: int; failed: int }
 type bench_error =
   | BuildFailed of Build_runtime.build_error
   | ClientError of Client.error
@@ -127,16 +123,19 @@ type bench_error =
     Use [package_filter] to restrict discovery to one package.
 *)
 val collect_suite_binaries:
-  Riot_model.Workspace.t ->
-  ?package_filter:string ->
-  unit ->
-  suite_binary list
+  Riot_model.Workspace.t -> ?package_filter:string -> ?suite_filter:string -> unit -> suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string
 
 (** Convert a benchmark event into JSON when it has a machine-readable form. *)
 val bench_event_to_json: bench_event -> Data.Json.t option
+
+val list_benchmarks:
+  ?on_suite:(listed_bench_suite -> unit) ->
+  ?on_suite_error:(suite_binary -> bench_error -> unit) ->
+  bench_request ->
+  (listed_bench_suite list, bench_error) result
 
 (** Build and run benchmark suites for the given request.
 

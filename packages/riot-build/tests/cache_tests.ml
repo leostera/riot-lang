@@ -7,6 +7,7 @@ let make_test_build_ctx = fun () ->
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.{
+    name = None;
     root = tmpdir;
     target_dir_root =
       Path.(tmpdir / Path.v "target");

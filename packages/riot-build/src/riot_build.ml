@@ -54,6 +54,12 @@ type source_run_request = Run_runtime.source_run_request = {
   args: string list;
 }
 
+type runnable_binary = Run_runtime.runnable_binary = {
+  package_name: string;
+  binary_name: string;
+  source_path: Path.t;
+}
+
 type run_event = Run_runtime.run_event =
   | Build of build_event
   | RunningBinary of { package: string; binary: string; args: string list }
@@ -73,6 +79,8 @@ let error_message = Internal_server.error_message
 let build_error_message = Build_runtime.error_message
 
 let build_scope_for_binary = Run_runtime.build_scope_for_binary
+
+let list_binaries = Run_runtime.list_binaries
 
 let run_error_message = Run_runtime.run_error_message
 
@@ -132,6 +140,21 @@ type test_case_result = Test_runtime.test_case_result = {
   duration_us: int;
 }
 
+type listed_test_case = Test_runtime.listed_test_case = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  size: test_case_size;
+  reliability: test_case_reliability;
+  skip: bool;
+}
+
+type listed_test_suite = Test_runtime.listed_test_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  tests: listed_test_case list;
+}
+
 type failed_test = Test_runtime.failed_test = {
   suite: suite_binary;
   name: string;
@@ -177,11 +200,14 @@ let test_error_message = Test_runtime.test_error_message
 
 let test_event_to_json = Test_runtime.test_event_to_json
 
+let list_tests = Test_runtime.list_tests
+
 let test = Test_runtime.test
 
 type bench_request = Bench_runtime.bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
+  suite_filter: string option;
   profile: string;
   extra_args: string list;
 }
@@ -205,6 +231,26 @@ type bench_case_result = Bench_runtime.bench_case_result = {
   index: int;
   name: string;
   result: bench_case_status;
+}
+
+type listed_bench_item_kind = Bench_runtime.listed_bench_item_kind =
+  | Benchmark
+  | Comparison
+
+type listed_bench_item = Bench_runtime.listed_bench_item = {
+  index: int;
+  name: string;
+  kind: listed_bench_item_kind;
+  iterations: int;
+  warmup: int;
+  skip: bool;
+  cases: string list;
+}
+
+type listed_bench_suite = Bench_runtime.listed_bench_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  benchmarks: listed_bench_item list;
 }
 
 type bench_comparison_case_result = Bench_runtime.bench_comparison_case_result = {
@@ -256,6 +302,8 @@ let collect_bench_suites = Bench_runtime.collect_suite_binaries
 let bench_error_message = Bench_runtime.bench_error_message
 
 let bench_event_to_json = Bench_runtime.bench_event_to_json
+
+let list_benchmarks = Bench_runtime.list_benchmarks
 
 let bench = Bench_runtime.bench
 

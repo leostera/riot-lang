@@ -14,6 +14,7 @@ let make_test_build_ctx = fun () ->
 
 let make_test_workspace = fun tmpdir ->
   Riot_model.Workspace.{
+    name = None;
     root = tmpdir;
     target_dir_root =
       Path.(tmpdir / Path.v "target");
@@ -55,6 +56,7 @@ let test_cache_hit_using_package_builder = fun _ctx ->
         let package = make_simple_package tmpdir "test-pkg" in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");
@@ -159,6 +161,7 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
           let package = make_simple_package tmpdir "test-pkg" in
           let workspace =
             Riot_model.Workspace.{
+              name = None;
               root = tmpdir;
               target_dir_root =
                 Path.(tmpdir / Path.v "target");

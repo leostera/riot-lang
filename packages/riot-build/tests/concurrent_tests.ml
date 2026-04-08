@@ -40,6 +40,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         let pkg2 = make_package tmpdir "pkg-2" "let x = 2" in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");
@@ -146,6 +147,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");
@@ -248,6 +250,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");

@@ -184,7 +184,7 @@ let record_successful_build_cache_generation = fun request lane_results ->
   | Ok _ -> Ok ()
   | Error _ -> Ok ()
 
-let build_with_connect = fun connect ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
+let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   match resolve_targets request with
   | Error _ as err -> err
   | Ok targets -> (
@@ -200,8 +200,8 @@ let build_with_connect = fun connect ?(record_cache_generation = true) ?(on_even
                   try
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
-                    let rec loop acc = function
-                      | [] -> Ok (List.rev acc)
+                    let rec loop acc had_partial_failure = function
+                      | [] -> Ok (List.rev acc, had_partial_failure)
                       | target :: rest ->
                           on_event (BuildingTarget { target; host = String.equal target host });
                           let target_arch =
@@ -210,26 +210,52 @@ let build_with_connect = fun connect ?(record_cache_generation = true) ?(on_even
                             else
                               Some target
                           in
-                          match Client.build_streaming
-                            client
-                            request_target
-                            ~scope:(client_scope request.scope)
-                            ~profile:request.profile
-                            ?target_arch
-                            (fun event -> on_event (Streaming event)) with
-                          | Ok (Client.BuildCompleted { results; _ }) -> loop
-                            ((target, results) :: acc)
-                            rest
-                          | Ok _ -> loop acc rest
-                          | Error err -> Error (ClientError err)
+                          let lane_results = ref None in
+                          let lane_failed = ref false in
+                          match
+                            Client.build_streaming client request_target ~scope:(client_scope
+                              request.scope) ~profile:request.profile ?target_arch
+                              (fun event ->
+                                (
+                                  match event with
+                                  | Client.BuildCompleted { results; _ } ->
+                                      lane_results := Some results
+                                  | Client.BuildFailed { built; errors; _ } ->
+                                      lane_failed := true;
+                                      lane_results := Some (built @ errors)
+                                  | Client.BuildStarted _
+                                  | Client.BuildEvent _
+                                  | Client.PlanningFailed _
+                                  | Client.CycleDetected _ ->
+                                      ()
+                                );
+                                on_event (Streaming event))
+                          with
+                          | Ok (Client.BuildCompleted { results; _ }) ->
+                              loop ((target, results) :: acc) had_partial_failure rest
+                          | Ok _ -> (
+                              match !lane_results with
+                              | Some results -> loop
+                                ((target, results) :: acc)
+                                (!lane_failed || had_partial_failure)
+                                rest
+                              | None -> loop acc had_partial_failure rest
+                            )
+                          | Error err when allow_partial_failures && !lane_failed -> (
+                              match !lane_results with
+                              | Some results -> loop ((target, results) :: acc) true rest
+                              | None -> Error (ClientError err)
+                            )
+                          | Error err ->
+                              Error (ClientError err)
                     in
-                    let result = loop [] targets in
+                    let result = loop [] false targets in
                     Client.close client;
                     (
                       match result with
-                      | Ok lane_results ->
+                      | Ok (lane_results, had_partial_failure) ->
                           let _ =
-                            if record_cache_generation then
+                            if record_cache_generation && not had_partial_failure then
                               record_successful_build_cache_generation request lane_results
                             else
                               Ok ()
@@ -248,6 +274,24 @@ let build_with_connect = fun connect ?(record_cache_generation = true) ?(on_even
 let build = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   let pm_session_id = Riot_model.Session_id.make () in
   build_with_connect
+    ~allow_partial_failures:false
+    ~record_cache_generation
+    (fun ?workspace_manager ~workspace () ->
+      Client.connect_local
+        ?workspace_manager
+        ~emit:(fun kind ->
+          on_event
+            (Pm (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind)))
+        ~workspace
+        ())
+    ~on_event
+    ?workspace_manager
+    request
+
+let build_best_effort = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
+  let pm_session_id = Riot_model.Session_id.make () in
+  build_with_connect
+    ~allow_partial_failures:true
     ~record_cache_generation
     (fun ?workspace_manager ~workspace () ->
       Client.connect_local
@@ -263,6 +307,7 @@ let build = fun ?(record_cache_generation = true) ?(on_event = no_event) ?worksp
 
 let build_prepared = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   build_with_connect
+    ~allow_partial_failures:false
     ~record_cache_generation
     (fun ?workspace_manager ~workspace () ->
       Client.connect_local_prepared ?workspace_manager ~workspace ())

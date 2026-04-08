@@ -100,7 +100,9 @@ type Message.t +=
   | ListedTestsReady of (suite_binary * (listed_test_suite, test_error) result)
 
 let no_event: test_event -> unit = fun _ -> ()
+
 let no_listed_suite: listed_test_suite -> unit = fun _ -> ()
+
 let no_list_error: suite_binary -> test_error -> unit = fun _ _ -> ()
 
 let is_test_binary_name = fun name ->
@@ -652,28 +654,20 @@ let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra
   Command.output cmd
 
 let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args binary_path ->
-  match list_suite_binary_capture
-    ~workspace_root:workspace.root
-    ~suite
-    ~extra_args
-    binary_path with
-  | Error (Command.SystemError reason) ->
-      Error (SuiteExecutionError { suite; reason })
+  match list_suite_binary_capture ~workspace_root:workspace.root ~suite ~extra_args binary_path with
+  | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       match parse_listed_tests_output output.stdout with
       | Error reason -> Error (SuiteExecutionError {
         suite;
         reason = parse_failure_reason ~suite ~output reason
       })
-      | Ok tests ->
-          Ok {
-            suite;
-            source_path = find_suite_source_path ~workspace suite;
-            tests;
-          }
+      | Ok tests -> Ok { suite; source_path = find_suite_source_path ~workspace suite; tests }
     )
 
-let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (request: test_request) ->
+let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (
+  request: test_request
+) ->
   let suites = collect_suite_binaries
     request.workspace
     ?package_filter:request.package_filter
@@ -711,9 +705,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
             )
         in
         let suite_binaries, missing_suites = resolve_binaries [] suites in
-        List.iter
-          (fun (suite, err) -> on_suite_error suite err)
-          missing_suites;
+        List.iter (fun (suite, err) -> on_suite_error suite err) missing_suites;
         if suite_binaries = [] then
           Ok []
         else
@@ -734,8 +726,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
                             ~workspace:request.workspace
                             ~suite
                             ~extra_args:request.extra_args
-                            binary_path
-                          with
+                            binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite;
                             reason = Exception.to_string exn
@@ -750,12 +741,14 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
             if active <= 0 then
               Ok (List.rev acc)
             else
-              let suite, result = receive
-                ~selector:(fun (msg: Message.t) ->
-                  match msg with
-                  | ListedTestsReady payload -> `select payload
-                  | _ -> `skip)
-                () in
+              let suite, result =
+                receive
+                  ~selector:(fun (msg: Message.t) ->
+                    match msg with
+                    | ListedTestsReady payload -> `select payload
+                    | _ -> `skip)
+                  ()
+              in
               let acc =
                 match result with
                 | Ok listed ->
@@ -776,8 +769,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
                             ~workspace:request.workspace
                             ~suite:next_suite
                             ~extra_args:request.extra_args
-                            next_binary_path
-                          with
+                            next_binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite = next_suite;
                             reason = Exception.to_string exn

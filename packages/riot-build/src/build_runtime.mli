@@ -33,6 +33,13 @@ val build:
   build_request ->
   (Riot_executor.Package_builder.build_result list, build_error) result
 
+val build_best_effort:
+  ?record_cache_generation:bool ->
+  ?on_event:(build_event -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  build_request ->
+  (Riot_executor.Package_builder.build_result list, build_error) result
+
 val build_prepared:
   ?record_cache_generation:bool ->
   ?on_event:(build_event -> unit) ->

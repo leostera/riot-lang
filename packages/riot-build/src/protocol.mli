@@ -7,20 +7,13 @@ open Riot_model
     these request and response types still define the structured contract used
     by some internal runtime pieces.
 *)
-
 type build_scope =
-  | (** Build runtime artifacts needed to execute commands. *)
-    Runtime
-  | (** Build developer-facing artifacts such as normal package outputs. *)
-    Dev
-
+  | Runtime
+  | Dev
 type target =
-  | (** Build every package in the workspace. *)
-    All
-  | (** Build a single named package. *)
-    Package of string
-  | (** Build an explicit set of packages. *)
-    Packages of string list
+  | All
+  | Package of string
+  | Packages of string list
 
 (** Mutable build statistics recorded during a build session. *)
 module BuildStats: sig
@@ -89,7 +82,7 @@ type request =
       scope: build_scope;
       profile: string;
       target_arch: string option;
-      session_id: Session_id.t;
+      session_id: Session_id.t
     }
   | Ping of { client_pid: Pid.t }
   | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t }
@@ -99,20 +92,12 @@ type request =
   | FindExecutable of { client_pid: Pid.t; name: string }
   | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
   | FormatCode of { client_pid: Pid.t; code: string; file_path: Path.t option }
-  | FormatAll of {
-      client_pid: Pid.t;
-      mode: [
-        | `check
-        | `write
-      ];
-    }
-  | NewPackage of {
-      client_pid: Pid.t;
-      path: Path.t;
-      name: string;
-      is_library: bool;
-    }
-
+  | FormatAll of { client_pid: Pid.t; mode: 
+        [
+          | `check
+          | `write
+        ] }
+  | NewPackage of { client_pid: Pid.t; path: Path.t; name: string; is_library: bool }
 (** Responses emitted by the internal build runtime. *)
 type response =
   | Pong
@@ -123,55 +108,36 @@ type response =
       session_id: Session_id.t;
       completed_at: DateTime.t;
       stats: BuildStats.t;
-      results: Riot_executor.Package_builder.build_result list;
+      results: Riot_executor.Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: DateTime.t;
       stats: BuildStats.t;
       built: Riot_executor.Package_builder.build_result list;
-      errors: Riot_executor.Package_builder.build_result list;
+      errors: Riot_executor.Package_builder.build_result list
     }
-  | PlanningFailed of {
-      session_id: Session_id.t;
-      failed_at: DateTime.t;
-      reason: string;
-    }
-  | CycleDetected of {
-      session_id: Session_id.t;
-      cycle_nodes: string list;
-      detected_at: DateTime.t;
-    }
-  | WorkspaceConfig of {
-      workspace: Workspace.t;
-      toolchain: Riot_toolchain.t;
-    }
-  | PackageInfo of {
-      package: Package.t;
-      sources: Path.t list;
-      dependencies: Package.t list;
-    }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
+  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: DateTime.t }
+  | WorkspaceConfig of { workspace: Workspace.t; toolchain: Riot_toolchain.t }
+  | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list }
   | PackageGraph of { nodes: Package.t list }
   | ExecutableFound of { package: string; binary: string }
   | ExecutableNotFound
   | FormatResult of { formatted_code: string; changed: bool }
   | FormatError of { error: string }
-  | FormatAllResult of {
-      files_formatted: int;
-      files_failed: int;
-      errors: (string * string) list;
-    }
+  | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list }
   | PackageCreated of { path: string; name: string }
   | PackageCreationError of { error: string }
   | PackageNotFound of {
       session_id: Session_id.t;
       package_name: string;
-      available_packages: string list;
+      available_packages: string list
     }
   | PackagesNotFound of {
       session_id: Session_id.t;
       package_names: string list;
-      available_packages: string list;
+      available_packages: string list
     }
 
 (** Message constructors used for internal server communication. *)

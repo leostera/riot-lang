@@ -53,6 +53,11 @@ type source_run_request = Run_runtime.source_run_request = {
   update: bool;
   args: string list;
 }
+type runnable_binary = Run_runtime.runnable_binary = {
+  package_name: string;
+  binary_name: string;
+  source_path: Path.t;
+}
 type run_event =
   | Build of build_event
   | RunningBinary of { package: string; binary: string; args: string list }
@@ -66,6 +71,8 @@ type run_error =
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 val build_scope_for_binary: Riot_model.Workspace.t -> package_name:string -> binary_name:string -> build_scope
+
+val list_binaries: Riot_model.Workspace.t -> ?package_filter:string -> unit -> runnable_binary list
 
 val run_error_message: run_error -> string
 
@@ -132,6 +139,19 @@ type test_case_result = Test_runtime.test_case_result = {
   result: test_case_status;
   duration_us: int;
 }
+type listed_test_case = Test_runtime.listed_test_case = {
+  index: int;
+  name: string;
+  test_type: test_case_type;
+  size: test_case_size;
+  reliability: test_case_reliability;
+  skip: bool;
+}
+type listed_test_suite = Test_runtime.listed_test_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  tests: listed_test_case list;
+}
 type failed_test = Test_runtime.failed_test = {
   suite: suite_binary;
   name: string;
@@ -174,11 +194,18 @@ val test_error_message: test_error -> string
 
 val test_event_to_json: test_event -> Data.Json.t option
 
+val list_tests:
+  ?on_suite:(listed_test_suite -> unit) ->
+  ?on_suite_error:(suite_binary -> test_error -> unit) ->
+  test_request ->
+  (listed_test_suite list, test_error) result
+
 val test: ?on_event:(test_event -> unit) -> test_request -> (unit, test_error) result
 
 type bench_request = Bench_runtime.bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
+  suite_filter: string option;
   profile: string;
   extra_args: string list;
 }
@@ -199,6 +226,23 @@ type bench_case_result = Bench_runtime.bench_case_result = {
   index: int;
   name: string;
   result: bench_case_status;
+}
+type listed_bench_item_kind = Bench_runtime.listed_bench_item_kind =
+  | Benchmark
+  | Comparison
+type listed_bench_item = Bench_runtime.listed_bench_item = {
+  index: int;
+  name: string;
+  kind: listed_bench_item_kind;
+  iterations: int;
+  warmup: int;
+  skip: bool;
+  cases: string list;
+}
+type listed_bench_suite = Bench_runtime.listed_bench_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  benchmarks: listed_bench_item list;
 }
 type bench_comparison_case_result = Bench_runtime.bench_comparison_case_result = {
   name: string;
@@ -239,11 +283,18 @@ type bench_error =
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
-val collect_bench_suites: Riot_model.Workspace.t -> ?package_filter:string -> unit -> suite_binary list
+val collect_bench_suites:
+  Riot_model.Workspace.t -> ?package_filter:string -> ?suite_filter:string -> unit -> suite_binary list
 
 val bench_error_message: bench_error -> string
 
 val bench_event_to_json: bench_event -> Data.Json.t option
+
+val list_benchmarks:
+  ?on_suite:(listed_bench_suite -> unit) ->
+  ?on_suite_error:(suite_binary -> bench_error -> unit) ->
+  bench_request ->
+  (listed_bench_suite list, bench_error) result
 
 val bench: ?on_event:(bench_event -> unit) -> bench_request -> (unit, bench_error) result
 
