@@ -190,6 +190,19 @@ let recv_from_udp = fun poll ~token socket buffer ->
   in
   loop ()
 
+let recv_udp = fun poll ~token socket buffer ->
+  let rec loop () =
+    match Kernel.Net.UdpSocket.recv socket buffer with
+    | Kernel.Result.Ok value -> value
+    | Kernel.Result.Error error ->
+        if is_would_block error then (
+          wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket);
+          loop ()
+        ) else
+          Kernel.Error.panic (Kernel.Error.to_string error)
+  in
+  loop ()
+
 let bench_udp_loopback_datagram = fun () ->
   let poll = lift (Kernel.Async.Poll.make ()) in
   let server =
@@ -211,6 +224,35 @@ let bench_udp_loopback_datagram = fun () ->
           let buffer = Kernel.Bytes.create 32 in
           ignore (recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer)))
 
+let bench_udp_connected_roundtrip = fun () ->
+  let poll = lift (Kernel.Async.Poll.make ()) in
+  let server =
+    lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+  in
+  protect
+    ~finally:(fun () -> close_udp server)
+    (fun () ->
+      let client =
+        lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
+      protect
+        ~finally:(fun () -> close_udp client)
+        (fun () ->
+          let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
+          let client_addr = lift (Kernel.Net.UdpSocket.local_addr client) in
+          let _ = lift (Kernel.Net.UdpSocket.connect server client_addr) in
+          let _ = lift (Kernel.Net.UdpSocket.connect client server_addr) in
+          let _ =
+            lift (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping"))
+          in
+          let server_buf = Kernel.Bytes.create 32 in
+          ignore (recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf);
+          let _ =
+            lift (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong"))
+          in
+          let client_buf = Kernel.Bytes.create 32 in
+          ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf)))
+
 let benchmarks =
   Bench.[
     with_config
@@ -221,6 +263,10 @@ let benchmarks =
       ~config:{ iterations = 25; warmup = 5 }
       "net udp loopback datagram"
       bench_udp_loopback_datagram;
+    with_config
+      ~config:{ iterations = 25; warmup = 5 }
+      "net udp connected roundtrip"
+      bench_udp_connected_roundtrip;
   ]
 
 let () =

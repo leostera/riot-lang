@@ -249,12 +249,37 @@ let test_try_wait_reports_running_then_exit = fun _ctx ->
           else
             Error "expected process to exit cleanly after wait")
 
+let test_kill_reports_signaled_status = fun _ctx ->
+  let stdio = Kernel.Process.{
+    default_stdio with
+    stdin = `Null;
+    stdout = `Null;
+    stderr = `Null;
+  } in
+  let* process =
+    lift
+      (Kernel.Process.spawn
+         ~program:"/bin/sh"
+         ~args:[| "-c"; "sleep 5" |]
+         ~stdio
+         ())
+  in
+  with_process process
+    (fun process ->
+      let* () = lift (Kernel.Process.kill process ~signal:9) in
+      let* status = lift (Kernel.Process.wait process) in
+      if status = Kernel.Process.Signaled 9 then
+        Ok ()
+      else
+        Error "expected killed process to report a signaled status")
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
   Test.case "Process stdin and stdout pipes roundtrip" test_stdin_and_stdout_pipes_roundtrip;
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
+  Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
 ]
 
 let main = fun ~args ->

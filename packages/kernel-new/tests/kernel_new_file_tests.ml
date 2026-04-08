@@ -95,6 +95,34 @@ let test_file_vectored_write_roundtrips = fun _ctx ->
       else
         Error "expected vectored file roundtrip to preserve payload")
 
+let test_file_read_and_write_respect_pos_and_len = fun _ctx ->
+  with_temp_path "kernel_new_file" "slice.bin"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let payload = Kernel.Bytes.of_string "__payload__" in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file ~pos:2 ~len:7 payload) in
+            if written = 7 then
+              Ok ()
+            else
+              Error "expected partial file write to write the requested slice")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buf = Kernel.Bytes.of_string "xxx_______yyy" in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file ~pos:3 ~len:7 buf) in
+            Ok (read, Kernel.Bytes.to_string buf))
+      in
+      let read, contents = actual in
+      if read = 7 && Kernel.String.equal contents "xxxpayloadyyy" then
+        Ok ()
+      else
+        Error "expected partial file read to fill only the requested slice")
+
 let test_create_dir_and_read_dir_names = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -191,6 +219,30 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       else
         Error "expected copy and rename to preserve payload")
 
+let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let directory = Kernel.Path.(tempdir / "dir") in
+      let file_path = Kernel.Path.(tempdir / "entry.txt") in
+      let missing = Kernel.Path.(tempdir / "missing.txt") in
+      let* () = lift (Kernel.Fs.File.create_dir directory ~perm:0o755) in
+      let* file = lift (Kernel.Fs.File.open_write file_path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "x")) in
+            Ok ())
+      in
+      let* dir_exists = lift (Kernel.Fs.File.exists directory) in
+      let* file_exists = lift (Kernel.Fs.File.exists file_path) in
+      let* missing_exists = lift (Kernel.Fs.File.exists missing) in
+      let* dir_is_directory = lift (Kernel.Fs.File.is_directory directory) in
+      let* file_is_directory = lift (Kernel.Fs.File.is_directory file_path) in
+      if dir_exists && file_exists && not missing_exists && dir_is_directory && not file_is_directory then
+        Ok ()
+      else
+        Error "expected exists and is_directory to distinguish directories, files, and missing paths")
+
 let test_open_read_missing_file_maps_error = fun _ctx ->
   with_temp_path "kernel_new_file" "missing.bin"
     (fun path ->
@@ -204,9 +256,11 @@ let test_open_read_missing_file_maps_error = fun _ctx ->
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
+  Test.case "Fs.File read and write respect pos and len" test_file_read_and_write_respect_pos_and_len;
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
+  Test.case "Fs.File exists and is_directory report expected kinds" test_exists_and_is_directory_report_expected_kinds;
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
 ]
 
