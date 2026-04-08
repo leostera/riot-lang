@@ -1685,6 +1685,141 @@ let test_ocaml_stdlib_sys_signal_behavior_typechecks = fun _ctx ->
   else
     Ok ()
 
+let test_ocaml_unix_stats_errors_and_commands_typecheck = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "unix_file.ml")
+    ~text:{ocaml|
+      let is_regular stats =
+        let stats = (stats: Unix.stats) in
+        stats.st_kind = Unix.S_REG
+
+      let seek fd = Unix.lseek fd 0 Unix.SEEK_SET
+
+      let lock fd = Unix.lockf fd Unix.F_LOCK 0
+
+      let stat_or_error path =
+        try Ok (Unix.stat path) with
+        | Unix.Unix_error (err, _, _) -> Error (Unix.error_message err)
+    |ocaml} in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    Ok ()
+
+let test_ocaml_unix_socket_and_addr_info_typecheck = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "net_addr.ml")
+    ~text:{ocaml|
+      let unwrap sockaddr =
+        match sockaddr with
+        | Unix.ADDR_INET (addr, port) -> Some (Unix.string_of_inet_addr addr, port)
+        | Unix.ADDR_UNIX _ -> None
+
+      let choose info =
+        let ai_family = info.ai_family in
+        let ai_addr = info.ai_addr in
+        let ai_socktype = info.ai_socktype in
+        let ai_protocol = info.ai_protocol in
+        match ai_addr with
+        | Unix.ADDR_INET (addr, port) ->
+            if (ai_family = Unix.PF_INET || ai_family = Unix.PF_INET6)
+               && (ai_socktype = Unix.SOCK_STREAM || ai_socktype = Unix.SOCK_DGRAM) then
+              Some (Unix.string_of_inet_addr addr, port, ai_protocol)
+            else
+              None
+        | Unix.ADDR_UNIX _ -> None
+
+      let _ = Unix.getaddrinfo "localhost" "80" []
+      let _ = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0
+    |ocaml} in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    Ok ()
+
+let test_ocaml_unix_terminal_process_and_labels_typecheck = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "terminal.ml")
+    ~text:{ocaml|
+      let make_raw_mode termios =
+        Unix.{ termios with c_echo = false; c_icanon = false; c_icrnl = false }
+
+      let default_termios () =
+        Unix.{
+          c_ignbrk = false;
+          c_brkint = false;
+          c_ignpar = false;
+          c_parmrk = false;
+          c_inpck = false;
+          c_istrip = false;
+          c_inlcr = false;
+          c_igncr = false;
+          c_icrnl = false;
+          c_ixon = false;
+          c_ixoff = false;
+          c_opost = false;
+          c_obaud = 0;
+          c_ibaud = 0;
+          c_csize = 0;
+          c_cstopb = 0;
+          c_cread = false;
+          c_parenb = false;
+          c_parodd = false;
+          c_hupcl = false;
+          c_clocal = false;
+          c_isig = false;
+          c_icanon = false;
+          c_noflsh = false;
+          c_echo = false;
+          c_echoe = false;
+          c_echok = false;
+          c_echonl = false;
+          c_vintr = '\000';
+          c_vquit = '\000';
+          c_verase = '\000';
+          c_vkill = '\000';
+          c_veof = '\000';
+          c_veol = '\000';
+          c_vmin = 0;
+          c_vtime = 0;
+          c_vstart = '\000';
+          c_vstop = '\000';
+        }
+
+      let status_code = function
+        | Unix.WEXITED code -> code
+        | Unix.WSIGNALED signal -> signal
+        | Unix.WSTOPPED signal -> signal
+
+      let copy_once fd buf =
+        let len = UnixLabels.read fd ~buf ~pos:0 ~len:(Bytes.length buf) in
+        UnixLabels.write fd ~buf ~pos:0 ~len
+
+      let _ = Unix.waitpid [ Unix.WNOHANG ] 0
+    |ocaml} in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    Ok ()
+
 let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
   let (seed_session, actors_source_id) = create_source
@@ -2916,6 +3051,15 @@ let () =
         Test.case
           "ocaml stdlib sys signal behavior typechecks"
           test_ocaml_stdlib_sys_signal_behavior_typechecks;
+        Test.case
+          "ocaml unix stats errors and commands typecheck"
+          test_ocaml_unix_stats_errors_and_commands_typecheck;
+        Test.case
+          "ocaml unix socket and addr_info typecheck"
+          test_ocaml_unix_socket_and_addr_info_typecheck;
+        Test.case
+          "ocaml unix terminal process and labels typecheck"
+          test_ocaml_unix_terminal_process_and_labels_typecheck;
         Test.case "source analysis with loaded modules canonicalizes nominal types" test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
         Test.case "source analysis with opened loaded module canonicalizes nominal types" test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
         Test.case "snapshot exports opened loaded nominal types from implementation" test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
