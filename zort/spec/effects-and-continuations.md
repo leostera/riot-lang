@@ -1,0 +1,171 @@
+# Effects, Continuations, and Fiber Stacks
+
+## Source anchors
+
+- `vendor/ocaml/runtime/caml/fiber.h`
+- `vendor/ocaml/runtime/caml/stack.h`
+- `vendor/ocaml/runtime/fiber.c`
+- `vendor/ocaml/runtime/callback.c`
+- `vendor/ocaml/runtime/backtrace_nat.c`
+- `vendor/ocaml/runtime/signals_nat.c`
+- `vendor/ocaml/runtime/minor_gc.c`
+- `vendor/ocaml/runtime/major_gc.c`
+- `vendor/ocaml/runtime/shared_heap.c`
+- `vendor/ocaml/runtime/compare.c`
+- `vendor/ocaml/runtime/hash.c`
+- `vendor/ocaml/runtime/extern.c`
+- `vendor/ocaml/runtime/amd64.S`
+- `vendor/ocaml/runtime/arm64.S`
+- `vendor/ocaml/runtime/power.S`
+- `vendor/ocaml/runtime/riscv.S`
+- `vendor/ocaml/runtime/s390x.S`
+- `vendor/ocaml/runtime/amd64nt.asm`
+
+## Runtime role
+
+- Effects are not modeled as a small exception-side extension.
+- The runtime has a dedicated stack-switching subsystem for:
+  - creating fresh OCaml stacks
+  - suspending the current stack into a continuation
+  - resuming a suspended stack
+  - walking parent handlers when an effect is reperformed
+- In native code, the control-transfer primitives are split between C metadata/helpers and architecture-specific assembly.
+- This spec intentionally treats the native runtime as the reference surface and ignores bytecode-interpreter-specific machinery.
+
+## Stack and fiber model
+
+- A fiber is a suspended OCaml stack represented by `struct stack_info`.
+- `stack_info` stores:
+  - the suspended stack pointer
+  - the suspended exception pointer
+  - a pointer to `stack_handler`
+  - cache/pooling metadata
+  - an internal stack id
+- `stack_handler` is the per-stack effect state:
+  - `handle_value`
+  - `handle_exn`
+  - `handle_effect`
+  - `parent`
+- The `parent` pointer is the control-transfer chain for effects and stack completion.
+- Native OCaml stacks are chunked runtime-managed stacks, not raw OS thread stacks.
+- A chunk begins when the program starts, when a fiber is created, or when C calls back into OCaml.
+
+## Continuation representation
+
+- Effect continuations use `Cont_tag`.
+- The runtime stores the suspended stack pointer as a tagged `Val_ptr(stack)` value so the GC does not follow it as a normal OCaml pointer.
+- Native perform/reperform logic also uses continuation storage to track the tail of the linked list of parent fibers while walking handlers.
+- A continuation is therefore not just a high-level control token. It is a runtime object that directly references suspended stack state.
+
+## Control-transfer primitives
+
+- `caml_runstack new_stack function argument`
+  - starts execution on a fresh OCaml stack
+  - installs handlers for normal return and exception completion
+  - when the child stack finishes, frees it, restores the parent stack, and runs `handle_value` or `handle_exn` on the parent
+- `caml_perform effect continuation`
+  - captures the current OCaml stack into the continuation
+  - switches to the parent OCaml stack
+  - runs the parent stack's `handle_effect`
+  - if no parent stack exists, raises `Effect.Unhandled`
+- `caml_reperform effect continuation last_fiber`
+  - appends the current stack onto the parent-fiber chain
+  - continues walking upward to the next installed effect handler
+  - if the walk runs out of parent stacks, switches back to the original performer stack before raising `Effect.Unhandled`
+- `caml_resume new_fiber function argument`
+  - checks whether the continuation/fiber is still live
+  - makes the current stack the parent of the resumed stack
+  - switches execution to the resumed stack
+  - raises `Effect.Continuation_already_resumed` if the continuation was already taken
+
+## One-shot continuation behavior
+
+- Continuations are linear by default.
+- `caml_continuation_use_noexc` swaps `NULL` into the continuation's active stack slot.
+- On a single domain this can be a direct store.
+- With multiple domains it uses an atomic compare-and-exchange.
+- `caml_continuation_use` raises `Effect.Continuation_already_resumed` when the active stack slot was already cleared.
+- `caml_continuation_replace` exists, but only for tightly controlled runtime operations such as cloning/backtrace support. The header comment explicitly says the GC must not run between `use` and `replace`.
+
+## Stack growth and movability
+
+- Fiber stacks are heap allocations with size-class pooling/caching.
+- `caml_try_realloc_stack` can grow the current stack by allocating a bigger stack and copying its contents.
+- When a stack moves, the runtime rewrites:
+  - exception-pointer chains
+  - `c_stack_link` records used for C-to-OCaml transitions
+  - saved frame pointers on architectures that need them
+- Effects therefore depend on movable runtime-managed stack objects, not on a fixed native stack address.
+
+## GC and root-scanning behavior
+
+- `caml_scan_stack` walks the current stack and every `parent` stack.
+- For each stack, the runtime scans:
+  - live frame roots
+  - `handle_value`
+  - `handle_exn`
+  - `handle_effect`
+- `caml_maybe_expand_stack` also ensures a free `gc_regs` bucket exists before returning from C to OCaml code.
+- This makes fiber switching part of the GC root model, not an isolated control-flow subsystem.
+
+## Continuations under minor/major GC
+
+- Continuations are not treated like ordinary scanned blocks.
+- Minor GC oldifies `Cont_tag` specially:
+  - it copies the continuation block itself
+  - then scans the suspended stack referenced by the continuation
+- Major GC marking also special-cases `Cont_tag`:
+  - `caml_darken_cont` marks the continuation
+  - then recursively scans the suspended stack roots behind it
+- Shared-heap verification and compaction do the same kind of continuation-aware traversal.
+- Observable consequence: suspended computations stay live because the runtime follows their stack roots explicitly, not because continuation fields behave like a normal object graph.
+
+## Callback boundary behavior
+
+- C-to-OCaml callbacks deliberately break implicit effect propagation across the callback boundary.
+- Before entering the callback, the runtime:
+  - captures the current `parent` stack in a continuation-like root
+  - clears the current stack's parent link
+- This forces an unhandled effect inside the callback to become `Effect.Unhandled` instead of silently skipping over the C frame.
+- The saved parent stack is kept alive as a root while the callback executes, then restored afterwards.
+
+## Backtraces and observability
+
+- Native callstack capture explicitly includes parent fibers.
+- `caml_get_current_callstack` and `caml_get_continuation_callstack` both traverse the parent-fiber chain.
+- Continuation backtrace capture temporarily takes the continuation stack, inspects it, then restores it with `caml_continuation_replace`.
+- Effects are therefore visible in debugging behavior, not only in execution results.
+
+## Interaction with generic runtime services
+
+- Structural comparison on continuations raises `Invalid_argument("compare: continuation value")`.
+- Generic hashing does not inspect continuation contents; all continuations hash to the same value.
+- Marshaling a continuation is rejected with `Invalid_argument("output_value: continuation value")`.
+- These behaviors are documented in more detail in:
+  - [`comparison-hashing.md`](./comparison-hashing.md)
+  - [`marshaling-and-code-loading.md`](./marshaling-and-code-loading.md)
+
+## Signals, GC polling, and shared stack machinery
+
+- Native `caml_garbage_collection` enters through generated assembly only.
+- It relies on frame descriptors plus the current runtime-managed OCaml stack chunk layout.
+- The effect runtime shares this stack/chunk/frame-descriptor machinery with GC polling and signal handling.
+- For zort, stack switching, root scanning, polling, and backtrace walking should be designed as one subsystem boundary, not four unrelated features.
+
+## Observable error paths
+
+- Performing with no enclosing effect handler raises `Effect.Unhandled`.
+- Resuming an already-consumed continuation raises `Effect.Continuation_already_resumed`.
+- Callback boundaries intentionally turn cross-boundary effect propagation into the same `Effect.Unhandled` behavior.
+- Stack growth failure raises `Stack_overflow` instead of silently truncating the computation.
+
+## zort takeaways
+
+- Effects are a mandatory runtime subsystem if zort intends to support modern OCaml control flow.
+- A maintainable rewrite should model continuations as typed, one-shot handles over suspended stack state, not as generic opaque values.
+- Parent-stack linkage, handler triples, and continuation linearity are the core semantics to preserve if zort wants effect compatibility at the behavior level.
+- If zort chooses a different implementation strategy, it still needs explicit answers for:
+  - where suspended stack state lives
+  - how parent handlers are linked
+  - how root scanning sees suspended computations
+  - how C/FFI boundaries block or permit effect propagation

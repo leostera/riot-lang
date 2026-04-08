@@ -14,6 +14,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0008` - Macro
 - `RFD0033` - Remote Source Install and Run
 - `RFD0035` - New Test, Bench, and Example Target Layout
+- `RFD0041` - A New Kernel for Riot
 
 ## Rejected
 

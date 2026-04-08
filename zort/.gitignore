@@ -1,0 +1,4 @@
+.zig-cache/
+.zig-cache-local/
+zig-out/
+tmp_*.zig
