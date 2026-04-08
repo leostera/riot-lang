@@ -27,8 +27,11 @@ let parse_selector = fun pattern ->
   match split_once pattern ':' with
   | Some (package_name, rest) when has_text package_name && has_text rest -> (
       match split_once rest ':' with
-      | Some (suite_name, query) when has_text suite_name && has_text query ->
-          Some (Some package_name, Some suite_name, Some query)
+      | Some (suite_name, query) when has_text suite_name && has_text query -> Some (
+        Some package_name,
+        Some suite_name,
+        Some query
+      )
       | None -> Some (Some package_name, Some rest, None)
       | _ -> None
     )

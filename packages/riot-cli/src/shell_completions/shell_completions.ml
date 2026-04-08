@@ -214,7 +214,11 @@ _riot() {
                 compadd -a binaries
             else
                 _arguments \
-                    '(-p --package)'{-p,--package}'[Run binary from package]:package:->packages'
+                    '(-p --package)'{-p,--package}'[Run binary from package]:package:->packages' \
+                    '--list[List runnable binaries in the current workspace]' \
+                    '--json[Emit machine-readable JSON output for --list]' \
+                    '--release[Use the release build profile]' \
+                    '--update[Refresh a cached remote source before running]'
 
                 case $state in
                     packages)
@@ -265,7 +269,12 @@ _riot() {
             else
                 _arguments \
                     '(-p --package)'{-p,--package}'[Run tests from package]:package:->packages' \
+                    '--list[List test suites and cases without running them]' \
+                    '--release[Use the release build profile]' \
                     '--json[Emit machine-readable JSONL events]' \
+                    '--small[Run only tests marked small]' \
+                    '--large[Run only tests marked large]' \
+                    '--flaky[Run only tests marked flaky]' \
                     '(-v --verbose)'{-v,--verbose}'[Verbose output]'
                 
                 case $state in
@@ -286,6 +295,8 @@ _riot() {
             else
                 _arguments \
                     '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
+                    '--list[List benchmark suites and cases without running them]' \
+                    '--release[Use the release build profile]' \
                     '--json[Emit machine-readable JSONL events]' \
                     '(-v --verbose)'{-v,--verbose}'[Verbose output]'
                 

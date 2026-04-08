@@ -74,6 +74,24 @@ let test_test_accepts_json_flag = fun _ctx ->
       else
         Error "expected test --json flag to be parsed"
 
+let test_test_accepts_release_flag = fun _ctx ->
+  match parse_test [ "test"; "--release"; "-p"; "riot-build" ] with
+  | Error err -> Error ("expected test args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "release" then
+        Ok ()
+      else
+        Error "expected test --release flag to be parsed"
+
+let test_test_accepts_list_flag = fun _ctx ->
+  match parse_test [ "test"; "--list"; "-p"; "riot-build" ] with
+  | Error err -> Error ("expected test args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "list" then
+        Ok ()
+      else
+        Error "expected test --list flag to be parsed"
+
 let test_bench_accepts_json_flag = fun _ctx ->
   match parse_bench [ "bench"; "--json"; "-p"; "std" ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
@@ -83,12 +101,57 @@ let test_bench_accepts_json_flag = fun _ctx ->
       else
         Error "expected bench --json flag to be parsed"
 
+let test_bench_accepts_release_flag = fun _ctx ->
+  match parse_bench [ "bench"; "--release"; "-p"; "std" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "release" then
+        Ok ()
+      else
+        Error "expected bench --release flag to be parsed"
+
+let test_bench_accepts_list_flag = fun _ctx ->
+  match parse_bench [ "bench"; "--list"; "-p"; "std" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "list" then
+        Ok ()
+      else
+        Error "expected bench --list flag to be parsed"
+
 let test_run_accepts_missing_name = fun _ctx ->
   match parse_run [ "run" ] with
   | Error err -> Error ("expected run args to parse without a name: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:None ~actual:(ArgParser.get_one matches "name");
       Ok ()
+
+let test_run_accepts_list_flag = fun _ctx ->
+  match parse_run [ "run"; "--list" ] with
+  | Error err -> Error ("expected run args to parse with --list: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "list" then
+        Ok ()
+      else
+        Error "expected run --list flag to be parsed"
+
+let test_run_accepts_list_json_flag = fun _ctx ->
+  match parse_run [ "run"; "--list"; "--json" ] with
+  | Error err -> Error ("expected run args to parse with --list --json: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "list" && ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected run --list --json flags to be parsed"
+
+let test_run_accepts_release_flag = fun _ctx ->
+  match parse_run [ "run"; "--release"; "riot" ] with
+  | Error err -> Error ("expected run args to parse with --release: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "release" then
+        Ok ()
+      else
+        Error "expected run --release flag to be parsed"
 
 let test_run_accepts_update_flag = fun _ctx ->
   match parse_run [ "run"; "--update"; "leostera/hello-world" ] with
@@ -322,8 +385,15 @@ let tests =
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
     case "test: parse --json flag" test_test_accepts_json_flag;
+    case "test: parse --release flag" test_test_accepts_release_flag;
+    case "test: parse --list flag" test_test_accepts_list_flag;
     case "bench: parse --json flag" test_bench_accepts_json_flag;
+    case "bench: parse --release flag" test_bench_accepts_release_flag;
+    case "bench: parse --list flag" test_bench_accepts_list_flag;
     case "run: parse missing name" test_run_accepts_missing_name;
+    case "run: parse --list flag" test_run_accepts_list_flag;
+    case "run: parse --list --json flags" test_run_accepts_list_json_flag;
+    case "run: parse --release flag" test_run_accepts_release_flag;
     case "run: parse --update flag" test_run_accepts_update_flag;
     case "install: parse missing name" test_install_accepts_missing_name;
     case "install: parse --update flag" test_install_accepts_update_flag;

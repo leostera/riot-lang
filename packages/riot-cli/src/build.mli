@@ -5,15 +5,12 @@ open Std
     This module owns user-facing build output and delegates the actual build
     execution to [riot-build].
 *)
-
 type build_scope = Riot_build.build_scope =
   | Runtime
   | Dev
-
 type output_mode =
   | Human
   | Json
-
 type build_progress = {
   (** Number of packages built in this render pass. *)
   mutable built_count: int;
@@ -33,9 +30,7 @@ val command: Std.ArgParser.command
     Returns [None] when the event should stay silent in human mode.
 *)
 val format_pm_event:
-  seen_registry_updates:string Std.Collections.HashSet.t ->
-  Riot_model.Event.kind ->
-  string option
+  seen_registry_updates:string Std.Collections.HashSet.t -> Riot_model.Event.kind -> string option
 
 (** Reset the monotonic clock used for emitted JSON build events. *)
 val reset_json_clock: started_at:Std.Time.Instant.t -> unit

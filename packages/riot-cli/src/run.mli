@@ -9,10 +9,7 @@ val command: Std.ArgParser.command
 
 (** Decide which build scope should be used for a workspace binary. *)
 val build_scope_for_binary:
-  Riot_model.Workspace.t ->
-  package_name:string ->
-  binary_name:string ->
-  Riot_build.build_scope
+  Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Riot_build.build_scope
 
 (** Derive the default binary name for a remote source target.
 
@@ -34,9 +31,7 @@ type implicit_local_target = {
     runnable binary after applying the optional package filter.
 *)
 val resolve_implicit_local_target:
-  ?package_filter:string ->
-  Riot_model.Workspace.t ->
-  (implicit_local_target, string) result
+  ?package_filter:string -> Riot_model.Workspace.t -> (implicit_local_target, string) result
 
 (** Run [riot run] with optional precomputed workspace information. *)
 val run_with_workspace_info:

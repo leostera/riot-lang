@@ -197,13 +197,16 @@ let write_workspace_error = fun ~mode message ->
     ])
   | Build.Human -> println ("error: " ^ message)
 
-let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (binary: Riot_build.runnable_binary) ->
+let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
+  binary: Riot_build.runnable_binary
+) ->
   match Path.strip_prefix binary.source_path ~prefix:workspace.root with
   | Ok relative_path -> Path.to_string relative_path
   | Error _ -> Path.to_string binary.source_path
 
 let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
-  binaries |> List.iter
+  binaries
+  |> List.iter
     (fun (binary: Riot_build.runnable_binary) ->
       println
         (binary.package_name
@@ -214,22 +217,20 @@ let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
         ^ ")"))
 
 let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
-  let binary_kind = fun (binary: Riot_build.runnable_binary) ->
+  let binary_kind (binary: Riot_build.runnable_binary) =
     let path = binary_source_label ~workspace binary in
     if List.mem "examples" (String.split_on_char '/' path) then
       "example"
     else
       "binary"
   in
-  let binary_json (binary: Riot_build.runnable_binary) =
-    Data.Json.Object [
-      ("kind", Data.Json.String (binary_kind binary));
-      ("package", Data.Json.String binary.package_name);
-      ("binary", Data.Json.String binary.binary_name);
-      ("path", Data.Json.String (binary_source_label ~workspace binary));
-      ("selector", Data.Json.String (binary.package_name ^ ":" ^ binary.binary_name));
-    ]
-  in
+  let binary_json (binary: Riot_build.runnable_binary) = Data.Json.Object [
+    ("kind", Data.Json.String (binary_kind binary));
+    ("package", Data.Json.String binary.package_name);
+    ("binary", Data.Json.String binary.binary_name);
+    ("path", Data.Json.String (binary_source_label ~workspace binary));
+    ("selector", Data.Json.String (binary.package_name ^ ":" ^ binary.binary_name));
+  ] in
   write_json_event
     (Data.Json.Object [
       ("type", Data.Json.String "RunList");
@@ -256,8 +257,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       Build.Human
   in
   if json_mode && not list_mode then
-    let message =
-      "riot run --json is only supported with --list; use `riot run -- --json` to forward JSON to the child binary" in
+    let message = "riot run --json is only supported with --list; use `riot run -- --json` to forward JSON to the child binary" in
     write_workspace_error ~mode:Build.Json message;
     Error (Failure message)
   else if list_mode then

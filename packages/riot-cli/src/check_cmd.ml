@@ -2,6 +2,7 @@ open Std
 module Check = Riot_check.Check
 
 let yellow_bold = "\027[1;33m"
+
 let reset = "\027[0m"
 
 let default_stdout = fun buf ->

@@ -15,14 +15,16 @@ let command =
                -p/--package to limit execution to one package. Omit to run all tests."; option "package"
           |> short 'p'
           |> long "package"
-          |> help "Run tests from a specific package"; flag "list" |> long "list" |> help "List test suites and cases without running them"; flag "release" |> long "release" |> help "Use the release build profile"; flag
-            "small"
-          |> long "small"
-          |> help "Run only tests marked small"; flag "large" |> long "large" |> help "Run only tests marked large"; flag
-            "flaky"
-          |> long "flaky"
-          |> help "Run only tests marked flaky"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
-            "verbose"
+          |> help "Run tests from a specific package"; flag "list" |> long "list" |> help "List test suites and cases without running them"; flag
+            "release"
+          |> long "release"
+          |> help "Use the release build profile"; flag "small" |> long "small" |> help "Run only tests marked small"; flag
+            "large"
+          |> long "large"
+          |> help "Run only tests marked large"; flag "flaky" |> long "flaky" |> help "Run only tests marked flaky"; flag
+            "json"
+          |> long "json"
+          |> help "Emit machine-readable JSONL events"; flag "verbose"
           |> short 'v'
           |> long "verbose"
           |> help "Enable verbose output for tests"
@@ -325,7 +327,9 @@ let suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_bu
     )
   | None -> suite.package_name ^ "/" ^ suite.suite_name
 
-let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.listed_test_suite) ->
+let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
+  suite: Riot_build.listed_test_suite
+) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -365,9 +369,13 @@ let listed_test_json = fun (suite: Riot_build.suite_binary) (test: Riot_build.li
     ("selector", Data.Json.String (listed_test_selector suite test));
     ("size", size);
     ("skip", Data.Json.Bool test.skip);
-  ] @ type_fields @ reliability_fields)
+  ]
+  @ type_fields
+  @ reliability_fields)
 
-let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.listed_test_suite) ->
+let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
+  suite: Riot_build.listed_test_suite
+) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -452,14 +460,7 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
               ""
           in
           println
-            ("  ["
-            ^ Int.to_string test.index
-            ^ "] "
-            ^ type_prefix
-            ^ " "
-            ^ test.name
-            ^ metadata
-            ^ skip_suffix)))
+            ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
     suites
 
 let print_suite_header = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) total ->
@@ -640,7 +641,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           let listed_suite_count = ref 0 in
           let listed_test_count = ref 0 in
           let failed_suite_count = ref 0 in
-          let on_suite = fun (suite: Riot_build.listed_test_suite) ->
+          let on_suite (suite: Riot_build.listed_test_suite) =
             if not (List.is_empty suite.tests) then
               (
                 listed_suite_count := !listed_suite_count + 1;
@@ -649,29 +650,38 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 List.iter (write_test_case_listed_json ~command_started_at suite.suite) suite.tests
               )
           in
-          let on_suite_error = fun (suite: Riot_build.suite_binary) err ->
+          let on_suite_error (suite: Riot_build.suite_binary) err =
             failed_suite_count := !failed_suite_count + 1;
             write_test_suite_list_failed_json ~command_started_at suite err
           in
-          match Riot_build.list_tests
-            ?on_suite:(if output_mode = Build.Json then
-              Some on_suite
-            else
-              None)
-            ?on_suite_error:(if output_mode = Build.Json then
-              Some on_suite_error
-            else
-              None)
-            {
-              workspace;
-              package_filter = request.package_filter;
-              suite_filter = request.suite_filter;
-              profile;
-              extra_args;
-            }
+          match
+            Riot_build.list_tests
+              ?on_suite:((
+                if output_mode = Build.Json then
+                  Some on_suite
+                else
+                  None
+              ))
+              ?on_suite_error:((
+                if output_mode = Build.Json then
+                  Some on_suite_error
+                else
+                  None
+              ))
+              {
+                workspace;
+                package_filter = request.package_filter;
+                suite_filter = request.suite_filter;
+                profile;
+                extra_args;
+              }
           with
           | Ok suites ->
-              let suites = List.filter (fun (suite: Riot_build.listed_test_suite) -> not (List.is_empty suite.tests)) suites in
+              let suites =
+                List.filter
+                  (fun (suite: Riot_build.listed_test_suite) -> not (List.is_empty suite.tests))
+                  suites
+              in
               (
                 match output_mode with
                 | Build.Json -> write_test_list_completed_json

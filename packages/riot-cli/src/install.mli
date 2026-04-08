@@ -15,9 +15,7 @@ val command: Std.ArgParser.command
     install flows in one place.
 *)
 val run_with_workspace_info:
-  (** Loaded workspace when discovery succeeded. *)
   workspace:Riot_model.Workspace.t option ->
-  (** Workspace error to surface when discovery failed. *)
   workspace_error:string option ->
   Std.ArgParser.matches ->
   (unit, exn) result

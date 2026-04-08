@@ -6,7 +6,6 @@ open Std
     compare installed versions, or stamp outbound requests with version-aware
     agent strings.
 *)
-
 type t = {
   (** Stable release identifier, such as a version tag. *)
   release_id: string;

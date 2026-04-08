@@ -51,6 +51,7 @@ let make_capture_writer = fun () ->
   ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.rev |> String.concat "")
 
 let yellow_bold = "\027[1;33m"
+
 let reset = "\027[0m"
 
 let package_progress_line = fun label package_name ->
@@ -254,7 +255,9 @@ let test_check_success_emits_package_progress = fun _ctx ->
           let stderr, stderr_contents = make_capture_writer () in
           Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"check simple file";
           Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
-          Test.assert_equal ~expected:(package_progress_line "Check" "demo") ~actual:(stderr_contents ());
+          Test.assert_equal
+            ~expected:(package_progress_line "Check" "demo")
+            ~actual:(stderr_contents ());
           Ok ())
 
 let test_check_package_filter_limits_workspace_scan = fun _ctx ->
@@ -498,10 +501,8 @@ let test_check_package_filter_emits_cached_dependency_package_events = fun _ctx 
           match write_file tty_source "let answer = Std.twice 21\n" with
           | Error err -> Error err
           | Ok () ->
-              let prime_matches =
-                parse_check [ "check"; "--json"; "-p"; "tty" ]
-                |> Result.expect ~msg:"parse priming check args"
-              in
+              let prime_matches = parse_check [ "check"; "--json"; "-p"; "tty" ]
+              |> Result.expect ~msg:"parse priming check args" in
               let prime_stdout, _prime_stdout_contents = make_capture_writer () in
               let prime_stderr, _prime_stderr_contents = make_capture_writer () in
               Riot_cli.Check_cmd.run ~workspace ~stdout:prime_stdout ~stderr:prime_stderr prime_matches
@@ -521,9 +522,10 @@ let test_check_package_filter_emits_cached_dependency_package_events = fun _ctx 
                       | _ -> None
                     in
                     match Data.Json.get_field "type" json with
-                    | Some (Data.Json.String "check_package") -> package_name |> Option.map (fun name -> ("check_package", name))
-                    | Some (Data.Json.String "check_package_cached") ->
-                        package_name |> Option.map (fun name -> ("check_package_cached", name))
+                    | Some (Data.Json.String "check_package") -> package_name
+                    |> Option.map (fun name -> ("check_package", name))
+                    | Some (Data.Json.String "check_package_cached") -> package_name
+                    |> Option.map (fun name -> ("check_package_cached", name))
                     | _ -> None)
               in
               Test.assert_equal

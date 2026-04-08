@@ -6,22 +6,19 @@ open Std
     lets a caller review them, and either promotes or rejects the pending
     outputs.
 *)
-
 type pending_snapshot = {
   (** Approved snapshot path currently checked into the repo. *)
   approved: Path.t;
   (** Newly generated candidate snapshot waiting for review. *)
   pending: Path.t;
 }
-
 type review_decision =
-  [
-    | `Approve
-    | `Reject
-    | `Ignore
-    | `Quit
-  ]
-
+[
+  | `Approve
+  | `Reject
+  | `Ignore
+  | `Quit
+]
 type review_summary = {
   (** Number of pending snapshots approved during the review pass. *)
   approved_count: int;
@@ -41,10 +38,7 @@ val command: ArgParser.command
     Use [query] to narrow the scan to paths matching a substring.
 *)
 val discover_pending_snapshots:
-  workspace_root:Path.t ->
-  ?query:string ->
-  unit ->
-  (pending_snapshot list, IO.error) result
+  workspace_root:Path.t -> ?query:string -> unit -> (pending_snapshot list, IO.error) result
 
 (** Promote pending snapshot files into their approved locations. *)
 val approve_pending_snapshots: pending_snapshot list -> (unit, IO.error) result

@@ -16,8 +16,7 @@ let command =
                all benchmarks."; option "package" |> short 'p' |> long "package" |> help "Run benchmarks from a specific package"; flag
             "list"
           |> long "list"
-          |> help "List benchmark suites and benchmark cases without running them"; flag
-            "release"
+          |> help "List benchmark suites and benchmark cases without running them"; flag "release"
           |> long "release"
           |> help "Use the release build profile"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
             "verbose"
@@ -64,7 +63,9 @@ let print_duration = fun duration -> Time.Duration.to_secs_string ~precision:6 d
 let event_elapsed_us = fun ~command_started_at ->
   Time.Instant.elapsed command_started_at |> Time.Duration.to_micros
 
-let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.listed_bench_suite) ->
+let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
+  suite: Riot_build.listed_bench_suite
+) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -76,7 +77,9 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: 
 let listed_bench_selector = fun (suite: Riot_build.suite_binary) (item: Riot_build.listed_bench_item) ->
   suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
 
-let listed_bench_item_json = fun (suite: Riot_build.suite_binary) (item: Riot_build.listed_bench_item) ->
+let listed_bench_item_json = fun (suite: Riot_build.suite_binary) (
+  item: Riot_build.listed_bench_item
+) ->
   let kind =
     match item.kind with
     | Riot_build.Benchmark -> Data.Json.String "benchmark"
@@ -93,7 +96,9 @@ let listed_bench_item_json = fun (suite: Riot_build.suite_binary) (item: Riot_bu
     ("cases", Data.Json.Array (List.map Data.Json.string item.cases));
   ]
 
-let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.listed_bench_suite) ->
+let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
+  suite: Riot_build.listed_bench_suite
+) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -175,14 +180,7 @@ let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
             else
               ""
           in
-          println
-            ("  ["
-            ^ Int.to_string item.index
-            ^ "] "
-            ^ kind
-            ^ " "
-            ^ item.name
-            ^ skip_suffix)))
+          println ("  [" ^ Int.to_string item.index ^ "] " ^ kind ^ " " ^ item.name ^ skip_suffix)))
     suites
 
 let print_bench_result = fun (result: Riot_build.bench_case_result) ->
@@ -369,7 +367,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     let listed_suite_count = ref 0 in
     let listed_benchmark_count = ref 0 in
     let failed_suite_count = ref 0 in
-    let on_suite = fun (suite: Riot_build.listed_bench_suite) ->
+    let on_suite (suite: Riot_build.listed_bench_suite) =
       if not (List.is_empty suite.benchmarks) then
         (
           listed_suite_count := !listed_suite_count + 1;
@@ -378,31 +376,38 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           List.iter (write_bench_item_listed_json ~command_started_at suite.suite) suite.benchmarks
         )
     in
-    let on_suite_error = fun (suite: Riot_build.suite_binary) err ->
+    let on_suite_error (suite: Riot_build.suite_binary) err =
       failed_suite_count := !failed_suite_count + 1;
       write_bench_suite_list_failed_json ~command_started_at suite err
     in
-    match Riot_build.list_benchmarks
-      ?on_suite:(if output_mode = Build.Json then
-        Some on_suite
-      else
-        None)
-      ?on_suite_error:(if output_mode = Build.Json then
-        Some on_suite_error
-      else
-        None)
-      {
-        workspace;
-        package_filter = request.package_filter;
-        suite_filter = request.suite_filter;
-        profile;
-        extra_args;
-      }
+    match
+      Riot_build.list_benchmarks
+        ?on_suite:((
+          if output_mode = Build.Json then
+            Some on_suite
+          else
+            None
+        ))
+        ?on_suite_error:((
+          if output_mode = Build.Json then
+            Some on_suite_error
+          else
+            None
+        ))
+        {
+          workspace;
+          package_filter = request.package_filter;
+          suite_filter = request.suite_filter;
+          profile;
+          extra_args;
+        }
     with
     | Ok suites ->
-        let suites = List.filter
-          (fun (suite: Riot_build.listed_bench_suite) -> not (List.is_empty suite.benchmarks))
-          suites in
+        let suites =
+          List.filter
+            (fun (suite: Riot_build.listed_bench_suite) -> not (List.is_empty suite.benchmarks))
+            suites
+        in
         (
           match output_mode with
           | Build.Json -> write_bench_list_completed_json
@@ -458,15 +463,15 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           | Build.Human -> write_bench_event event
         )
     in
-    match Riot_build.bench
-      ~on_event
-      {
-        workspace;
-        package_filter = request.package_filter;
-        suite_filter = request.suite_filter;
-        profile;
-        extra_args;
-      }
+    match
+      Riot_build.bench ~on_event
+        {
+          workspace;
+          package_filter = request.package_filter;
+          suite_filter = request.suite_filter;
+          profile;
+          extra_args;
+        }
     with
     | Ok () -> Ok ()
     | Error err ->
