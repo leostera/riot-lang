@@ -58,6 +58,7 @@ type fixture = {
 }
 
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 1 }
+
 let fixture_path = Path.v "packages/serde-json/bench/fixtures/large_payload.json"
 
 let human_size = fun bytes ->
@@ -72,15 +73,11 @@ let normalize_json = function
   | Json.Embed value -> value
   | value -> value
 
-let child_fields =
-  De.fields [
-    De.field "owner" Child_owner;
-    De.field "score" Child_score;
-    De.field "flags" Child_flags;
-  ]
+let child_fields = De.fields
+  [ De.field "owner" Child_owner; De.field "score" Child_score; De.field "flags" Child_flags; ]
 
-let item_fields =
-  De.fields [
+let item_fields = De.fields
+  [
     De.field "id" Item_id;
     De.field "name" Item_name;
     De.field "active" Item_active;
@@ -90,8 +87,8 @@ let item_fields =
     De.field "note" Item_note;
   ]
 
-let dataset_fields =
-  De.fields [
+let dataset_fields = De.fields
+  [
     De.field "version" Dataset_version;
     De.field "source" Dataset_source;
     De.field "items" Dataset_items;
@@ -132,9 +129,7 @@ let expect_field_as = fun name json decode ->
   decode (normalize_json value)
 
 let child_decode =
-  De.record
-    ~fields:child_fields
-    ~init:(None, None, None)
+  De.record ~fields:child_fields ~init:(None, None, None)
     ~step:(fun reader (owner, score, flags) next ->
       match next with
       | Some Child_owner ->
@@ -149,15 +144,11 @@ let child_decode =
           (owner, score, flags))
     ~finish:(fun (owner, score, flags) ->
       match (owner, score, flags) with
-      | (Some owner, Some score, Some flags) ->
-          { owner; score; flags }
-      | _ ->
-          De.missing_field ())
+      | (Some owner, Some score, Some flags) -> { owner; score; flags }
+      | _ -> De.missing_field ())
 
 let item_decode =
-  De.record
-    ~fields:item_fields
-    ~init:(None, None, None, None, None, None, None)
+  De.record ~fields:item_fields ~init:(None, None, None, None, None, None, None)
     ~step:(fun reader (id, name, active, tags, metrics, child, note) next ->
       match next with
       | Some Item_id ->
@@ -181,14 +172,19 @@ let item_decode =
     ~finish:(fun (id, name, active, tags, metrics, child, note) ->
       match (id, name, active, tags, metrics, child, note) with
       | (Some id, Some name, Some active, Some tags, Some metrics, Some child, Some note) ->
-          { id; name; active; tags; metrics; child; note }
-      | _ ->
-          De.missing_field ())
+          {
+            id;
+            name;
+            active;
+            tags;
+            metrics;
+            child;
+            note;
+          }
+      | _ -> De.missing_field ())
 
 let dataset_decode =
-  De.record
-    ~fields:dataset_fields
-    ~init:(None, None, None)
+  De.record ~fields:dataset_fields ~init:(None, None, None)
     ~step:(fun reader (version, source, items) next ->
       match next with
       | Some Dataset_version ->
@@ -203,38 +199,36 @@ let dataset_decode =
           (version, source, items))
     ~finish:(fun (version, source, items) ->
       match (version, source, items) with
-      | (Some version, Some source, Some items) ->
-          { version; source; items }
-      | _ ->
-          De.missing_field ())
+      | (Some version, Some source, Some items) -> { version; source; items }
+      | _ -> De.missing_field ())
 
-let child_encode =
-  Ser.record
-    (Ser.fields [
-       Ser.field "owner" Ser.string (fun value -> value.owner);
-       Ser.field "score" Ser.float (fun value -> value.score);
-       Ser.field "flags" (Ser.list Ser.bool) (fun value -> value.flags);
-     ])
+let child_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "owner" Ser.string (fun value -> value.owner);
+      Ser.field "score" Ser.float (fun value -> value.score);
+      Ser.field "flags" (Ser.list Ser.bool) (fun value -> value.flags);
+    ])
 
-let item_encode =
-  Ser.record
-    (Ser.fields [
-       Ser.field "id" Ser.int (fun value -> value.id);
-       Ser.field "name" Ser.string (fun value -> value.name);
-       Ser.field "active" Ser.bool (fun value -> value.active);
-       Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
-       Ser.field "metrics" (Ser.list Ser.int) (fun value -> value.metrics);
-       Ser.field "child" child_encode (fun value -> value.child);
-       Ser.field "note" (Ser.option Ser.string) (fun value -> value.note);
-     ])
+let item_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "id" Ser.int (fun value -> value.id);
+      Ser.field "name" Ser.string (fun value -> value.name);
+      Ser.field "active" Ser.bool (fun value -> value.active);
+      Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
+      Ser.field "metrics" (Ser.list Ser.int) (fun value -> value.metrics);
+      Ser.field "child" child_encode (fun value -> value.child);
+      Ser.field "note" (Ser.option Ser.string) (fun value -> value.note);
+    ])
 
-let dataset_encode =
-  Ser.record
-    (Ser.fields [
-       Ser.field "version" Ser.int (fun value -> value.version);
-       Ser.field "source" Ser.string (fun value -> value.source);
-       Ser.field "items" (Ser.list item_encode) (fun value -> value.items);
-     ])
+let dataset_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "version" Ser.int (fun value -> value.version);
+      Ser.field "source" Ser.string (fun value -> value.source);
+      Ser.field "items" (Ser.list item_encode) (fun value -> value.items);
+    ])
 
 let rec manual_bool_list = function
   | [] -> Ok []
@@ -268,9 +262,11 @@ and manual_child_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
   let* owner = expect_field_as "owner" json expect_string in
   let* score = expect_field_as "score" json expect_float in
-  let* flags = expect_field_as "flags" json (fun value ->
-    let* values = expect_array value in
-    manual_bool_list values)
+  let* flags =
+    expect_field_as "flags" json
+      (fun value ->
+        let* values = expect_array value in
+        manual_bool_list values)
   in
   Ok { owner; score; flags }
 
@@ -279,32 +275,47 @@ and manual_item_of_json = fun json ->
   let* id = expect_field_as "id" json expect_int in
   let* name = expect_field_as "name" json expect_string in
   let* active = expect_field_as "active" json expect_bool in
-  let* tags = expect_field_as "tags" json (fun value ->
-    let* values = expect_array value in
-    manual_string_list values)
+  let* tags =
+    expect_field_as "tags" json
+      (fun value ->
+        let* values = expect_array value in
+        manual_string_list values)
   in
-  let* metrics = expect_field_as "metrics" json (fun value ->
-    let* values = expect_array value in
-    manual_int_list values)
+  let* metrics =
+    expect_field_as "metrics" json
+      (fun value ->
+        let* values = expect_array value in
+        manual_int_list values)
   in
   let* child = expect_field_as "child" json manual_child_of_json in
   let* note =
-    expect_field_as "note" json (fun value ->
-      match normalize_json value with
-      | Json.Null -> Ok None
-      | value ->
-          let* note = expect_string value in
-          Ok (Some note))
+    expect_field_as "note" json
+      (fun value ->
+        match normalize_json value with
+        | Json.Null -> Ok None
+        | value ->
+            let* note = expect_string value in
+            Ok (Some note))
   in
-  Ok { id; name; active; tags; metrics; child; note }
+  Ok {
+    id;
+    name;
+    active;
+    tags;
+    metrics;
+    child;
+    note;
+  }
 
 let manual_dataset_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
   let* version = expect_field_as "version" json expect_int in
   let* source = expect_field_as "source" json expect_string in
-  let* items = expect_field_as "items" json (fun value ->
-    let* values = expect_array value in
-    manual_items_of_json values)
+  let* items =
+    expect_field_as "items" json
+      (fun value ->
+        let* values = expect_array value in
+        manual_items_of_json values)
   in
   Ok { version; source; items }
 
@@ -323,10 +334,12 @@ and item_to_json = fun value ->
     ("tags", Json.Array (List.map (fun tag -> Json.String tag) value.tags));
     ("metrics", Json.Array (List.map (fun metric -> Json.Int metric) value.metrics));
     ("child", child_to_json value.child);
-    ( "note"
-    , match value.note with
+    (
+      "note",
+      match value.note with
       | None -> Json.Null
-      | Some note -> Json.String note );
+      | Some note -> Json.String note
+    );
   ]
 
 let dataset_to_json = fun value ->
@@ -336,72 +349,125 @@ let dataset_to_json = fun value ->
     ("items", Json.Array (List.map item_to_json value.items));
   ]
 
-let parse_json = fun text ->
-  Json.of_string text |> Result.expect ~msg:"expected benchmark payload to parse as JSON"
+let parse_json = fun text -> Json.of_string text |> Result.expect ~msg:"expected benchmark payload to parse as JSON"
 
 let read_fixture_text = fun () ->
   Fs.read_to_string fixture_path
-  |> Result.expect
-       ~msg:("expected benchmark fixture at " ^ Path.to_string fixture_path)
+  |> Result.expect ~msg:(("expected benchmark fixture at " ^ Path.to_string fixture_path))
 
 let load_fixture = fun () ->
   let text = read_fixture_text () in
   let bytes = String.length text in
   let json = parse_json text in
-  let dataset =
-    manual_dataset_of_json json
-    |> Result.expect ~msg:"expected benchmark payload to decode into the typed dataset"
-  in
+  let dataset = manual_dataset_of_json json |> Result.expect ~msg:"expected benchmark payload to decode into the typed dataset" in
   { json; dataset; text; bytes }
 
-let decode_serde = fun text ->
-  Serde_json.of_string dataset_decode text
-  |> Result.expect ~msg:"expected fast serde benchmark decode to succeed"
+let decode_serde = fun text -> Serde_json.of_string dataset_decode text |> Result.expect ~msg:"expected fast serde benchmark decode to succeed"
 
-let encode_manual = fun dataset ->
-  Json.to_string (dataset_to_json dataset)
+let io_reader_of_string = fun ?(chunk_size = 1) value ->
+  let offset = ref 0 in
+  let module Read = struct
+    type t = string
 
-let encode_serde = fun dataset ->
-  Serde_json.to_string dataset_encode dataset
-  |> Result.expect ~msg:"expected fast serde benchmark encode to succeed"
+    type err = IO.error
+
+    let read = fun source ?timeout:_ buf ->
+      let remaining = String.length source - !offset in
+      if Int.equal remaining 0 then
+        Ok 0
+      else
+        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
+        IO.Bytes.blit_string source !offset buf 0 to_read;
+        offset := !offset + to_read;
+        Ok to_read
+
+    let read_vectored = fun source bufs ->
+      let total = ref 0 in
+      let continue = ref true in
+      IO.Iovec.iter bufs
+        (fun { ba; off; len } ->
+          if !continue then
+            let remaining = String.length source - !offset in
+            if Int.equal remaining 0 then
+              continue := false
+            else
+              let to_read = min chunk_size (min remaining len) in
+              IO.Bytes.blit_string source !offset ba off to_read;
+              offset := !offset + to_read;
+              total := !total + to_read;
+              if to_read < len then
+                continue := false);
+      Ok !total
+  end in
+  IO.Reader.of_read_src (module Read) value
+
+let decode_serde_reader = fun text ->
+  Serde_json.of_reader dataset_decode
+    (IO.Reader.from_string text |> IO.Reader.map_err ~fn:(fun () -> IO.Noop)) |> Result.expect ~msg:"expected serde reader benchmark decode to succeed"
+
+let decode_serde_reader_chunked = fun text ->
+  Serde_json.of_reader dataset_decode (io_reader_of_string ~chunk_size:1 text)
+  |> Result.expect ~msg:"expected chunked serde reader benchmark decode to succeed"
+
+let encode_manual = fun dataset -> Json.to_string (dataset_to_json dataset)
+
+let encode_serde = fun dataset -> Serde_json.to_string dataset_encode dataset |> Result.expect ~msg:"expected fast serde benchmark encode to succeed"
 
 let decode_manual = fun text ->
   let json = parse_json text in
   manual_dataset_of_json json |> Result.expect ~msg:"expected manual benchmark decode to succeed"
 
-let decode_manual_from_json = fun json ->
-  manual_dataset_of_json json
-  |> Result.expect ~msg:"expected manual benchmark decode from parsed tree to succeed"
+let decode_manual_from_json = fun json -> manual_dataset_of_json json |> Result.expect ~msg:"expected manual benchmark decode from parsed tree to succeed"
 
-let bench_parse_only = fun fixture () ->
-  ignore (parse_json fixture.text)
+let bench_parse_only = fun fixture () -> ignore (parse_json fixture.text)
 
-let bench_decode_manual_tree = fun fixture () ->
-  ignore (decode_manual_from_json fixture.json)
+let bench_decode_manual_tree = fun fixture () -> ignore (decode_manual_from_json fixture.json)
 
-let bench_decode_manual = fun fixture () ->
-  ignore (decode_manual fixture.text)
+let bench_decode_manual = fun fixture () -> ignore (decode_manual fixture.text)
 
-let bench_decode_serde = fun fixture () ->
-  ignore (decode_serde fixture.text)
+let bench_decode_serde = fun fixture () -> ignore (decode_serde fixture.text)
 
-let bench_encode_manual = fun fixture () ->
-  ignore (encode_manual fixture.dataset)
+let bench_decode_serde_reader = fun fixture () -> ignore (decode_serde_reader fixture.text)
 
-let bench_encode_serde = fun fixture () ->
-  ignore (encode_serde fixture.dataset)
+let bench_decode_serde_reader_chunked = fun fixture () ->
+  ignore (decode_serde_reader_chunked fixture.text)
+
+let bench_encode_manual = fun fixture () -> ignore (encode_manual fixture.dataset)
+
+let bench_encode_serde = fun fixture () -> ignore (encode_serde fixture.dataset)
 
 let benchmark_suite = fun fixture ->
   let size = human_size fixture.bytes in
   Bench.[
     with_config ~config:bench_config ("parse json tree (" ^ size ^ ")") (bench_parse_only fixture);
-    with_config ~config:bench_config
+    with_config
+      ~config:bench_config
       ("manual decode from parsed tree (" ^ size ^ ")")
       (bench_decode_manual_tree fixture);
-    with_config ~config:bench_config ("manual decode total (" ^ size ^ ")") (bench_decode_manual fixture);
-    with_config ~config:bench_config ("serde decode total (" ^ size ^ ")") (bench_decode_serde fixture);
-    with_config ~config:bench_config ("manual encode total (" ^ size ^ ")") (bench_encode_manual fixture);
-    with_config ~config:bench_config ("serde encode total (" ^ size ^ ")") (bench_encode_serde fixture);
+    with_config
+      ~config:bench_config
+      ("manual decode total (" ^ size ^ ")")
+      (bench_decode_manual fixture);
+    with_config
+      ~config:bench_config
+      ("serde decode total (" ^ size ^ ")")
+      (bench_decode_serde fixture);
+    with_config
+      ~config:bench_config
+      ("serde decode via reader total (" ^ size ^ ")")
+      (bench_decode_serde_reader fixture);
+    with_config
+      ~config:bench_config
+      ("serde decode via 1-byte reader total (" ^ size ^ ")")
+      (bench_decode_serde_reader_chunked fixture);
+    with_config
+      ~config:bench_config
+      ("manual encode total (" ^ size ^ ")")
+      (bench_encode_manual fixture);
+    with_config
+      ~config:bench_config
+      ("serde encode total (" ^ size ^ ")")
+      (bench_encode_serde fixture);
   ]
 
 let () =
@@ -409,7 +475,7 @@ let () =
     ~main:(fun ~args ->
       let fixture = load_fixture () in
       Bench.Cli.main
-        ~name:("serde-json large payload benchmarks (" ^ human_size fixture.bytes ^ ")")
+        ~name:(("serde-json large payload benchmarks (" ^ human_size fixture.bytes ^ ")"))
         ~benchmarks:(benchmark_suite fixture)
         ~args)
     ~args:Env.args
