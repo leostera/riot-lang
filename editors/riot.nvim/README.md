@@ -2,28 +2,30 @@
 
 Neovim integration for Riot.
 
-This first slice is intentionally small: it formats the current OCaml file and
-keeps Riot diagnostics live by speaking to `riot lsp stdio` when available.
-The legacy CLI path remains a fallback for buffers that cannot attach to the
-server yet.
+`riot.nvim` keeps the editor-side behavior thin and shells out to Riot’s CLI
+surfaces for formatting, diagnostics, workspace/package discovery, runnable
+listing, tests, benchmarks, and dependency management.
 
 ## Status
 
 Current features:
 
-- `:RiotFmt` formats the current buffer, preferring `riot lsp stdio` and falling back to `riot fmt`
-- `:RiotFix` applies Riot quick fixes for the diagnostic under the cursor
+- `:RiotFmt`, `:RiotFix`, `:RiotFixAll`, and `:RiotExplain`
 - automatic `riot lsp stdio` startup for `*.ml` and `*.mli`
 - save-time formatting through the LSP server when attached, with CLI fallback
 - live parser and lint diagnostics through `vim.diagnostic` from `riot-lsp`
-- save-time status notifications when the legacy CLI fallback is waiting on the build lock or building the generated fix runner
+- `:RiotBuild`, `:RiotCheck`, `:RiotRun`, `:RiotRunBinary`, and `:RiotRunExample`
+- `:RiotTest`, `:RiotTestWorkspace`, `:RiotTestPackage`, `:RiotTestFile`, and `:RiotTestNearest`
+- `:RiotBench`, `:RiotBenchPackage`, `:RiotBenchFile`, `:RiotBenchNearest`, and `:RiotBenchLast`
+- `:RiotAdd` and `:RiotRemove`
+- `:RiotLogs`, `:RiotLspLogs`, `:RiotLspStart`, `:RiotLspStop`, `:RiotLspRestart`, and `:RiotLspInfo`
+- optional `neotest` bridge commands plus an experimental `neotest-riot` adapter module
 
 Planned next:
 
-- `:RiotBuild`
-- `:RiotTest`
-- package add/remove helpers
-- richer LSP commands and code actions once the server exposes them
+- richer benchmark result rendering inside Neovim
+- tighter `riot-lsp` code-action integration as the server surface grows
+- more exact nearest-position discovery once Riot can expose test and benchmark source spans directly
 
 ## Install
 
@@ -65,12 +67,14 @@ autoload `riot.nvim`.
 
 ## Configuration
 
-If you want to override the Riot executable or notifications:
+If you want to override the Riot executable or tune the split sizes:
 
 ```lua
 require("riot").setup({
   riot_cmd = { "riot" },
   notify = true,
+  terminal_height = 14,
+  logs_height = 16,
 })
 ```
 
@@ -79,11 +83,47 @@ Options:
 - `riot_cmd` overrides the Riot executable, for example `{ "/path/to/riot" }`
 - `notify` controls whether failures are shown with `vim.notify`
 - `enable_lsp` disables the automatic `riot lsp stdio` client bootstrap when set to `false`
+- `terminal_height` controls the default bottom split height for Riot terminal commands
+- `logs_height` controls the default split height for Riot log and explanation buffers
 
 ## Commands
 
 - `:RiotFmt` formats the current file
 - `:RiotFix` applies quick fixes for the current diagnostic when `riot-lsp` is attached
+- `:RiotFixAll` applies fix-all actions for the current file
+- `:RiotExplain` explains the diagnostic under the cursor
+- `:RiotBuild` builds the current package when one is active, otherwise the workspace
+- `:RiotCheck` typechecks the current file, or falls back to the current package/workspace
+- `:RiotRun` picks a runnable from the whole workspace
+- `:RiotRunBinary` and `:RiotRunExample` filter that picker by kind
+- `:RiotTest` runs the current package by default and uses file-scoped behavior inside `tests/`
+- `:RiotTestWorkspace`, `:RiotTestPackage`, `:RiotTestFile`, `:RiotTestNearest`
+- `:RiotBench`, `:RiotBenchPackage`, `:RiotBenchFile`, `:RiotBenchNearest`, `:RiotBenchLast`
+- `:RiotAdd [dep]` and `:RiotRemove [dep]`
+- `:RiotLogs` and `:RiotLspLogs`
+- `:RiotLspStart`, `:RiotLspStop`, `:RiotLspRestart`, `:RiotLspInfo`
+- `:RiotNeotestSummary`, `:RiotNeotestOutput`, `:RiotNeotestNearest`, `:RiotNeotestFile`, `:RiotNeotestLast`
+
+## Neotest
+
+`riot.nvim` ships an experimental `neotest-riot` adapter module. If you
+already use `nvim-neotest/neotest`, you can wire it like this:
+
+```lua
+require("neotest").setup({
+  adapters = {
+    require("neotest-riot")({
+      riot_cmd = { "riot" },
+    }),
+  },
+})
+```
+
+The adapter discovers Riot tests from `riot test --list --json` and runs them
+through `riot test --json`. It currently approximates in-file test positions by
+scanning for `Test.case` and `Test.property` names, so the nearest-position UX
+is good for conventional test suites but not yet perfect for heavily-generated
+test lists.
 
 ## Notes
 
@@ -96,8 +136,15 @@ Options:
   `riot fmt --json` / `riot fix --json` pipeline when the server is not
   available yet.
 - While the legacy `riot fix --json` fallback is running, `riot.nvim` also
-  surfaces a few coarse progress notifications such as waiting on the build
-  lock or building the generated fix runner.
+  surfaces coarse progress notifications such as waiting on the build lock or
+  building the generated fix runner.
+- Project/package discovery comes from `riot info --json`, not from local
+  manifest parsing heuristics.
+- Run pickers use `riot run --list --json` and always enumerate the whole
+  workspace, even when the current buffer belongs to one package.
+- Test and benchmark pickers use `riot test --list --json` and
+  `riot bench --list --json`, scoped to the current package where that makes
+  the UX more useful.
 - Manual `:RiotFmt` formats modified buffers through the LSP client when it is
   attached; otherwise it falls back to the saved-file CLI pipeline and refreshes
   Riot diagnostics for the saved file.

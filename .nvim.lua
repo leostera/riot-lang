@@ -1,5 +1,6 @@
 local source = debug.getinfo(1, "S").source
 local this_file = source:sub(1, 1) == "@" and source:sub(2) or source
+
 local repo_root = vim.fs.dirname(this_file)
 local plugin_root = repo_root .. "/editors/riot.nvim"
 
@@ -13,6 +14,20 @@ vim.cmd.runtime({ "plugin/riot.lua", bang = true })
 local ok, riot = pcall(require, "riot")
 if not ok then
   return
+end
+
+local ok_neotest, neotest = pcall(require, "neotest")
+if ok_neotest and type(neotest.setup_project) == "function" then
+  local ok_adapter, riot_adapter = pcall(require, "neotest-riot")
+  if ok_adapter then
+    neotest.setup_project(repo_root, {
+      adapters = {
+        riot_adapter({
+          riot_cmd = { "riot" },
+        }),
+      },
+    })
+  end
 end
 
 vim.o.updatetime = 50
@@ -221,7 +236,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
       supports_inlay_hints = client:supports_method("textDocument/inlayHint")
     else
       supports_inlay_hints = client.server_capabilities ~= nil
-        and client.server_capabilities.inlayHintProvider ~= nil
+          and client.server_capabilities.inlayHintProvider ~= nil
     end
 
     if supports_inlay_hints then

@@ -4,12 +4,17 @@ local defaults = {
   notify = true,
   enable_lsp = true,
   riot_cmd = { "riot" },
+  terminal_height = 14,
+  logs_height = 16,
 }
 
 local diagnostics_namespace = vim.api.nvim_create_namespace("riot.nvim")
 
 local state = {
   config = vim.deepcopy(defaults),
+  logs = {},
+  last_test_selector = nil,
+  last_bench_selector = nil,
 }
 
 local function json_value(value)
@@ -46,6 +51,80 @@ local function notify(message, level)
   vim.notify(message, level or vim.log.levels.INFO, { title = "riot.nvim" })
 end
 
+local function timestamp()
+  return os.date("%H:%M:%S")
+end
+
+local function append_log(kind, message)
+  for _, line in ipairs(vim.split(message or "", "\n", { trimempty = true })) do
+    table.insert(state.logs, ("[%s] %s %s"):format(timestamp(), kind, line))
+  end
+end
+
+local function buffer_lines_for_text(text)
+  local lines = vim.split(text or "", "\n", { plain = true })
+
+  if #lines > 0 and lines[#lines] == "" then
+    table.remove(lines, #lines)
+  end
+
+  if #lines == 0 then
+    return { "" }
+  end
+
+  return lines
+end
+
+local function open_scratch(title, lines, opts)
+  opts = opts or {}
+
+  vim.cmd("botright split")
+  local win = vim.api.nvim_get_current_win()
+
+  if opts.height then
+    vim.api.nvim_win_set_height(win, opts.height)
+  end
+
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_win_set_buf(win, bufnr)
+  vim.bo[bufnr].bufhidden = "wipe"
+  vim.bo[bufnr].buftype = "nofile"
+  vim.bo[bufnr].buflisted = false
+  vim.bo[bufnr].swapfile = false
+  vim.bo[bufnr].modifiable = true
+  vim.api.nvim_buf_set_name(bufnr, title)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines or { "" })
+  vim.bo[bufnr].modifiable = false
+
+  if opts.filetype then
+    vim.bo[bufnr].filetype = opts.filetype
+  end
+
+  return bufnr, win
+end
+
+local function show_text(title, text, opts)
+  return open_scratch(title, buffer_lines_for_text(text), opts)
+end
+
+local function shell_join(command)
+  return table.concat(vim.tbl_map(vim.fn.shellescape, command), " ")
+end
+
+local function display_command(command, cwd)
+  if cwd and cwd ~= "" then
+    return ("$ (cd %s && %s)"):format(vim.fn.shellescape(cwd), shell_join(command))
+  end
+
+  return "$ " .. shell_join(command)
+end
+
+local function riot_command(args)
+  local command = vim.deepcopy(state.config.riot_cmd)
+  vim.list_extend(command, args)
+  return command
+end
+
 local function current_buffer_path(bufnr)
   local path = vim.api.nvim_buf_get_name(bufnr)
   if path == "" then
@@ -73,6 +152,14 @@ local function workspace_root(path)
   return vim.fs.dirname(root_files[1])
 end
 
+local function command_cwd_for_path(path)
+  if type(path) == "string" and path ~= "" then
+    return vim.fs.dirname(path)
+  end
+
+  return vim.uv.cwd()
+end
+
 local function riot_lsp_command()
   local command = vim.deepcopy(state.config.riot_cmd)
   table.insert(command, "lsp")
@@ -90,6 +177,18 @@ local function nearest_manifest(path)
   return manifests[1]
 end
 
+local function path_directory(path)
+  if type(path) ~= "string" or path == "" then
+    return nil
+  end
+
+  if vim.fn.isdirectory(path) == 1 then
+    return path
+  end
+
+  return vim.fs.dirname(path)
+end
+
 local function read_file(path)
   local lines = vim.fn.readfile(path)
   if vim.v.shell_error ~= 0 then
@@ -98,6 +197,10 @@ local function read_file(path)
 
   return lines
 end
+
+local workspace_info_for_path
+local current_package_for_path_from_info
+local command_message
 
 local function parse_package_name(manifest_path)
   local lines = read_file(manifest_path)
@@ -126,6 +229,13 @@ local function parse_package_name(manifest_path)
 end
 
 local function package_for_path(path)
+  local info = workspace_info_for_path and workspace_info_for_path(path)
+  local info_package = current_package_for_path_from_info and current_package_for_path_from_info(info, path)
+
+  if info_package then
+    return info_package
+  end
+
   local manifest_path = nearest_manifest(path)
   if not manifest_path then
     return nil
@@ -595,6 +705,8 @@ end
 local function run_command(command, opts)
   opts = opts or {}
 
+  append_log("cmd", display_command(command, opts.cwd))
+
   local stdout_buffer = { "" }
   local stderr_buffer = { "" }
   local events = {}
@@ -651,10 +763,367 @@ local function run_command(command, opts)
     end
   end
 
+  append_log("exit", ("status=%s"):format(tostring(result.code)))
+
+  if vim.trim(result.stderr or "") ~= "" then
+    append_log("stderr", result.stderr)
+  end
+
+  if #events == 0 and vim.trim(result.stdout or "") ~= "" then
+    append_log("stdout", result.stdout)
+  end
+
   return result, events, stderr_lines
 end
 
-local function command_message(result, event, fallback)
+workspace_info_for_path = function(path)
+  local cwd = path_directory(path) or command_cwd_for_path(path)
+  local result, events = run_command(riot_command({ "info", "--json" }), { cwd = cwd })
+  local event = events[1]
+
+  if result.code ~= 0 or type(event) ~= "table" then
+    return nil
+  end
+
+  if event.type ~= "workspace_info" then
+    return nil
+  end
+
+  return event
+end
+
+current_package_for_path_from_info = function(info, path)
+  if type(info) ~= "table" or type(info.packages) ~= "table" or type(path) ~= "string" then
+    return nil
+  end
+
+  local target_path = normalized_path(path)
+  if target_path == nil then
+    return nil
+  end
+
+  for _, pkg in ipairs(info.packages) do
+    local package_root = normalized_path(json_value(pkg.root))
+    if package_root and vim.startswith(target_path, package_root) then
+      return {
+        name = json_value(pkg.name),
+        manifest_path = json_value(pkg.manifest_path),
+        root = package_root,
+      }
+    end
+  end
+
+  return nil
+end
+
+local function workspace_context(path)
+  local info = workspace_info_for_path(path)
+  local package = current_package_for_path_from_info(info, path) or package_for_path(path)
+
+  return {
+    info = info,
+    package = package,
+    cwd = type(info) == "table" and json_value(info.root) or command_cwd_for_path(path),
+  }
+end
+
+local function command_output_text(result, event)
+  local message = command_message(result, event, "")
+  if message ~= "" then
+    return message
+  end
+
+  local output = vim.trim(result.stdout or "")
+  if output ~= "" then
+    return output
+  end
+
+  return vim.trim(result.stderr or "")
+end
+
+local function select_item(items, opts, on_choice)
+  opts = opts or {}
+
+  if #items == 0 then
+    if opts.empty_message then
+      notify(opts.empty_message, vim.log.levels.WARN)
+    end
+    return
+  end
+
+  if #items == 1 and not opts.force_picker then
+    on_choice(items[1])
+    return
+  end
+
+  vim.ui.select(items, {
+    prompt = opts.prompt or "Select Riot item",
+    format_item = opts.format_item,
+  }, on_choice)
+end
+
+local function open_terminal(command, opts)
+  opts = opts or {}
+
+  vim.cmd("botright split")
+  vim.api.nvim_win_set_height(0, opts.height or state.config.terminal_height)
+
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_win_set_buf(0, bufnr)
+  vim.bo[bufnr].bufhidden = "hide"
+  vim.bo[bufnr].buflisted = false
+  vim.bo[bufnr].swapfile = false
+  vim.bo[bufnr].filetype = "riotterm"
+  vim.api.nvim_buf_set_name(
+    bufnr,
+    ("riot://%s/%d"):format((opts.title or "riot"):gsub("%s+", "-"):lower(), bufnr)
+  )
+
+  append_log("term", display_command(command, opts.cwd))
+
+  vim.fn.termopen(command, {
+    cwd = opts.cwd,
+    on_exit = function(_, code)
+      append_log("term", ("%s exited with %d"):format(opts.title or "Riot", code))
+
+      if opts.on_exit then
+        vim.schedule(function()
+          opts.on_exit(code)
+        end)
+      end
+    end,
+  })
+
+  vim.cmd("startinsert")
+  return bufnr
+end
+
+local function open_file_in_split(path, opts)
+  opts = opts or {}
+
+  if type(path) ~= "string" or path == "" then
+    return
+  end
+
+  vim.cmd("botright split")
+  vim.api.nvim_win_set_height(0, opts.height or state.config.logs_height)
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+end
+
+local function explain_command(source, code)
+  if type(code) ~= "string" or code == "" then
+    return nil
+  end
+
+  local normalized_source = (source or ""):lower()
+
+  if code:match("^TYP%d+$") or normalized_source:find("typ", 1, true) then
+    return riot_command({ "check", "--explain", code })
+  end
+
+  if code:match("^E%d+$") or normalized_source:find("fmt", 1, true) then
+    return riot_command({ "fmt", "--explain", code })
+  end
+
+  return riot_command({ "fix", "--explain", code })
+end
+
+local function list_runnables(path, opts)
+  opts = opts or {}
+  local context = workspace_context(path)
+  local command = riot_command({ "run", "--list", "--json" })
+  local package_name = opts.package_name
+    or (opts.current_package and context.package and context.package.name)
+
+  if package_name then
+    table.insert(command, "-p")
+    table.insert(command, package_name)
+  end
+
+  local result, events = run_command(command, { cwd = context.cwd })
+  local list_event = nil
+
+  for _, event in ipairs(events) do
+    if event.type == "RunList" then
+      list_event = event
+    end
+  end
+
+  if result.code ~= 0 or type(list_event) ~= "table" then
+    return nil, command_output_text(result, list_event), context
+  end
+
+  local items = {}
+
+  for _, binary in ipairs(json_value(list_event.binaries) or {}) do
+    table.insert(items, {
+      kind = json_value(binary.kind) or "binary",
+      package = json_value(binary.package),
+      name = json_value(binary.binary),
+      path = json_value(binary.path),
+      selector = json_value(binary.selector),
+    })
+  end
+
+  return items, nil, context
+end
+
+local function list_test_cases(path, opts)
+  opts = opts or {}
+  local context = workspace_context(path)
+  local command = riot_command({ "test", "--list", "--json" })
+  local package_name = opts.package_name
+    or (opts.current_package and context.package and context.package.name)
+
+  if package_name then
+    table.insert(command, "-p")
+    table.insert(command, package_name)
+  end
+
+  local result, events = run_command(command, { cwd = context.cwd })
+  if result.code ~= 0 then
+    return nil, command_output_text(result), context
+  end
+
+  local suites = {}
+  local ordered = {}
+
+  for _, event in ipairs(events) do
+    if event.type == "TestSuiteListed" then
+      local absolute_path = normalized_path(json_value(event.path), context.cwd)
+      local suite = {
+        type = "suite",
+        package = json_value(event.package),
+        name = json_value(event.suite),
+        selector = json_value(event.selector),
+        path = absolute_path,
+        cases = {},
+      }
+      suites[suite.selector] = suite
+      table.insert(ordered, suite)
+    elseif event.type == "TestCaseListed" then
+      local suite_selector = ("%s:%s"):format(event.package, event.suite)
+      local suite = suites[suite_selector]
+      if suite then
+        local case_json = json_value(event["case"]) or {}
+        table.insert(suite.cases, {
+          type = "case",
+          package = json_value(event.package),
+          suite = json_value(event.suite),
+          name = json_value(event.name),
+          selector = json_value(event.selector),
+          index = json_value(case_json.index) or json_value(event.index),
+          kind = json_value(case_json.type) or "test",
+          reliability = json_value(case_json.reliability) or "stable",
+          size = json_value(case_json.size) or "small",
+          skip = json_value(case_json.skip) or false,
+          path = suite.path,
+        })
+      end
+    end
+  end
+
+  return ordered, nil, context
+end
+
+local function list_benchmarks(path, opts)
+  opts = opts or {}
+  local context = workspace_context(path)
+  local command = riot_command({ "bench", "--list", "--json" })
+  local package_name = opts.package_name
+    or (opts.current_package and context.package and context.package.name)
+
+  if package_name then
+    table.insert(command, "-p")
+    table.insert(command, package_name)
+  end
+
+  local result, events = run_command(command, { cwd = context.cwd })
+  if result.code ~= 0 then
+    return nil, command_output_text(result), context
+  end
+
+  local suites = {}
+  local ordered = {}
+
+  for _, event in ipairs(events) do
+    if event.type == "BenchSuiteListed" then
+      local absolute_path = normalized_path(json_value(event.path), context.cwd)
+      local suite = {
+        type = "suite",
+        package = json_value(event.package),
+        name = json_value(event.suite),
+        selector = json_value(event.selector),
+        path = absolute_path,
+        items = {},
+      }
+      suites[suite.selector] = suite
+      table.insert(ordered, suite)
+    elseif event.type == "BenchItemListed" then
+      local suite_selector = ("%s:%s"):format(event.package, event.suite)
+      local suite = suites[suite_selector]
+      if suite then
+        local bench_json = json_value(event.benchmark) or {}
+        table.insert(suite.items, {
+          type = "item",
+          package = json_value(event.package),
+          suite = json_value(event.suite),
+          name = json_value(event.name),
+          selector = json_value(event.selector),
+          kind = json_value(bench_json.kind) or "benchmark",
+          iterations = json_value(bench_json.iterations),
+          warmup = json_value(bench_json.warmup),
+          skip = json_value(bench_json.skip) or false,
+          path = suite.path,
+        })
+      end
+    end
+  end
+
+  return ordered, nil, context
+end
+
+local function file_matches(path, candidate)
+  local normalized_candidate = normalized_path(candidate)
+  local normalized_target = normalized_path(path)
+
+  return normalized_candidate ~= nil
+    and normalized_target ~= nil
+    and normalized_candidate == normalized_target
+end
+
+local function suites_for_current_file(path, suites)
+  local matches = {}
+
+  for _, suite in ipairs(suites or {}) do
+    if file_matches(path, suite.path) then
+      table.insert(matches, suite)
+    end
+  end
+
+  return matches
+end
+
+local function nearest_named_entry(bufnr, patterns)
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  for start = cursor_line, 1, -1 do
+    local stop = math.min(start + 3, #lines)
+    local block = table.concat(vim.list_slice(lines, start, stop), "\n")
+
+    for _, pattern in ipairs(patterns) do
+      local name = block:match(pattern)
+      if name then
+        return name
+      end
+    end
+  end
+
+  return nil
+end
+
+command_message = function(result, event, fallback)
   local message = ""
 
   if event then
@@ -773,6 +1242,8 @@ local function run_fix(bufnr, opts)
     return { ok = false, skipped = false, items = items }
   end
 
+  reload_buffer(bufnr)
+
   return { ok = true, skipped = false, items = items }
 end
 
@@ -803,6 +1274,306 @@ local function run_lsp_save_pipeline(bufnr)
   end
 
   return format_with_riot_lsp(bufnr)
+end
+
+local function current_context(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    return nil, workspace_context(vim.uv.cwd()), path
+  end
+
+  return path, workspace_context(path), nil
+end
+
+local function run_riot_terminal(args, opts)
+  opts = opts or {}
+  local path = opts.path
+  local context = workspace_context(path or vim.uv.cwd())
+
+  return open_terminal(riot_command(args), {
+    cwd = opts.cwd or context.cwd,
+    height = opts.height,
+    title = opts.title,
+    on_exit = opts.on_exit,
+  })
+end
+
+local function diagnostic_at_cursor(bufnr)
+  local lsp_diagnostics = riot_lsp_diagnostics_under_cursor(bufnr)
+  if #lsp_diagnostics > 0 then
+    return lsp_diagnostics[1]
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1
+  local col = cursor[2]
+
+  for _, diagnostic in ipairs(vim.diagnostic.get(bufnr, { lnum = line })) do
+    if diagnostic_contains_cursor(diagnostic, line, col) then
+      return diagnostic
+    end
+  end
+
+  return nil
+end
+
+local function flatten_test_cases(suites)
+  local items = {}
+
+  for _, suite in ipairs(suites or {}) do
+    for _, case_item in ipairs(suite.cases or {}) do
+      table.insert(items, case_item)
+    end
+  end
+
+  return items
+end
+
+local function flatten_bench_items(suites)
+  local items = {}
+
+  for _, suite in ipairs(suites or {}) do
+    for _, item in ipairs(suite.items or {}) do
+      table.insert(items, item)
+    end
+  end
+
+  return items
+end
+
+local function run_test_selector(selector, path)
+  state.last_test_selector = selector
+
+  if selector then
+    run_riot_terminal({ "test", selector }, {
+      path = path,
+      title = "Riot Test",
+    })
+  end
+end
+
+local function run_bench_selector(selector, path)
+  state.last_bench_selector = selector
+
+  if selector then
+    run_riot_terminal({ "bench", selector }, {
+      path = path,
+      title = "Riot Bench",
+    })
+  end
+end
+
+local function runnable_picker_items(path, opts)
+  local items, err = list_runnables(path, opts)
+  if not items then
+    notify(err or "failed to list Riot runnables", vim.log.levels.ERROR)
+    return nil
+  end
+
+  return items
+end
+
+local function run_selected_runnable(kind)
+  local path = current_buffer_path(vim.api.nvim_get_current_buf())
+  local items = runnable_picker_items(path, { current_package = false })
+
+  if not items then
+    return
+  end
+
+  if kind then
+    items = vim.tbl_filter(function(item)
+      return item.kind == kind
+    end, items)
+  end
+
+  select_item(items, {
+    prompt = kind == "example" and "Riot example" or kind == "binary" and "Riot binary" or "Riot runnable",
+    empty_message = "no Riot runnables found",
+    format_item = function(item)
+      return ("%s [%s] %s"):format(item.selector, item.kind, item.path or "")
+    end,
+  }, function(item)
+    if item then
+      run_riot_terminal({ "run", item.selector }, {
+        path = path,
+        title = "Riot Run",
+      })
+    end
+  end)
+end
+
+local function explain_current_diagnostic()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local diagnostic = diagnostic_at_cursor(bufnr)
+
+  if not diagnostic then
+    notify("no Riot diagnostic under the cursor", vim.log.levels.WARN)
+    return false
+  end
+
+  local code = diagnostic.code
+  if type(code) == "table" then
+    code = code.value or code.target
+  end
+
+  if type(code) ~= "string" or code == "" then
+    notify("current diagnostic has no explainable code", vim.log.levels.WARN)
+    return false
+  end
+
+  local path, context, err = current_context(bufnr)
+  if err then
+    notify(err, vim.log.levels.WARN)
+    return false
+  end
+
+  local command = explain_command(diagnostic.source, code)
+  if not command then
+    notify("no Riot explain command available for this diagnostic", vim.log.levels.WARN)
+    return false
+  end
+
+  local result, events = run_command(command, { cwd = context.cwd })
+  local output = command_output_text(result, events[1])
+
+  if output == "" then
+    notify("no explanation available", vim.log.levels.WARN)
+    return false
+  end
+
+  show_text(("riot://explain/%s"):format(code), output, {
+    height = state.config.logs_height,
+    filetype = "markdown",
+  })
+  return result.code == 0
+end
+
+local function pick_test_from_file(bufnr)
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    notify("current buffer is not backed by a file", vim.log.levels.WARN)
+    return
+  end
+
+  local suites, err = list_test_cases(path, { current_package = true })
+  if not suites then
+    notify(err or "failed to list Riot tests", vim.log.levels.ERROR)
+    return
+  end
+
+  local matching_suites = suites_for_current_file(path, suites)
+  if #matching_suites == 0 then
+    notify("no Riot test suites found for current file", vim.log.levels.WARN)
+    return
+  end
+
+  local cases = flatten_test_cases(matching_suites)
+  select_item(cases, {
+    prompt = "Riot test",
+    empty_message = "no Riot tests found for current file",
+    format_item = function(item)
+      return ("%s :: %s"):format(item.package .. ":" .. item.suite, item.name)
+    end,
+  }, function(item)
+    if item then
+      run_test_selector(item.selector, path)
+    end
+  end)
+end
+
+local function pick_bench_for_context(bufnr, current_package_only)
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    notify("current buffer is not backed by a file", vim.log.levels.WARN)
+    return
+  end
+
+  local suites, err = list_benchmarks(path, { current_package = current_package_only })
+  if not suites then
+    notify(err or "failed to list Riot benchmarks", vim.log.levels.ERROR)
+    return
+  end
+
+  local items = flatten_bench_items(suites)
+  select_item(items, {
+    prompt = "Riot benchmark",
+    empty_message = "no Riot benchmarks found",
+    format_item = function(item)
+      return ("%s [%s]"):format(item.selector, item.kind)
+    end,
+  }, function(item)
+    if item then
+      run_bench_selector(item.selector, path)
+    end
+  end)
+end
+
+local function nearest_test_selector(bufnr)
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    return nil, "current buffer is not backed by a file"
+  end
+
+  local suites, err = list_test_cases(path, { current_package = true })
+  if not suites then
+    return nil, err or "failed to list Riot tests"
+  end
+
+  local matching_suites = suites_for_current_file(path, suites)
+  local name = nearest_named_entry(bufnr, {
+    'Test%.case.-"([^"]+)"',
+    'Test%.property.-"([^"]+)"',
+    'Test%.skip.-"([^"]+)"',
+    'Test%.todo.-"([^"]+)"',
+  })
+
+  if not name then
+    return nil, "no nearby Riot test case found"
+  end
+
+  for _, suite in ipairs(matching_suites) do
+    for _, case_item in ipairs(suite.cases) do
+      if case_item.name == name then
+        return case_item.selector, nil
+      end
+    end
+  end
+
+  return nil, ("no Riot test named '%s' found in current file"):format(name)
+end
+
+local function nearest_bench_selector(bufnr)
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    return nil, "current buffer is not backed by a file"
+  end
+
+  local suites, err = list_benchmarks(path, { current_package = true })
+  if not suites then
+    return nil, err or "failed to list Riot benchmarks"
+  end
+
+  local matching_suites = suites_for_current_file(path, suites)
+  local name = nearest_named_entry(bufnr, {
+    'Bench%.[%w_]+.-"([^"]+)"',
+  })
+
+  if not name then
+    return nil, "no nearby Riot benchmark found"
+  end
+
+  for _, suite in ipairs(matching_suites) do
+    for _, item in ipairs(suite.items) do
+      if item.name == name then
+        return item.selector, nil
+      end
+    end
+  end
+
+  return nil, ("no Riot benchmark named '%s' found in current file"):format(name)
 end
 
 local function configure_format_on_save()
@@ -904,6 +1675,348 @@ function M.show_current_package()
 
   notify(package.name)
   return package
+end
+
+function M.fix_all()
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if start_riot_lsp(bufnr) then
+    vim.lsp.buf.code_action({
+      apply = true,
+      context = {
+        only = { "source.fixAll" },
+      },
+    })
+    return true
+  end
+
+  local result = run_fix(bufnr)
+  set_diagnostics(bufnr, result.items)
+  if result.ok then
+    reload_buffer(bufnr)
+  end
+  return result.ok
+end
+
+function M.explain_current_diagnostic()
+  return explain_current_diagnostic()
+end
+
+function M.show_logs()
+  local lines = #state.logs > 0 and state.logs or { "No Riot logs yet." }
+  open_scratch("riot://logs", lines, { height = state.config.logs_height })
+end
+
+function M.show_lsp_logs()
+  if not vim.lsp.get_log_path then
+    notify("this Neovim build does not expose vim.lsp.get_log_path()", vim.log.levels.WARN)
+    return
+  end
+
+  open_file_in_split(vim.lsp.get_log_path(), { height = state.config.logs_height })
+end
+
+function M.start_lsp()
+  local bufnr = vim.api.nvim_get_current_buf()
+  if not start_riot_lsp(bufnr) then
+    notify("failed to start riot-lsp for current buffer", vim.log.levels.WARN)
+    return false
+  end
+
+  notify("riot-lsp started")
+  return true
+end
+
+function M.stop_lsp()
+  local clients = vim.lsp.get_clients({ name = "riot-lsp" })
+  if #clients == 0 then
+    notify("riot-lsp is not running", vim.log.levels.WARN)
+    return false
+  end
+
+  vim.lsp.stop_client(vim.tbl_map(function(client)
+    return client.id
+  end, clients), true)
+  notify("riot-lsp stopped")
+  return true
+end
+
+function M.restart_lsp()
+  M.stop_lsp()
+  return M.start_lsp()
+end
+
+function M.show_lsp_info()
+  local lines = {}
+  local clients = vim.lsp.get_clients({ name = "riot-lsp" })
+
+  if #clients == 0 then
+    table.insert(lines, "riot-lsp is not running")
+  else
+    for _, client in ipairs(clients) do
+      table.insert(lines, ("Client %d"):format(client.id))
+      table.insert(lines, ("  root: %s"):format(client.config.root_dir or "<none>"))
+      table.insert(lines, ("  cmd: %s"):format(shell_join(client.config.cmd or {})))
+    end
+  end
+
+  if vim.lsp.get_log_path then
+    table.insert(lines, "")
+    table.insert(lines, ("log: %s"):format(vim.lsp.get_log_path()))
+  end
+
+  open_scratch("riot://lsp-info", lines, { height = state.config.logs_height })
+end
+
+function M.build_current_target()
+  local path, context = current_context()
+  local args = { "build" }
+
+  if context.package then
+    table.insert(args, context.package.name)
+  end
+
+  run_riot_terminal(args, { path = path, title = "Riot Build" })
+end
+
+function M.check_current_target()
+  local path, context = current_context()
+  local args = { "check" }
+
+  if type(path) == "string" and supported_file(path) then
+    table.insert(args, path)
+  elseif context.package then
+    table.insert(args, "-p")
+    table.insert(args, context.package.name)
+  end
+
+  run_riot_terminal(args, { path = path, title = "Riot Check" })
+end
+
+function M.test_workspace()
+  local path = current_buffer_path(vim.api.nvim_get_current_buf())
+  run_riot_terminal({ "test" }, { path = path, title = "Riot Test" })
+end
+
+function M.test_package()
+  local path, context = current_context()
+  if not context.package then
+    notify("no Riot package found for current buffer", vim.log.levels.WARN)
+    return false
+  end
+
+  run_riot_terminal({ "test", "-p", context.package.name }, {
+    path = path,
+    title = "Riot Test",
+  })
+  return true
+end
+
+function M.test_file()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    notify("current buffer is not backed by a file", vim.log.levels.WARN)
+    return false
+  end
+
+  local suites, err = list_test_cases(path, { current_package = true })
+  if not suites then
+    notify(err or "failed to list Riot tests", vim.log.levels.ERROR)
+    return false
+  end
+
+  local matching_suites = suites_for_current_file(path, suites)
+  select_item(matching_suites, {
+    prompt = "Riot test suite",
+    empty_message = "no Riot test suites found for current file",
+    format_item = function(item)
+      return ("%s (%s)"):format(item.selector, item.path or "")
+    end,
+  }, function(item)
+    if item then
+      run_test_selector(item.selector, path)
+    end
+  end)
+
+  return true
+end
+
+function M.test_nearest()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local path = current_buffer_path(bufnr)
+  local selector, err = nearest_test_selector(bufnr)
+  if not selector then
+    notify(err or "failed to resolve Riot test", vim.log.levels.WARN)
+    return false
+  end
+
+  run_test_selector(selector, path)
+  return true
+end
+
+function M.test_current_target()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local path = current_buffer_path(bufnr)
+
+  if type(path) == "string" and path:match("/tests/") then
+    return M.test_file()
+  end
+
+  return M.test_package() or M.test_workspace()
+end
+
+function M.bench_current_target()
+  pick_bench_for_context(vim.api.nvim_get_current_buf(), true)
+end
+
+function M.bench_package()
+  pick_bench_for_context(vim.api.nvim_get_current_buf(), true)
+end
+
+function M.bench_file()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local path = current_buffer_path(bufnr)
+  if type(path) ~= "string" then
+    notify("current buffer is not backed by a file", vim.log.levels.WARN)
+    return false
+  end
+
+  local suites, err = list_benchmarks(path, { current_package = true })
+  if not suites then
+    notify(err or "failed to list Riot benchmarks", vim.log.levels.ERROR)
+    return false
+  end
+
+  local matching_suites = suites_for_current_file(path, suites)
+  local items = flatten_bench_items(matching_suites)
+  select_item(items, {
+    prompt = "Riot benchmark",
+    empty_message = "no Riot benchmarks found for current file",
+    format_item = function(item)
+      return ("%s [%s]"):format(item.selector, item.kind)
+    end,
+  }, function(item)
+    if item then
+      run_bench_selector(item.selector, path)
+    end
+  end)
+
+  return true
+end
+
+function M.bench_nearest()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local path = current_buffer_path(bufnr)
+  local selector, err = nearest_bench_selector(bufnr)
+  if not selector then
+    notify(err or "failed to resolve Riot benchmark", vim.log.levels.WARN)
+    return false
+  end
+
+  run_bench_selector(selector, path)
+  return true
+end
+
+function M.bench_last()
+  if not state.last_bench_selector then
+    notify("no Riot benchmark has been run yet", vim.log.levels.WARN)
+    return false
+  end
+
+  run_bench_selector(state.last_bench_selector, current_buffer_path(vim.api.nvim_get_current_buf()))
+  return true
+end
+
+function M.run_runnable(kind)
+  run_selected_runnable(kind)
+end
+
+function M.add_dependency(dependency)
+  local dep = dependency
+  if dep == nil or dep == "" then
+    dep = vim.fn.input("riot add: ")
+  end
+
+  if dep == nil or dep == "" then
+    return false
+  end
+
+  local path, context = current_context()
+  run_riot_terminal({ "add", dep }, {
+    cwd = context.package and context.package.root or context.cwd,
+    path = path,
+    title = "Riot Add",
+  })
+  return true
+end
+
+function M.remove_dependency(dependency)
+  local dep = dependency
+  if dep == nil or dep == "" then
+    dep = vim.fn.input("riot rm: ")
+  end
+
+  if dep == nil or dep == "" then
+    return false
+  end
+
+  local path, context = current_context()
+  run_riot_terminal({ "rm", dep }, {
+    cwd = context.package and context.package.root or context.cwd,
+    path = path,
+    title = "Riot Remove",
+  })
+  return true
+end
+
+function M.neotest_adapter()
+  return require("neotest-riot")
+end
+
+local function require_neotest()
+  local ok, neotest = pcall(require, "neotest")
+  if not ok then
+    notify("neotest is not installed", vim.log.levels.WARN)
+    return nil
+  end
+
+  return neotest
+end
+
+function M.neotest_summary()
+  local neotest = require_neotest()
+  if neotest then
+    neotest.summary.toggle()
+  end
+end
+
+function M.neotest_output()
+  local neotest = require_neotest()
+  if neotest then
+    neotest.output_panel.toggle()
+  end
+end
+
+function M.neotest_nearest()
+  local neotest = require_neotest()
+  if neotest then
+    neotest.run.run()
+  end
+end
+
+function M.neotest_file()
+  local neotest = require_neotest()
+  if neotest then
+    neotest.run.run(vim.fn.expand("%"))
+  end
+end
+
+function M.neotest_last()
+  local neotest = require_neotest()
+  if neotest then
+    neotest.run.run_last()
+  end
 end
 
 M.diagnostics_namespace = diagnostics_namespace

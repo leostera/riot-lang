@@ -12,6 +12,8 @@
 6. Keep the first-class user flow synchronous and predictable before adding background jobs or progress UIs.
 7. File-save hooks must avoid write loops and should only target file-backed OCaml buffers.
 8. Document any required Neovim version or plugin-manager assumptions in the plugin README.
+9. Workspace/package discovery in the plugin should prefer `riot info --json`; runnable, test, and benchmark pickers should prefer the corresponding `riot ... --list --json` surfaces over local scanning.
+10. Optional integrations like `neotest-riot` should stay additive and degrade cleanly when the external plugin is not installed.
 
 ## Validate
 
