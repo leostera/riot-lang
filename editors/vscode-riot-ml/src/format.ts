@@ -33,7 +33,7 @@ export class RiotFormattingProvider implements vscode.DocumentFormattingEditProv
 			return [];
 		}
 
-		const root = await workspaceRootFor(document.uri);
+		const root = await workspaceRootFor(this.context, document.uri);
 		const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "riot-vscode-format-"));
 		const tempFile = path.join(
 			tempDir,

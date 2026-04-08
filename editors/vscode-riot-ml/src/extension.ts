@@ -1,20 +1,28 @@
+import * as path from "node:path";
 import * as vscode from "vscode";
-import { RiotEditorFeatures, ocamlDocumentSelector } from "./editor_features";
+import { RiotEditorFeatures } from "./editor_features";
 import { registerFormatOnSave } from "./format";
 import {
 	currentReleaseMetadata,
 	ensureRiotAvailable,
 	installManagedRiot,
 	isManagedRiotCommand,
+	type RiotRunnableBinary,
+	listRunnableBinaries,
 	latestReleaseMetadata,
 	packageCommandTargetFor,
 	quote,
+	readRiotInfo,
 	resolveRiotCommand,
 	resolvedRiotVersion,
 	runRiot,
 	sameReleaseIdentity,
 } from "./riot";
-import { RiotTaskProvider, runWorkspaceTask } from "./tasks";
+import { RiotTaskProvider, runScopedTask, runWorkspaceTask } from "./tasks";
+import { RiotBenchmarkController } from "./benchmarking";
+import { RiotBenchmarkResultsView } from "./benchmark_results";
+import { RiotTestController } from "./testing";
+import { registerLanguageModelTools } from "./chat_tools";
 
 type DependencyCommand = "add" | "rm";
 
@@ -39,6 +47,9 @@ const activeFileUri = (): vscode.Uri | undefined => {
 
 	return uri;
 };
+
+const isRiotManifestDocument = (document: vscode.TextDocument): boolean =>
+	document.uri.scheme === "file" && path.basename(document.uri.fsPath) === "riot.toml";
 
 const dependencyScopeChoices = [
 	{
@@ -73,6 +84,31 @@ const dependencyPlaceholder = (command: DependencyCommand): string =>
 	command === "add"
 		? "std, std@^1.0.0, ../local-pkg, github.com/owner/repo"
 		: "std";
+
+type RunnableKind = "binary" | "example";
+
+const runnableKind = (binary: RiotRunnableBinary): RunnableKind =>
+	binary.kind;
+
+const sortRunnables = (
+	binaries: RiotRunnableBinary[],
+	activePackageName?: string,
+): RiotRunnableBinary[] =>
+	binaries.slice().sort((left, right) => {
+		const leftActive = left.packageName === activePackageName ? 0 : 1;
+		const rightActive = right.packageName === activePackageName ? 0 : 1;
+		if (leftActive !== rightActive) {
+			return leftActive - rightActive;
+		}
+
+		const leftKind = runnableKind(left);
+		const rightKind = runnableKind(right);
+		if (leftKind !== rightKind) {
+			return leftKind.localeCompare(rightKind);
+		}
+
+		return left.selector.localeCompare(right.selector);
+	});
 
 const appendCommandRun = (
 	output: vscode.OutputChannel,
@@ -113,6 +149,42 @@ const commandFailureMessage = (
 	return `Failed to ${commandLabel(command)} ${dependency}.`;
 };
 
+const runCommandFailureMessage = (result: { stdout: string; stderr: string }): string => {
+	const stderr = result.stderr.trim();
+	if (stderr !== "") {
+		return stderr;
+	}
+
+	const stdout = result.stdout.trim();
+	if (stdout !== "") {
+		return stdout;
+	}
+
+	return "Riot command failed.";
+};
+
+const refreshProjectContext = async (context: vscode.ExtensionContext): Promise<void> => {
+	const candidates: vscode.Uri[] = [];
+	const active = activeFileUri();
+	if (active) {
+		candidates.push(active);
+	}
+
+	for (const folder of vscode.workspace.workspaceFolders ?? []) {
+		candidates.push(folder.uri);
+	}
+
+	let inRiotProject = false;
+	for (const candidate of candidates) {
+		if (await readRiotInfo(context, candidate)) {
+			inRiotProject = true;
+			break;
+		}
+	}
+
+	await vscode.commands.executeCommand("setContext", "inRiotProject", inRiotProject);
+};
+
 const runDependencyCommand = async (
 	context: vscode.ExtensionContext,
 	output: vscode.OutputChannel,
@@ -141,7 +213,7 @@ const runDependencyCommand = async (
 		return;
 	}
 
-	const target = await packageCommandTargetFor(activeFileUri());
+	const target = await packageCommandTargetFor(context, activeFileUri());
 	if (!target) {
 		void vscode.window.showWarningMessage(
 			`Open a Riot workspace to ${commandLabel(command)} dependencies.`,
@@ -215,7 +287,7 @@ const startupStatus = async (
 				},
 				async () => installManagedRiot(context),
 			);
-			await editorFeatures.restart();
+			await editorFeatures.restartLanguageServer();
 
 			const wasManaged = await isManagedRiotCommand(context, resolved.command);
 			const installedMessage = wasManaged
@@ -229,15 +301,111 @@ const startupStatus = async (
 	}
 };
 
+const runRunnable = async (
+	context: vscode.ExtensionContext,
+	commandOutput: vscode.OutputChannel,
+	kind?: RunnableKind,
+): Promise<void> => {
+	if (!(await ensureRiotAvailable(context))) {
+		return;
+	}
+
+	const targetUri = activeFileUri();
+	const listing = await vscode.window.withProgress(
+		{
+			location: vscode.ProgressLocation.Notification,
+			title: "Riot: Discovering runnable binaries",
+		},
+		async () => listRunnableBinaries(context, targetUri),
+	);
+	if (!listing) {
+		void vscode.window.showWarningMessage("Open a Riot workspace to run a binary.");
+		return;
+	}
+
+	const riot = await resolveRiotCommand(context);
+	appendCommandRun(commandOutput, riot, [
+		"run",
+		"--list",
+		"--json",
+	], listing.root.fsPath, listing.result);
+
+	if (listing.result.code !== 0) {
+		const showOutput = "Show Output";
+		void vscode.window.showErrorMessage(runCommandFailureMessage(listing.result), showOutput).then((selection) => {
+			if (selection === showOutput) {
+				commandOutput.show(true);
+			}
+		});
+		return;
+	}
+
+	const filtered = sortRunnables(listing.binaries, listing.activePackage?.name)
+		.filter((binary) => kind === undefined || runnableKind(binary) === kind);
+	if (filtered.length === 0) {
+		const label = kind === "example" ? "examples" : kind === "binary" ? "binaries" : "runnables";
+		void vscode.window.showInformationMessage(`No Riot ${label} found in the current workspace.`);
+		return;
+	}
+
+	const selected = filtered.length === 1
+		? filtered[0]
+		: (await vscode.window.showQuickPick(
+			filtered.map((binary) => ({
+				label: binary.binaryName,
+				description: binary.packageName,
+				detail: `${runnableKind(binary)}: ${binary.selector} (${binary.path})`,
+				binary,
+			})),
+			{
+				title: kind === "example" ? "Riot: Run Example" : kind === "binary" ? "Riot: Run Binary" : "Riot: Run",
+				placeHolder: kind === "example"
+					? "Choose an example to run"
+					: kind === "binary"
+						? "Choose a binary to run"
+						: "Choose a runnable to run",
+				ignoreFocusOut: true,
+			},
+		))?.binary;
+	if (!selected) {
+		return;
+	}
+
+	const terminal = vscode.window.createTerminal({
+		name: `Riot Run: ${selected.binaryName}`,
+		cwd: listing.root.fsPath,
+	});
+	terminal.show(true);
+	terminal.sendText(
+		`${quote(riot)} run ${quote(selected.selector)}`,
+		true,
+	);
+};
+
 export function activate(context: vscode.ExtensionContext) {
-	const editorFeatures = new RiotEditorFeatures(context);
-	const output = vscode.window.createOutputChannel("Riot ML");
+	const commandOutput = vscode.window.createOutputChannel("Riot Commands");
+	const extensionOutput = vscode.window.createOutputChannel("Riot Extension");
+	const lspOutput = vscode.window.createOutputChannel("Riot LSP");
+	const benchmarkOutput = vscode.window.createOutputChannel("Riot Benchmarks");
+	const editorFeatures = new RiotEditorFeatures(context, extensionOutput, lspOutput);
+	const benchmarkResultsView = new RiotBenchmarkResultsView(context);
+	const testController = new RiotTestController(context, commandOutput);
+	const benchmarkController = new RiotBenchmarkController(context, benchmarkOutput, benchmarkResultsView);
 	void editorFeatures.start();
+	void refreshProjectContext(context);
 
 	context.subscriptions.push(
 		editorFeatures,
-		output,
+		commandOutput,
+		extensionOutput,
+		lspOutput,
+		benchmarkOutput,
+		benchmarkResultsView,
+		testController,
+		benchmarkController,
 		registerFormatOnSave(),
+		...registerLanguageModelTools(context, commandOutput),
+		vscode.window.registerWebviewViewProvider("riotBenchmarkResults", benchmarkResultsView),
 		vscode.tasks.registerTaskProvider("riot", new RiotTaskProvider(context)),
 		vscode.commands.registerCommand("riot.install", async () => {
 			const metadata = await vscode.window.withProgress(
@@ -247,17 +415,48 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				async () => installManagedRiot(context),
 			);
-			await editorFeatures.restart();
+			await editorFeatures.restartLanguageServer();
+			await refreshProjectContext(context);
 
 			void vscode.window.showInformationMessage(
 				`Installed Riot ${metadata.release_id} (${metadata.build_sha}).`,
 			);
 		}),
+		vscode.commands.registerCommand("riot.startLanguageServer", async () => {
+			await editorFeatures.startLanguageServer();
+		}),
+		vscode.commands.registerCommand("riot.stopLanguageServer", async () => {
+			await editorFeatures.stopLanguageServer();
+		}),
+		vscode.commands.registerCommand("riot.restartLanguageServer", async () => {
+			await editorFeatures.restartLanguageServer();
+		}),
+		vscode.commands.registerCommand("riot.showLanguageServerOutput", () => {
+			editorFeatures.showLanguageServerOutput();
+		}),
+		vscode.commands.registerCommand("riot.showExtensionOutput", () => {
+			editorFeatures.showExtensionOutput();
+		}),
+		vscode.commands.registerCommand("riot.showCommandOutput", () => {
+			commandOutput.show(true);
+		}),
 		vscode.commands.registerCommand("riot.buildWorkspace", async () => {
 			await runWorkspaceTask(context, "build", activeOcamlDocument()?.uri);
 		}),
 		vscode.commands.registerCommand("riot.testWorkspace", async () => {
-			await runWorkspaceTask(context, "test", activeOcamlDocument()?.uri);
+			await testController.runWorkspaceFromCommand(activeFileUri());
+		}),
+		vscode.commands.registerCommand("riot.checkWorkspace", async () => {
+			await runScopedTask(context, "check", activeFileUri());
+		}),
+		vscode.commands.registerCommand("riot.run", async () => {
+			await runRunnable(context, commandOutput);
+		}),
+		vscode.commands.registerCommand("riot.runBinary", async () => {
+			await runRunnable(context, commandOutput, "binary");
+		}),
+		vscode.commands.registerCommand("riot.runExample", async () => {
+			await runRunnable(context, commandOutput, "example");
 		}),
 		vscode.commands.registerCommand("riot.formatDocument", async () => {
 			if (!(await ensureRiotAvailable(context))) {
@@ -275,14 +474,25 @@ export function activate(context: vscode.ExtensionContext) {
 			await editorFeatures.refreshDiagnostics(document);
 		}),
 		vscode.commands.registerCommand("riot.addPackage", async () => {
-			await runDependencyCommand(context, output, "add");
+			await runDependencyCommand(context, commandOutput, "add");
 		}),
 		vscode.commands.registerCommand("riot.removePackage", async () => {
-			await runDependencyCommand(context, output, "rm");
+			await runDependencyCommand(context, commandOutput, "rm");
 		}),
 		vscode.workspace.onDidChangeConfiguration((event) => {
 			if (event.affectsConfiguration("riot.path")) {
-				void editorFeatures.restart();
+				void editorFeatures.handleRiotPathChange();
+			}
+		}),
+		vscode.window.onDidChangeActiveTextEditor(() => {
+			void refreshProjectContext(context);
+		}),
+		vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			void refreshProjectContext(context);
+		}),
+		vscode.workspace.onDidSaveTextDocument((document) => {
+			if (isRiotManifestDocument(document)) {
+				void refreshProjectContext(context);
 			}
 		}),
 	);

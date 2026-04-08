@@ -260,7 +260,7 @@ export class RiotDiagnostics {
 			return;
 		}
 
-		const root = await workspaceRootFor(document.uri);
+		const root = await workspaceRootFor(this.context, document.uri);
 		const cwd = root?.fsPath;
 		const diagnostics: vscode.Diagnostic[] = [];
 

@@ -38,10 +38,187 @@
         "path": "./syntaxes/riot-ocaml.tmLanguage.json"
       }
     ],
+    "languageModelTools": [
+      {
+        "name": "riot_info_workspace",
+        "displayName": "Riot Workspace Info",
+        "toolReferenceName": "riotWorkspace",
+        "modelDescription": "Resolve the canonical Riot workspace or package for the current VS Code context or an absolute path, including workspace root and packages.",
+        "userDescription": "Inspect Riot workspace information",
+        "canBeReferencedInPrompt": true,
+        "when": "inRiotProject",
+        "tags": [
+          "riot",
+          "workspace",
+          "project"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Optional absolute file or directory path inside a Riot workspace."
+            }
+          }
+        }
+      },
+      {
+        "name": "riot_build",
+        "displayName": "Riot Build",
+        "toolReferenceName": "riotBuild",
+        "modelDescription": "Run `riot build` for the current Riot package or workspace and return the result.",
+        "userDescription": "Build a Riot package or workspace",
+        "canBeReferencedInPrompt": true,
+        "when": "inRiotProject",
+        "tags": [
+          "riot",
+          "build"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Optional absolute file or directory path used to resolve the Riot target."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "package"
+              ],
+              "description": "Whether to run `riot build` for the workspace or the nearest package."
+            }
+          }
+        }
+      },
+      {
+        "name": "riot_check",
+        "displayName": "Riot Check",
+        "toolReferenceName": "riotCheck",
+        "modelDescription": "Run `riot check` for the current Riot package or workspace and return the result.",
+        "userDescription": "Check a Riot package or workspace",
+        "canBeReferencedInPrompt": true,
+        "when": "inRiotProject",
+        "tags": [
+          "riot",
+          "check",
+          "typecheck"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Optional absolute file or directory path used to resolve the Riot target."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "package"
+              ],
+              "description": "Whether to run `riot check` for the workspace or the nearest package."
+            }
+          }
+        }
+      },
+      {
+        "name": "riot_list_runnables",
+        "displayName": "Riot List Runnables",
+        "toolReferenceName": "riotRunnables",
+        "modelDescription": "List Riot runnables, including binaries and examples, in the current workspace.",
+        "userDescription": "List Riot binaries and examples",
+        "canBeReferencedInPrompt": true,
+        "when": "inRiotProject",
+        "tags": [
+          "riot",
+          "run",
+          "binary",
+          "example"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Optional absolute file or directory path used to resolve the Riot workspace."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "all",
+                "binary",
+                "example"
+              ],
+              "description": "Filter to all runnables, only binaries, or only examples."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of runnables to return."
+            }
+          }
+        }
+      },
+      {
+        "name": "riot_run_runnable",
+        "displayName": "Riot Run Runnable",
+        "toolReferenceName": "riotRun",
+        "modelDescription": "Launch a Riot runnable selector in a VS Code terminal.",
+        "userDescription": "Run a Riot binary or example",
+        "canBeReferencedInPrompt": true,
+        "when": "inRiotProject",
+        "tags": [
+          "riot",
+          "run",
+          "terminal"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "selector"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Optional absolute file or directory path used to resolve the Riot workspace."
+            },
+            "selector": {
+              "type": "string",
+              "description": "Runnable selector like `riot-cli:riot` or `suri:liveview_counter`."
+            }
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "command": "riot.install",
         "title": "Riot: Install Riot"
+      },
+      {
+        "command": "riot.startLanguageServer",
+        "title": "Riot: Start Language Server"
+      },
+      {
+        "command": "riot.stopLanguageServer",
+        "title": "Riot: Stop Language Server"
+      },
+      {
+        "command": "riot.restartLanguageServer",
+        "title": "Riot: Restart Language Server"
+      },
+      {
+        "command": "riot.showLanguageServerOutput",
+        "title": "Riot: Show Riot LSP Output"
+      },
+      {
+        "command": "riot.showExtensionOutput",
+        "title": "Riot: Show Riot Extension Output"
+      },
+      {
+        "command": "riot.showCommandOutput",
+        "title": "Riot: Show Riot Command Output"
       },
       {
         "command": "riot.buildWorkspace",
@@ -50,6 +227,22 @@
       {
         "command": "riot.testWorkspace",
         "title": "Riot: Test Workspace"
+      },
+      {
+        "command": "riot.checkWorkspace",
+        "title": "Riot: Run Check"
+      },
+      {
+        "command": "riot.run",
+        "title": "Riot: Run"
+      },
+      {
+        "command": "riot.runBinary",
+        "title": "Riot: Run Binary"
+      },
+      {
+        "command": "riot.runExample",
+        "title": "Riot: Run Example"
       },
       {
         "command": "riot.formatDocument",
@@ -66,8 +259,138 @@
       {
         "command": "riot.removePackage",
         "title": "Riot: Remove Package"
+      },
+      {
+        "command": "riot.bench.refresh",
+        "title": "Riot: Refresh Benchmarks"
+      },
+      {
+        "command": "riot.bench.run",
+        "title": "Riot: Run Benchmark"
+      },
+      {
+        "command": "riot.bench.stop",
+        "title": "Riot: Stop Benchmark"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "riot",
+          "title": "Riot",
+          "icon": "media/riot.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "riotBenchmarkResultsPanel",
+          "title": "Riot Benchmark Results",
+          "icon": "media/riot.svg"
+        }
+      ]
+    },
+    "views": {
+      "riot": [
+        {
+          "id": "riotBenchmarks",
+          "name": "Benchmarks"
+        }
+      ],
+      "riotBenchmarkResultsPanel": [
+        {
+          "type": "webview",
+          "id": "riotBenchmarkResults",
+          "name": "Results"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "riot.startLanguageServer",
+          "when": "inRiotProject && !riotLspRunning"
+        },
+        {
+          "command": "riot.stopLanguageServer",
+          "when": "inRiotProject && (riotLspRunning || riotCliFallbackActive)"
+        },
+        {
+          "command": "riot.restartLanguageServer",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.showLanguageServerOutput",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.showExtensionOutput",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.showCommandOutput",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.buildWorkspace",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.testWorkspace",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.checkWorkspace",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.run",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.runBinary",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.runExample",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.formatDocument",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.refreshDiagnostics",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.addPackage",
+          "when": "inRiotProject"
+        },
+        {
+          "command": "riot.removePackage",
+          "when": "inRiotProject"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "riot.bench.refresh",
+          "when": "view == riotBenchmarks",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "riot.bench.run",
+          "when": "view == riotBenchmarks && viewItem == riotBenchmarks.idle",
+          "group": "inline"
+        },
+        {
+          "command": "riot.bench.stop",
+          "when": "view == riotBenchmarks && viewItem == riotBenchmarks.running",
+          "group": "inline"
+        }
+      ]
+    },
     "taskDefinitions": [
       {
         "type": "riot",
@@ -80,10 +403,20 @@
             "type": "string",
             "enum": [
               "build",
-              "test"
+              "test",
+              "check"
             ]
           },
           "cwd": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "label": {
             "type": "string"
           }
         }
