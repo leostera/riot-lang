@@ -106,7 +106,10 @@ let abstract_type_decl = fun ~scope_path ~path ~type_name ->
       manifest = None;
     }
 
-let stdlib_buffer_t_decl = abstract_type_decl ~scope_path:(IdentPath.of_name "Buffer") ~path:"Stdlib.Buffer.t" ~type_name:"t"
+let stdlib_buffer_t_decl = abstract_type_decl
+  ~scope_path:(IdentPath.of_name "Buffer")
+  ~path:"Stdlib.Buffer.t"
+  ~type_name:"t"
 
 let buffer_t_decl = abstract_type_decl ~scope_path:IdentPath.empty ~path:"Buffer.t" ~type_name:"t"
 
@@ -119,10 +122,7 @@ let float_of_int = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.float)
 let float_to_int = TypeScheme.of_type (arrow TypeRepr.float TypeRepr.int)
 
 let float_to_string = TypeScheme.of_type
-  (arrow
-    ~label:(TypeRepr.Optional "precision")
-    TypeRepr.int
-    (arrow TypeRepr.float TypeRepr.string))
+  (arrow ~label:(TypeRepr.Optional "precision") TypeRepr.int (arrow TypeRepr.float TypeRepr.string))
 
 let float_unop = TypeScheme.of_type (arrow TypeRepr.float TypeRepr.float)
 
@@ -168,8 +168,7 @@ let buffer_contents = TypeScheme.of_type (arrow buffer_type TypeRepr.string)
 
 let buffer_add_char = TypeScheme.of_type (arrow buffer_type (arrow TypeRepr.char TypeRepr.unit_))
 
-let buffer_add_string = TypeScheme.of_type
-  (arrow buffer_type (arrow TypeRepr.string TypeRepr.unit_))
+let buffer_add_string = TypeScheme.of_type (arrow buffer_type (arrow TypeRepr.string TypeRepr.unit_))
 
 let exn_type = named_with_type_constructor_id
   ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
@@ -209,9 +208,7 @@ let stdlib_list_exports = [
   ("rev", polymorphic_list_rev);
 ]
 
-let stdlib_array_exports = [
-  ("length", polymorphic_array_length);
-]
+let stdlib_array_exports = [ ("length", polymorphic_array_length); ]
 
 let stdlib_buffer_exports = [
   ("add_char", stdlib_buffer_add_char);
@@ -227,9 +224,7 @@ let buffer_exports = [
   ("create", buffer_create);
 ]
 
-let stdlib_printexc_exports = [
-  ("to_string", printexc_to_string);
-]
+let stdlib_printexc_exports = [ ("to_string", printexc_to_string); ]
 
 let prefix_exports = fun module_name exports ->
   exports |> List.map (fun (name, scheme) -> (qualified_export_name module_name name, scheme))
@@ -246,16 +241,8 @@ let summaries = [
     [ stdlib_buffer_t_decl; stdlib_seq_t_decl ]
   );
   ("Int", [ ("to_string", int_to_string); ("of_string", int_of_string) ], []);
-  (
-    "String",
-    stdlib_string_exports,
-    []
-  );
-  (
-    "List",
-    stdlib_list_exports,
-    []
-  );
+  ("String", stdlib_string_exports, []);
+  ("List", stdlib_list_exports, []);
   ("Array", stdlib_array_exports, []);
   ("Buffer", buffer_exports, [ buffer_t_decl ]);
   ("Float", float_exports, []);

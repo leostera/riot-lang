@@ -86,13 +86,13 @@ let type_decls = [ {
             TypeDecl.constructor_id = prelude_nil_constructor_id;
             name = "[]";
             scheme = list_nil;
-            inline_record_labels = None;
+            inline_record_labels = None
           };
           {
             TypeDecl.constructor_id = prelude_cons_constructor_id;
             name = "::";
             scheme = list_cons;
-            inline_record_labels = None;
+            inline_record_labels = None
           };
         ];
         labels = [];

@@ -67,9 +67,9 @@ let poly_variant_tag_signature_string = fun visible_types (tag: TypeDecl.poly_va
   | Some payload_type -> "`" ^ tag.name ^ " of " ^ canonical_type_string visible_types payload_type
   | None -> "`" ^ tag.name
 
-let manifest_signature_string = fun visible_types -> function
-  | TypeDecl.Alias manifest_type ->
-      "alias(" ^ canonical_type_string visible_types manifest_type ^ ")"
+let manifest_signature_string = fun visible_types ->
+  function
+  | TypeDecl.Alias manifest_type -> "alias(" ^ canonical_type_string visible_types manifest_type ^ ")"
   | TypeDecl.PolyVariant { bound; tags; inherited } ->
       let bound =
         match bound with
@@ -77,42 +77,31 @@ let manifest_signature_string = fun visible_types -> function
         | TypeDecl.UpperBound -> "upper"
         | TypeDecl.LowerBound -> "lower"
       in
-      let tags =
-        tags
-        |> List.map (poly_variant_tag_signature_string visible_types)
-        |> String.concat " | "
-      in
-      let inherited =
-        inherited
-        |> List.map (canonical_type_string visible_types)
-        |> String.concat " & "
-      in
+      let tags = tags
+      |> List.map (poly_variant_tag_signature_string visible_types)
+      |> String.concat " | " in
+      let inherited = inherited |> List.map (canonical_type_string visible_types) |> String.concat " & " in
       "poly_variant(" ^ bound ^ "; tags=[" ^ tags ^ "]; inherited=[" ^ inherited ^ "])"
 
 let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_decl) ->
   let decl = type_decl.declaration in
   let key = type_decl_key type_decl |> IdentPath.to_string in
-  let param_variances =
-    decl.param_variances
-    |> List.map TypeDecl.variance_to_string
-    |> String.concat ","
-  in
+  let param_variances = decl.param_variances
+  |> List.map TypeDecl.variance_to_string
+  |> String.concat "," in
   let constructors =
     decl.constructors
     |> List.map
       (fun (constructor: TypeDecl.constructor) ->
         let inline_record =
           match constructor.inline_record_labels with
-          | Some labels ->
-              "{"
-              ^ (
-                  labels
-                  |> List.map
-                    (fun (label: TypeDecl.label) ->
-                      label.name ^ ":" ^ canonical_type_string visible_types label.field_type)
-                  |> String.concat ";"
-                )
-              ^ "}"
+          | Some labels -> "{"
+          ^ (labels
+          |> List.map
+            (fun (label: TypeDecl.label) ->
+              label.name ^ ":" ^ canonical_type_string visible_types label.field_type)
+          |> String.concat ";")
+          ^ "}"
           | None -> ""
         in
         constructor.name ^ inline_record ^ ":" ^ canonical_scheme_string visible_types constructor.scheme)
@@ -122,17 +111,19 @@ let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_
     decl.labels
     |> List.map
       (fun (label: TypeDecl.label) ->
-        label.name
-        ^ ":"
-        ^ (if label.mutable_ then "mutable " else "")
-        ^ canonical_type_string visible_types label.field_type)
+        label.name ^ ":" ^ (
+          if label.mutable_ then
+            "mutable "
+          else
+            ""
+        ) ^ canonical_type_string visible_types label.field_type)
     |> String.concat ";"
   in
   let manifest =
     match decl.manifest with
-    | Some (TypeDecl.Alias manifest_type)
-      when String.equal key (canonical_type_string visible_types manifest_type) ->
-        "none"
+    | Some (TypeDecl.Alias manifest_type) when String.equal
+      key
+      (canonical_type_string visible_types manifest_type) -> "none"
     | Some manifest -> manifest_signature_string visible_types manifest
     | None -> "none"
   in
@@ -193,9 +184,8 @@ let module_typings_of_summary = fun ~module_name ~source_hash ~value_definitions
 
 let with_module_view = fun module_typings (analysis: SourceAnalysis.t) ->
   {
-    analysis with file_summary = ModuleTypings.to_file_summary
-      ~source_id:analysis.source.source_id
-      module_typings
+    analysis
+    with file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_typings
   }
 
 let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
@@ -268,8 +258,7 @@ let list_for_all2 = fun predicate left right ->
   let rec loop left right =
     match (left, right) with
     | [], [] -> true
-    | left :: left_tail, right :: right_tail ->
-        predicate left right && loop left_tail right_tail
+    | left :: left_tail, right :: right_tail -> predicate left right && loop left_tail right_tail
     | _ -> false
   in
   loop left right
@@ -279,48 +268,51 @@ let rigid_type_equal =
     let left = TypeRepr.prune left in
     let right = TypeRepr.prune right in
     match (TypeRepr.view left, TypeRepr.view right) with
-    | TypeRepr.Int, TypeRepr.Int
-    | TypeRepr.Float, TypeRepr.Float
-    | TypeRepr.Bool, TypeRepr.Bool
-    | TypeRepr.String, TypeRepr.String
-    | TypeRepr.Char, TypeRepr.Char
-    | TypeRepr.Unit, TypeRepr.Unit -> true
-    | TypeRepr.Hole left_hole, TypeRepr.Hole right_hole ->
-        Int.equal left_hole right_hole
-    | TypeRepr.Option left_element, TypeRepr.Option right_element
-    | TypeRepr.Array left_element, TypeRepr.Array right_element
-    | TypeRepr.List left_element, TypeRepr.List right_element
-    | TypeRepr.Seq left_element, TypeRepr.Seq right_element ->
-        equal_type left_element right_element
-    | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
-        equal_type left_ok right_ok && equal_type left_error right_error
-    | TypeRepr.Named { head=left_head; arguments=left_arguments }, TypeRepr.Named
-      { head=right_head; arguments=right_arguments } ->
-        TypeConstructorId.equal left_head.type_constructor_id right_head.type_constructor_id
-        && list_for_all2 equal_type left_arguments right_arguments
-    | TypeRepr.PolyVariant { bound=left_bound; tags=left_tags; inherited=left_inherited }, TypeRepr.PolyVariant
-      { bound=right_bound; tags=right_tags; inherited=right_inherited } ->
-        left_bound = right_bound
-        && list_for_all2 equal_poly_variant_tag left_tags right_tags
-        && list_for_all2 equal_type left_inherited right_inherited
-    | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
-        list_for_all2 equal_type left_members right_members
-    | TypeRepr.Arrow { label=left_label; lhs=left_lhs; rhs=left_rhs }, TypeRepr.Arrow
-      { label=right_label; lhs=right_lhs; rhs=right_rhs } ->
-        left_label = right_label
-        && equal_type left_lhs right_lhs
-        && equal_type left_rhs right_rhs
-    | TypeRepr.Var { id=left_id; link=None; _ }, TypeRepr.Var { id=right_id; link=None; _ } ->
-        Int.equal left_id right_id
-    | TypeRepr.Var { link=Some left_link; _ }, _ ->
-        equal_type left_link right
-    | _, TypeRepr.Var { link=Some right_link; _ } ->
-        equal_type left right_link
+    | (TypeRepr.Int, TypeRepr.Int)
+    | (TypeRepr.Float, TypeRepr.Float)
+    | (TypeRepr.Bool, TypeRepr.Bool)
+    | (TypeRepr.String, TypeRepr.String)
+    | (TypeRepr.Char, TypeRepr.Char)
+    | (TypeRepr.Unit, TypeRepr.Unit) -> true
+    | TypeRepr.Hole left_hole, TypeRepr.Hole right_hole -> Int.equal left_hole right_hole
+    | (TypeRepr.Option left_element, TypeRepr.Option right_element)
+    | (TypeRepr.Array left_element, TypeRepr.Array right_element)
+    | (TypeRepr.List left_element, TypeRepr.List right_element)
+    | (TypeRepr.Seq left_element, TypeRepr.Seq right_element) -> equal_type left_element right_element
+    | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) -> equal_type
+      left_ok
+      right_ok
+    && equal_type left_error right_error
+    | TypeRepr.Named { head=left_head; arguments=left_arguments }, TypeRepr.Named {
+      head=right_head;
+      arguments=right_arguments
+    } -> TypeConstructorId.equal left_head.type_constructor_id right_head.type_constructor_id
+    && list_for_all2 equal_type left_arguments right_arguments
+    | TypeRepr.PolyVariant { bound=left_bound; tags=left_tags; inherited=left_inherited }, TypeRepr.PolyVariant {
+      bound=right_bound;
+      tags=right_tags;
+      inherited=right_inherited
+    } -> left_bound = right_bound
+    && list_for_all2 equal_poly_variant_tag left_tags right_tags
+    && list_for_all2 equal_type left_inherited right_inherited
+    | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members -> list_for_all2
+      equal_type
+      left_members
+      right_members
+    | TypeRepr.Arrow { label=left_label; lhs=left_lhs; rhs=left_rhs }, TypeRepr.Arrow {
+      label=right_label;
+      lhs=right_lhs;
+      rhs=right_rhs
+    } -> left_label = right_label && equal_type left_lhs right_lhs && equal_type left_rhs right_rhs
+    | TypeRepr.Var { id=left_id; link=None; _ }, TypeRepr.Var { id=right_id; link=None; _ } -> Int.equal
+      left_id
+      right_id
+    | TypeRepr.Var { link=Some left_link; _ }, _ -> equal_type left_link right
+    | _, TypeRepr.Var { link=Some right_link; _ } -> equal_type left right_link
     | _ -> false
   and equal_poly_variant_tag left right =
     String.equal left.name right.name
-    &&
-    match (left.payload_type, right.payload_type) with
+    && match (left.payload_type, right.payload_type) with
     | None, None -> true
     | Some left_payload, Some right_payload -> equal_type left_payload right_payload
     | _ -> false
@@ -338,60 +330,65 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
     let actual = TypeRepr.prune actual in
     let expected = TypeRepr.prune expected in
     match TypeRepr.view actual with
-    | TypeRepr.Var { id; link=None; _ } when Collections.HashSet.contains flexible_actual_vars id ->
-        (
-          match Collections.HashMap.get bindings id with
-          | Some bound -> rigid_type_equal bound expected
-          | None ->
-              let _ = Collections.HashMap.insert bindings id expected in
-              true
-        )
+    | TypeRepr.Var { id; link=None; _ } when Collections.HashSet.contains flexible_actual_vars id -> (
+        match Collections.HashMap.get bindings id with
+        | Some bound -> rigid_type_equal bound expected
+        | None ->
+            let _ = Collections.HashMap.insert bindings id expected in
+            true
+      )
     | TypeRepr.Var { link=Some actual_link; _ } ->
         includes_type actual_link expected
     | _ ->
         match (TypeRepr.view actual, TypeRepr.view expected) with
-        | TypeRepr.Int, TypeRepr.Int
-        | TypeRepr.Float, TypeRepr.Float
-        | TypeRepr.Bool, TypeRepr.Bool
-        | TypeRepr.String, TypeRepr.String
-        | TypeRepr.Char, TypeRepr.Char
-        | TypeRepr.Unit, TypeRepr.Unit -> true
-        | TypeRepr.Hole actual_hole, TypeRepr.Hole expected_hole ->
-            Int.equal actual_hole expected_hole
-        | TypeRepr.Option actual_element, TypeRepr.Option expected_element
-        | TypeRepr.Array actual_element, TypeRepr.Array expected_element
-        | TypeRepr.List actual_element, TypeRepr.List expected_element
-        | TypeRepr.Seq actual_element, TypeRepr.Seq expected_element ->
-            includes_type actual_element expected_element
-        | TypeRepr.Result (actual_ok, actual_error), TypeRepr.Result (expected_ok, expected_error) ->
-            includes_type actual_ok expected_ok && includes_type actual_error expected_error
-        | TypeRepr.Named { head=actual_head; arguments=actual_arguments }, TypeRepr.Named
-          { head=expected_head; arguments=expected_arguments } ->
-            TypeConstructorId.equal
-              actual_head.type_constructor_id
-              expected_head.type_constructor_id
-            && list_for_all2 includes_type actual_arguments expected_arguments
-        | TypeRepr.PolyVariant { bound=actual_bound; tags=actual_tags; inherited=actual_inherited }, TypeRepr.PolyVariant
-          { bound=expected_bound; tags=expected_tags; inherited=expected_inherited } ->
-            actual_bound = expected_bound
-            && list_for_all2 includes_poly_variant_tag actual_tags expected_tags
-            && list_for_all2 includes_type actual_inherited expected_inherited
-        | TypeRepr.Tuple actual_members, TypeRepr.Tuple expected_members ->
-            list_for_all2 includes_type actual_members expected_members
-        | TypeRepr.Arrow { label=actual_label; lhs=actual_lhs; rhs=actual_rhs }, TypeRepr.Arrow
-          { label=expected_label; lhs=expected_lhs; rhs=expected_rhs } ->
-            actual_label = expected_label
-            && includes_type actual_lhs expected_lhs
-            && includes_type actual_rhs expected_rhs
-        | TypeRepr.Var { id=actual_id; link=None; _ }, TypeRepr.Var { id=expected_id; link=None; _ } ->
-            Int.equal actual_id expected_id
-        | _, TypeRepr.Var { link=Some expected_link; _ } ->
-            includes_type actual expected_link
+        | (TypeRepr.Int, TypeRepr.Int)
+        | (TypeRepr.Float, TypeRepr.Float)
+        | (TypeRepr.Bool, TypeRepr.Bool)
+        | (TypeRepr.String, TypeRepr.String)
+        | (TypeRepr.Char, TypeRepr.Char)
+        | (TypeRepr.Unit, TypeRepr.Unit) -> true
+        | TypeRepr.Hole actual_hole, TypeRepr.Hole expected_hole -> Int.equal actual_hole expected_hole
+        | (TypeRepr.Option actual_element, TypeRepr.Option expected_element)
+        | (TypeRepr.Array actual_element, TypeRepr.Array expected_element)
+        | (TypeRepr.List actual_element, TypeRepr.List expected_element)
+        | (TypeRepr.Seq actual_element, TypeRepr.Seq expected_element) -> includes_type
+          actual_element
+          expected_element
+        | TypeRepr.Result (actual_ok, actual_error), TypeRepr.Result (expected_ok, expected_error) -> includes_type
+          actual_ok
+          expected_ok
+        && includes_type actual_error expected_error
+        | TypeRepr.Named { head=actual_head; arguments=actual_arguments }, TypeRepr.Named {
+          head=expected_head;
+          arguments=expected_arguments
+        } -> TypeConstructorId.equal actual_head.type_constructor_id expected_head.type_constructor_id
+        && list_for_all2 includes_type actual_arguments expected_arguments
+        | TypeRepr.PolyVariant { bound=actual_bound; tags=actual_tags; inherited=actual_inherited }, TypeRepr.PolyVariant {
+          bound=expected_bound;
+          tags=expected_tags;
+          inherited=expected_inherited
+        } -> actual_bound = expected_bound
+        && list_for_all2 includes_poly_variant_tag actual_tags expected_tags
+        && list_for_all2 includes_type actual_inherited expected_inherited
+        | TypeRepr.Tuple actual_members, TypeRepr.Tuple expected_members -> list_for_all2
+          includes_type
+          actual_members
+          expected_members
+        | TypeRepr.Arrow { label=actual_label; lhs=actual_lhs; rhs=actual_rhs }, TypeRepr.Arrow {
+          label=expected_label;
+          lhs=expected_lhs;
+          rhs=expected_rhs
+        } -> actual_label = expected_label
+        && includes_type actual_lhs expected_lhs
+        && includes_type actual_rhs expected_rhs
+        | TypeRepr.Var { id=actual_id; link=None; _ }, TypeRepr.Var { id=expected_id; link=None; _ } -> Int.equal
+          actual_id
+          expected_id
+        | _, TypeRepr.Var { link=Some expected_link; _ } -> includes_type actual expected_link
         | _ -> false
   and includes_poly_variant_tag actual expected =
     String.equal actual.name expected.name
-    &&
-    match (actual.payload_type, expected.payload_type) with
+    && match (actual.payload_type, expected.payload_type) with
     | None, None -> true
     | Some actual_payload, Some expected_payload -> includes_type actual_payload expected_payload
     | _ -> false
@@ -434,12 +431,7 @@ let type_decl_mismatches = fun ~visible_types interface_decls implementation_dec
       with
       | None -> Some (Diagnostic.MissingTypeDeclaration { name = IdentPath.to_string key })
       | Some implementation_decl ->
-          if
-            type_decl_matches
-              ~visible_types
-              interface_decl
-              implementation_decl
-          then
+          if type_decl_matches ~visible_types interface_decl implementation_decl then
             None
           else
             Some (Diagnostic.TypeDeclarationMismatch {
@@ -517,13 +509,15 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
     @ extra_analyses
       [ interface_analysis.source.source_id; implementation_analysis.source.source_id ]
       [ interface_pair; implementation_pair ];
-    signature_mismatches = [];
+    signature_mismatches = []
   }
 
 let pair_interface_and_implementation = fun ~module_name interface_pair implementation_pair ->
   let (_interface_source, (interface_analysis: SourceAnalysis.t)) = interface_pair in
   let (_implementation_source, (implementation_analysis: SourceAnalysis.t)) = implementation_pair in
-  if not (should_check_signature_inclusion interface_analysis.file_summary implementation_analysis.file_summary)
+  if
+    not
+      (should_check_signature_inclusion interface_analysis.file_summary implementation_analysis.file_summary)
   then
     paired_module_view ~module_name interface_pair implementation_pair
   else
@@ -543,33 +537,33 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
     if List.is_empty mismatches then
       paired_module_view ~module_name interface_pair implementation_pair
     else
-    let interface_diagnostics = mismatches
-    |> List.map (interface_diagnostic interface_pair implementation_pair) in
-    let implementation_diagnostics = mismatches
-    |> List.map (implementation_diagnostic interface_pair implementation_pair) in
-    let module_typings = ModuleTypings.missing
-      ~module_name
-      ~source_hash:(ModuleTypings.synthetic_source_hash
+      let interface_diagnostics = mismatches
+      |> List.map (interface_diagnostic interface_pair implementation_pair) in
+      let implementation_diagnostics = mismatches
+      |> List.map (implementation_diagnostic interface_pair implementation_pair) in
+      let module_typings = ModuleTypings.missing
         ~module_name
-        ~export_result:FileSummary.NoExport
-        ~type_decls:[]
-        ())
-      () in
-    let interface_analysis = mark_analysis_errored interface_analysis interface_diagnostics
-    |> with_module_view module_typings in
-    let implementation_analysis = mark_analysis_errored implementation_analysis implementation_diagnostics
-    |> with_module_view module_typings in
-    {
-      module_typings;
-      analyses_by_source = [
-        (interface_analysis.source.source_id, interface_analysis);
-        (implementation_analysis.source.source_id, implementation_analysis);
-      ]
-      @ extra_analyses
-        [ interface_analysis.source.source_id; implementation_analysis.source.source_id ]
-        [ interface_pair; implementation_pair ];
-      signature_mismatches = mismatches;
-    }
+        ~source_hash:(ModuleTypings.synthetic_source_hash
+          ~module_name
+          ~export_result:FileSummary.NoExport
+          ~type_decls:[]
+          ())
+        () in
+      let interface_analysis = mark_analysis_errored interface_analysis interface_diagnostics
+      |> with_module_view module_typings in
+      let implementation_analysis = mark_analysis_errored implementation_analysis implementation_diagnostics
+      |> with_module_view module_typings in
+      {
+        module_typings;
+        analyses_by_source = [
+          (interface_analysis.source.source_id, interface_analysis);
+          (implementation_analysis.source.source_id, implementation_analysis);
+        ]
+        @ extra_analyses
+          [ interface_analysis.source.source_id; implementation_analysis.source.source_id ]
+          [ interface_pair; implementation_pair ];
+        signature_mismatches = mismatches
+      }
 
 let singleton_module_typings = fun ~module_name (source, (analysis: SourceAnalysis.t)) ->
   module_typings_of_summary
@@ -587,14 +581,14 @@ let of_sources = fun ~module_name sources ->
       {
         module_typings = singleton_module_typings ~module_name (source, analysis);
         analyses_by_source = analyses_by_source sources;
-        signature_mismatches = [];
+        signature_mismatches = []
       }
   | None, Some implementation_pair ->
       let (source, analysis) = implementation_pair in
       {
         module_typings = singleton_module_typings ~module_name (source, analysis);
         analyses_by_source = analyses_by_source sources;
-        signature_mismatches = [];
+        signature_mismatches = []
       }
   | None, None ->
       let source_hash = ModuleTypings.synthetic_source_hash
@@ -605,5 +599,5 @@ let of_sources = fun ~module_name sources ->
       {
         module_typings = ModuleTypings.missing ~module_name ~source_hash ();
         analyses_by_source = analyses_by_source sources;
-        signature_mismatches = [];
+        signature_mismatches = []
       }

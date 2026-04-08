@@ -345,12 +345,7 @@ let expected_include_module_type_of_lowering_json = Data.Json.Object [
 ]
 
 let expected_include_module_type_with_constraint_lowering_json = Data.Json.Object [
-  (
-    "items",
-    Data.Json.Array [
-      Data.Json.Object [ ("tag", Data.Json.String "include") ];
-    ]
-  );
+  ("items", Data.Json.Array [ Data.Json.Object [ ("tag", Data.Json.String "include") ]; ]);
   ("lowering_diagnostics", Data.Json.Array []);
 ]
 
@@ -414,35 +409,24 @@ let test_include_module_type_of_lowers_to_include_item = fun ctx ->
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_include_module_type_of_lowering_json
 
 let test_include_dotted_module_path_lowers_to_include_item = fun ctx ->
-  let source = String.concat
-    "\n"
-    [
-      "include Kernel.Int64";
-      "";
-    ] in
-  let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_dotted_module_path.ml") source in
-  Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:(Data.Json.Object [
-    (
-      "items",
-      Data.Json.Array [
-        Data.Json.Object [ ("tag", Data.Json.String "include") ];
-      ]
-    );
-    ("lowering_diagnostics", Data.Json.Array []);
-  ])
-
-let test_include_module_type_with_constraint_lowers_to_include_item = fun ctx ->
-  let source = String.concat
-    "\n"
-    [
-      "include module type of Kernel.Int64 with type t = int64";
-      "";
-    ] in
-  let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_module_type_with_constraint.mli") source in
+  let source = String.concat "\n" [ "include Kernel.Int64"; ""; ] in
+  let report = check_source_text
+    ~filename:(Path.v "packages/typ/tests/include_dotted_module_path.ml")
+    source in
   Test.Snapshot.assert_inline_json
     ~ctx
     ~actual:(actual_type_item_lowering_json report)
-    ~expected:expected_include_module_type_with_constraint_lowering_json
+    ~expected:(Data.Json.Object [
+      ("items", Data.Json.Array [ Data.Json.Object [ ("tag", Data.Json.String "include") ]; ]);
+      ("lowering_diagnostics", Data.Json.Array []);
+    ])
+
+let test_include_module_type_with_constraint_lowers_to_include_item = fun ctx ->
+  let source = String.concat "\n" [ "include module type of Kernel.Int64 with type t = int64"; ""; ] in
+  let report = check_source_text
+    ~filename:(Path.v "packages/typ/tests/include_module_type_with_constraint.mli")
+    source in
+  Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_include_module_type_with_constraint_lowering_json
 
 let () =
   Actors.run

@@ -40,9 +40,7 @@ val exports: t -> FileSummary.exports
 
 (** Resolve one binding reference to a local definition site or an exported path. *)
 val definition_target_of_binding_ref:
-  t ->
-  Check_result.binding_ref ->
-  ModuleTypings.value_definition_target option
+  t -> Check_result.binding_ref -> ModuleTypings.value_definition_target option
 
 (** Build exported definition targets for this analyzed source. *)
 val export_definitions: t -> ModuleTypings.value_definition list

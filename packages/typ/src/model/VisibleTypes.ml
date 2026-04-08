@@ -118,17 +118,19 @@ let substitute_type_vars_with = fun ~make ty mapping ->
         else
           make (TypeRepr.Named { head; arguments = arguments' })
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' = map_preserving
-          (fun (tag: TypeRepr.poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type ->
-                let payload_type' = loop payload_type in
-                if Std.Ptr.equal payload_type payload_type' then
-                  tag
-                else
-                  { tag with payload_type = Some payload_type' }
-            | None -> tag)
-          tags in
+        let tags' =
+          map_preserving
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  let payload_type' = loop payload_type in
+                  if Std.Ptr.equal payload_type payload_type' then
+                    tag
+                  else
+                    { tag with payload_type = Some payload_type' }
+              | None -> tag)
+            tags
+        in
         let inherited' = map_preserving loop inherited in
         if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
           ty
@@ -174,10 +176,9 @@ let instantiate_alias_manifest = fun ~make (type_decl: FileSummary.type_decl) ar
   | _ -> None
 
 let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_head ->
-  let same_head = fun left right ->
+  let same_head left right =
     TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
-    && IdentPath.equal left.TypeRepr.name right.TypeRepr.name
-  in
+    && IdentPath.equal left.TypeRepr.name right.TypeRepr.name in
   let rec loop ty =
     let ty = TypeRepr.prune ty in
     match TypeRepr.view ty with
@@ -237,34 +238,36 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
                   match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
                   | Some builtin -> builtin
                   | None ->
-                  if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
-                    ty
-                  else
-                    make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+                      if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                        ty
+                      else
+                        make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
                 )
             )
           | None -> (
               match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
               | Some builtin -> builtin
               | None ->
-              if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
-                ty
-              else
-                make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+                  if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                    ty
+                  else
+                    make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
             )
         )
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' = map_preserving
-          (fun (tag: TypeRepr.poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type ->
-                let payload_type' = loop payload_type in
-                if Std.Ptr.equal payload_type payload_type' then
-                  tag
-                else
-                  { tag with payload_type = Some payload_type' }
-            | None -> tag)
-          tags in
+        let tags' =
+          map_preserving
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  let payload_type' = loop payload_type in
+                  if Std.Ptr.equal payload_type payload_type' then
+                    tag
+                  else
+                    { tag with payload_type = Some payload_type' }
+              | None -> tag)
+            tags
+        in
         let inherited' = map_preserving loop inherited in
         if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
           ty
@@ -352,17 +355,21 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
           let inline_record_labels =
             constructor.inline_record_labels
             |> Option.map
-              (List.map
-                (fun (label: TypeDecl.label) ->
-                  let field_type' = resolve_type label.field_type in
-                  if Std.Ptr.equal label.field_type field_type' then
-                    label
-                  else
-                    { label with field_type = field_type' }))
+              (
+                List.map
+                  (fun (label: TypeDecl.label) ->
+                    let field_type' = resolve_type label.field_type in
+                    if Std.Ptr.equal label.field_type field_type' then
+                      label
+                    else
+                      { label with field_type = field_type' })
+              )
           in
-          if Std.Ptr.equal body body'
-            && Option.equal (fun left right -> List.for_all2 Std.Ptr.equal left right) constructor.inline_record_labels inline_record_labels
-          then
+          if Std.Ptr.equal body body' && Option.equal
+              (fun left right ->
+                List.for_all2 Std.Ptr.equal left right)
+              constructor.inline_record_labels
+              inline_record_labels then
             constructor
           else
             { constructor with scheme = TypeScheme.of_type body'; inline_record_labels })
@@ -450,14 +457,16 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         loop arguments parameter_variances
     | TypeRepr.PolyVariant { tags; inherited; _ } ->
         let () =
-          tags |> List.iter
+          tags
+          |> List.iter
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
-              | Some payload_type ->
-                  collect_type_variances_into visiting variance acc payload_type
+              | Some payload_type -> collect_type_variances_into visiting variance acc payload_type
               | None -> ())
         in
-        List.iter (fun inherited_type -> collect_type_variances_into visiting variance acc inherited_type) inherited
+        List.iter
+          (fun inherited_type -> collect_type_variances_into visiting variance acc inherited_type)
+          inherited
     | TypeRepr.Tuple members ->
         List.iter (fun member -> collect_type_variances_into visiting variance acc member) members
     | TypeRepr.Arrow { lhs; rhs; _ } ->
@@ -612,20 +621,14 @@ let normalized_poly_variant_tags = fun tags ->
   tags
   |> List.map
     (fun (tag: TypeRepr.poly_variant_tag) ->
-      (
-        tag.name,
-        tag.payload_type |> Option.map TypePrinter.type_to_string
-      ))
+      (tag.name, tag.payload_type |> Option.map TypePrinter.type_to_string))
   |> List.sort compare
 
 let normalized_manifest_tags = fun tags ->
   tags
   |> List.map
     (fun (tag: TypeDecl.poly_variant_tag) ->
-      (
-        tag.name,
-        tag.payload_type |> Option.map TypePrinter.type_to_string
-      ))
+      (tag.name, tag.payload_type |> Option.map TypePrinter.type_to_string))
   |> List.sort compare
 
 let exact_poly_variant_alias = fun visible_types bound tags inherited ->
@@ -639,10 +642,10 @@ let exact_poly_variant_alias = fun visible_types bound tags inherited ->
           None
         else
           match type_decl.declaration.manifest with
-          | Some (TypeDecl.PolyVariant { bound; tags; inherited = [] })
-            when poly_variant_bound_matches_manifest TypeRepr.Exact bound
-              && normalized_tags = normalized_manifest_tags tags ->
-              Some type_decl
+          | Some (TypeDecl.PolyVariant { bound; tags; inherited=[] }) when poly_variant_bound_matches_manifest
+            TypeRepr.Exact
+            bound
+          && normalized_tags = normalized_manifest_tags tags -> Some type_decl
           | _ -> None)
 
 let canonicalize_type = fun visible_types ->
@@ -695,29 +698,28 @@ let canonicalize_type = fun visible_types ->
           TypeRepr.of_desc (TypeRepr.Seq element')
     | TypeRepr.Named { head; arguments } ->
         let arguments' = map_preserving loop arguments in
-        let head' =
-          lookup_by_id visible_types head.type_constructor_id
-          |> Option.map
-            (fun (type_decl: FileSummary.type_decl) ->
-              { head with name = type_decl_key type_decl })
-          |> Option.unwrap_or ~default:head
-        in
+        let head' = lookup_by_id visible_types head.type_constructor_id
+        |> Option.map
+          (fun (type_decl: FileSummary.type_decl) -> { head with name = type_decl_key type_decl })
+        |> Option.unwrap_or ~default:head in
         if Std.Ptr.equal arguments arguments' && IdentPath.equal head.name head'.name then
           ty
         else
           TypeRepr.of_desc (TypeRepr.Named { head = head'; arguments = arguments' })
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' = map_preserving
-          (fun (tag: TypeRepr.poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type ->
-                let payload_type' = loop payload_type in
-                if Std.Ptr.equal payload_type payload_type' then
-                  tag
-                else
-                  { tag with payload_type = Some payload_type' }
-            | None -> tag)
-          tags in
+        let tags' =
+          map_preserving
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  let payload_type' = loop payload_type in
+                  if Std.Ptr.equal payload_type payload_type' then
+                    tag
+                  else
+                    { tag with payload_type = Some payload_type' }
+              | None -> tag)
+            tags
+        in
         let inherited' = map_preserving loop inherited in
         let ty =
           if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
@@ -757,10 +759,7 @@ let canonicalize_inline_record_labels = fun visible_types labels ->
   labels
   |> List.map
     (fun (label: TypeDecl.label) ->
-      {
-        label with
-        field_type = canonicalize_type visible_types label.field_type
-      })
+      { label with field_type = canonicalize_type visible_types label.field_type })
 
 let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl) ->
   let declaration = type_decl.declaration in
@@ -790,11 +789,10 @@ let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl
   |> List.map
     (fun (constructor: TypeDecl.constructor) ->
       {
-        constructor with
-        scheme = canonicalize_scheme visible_types constructor.scheme;
-        inline_record_labels =
-          constructor.inline_record_labels
-          |> Option.map (canonicalize_inline_record_labels visible_types)
+        constructor
+        with scheme = canonicalize_scheme visible_types constructor.scheme;
+        inline_record_labels = constructor.inline_record_labels
+        |> Option.map (canonicalize_inline_record_labels visible_types)
       }) in
   let labels = declaration.labels
   |> List.map

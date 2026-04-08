@@ -37,8 +37,7 @@ let signature_mismatch_subject = function
   | Diagnostic.MissingTypeDeclaration { name }
   | Diagnostic.TypeDeclarationMismatch { name; _ } -> "type " ^ name
 
-let signature_mismatch_message = fun mismatch ->
-  Diagnostic.signature_mismatch_message mismatch
+let signature_mismatch_message = fun mismatch -> Diagnostic.signature_mismatch_message mismatch
 
 let make = fun ~revision ~roots ~config ~sources ->
   let analyses =
@@ -173,8 +172,7 @@ let qualify_scheme = fun local_types module_name scheme ->
     TypeScheme.of_explicit ~quantified body'
 
 let qualify_inline_record_labels = fun local_types module_name labels ->
-  labels
-  |> List.map
+  labels |> List.map
     (fun (label: TypeDecl.label) ->
       let field_type' = qualify_type local_types module_name label.field_type in
       if Std.Ptr.equal label.field_type field_type' then
@@ -201,34 +199,36 @@ let qualify_type_decls = fun module_name type_decls ->
       let manifest =
         match declaration.manifest with
         | None -> None
-        | Some (TypeDecl.Alias manifest_type) ->
-            Some (TypeDecl.Alias (qualify_type local_types module_name manifest_type))
+        | Some (TypeDecl.Alias manifest_type) -> Some (TypeDecl.Alias (qualify_type
+          local_types
+          module_name
+          manifest_type))
         | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
-            Some (TypeDecl.PolyVariant {
-              bound;
-              tags =
-                tags
-                |> List.map
-                  (fun (tag: TypeDecl.poly_variant_tag) ->
-                    match tag.payload_type with
-                    | Some payload_type ->
-                        { tag with payload_type = Some (qualify_type local_types module_name payload_type) }
-                    | None -> tag);
-              inherited = List.map (qualify_type local_types module_name) inherited;
-            })
+            Some (
+              TypeDecl.PolyVariant {
+                bound;
+                tags =
+                  tags |> List.map
+                    (fun (tag: TypeDecl.poly_variant_tag) ->
+                      match tag.payload_type with
+                      | Some payload_type -> {
+                        tag
+                        with payload_type = Some (qualify_type local_types module_name payload_type)
+                      }
+                      | None -> tag);
+                inherited = List.map (qualify_type local_types module_name) inherited;
+              }
+            )
       in
-      let constructors =
-        declaration.constructors
-        |> List.map
-          (fun (constructor: TypeDecl.constructor) ->
-            {
-              constructor with
-              scheme = qualify_scheme local_types module_name constructor.scheme;
-              inline_record_labels =
-                constructor.inline_record_labels
-                |> Option.map (qualify_inline_record_labels local_types module_name)
-            })
-      in
+      let constructors = declaration.constructors
+      |> List.map
+        (fun (constructor: TypeDecl.constructor) ->
+          {
+            constructor
+            with scheme = qualify_scheme local_types module_name constructor.scheme;
+            inline_record_labels = constructor.inline_record_labels
+            |> Option.map (qualify_inline_record_labels local_types module_name)
+          }) in
       let labels =
         declaration.labels
         |> List.map
@@ -318,8 +318,7 @@ let visiting_key = fun visiting ->
   |> List.map Int.to_string
   |> String.concat ","
 
-let module_result_cache_key = fun visiting module_name ->
-  visiting_key visiting ^ "|" ^ module_name
+let module_result_cache_key = fun visiting module_name -> visiting_key visiting ^ "|" ^ module_name
 
 let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
   let current_module_name = Source.module_name slot.source in
@@ -331,10 +330,7 @@ let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
       not (String.equal current_module_name candidate_module_name)
       && List.exists
         (fun required_module_name ->
-          matches_required_local_module
-            ~current_module_name
-            ~required_module_name
-            candidate_module_name)
+          matches_required_local_module ~current_module_name ~required_module_name candidate_module_name)
         required_local_modules)
 
 let force_base_analysis = fun (slot: analysis_slot) ->
@@ -346,31 +342,33 @@ let force_base_analysis = fun (slot: analysis_slot) ->
       let config = slot.config
       |> TypConfig.with_ambient ~ambient
       |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
-      let () = TypConfig.emit_event slot.config
-        (fun () ->
-          Event.SourceAnalysisStarted {
-            source_id = slot.source_id;
-            module_name = Source.module_name slot.source;
-            mode = Event.BaseAnalysis;
-            loaded_module_count = List.length slot.config.loaded_modules;
-            ambient_binding_count = List.length ambient;
-            ambient_type_decl_count = List.length ambient_type_decls;
-          })
+      let () =
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.SourceAnalysisStarted {
+              source_id = slot.source_id;
+              module_name = Source.module_name slot.source;
+              mode = Event.BaseAnalysis;
+              loaded_module_count = List.length slot.config.loaded_modules;
+              ambient_binding_count = List.length ambient;
+              ambient_type_decl_count = List.length ambient_type_decls;
+            })
       in
       let analysis = SourceAnalysis.analyze ~config slot.source in
-      let () = TypConfig.emit_event slot.config
-        (fun () ->
-          Event.SourceAnalysisFinished {
-            source_id = slot.source_id;
-            module_name = Source.module_name slot.source;
-            mode = Event.BaseAnalysis;
-            parse_diagnostic_count = List.length analysis.parse_diagnostics;
-            lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
-            typing_diagnostic_count = List.length analysis.typing_diagnostics;
-            export_status = export_status_of_file_summary analysis.file_summary;
-            export_count = List.length (FileSummary.exports analysis.file_summary);
-            type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
-          })
+      let () =
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.SourceAnalysisFinished {
+              source_id = slot.source_id;
+              module_name = Source.module_name slot.source;
+              mode = Event.BaseAnalysis;
+              parse_diagnostic_count = List.length analysis.parse_diagnostics;
+              lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
+              typing_diagnostic_count = List.length analysis.typing_diagnostics;
+              export_status = export_status_of_file_summary analysis.file_summary;
+              export_count = List.length (FileSummary.exports analysis.file_summary);
+              type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
+            })
       in
       let () =
         slot.base_analysis <- Some analysis
@@ -400,8 +398,7 @@ and qualified_typings = fun (snapshot: t) ?(visiting = []) () ->
 
 and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   let local_modules = local_module_names_for snapshot slot
-  |> List.map
-    (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
+  |> List.map (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
       qualify_exports
@@ -413,8 +410,7 @@ and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
 
 and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   let local_type_decls = local_module_names_for snapshot slot
-  |> List.map
-    (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
+  |> List.map (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.type_decls result.ModulePairing.module_typings |> qualify_type_decls module_name)
@@ -430,33 +426,34 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
       let ambient_type_decls = ambient_type_decls_for snapshot visiting slot in
       let config = slot.config
       |> TypConfig.with_ambient ~ambient
-      |> TypConfig.with_ambient_type_decls
-        ~ambient_type_decls in
-      let () = TypConfig.emit_event slot.config
-        (fun () ->
-          Event.SourceAnalysisStarted {
-            source_id = slot.source_id;
-            module_name = Source.module_name slot.source;
-            mode = Event.SnapshotAnalysis;
-            loaded_module_count = List.length slot.config.loaded_modules;
-            ambient_binding_count = List.length ambient;
-            ambient_type_decl_count = List.length ambient_type_decls;
-          })
+      |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
+      let () =
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.SourceAnalysisStarted {
+              source_id = slot.source_id;
+              module_name = Source.module_name slot.source;
+              mode = Event.SnapshotAnalysis;
+              loaded_module_count = List.length slot.config.loaded_modules;
+              ambient_binding_count = List.length ambient;
+              ambient_type_decl_count = List.length ambient_type_decls;
+            })
       in
       let analysis = SourceAnalysis.analyze ~config slot.source in
-      let () = TypConfig.emit_event slot.config
-        (fun () ->
-          Event.SourceAnalysisFinished {
-            source_id = slot.source_id;
-            module_name = Source.module_name slot.source;
-            mode = Event.SnapshotAnalysis;
-            parse_diagnostic_count = List.length analysis.parse_diagnostics;
-            lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
-            typing_diagnostic_count = List.length analysis.typing_diagnostics;
-            export_status = export_status_of_file_summary analysis.file_summary;
-            export_count = List.length (FileSummary.exports analysis.file_summary);
-            type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
-          })
+      let () =
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.SourceAnalysisFinished {
+              source_id = slot.source_id;
+              module_name = Source.module_name slot.source;
+              mode = Event.SnapshotAnalysis;
+              parse_diagnostic_count = List.length analysis.parse_diagnostics;
+              lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
+              typing_diagnostic_count = List.length analysis.typing_diagnostics;
+              export_status = export_status_of_file_summary analysis.file_summary;
+              export_count = List.length (FileSummary.exports analysis.file_summary);
+              type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
+            })
       in
       let () =
         match visiting with
@@ -475,13 +472,9 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
       let () =
         match slots with
         | [] -> ()
-        | slot :: _ ->
-            TypConfig.emit_event slot.config
-              (fun () ->
-                Event.ModulePairingStarted {
-                  module_name;
-                  source_ids;
-                })
+        | slot :: _ -> TypConfig.emit_event
+          slot.config
+          (fun () -> Event.ModulePairingStarted { module_name; source_ids })
       in
       let sources =
         slots
@@ -507,16 +500,15 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
                   module_name;
                   source_ids;
                   export_status = export_status_of_module_typings result.ModulePairing.module_typings;
-                  export_count = List.length (ModuleTypings.exports result.ModulePairing.module_typings);
-                  type_decl_count = List.length (ModuleTypings.type_decls result.ModulePairing.module_typings);
+                  export_count = List.length
+                    (ModuleTypings.exports result.ModulePairing.module_typings);
+                  type_decl_count = List.length
+                    (ModuleTypings.type_decls result.ModulePairing.module_typings);
                   mismatch_count = List.length result.ModulePairing.signature_mismatches;
-                  mismatch_subjects =
-                    result.ModulePairing.signature_mismatches
-                    |> List.map signature_mismatch_subject
-                    |> List.sort_uniq String.compare;
-                  mismatch_messages =
-                    result.ModulePairing.signature_mismatches
-                    |> List.map signature_mismatch_message;
+                  mismatch_subjects = result.ModulePairing.signature_mismatches
+                  |> List.map signature_mismatch_subject
+                  |> List.sort_uniq String.compare;
+                  mismatch_messages = result.ModulePairing.signature_mismatches |> List.map signature_mismatch_message;
                 })
       in
       result
@@ -569,8 +561,10 @@ let find_module_typings = fun snapshot source_id ->
 let find_module_typings_by_name = fun snapshot module_name ->
   match module_results_for snapshot [] |> List.assoc_opt module_name with
   | Some result -> Some result.ModulePairing.module_typings
-  | None -> loaded_module_typings snapshot |> List.find_opt
-    (fun typings -> String.equal module_name (ModuleTypings.module_name typings))
+  | None ->
+      loaded_module_typings snapshot |> List.find_opt
+        (fun typings ->
+          String.equal module_name (ModuleTypings.module_name typings))
 
 let find_analysis = fun snapshot source_id ->
   if not (is_root snapshot source_id) then

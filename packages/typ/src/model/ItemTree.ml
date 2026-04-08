@@ -142,36 +142,34 @@ let item_to_json = function
     ("exception_name", Data.Json.String item.exception_name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
   ]
-  | ExtensionConstructor (item: extension_constructor_item) -> Data.Json.Object [
-    ("tag", Data.Json.String "extension_constructor");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
-    ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
-    (
-      "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
-      |> List.map (fun segment -> Data.Json.String segment))
-    );
-    ("constructor_id", Data.Json.Int (ConstructorId.to_int item.constructor_id));
-    ("constructor_name", Data.Json.String item.constructor_name);
-    ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
-    (
-      "inline_record_labels",
-      match item.inline_record_labels with
-      | Some labels ->
-          Data.Json.Array (
-            List.map
-              (fun (label: TypeDecl.label) ->
-                Data.Json.Object [
-                  ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
-                  ("name", Data.Json.String label.name);
-                  ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
-                  ("mutable", Data.Json.Bool label.mutable_);
-                ])
-              labels
-          )
-      | None -> Data.Json.Null
-    );
-  ]
+  | ExtensionConstructor (item: extension_constructor_item) ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "extension_constructor");
+        ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+        ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+        (
+          "scope_path",
+          Data.Json.Array (IdentPath.to_segments item.scope_path
+          |> List.map (fun segment -> Data.Json.String segment))
+        );
+        ("constructor_id", Data.Json.Int (ConstructorId.to_int item.constructor_id));
+        ("constructor_name", Data.Json.String item.constructor_name);
+        ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
+        (
+          "inline_record_labels",
+          match item.inline_record_labels with
+          | Some labels -> Data.Json.Array (List.map
+            (fun (label: TypeDecl.label) ->
+              Data.Json.Object [
+                ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
+                ("name", Data.Json.String label.name);
+                ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
+                ("mutable", Data.Json.Bool label.mutable_);
+              ])
+            labels)
+          | None -> Data.Json.Null
+        );
+      ]
   | Value (item: value_item) -> Data.Json.Object [
     ("tag", Data.Json.String "value");
     ("item_id", Data.Json.Int (ItemId.to_int item.item_id));

@@ -90,12 +90,11 @@ let typing_diagnostic_summaries = fun snapshot source_id ->
   Query.diagnostics snapshot source_id |> List.filter_map
     (
       function
-      | Query.Typing diagnostic ->
-          Some (
-            Diagnostic.code diagnostic,
-            Diagnostic.severity diagnostic |> Diagnostic.severity_to_string,
-            Diagnostic.message diagnostic
-          )
+      | Query.Typing diagnostic -> Some (
+        Diagnostic.code diagnostic,
+        Diagnostic.severity diagnostic |> Diagnostic.severity_to_string,
+        Diagnostic.message diagnostic
+      )
       | Query.Parse _
       | Query.Lowering _ -> None
     )
@@ -294,8 +293,7 @@ let scheme_has_named_path =
             match tag.payload_type with
             | Some payload_type -> type_has_named_path payload_type
             | None -> false)
-          tags
-        || List.exists type_has_named_path inherited
+          tags || List.exists type_has_named_path inherited
     | TypeRepr.Arrow { lhs; rhs; _ } -> type_has_named_path lhs || type_has_named_path rhs
     | TypeRepr.Int
     | TypeRepr.Float
@@ -380,7 +378,9 @@ let test_definition_at_uses_local_pattern_origin = fun _ctx ->
   match definition_at snapshot source_id use_offset with
   | None -> Error "expected local definition"
   | Some definition ->
-      let () = Test.assert_equal ~expected:"definition_local.ml" ~actual:(source_origin_label definition.origin) in
+      let () = Test.assert_equal
+        ~expected:"definition_local.ml"
+        ~actual:(source_origin_label definition.origin) in
       let expected_offset = offset_of_substring source "id x" |> Option.expect ~msg:"expected local binder" in
       let () = Test.assert_equal
         ~expected:true
@@ -406,10 +406,11 @@ let test_definition_at_uses_exported_module_typings = fun _ctx ->
   match definition_at snapshot client_source_id use_offset with
   | None -> Error "expected opened-module definition"
   | Some definition ->
-      let () = Test.assert_equal ~expected:"colors.ml" ~actual:(source_origin_label definition.origin) in
-      let expected_offset =
-        offset_of_substring colors_source "to_string value" |> Option.expect ~msg:"expected export binder"
-      in
+      let () = Test.assert_equal
+        ~expected:"colors.ml"
+        ~actual:(source_origin_label definition.origin) in
+      let expected_offset = offset_of_substring colors_source "to_string value"
+      |> Option.expect ~msg:"expected export binder" in
       let () = Test.assert_equal
         ~expected:true
         ~actual:(definition_covers_offset definition expected_offset) in
@@ -439,10 +440,10 @@ let test_definition_at_prefers_interface_export_origin = fun _ctx ->
   match definition_at snapshot client_source_id use_offset with
   | None -> Error "expected interface-backed definition"
   | Some definition ->
-      let () = Test.assert_equal ~expected:"colors.mli" ~actual:(source_origin_label definition.origin) in
-      let expected_offset =
-        offset_of_substring intf_source "answer" |> Option.expect ~msg:"expected interface declaration"
-      in
+      let () = Test.assert_equal
+        ~expected:"colors.mli"
+        ~actual:(source_origin_label definition.origin) in
+      let expected_offset = offset_of_substring intf_source "answer" |> Option.expect ~msg:"expected interface declaration" in
       let () = Test.assert_equal
         ~expected:true
         ~actual:(definition_covers_offset definition expected_offset) in
@@ -473,9 +474,7 @@ let test_definition_at_follows_include_reexports = fun _ctx ->
   | None -> Error "expected include-backed definition"
   | Some definition ->
       let () = Test.assert_equal ~expected:"base.ml" ~actual:(source_origin_label definition.origin) in
-      let expected_offset =
-        offset_of_substring base_source "value = 1" |> Option.expect ~msg:"expected base binder"
-      in
+      let expected_offset = offset_of_substring base_source "value = 1" |> Option.expect ~msg:"expected base binder" in
       let () = Test.assert_equal
         ~expected:true
         ~actual:(definition_covers_offset definition expected_offset) in
@@ -812,10 +811,18 @@ let test_paired_modules_export_interface_shaped_file_summaries = fun _ctx ->
     ~origin:(Source.Label "colors.mli")
     ~text:"val answer : int\n" in
   let snapshot = Session.snapshot session in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(export_names (Query.export_of snapshot impl_source_id)) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(export_names (Query.export_of snapshot intf_source_id)) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(file_summary_export_names snapshot impl_source_id) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(file_summary_export_names snapshot intf_source_id) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(export_names (Query.export_of snapshot impl_source_id)) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(export_names (Query.export_of snapshot intf_source_id)) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(file_summary_export_names snapshot impl_source_id) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(file_summary_export_names snapshot intf_source_id) in
   Ok ()
 
 let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
@@ -850,8 +857,12 @@ let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
   let () = Test.assert_equal
     ~expected:[]
     ~actual:((ModuleTypings.exports intf_typings |> List.map fst)) in
-  let () = Test.assert_equal ~expected:[] ~actual:(export_names (Query.export_of snapshot impl_source_id)) in
-  let () = Test.assert_equal ~expected:[] ~actual:(export_names (Query.export_of snapshot intf_source_id)) in
+  let () = Test.assert_equal
+    ~expected:[]
+    ~actual:(export_names (Query.export_of snapshot impl_source_id)) in
+  let () = Test.assert_equal
+    ~expected:[]
+    ~actual:(export_names (Query.export_of snapshot intf_source_id)) in
   let () = Test.assert_equal ~expected:[] ~actual:(file_summary_export_names snapshot impl_source_id) in
   let () = Test.assert_equal ~expected:[] ~actual:(file_summary_export_names snapshot intf_source_id) in
   Ok ()
@@ -883,12 +894,24 @@ let test_paired_modules_skip_signature_inclusion_for_errored_implementation = fu
   let () = Test.assert_equal ~expected:true ~actual:(has_unbound_name snapshot impl_source_id) in
   let () = Test.assert_equal ~expected:false ~actual:(has_signature_error impl_source_id) in
   let () = Test.assert_equal ~expected:false ~actual:(has_signature_error intf_source_id) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:((ModuleTypings.exports impl_typings |> List.map fst)) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:((ModuleTypings.exports intf_typings |> List.map fst)) in
-  let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot impl_source_id "answer") in
-  let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot intf_source_id "answer") in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(file_summary_export_names snapshot impl_source_id) in
-  let () = Test.assert_equal ~expected:[ "answer" ] ~actual:(file_summary_export_names snapshot intf_source_id) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:((ModuleTypings.exports impl_typings |> List.map fst)) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:((ModuleTypings.exports intf_typings |> List.map fst)) in
+  let () = Test.assert_equal
+    ~expected:(Some "int")
+    ~actual:(export_scheme snapshot impl_source_id "answer") in
+  let () = Test.assert_equal
+    ~expected:(Some "int")
+    ~actual:(export_scheme snapshot intf_source_id "answer") in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(file_summary_export_names snapshot impl_source_id) in
+  let () = Test.assert_equal
+    ~expected:[ "answer" ]
+    ~actual:(file_summary_export_names snapshot intf_source_id) in
   Ok ()
 
 let test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types = fun _ctx ->
@@ -935,28 +958,24 @@ let test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types
 
 let test_paired_modules_accept_manifest_alias_specialization = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "hash.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "hash.ml")
     ~text:{ocaml|
       type t = bytes
 
       let of_bytes bytes = bytes
 
       let to_bytes hash = hash
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "hash.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "hash.mli")
     ~text:{ocaml|
       type t
 
       val of_bytes : bytes -> t
 
       val to_bytes : t -> bytes
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let impl_typings = Query.module_typings_of snapshot impl_source_id |> Option.expect ~msg:"missing impl typings" in
   let intf_typings = Query.module_typings_of snapshot intf_source_id |> Option.expect ~msg:"missing interface typings" in
@@ -978,31 +997,25 @@ let test_paired_modules_accept_manifest_alias_specialization = fun _ctx ->
 
 let test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _int32_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "int32.mli")
+  let (session, _int32_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "int32.mli")
     ~text:{ocaml|
       type t = int32
-    |ocaml} in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "rng.ml")
+    |ocaml}
+  in
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "rng.ml")
     ~text:{ocaml|
       let int32 (value: int32) = value
 
       let bits32 () = 0l
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "rng.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "rng.mli")
     ~text:{ocaml|
       val int32 : Int32.t -> Int32.t
 
       val bits32 : unit -> Int32.t
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let impl_typings = Query.module_typings_of snapshot impl_source_id |> Option.expect ~msg:"missing impl typings" in
   let intf_typings = Query.module_typings_of snapshot intf_source_id |> Option.expect ~msg:"missing interface typings" in
@@ -1024,24 +1037,20 @@ let test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion = fu
 
 let test_paired_modules_allow_private_top_level_exception_helpers = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       exception Panic of string
 
       let panic _ =
         let rec loop () = loop () in
         loop ()
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       val panic : string -> 'a
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let impl_diagnostics = diagnostic_strings snapshot impl_source_id in
   let intf_diagnostics = diagnostic_strings snapshot intf_source_id in
@@ -1060,31 +1069,25 @@ let test_paired_modules_allow_private_top_level_exception_helpers = fun _ctx ->
 
 let test_paired_modules_include_sibling_exports_during_signature_inclusion = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _ops_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ops.ml")
+  let (session, _ops_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ops.ml")
     ~text:{ocaml|
       let abs x = x
-    |ocaml} in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+    |ocaml}
+  in
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       include Ops
 
       let answer = abs 1
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       val abs : int -> int
 
       val answer : int
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let impl_diagnostics = diagnostic_strings snapshot impl_source_id in
   let intf_diagnostics = diagnostic_strings snapshot intf_source_id in
@@ -1113,44 +1116,36 @@ let test_paired_modules_include_sibling_exports_during_signature_inclusion = fun
 
 let test_paired_modules_include_paired_sibling_exports_during_signature_inclusion = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _ops_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ops.ml")
+  let (session, _ops_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ops.ml")
     ~text:{ocaml|
       let abs x = x
 
       let answer = abs 1
-    |ocaml} in
-  let (session, _ops_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ops.mli")
+    |ocaml}
+  in
+  let (session, _ops_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ops.mli")
     ~text:{ocaml|
       val abs : int -> int
 
       val answer : int
-    |ocaml} in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+    |ocaml}
+  in
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       include Ops
 
       let total = abs answer
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       val abs : int -> int
 
       val answer : int
 
       val total : int
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let impl_diagnostics = diagnostic_strings snapshot impl_source_id in
   let intf_diagnostics = diagnostic_strings snapshot intf_source_id in
@@ -1302,15 +1297,11 @@ let test_snapshot_uses_bootstrap_float_to_string = fun _ctx ->
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    let float_to_string_offset =
-      offset_of_substring source "Float.to_string"
-      |> Option.expect ~msg:"expected Float.to_string in test source" in
+    let float_to_string_offset = offset_of_substring source "Float.to_string" |> Option.expect ~msg:"expected Float.to_string in test source" in
     let rendered_type = export_scheme snapshot source_id "rendered" in
     let float_to_string_type = inferred_type_at snapshot source_id float_to_string_offset in
     let () = Test.assert_equal ~expected:(Some "string") ~actual:rendered_type in
-    let () = Test.assert_equal
-      ~expected:(Some "?precision:int -> float -> string")
-      ~actual:float_to_string_type in
+    let () = Test.assert_equal ~expected:(Some "?precision:int -> float -> string") ~actual:float_to_string_type in
     Ok ()
 
 let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
@@ -1352,15 +1343,14 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
 
 let test_prepare_snapshot_emits_structured_events = fun _ctx ->
   let events = ref [] in
-  let config = Config.default |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "demo.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "demo.ml")
     ~text:{ocaml|
       let answer = 1
-    |ocaml} in
+    |ocaml}
+  in
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Error missing -> Error ("expected rooted snapshot, got "
   ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
@@ -1372,38 +1362,36 @@ let test_prepare_snapshot_emits_structured_events = fun _ctx ->
         Event.PrepareSnapshotFinished _;
         Event.ModulePairingStarted _;
         Event.SourceAnalysisStarted {
-          source_id = analysis_source_id;
+          source_id=analysis_source_id;
           module_name;
-          mode = Event.SnapshotAnalysis;
+          mode=Event.SnapshotAnalysis;
           _
         };
         Event.SourceAnalysisFinished {
-          source_id = finished_source_id;
-          module_name = finished_module_name;
-          mode = Event.SnapshotAnalysis;
-          export_status = Event.TrustedExport;
+          source_id=finished_source_id;
+          module_name=finished_module_name;
+          mode=Event.SnapshotAnalysis;
+          export_status=Event.TrustedExport;
           _
         };
         Event.ModulePairingFinished {
-          module_name = paired_module_name;
-          export_status = Event.TrustedExport;
-          export_count = 1;
-          type_decl_count = 0;
+          module_name=paired_module_name;
+          export_status=Event.TrustedExport;
+          export_count=1;
+          type_decl_count=0;
           _
         };
+
       ] ->
           let expected_source_id = SourceId.to_int source_id in
-          if List.for_all
-            (fun actual_source_id ->
-              SourceId.to_int actual_source_id = expected_source_id)
-            [ analysis_source_id; finished_source_id ]
-             && List.for_all
-               (fun actual_module_name -> String.equal actual_module_name "Demo")
-               [
-                 module_name;
-                 finished_module_name;
-                 paired_module_name;
-               ]
+          if
+            List.for_all
+              (fun actual_source_id -> SourceId.to_int actual_source_id = expected_source_id)
+              [ analysis_source_id; finished_source_id ]
+            && List.for_all
+              (fun actual_module_name ->
+                String.equal actual_module_name "Demo")
+              [ module_name; finished_module_name; paired_module_name; ]
           then
             Ok ()
           else
@@ -1414,31 +1402,26 @@ let test_prepare_snapshot_emits_structured_events = fun _ctx ->
 
 let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
   let events = ref [] in
-  let config = Config.default |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let (session, _dep_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "dep.ml")
+  let (session, _dep_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "dep.ml")
     ~text:{ocaml|
       let value = 1
-    |ocaml} in
-  let (session, _unused_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "unused.ml")
+    |ocaml}
+  in
+  let (session, _unused_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "unused.ml")
     ~text:{ocaml|
       let hidden = 2
-    |ocaml} in
-  let (session, app_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "app.ml")
+    |ocaml}
+  in
+  let (session, app_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "app.ml")
     ~text:{ocaml|
       open Dep
 
       let answer = value
-    |ocaml} in
+    |ocaml}
+  in
   match Session.prepare_snapshot session ~roots:[ app_source_id ] with
   | Error missing -> Error ("expected rooted snapshot, got "
   ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
@@ -1447,9 +1430,11 @@ let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
       let paired_modules =
         !events
         |> List.filter_map
-          (function
-          | Event.ModulePairingStarted { module_name; _ } -> Some module_name
-          | _ -> None)
+          (
+            function
+            | Event.ModulePairingStarted { module_name; _ } -> Some module_name
+            | _ -> None
+          )
         |> List.sort_uniq String.compare
       in
       if List.mem "Unused" paired_modules then
@@ -1464,17 +1449,15 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
     (fun store ->
       let baseline_loaded_module_count = List.length Config.default.loaded_modules in
       let seed_session = Session.empty ~config:Config.default in
-      let (seed_session, colors_source_id) = create_source
-        seed_session
-        ~kind:Source.File
-        ~origin:(Source.Label "colors.ml")
+      let (seed_session, colors_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "colors.ml")
         ~text:{ocaml|
           module RGB = struct
             let blend x y = x
           end
 
           let to_string value = value
-        |ocaml} in
+        |ocaml}
+      in
       let seed_snapshot = Session.snapshot seed_session in
       let loaded_colors =
         match Query.module_typings_of seed_snapshot colors_source_id with
@@ -1487,16 +1470,14 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
       |> Config.with_store ~store:(Some store)
       |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
       let session = Session.empty ~config in
-      let (session, demo_source_id) = create_source
-        session
-        ~kind:Source.File
-        ~origin:(Source.Label "blend_demo.ml")
+      let (session, demo_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "blend_demo.ml")
         ~text:{ocaml|
           open Colors
 
           let midpoint = RGB.blend 1 2
           let label = to_string "ok"
-        |ocaml} in
+        |ocaml}
+      in
       match Session.prepare_snapshot session ~roots:[ demo_source_id ] with
       | Error missing -> Error ("expected store-backed snapshot, got "
       ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
@@ -1517,12 +1498,14 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
               Event.PrepareSnapshotStarted _;
               Event.HydrateModuleTypingsStarted { missing_modules; _ };
               Event.HydrateModuleTypingsFinished { hydrated_modules; loaded_module_count; _ };
-              Event.PrepareSnapshotFinished { loaded_module_count = final_loaded_module_count; _ };
+              Event.PrepareSnapshotFinished { loaded_module_count=final_loaded_module_count; _ };
+
             ] ->
-                if missing_modules = [ "Colors"; "RGB" ]
-                   && hydrated_modules = [ "Colors" ]
-                   && loaded_module_count = baseline_loaded_module_count + 1
-                   && final_loaded_module_count = baseline_loaded_module_count + 1
+                if
+                  missing_modules = [ "Colors"; "RGB" ]
+                  && hydrated_modules = [ "Colors" ]
+                  && loaded_module_count = baseline_loaded_module_count + 1
+                  && final_loaded_module_count = baseline_loaded_module_count + 1
                 then
                   Ok ()
                 else
@@ -1533,32 +1516,31 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
 
 let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx ->
   let events = ref [] in
-  let config = Config.default |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "demo.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "demo.ml")
     ~text:{ocaml|
       open Missing
 
       let answer = value
-    |ocaml} in
+    |ocaml}
+  in
   match Session.prepare_snapshot session ~roots:[ source_id ] with
   | Ok _ -> Error "expected missing module requirements"
   | Error _missing ->
       let actual = !events |> List.map typ_event_name in
-      let expected = [
-        "typ_prepare_snapshot_start";
-        "typ_prepare_snapshot_failed";
-      ] in
+      let expected = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed"; ] in
       let () = Test.assert_equal ~expected ~actual in
       match !events with
       | [
         Event.PrepareSnapshotStarted _;
         Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ };
+
       ] ->
-          let () = Test.assert_equal ~expected:[] ~actual:(missing_root_source_ids |> List.map SourceId.to_int) in
+          let () = Test.assert_equal
+            ~expected:[]
+            ~actual:((missing_root_source_ids |> List.map SourceId.to_int)) in
           let () = Test.assert_equal ~expected:[ "Missing" ] ~actual:missing_modules in
           Ok ()
       | _ -> Error ("unexpected missing-requirements events: "
@@ -1880,10 +1862,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
 
 let test_include_reexports_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = create_source
-    seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "helpers.ml")
+  let (seed_session, helpers_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "helpers.ml")
     ~text:{ocaml|
 type 'a option =
   | None
@@ -1892,7 +1871,8 @@ type 'a option =
 let id x = x
 
 let wrap value = Some value
-|ocaml} in
+|ocaml}
+  in
   let seed_snapshot = Session.snapshot seed_session in
   let loaded_helpers =
     match Query.module_typings_of seed_snapshot helpers_source_id with
@@ -1920,64 +1900,52 @@ let wrap value = Some value
       Error ("unexpected id type: " ^ show_option id_type)
     else if not (exported_names = [ "answer"; "id"; "wrap" ]) then
       Error ("unexpected exported names: " ^ String.concat ", " exported_names)
-    else if not (
-      wrap_type
-      |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
-      |> Option.unwrap_or ~default:false
-    ) then
+    else if not
+        (wrap_type
+        |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
+        |> Option.unwrap_or ~default:false) then
       Error ("unexpected wrap type: " ^ show_option wrap_type)
-    else if not (
-      answer_type
-      |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
-      |> Option.unwrap_or ~default:false
-    ) then
+    else if not
+        (answer_type
+        |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
+        |> Option.unwrap_or ~default:false) then
       Error ("unexpected answer type: " ^ show_option answer_type)
     else
       Ok ()
 
 let test_include_reexports_package_shaped_loaded_module_typings = fun _ctx ->
   let kernel_seed_session = Session.empty ~config:Config.default in
-  let (kernel_seed_session, _result_impl_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "result.ml")
+  let (kernel_seed_session, _result_impl_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "result.ml")
     ~text:{ocaml|
 let map f x = f x
-|ocaml} in
-  let (kernel_seed_session, _result_intf_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "result.mli")
+|ocaml}
+  in
+  let (kernel_seed_session, _result_intf_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "result.mli")
     ~text:{ocaml|
 val map : ('a -> 'b) -> 'a -> 'b
-|ocaml} in
-  let (kernel_seed_session, _kernel_impl_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+|ocaml}
+  in
+  let (kernel_seed_session, _kernel_impl_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
 module Result = Result
-|ocaml} in
-  let (kernel_seed_session, _kernel_intf_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.mli")
+|ocaml}
+  in
+  let (kernel_seed_session, _kernel_intf_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "kernel.mli")
     ~text:{ocaml|
 module Result = Result
-|ocaml} in
+|ocaml}
+  in
   let kernel_seed_snapshot = Session.snapshot kernel_seed_session in
   let loaded_modules = Snapshot.module_typings kernel_seed_snapshot in
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
 include Kernel.Result
 
 let answer = map (fun x -> x + 1) 1
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2094,15 +2062,13 @@ let test_loaded_module_reexports_canonicalize_dependency_result_aliases = fun _c
     ~kind:Source.File
     ~origin:(Source.Label "actors.mli")
     ~text:"module Process: sig\n  type exit_reason = exn\nend\n" in
-  let (seed_session, kernel_source_id) = create_source
-    seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.mli")
+  let (seed_session, kernel_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "kernel.mli")
     ~text:{ocaml|
 type ('ok, 'error) result =
   | Ok of 'ok
   | Error of 'error
-|ocaml} in
+|ocaml}
+  in
   let (seed_session, _global_source_id) = create_source
     seed_session
     ~kind:Source.File
@@ -2132,10 +2098,7 @@ type ('ok, 'error) result =
   let config = Config.default
   |> Config.with_loaded_modules ~loaded_modules:[ loaded_std; loaded_kernel; loaded_actors ] in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "colors.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "colors.ml")
     ~text:{ocaml|
 type ('a, 'e) result = ('a, 'e) Kernel.result =
   | Ok of 'a
@@ -2146,7 +2109,8 @@ exception Abort
 let task (): (unit, Actors.Process.exit_reason) result = Error Abort
 
 let pid = Std.spawn task
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2166,15 +2130,7 @@ let test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings = fun
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   let exports = export_names (Query.export_of snapshot source_id) |> List.sort String.compare in
-  let expected_exports = [
-    "cbrt";
-    "max";
-    "min";
-    "of_int";
-    "pow";
-    "round";
-    "to_int";
-  ] in
+  let expected_exports = [ "cbrt"; "max"; "min"; "of_int"; "pow"; "round"; "to_int"; ] in
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else if not (List.equal String.equal exports expected_exports) then
@@ -2206,7 +2162,8 @@ let test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings 
     "remove";
     "replace";
     "seeded_hash";
-  ] in
+  ]
+  in
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else if not (List.equal String.equal exports expected_exports) then
@@ -2217,69 +2174,72 @@ let test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings 
 let test_ocaml_stdlib_root_operators_typecheck = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ops.ml")
-    ~text:
-      "let sum = Stdlib.( + ) 1 2\n\
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ops.ml")
+    ~text:"let sum = Stdlib.( + ) 1 2\n\
        let ok = Stdlib.( && ) true false\n\
        let eq = Stdlib.( = ) 1 1\n\
        let xs = Stdlib.( @ ) [1] [2]\n\
-       let piped = Stdlib.( |> ) 1 Stdlib.succ\n" in
+       let piped = Stdlib.( |> ) 1 Stdlib.succ\n"
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "sum") in
-    let () = Test.assert_equal ~expected:(Some "bool") ~actual:(export_scheme snapshot source_id "ok") in
-    let () = Test.assert_equal ~expected:(Some "bool") ~actual:(export_scheme snapshot source_id "eq") in
-    let () = Test.assert_equal ~expected:(Some "int list") ~actual:(export_scheme snapshot source_id "xs") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "piped") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot source_id "sum") in
+    let () = Test.assert_equal
+      ~expected:(Some "bool")
+      ~actual:(export_scheme snapshot source_id "ok") in
+    let () = Test.assert_equal
+      ~expected:(Some "bool")
+      ~actual:(export_scheme snapshot source_id "eq") in
+    let () = Test.assert_equal
+      ~expected:(Some "int list")
+      ~actual:(export_scheme snapshot source_id "xs") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot source_id "piped") in
     Ok ()
 
 let test_paired_modules_preserve_builtin_exit_polymorphism = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       let exit = Stdlib.exit
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       val exit : int -> 'a
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot impl_source_id) in
   let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id) in
-  let () = Test.assert_equal ~expected:(Some "'a. int -> 'a") ~actual:(export_scheme snapshot impl_source_id "exit") in
-  let () = Test.assert_equal ~expected:(Some "'a. int -> 'a") ~actual:(export_scheme snapshot intf_source_id "exit") in
+  let () = Test.assert_equal
+    ~expected:(Some "'a. int -> 'a")
+    ~actual:(export_scheme snapshot impl_source_id "exit") in
+  let () = Test.assert_equal
+    ~expected:(Some "'a. int -> 'a")
+    ~actual:(export_scheme snapshot intf_source_id "exit") in
   Ok ()
 
 let test_paired_modules_allow_builtin_dynlink_alias = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
       module Dynlink = Dynlink
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel.mli")
     ~text:{ocaml|
       module Dynlink = Dynlink
-    |ocaml} in
+    |ocaml}
+  in
   match prepare_snapshot_or_error session ~roots:[ impl_source_id ] with
   | Error _ as err -> err
   | Ok snapshot ->
@@ -2290,16 +2250,17 @@ let test_paired_modules_allow_builtin_dynlink_alias = fun _ctx ->
       else if not (List.is_empty intf_diagnostics) then
         Error (String.concat "\n" intf_diagnostics)
       else
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot impl_source_id) in
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot impl_source_id) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot intf_source_id) in
         Ok ()
 
 let test_operator_pattern_bindings_lower_and_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ops_aliases.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ops_aliases.ml")
     ~text:{ocaml|
       external equal : 'a -> 'a -> bool = "%equal"
       external add_int : int -> int -> int = "%addint"
@@ -2312,7 +2273,8 @@ let test_operator_pattern_bindings_lower_and_typecheck = fun _ctx ->
       let same = 1 = 1
       let sum = 1 + 2
       let piped = 1 |> fun x -> x + 1
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2320,30 +2282,33 @@ let test_operator_pattern_bindings_lower_and_typecheck = fun _ctx ->
   else
     let exported_names = export_names (Query.export_of snapshot source_id) |> List.sort String.compare in
     let required_exports = [ "="; "+"; "|>"; "same"; "sum"; "piped" ] in
-    match required_exports
-    |> List.find_opt (fun name -> not (List.mem name exported_names)) with
-    | Some missing_export ->
-        Error ("missing expected export " ^ missing_export
-        ^ " from "
-        ^ String.concat ", " exported_names)
+    match required_exports |> List.find_opt (fun name -> not (List.mem name exported_names)) with
+    | Some missing_export -> Error ("missing expected export "
+    ^ missing_export
+    ^ " from "
+    ^ String.concat ", " exported_names)
     | None ->
-        let () = Test.assert_equal ~expected:(Some "bool") ~actual:(export_scheme snapshot source_id "same") in
-        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "sum") in
-        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "piped") in
+        let () = Test.assert_equal
+          ~expected:(Some "bool")
+          ~actual:(export_scheme snapshot source_id "same") in
+        let () = Test.assert_equal
+          ~expected:(Some "int")
+          ~actual:(export_scheme snapshot source_id "sum") in
+        let () = Test.assert_equal
+          ~expected:(Some "int")
+          ~actual:(export_scheme snapshot source_id "piped") in
         Ok ()
 
 let test_cons_patterns_lower_and_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "cons_patterns.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "cons_patterns.ml")
     ~text:{ocaml|
       let rec append left right =
         match left with
         | [] -> right
         | head :: tail -> head :: append tail right
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2355,16 +2320,14 @@ let test_cons_patterns_lower_and_typecheck = fun _ctx ->
 
 let test_recursive_operator_bindings_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "recursive_operator_bindings.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "recursive_operator_bindings.ml")
     ~text:{ocaml|
       let rec ( @ ) left right =
         match left with
         | [] -> right
         | head :: tail -> head :: (tail @ right)
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2376,10 +2339,7 @@ let test_recursive_operator_bindings_typecheck = fun _ctx ->
 
 let test_kernel_ops_surface_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel_ops.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel_ops.ml")
     ~text:{ocaml|
       external equal : 'a -> 'a -> bool = "%equal"
       let ( = ) = equal
@@ -2503,7 +2463,8 @@ let test_kernel_ops_surface_typechecks = fun _ctx ->
         match left with
         | [] -> right
         | head :: tail -> head :: (tail @ right)
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2513,10 +2474,7 @@ let test_kernel_ops_surface_typechecks = fun _ctx ->
 
 let test_opened_sibling_double_underscore_exports_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _global0_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+  let (session, _global0_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       exception Sys__Not_found
 
@@ -2525,11 +2483,9 @@ let test_opened_sibling_double_underscore_exports_typecheck = fun _ctx ->
       let unix__environment () = [||]
       let unix__getcwd () = ""
       let unix__chdir _ = ()
-    |ocaml} in
-  let (session, _global0_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, _global0_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       exception Sys__Not_found
 
@@ -2538,11 +2494,9 @@ let test_opened_sibling_double_underscore_exports_typecheck = fun _ctx ->
       val unix__environment : unit -> string array
       val unix__getcwd : unit -> string
       val unix__chdir : string -> unit
-    |ocaml} in
-  let (session, env_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "env.ml")
+    |ocaml}
+  in
+  let (session, env_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "env.ml")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -2565,11 +2519,9 @@ let test_opened_sibling_double_underscore_exports_typecheck = fun _ctx ->
       let getcwd () = unix__getcwd ()
 
       let chdir path = unix__chdir path
-    |ocaml} in
-  let (session, env_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "env.mli")
+    |ocaml}
+  in
+  let (session, env_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "env.mli")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -2582,26 +2534,34 @@ let test_opened_sibling_double_underscore_exports_typecheck = fun _ctx ->
       val environment : unit -> string array
       val getcwd : unit -> string
       val chdir : string -> unit
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot env_impl_source_id @ diagnostic_strings snapshot env_intf_source_id in
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot env_impl_source_id) in
-    let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot env_intf_source_id) in
-    let () = Test.assert_equal ~expected:(Some "string -> string option") ~actual:(export_scheme snapshot env_impl_source_id "getenv") in
-    let () = Test.assert_equal ~expected:(Some "string -> string") ~actual:(export_scheme snapshot env_impl_source_id "getenv_exn") in
-    let () = Test.assert_equal ~expected:(Some "string -> string -> unit") ~actual:(export_scheme snapshot env_impl_source_id "putenv") in
+    let () = Test.assert_equal
+      ~expected:false
+      ~actual:(has_signature_error snapshot env_impl_source_id) in
+    let () = Test.assert_equal
+      ~expected:false
+      ~actual:(has_signature_error snapshot env_intf_source_id) in
+    let () = Test.assert_equal
+      ~expected:(Some "string -> string option")
+      ~actual:(export_scheme snapshot env_impl_source_id "getenv") in
+    let () = Test.assert_equal
+      ~expected:(Some "string -> string")
+      ~actual:(export_scheme snapshot env_impl_source_id "getenv_exn") in
+    let () = Test.assert_equal
+      ~expected:(Some "string -> string -> unit")
+      ~actual:(export_scheme snapshot env_impl_source_id "putenv") in
     Ok ()
 
 let test_opened_kernel_shaped_global0_exports_typecheck = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, _global0_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.ml")
+  let (session, _global0_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.ml")
     ~text:{ocaml|
       exception Sys__Not_found = Stdlib.Not_found
 
@@ -2610,11 +2570,9 @@ let test_opened_kernel_shaped_global0_exports_typecheck = fun _ctx ->
       let unix__environment = Unix.environment
       let unix__getcwd = Unix.getcwd
       let unix__chdir = Unix.chdir
-    |ocaml} in
-  let (session, _global0_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global0.mli")
+    |ocaml}
+  in
+  let (session, _global0_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global0.mli")
     ~text:{ocaml|
       exception Sys__Not_found
 
@@ -2623,11 +2581,9 @@ let test_opened_kernel_shaped_global0_exports_typecheck = fun _ctx ->
       val unix__environment : unit -> string array
       val unix__getcwd : unit -> string
       val unix__chdir : string -> unit
-    |ocaml} in
-  let (session, env_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "env.ml")
+    |ocaml}
+  in
+  let (session, env_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "env.ml")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -2650,11 +2606,9 @@ let test_opened_kernel_shaped_global0_exports_typecheck = fun _ctx ->
       let getcwd () = unix__getcwd ()
 
       let chdir path = unix__chdir path
-    |ocaml} in
-  let (session, env_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "env.mli")
+    |ocaml}
+  in
+  let (session, env_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "env.mli")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -2667,29 +2621,31 @@ let test_opened_kernel_shaped_global0_exports_typecheck = fun _ctx ->
       val environment : unit -> string array
       val getcwd : unit -> string
       val chdir : string -> unit
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot env_impl_source_id @ diagnostic_strings snapshot env_intf_source_id in
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot env_impl_source_id) in
-    let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot env_intf_source_id) in
+    let () = Test.assert_equal
+      ~expected:false
+      ~actual:(has_signature_error snapshot env_impl_source_id) in
+    let () = Test.assert_equal
+      ~expected:false
+      ~actual:(has_signature_error snapshot env_intf_source_id) in
     Ok ()
 
 let test_ocaml_stdlib_sys_signal_behavior_typechecks = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "system.ml")
-    ~text:
-      "type nonrec signal_behavior = Stdlib.Sys.signal_behavior =\n\
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "system.ml")
+    ~text:"type nonrec signal_behavior = Stdlib.Sys.signal_behavior =\n\
        | Signal_default\n\
        | Signal_ignore\n\
        | Signal_handle of (int -> unit)\n\
-       let previous = Stdlib.Sys.signal Stdlib.Sys.sigint (Stdlib.Sys.Signal_handle (fun _ -> ()))\n" in
+       let previous = Stdlib.Sys.signal Stdlib.Sys.sigint (Stdlib.Sys.Signal_handle (fun _ -> ()))\n"
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2699,16 +2655,17 @@ let test_ocaml_stdlib_sys_signal_behavior_typechecks = fun _ctx ->
 
 let test_result_constructor_requires_explicit_dependency = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "needs_result.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "needs_result.ml")
     ~text:{ocaml|
 let ok = Ok 1
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
-  if List.exists (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name: Ok")) diagnostics
+  if
+    List.exists
+      (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name: Ok"))
+      diagnostics
   then
     Ok ()
   else
@@ -2716,39 +2673,34 @@ let ok = Ok 1
 
 let test_option_and_prelude_helpers_require_explicit_dependency = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "needs_option_helpers.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "needs_option_helpers.ml")
     ~text:{ocaml|
 let wrapped = Some 1
 
 let negated = not true
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   let has_some =
     List.exists
       (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name: Some"))
-      diagnostics in
+      diagnostics
+  in
   let has_not =
     List.exists
       (fun diagnostic -> Option.is_some (offset_of_substring diagnostic "unbound name: not"))
-      diagnostics in
+      diagnostics
+  in
   if has_some && has_not then
     Ok ()
   else
-    Error
-      ("expected Some and not to require explicit dependencies, got:\n"
-      ^ String.concat "\n" diagnostics)
+    Error ("expected Some and not to require explicit dependencies, got:\n" ^ String.concat "\n" diagnostics)
 
 let test_ocaml_unix_stats_errors_and_commands_typecheck = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "unix_file.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "unix_file.ml")
     ~text:{ocaml|
       type ('a, 'e) result =
         | Ok of 'a
@@ -2765,7 +2717,8 @@ let test_ocaml_unix_stats_errors_and_commands_typecheck = fun _ctx ->
       let stat_or_error path =
         try Ok (Unix.stat path) with
         | Unix.Unix_error (err, _, _) -> Error (Unix.error_message err)
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2776,10 +2729,7 @@ let test_ocaml_unix_stats_errors_and_commands_typecheck = fun _ctx ->
 let test_ocaml_unix_socket_and_addr_info_typecheck = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "net_addr.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "net_addr.ml")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -2806,7 +2756,8 @@ let test_ocaml_unix_socket_and_addr_info_typecheck = fun _ctx ->
 
       let _ = Unix.getaddrinfo "localhost" "80" []
       let _ = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -2817,10 +2768,7 @@ let test_ocaml_unix_socket_and_addr_info_typecheck = fun _ctx ->
 let test_ocaml_unix_terminal_process_and_labels_typecheck = fun _ctx ->
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "terminal.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "terminal.ml")
     ~text:{ocaml|
       let make_raw_mode termios =
         Unix.{ termios with c_echo = false; c_icanon = false; c_icrnl = false }
@@ -2877,7 +2825,8 @@ let test_ocaml_unix_terminal_process_and_labels_typecheck = fun _ctx ->
         UnixLabels.write fd ~buf ~pos:0 ~len
 
       let _ = Unix.waitpid [ Unix.WNOHANG ] 0
-    |ocaml} in
+    |ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -3008,10 +2957,7 @@ let test_snapshot_exports_opened_loaded_nominal_types_from_implementation = fun 
   in
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_common ] in
   let session = Session.empty ~config in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "reader.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "reader.ml")
     ~text:{ocaml|
 open Common
 
@@ -3020,7 +2966,8 @@ type ('a, 'e) result =
   | Error of 'e
 
 let close (): (unit, error) result = Ok ()
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -3186,10 +3133,10 @@ let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_ty
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
-    ~text:(("type rgb = [ `rgb of int * int * int ]\n")
+    ~text:(("type rgb = [ `rgb of int * int * int ]\n"
     ^ "module ANSI = struct\n"
     ^ "  let first = Ansi_table.to_rgb.(0)\n"
-    ^ "end\n") in
+    ^ "end\n")) in
   match prepare_snapshot_or_error session ~roots:[ colors_source_id ] with
   | Error _ as err -> err
   | Ok snapshot ->
@@ -3218,13 +3165,13 @@ let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_ty
     session
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
-    ~text:(("type ansi = [ `ansi of int ]\n")
+    ~text:(("type ansi = [ `ansi of int ]\n"
     ^ "type rgb = [ `rgb of int * int * int ]\n"
     ^ "module ANSI = struct\n"
     ^ "  let to_rgb = fun (`ansi i) ->\n"
     ^ "    let _ = i in\n"
     ^ "    Ansi_table.to_rgb.(0)\n"
-    ^ "end\n") in
+    ^ "end\n")) in
   match prepare_snapshot_or_error session ~roots:[ colors_source_id ] with
   | Error _ as err -> err
   | Ok snapshot ->
@@ -3244,10 +3191,7 @@ let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_ty
 
 let test_module_alias_reexports_loaded_module_typings = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, helpers_source_id) = create_source
-    seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "helpers.ml")
+  let (seed_session, helpers_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "helpers.ml")
     ~text:{ocaml|
 type 'a option =
   | None
@@ -3256,7 +3200,8 @@ type 'a option =
 let id x = x
 
 let wrap value = Some value
-|ocaml} in
+|ocaml}
+  in
   let seed_snapshot = Session.snapshot seed_session in
   let loaded_helpers =
     match Query.module_typings_of seed_snapshot helpers_source_id with
@@ -3284,17 +3229,15 @@ let wrap value = Some value
       Error ("unexpected exported names: " ^ String.concat ", " exported_names)
     else if not (util_id_type = Some "'a. 'a -> 'a") then
       Error ("unexpected Util.id type: " ^ show_option util_id_type)
-    else if not (
-      util_wrap_type
-      |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
-      |> Option.unwrap_or ~default:false
-    ) then
+    else if not
+        (util_wrap_type
+        |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
+        |> Option.unwrap_or ~default:false) then
       Error ("unexpected Util.wrap type: " ^ show_option util_wrap_type)
-    else if not (
-      answer_type
-      |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
-      |> Option.unwrap_or ~default:false
-    ) then
+    else if not
+        (answer_type
+        |> Option.map (fun text -> Option.is_some (offset_of_substring text "option"))
+        |> Option.unwrap_or ~default:false) then
       Error ("unexpected answer type: " ^ show_option answer_type)
     else
       Ok ()
@@ -3305,8 +3248,7 @@ let test_loaded_module_alias_chain_preserves_interface_declared_values = fun _ct
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "float.mli")
-    ~text:("include module type of Stdlib.Float\n"
-    ^ "val to_string : ?precision:int -> float -> string\n") in
+    ~text:(("include module type of Stdlib.Float\n" ^ "val to_string : ?precision:int -> float -> string\n")) in
   let (seed_session, std_source_id) = create_source
     seed_session
     ~kind:Source.File
@@ -3324,8 +3266,7 @@ let test_loaded_module_alias_chain_preserves_interface_declared_values = fun _ct
     session
     ~kind:Source.File
     ~origin:(Source.Label "consumer.ml")
-    ~text:("open Std\n"
-    ^ "let render = Float.to_string 1.0\n") in
+    ~text:(("open Std\n" ^ "let render = Float.to_string 1.0\n")) in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if not (List.is_empty diagnostics) then
@@ -3333,9 +3274,7 @@ let test_loaded_module_alias_chain_preserves_interface_declared_values = fun _ct
   else
     let float_to_string_type = inferred_type_at snapshot source_id 22 in
     let render_type = export_scheme snapshot source_id "render" in
-    let () = Test.assert_equal
-      ~expected:(Some "?precision:int -> float -> string")
-      ~actual:float_to_string_type in
+    let () = Test.assert_equal ~expected:(Some "?precision:int -> float -> string") ~actual:float_to_string_type in
     let () = Test.assert_equal ~expected:(Some "string") ~actual:render_type in
     Ok ()
 
@@ -3453,16 +3392,16 @@ let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_inclu
     | None -> panic "expected kernel module typings"
   in
   let kernel_exported_names = ModuleTypings.exports kernel_summary |> List.map fst in
-  let kernel_create_type =
-    ModuleTypings.exports kernel_summary
-    |> List.assoc_opt "Sync.Cell.create"
-    |> Option.map TypePrinter.scheme_to_string in
+  let kernel_create_type = ModuleTypings.exports kernel_summary
+  |> List.assoc_opt "Sync.Cell.create"
+  |> Option.map TypePrinter.scheme_to_string in
   if not (List.equal String.equal kernel_exported_names [ "Sync.Cell.create" ]) then
     Error ("unexpected kernel exports: " ^ String.concat ", " kernel_exported_names)
   else if not (kernel_create_type = Some "'a. 'a -> 'a") then
     Error ("unexpected kernel Sync.Cell.create type: " ^ show_option kernel_create_type)
   else
-    let std_seed_config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ kernel_summary ] in
+    let std_seed_config = Config.default
+    |> Config.with_loaded_modules ~loaded_modules:[ kernel_summary ] in
     let std_seed_session = Session.empty ~config:std_seed_config in
     let (std_seed_session, _sync_impl_source_id) = create_source
       std_seed_session
@@ -3491,16 +3430,16 @@ let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_inclu
       | None -> panic "expected std module typings"
     in
     let std_exported_names = ModuleTypings.exports std_summary |> List.map fst in
-    let std_create_type =
-      ModuleTypings.exports std_summary
-      |> List.assoc_opt "Sync.Cell.create"
-      |> Option.map TypePrinter.scheme_to_string in
+    let std_create_type = ModuleTypings.exports std_summary
+    |> List.assoc_opt "Sync.Cell.create"
+    |> Option.map TypePrinter.scheme_to_string in
     if not (List.equal String.equal std_exported_names [ "Sync.Cell.create" ]) then
       Error ("unexpected std exports: " ^ String.concat ", " std_exported_names)
     else if not (std_create_type = Some "'a. 'a -> 'a") then
       Error ("unexpected std Sync.Cell.create type: " ^ show_option std_create_type)
     else
-      let client_config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ std_summary ] in
+      let client_config = Config.default
+      |> Config.with_loaded_modules ~loaded_modules:[ std_summary ] in
       let client_session = Session.empty ~config:client_config in
       let (client_session, client_source_id) = create_source
         client_session
@@ -3522,53 +3461,43 @@ let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_inclu
             if answer_type = Some "int" then
               Ok ()
             else
-              Error ("unexpected answer type: " ^ show_option answer_type
-              ^ " callee=" ^ show_option callee_type)
+              Error ("unexpected answer type: "
+              ^ show_option answer_type
+              ^ " callee="
+              ^ show_option callee_type)
 
 let test_prepare_snapshot_uses_nested_exports_from_local_include_of_loaded_module = fun _ctx ->
   let kernel_seed_session = Session.empty ~config:Config.default in
-  let (kernel_seed_session, _cell_impl_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "cell.ml")
+  let (kernel_seed_session, _cell_impl_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "cell.ml")
     ~text:{ocaml|
 let create value = value
-|ocaml} in
-  let (kernel_seed_session, _cell_intf_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "cell.mli")
+|ocaml}
+  in
+  let (kernel_seed_session, _cell_intf_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "cell.mli")
     ~text:{ocaml|
 val create : 'a -> 'a
-|ocaml} in
-  let (kernel_seed_session, _sync_impl_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "sync.ml")
+|ocaml}
+  in
+  let (kernel_seed_session, _sync_impl_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "sync.ml")
     ~text:{ocaml|
 module Cell = Cell
-|ocaml} in
-  let (kernel_seed_session, _sync_intf_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "sync.mli")
+|ocaml}
+  in
+  let (kernel_seed_session, _sync_intf_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "sync.mli")
     ~text:{ocaml|
 module Cell = Cell
-|ocaml} in
-  let (kernel_seed_session, kernel_impl_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+|ocaml}
+  in
+  let (kernel_seed_session, kernel_impl_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
 module Sync = Sync
-|ocaml} in
-  let (kernel_seed_session, _kernel_intf_source_id) = create_source
-    kernel_seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.mli")
+|ocaml}
+  in
+  let (kernel_seed_session, _kernel_intf_source_id) = create_source kernel_seed_session ~kind:Source.File ~origin:(Source.Label "kernel.mli")
     ~text:{ocaml|
 module Sync = Sync
-|ocaml} in
+|ocaml}
+  in
   let kernel_seed_snapshot = Session.snapshot kernel_seed_session in
   let kernel_summary =
     match Query.module_typings_of kernel_seed_snapshot kernel_impl_source_id with
@@ -3577,25 +3506,22 @@ module Sync = Sync
   in
   let std_config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ kernel_summary ] in
   let std_session = Session.empty ~config:std_config in
-  let (std_session, _sync_impl_source_id) = create_source
-    std_session
-    ~kind:Source.File
-    ~origin:(Source.Label "sync.ml")
+  let (std_session, _sync_impl_source_id) = create_source std_session ~kind:Source.File ~origin:(Source.Label "sync.ml")
     ~text:{ocaml|
 include Kernel.Sync
-|ocaml} in
-  let (std_session, _sync_intf_source_id) = create_source
-    std_session
-    ~kind:Source.File
-    ~origin:(Source.Label "sync.mli")
+|ocaml}
+  in
+  let (std_session, _sync_intf_source_id) = create_source std_session ~kind:Source.File ~origin:(Source.Label "sync.mli")
     ~text:{ocaml|
 include module type of Kernel.Sync
-|ocaml} in
+|ocaml}
+  in
   let consumer_source = {ocaml|
 open Sync
 
 let answer = Cell.create 1
-|ocaml} in
+|ocaml}
+  in
   let (std_session, consumer_source_id) = create_source
     std_session
     ~kind:Source.File
@@ -3610,8 +3536,7 @@ let answer = Cell.create 1
         Error (String.concat "\n" diagnostics)
       else
         let answer_type = export_scheme snapshot consumer_source_id "answer" in
-        let callee_offset = offset_of_substring consumer_source "Cell.create"
-        |> Option.expect ~msg:"expected Cell.create in consumer source" in
+        let callee_offset = offset_of_substring consumer_source "Cell.create" |> Option.expect ~msg:"expected Cell.create in consumer source" in
         let callee_type = inferred_type_at snapshot consumer_source_id callee_offset in
         let () = Test.assert_equal ~expected:(Some "int") ~actual:answer_type in
         let () = Test.assert_equal ~expected:(Some "int -> int") ~actual:callee_type in
@@ -3944,15 +3869,17 @@ let test_check_source_recovers_when_snapshot_preparation_reports_missing_module_
 
 let test_match_guards_typecheck_in_pattern_scope = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let source = "type 'a option =\n"
-  ^ "  | None\n"
-  ^ "  | Some of 'a\n"
-  ^ "\n"
-  ^ "let classify value =\n"
-  ^ "  match value with\n"
-  ^ "  | Some n when n > 0 -> n\n"
-  ^ "  | Some _ -> 0\n"
-  ^ "  | None -> 0\n" in
+  let source =
+    "type 'a option =\n"
+    ^ "  | None\n"
+    ^ "  | Some of 'a\n"
+    ^ "\n"
+    ^ "let classify value =\n"
+    ^ "  match value with\n"
+    ^ "  | Some n when n > 0 -> n\n"
+    ^ "  | Some _ -> 0\n"
+    ^ "  | None -> 0\n"
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4097,7 +4024,8 @@ let test_explicit_locally_abstract_let_annotations_are_checked = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = {ocaml|
 let id : type a. a -> a = fun x -> x
-|ocaml} in
+|ocaml}
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4113,6 +4041,85 @@ let id : type a. a -> a = fun x -> x
       Ok ()
     else
       Error ("unexpected id type: " ^ show_option id_type)
+
+let test_for_loops_lower_and_typecheck = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+let loop limit =
+  for i = 0 to limit do
+    let _ = i in
+    ()
+  done
+
+let countdown start =
+  for i = start downto 0 do
+    let _ = i in
+    ()
+  done
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "for_loops.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let loop_type = export_scheme snapshot source_id "loop" in
+    let countdown_type = export_scheme snapshot source_id "countdown" in
+    if loop_type = Some "int -> unit" && countdown_type = Some "int -> unit" then
+      Ok ()
+    else
+      Error ("unexpected loop types: loop="
+      ^ show_option loop_type
+      ^ ", countdown="
+      ^ show_option countdown_type)
+
+let test_external_identity_cast_token_shape_typechecks = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+type t
+
+external unsafe_cast : 'a -> 'b = "%identity"
+
+let unsafe_to_value = fun (token: t) -> unsafe_cast token
+
+let unsafe_to_int: t -> int = fun token -> unsafe_to_value token
+
+let hash = fun token -> Int.hash (unsafe_to_int token)
+
+let make: 'value -> t = fun value -> unsafe_cast value
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "external_identity_cast_token.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let unsafe_to_value_type = export_scheme snapshot source_id "unsafe_to_value" in
+    let unsafe_to_int_type = export_scheme snapshot source_id "unsafe_to_int" in
+    let make_type = export_scheme snapshot source_id "make" in
+    if
+      unsafe_to_value_type = Some "'a. t -> 'a"
+      && unsafe_to_int_type = Some "t -> int"
+      && make_type = Some "'a. 'a -> t"
+    then
+      Ok ()
+    else
+      Error ("unexpected token cast types: unsafe_to_value="
+      ^ show_option unsafe_to_value_type
+      ^ ", unsafe_to_int="
+      ^ show_option unsafe_to_int_type
+      ^ ", make="
+      ^ show_option make_type)
 
 let test_gadt_constructor_existentials_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -4144,7 +4151,8 @@ let run: type state. state tag -> state -> request -> unit = fun state_tag state
           ()
       | None -> ()
     )
-|ocaml} in
+|ocaml}
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4185,7 +4193,8 @@ let handle: type reply. reply tag -> response -> reply option = fun reply_tag ->
       | Some Equal -> Some result
       | None -> None
     )
-|ocaml} in
+|ocaml}
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4298,7 +4307,8 @@ let get: type state reply. state agent -> (state -> reply) -> reply = fun agent 
   | _ ->
       let rec loop () = loop () in
       loop ()
-|ocaml} in
+|ocaml}
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4537,7 +4547,8 @@ let stop: type state. state t -> unit = fun agent ->
   match receive ~selector () with
   | StopReply -> ()
   | _ -> panic "unexpected agent response"
-|ocaml} in
+|ocaml}
+  in
   let (session, source_id) = create_source
     session
     ~kind:Source.File
@@ -4551,7 +4562,8 @@ let stop: type state. state t -> unit = fun agent ->
     let update_type = export_scheme snapshot source_id "update" in
     let cast_type = export_scheme snapshot source_id "cast" in
     let stop_type = export_scheme snapshot source_id "stop" in
-    if get_type = Some "'a 'b. 'a t -> ('a -> 'b) -> 'b"
+    if
+      get_type = Some "'a 'b. 'a t -> ('a -> 'b) -> 'b"
       && get_and_update_type = Some "'a 'b. 'a t -> ('a -> 'b * 'a) -> 'b"
       && update_type = Some "'a. 'a t -> ('a -> 'a) -> unit"
       && cast_type = Some "'a. 'a t -> ('a -> 'a) -> unit"
@@ -4559,34 +4571,28 @@ let stop: type state. state t -> unit = fun agent ->
     then
       Ok ()
     else
-      Error
-        ("unexpected exported types: get="
-        ^ show_option get_type
-        ^ ", get_and_update="
-        ^ show_option get_and_update_type
-        ^ ", update="
-        ^ show_option update_type
-        ^ ", cast="
-        ^ show_option cast_type
-        ^ ", stop="
-        ^ show_option stop_type)
+      Error ("unexpected exported types: get="
+      ^ show_option get_type
+      ^ ", get_and_update="
+      ^ show_option get_and_update_type
+      ^ ", update="
+      ^ show_option update_type
+      ^ ", cast="
+      ^ show_option cast_type
+      ^ ", stop="
+      ^ show_option stop_type)
   else
     Error (String.concat "\n" diagnostics)
 
 let test_loaded_module_selector_agent_shape_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _type_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "type.ml")
+  let (session, _type_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "type.ml")
     ~text:{ocaml|
 type ('a, 'b) eq =
   | Equal : ('a, 'a) eq
-|ocaml} in
-  let (session, _ref_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ref.ml")
+|ocaml}
+  in
+  let (session, _ref_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ref.ml")
     ~text:{ocaml|
 type 'a t = int
 
@@ -4595,25 +4601,19 @@ let make () = 0
 let equal a b = a = b
 
 let type_equal : type a b. a t -> b t -> (a, b) Type.eq option = fun _ _ -> None
-|ocaml} in
-  let (session, _pid_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "pid.ml")
+|ocaml}
+  in
+  let (session, _pid_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "pid.ml")
     ~text:{ocaml|
 type t = unit
-|ocaml} in
-  let (session, _message_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "message.ml")
+|ocaml}
+  in
+  let (session, _message_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.ml")
     ~text:{ocaml|
 type t = ..
-|ocaml} in
-  let (session, _global_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global.ml")
+|ocaml}
+  in
+  let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
 type ('a, 'e) result =
   | Ok of 'a
@@ -4639,11 +4639,9 @@ let spawn_link : (unit -> (unit, string) result) -> Pid.t = fun _ -> ()
 let panic : string -> 'a = fun _ ->
   let rec loop () = loop () in
   loop ()
-|ocaml} in
-  let (session, agent_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "agent.ml")
+|ocaml}
+  in
+  let (session, agent_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "agent.ml")
     ~text:{ocaml|
 open Global
 
@@ -4811,7 +4809,8 @@ let stop: type state. state t -> unit = fun agent ->
   match receive ~selector () with
   | StopReply -> ()
   | _ -> panic "unexpected agent response"
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot agent_source_id in
   if List.is_empty diagnostics then
@@ -4820,7 +4819,8 @@ let stop: type state. state t -> unit = fun agent ->
     let update_type = export_scheme snapshot agent_source_id "update" in
     let cast_type = export_scheme snapshot agent_source_id "cast" in
     let stop_type = export_scheme snapshot agent_source_id "stop" in
-    if get_type = Some "'a 'b. 'a t -> ('a -> 'b) -> 'b"
+    if
+      get_type = Some "'a 'b. 'a t -> ('a -> 'b) -> 'b"
       && get_and_update_type = Some "'a 'b. 'a t -> ('a -> 'b * 'a) -> 'b"
       && update_type = Some "'a. 'a t -> ('a -> 'a) -> unit"
       && cast_type = Some "'a. 'a t -> ('a -> 'a) -> unit"
@@ -4828,26 +4828,22 @@ let stop: type state. state t -> unit = fun agent ->
     then
       Ok ()
     else
-      Error
-        ("unexpected exported types: get="
-        ^ show_option get_type
-        ^ ", get_and_update="
-        ^ show_option get_and_update_type
-        ^ ", update="
-        ^ show_option update_type
-        ^ ", cast="
-        ^ show_option cast_type
-        ^ ", stop="
-        ^ show_option stop_type)
+      Error ("unexpected exported types: get="
+      ^ show_option get_type
+      ^ ", get_and_update="
+      ^ show_option get_and_update_type
+      ^ ", update="
+      ^ show_option update_type
+      ^ ", cast="
+      ^ show_option cast_type
+      ^ ", stop="
+      ^ show_option stop_type)
   else
     Error (String.concat "\n" diagnostics)
 
 let test_selector_alias_chain_across_loaded_modules_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _actors_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "actors.ml")
+  let (session, _actors_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "actors.ml")
     ~text:{ocaml|
 type ('a, 'e) result =
   | Ok of 'a
@@ -4877,33 +4873,25 @@ let receive : selector:'value selector -> ?timeout:float -> unit -> 'value = fun
 let spawn : (unit -> (unit, string) result) -> Pid.t = fun _ -> ()
 
 let spawn_link : (unit -> (unit, string) result) -> Pid.t = fun _ -> ()
-|ocaml} in
-  let (session, _type_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "type.ml")
+|ocaml}
+  in
+  let (session, _type_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "type.ml")
     ~text:{ocaml|
 type ('a, 'b) eq =
   | Equal : ('a, 'a) eq
-|ocaml} in
-  let (session, _pid_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "pid.ml")
+|ocaml}
+  in
+  let (session, _pid_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "pid.ml")
     ~text:{ocaml|
 include Actors.Pid
-|ocaml} in
-  let (session, _message_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "message.ml")
+|ocaml}
+  in
+  let (session, _message_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.ml")
     ~text:{ocaml|
 include Actors.Message
-|ocaml} in
-  let (session, _ref_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ref.ml")
+|ocaml}
+  in
+  let (session, _ref_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ref.ml")
     ~text:{ocaml|
 type 'a t = int
 
@@ -4912,11 +4900,9 @@ let make () = 0
 let equal a b = a = b
 
 let type_equal : type a b. a t -> b t -> (a, b) Type.eq option = fun _ _ -> None
-|ocaml} in
-  let (session, _global_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global.ml")
+|ocaml}
+  in
+  let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
 type ('a, 'e) result = ('a, 'e) Actors.result =
   | Ok of 'a
@@ -4938,11 +4924,9 @@ let spawn_link = Actors.spawn_link
 let panic : string -> 'a = fun _ ->
   let rec loop () = loop () in
   loop ()
-|ocaml} in
-  let (session, agent_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "agent.ml")
+|ocaml}
+  in
+  let (session, agent_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "agent.ml")
     ~text:{ocaml|
 open Global
 
@@ -4983,7 +4967,8 @@ let get: type state reply. state t -> (state -> reply) -> reply = fun agent fn -
       | None -> panic "impossible: reply ref mismatch"
     )
   | _ -> panic "unexpected agent response"
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot agent_source_id in
   if List.is_empty diagnostics then
@@ -4997,29 +4982,22 @@ let get: type state reply. state t -> (state -> reply) -> reply = fun agent fn -
 
 let test_loaded_module_ref_shape_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _type_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "type.ml")
+  let (session, _type_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "type.ml")
     ~text:{ocaml|
 type ('a, 'b) eq =
   | Equal : ('a, 'a) eq
-|ocaml} in
-  let (session, _kernel_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+|ocaml}
+  in
+  let (session, _kernel_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
 module Type = Type
 
 let dangerous_unsafe_cast : 'a -> 'b = fun _ ->
   let rec loop () = loop () in
   loop ()
-|ocaml} in
-  let (session, _sync_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "sync.ml")
+|ocaml}
+  in
+  let (session, _sync_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "sync.ml")
     ~text:{ocaml|
 module Atomic = struct
   type 'a t = 'a
@@ -5030,18 +5008,14 @@ module Atomic = struct
 
   let compare_and_set _ _ _ = false
 end
-|ocaml} in
-  let (session, _global_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global.ml")
+|ocaml}
+  in
+  let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
 let id x = x
-|ocaml} in
-  let (session, _int64_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "int64.ml")
+|ocaml}
+  in
+  let (session, _int64_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "int64.ml")
     ~text:{ocaml|
 type t = int64
 
@@ -5052,11 +5026,9 @@ let equal (_: t) (_: t) = false
 let compare (_: t) (_: t) = 0
 
 let hash (_: t) = 0
-|ocaml} in
-  let (session, ref_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ref.ml")
+|ocaml}
+  in
+  let (session, ref_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ref.ml")
     ~text:{ocaml|
 type 'a option =
   | None
@@ -5096,7 +5068,8 @@ let cast: type a b. a t -> b t -> a -> b option = fun a b value ->
 let is_newer = fun (Ref a) (Ref b) -> Int64.compare a b = 1
 
 let hash = fun (Ref a) -> Int64.hash a
-|ocaml} in
+|ocaml}
+  in
   match prepare_snapshot_or_error session ~roots:[ ref_source_id ] with
   | Error error -> Error error
   | Ok snapshot ->
@@ -5104,34 +5077,28 @@ let hash = fun (Ref a) -> Int64.hash a
       if List.is_empty diagnostics then
         let make_type = export_scheme snapshot ref_source_id "make" in
         let type_equal_type = export_scheme snapshot ref_source_id "type_equal" in
-        if make_type = Some "'a. unit -> 'a t"
-          && type_equal_type = Some "'a 'b. 'a t -> 'b t -> ('a, 'b) Type.eq option"
+        if
+          make_type = Some "'a. unit -> 'a t" && type_equal_type = Some "'a 'b. 'a t -> 'b t -> ('a, 'b) Type.eq option"
         then
           Ok ()
         else
-          Error
-            ("unexpected exported types: make="
-            ^ show_option make_type
-            ^ ", type_equal="
-            ^ show_option type_equal_type)
-  else
-    Error (String.concat "\n" diagnostics)
+          Error ("unexpected exported types: make="
+          ^ show_option make_type
+          ^ ", type_equal="
+          ^ show_option type_equal_type)
+      else
+        Error (String.concat "\n" diagnostics)
 
 let test_spawn_alias_chain_across_loaded_modules_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _kernel_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+  let (session, _kernel_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
 type ('a, 'e) result =
   | Ok of 'a
   | Error of 'e
-|ocaml} in
-  let (session, _actors_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "actors.ml")
+|ocaml}
+  in
+  let (session, _actors_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "actors.ml")
     ~text:{ocaml|
 module Pid = struct
   type t = unit
@@ -5144,18 +5111,14 @@ end
 let spawn : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t = fun _ -> ()
 
 let spawn_link : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t = fun _ -> ()
-|ocaml} in
-  let (session, _pid_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "pid.ml")
+|ocaml}
+  in
+  let (session, _pid_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "pid.ml")
     ~text:{ocaml|
 include Actors.Pid
-|ocaml} in
-  let (session, _global_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global.ml")
+|ocaml}
+  in
+  let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
 type ('a, 'e) result = ('a, 'e) Kernel.result =
   | Ok of 'a
@@ -5164,11 +5127,9 @@ type ('a, 'e) result = ('a, 'e) Kernel.result =
 let spawn = Actors.spawn
 
 let spawn_link = Actors.spawn_link
-|ocaml} in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "worker.ml")
+|ocaml}
+  in
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "worker.ml")
     ~text:{ocaml|
 open Global
 
@@ -5186,7 +5147,8 @@ let start () =
 let start_link () =
   let pid = spawn_link loop in
   { pid }
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if List.is_empty diagnostics then
@@ -5195,44 +5157,37 @@ let start_link () =
     if start_type = Some "unit -> t" && start_link_type = Some "unit -> t" then
       Ok ()
     else
-      Error
-        ("unexpected exported types: start="
-        ^ show_option start_type
-        ^ ", start_link="
-        ^ show_option start_link_type)
+      Error ("unexpected exported types: start="
+      ^ show_option start_type
+      ^ ", start_link="
+      ^ show_option start_link_type)
   else
     Error (String.concat "\n" diagnostics)
 
 let test_function_body_annotation_alias_chain_exports_canonical_result = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _kernel_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "kernel.ml")
+  let (session, _kernel_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel.ml")
     ~text:{ocaml|
 type ('a, 'e) result =
   | Ok of 'a
   | Error of 'e
-|ocaml} in
-  let (session, _global_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "global.ml")
+|ocaml}
+  in
+  let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
 type ('a, 'e) result = ('a, 'e) Kernel.result =
   | Ok of 'a
   | Error of 'e
-|ocaml} in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "worker.ml")
+|ocaml}
+  in
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "worker.ml")
     ~text:{ocaml|
 open Global
 
 let loop () : (unit, exn) result =
   Ok ()
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot source_id in
   if List.is_empty diagnostics then
@@ -5245,10 +5200,7 @@ let loop () : (unit, exn) result =
 
 let test_extensible_variant_constructors_lower_and_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "message.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.ml")
     ~text:{ocaml|
       type message = ..
       type message += Ack | Data of int
@@ -5258,18 +5210,17 @@ let test_extensible_variant_constructors_lower_and_typecheck = fun _ctx ->
       let classify = function
         | Ack -> 0
         | Data value -> value
-    |ocaml} in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "message.mli")
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.mli")
     ~text:{ocaml|
       type message = ..
       type message += Ack | Data of int
 
       val ack : message
       val classify : message -> int
-    |ocaml} in
+    |ocaml}
+  in
   match prepare_snapshot_or_error session ~roots:[ impl_source_id ] with
   | Error _ as err -> err
   | Ok snapshot ->
@@ -5280,9 +5231,15 @@ let test_extensible_variant_constructors_lower_and_typecheck = fun _ctx ->
       else if not (List.is_empty intf_diagnostics) then
         Error (String.concat "\n" intf_diagnostics)
       else
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot impl_source_id) in
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id) in
-        let () = Test.assert_equal ~expected:(Some "message") ~actual:(export_scheme snapshot impl_source_id "ack") in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot impl_source_id) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot intf_source_id) in
+        let () = Test.assert_equal
+          ~expected:(Some "message")
+          ~actual:(export_scheme snapshot impl_source_id "ack") in
         let () = Test.assert_equal
           ~expected:(Some "message -> int")
           ~actual:(export_scheme snapshot impl_source_id "classify") in
@@ -5401,9 +5358,7 @@ let () =
         Test.case "paired modules skip signature inclusion for errored implementation" test_paired_modules_skip_signature_inclusion_for_errored_implementation;
         Test.case "paired modules skip signature inclusion for unsupported interface types" test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types;
         Test.case "paired modules accept manifest alias specialization" test_paired_modules_accept_manifest_alias_specialization;
-        Test.case
-          "paired modules canonicalize builtin aliases in signature inclusion"
-          test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion;
+        Test.case "paired modules canonicalize builtin aliases in signature inclusion" test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion;
         Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
         Test.case "source input hash ignores comments and docstrings" test_source_input_hash_ignores_comments_and_docstrings;
         Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
@@ -5411,15 +5366,9 @@ let () =
         Test.case "snapshot uses bootstrap Float.to_string" test_snapshot_uses_bootstrap_float_to_string;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
-        Test.case
-          "prepare_snapshot only pairs required local modules"
-          test_prepare_snapshot_only_pairs_required_local_modules;
-        Test.case
-          "prepare_snapshot store hydration emits structured events"
-          test_prepare_snapshot_store_hydration_emits_structured_events;
-        Test.case
-          "prepare_snapshot missing requirements emit structured events"
-          test_prepare_snapshot_missing_requirements_emit_structured_events;
+        Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
+        Test.case "prepare_snapshot store hydration emits structured events" test_prepare_snapshot_store_hydration_emits_structured_events;
+        Test.case "prepare_snapshot missing requirements emit structured events" test_prepare_snapshot_missing_requirements_emit_structured_events;
         Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
         Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
         Test.case "loaded module typings override store" test_loaded_module_typings_override_store;
@@ -5428,74 +5377,30 @@ let () =
         Test.case "include reexports loaded module record types" test_include_reexports_loaded_module_record_types;
         Test.case "module alias reexports loaded module record types" test_module_alias_reexports_loaded_module_record_types;
         Test.case "include reexports loaded module typings" test_include_reexports_loaded_module_typings;
-        Test.case
-          "include reexports package-shaped loaded module typings"
-          test_include_reexports_package_shaped_loaded_module_typings;
+        Test.case "include reexports package-shaped loaded module typings" test_include_reexports_package_shaped_loaded_module_typings;
         Test.case "include module type of canonicalizes loaded nominal types" test_include_module_type_of_canonicalizes_loaded_nominal_types;
         Test.case "include module type of loaded modules canonicalizes nominal types" test_include_module_type_of_loaded_modules_canonicalizes_nominal_types;
-        Test.case
-          "loaded module reexports canonicalize dependency result aliases"
-          test_loaded_module_reexports_canonicalize_dependency_result_aliases;
-        Test.case
-          "include module type of stdlib float uses bootstrap module typings"
-          test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings;
-        Test.case
-          "include module type of ocaml stdlib hashtbl uses loaded module typings"
-          test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings;
-        Test.case
-          "ocaml stdlib root operators typecheck"
-          test_ocaml_stdlib_root_operators_typecheck;
-        Test.case
-          "paired modules preserve builtin exit polymorphism"
-          test_paired_modules_preserve_builtin_exit_polymorphism;
-        Test.case
-          "paired modules allow builtin dynlink alias"
-          test_paired_modules_allow_builtin_dynlink_alias;
-        Test.case
-          "operator pattern bindings lower and typecheck"
-          test_operator_pattern_bindings_lower_and_typecheck;
-        Test.case
-          "cons patterns lower and typecheck"
-          test_cons_patterns_lower_and_typecheck;
-        Test.case
-          "recursive operator bindings typecheck"
-          test_recursive_operator_bindings_typecheck;
-        Test.case
-          "kernel ops surface typechecks"
-          test_kernel_ops_surface_typechecks;
-        Test.case
-          "opened sibling double underscore exports typecheck"
-          test_opened_sibling_double_underscore_exports_typecheck;
-        Test.case
-          "opened kernel-shaped global0 exports typecheck"
-          test_opened_kernel_shaped_global0_exports_typecheck;
-        Test.case
-          "result constructor requires explicit dependency"
-          test_result_constructor_requires_explicit_dependency;
-        Test.case
-          "option and prelude helpers require explicit dependency"
-          test_option_and_prelude_helpers_require_explicit_dependency;
-        Test.case
-          "paired modules allow private top-level exception helpers"
-          test_paired_modules_allow_private_top_level_exception_helpers;
-        Test.case
-          "paired modules include sibling exports during signature inclusion"
-          test_paired_modules_include_sibling_exports_during_signature_inclusion;
-        Test.case
-          "paired modules include paired sibling exports during signature inclusion"
-          test_paired_modules_include_paired_sibling_exports_during_signature_inclusion;
-        Test.case
-          "ocaml stdlib sys signal behavior typechecks"
-          test_ocaml_stdlib_sys_signal_behavior_typechecks;
-        Test.case
-          "ocaml unix stats errors and commands typecheck"
-          test_ocaml_unix_stats_errors_and_commands_typecheck;
-        Test.case
-          "ocaml unix socket and addr_info typecheck"
-          test_ocaml_unix_socket_and_addr_info_typecheck;
-        Test.case
-          "ocaml unix terminal process and labels typecheck"
-          test_ocaml_unix_terminal_process_and_labels_typecheck;
+        Test.case "loaded module reexports canonicalize dependency result aliases" test_loaded_module_reexports_canonicalize_dependency_result_aliases;
+        Test.case "include module type of stdlib float uses bootstrap module typings" test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings;
+        Test.case "include module type of ocaml stdlib hashtbl uses loaded module typings" test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings;
+        Test.case "ocaml stdlib root operators typecheck" test_ocaml_stdlib_root_operators_typecheck;
+        Test.case "paired modules preserve builtin exit polymorphism" test_paired_modules_preserve_builtin_exit_polymorphism;
+        Test.case "paired modules allow builtin dynlink alias" test_paired_modules_allow_builtin_dynlink_alias;
+        Test.case "operator pattern bindings lower and typecheck" test_operator_pattern_bindings_lower_and_typecheck;
+        Test.case "cons patterns lower and typecheck" test_cons_patterns_lower_and_typecheck;
+        Test.case "recursive operator bindings typecheck" test_recursive_operator_bindings_typecheck;
+        Test.case "kernel ops surface typechecks" test_kernel_ops_surface_typechecks;
+        Test.case "opened sibling double underscore exports typecheck" test_opened_sibling_double_underscore_exports_typecheck;
+        Test.case "opened kernel-shaped global0 exports typecheck" test_opened_kernel_shaped_global0_exports_typecheck;
+        Test.case "result constructor requires explicit dependency" test_result_constructor_requires_explicit_dependency;
+        Test.case "option and prelude helpers require explicit dependency" test_option_and_prelude_helpers_require_explicit_dependency;
+        Test.case "paired modules allow private top-level exception helpers" test_paired_modules_allow_private_top_level_exception_helpers;
+        Test.case "paired modules include sibling exports during signature inclusion" test_paired_modules_include_sibling_exports_during_signature_inclusion;
+        Test.case "paired modules include paired sibling exports during signature inclusion" test_paired_modules_include_paired_sibling_exports_during_signature_inclusion;
+        Test.case "ocaml stdlib sys signal behavior typechecks" test_ocaml_stdlib_sys_signal_behavior_typechecks;
+        Test.case "ocaml unix stats errors and commands typecheck" test_ocaml_unix_stats_errors_and_commands_typecheck;
+        Test.case "ocaml unix socket and addr_info typecheck" test_ocaml_unix_socket_and_addr_info_typecheck;
+        Test.case "ocaml unix terminal process and labels typecheck" test_ocaml_unix_terminal_process_and_labels_typecheck;
         Test.case "source analysis with loaded modules canonicalizes nominal types" test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
         Test.case "source analysis with opened loaded module canonicalizes nominal types" test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
         Test.case "snapshot exports opened loaded nominal types from implementation" test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
@@ -5505,24 +5410,18 @@ let () =
         Test.case
           "prepare_snapshot type declarations use opened loaded nominal types with underscored module name"
           test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name;
-        Test.case
-          "prepare_snapshot canonicalizes sibling structural polyvariant exports"
-          test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types;
+        Test.case "prepare_snapshot canonicalizes sibling structural polyvariant exports" test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types;
         Test.case
           "prepare_snapshot canonicalizes sibling structural polyvariant exports inside arrows"
           test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types_inside_arrows;
         Test.case "module aliases reexport loaded module typings" test_module_alias_reexports_loaded_module_typings;
-        Test.case
-          "loaded module alias chains preserve interface declared values"
-          test_loaded_module_alias_chain_preserves_interface_declared_values;
+        Test.case "loaded module alias chains preserve interface declared values" test_loaded_module_alias_chain_preserves_interface_declared_values;
         Test.case "module aliases reexport same-named local modules" test_module_alias_reexports_same_named_local_modules;
         Test.case "loaded module typings preserve nested same-named alias exports" test_loaded_module_typings_preserve_nested_same_named_alias_exports;
         Test.case
           "paired loaded module typings preserve nested alias exports across include chains"
           test_paired_loaded_module_typings_preserve_nested_alias_exports_across_include_chain;
-        Test.case
-          "prepare_snapshot uses nested exports from local include of loaded module"
-          test_prepare_snapshot_uses_nested_exports_from_local_include_of_loaded_module;
+        Test.case "prepare_snapshot uses nested exports from local include of loaded module" test_prepare_snapshot_uses_nested_exports_from_local_include_of_loaded_module;
         Test.case "sibling sources use loaded module record reexports" test_sibling_source_uses_loaded_module_record_reexport;
         Test.case "prepare_snapshot is rooted" test_prepare_snapshot_is_rooted;
         Test.case "prepare_snapshot reports missing roots" test_prepare_snapshot_reports_missing_roots;
@@ -5538,39 +5437,19 @@ let () =
         Test.case "check_source recovers when rooted preparation reports missing module summaries" test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries;
         Test.case "match guards typecheck in pattern scope" test_match_guards_typecheck_in_pattern_scope;
         Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
-        Test.case
-          "explicit locally abstract let annotations are checked"
-          test_explicit_locally_abstract_let_annotations_are_checked;
-        Test.case
-          "GADT constructor existentials typecheck"
-          test_gadt_constructor_existentials_typecheck;
-        Test.case
-          "GADT tuple constructor existentials typecheck"
-          test_gadt_tuple_constructor_existentials_typecheck;
-        Test.case
-          "selector receive with existential constructors typechecks"
-          test_selector_receive_with_existential_constructors_typecheck;
-        Test.case
-          "extensible selector agent shape typechecks"
-          test_extensible_selector_agent_shape_typechecks;
-        Test.case
-          "loaded module selector agent shape typechecks"
-          test_loaded_module_selector_agent_shape_typechecks;
-        Test.case
-          "selector alias chain across loaded modules typechecks"
-          test_selector_alias_chain_across_loaded_modules_typechecks;
-        Test.case
-          "loaded module ref shape typechecks"
-          test_loaded_module_ref_shape_typechecks;
-        Test.case
-          "spawn alias chain across loaded modules typechecks"
-          test_spawn_alias_chain_across_loaded_modules_typechecks;
-        Test.case
-          "function body annotation alias chain exports canonical result"
-          test_function_body_annotation_alias_chain_exports_canonical_result;
-        Test.case
-          "extensible variant constructors lower and typecheck"
-          test_extensible_variant_constructors_lower_and_typecheck;
+        Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
+        Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
+        Test.case "external identity cast token shape typechecks" test_external_identity_cast_token_shape_typechecks;
+        Test.case "GADT constructor existentials typecheck" test_gadt_constructor_existentials_typecheck;
+        Test.case "GADT tuple constructor existentials typecheck" test_gadt_tuple_constructor_existentials_typecheck;
+        Test.case "selector receive with existential constructors typechecks" test_selector_receive_with_existential_constructors_typecheck;
+        Test.case "extensible selector agent shape typechecks" test_extensible_selector_agent_shape_typechecks;
+        Test.case "loaded module selector agent shape typechecks" test_loaded_module_selector_agent_shape_typechecks;
+        Test.case "selector alias chain across loaded modules typechecks" test_selector_alias_chain_across_loaded_modules_typechecks;
+        Test.case "loaded module ref shape typechecks" test_loaded_module_ref_shape_typechecks;
+        Test.case "spawn alias chain across loaded modules typechecks" test_spawn_alias_chain_across_loaded_modules_typechecks;
+        Test.case "function body annotation alias chain exports canonical result" test_function_body_annotation_alias_chain_exports_canonical_result;
+        Test.case "extensible variant constructors lower and typecheck" test_extensible_variant_constructors_lower_and_typecheck;
         Test.case "expansive bindings stay monomorphic" test_expansive_bindings_stay_monomorphic;
         Test.case "nonexpansive list bindings still generalize" test_nonexpansive_list_bindings_still_generalize;
         Test.case "expansive covariant lists still generalize" test_expansive_covariant_lists_still_generalize;

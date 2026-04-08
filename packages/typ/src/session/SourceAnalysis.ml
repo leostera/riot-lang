@@ -27,7 +27,8 @@ let exports = fun analysis -> FileSummary.exports analysis.file_summary
 let definition_site_of_origin_id = fun analysis origin_id ->
   match analysis.semantic_tree with
   | None -> None
-  | Some semantic_tree -> OriginMap.find semantic_tree.origin_map origin_id |> Option.map
+  | Some semantic_tree -> OriginMap.find semantic_tree.origin_map origin_id
+  |> Option.map
     (fun (origin: OriginMap.origin) ->
       ({ origin = analysis.source.origin; span = origin.span }: ModuleTypings.definition_site))
 
@@ -36,9 +37,9 @@ let declared_value_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_pat
     (
       function
       | ItemTree.DeclaredValue item when String.equal name item.value_name
-        && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
       | ItemTree.ExtensionConstructor item when String.equal name item.constructor_name
-        && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
       | _ -> None
     )
 
@@ -47,7 +48,7 @@ let exception_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_path ~na
     (
       function
       | ItemTree.Exception item when String.equal name item.exception_name
-        && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
       | _ -> None
     )
 
@@ -61,29 +62,26 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
   | Check_result.Lowered_pattern pat_id -> (
       match analysis.semantic_tree with
       | None -> None
-      | Some semantic_tree ->
-          Option.and_then
-            (SemanticTree.find_pattern semantic_tree pat_id)
-            (fun pattern -> definition_site_of_origin_id analysis pattern.origin_id)
-          |> Option.map (fun site -> ModuleTypings.Site site)
+      | Some semantic_tree -> Option.and_then
+        (SemanticTree.find_pattern semantic_tree pat_id)
+        (fun pattern -> definition_site_of_origin_id analysis pattern.origin_id)
+      |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Declared_value { name; scope_path } -> (
       match analysis.semantic_tree with
       | None -> None
-      | Some semantic_tree ->
-          Option.and_then
-            (declared_value_origin_id semantic_tree ~scope_path ~name)
-            (definition_site_of_origin_id analysis)
-          |> Option.map (fun site -> ModuleTypings.Site site)
+      | Some semantic_tree -> Option.and_then
+        (declared_value_origin_id semantic_tree ~scope_path ~name)
+        (definition_site_of_origin_id analysis)
+      |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Exception { name; scope_path } -> (
       match analysis.semantic_tree with
       | None -> None
-      | Some semantic_tree ->
-          Option.and_then
-            (exception_origin_id semantic_tree ~scope_path ~name)
-            (definition_site_of_origin_id analysis)
-          |> Option.map (fun site -> ModuleTypings.Site site)
+      | Some semantic_tree -> Option.and_then
+        (exception_origin_id semantic_tree ~scope_path ~name)
+        (definition_site_of_origin_id analysis)
+      |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Ambient ->
       if IdentPath.is_bare binding_ref.path then
@@ -95,14 +93,19 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
   | Check_result.Module_alias { alias_name; module_path } ->
       Some (ModuleTypings.Export (alias_target_path ~alias_name ~module_path binding_ref.path))
   | Check_result.Prelude
-  | Check_result.Type_constructor _ -> None
+  | Check_result.Type_constructor _ ->
+      None
 
 let export_definitions = fun analysis ->
-  analysis.export_bindings |> List.filter_map
+  analysis.export_bindings
+  |> List.filter_map
     (fun (binding_ref: Check_result.binding_ref) ->
-      definition_target_of_binding_ref analysis binding_ref |> Option.map
+      definition_target_of_binding_ref analysis binding_ref
+      |> Option.map
         (fun target ->
-          ({ export_name = IdentPath.to_string binding_ref.path; target }: ModuleTypings.value_definition)))
+          (
+            { export_name = IdentPath.to_string binding_ref.path; target }: ModuleTypings.value_definition
+          )))
 
 let analyze = fun ~config (source: Source.t) ->
   let parsed = source.parse_result in

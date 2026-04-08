@@ -194,13 +194,11 @@ let test_builtin_type_constructors_only_expose_syntax_backed_names = fun _ctx ->
     "ref";
     "in_channel";
     "out_channel";
-  ] in
-  match
-    List.find_opt
-      (fun name ->
-        Option.is_some (BuiltinTypeConstructors.head_of_path (IdentPath.of_name name)))
-      forbidden
-  with
+  ]
+  in
+  match List.find_opt
+    (fun name -> Option.is_some (BuiltinTypeConstructors.head_of_path (IdentPath.of_name name)))
+    forbidden with
   | None -> Ok ()
   | Some name -> Error ("expected bare " ^ name ^ " to require an explicit dependency")
 
@@ -363,8 +361,9 @@ let test_direct_infer_rebinding_replaces_visible_export = fun _ctx ->
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_rebinding_replaces_visible_nested_export = fun _ctx ->
-  let actual =
-    infer_export_scheme "module Helpers = struct\n  let value = 1\n  let value = true\nend\n" "Helpers.value" in
+  let actual = infer_export_scheme
+    "module Helpers = struct\n  let value = 1\n  let value = true\nend\n"
+    "Helpers.value" in
   let expected = Some "bool" in
   if actual = expected then
     Ok ()
@@ -375,10 +374,9 @@ let test_direct_infer_rebinding_replaces_visible_nested_export = fun _ctx ->
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_poly_variant_expression_uses_named_alias = fun _ctx ->
-  let actual =
-    infer_export_scheme
-      "type rgb = [ `rgb of int * int * int ]\nlet blue = `rgb (0, 0, 255)\n"
-      "blue" in
+  let actual = infer_export_scheme
+    "type rgb = [ `rgb of int * int * int ]\nlet blue = `rgb (0, 0, 255)\n"
+    "blue" in
   let expected = Some "rgb" in
   if actual = expected then
     Ok ()
@@ -389,10 +387,7 @@ let test_direct_infer_poly_variant_expression_uses_named_alias = fun _ctx ->
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type = fun _ctx ->
-  let actual =
-    infer_export_scheme
-      "let blue = `rgb (0, 0, 255)\n"
-      "blue" in
+  let actual = infer_export_scheme "let blue = `rgb (0, 0, 255)\n" "blue" in
   let expected = Some "[ `rgb of int * int * int ]" in
   if actual = expected then
     Ok ()
@@ -403,10 +398,9 @@ let test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type = 
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_poly_variant_parameter_uses_named_alias = fun _ctx ->
-  let actual =
-    infer_export_scheme
-      "type ansi = [ `ansi of int ]\nlet ansi_value = fun (`ansi i) -> i\n"
-      "ansi_value" in
+  let actual = infer_export_scheme
+    "type ansi = [ `ansi of int ]\nlet ansi_value = fun (`ansi i) -> i\n"
+    "ansi_value" in
   let expected = Some "ansi -> int" in
   if actual = expected then
     Ok ()
@@ -417,16 +411,15 @@ let test_direct_infer_poly_variant_parameter_uses_named_alias = fun _ctx ->
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_poly_variant_match_uses_common_named_alias = fun _ctx ->
-  let actual =
-    infer_export_scheme
-      ("type ansi = [ `ansi of int ]\n"
-      ^ "type rgb = [ `rgb of int * int * int ]\n"
-      ^ "type color = [ ansi | rgb ]\n"
-      ^ "let first_channel = fun value ->\n"
-      ^ "  match value with\n"
-      ^ "  | `ansi i -> i\n"
-      ^ "  | `rgb (r, _, _) -> r\n")
-      "first_channel" in
+  let actual = infer_export_scheme
+    ("type ansi = [ `ansi of int ]\n"
+    ^ "type rgb = [ `rgb of int * int * int ]\n"
+    ^ "type color = [ ansi | rgb ]\n"
+    ^ "let first_channel = fun value ->\n"
+    ^ "  match value with\n"
+    ^ "  | `ansi i -> i\n"
+    ^ "  | `rgb (r, _, _) -> r\n")
+    "first_channel" in
   let expected = Some "color -> int" in
   if actual = expected then
     Ok ()
@@ -448,7 +441,8 @@ let test_direct_infer_poly_variant_match_prefers_widest_visible_alias = fun _ctx
       ^ "  | `ansi _ -> 0\n"
       ^ "  | `rgb _ -> 1\n"
       ^ "  | `lrgb _ -> 2\n")
-      "classify" in
+      "classify"
+  in
   let expected = Some "color -> int" in
   if actual = expected then
     Ok ()
@@ -459,14 +453,13 @@ let test_direct_infer_poly_variant_match_prefers_widest_visible_alias = fun _ctx
     ^ Option.unwrap_or ~default:"<none>" actual)
 
 let test_direct_infer_explicit_poly_variant_coercion_uses_target_alias = fun _ctx ->
-  let actual =
-    infer_export_scheme
-      ("type ansi = [ `ansi of int ]\n"
-      ^ "type rgb = [ `rgb of int * int * int ]\n"
-      ^ "type color = [ ansi | rgb ]\n"
-      ^ "let midpoint = `rgb (0, 0, 255)\n"
-      ^ "let as_color = (midpoint :> color)\n")
-      "as_color" in
+  let actual = infer_export_scheme
+    ("type ansi = [ `ansi of int ]\n"
+    ^ "type rgb = [ `rgb of int * int * int ]\n"
+    ^ "type color = [ ansi | rgb ]\n"
+    ^ "let midpoint = `rgb (0, 0, 255)\n"
+    ^ "let as_color = (midpoint :> color)\n")
+    "as_color" in
   let expected = Some "color" in
   if actual = expected then
     Ok ()
@@ -482,9 +475,7 @@ let () =
       let tests = [
         Test.case "summary2 roundtrips env summaries" test_summary2_roundtrip;
         Test.case "env replay matches nested module lookups" test_env_replay_matches_lookup;
-        Test.case
-          "builtin type constructors only expose syntax backed names"
-          test_builtin_type_constructors_only_expose_syntax_backed_names;
+        Test.case "builtin type constructors only expose syntax backed names" test_builtin_type_constructors_only_expose_syntax_backed_names;
         Test.case "bind_in_scope keeps local module names" test_bind_in_scope_keeps_local_module_names;
         Test.case "include entries strip module prefix once" test_include_entries_strip_module_prefix_once;
         Test.case "module alias entries prefix once" test_module_alias_entries_prefix_once;
@@ -494,16 +485,13 @@ let () =
         Test.case "direct infer rebinding replaces visible export" test_direct_infer_rebinding_replaces_visible_export;
         Test.case "direct infer rebinding replaces visible nested export" test_direct_infer_rebinding_replaces_visible_nested_export;
         Test.case "direct infer polyvariant expression uses named alias" test_direct_infer_poly_variant_expression_uses_named_alias;
-        Test.case
-          "direct infer anonymous polyvariant expression keeps structural type"
-          test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type;
+        Test.case "direct infer anonymous polyvariant expression keeps structural type" test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type;
         Test.case "direct infer polyvariant parameter uses named alias" test_direct_infer_poly_variant_parameter_uses_named_alias;
         Test.case "direct infer polyvariant match uses common named alias" test_direct_infer_poly_variant_match_uses_common_named_alias;
         Test.case "direct infer polyvariant match prefers widest visible alias" test_direct_infer_poly_variant_match_prefers_widest_visible_alias;
-        Test.case
-          "direct infer explicit polyvariant coercion uses target alias"
-          test_direct_infer_explicit_poly_variant_coercion_uses_target_alias;
-      ] in
+        Test.case "direct infer explicit polyvariant coercion uses target alias" test_direct_infer_explicit_poly_variant_coercion_uses_target_alias;
+      ]
+      in
       Test.Cli.main ~name:"typ:env2" ~tests ~args)
     ~args:Std_env.args
     ()

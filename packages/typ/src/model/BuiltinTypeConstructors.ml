@@ -8,7 +8,7 @@ let exn_type_constructor_id = TypeConstructorId.make ~owner:builtin_owner ~local
 
 let normalized_segments = fun path ->
   match IdentPath.to_segments path with
-  | [ "Stdlib"; builtin_name ] -> [ builtin_name ]
+  | ["Stdlib";builtin_name] -> [ builtin_name ]
   | other -> other
 
 let head_of_path = fun path ->

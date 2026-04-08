@@ -61,6 +61,13 @@ type expr_desc =
   | ETuple of ExprId.t list
   | EArray of ExprId.t list
   | ESequence of ExprId.t list
+  | EFor of {
+    iterator_pattern_id: PatId.t;
+    descending: bool;
+    start_id: ExprId.t;
+    end_id: ExprId.t;
+    body_id: ExprId.t;
+  }
   | EFun of function_parameter list * ExprId.t
   | EApply of ExprId.t * apply_argument list
   | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
@@ -252,6 +259,18 @@ let render_expr_desc = function
       "array [" ^ render_ids ExprId.to_string elements ^ "]"
   | ESequence elements ->
       "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
+  | EFor { iterator_pattern_id; descending; start_id; end_id; body_id } ->
+      "for "
+      ^ PatId.to_string iterator_pattern_id
+      ^ " = "
+      ^ ExprId.to_string start_id
+      ^ (if descending then
+          " downto "
+        else
+          " to ")
+      ^ ExprId.to_string end_id
+      ^ " do "
+      ^ ExprId.to_string body_id
   | EFun (parameters, body_id) ->
       "fun ["
       ^ (parameters |> List.map render_function_parameter |> String.concat ", ")
@@ -331,10 +350,7 @@ let render_expr_desc = function
       | None -> "poly_variant `" ^ tag
     )
   | ECoerce { value_id; target_type } ->
-      "coerce "
-      ^ ExprId.to_string value_id
-      ^ " :> "
-      ^ TypePrinter.type_to_string target_type
+      "coerce " ^ ExprId.to_string value_id ^ " :> " ^ TypePrinter.type_to_string target_type
   | ELocalOpen { module_path; body_id } ->
       "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
@@ -356,10 +372,10 @@ let render_binding = fun (binding: binding) ->
   ^ " "
   ^ PatId.to_string binding.pattern_id
   ^ (
-      match binding.annotation with
-      | Some annotation -> " : " ^ TypePrinter.scheme_to_string annotation
-      | None -> ""
-    )
+    match binding.annotation with
+    | Some annotation -> " : " ^ TypePrinter.scheme_to_string annotation
+    | None -> ""
+  )
   ^ " "
   ^ ExprId.to_string binding.value_id
   ^ " recursive="
@@ -541,6 +557,14 @@ let expr_desc_to_json = function
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
     );
   ]
+  | EFor { iterator_pattern_id; descending; start_id; end_id; body_id } -> Data.Json.Object [
+    ("tag", Data.Json.String "for");
+    ("iterator_pattern_id", Data.Json.Int (PatId.to_int iterator_pattern_id));
+    ("descending", Data.Json.Bool descending);
+    ("start_id", Data.Json.Int (ExprId.to_int start_id));
+    ("end_id", Data.Json.Int (ExprId.to_int end_id));
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+  ]
   | EFun (parameters, body_id) -> Data.Json.Object [
     ("tag", Data.Json.String "fun");
     ("parameters", Data.Json.Array (List.map function_parameter_to_json parameters));
@@ -644,7 +668,9 @@ let binding_to_json = fun (binding: binding) ->
   in
   let annotation_fields =
     match binding.annotation with
-    | Some annotation -> [ ("annotation", Data.Json.String (TypePrinter.scheme_to_string annotation)); ]
+    | Some annotation -> [
+      ("annotation", Data.Json.String (TypePrinter.scheme_to_string annotation));
+    ]
     | None -> []
   in
   Data.Json.Object ([
@@ -659,7 +685,8 @@ let binding_to_json = fun (binding: binding) ->
     ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));
     ("value_id", Data.Json.Int (ExprId.to_int binding.value_id));
     ("recursive", Data.Json.Bool binding.recursive);
-  ] @ annotation_fields)
+  ]
+  @ annotation_fields)
 
 let to_json = fun arena ->
   Data.Json.Object [

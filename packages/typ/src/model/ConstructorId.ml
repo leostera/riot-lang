@@ -16,7 +16,7 @@ let of_path = fun path ->
       Int.abs acc
     else
       let code = String.get text index |> Char.code in
-      loop (index + 1) ((acc * 65599) + code)
+      loop (index + 1) ((acc * 65_599) + code)
   in
   loop 0 17
 

@@ -350,28 +350,15 @@ let singleton = fun ~make_ident ~name ~scheme ~provenance ->
   of_bindings
     [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
-let singleton_constructor = fun
-  ~make_ident
-  ~name
-  ~scheme
-  ~provenance
-  ~owner_path
-  ~owner_type_constructor_id
-  ~constructor_id
-  ~inline_record_labels
-  ->
-  let binding = Binding.make
-    ~ident:(make_ident name)
-    ~path:(IdentPath.of_name name)
-    ~scheme
-    ~provenance in
+let singleton_constructor = fun ~make_ident ~name ~scheme ~provenance ~owner_path ~owner_type_constructor_id ~constructor_id ~inline_record_labels ->
+  let binding = Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance in
   {
     empty
     with values = Value_env.of_bindings [ binding ];
-         constructors = Constructor_env.singleton
-           ~owner_path
-           ~owner_type_constructor_id
-           ~constructor:{ TypeDecl.constructor_id; name; scheme; inline_record_labels };
+    constructors = Constructor_env.singleton
+      ~owner_path
+      ~owner_type_constructor_id
+      ~constructor:{ TypeDecl.constructor_id; name; scheme; inline_record_labels }
   }
 
 let extend = fun env introduced -> bind env (of_bindings introduced)
@@ -559,9 +546,9 @@ let visible_bindings = fun env ->
         true)
 
 let visible_binding_map = fun env ->
-  visible_bindings env
-  |> List.fold_left
-    (fun acc binding -> Path_map.add (Binding.path binding) binding acc)
+  visible_bindings env |> List.fold_left
+    (fun acc binding ->
+      Path_map.add (Binding.path binding) binding acc)
     Path_map.empty
 
 let canonical_bindings = fun env ->
@@ -583,8 +570,7 @@ let introduced_names = fun before after ->
       let path = Binding.path binding in
       match Path_map.find_opt path before_bindings with
       | Some previous when Binding.same previous binding -> None
-      | _ ->
-        Some (IdentPath.to_string path))
+      | _ -> Some (IdentPath.to_string path))
 
 let hidden_name_set = fun (config: TypConfig.t) ->
   Collections.HashSet.of_list (List.map fst (config.prelude @ config.ambient))
@@ -620,13 +606,11 @@ let export_with_forced_names = fun ~config ~forced_export_names env ->
 
 let introduced_entries = fun before after ->
   let before_bindings = visible_binding_map before in
-  visible_bindings after
-  |> List.filter
+  visible_bindings after |> List.filter
     (fun binding ->
       match Path_map.find_opt (Binding.path binding) before_bindings with
       | Some previous -> not (Binding.same previous binding)
-      | None -> true)
-  |> of_bindings
+      | None -> true) |> of_bindings
 
 let module_table_singleton = fun binding ->
   Name_map.add binding.name binding Name_map.empty

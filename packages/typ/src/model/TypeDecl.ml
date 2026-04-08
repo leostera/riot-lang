@@ -94,7 +94,8 @@ let constructor_to_json = fun (constructor: constructor) ->
   ] in
   let fields =
     match constructor.inline_record_labels with
-    | Some labels -> fields @ [ ("inline_record_labels", Data.Json.Array (List.map label_to_json labels)) ]
+    | Some labels -> fields
+    @ [ ("inline_record_labels", Data.Json.Array (List.map label_to_json labels)) ]
     | None -> fields
   in
   Data.Json.Object fields
@@ -182,30 +183,25 @@ let to_string = fun decl ->
   let constructors =
     match decl.constructors with
     | [] -> "none"
-    | constructors -> constructors
-    |> List.map
-      (fun (constructor: constructor) ->
-        let inline_record =
-          match constructor.inline_record_labels with
-          | Some labels ->
-              " of { "
-              ^ (
-                  labels
-                  |> List.map
-                    (fun (label: label) ->
-                      label.name ^ " : " ^ TypePrinter.type_to_string label.field_type)
-                  |> String.concat "; "
-                )
+    | constructors ->
+        constructors |> List.map
+          (fun (constructor: constructor) ->
+            let inline_record =
+              match constructor.inline_record_labels with
+              | Some labels -> " of { "
+              ^ (labels
+              |> List.map
+                (fun (label: label) -> label.name ^ " : " ^ TypePrinter.type_to_string label.field_type)
+              |> String.concat "; ")
               ^ " }"
-          | None -> ""
-        in
-        ConstructorId.to_string constructor.constructor_id
-        ^ " "
-        ^ constructor.name
-        ^ inline_record
-        ^ " : "
-        ^ TypePrinter.scheme_to_string constructor.scheme)
-    |> String.concat ", "
+              | None -> ""
+            in
+            ConstructorId.to_string constructor.constructor_id
+            ^ " "
+            ^ constructor.name
+            ^ inline_record
+            ^ " : "
+            ^ TypePrinter.scheme_to_string constructor.scheme) |> String.concat ", "
   in
   let labels =
     match decl.labels with

@@ -94,14 +94,10 @@ type t =
       counterpart_span: Syn.Ceibo.Span.t option;
       mismatch: signature_mismatch
     }
-  | NonexhaustiveMatch of {
-      match_span: Syn.Ceibo.Span.t;
-      witness: match_witness
-    }
+  | NonexhaustiveMatch of { match_span: Syn.Ceibo.Span.t; witness: match_witness }
   | RedundantMatchCase of { case_span: Syn.Ceibo.Span.t }
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
-
 val signature_mismatch_name: signature_mismatch -> string
 
 val signature_mismatch_message: signature_mismatch -> string

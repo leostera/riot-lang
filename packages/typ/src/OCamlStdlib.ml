@@ -1,17 +1,19 @@
 open Std
 open Model
 
-let ocaml_stdlib_module_source_id_base = -1_000
+let ocaml_stdlib_module_source_id_base = (-1_000)
 
-let ocaml_stdlib_constructor_id_start = -10_000
+let ocaml_stdlib_constructor_id_start = (-10_000)
 
-let ocaml_stdlib_label_id_start = -20_000
+let ocaml_stdlib_label_id_start = (-20_000)
 
 let make_next_id = fun start ->
   let next = ref start in
   fun () ->
     let id = !next in
-    let () = next := id - 1 in
+    let () =
+      next := id - 1
+    in
     id
 
 let next_constructor_id = make_next_id ocaml_stdlib_constructor_id_start
@@ -72,15 +74,20 @@ let alias_type_decl = fun ~scope_path ~path ~type_name ?(param_ids = []) ?(param
     }
 
 let constructor = fun name scheme ->
-  ({
-    TypeDecl.constructor_id = ConstructorId.of_int (next_constructor_id ());
-    name;
-    scheme;
-    inline_record_labels = None;
-  }: TypeDecl.constructor)
+  (
+    {
+      TypeDecl.constructor_id = ConstructorId.of_int (next_constructor_id ());
+      name;
+      scheme;
+      inline_record_labels = None
+    }:
+      TypeDecl.constructor
+  )
 
 let label = fun ?(mutable_ = false) name field_type ->
-  ({ TypeDecl.label_id = LabelId.of_int (next_label_id ()); name; field_type; mutable_ }: TypeDecl.label)
+  (
+    { TypeDecl.label_id = LabelId.of_int (next_label_id ()); name; field_type; mutable_ }: TypeDecl.label
+  )
 
 let variant_type_decl = fun ~scope_path ~path ~type_name constructors ->
   type_decl ~scope_path
@@ -201,7 +208,9 @@ let polymorphic_array_blit =
     ~quantified:[ 0 ]
     (arrow
       (TypeRepr.array element)
-      (arrow TypeRepr.int (arrow (TypeRepr.array element) (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.unit_)))))
+      (arrow
+        TypeRepr.int
+        (arrow (TypeRepr.array element) (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.unit_)))))
 
 let exn_type = named_with_type_constructor_id
   ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
@@ -221,11 +230,13 @@ let stdlib_uchar_utf_decode_type = named_path "Stdlib.Uchar.utf_decode"
 
 let nativeint_type = bare_named "nativeint"
 
-let stdlib_hashtbl_type key value =
-  TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Hashtbl.t") ~arguments:[ key; value ]
+let stdlib_hashtbl_type key value = TypeRepr.named_path
+  ~name:(IdentPath.of_string "Stdlib.Hashtbl.t")
+  ~arguments:[ key; value ]
 
-let hashtbl_type key value =
-  TypeRepr.named_path ~name:(IdentPath.of_string "Hashtbl.t") ~arguments:[ key; value ]
+let hashtbl_type key value = TypeRepr.named_path
+  ~name:(IdentPath.of_string "Hashtbl.t")
+  ~arguments:[ key; value ]
 
 let unix_file_descr_type = named_path "Unix.file_descr"
 
@@ -327,14 +338,14 @@ let polymorphic_hashtbl_clear =
 let polymorphic_hashtbl_copy =
   let key = var 0 in
   let value = var 1 in
-  TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow (hashtbl_type key value) (hashtbl_type key value))
+  TypeScheme.of_explicit
+    ~quantified:[ 0; 1 ]
+    (arrow (hashtbl_type key value) (hashtbl_type key value))
 
 let polymorphic_hashtbl_find =
   let key = var 0 in
   let value = var 1 in
-  TypeScheme.of_explicit
-    ~quantified:[ 0; 1 ]
-    (arrow (hashtbl_type key value) (arrow key value))
+  TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow (hashtbl_type key value) (arrow key value))
 
 let polymorphic_hashtbl_fold =
   let key = var 0 in
@@ -342,18 +353,14 @@ let polymorphic_hashtbl_fold =
   let acc = var 2 in
   TypeScheme.of_explicit
     ~quantified:[ 0; 1; 2 ]
-    (arrow
-      (arrow key (arrow value (arrow acc acc)))
-      (arrow (hashtbl_type key value) (arrow acc acc)))
+    (arrow (arrow key (arrow value (arrow acc acc))) (arrow (hashtbl_type key value) (arrow acc acc)))
 
 let polymorphic_hashtbl_iter =
   let key = var 0 in
   let value = var 1 in
   TypeScheme.of_explicit
     ~quantified:[ 0; 1 ]
-    (arrow
-      (arrow key (arrow value TypeRepr.unit_))
-      (arrow (hashtbl_type key value) TypeRepr.unit_))
+    (arrow (arrow key (arrow value TypeRepr.unit_)) (arrow (hashtbl_type key value) TypeRepr.unit_))
 
 let polymorphic_hashtbl_length =
   let key = var 0 in
@@ -414,10 +421,7 @@ let float_of_int = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.float)
 let float_to_int = TypeScheme.of_type (arrow TypeRepr.float TypeRepr.int)
 
 let float_to_string = TypeScheme.of_type
-  (arrow
-    ~label:(TypeRepr.Optional "precision")
-    TypeRepr.int
-    (arrow TypeRepr.float TypeRepr.string))
+  (arrow ~label:(TypeRepr.Optional "precision") TypeRepr.int (arrow TypeRepr.float TypeRepr.string))
 
 let string_to_seq = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.seq TypeRepr.char))
 
@@ -486,14 +490,11 @@ let buffer_contents = TypeScheme.of_type (arrow buffer_type TypeRepr.string)
 
 let buffer_add_char = TypeScheme.of_type (arrow buffer_type (arrow TypeRepr.char TypeRepr.unit_))
 
-let buffer_add_string = TypeScheme.of_type
-  (arrow buffer_type (arrow TypeRepr.string TypeRepr.unit_))
+let buffer_add_string = TypeScheme.of_type (arrow buffer_type (arrow TypeRepr.string TypeRepr.unit_))
 
-let buffer_add_bytes = TypeScheme.of_type
-  (arrow buffer_type (arrow bytes_type TypeRepr.unit_))
+let buffer_add_bytes = TypeScheme.of_type (arrow buffer_type (arrow bytes_type TypeRepr.unit_))
 
-let buffer_add_utf_8_uchar = TypeScheme.of_type
-  (arrow buffer_type (arrow uchar_type TypeRepr.unit_))
+let buffer_add_utf_8_uchar = TypeScheme.of_type (arrow buffer_type (arrow uchar_type TypeRepr.unit_))
 
 let printexc_to_string = TypeScheme.of_type (arrow exn_type TypeRepr.string)
 
@@ -537,9 +538,11 @@ let stdlib_int32_to_int = TypeScheme.of_type (arrow int32_type TypeRepr.int)
 
 let stdlib_int64_to_int = TypeScheme.of_type (arrow int64_type TypeRepr.int)
 
-let stdlib_int32_unsigned_to_int = TypeScheme.of_type (arrow int32_type (TypeRepr.option TypeRepr.int))
+let stdlib_int32_unsigned_to_int = TypeScheme.of_type
+  (arrow int32_type (TypeRepr.option TypeRepr.int))
 
-let stdlib_int64_unsigned_to_int = TypeScheme.of_type (arrow int64_type (TypeRepr.option TypeRepr.int))
+let stdlib_int64_unsigned_to_int = TypeScheme.of_type
+  (arrow int64_type (TypeRepr.option TypeRepr.int))
 
 let stdlib_int32_of_float = TypeScheme.of_type (arrow TypeRepr.float int32_type)
 
@@ -553,9 +556,11 @@ let stdlib_int32_of_string = TypeScheme.of_type (arrow TypeRepr.string int32_typ
 
 let stdlib_int64_of_string = TypeScheme.of_type (arrow TypeRepr.string int64_type)
 
-let stdlib_int32_of_string_opt = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option int32_type))
+let stdlib_int32_of_string_opt = TypeScheme.of_type
+  (arrow TypeRepr.string (TypeRepr.option int32_type))
 
-let stdlib_int64_of_string_opt = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option int64_type))
+let stdlib_int64_of_string_opt = TypeScheme.of_type
+  (arrow TypeRepr.string (TypeRepr.option int64_type))
 
 let stdlib_int32_bits_of_float = TypeScheme.of_type (arrow TypeRepr.float int32_type)
 
@@ -573,9 +578,11 @@ let stdlib_int64_of_nativeint = TypeScheme.of_type (arrow nativeint_type int64_t
 
 let stdlib_int64_to_nativeint = TypeScheme.of_type (arrow int64_type nativeint_type)
 
-let stdlib_int32_seeded_hash = TypeScheme.of_type (arrow TypeRepr.int (arrow int32_type TypeRepr.int))
+let stdlib_int32_seeded_hash = TypeScheme.of_type
+  (arrow TypeRepr.int (arrow int32_type TypeRepr.int))
 
-let stdlib_int64_seeded_hash = TypeScheme.of_type (arrow TypeRepr.int (arrow int64_type TypeRepr.int))
+let stdlib_int64_seeded_hash = TypeScheme.of_type
+  (arrow TypeRepr.int (arrow int64_type TypeRepr.int))
 
 let stdlib_int32_hash = TypeScheme.of_type (arrow int32_type TypeRepr.int)
 
@@ -623,18 +630,15 @@ let stdlib_uchar_utf_decode = TypeScheme.of_type
 let stdlib_uchar_utf_decode_invalid = TypeScheme.of_type
   (arrow TypeRepr.int stdlib_uchar_utf_decode_type)
 
-let stdlib_uchar_utf_8_byte_length = TypeScheme.of_type
-  (arrow stdlib_uchar_type TypeRepr.int)
+let stdlib_uchar_utf_8_byte_length = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.int)
 
-let stdlib_uchar_utf_16_byte_length = TypeScheme.of_type
-  (arrow stdlib_uchar_type TypeRepr.int)
+let stdlib_uchar_utf_16_byte_length = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.int)
 
 let stdlib_random_state_type = named_path "Stdlib.Random.State.t"
 
 let stdlib_random_init = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.unit_)
 
-let stdlib_random_full_init = TypeScheme.of_type
-  (arrow (TypeRepr.array TypeRepr.int) TypeRepr.unit_)
+let stdlib_random_full_init = TypeScheme.of_type (arrow (TypeRepr.array TypeRepr.int) TypeRepr.unit_)
 
 let stdlib_random_self_init = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.unit_)
 
@@ -676,8 +680,7 @@ let stdlib_random_bits64 = TypeScheme.of_type (arrow TypeRepr.unit_ int64_type)
 
 let stdlib_random_get_state = TypeScheme.of_type (arrow TypeRepr.unit_ stdlib_random_state_type)
 
-let stdlib_random_set_state = TypeScheme.of_type
-  (arrow stdlib_random_state_type TypeRepr.unit_)
+let stdlib_random_set_state = TypeScheme.of_type (arrow stdlib_random_state_type TypeRepr.unit_)
 
 let stdlib_random_split = TypeScheme.of_type (arrow TypeRepr.unit_ stdlib_random_state_type)
 
@@ -690,8 +693,7 @@ let stdlib_random_state_make_self_init = TypeScheme.of_type
 let stdlib_random_state_copy = TypeScheme.of_type
   (arrow stdlib_random_state_type stdlib_random_state_type)
 
-let stdlib_random_state_bits = TypeScheme.of_type
-  (arrow stdlib_random_state_type TypeRepr.int)
+let stdlib_random_state_bits = TypeScheme.of_type (arrow stdlib_random_state_type TypeRepr.int)
 
 let stdlib_random_state_int = TypeScheme.of_type
   (arrow stdlib_random_state_type (arrow TypeRepr.int TypeRepr.int))
@@ -732,14 +734,11 @@ let stdlib_random_state_int64_in_range = TypeScheme.of_type
 let stdlib_random_state_float = TypeScheme.of_type
   (arrow stdlib_random_state_type (arrow TypeRepr.float TypeRepr.float))
 
-let stdlib_random_state_bool = TypeScheme.of_type
-  (arrow stdlib_random_state_type TypeRepr.bool)
+let stdlib_random_state_bool = TypeScheme.of_type (arrow stdlib_random_state_type TypeRepr.bool)
 
-let stdlib_random_state_bits32 = TypeScheme.of_type
-  (arrow stdlib_random_state_type int32_type)
+let stdlib_random_state_bits32 = TypeScheme.of_type (arrow stdlib_random_state_type int32_type)
 
-let stdlib_random_state_bits64 = TypeScheme.of_type
-  (arrow stdlib_random_state_type int64_type)
+let stdlib_random_state_bits64 = TypeScheme.of_type (arrow stdlib_random_state_type int64_type)
 
 let stdlib_random_state_split = TypeScheme.of_type
   (arrow stdlib_random_state_type stdlib_random_state_type)
@@ -771,8 +770,7 @@ let sys_getcwd = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.string)
 
 let sys_chdir = TypeScheme.of_type (arrow TypeRepr.string TypeRepr.unit_)
 
-let sys_readdir =
-  TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.array TypeRepr.string))
+let sys_readdir = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.array TypeRepr.string))
 
 let filename_get_temp_dir_name = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.string)
 
@@ -810,13 +808,17 @@ let unix_socket = TypeScheme.of_type
   (arrow
     ~label:(TypeRepr.Optional "cloexec")
     TypeRepr.bool
-    (arrow unix_socket_domain_type (arrow unix_socket_type_type (arrow TypeRepr.int unix_file_descr_type))))
+    (arrow
+      unix_socket_domain_type
+      (arrow unix_socket_type_type (arrow TypeRepr.int unix_file_descr_type))))
 
-let unix_bind = TypeScheme.of_type (arrow unix_file_descr_type (arrow unix_sockaddr_type TypeRepr.unit_))
+let unix_bind = TypeScheme.of_type
+  (arrow unix_file_descr_type (arrow unix_sockaddr_type TypeRepr.unit_))
 
 let unix_listen = TypeScheme.of_type (arrow unix_file_descr_type (arrow TypeRepr.int TypeRepr.unit_))
 
-let unix_connect = TypeScheme.of_type (arrow unix_file_descr_type (arrow unix_sockaddr_type TypeRepr.unit_))
+let unix_connect = TypeScheme.of_type
+  (arrow unix_file_descr_type (arrow unix_sockaddr_type TypeRepr.unit_))
 
 let unix_accept = TypeScheme.of_type
   (arrow
@@ -827,36 +829,56 @@ let unix_accept = TypeScheme.of_type
 let unix_getsockname = TypeScheme.of_type (arrow unix_file_descr_type unix_sockaddr_type)
 
 let unix_setsockopt = TypeScheme.of_type
-  (arrow unix_file_descr_type (arrow unix_socket_bool_option_type (arrow TypeRepr.bool TypeRepr.unit_)))
+  (arrow
+    unix_file_descr_type
+    (arrow unix_socket_bool_option_type (arrow TypeRepr.bool TypeRepr.unit_)))
 
 let unix_recv = TypeScheme.of_type
-  (arrow unix_file_descr_type
-    (arrow bytes_type
-      (arrow TypeRepr.int (arrow TypeRepr.int (arrow (TypeRepr.list unix_msg_flag_type) TypeRepr.int)))))
+  (arrow
+    unix_file_descr_type
+    (arrow
+      bytes_type
+      (arrow
+        TypeRepr.int
+        (arrow TypeRepr.int (arrow (TypeRepr.list unix_msg_flag_type) TypeRepr.int)))))
 
 let unix_recvfrom = TypeScheme.of_type
-  (arrow unix_file_descr_type
-    (arrow bytes_type
-      (arrow TypeRepr.int
-        (arrow TypeRepr.int
+  (arrow
+    unix_file_descr_type
+    (arrow
+      bytes_type
+      (arrow
+        TypeRepr.int
+        (arrow
+          TypeRepr.int
           (arrow
             (TypeRepr.list unix_msg_flag_type)
             (TypeRepr.tuple [ TypeRepr.int; unix_sockaddr_type ]))))))
 
 let unix_send = TypeScheme.of_type
-  (arrow unix_file_descr_type
-    (arrow bytes_type
-      (arrow TypeRepr.int (arrow TypeRepr.int (arrow (TypeRepr.list unix_msg_flag_type) TypeRepr.int)))))
+  (arrow
+    unix_file_descr_type
+    (arrow
+      bytes_type
+      (arrow
+        TypeRepr.int
+        (arrow TypeRepr.int (arrow (TypeRepr.list unix_msg_flag_type) TypeRepr.int)))))
 
 let unix_sendto = TypeScheme.of_type
-  (arrow unix_file_descr_type
-    (arrow bytes_type
-      (arrow TypeRepr.int
-        (arrow TypeRepr.int
+  (arrow
+    unix_file_descr_type
+    (arrow
+      bytes_type
+      (arrow
+        TypeRepr.int
+        (arrow
+          TypeRepr.int
           (arrow (TypeRepr.list unix_msg_flag_type) (arrow unix_sockaddr_type TypeRepr.int))))))
 
 let unix_read = TypeScheme.of_type
-  (arrow unix_file_descr_type (arrow bytes_type (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.int))))
+  (arrow
+    unix_file_descr_type
+    (arrow bytes_type (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.int))))
 
 let unix_mkdir = TypeScheme.of_type (arrow TypeRepr.string (arrow TypeRepr.int TypeRepr.unit_))
 
@@ -896,46 +918,66 @@ let unix_lockf = TypeScheme.of_type
   (arrow unix_file_descr_type (arrow unix_lock_command_type (arrow TypeRepr.int TypeRepr.unit_)))
 
 let unix_create_process_env = TypeScheme.of_type
-  (arrow TypeRepr.string
+  (arrow
+    TypeRepr.string
     (arrow
       (TypeRepr.array TypeRepr.string)
       (arrow
         (TypeRepr.array TypeRepr.string)
-        (arrow unix_file_descr_type (arrow unix_file_descr_type (arrow unix_file_descr_type TypeRepr.int))))))
+        (arrow
+          unix_file_descr_type
+          (arrow unix_file_descr_type (arrow unix_file_descr_type TypeRepr.int))))))
 
 let unix_waitpid = TypeScheme.of_type
-  (arrow (TypeRepr.list unix_wait_flag_type) (arrow TypeRepr.int (TypeRepr.tuple [ TypeRepr.int; unix_process_status_type ])))
+  (arrow
+    (TypeRepr.list unix_wait_flag_type)
+    (arrow TypeRepr.int (TypeRepr.tuple [ TypeRepr.int; unix_process_status_type ])))
 
 let unix_tcgetattr = TypeScheme.of_type (arrow unix_file_descr_type unix_terminal_io_type)
 
 let unix_tcsetattr = TypeScheme.of_type
-  (arrow unix_file_descr_type (arrow unix_setattr_when_type (arrow unix_terminal_io_type TypeRepr.unit_)))
+  (arrow
+    unix_file_descr_type
+    (arrow unix_setattr_when_type (arrow unix_terminal_io_type TypeRepr.unit_)))
 
 let unix_getaddrinfo = TypeScheme.of_type
   (arrow
     TypeRepr.string
-    (arrow TypeRepr.string (arrow (TypeRepr.list unix_getaddrinfo_option_type) (TypeRepr.list unix_addr_info_type))))
+    (arrow
+      TypeRepr.string
+      (arrow (TypeRepr.list unix_getaddrinfo_option_type) (TypeRepr.list unix_addr_info_type))))
 
 let unixlabels_read = TypeScheme.of_type
-  (arrow unix_file_descr_type
+  (arrow
+    unix_file_descr_type
     (arrow
       ~label:(TypeRepr.Labelled "buf")
       bytes_type
-      (arrow ~label:(TypeRepr.Labelled "pos") TypeRepr.int (arrow ~label:(TypeRepr.Labelled "len") TypeRepr.int TypeRepr.int))))
+      (arrow
+        ~label:(TypeRepr.Labelled "pos")
+        TypeRepr.int
+        (arrow ~label:(TypeRepr.Labelled "len") TypeRepr.int TypeRepr.int))))
 
 let unixlabels_write = TypeScheme.of_type
-  (arrow unix_file_descr_type
+  (arrow
+    unix_file_descr_type
     (arrow
       ~label:(TypeRepr.Labelled "buf")
       bytes_type
-      (arrow ~label:(TypeRepr.Labelled "pos") TypeRepr.int (arrow ~label:(TypeRepr.Labelled "len") TypeRepr.int TypeRepr.int))))
+      (arrow
+        ~label:(TypeRepr.Labelled "pos")
+        TypeRepr.int
+        (arrow ~label:(TypeRepr.Labelled "len") TypeRepr.int TypeRepr.int))))
 
-let stdlib_type_id_t element =
-  TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Type.Id.t") ~arguments:[ element ]
+let stdlib_type_id_t element = TypeRepr.named_path
+  ~name:(IdentPath.of_string "Stdlib.Type.Id.t")
+  ~arguments:[ element ]
 
 let effect_perform =
   let value = var 0 in
-  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Effect.t") ~arguments:[ value ]) value)
+  TypeScheme.of_explicit
+    ~quantified:[ 0 ]
+    (arrow (TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Effect.t") ~arguments:[ value ]) value)
 
 let type_id_make =
   let value = var 0 in
@@ -961,11 +1003,13 @@ let domain_dls_key_type_decl = abstract_type_decl
   ~param_variances:[ TypeDecl.Invariant ]
   ()
 
-let domain_t element =
-  TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Domain.t") ~arguments:[ element ]
+let domain_t element = TypeRepr.named_path
+  ~name:(IdentPath.of_string "Stdlib.Domain.t")
+  ~arguments:[ element ]
 
-let domain_dls_key_type element =
-  TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Domain.DLS.key") ~arguments:[ element ]
+let domain_dls_key_type element = TypeRepr.named_path
+  ~name:(IdentPath.of_string "Stdlib.Domain.DLS.key")
+  ~arguments:[ element ]
 
 let domain_spawn =
   let result = var 0 in
@@ -1008,11 +1052,7 @@ let stdlib_uchar_utf_decode_decl = abstract_type_decl
   ~type_name:"utf_decode"
   ()
 
-let uchar_t_decl = abstract_type_decl
-  ~scope_path:IdentPath.empty
-  ~path:"Uchar.t"
-  ~type_name:"t"
-  ()
+let uchar_t_decl = abstract_type_decl ~scope_path:IdentPath.empty ~path:"Uchar.t" ~type_name:"t" ()
 
 let stdlib_int32_t_decl = alias_type_decl
   ~scope_path:(IdentPath.of_name "Int32")
@@ -1032,11 +1072,7 @@ let stdlib_bytes_t_decl = alias_type_decl
   ~type_name:"t"
   bytes_type
 
-let bytes_t_decl = alias_type_decl
-  ~scope_path:IdentPath.empty
-  ~path:"Bytes.t"
-  ~type_name:"t"
-  bytes_type
+let bytes_t_decl = alias_type_decl ~scope_path:IdentPath.empty ~path:"Bytes.t" ~type_name:"t" bytes_type
 
 let stdlib_seq_t_decl =
   let element = var 0 in
@@ -1050,9 +1086,9 @@ let stdlib_seq_t_decl =
 
 let stdlib_seq_node_decl =
   let element = var 0 in
-  let node_type =
-    TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Seq.node") ~arguments:[ element ]
-  in
+  let node_type = TypeRepr.named_path
+    ~name:(IdentPath.of_string "Stdlib.Seq.node")
+    ~arguments:[ element ] in
   variant_type_decl_with_params
     ~scope_path:(IdentPath.of_name "Seq")
     ~path:"Stdlib.Seq.node"
@@ -1061,7 +1097,8 @@ let stdlib_seq_node_decl =
     ~param_variances:[ TypeDecl.Covariant ]
     [
       constructor "Nil" (TypeScheme.of_explicit ~quantified:[ 0 ] node_type);
-      constructor "Cons"
+      constructor
+        "Cons"
         (TypeScheme.of_explicit
           ~quantified:[ 0 ]
           (arrow element (arrow (TypeRepr.seq element) node_type)));
@@ -1073,11 +1110,7 @@ let stdlib_buffer_t_decl = abstract_type_decl
   ~type_name:"t"
   ()
 
-let buffer_t_decl = abstract_type_decl
-  ~scope_path:IdentPath.empty
-  ~path:"Buffer.t"
-  ~type_name:"t"
-  ()
+let buffer_t_decl = abstract_type_decl ~scope_path:IdentPath.empty ~path:"Buffer.t" ~type_name:"t" ()
 
 let stdlib_hashtbl_t_decl = abstract_type_decl
   ~scope_path:(IdentPath.of_string "Hashtbl")
@@ -1097,20 +1130,12 @@ let hashtbl_t_decl = abstract_type_decl
 
 let stdlib_fpclass_decl =
   let fpclass_type = named_path "Stdlib.fpclass" in
-  let ctor name =
-    constructor name (TypeScheme.of_type fpclass_type)
-  in
+  let ctor name = constructor name (TypeScheme.of_type fpclass_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Stdlib.fpclass"
     ~type_name:"fpclass"
-    [
-      ctor "FP_normal";
-      ctor "FP_subnormal";
-      ctor "FP_zero";
-      ctor "FP_infinite";
-      ctor "FP_nan";
-    ]
+    [ ctor "FP_normal"; ctor "FP_subnormal"; ctor "FP_zero"; ctor "FP_infinite"; ctor "FP_nan"; ]
 
 let stdlib_sys_signal_behavior_decl =
   let ctor name scheme = constructor name scheme in
@@ -1121,11 +1146,10 @@ let stdlib_sys_signal_behavior_decl =
     [
       ctor "Signal_default" (TypeScheme.of_type stdlib_sys_signal_behavior_type);
       ctor "Signal_ignore" (TypeScheme.of_type stdlib_sys_signal_behavior_type);
-      ctor "Signal_handle"
+      ctor
+        "Signal_handle"
         (TypeScheme.of_type
-          (arrow
-            (arrow TypeRepr.int TypeRepr.unit_)
-            stdlib_sys_signal_behavior_type));
+          (arrow (arrow TypeRepr.int TypeRepr.unit_) stdlib_sys_signal_behavior_type));
     ]
 
 let stdlib_effect_t_decl = abstract_type_decl
@@ -1138,13 +1162,9 @@ let stdlib_effect_t_decl = abstract_type_decl
 
 let stdlib_type_eq_decl =
   let left = var 0 in
-  let equal_scheme =
-    TypeScheme.of_explicit
-      ~quantified:[ 0 ]
-      (TypeRepr.named_path
-        ~name:(IdentPath.of_string "Stdlib.Type.eq")
-        ~arguments:[ left; left ])
-  in
+  let equal_scheme = TypeScheme.of_explicit
+    ~quantified:[ 0 ]
+    (TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Type.eq") ~arguments:[ left; left ]) in
   variant_type_decl_with_params
     ~scope_path:(IdentPath.of_string "Type")
     ~path:"Stdlib.Type.eq"
@@ -1174,9 +1194,7 @@ let unix_file_descr_decl = abstract_type_decl
   ()
 
 let unix_open_flag_decl =
-  let flag name =
-    constructor name (TypeScheme.of_type unix_open_flag_type)
-  in
+  let flag name = constructor name (TypeScheme.of_type unix_open_flag_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.open_flag"
@@ -1192,13 +1210,8 @@ let unix_open_flag_decl =
     ]
 
 let unix_error_decl =
-  let err name =
-    constructor name (TypeScheme.of_type unix_error_type)
-  in
-  variant_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.error"
-    ~type_name:"error"
+  let err name = constructor name (TypeScheme.of_type unix_error_type) in
+  variant_type_decl ~scope_path:IdentPath.empty ~path:"Unix.error" ~type_name:"error"
     [
       err "E2BIG";
       err "EACCES";
@@ -1264,9 +1277,7 @@ let unix_error_decl =
     ]
 
 let unix_file_kind_decl =
-  let kind name =
-    constructor name (TypeScheme.of_type unix_file_kind_type)
-  in
+  let kind name = constructor name (TypeScheme.of_type unix_file_kind_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.file_kind"
@@ -1281,44 +1292,32 @@ let unix_file_kind_decl =
       kind "S_SOCK";
     ]
 
-let unix_stats_decl =
-  record_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.stats"
-    ~type_name:"stats"
-    [
-      label "st_dev" TypeRepr.int;
-      label "st_ino" TypeRepr.int;
-      label "st_kind" unix_file_kind_type;
-      label "st_perm" TypeRepr.int;
-      label "st_nlink" TypeRepr.int;
-      label "st_uid" TypeRepr.int;
-      label "st_gid" TypeRepr.int;
-      label "st_rdev" TypeRepr.int;
-      label "st_size" TypeRepr.int;
-      label "st_atime" TypeRepr.float;
-      label "st_mtime" TypeRepr.float;
-      label "st_ctime" TypeRepr.float;
-    ]
+let unix_stats_decl = record_type_decl ~scope_path:IdentPath.empty ~path:"Unix.stats" ~type_name:"stats"
+  [
+    label "st_dev" TypeRepr.int;
+    label "st_ino" TypeRepr.int;
+    label "st_kind" unix_file_kind_type;
+    label "st_perm" TypeRepr.int;
+    label "st_nlink" TypeRepr.int;
+    label "st_uid" TypeRepr.int;
+    label "st_gid" TypeRepr.int;
+    label "st_rdev" TypeRepr.int;
+    label "st_size" TypeRepr.int;
+    label "st_atime" TypeRepr.float;
+    label "st_mtime" TypeRepr.float;
+    label "st_ctime" TypeRepr.float;
+  ]
 
 let unix_seek_command_decl =
-  let command name =
-    constructor name (TypeScheme.of_type unix_seek_command_type)
-  in
+  let command name = constructor name (TypeScheme.of_type unix_seek_command_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.seek_command"
     ~type_name:"seek_command"
-    [
-      command "SEEK_SET";
-      command "SEEK_CUR";
-      command "SEEK_END";
-    ]
+    [ command "SEEK_SET"; command "SEEK_CUR"; command "SEEK_END"; ]
 
 let unix_lock_command_decl =
-  let command name =
-    constructor name (TypeScheme.of_type unix_lock_command_type)
-  in
+  let command name = constructor name (TypeScheme.of_type unix_lock_command_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.lock_command"
@@ -1332,56 +1331,39 @@ let unix_lock_command_decl =
       command "F_TRLOCK";
     ]
 
-let unix_process_status_decl =
-  variant_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.process_status"
-    ~type_name:"process_status"
-    [
-      constructor "WEXITED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
-      constructor "WSIGNALED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
-      constructor "WSTOPPED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
-    ]
+let unix_process_status_decl = variant_type_decl
+  ~scope_path:IdentPath.empty
+  ~path:"Unix.process_status"
+  ~type_name:"process_status"
+  [
+    constructor "WEXITED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
+    constructor "WSIGNALED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
+    constructor "WSTOPPED" (TypeScheme.of_type (arrow TypeRepr.int unix_process_status_type));
+  ]
 
 let unix_wait_flag_decl =
-  let flag name =
-    constructor name (TypeScheme.of_type unix_wait_flag_type)
-  in
+  let flag name = constructor name (TypeScheme.of_type unix_wait_flag_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.wait_flag"
     ~type_name:"wait_flag"
-    [
-      flag "WNOHANG";
-      flag "WUNTRACED";
-    ]
+    [ flag "WNOHANG"; flag "WUNTRACED"; ]
 
 let unix_socket_domain_decl =
-  let domain name =
-    constructor name (TypeScheme.of_type unix_socket_domain_type)
-  in
+  let domain name = constructor name (TypeScheme.of_type unix_socket_domain_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.socket_domain"
     ~type_name:"socket_domain"
-    [
-      domain "PF_UNIX";
-      domain "PF_INET";
-      domain "PF_INET6";
-    ]
+    [ domain "PF_UNIX"; domain "PF_INET"; domain "PF_INET6"; ]
 
 let unix_socket_type_decl =
-  let socket_type name =
-    constructor name (TypeScheme.of_type unix_socket_type_type)
-  in
+  let socket_type name = constructor name (TypeScheme.of_type unix_socket_type_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.socket_type"
     ~type_name:"socket_type"
-    [
-      socket_type "SOCK_STREAM";
-      socket_type "SOCK_DGRAM";
-    ]
+    [ socket_type "SOCK_STREAM"; socket_type "SOCK_DGRAM"; ]
 
 let unix_inet_addr_decl = abstract_type_decl
   ~scope_path:IdentPath.empty
@@ -1389,56 +1371,44 @@ let unix_inet_addr_decl = abstract_type_decl
   ~type_name:"inet_addr"
   ()
 
-let unix_sockaddr_decl =
-  variant_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.sockaddr"
-    ~type_name:"sockaddr"
-    [
-      constructor "ADDR_UNIX" (TypeScheme.of_type (arrow TypeRepr.string unix_sockaddr_type));
-      constructor "ADDR_INET"
-        (TypeScheme.of_type (arrow (TypeRepr.tuple [ unix_inet_addr_type; TypeRepr.int ]) unix_sockaddr_type));
-    ]
+let unix_sockaddr_decl = variant_type_decl
+  ~scope_path:IdentPath.empty
+  ~path:"Unix.sockaddr"
+  ~type_name:"sockaddr"
+  [
+    constructor "ADDR_UNIX" (TypeScheme.of_type (arrow TypeRepr.string unix_sockaddr_type));
+    constructor
+      "ADDR_INET"
+      (TypeScheme.of_type
+        (arrow (TypeRepr.tuple [ unix_inet_addr_type; TypeRepr.int ]) unix_sockaddr_type));
+  ]
 
-let unix_addr_info_decl =
-  record_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.addr_info"
-    ~type_name:"addr_info"
-    [
-      label "ai_family" unix_socket_domain_type;
-      label "ai_socktype" unix_socket_type_type;
-      label "ai_protocol" TypeRepr.int;
-      label "ai_addr" unix_sockaddr_type;
-    ]
+let unix_addr_info_decl = record_type_decl
+  ~scope_path:IdentPath.empty
+  ~path:"Unix.addr_info"
+  ~type_name:"addr_info"
+  [
+    label "ai_family" unix_socket_domain_type;
+    label "ai_socktype" unix_socket_type_type;
+    label "ai_protocol" TypeRepr.int;
+    label "ai_addr" unix_sockaddr_type;
+  ]
 
 let unix_setattr_when_decl =
-  let when_ name =
-    constructor name (TypeScheme.of_type unix_setattr_when_type)
-  in
+  let when_ name = constructor name (TypeScheme.of_type unix_setattr_when_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.setattr_when"
     ~type_name:"setattr_when"
-    [
-      when_ "TCSANOW";
-      when_ "TCSADRAIN";
-      when_ "TCSAFLUSH";
-    ]
+    [ when_ "TCSANOW"; when_ "TCSADRAIN"; when_ "TCSAFLUSH"; ]
 
 let unix_socket_bool_option_decl =
-  let option name =
-    constructor name (TypeScheme.of_type unix_socket_bool_option_type)
-  in
+  let option name = constructor name (TypeScheme.of_type unix_socket_bool_option_type) in
   variant_type_decl
     ~scope_path:IdentPath.empty
     ~path:"Unix.socket_bool_option"
     ~type_name:"socket_bool_option"
-    [
-      option "SO_REUSEADDR";
-      option "SO_REUSEPORT";
-      option "TCP_NODELAY";
-    ]
+    [ option "SO_REUSEADDR"; option "SO_REUSEPORT"; option "TCP_NODELAY"; ]
 
 let unix_msg_flag_decl = abstract_type_decl
   ~scope_path:IdentPath.empty
@@ -1452,51 +1422,47 @@ let unix_getaddrinfo_option_decl = abstract_type_decl
   ~type_name:"getaddrinfo_option"
   ()
 
-let unix_terminal_io_decl =
-  record_type_decl
-    ~scope_path:IdentPath.empty
-    ~path:"Unix.terminal_io"
-    ~type_name:"terminal_io"
-    [
-      label ~mutable_:true "c_ignbrk" TypeRepr.bool;
-      label ~mutable_:true "c_brkint" TypeRepr.bool;
-      label ~mutable_:true "c_ignpar" TypeRepr.bool;
-      label ~mutable_:true "c_parmrk" TypeRepr.bool;
-      label ~mutable_:true "c_inpck" TypeRepr.bool;
-      label ~mutable_:true "c_istrip" TypeRepr.bool;
-      label ~mutable_:true "c_inlcr" TypeRepr.bool;
-      label ~mutable_:true "c_igncr" TypeRepr.bool;
-      label ~mutable_:true "c_icrnl" TypeRepr.bool;
-      label ~mutable_:true "c_ixon" TypeRepr.bool;
-      label ~mutable_:true "c_ixoff" TypeRepr.bool;
-      label ~mutable_:true "c_opost" TypeRepr.bool;
-      label ~mutable_:true "c_obaud" TypeRepr.int;
-      label ~mutable_:true "c_ibaud" TypeRepr.int;
-      label ~mutable_:true "c_csize" TypeRepr.int;
-      label ~mutable_:true "c_cstopb" TypeRepr.int;
-      label ~mutable_:true "c_cread" TypeRepr.bool;
-      label ~mutable_:true "c_parenb" TypeRepr.bool;
-      label ~mutable_:true "c_parodd" TypeRepr.bool;
-      label ~mutable_:true "c_hupcl" TypeRepr.bool;
-      label ~mutable_:true "c_clocal" TypeRepr.bool;
-      label ~mutable_:true "c_isig" TypeRepr.bool;
-      label ~mutable_:true "c_icanon" TypeRepr.bool;
-      label ~mutable_:true "c_noflsh" TypeRepr.bool;
-      label ~mutable_:true "c_echo" TypeRepr.bool;
-      label ~mutable_:true "c_echoe" TypeRepr.bool;
-      label ~mutable_:true "c_echok" TypeRepr.bool;
-      label ~mutable_:true "c_echonl" TypeRepr.bool;
-      label ~mutable_:true "c_vintr" TypeRepr.char;
-      label ~mutable_:true "c_vquit" TypeRepr.char;
-      label ~mutable_:true "c_verase" TypeRepr.char;
-      label ~mutable_:true "c_vkill" TypeRepr.char;
-      label ~mutable_:true "c_veof" TypeRepr.char;
-      label ~mutable_:true "c_veol" TypeRepr.char;
-      label ~mutable_:true "c_vmin" TypeRepr.int;
-      label ~mutable_:true "c_vtime" TypeRepr.int;
-      label ~mutable_:true "c_vstart" TypeRepr.char;
-      label ~mutable_:true "c_vstop" TypeRepr.char;
-    ]
+let unix_terminal_io_decl = record_type_decl ~scope_path:IdentPath.empty ~path:"Unix.terminal_io" ~type_name:"terminal_io"
+  [
+    label ~mutable_:true "c_ignbrk" TypeRepr.bool;
+    label ~mutable_:true "c_brkint" TypeRepr.bool;
+    label ~mutable_:true "c_ignpar" TypeRepr.bool;
+    label ~mutable_:true "c_parmrk" TypeRepr.bool;
+    label ~mutable_:true "c_inpck" TypeRepr.bool;
+    label ~mutable_:true "c_istrip" TypeRepr.bool;
+    label ~mutable_:true "c_inlcr" TypeRepr.bool;
+    label ~mutable_:true "c_igncr" TypeRepr.bool;
+    label ~mutable_:true "c_icrnl" TypeRepr.bool;
+    label ~mutable_:true "c_ixon" TypeRepr.bool;
+    label ~mutable_:true "c_ixoff" TypeRepr.bool;
+    label ~mutable_:true "c_opost" TypeRepr.bool;
+    label ~mutable_:true "c_obaud" TypeRepr.int;
+    label ~mutable_:true "c_ibaud" TypeRepr.int;
+    label ~mutable_:true "c_csize" TypeRepr.int;
+    label ~mutable_:true "c_cstopb" TypeRepr.int;
+    label ~mutable_:true "c_cread" TypeRepr.bool;
+    label ~mutable_:true "c_parenb" TypeRepr.bool;
+    label ~mutable_:true "c_parodd" TypeRepr.bool;
+    label ~mutable_:true "c_hupcl" TypeRepr.bool;
+    label ~mutable_:true "c_clocal" TypeRepr.bool;
+    label ~mutable_:true "c_isig" TypeRepr.bool;
+    label ~mutable_:true "c_icanon" TypeRepr.bool;
+    label ~mutable_:true "c_noflsh" TypeRepr.bool;
+    label ~mutable_:true "c_echo" TypeRepr.bool;
+    label ~mutable_:true "c_echoe" TypeRepr.bool;
+    label ~mutable_:true "c_echok" TypeRepr.bool;
+    label ~mutable_:true "c_echonl" TypeRepr.bool;
+    label ~mutable_:true "c_vintr" TypeRepr.char;
+    label ~mutable_:true "c_vquit" TypeRepr.char;
+    label ~mutable_:true "c_verase" TypeRepr.char;
+    label ~mutable_:true "c_vkill" TypeRepr.char;
+    label ~mutable_:true "c_veof" TypeRepr.char;
+    label ~mutable_:true "c_veol" TypeRepr.char;
+    label ~mutable_:true "c_vmin" TypeRepr.int;
+    label ~mutable_:true "c_vtime" TypeRepr.int;
+    label ~mutable_:true "c_vstart" TypeRepr.char;
+    label ~mutable_:true "c_vstop" TypeRepr.char;
+  ]
 
 let stdlib_array_exports = [
   ("blit", polymorphic_array_blit);
@@ -1507,7 +1473,10 @@ let stdlib_array_exports = [
   ("make", polymorphic_array_make);
   ("of_list", polymorphic_array_of_list);
   ("set", polymorphic_array_set);
-  ("to_list", TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (TypeRepr.array (var 0)) (TypeRepr.list (var 0))));
+  (
+    "to_list",
+    TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (TypeRepr.array (var 0)) (TypeRepr.list (var 0)))
+  );
   ("unsafe_get", polymorphic_array_get);
   ("unsafe_set", polymorphic_array_set);
 ]
@@ -1547,32 +1516,26 @@ let stdlib_string_exports = [
 let stdlib_list_exports = [
   ("filter_map", polymorphic_list_filter_map);
   ("for_all", polymorphic_list_for_all);
-  ("iter", TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (arrow (var 0) TypeRepr.unit_) (arrow (TypeRepr.list (var 0)) TypeRepr.unit_)));
+  (
+    "iter",
+    TypeScheme.of_explicit
+      ~quantified:[ 0 ]
+      (arrow (arrow (var 0) TypeRepr.unit_) (arrow (TypeRepr.list (var 0)) TypeRepr.unit_))
+  );
   ("map", polymorphic_list_map);
   ("of_seq", polymorphic_list_of_seq);
   ("rev", polymorphic_list_rev);
 ]
 
-let stdlib_printexc_exports = [
-  ("to_string", printexc_to_string);
-]
+let stdlib_printexc_exports = [ ("to_string", printexc_to_string); ]
 
-let stdlib_seq_exports = [
-  ("of_list", polymorphic_seq_of_list);
-]
+let stdlib_seq_exports = [ ("of_list", polymorphic_seq_of_list); ]
 
-let stdlib_int_exports = [
-  ("of_string", int_of_string);
-  ("to_string", int_to_string);
-]
+let stdlib_int_exports = [ ("of_string", int_of_string); ("to_string", int_to_string); ]
 
-let stdlib_bool_exports = [
-  ("to_string", stdlib_bool_to_string);
-]
+let stdlib_bool_exports = [ ("to_string", stdlib_bool_to_string); ]
 
-let stdlib_char_exports = [
-  ("code", stdlib_char_code);
-]
+let stdlib_char_exports = [ ("code", stdlib_char_code); ]
 
 let stdlib_int32_exports = [
   ("abs", int32_unop);
@@ -1677,9 +1640,7 @@ let stdlib_bytes_exports = [
   ("unsafe_of_string", bytes_of_string);
 ]
 
-let stdlib_fun_exports = [
-  ("protect", fun_protect);
-]
+let stdlib_fun_exports = [ ("protect", fun_protect); ]
 
 let stdlib_sys_exports = [
   ("Break", TypeScheme.of_type exn_type);
@@ -1758,9 +1719,7 @@ let stdlib_domain_dls_exports = [
   ("set", domain_dls_set);
 ]
 
-let stdlib_effect_exports = [
-  ("perform", effect_perform);
-]
+let stdlib_effect_exports = [ ("perform", effect_perform); ]
 
 let stdlib_random_exports = [
   ("bits", stdlib_random_bits);
@@ -1804,10 +1763,7 @@ let stdlib_random_state_exports = [
   ("to_binary_string", stdlib_random_state_to_binary_string);
 ]
 
-let stdlib_type_id_exports = [
-  ("make", type_id_make);
-  ("uid", type_id_uid);
-]
+let stdlib_type_id_exports = [ ("make", type_id_make); ("uid", type_id_uid); ]
 
 let stdlib_uchar_exports = [
   ("bom", stdlib_uchar_value);
@@ -1854,13 +1810,14 @@ let hashtbl_exports = [
   ("seeded_hash", polymorphic_seeded_hash);
 ]
 
-let obj_exports = [
-  ("magic", polymorphic_obj_magic);
-]
+let obj_exports = [ ("magic", polymorphic_obj_magic); ]
 
 let unix_exports = [
-  ("Unix_error", TypeScheme.of_type
-    (arrow (TypeRepr.tuple [ unix_error_type; TypeRepr.string; TypeRepr.string ]) exn_type));
+  (
+    "Unix_error",
+    TypeScheme.of_type
+      (arrow (TypeRepr.tuple [ unix_error_type; TypeRepr.string; TypeRepr.string ]) exn_type)
+  );
   ("accept", unix_accept);
   ("chdir", TypeScheme.of_type (arrow TypeRepr.string TypeRepr.unit_));
   ("bind", unix_bind);
@@ -1872,8 +1829,11 @@ let unix_exports = [
   ("dup", unix_dup);
   ("environment", TypeScheme.of_type (arrow TypeRepr.unit_ (TypeRepr.array TypeRepr.string)));
   ("error_message", unix_error_message);
-  ("execv", TypeScheme.of_type
-    (arrow TypeRepr.string (arrow (TypeRepr.array TypeRepr.string) TypeRepr.unit_)));
+  (
+    "execv",
+    TypeScheme.of_type
+      (arrow TypeRepr.string (arrow (TypeRepr.array TypeRepr.string) TypeRepr.unit_))
+  );
   ("fchmod", unix_fchmod);
   ("fstat", unix_fstat);
   ("fsync", unix_fsync);
@@ -1891,9 +1851,18 @@ let unix_exports = [
   ("lseek", unix_lseek);
   ("lstat", unix_lstat);
   ("mkdir", unix_mkdir);
-  ("openfile", TypeScheme.of_type
-    (arrow TypeRepr.string (arrow (TypeRepr.list unix_open_flag_type) (arrow TypeRepr.int unix_file_descr_type))));
-  ("pipe", TypeScheme.of_type (arrow TypeRepr.unit_ (TypeRepr.tuple [ unix_file_descr_type; unix_file_descr_type ])));
+  (
+    "openfile",
+    TypeScheme.of_type
+      (arrow
+        TypeRepr.string
+        (arrow (TypeRepr.list unix_open_flag_type) (arrow TypeRepr.int unix_file_descr_type)))
+  );
+  (
+    "pipe",
+    TypeScheme.of_type
+      (arrow TypeRepr.unit_ (TypeRepr.tuple [ unix_file_descr_type; unix_file_descr_type ]))
+  );
   ("putenv", TypeScheme.of_type (arrow TypeRepr.string (arrow TypeRepr.string TypeRepr.unit_)));
   ("read", unix_read);
   ("readlink", unix_readlink);
@@ -1920,10 +1889,7 @@ let unix_exports = [
   ("waitpid", unix_waitpid);
 ]
 
-let unixlabels_exports = [
-  ("read", unixlabels_read);
-  ("write", unixlabels_write);
-]
+let unixlabels_exports = [ ("read", unixlabels_read); ("write", unixlabels_write); ]
 
 let stdlib_root_exports = [
   ("&&", TypeScheme.of_type (arrow TypeRepr.bool (arrow TypeRepr.bool TypeRepr.bool)));
@@ -1970,9 +1936,15 @@ let stdlib_root_exports = [
   ("float", TypeScheme.of_type (arrow TypeRepr.int TypeRepr.float));
   ("float_of_int", float_of_int);
   ("float_of_string", TypeScheme.of_type (arrow TypeRepr.string TypeRepr.float));
-  ("float_of_string_opt", TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option TypeRepr.float)));
+  (
+    "float_of_string_opt",
+    TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option TypeRepr.float))
+  );
   ("floor", float_unop);
-  ("frexp", TypeScheme.of_type (arrow TypeRepr.float (TypeRepr.tuple [ TypeRepr.float; TypeRepr.int ])));
+  (
+    "frexp",
+    TypeScheme.of_type (arrow TypeRepr.float (TypeRepr.tuple [ TypeRepr.float; TypeRepr.int ]))
+  );
   ("fst", polymorphic_fst);
   ("ignore", polymorphic_ignore);
   ("infinity", TypeScheme.of_type TypeRepr.float);
@@ -1998,7 +1970,10 @@ let stdlib_root_exports = [
   ("min_int", TypeScheme.of_type TypeRepr.int);
   ("mod_float", float_binop);
   ("mod", int_binop);
-  ("modf", TypeScheme.of_type (arrow TypeRepr.float (TypeRepr.tuple [ TypeRepr.float; TypeRepr.float ])));
+  (
+    "modf",
+    TypeScheme.of_type (arrow TypeRepr.float (TypeRepr.tuple [ TypeRepr.float; TypeRepr.float ]))
+  );
   ("nan", TypeScheme.of_type TypeRepr.float);
   ("neg_infinity", TypeScheme.of_type TypeRepr.float);
   ("not", TypeScheme.of_type (arrow TypeRepr.bool TypeRepr.bool));
@@ -2024,104 +1999,109 @@ let stdlib_root_exports = [
   ("~-.", float_unop);
 ]
 
-let summaries = [
-  (
-    "Stdlib",
-    stdlib_root_exports
-    @ prefix_exports "Array" stdlib_array_exports
-    @ prefix_exports "Bool" stdlib_bool_exports
-    @ prefix_exports "Buffer" stdlib_buffer_exports
-    @ prefix_exports "Bytes" stdlib_bytes_exports
-    @ prefix_exports "Char" stdlib_char_exports
-    @ prefix_exports "Domain" stdlib_domain_exports
-    @ prefix_exports "Domain.DLS" stdlib_domain_dls_exports
-    @ prefix_exports "Effect" stdlib_effect_exports
-    @ prefix_exports "Filename" stdlib_filename_exports
-    @ prefix_exports "Float" stdlib_float_exports
-    @ prefix_exports "Fun" stdlib_fun_exports
-    @ prefix_exports "Hashtbl" hashtbl_exports
-    @ prefix_exports "Int" stdlib_int_exports
-    @ prefix_exports "Int32" stdlib_int32_exports
-    @ prefix_exports "Int64" stdlib_int64_exports
-    @ prefix_exports "List" stdlib_list_exports
-    @ prefix_exports "Random" stdlib_random_exports
-    @ prefix_exports "Random.State" stdlib_random_state_exports
-    @ prefix_exports "Seq" stdlib_seq_exports
-    @ prefix_exports "Obj" obj_exports
-    @ prefix_exports "Printexc" stdlib_printexc_exports
-    @ prefix_exports "String" stdlib_string_exports
-    @ prefix_exports "Sys" stdlib_sys_exports
-    @ prefix_exports "Type.Id" stdlib_type_id_exports
-    @ prefix_exports "Uchar" stdlib_uchar_exports,
-    [
-      domain_dls_key_type_decl;
-      domain_type_decl;
-      stdlib_effect_t_decl;
-      stdlib_buffer_t_decl;
-      stdlib_bytes_t_decl;
-      stdlib_fpclass_decl;
-      stdlib_hashtbl_t_decl;
-      stdlib_int32_t_decl;
-      stdlib_int64_t_decl;
-      stdlib_random_state_t_decl;
-      stdlib_seq_node_decl;
-      stdlib_seq_t_decl;
-      stdlib_sys_signal_behavior_decl;
-      stdlib_type_eq_decl;
-      stdlib_type_id_decl;
-      stdlib_uchar_t_decl;
-      stdlib_uchar_utf_decode_decl;
-    ]
-  );
-  ("Array", stdlib_array_exports, []);
-  ("Buffer", [
-    ("add_bytes", buffer_add_bytes);
-    ("add_char", buffer_add_char);
-    ("add_string", buffer_add_string);
-    ("add_utf_8_uchar", buffer_add_utf_8_uchar);
-    ("contents", buffer_contents);
-    ("create", buffer_create);
-  ], [ buffer_t_decl ]);
-  ("Bytes", bytes_exports, [ bytes_t_decl ]);
-  ("Dynlink", [], []);
-  ("Float", stdlib_float_exports, []);
-  ("Hashtbl", hashtbl_exports, [ hashtbl_t_decl ]);
-  ("Int", stdlib_int_exports, []);
-  ("List", stdlib_list_exports, []);
-  ("Obj", obj_exports, []);
-  ("Printexc", stdlib_printexc_exports, []);
-  ("String", stdlib_string_exports, []);
-  (
-    "Unix",
-    unix_exports,
-    [
-      unix_addr_info_decl;
-      unix_error_decl;
-      unix_file_descr_decl;
-      unix_file_kind_decl;
-      unix_getaddrinfo_option_decl;
-      unix_inet_addr_decl;
-      unix_lock_command_decl;
-      unix_msg_flag_decl;
-      unix_open_flag_decl;
-      unix_process_status_decl;
-      unix_seek_command_decl;
-      unix_setattr_when_decl;
-      unix_socket_bool_option_decl;
-      unix_socket_domain_decl;
-      unix_socket_type_decl;
-      unix_sockaddr_decl;
-      unix_stats_decl;
-      unix_terminal_io_decl;
-      unix_wait_flag_decl;
-    ]
-  );
-  ("UnixLabels", unixlabels_exports, []);
-]
-|> List.mapi
-  (fun index (module_name, exports, type_decls) ->
-    module_typings
-      ~source_id:(SourceId.of_int (ocaml_stdlib_module_source_id_base - index))
-      ~module_name
-      ~type_decls
-      exports)
+let summaries =
+  [
+    (
+      "Stdlib",
+      stdlib_root_exports
+      @ prefix_exports "Array" stdlib_array_exports
+      @ prefix_exports "Bool" stdlib_bool_exports
+      @ prefix_exports "Buffer" stdlib_buffer_exports
+      @ prefix_exports "Bytes" stdlib_bytes_exports
+      @ prefix_exports "Char" stdlib_char_exports
+      @ prefix_exports "Domain" stdlib_domain_exports
+      @ prefix_exports "Domain.DLS" stdlib_domain_dls_exports
+      @ prefix_exports "Effect" stdlib_effect_exports
+      @ prefix_exports "Filename" stdlib_filename_exports
+      @ prefix_exports "Float" stdlib_float_exports
+      @ prefix_exports "Fun" stdlib_fun_exports
+      @ prefix_exports "Hashtbl" hashtbl_exports
+      @ prefix_exports "Int" stdlib_int_exports
+      @ prefix_exports "Int32" stdlib_int32_exports
+      @ prefix_exports "Int64" stdlib_int64_exports
+      @ prefix_exports "List" stdlib_list_exports
+      @ prefix_exports "Random" stdlib_random_exports
+      @ prefix_exports "Random.State" stdlib_random_state_exports
+      @ prefix_exports "Seq" stdlib_seq_exports
+      @ prefix_exports "Obj" obj_exports
+      @ prefix_exports "Printexc" stdlib_printexc_exports
+      @ prefix_exports "String" stdlib_string_exports
+      @ prefix_exports "Sys" stdlib_sys_exports
+      @ prefix_exports "Type.Id" stdlib_type_id_exports
+      @ prefix_exports "Uchar" stdlib_uchar_exports,
+      [
+        domain_dls_key_type_decl;
+        domain_type_decl;
+        stdlib_effect_t_decl;
+        stdlib_buffer_t_decl;
+        stdlib_bytes_t_decl;
+        stdlib_fpclass_decl;
+        stdlib_hashtbl_t_decl;
+        stdlib_int32_t_decl;
+        stdlib_int64_t_decl;
+        stdlib_random_state_t_decl;
+        stdlib_seq_node_decl;
+        stdlib_seq_t_decl;
+        stdlib_sys_signal_behavior_decl;
+        stdlib_type_eq_decl;
+        stdlib_type_id_decl;
+        stdlib_uchar_t_decl;
+        stdlib_uchar_utf_decode_decl;
+      ]
+    );
+    ("Array", stdlib_array_exports, []);
+    (
+      "Buffer",
+      [
+        ("add_bytes", buffer_add_bytes);
+        ("add_char", buffer_add_char);
+        ("add_string", buffer_add_string);
+        ("add_utf_8_uchar", buffer_add_utf_8_uchar);
+        ("contents", buffer_contents);
+        ("create", buffer_create);
+      ],
+      [ buffer_t_decl ]
+    );
+    ("Bytes", bytes_exports, [ bytes_t_decl ]);
+    ("Dynlink", [], []);
+    ("Float", stdlib_float_exports, []);
+    ("Hashtbl", hashtbl_exports, [ hashtbl_t_decl ]);
+    ("Int", stdlib_int_exports, []);
+    ("List", stdlib_list_exports, []);
+    ("Obj", obj_exports, []);
+    ("Printexc", stdlib_printexc_exports, []);
+    ("String", stdlib_string_exports, []);
+    (
+      "Unix",
+      unix_exports,
+      [
+        unix_addr_info_decl;
+        unix_error_decl;
+        unix_file_descr_decl;
+        unix_file_kind_decl;
+        unix_getaddrinfo_option_decl;
+        unix_inet_addr_decl;
+        unix_lock_command_decl;
+        unix_msg_flag_decl;
+        unix_open_flag_decl;
+        unix_process_status_decl;
+        unix_seek_command_decl;
+        unix_setattr_when_decl;
+        unix_socket_bool_option_decl;
+        unix_socket_domain_decl;
+        unix_socket_type_decl;
+        unix_sockaddr_decl;
+        unix_stats_decl;
+        unix_terminal_io_decl;
+        unix_wait_flag_decl;
+      ]
+    );
+    ("UnixLabels", unixlabels_exports, []);
+  ]
+  |> List.mapi
+    (fun index (module_name, exports, type_decls) ->
+      module_typings
+        ~source_id:(SourceId.of_int (ocaml_stdlib_module_source_id_base - index))
+        ~module_name
+        ~type_decls
+        exports)

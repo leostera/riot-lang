@@ -124,17 +124,19 @@ let canonicalize_type_for_persistence = fun by_path ->
                 TypeRepr.named ~head ~arguments:arguments'
         )
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' = map_preserving
-          (fun (tag: TypeRepr.poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type ->
-                let payload_type' = loop payload_type in
-                if Std.Ptr.equal payload_type payload_type' then
-                  tag
-                else
-                  { tag with payload_type = Some payload_type' }
-            | None -> tag)
-          tags in
+        let tags' =
+          map_preserving
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  let payload_type' = loop payload_type in
+                  if Std.Ptr.equal payload_type payload_type' then
+                    tag
+                  else
+                    { tag with payload_type = Some payload_type' }
+              | None -> tag)
+            tags
+        in
         let inherited' = map_preserving loop inherited in
         if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
           ty
@@ -226,25 +228,51 @@ let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:(FileSummary.TrustedExport { exports })
     ~type_decls in
-  { module_name; source_hash; export_result; type_decls; value_definitions }
+  {
+    module_name;
+    source_hash;
+    export_result;
+    type_decls;
+    value_definitions;
+  }
 
 let errored = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:(FileSummary.ErroredExport { exports })
     ~type_decls in
-  { module_name; source_hash; export_result; type_decls; value_definitions }
+  {
+    module_name;
+    source_hash;
+    export_result;
+    type_decls;
+    value_definitions;
+  }
 
 let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) () ->
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:FileSummary.NoExport
     ~type_decls in
-  { module_name; source_hash; export_result; type_decls; value_definitions }
+  {
+    module_name;
+    source_hash;
+    export_result;
+    type_decls;
+    value_definitions;
+  }
 
-let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (summary: FileSummary.t) ->
+let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
+  summary: FileSummary.t
+) ->
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:summary.export_result
     ~type_decls:summary.type_decls in
-  { module_name; source_hash; export_result; type_decls; value_definitions }
+  {
+    module_name;
+    source_hash;
+    export_result;
+    type_decls;
+    value_definitions;
+  }
 
 let to_file_summary = fun ~source_id summary ->
   { FileSummary.source_id; export_result = summary.export_result; type_decls = summary.type_decls }
@@ -315,8 +343,10 @@ let span_of_json = fun json ->
               | Ok end_ -> Ok (Syn.Ceibo.Span.make ~start ~end_)
             )
         )
-      | None, _ -> Error "missing field start"
-      | _, None -> Error "missing field end"
+      | None, _ ->
+          Error "missing field start"
+      | _, None ->
+          Error "missing field end"
     )
 
 let field = fun name fields ->
@@ -342,39 +372,39 @@ let label_to_json = function
 
 let rec type_to_json = fun ty ->
   match TypeRepr.view (TypeRepr.prune ty) with
-  | TypeRepr.Int -> Data.Json.Object [ ("tag", Data.Json.String "int") ]
-  | TypeRepr.Float -> Data.Json.Object [ ("tag", Data.Json.String "float") ]
-  | TypeRepr.Bool -> Data.Json.Object [ ("tag", Data.Json.String "bool") ]
-  | TypeRepr.String -> Data.Json.Object [ ("tag", Data.Json.String "string") ]
-  | TypeRepr.Char -> Data.Json.Object [ ("tag", Data.Json.String "char") ]
-  | TypeRepr.Unit -> Data.Json.Object [ ("tag", Data.Json.String "unit") ]
-  | TypeRepr.Option element -> Data.Json.Object [
-    ("tag", Data.Json.String "option");
-    ("element", type_to_json element);
-  ]
-  | TypeRepr.Result (ok_ty, error_ty) -> Data.Json.Object [
-    ("tag", Data.Json.String "result");
-    ("ok", type_to_json ok_ty);
-    ("error", type_to_json error_ty);
-  ]
-  | TypeRepr.Array element -> Data.Json.Object [
-    ("tag", Data.Json.String "array");
-    ("element", type_to_json element);
-  ]
-  | TypeRepr.List element -> Data.Json.Object [
-    ("tag", Data.Json.String "list");
-    ("element", type_to_json element);
-  ]
-  | TypeRepr.Seq element -> Data.Json.Object [
-    ("tag", Data.Json.String "seq");
-    ("element", type_to_json element);
-  ]
-  | TypeRepr.Named { head={ type_constructor_id; name }; arguments } -> Data.Json.Object [
-    ("tag", Data.Json.String "named");
-    ("type_constructor_id", TypeConstructorId.to_json type_constructor_id);
-    ("name", Data.Json.String (IdentPath.to_string name));
-    ("arguments", Data.Json.Array (List.map type_to_json arguments));
-  ]
+  | TypeRepr.Int ->
+      Data.Json.Object [ ("tag", Data.Json.String "int") ]
+  | TypeRepr.Float ->
+      Data.Json.Object [ ("tag", Data.Json.String "float") ]
+  | TypeRepr.Bool ->
+      Data.Json.Object [ ("tag", Data.Json.String "bool") ]
+  | TypeRepr.String ->
+      Data.Json.Object [ ("tag", Data.Json.String "string") ]
+  | TypeRepr.Char ->
+      Data.Json.Object [ ("tag", Data.Json.String "char") ]
+  | TypeRepr.Unit ->
+      Data.Json.Object [ ("tag", Data.Json.String "unit") ]
+  | TypeRepr.Option element ->
+      Data.Json.Object [ ("tag", Data.Json.String "option"); ("element", type_to_json element); ]
+  | TypeRepr.Result (ok_ty, error_ty) ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "result");
+        ("ok", type_to_json ok_ty);
+        ("error", type_to_json error_ty);
+      ]
+  | TypeRepr.Array element ->
+      Data.Json.Object [ ("tag", Data.Json.String "array"); ("element", type_to_json element); ]
+  | TypeRepr.List element ->
+      Data.Json.Object [ ("tag", Data.Json.String "list"); ("element", type_to_json element); ]
+  | TypeRepr.Seq element ->
+      Data.Json.Object [ ("tag", Data.Json.String "seq"); ("element", type_to_json element); ]
+  | TypeRepr.Named { head={ type_constructor_id; name }; arguments } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "named");
+        ("type_constructor_id", TypeConstructorId.to_json type_constructor_id);
+        ("name", Data.Json.String (IdentPath.to_string name));
+        ("arguments", Data.Json.Array (List.map type_to_json arguments));
+      ]
   | TypeRepr.PolyVariant { bound; tags; inherited } ->
       let bound =
         match bound with
@@ -397,25 +427,24 @@ let rec type_to_json = fun ty ->
         ("tags", Data.Json.Array (List.map tag_to_json tags));
         ("inherited", Data.Json.Array (List.map type_to_json inherited));
       ]
-  | TypeRepr.Tuple members -> Data.Json.Object [
-    ("tag", Data.Json.String "tuple");
-    ("members", Data.Json.Array (List.map type_to_json members));
-  ]
-  | TypeRepr.Arrow { label; lhs; rhs } -> Data.Json.Object [
-    ("tag", Data.Json.String "arrow");
-    ("label", label_to_json label);
-    ("lhs", type_to_json lhs);
-    ("rhs", type_to_json rhs);
-  ]
-  | TypeRepr.Var { id; link=None; _ } -> Data.Json.Object [
-    ("tag", Data.Json.String "var");
-    ("id", Data.Json.Int id);
-  ]
-  | TypeRepr.Var { link=Some linked; _ } -> type_to_json linked
-  | TypeRepr.Hole id -> Data.Json.Object [
-    ("tag", Data.Json.String "hole");
-    ("id", Data.Json.Int id);
-  ]
+  | TypeRepr.Tuple members ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "tuple");
+        ("members", Data.Json.Array (List.map type_to_json members));
+      ]
+  | TypeRepr.Arrow { label; lhs; rhs } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "arrow");
+        ("label", label_to_json label);
+        ("lhs", type_to_json lhs);
+        ("rhs", type_to_json rhs);
+      ]
+  | TypeRepr.Var { id; link=None; _ } ->
+      Data.Json.Object [ ("tag", Data.Json.String "var"); ("id", Data.Json.Int id); ]
+  | TypeRepr.Var { link=Some linked; _ } ->
+      type_to_json linked
+  | TypeRepr.Hole id ->
+      Data.Json.Object [ ("tag", Data.Json.String "hole"); ("id", Data.Json.Int id); ]
 
 let scheme_to_json = fun scheme ->
   let quantified, body = TypeScheme.to_explicit scheme in
@@ -451,7 +480,8 @@ let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   ] in
   let fields =
     match constructor.inline_record_labels with
-    | Some labels -> fields @ [ ("inline_record_labels", Data.Json.Array (List.map label_decl_to_json labels)) ]
+    | Some labels -> fields
+    @ [ ("inline_record_labels", Data.Json.Array (List.map label_decl_to_json labels)) ]
     | None -> fields
   in
   Data.Json.Object fields
@@ -533,10 +563,7 @@ let export_result_to_json = function
   ]
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
-  Data.Json.Object [
-    ("start", Data.Json.Int span.start);
-    ("end", Data.Json.Int span.end_);
-  ]
+  Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
 let source_origin_to_json = function
   | Source.Path path -> Data.Json.Object [
@@ -787,7 +814,7 @@ let constructor_of_json = fun json ->
     match List.assoc_opt "inline_record_labels" fields with
     | Some labels_json ->
         let* labels_json = get_array labels_json in
-        let parse_label_json = fun label_json ->
+        let parse_label_json label_json =
           let* fields = get_object label_json in
           let* label_id_json = field "label_id" fields in
           let* name_json = field "name" fields in
@@ -818,8 +845,9 @@ let constructor_of_json = fun json ->
       TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
       name;
       scheme;
-      inline_record_labels;
-    }: TypeDecl.constructor
+      inline_record_labels
+    }:
+      TypeDecl.constructor
   )
 
 let label_decl_of_json = fun json ->
@@ -996,12 +1024,16 @@ let source_origin_of_json = fun json ->
       match Path.of_string value with
       | Ok path -> Ok (Source.Path path)
       | Error (Path.InvalidUtf8 { path }) -> Error ("invalid utf-8 path " ^ path)
-      | Error (Path.SystemInvalidUtf8 { syscall; path }) ->
-          Error ("invalid utf-8 path from " ^ syscall ^ ": " ^ path)
+      | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error ("invalid utf-8 path from "
+      ^ syscall
+      ^ ": "
+      ^ path)
       | Error (Path.SystemError message) -> Error message
     )
-  | "label" -> Ok (Source.Label value)
-  | other -> Error ("unknown module typings source origin tag " ^ other)
+  | "label" ->
+      Ok (Source.Label value)
+  | other ->
+      Error ("unknown module typings source origin tag " ^ other)
 
 let value_definition_target_of_json = fun json ->
   let* fields = get_object json in
@@ -1038,8 +1070,7 @@ let value_definitions_of_json = function
             loop (definition :: acc) rest
       in
       loop [] values
-  | other ->
-      error_expected "array" other
+  | other -> error_expected "array" other
 
 let hash_of_hex = fun hex ->
   match Encoding.Hex.decode_bytes hex with
@@ -1077,5 +1108,11 @@ module Json = struct
     in
     let* type_decls = type_decls in
     let* value_definitions = value_definitions in
-    Ok { module_name; source_hash; export_result; type_decls; value_definitions }
+    Ok {
+      module_name;
+      source_hash;
+      export_result;
+      type_decls;
+      value_definitions;
+    }
 end

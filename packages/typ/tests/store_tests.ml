@@ -10,8 +10,7 @@ let with_store = fun f ->
         ~policy:Contentstore.Policy.default
         () in
       let store = Store.create contentstore () in
-      f contentstore store)
-  |> Result.unwrap_or ~default:(Error "tempdir creation failed")
+      f contentstore store) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let sample_typings = fun () ->
   ModuleTypings.trusted
@@ -38,7 +37,9 @@ let test_store_roundtrips_current_namespace = fun _ctx ->
           match Store.save_package_bundle store ~package_name:"std" ~fingerprint [ typings ] with
           | Error _ as err -> err
           | Ok () -> (
-              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle store ~package_name:"std" with
+              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle
+                store
+                ~package_name:"std" with
               | Some loaded_module, Some loaded_package ->
                   let loaded_exports = ModuleTypings.exports loaded_module |> List.map fst in
                   let package_modules = loaded_package.typings |> List.map ModuleTypings.module_name in
@@ -48,8 +49,10 @@ let test_store_roundtrips_current_namespace = fun _ctx ->
                     Error ("unexpected package modules: " ^ String.concat ", " package_modules)
                   else
                     Ok ()
-              | None, _ -> Error "expected current module typings bundle"
-              | _, None -> Error "expected current package bundle"
+              | None, _ ->
+                  Error "expected current module typings bundle"
+              | _, None ->
+                  Error "expected current package bundle"
             )
         ))
 
@@ -59,7 +62,10 @@ let test_store_ignores_legacy_v2_namespace = fun _ctx ->
       let typings = sample_typings () in
       let module_json = ModuleTypings.Json.to_json typings in
       let package_json = Data.Json.Object [
-        ("fingerprint", Data.Json.String (Crypto.Digest.hex (Crypto.hash_string "legacy-std-package")));
+        (
+          "fingerprint",
+          Data.Json.String (Crypto.Digest.hex (Crypto.hash_string "legacy-std-package"))
+        );
         ("modules", Data.Json.Array [ module_json ]);
       ] in
       match Contentstore.Store.save_named_json_bundle
@@ -76,7 +82,9 @@ let test_store_ignores_legacy_v2_namespace = fun _ctx ->
             ~json:package_json with
           | Error _ as err -> err
           | Ok () -> (
-              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle store ~package_name:"std" with
+              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle
+                store
+                ~package_name:"std" with
               | None, None -> Ok ()
               | Some _, _ -> Error "expected legacy v2 module typings to be ignored"
               | _, Some _ -> Error "expected legacy v2 package bundle to be ignored"
@@ -89,7 +97,10 @@ let test_store_ignores_legacy_v3_namespace = fun _ctx ->
       let typings = sample_typings () in
       let module_json = ModuleTypings.Json.to_json typings in
       let package_json = Data.Json.Object [
-        ("fingerprint", Data.Json.String (Crypto.Digest.hex (Crypto.hash_string "legacy-v3-std-package")));
+        (
+          "fingerprint",
+          Data.Json.String (Crypto.Digest.hex (Crypto.hash_string "legacy-v3-std-package"))
+        );
         ("modules", Data.Json.Array [ module_json ]);
       ] in
       match Contentstore.Store.save_named_json_bundle
@@ -106,7 +117,9 @@ let test_store_ignores_legacy_v3_namespace = fun _ctx ->
             ~json:package_json with
           | Error _ as err -> err
           | Ok () -> (
-              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle store ~package_name:"std" with
+              match Store.load_module_typings store ~module_name:"Std", Store.load_package_bundle
+                store
+                ~package_name:"std" with
               | None, None -> Ok ()
               | Some _, _ -> Error "expected legacy v3 module typings to be ignored"
               | _, Some _ -> Error "expected legacy v3 package bundle to be ignored"

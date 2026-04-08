@@ -243,10 +243,9 @@ let visible_entries = fun env ->
   loop [] (bindings env) |> of_bindings
 
 let visible_binding_map = fun env ->
-  visible_entries env
-  |> bindings
-  |> List.fold_left
-    (fun acc binding -> Path_map.add (Binding.path binding) binding acc)
+  visible_entries env |> bindings |> List.fold_left
+    (fun acc binding ->
+      Path_map.add (Binding.path binding) binding acc)
     Path_map.empty
 
 let names = fun env ->
@@ -261,8 +260,7 @@ let introduced_names = fun before after ->
       let path = Binding.path binding in
       match Path_map.find_opt path before_bindings with
       | Some previous when Binding.same previous binding -> None
-      | _ ->
-        Some (IdentPath.to_string path))
+      | _ -> Some (IdentPath.to_string path))
 
 let aliases_for_local_open = fun env module_path ->
   bindings env |> List.filter_map
@@ -325,14 +323,11 @@ let export_with_forced_names = fun ~config ~forced_export_names env ->
 
 let introduced_entries = fun before after ->
   let before_bindings = visible_binding_map before in
-  visible_entries after
-  |> bindings
-  |> List.filter
+  visible_entries after |> bindings |> List.filter
     (fun binding ->
       match Path_map.find_opt (Binding.path binding) before_bindings with
       | Some previous -> not (Binding.same previous binding)
-      | None -> true)
-  |> of_bindings
+      | None -> true) |> of_bindings
 
 let qualify_entries = fun scope_path entries ->
   map

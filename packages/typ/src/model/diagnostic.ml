@@ -98,10 +98,7 @@ type t =
       counterpart_span: Syn.Ceibo.Span.t option;
       mismatch: signature_mismatch
     }
-  | NonexhaustiveMatch of {
-      match_span: Syn.Ceibo.Span.t;
-      witness: match_witness
-    }
+  | NonexhaustiveMatch of { match_span: Syn.Ceibo.Span.t; witness: match_witness }
   | RedundantMatchCase of { case_span: Syn.Ceibo.Span.t }
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
@@ -251,43 +248,39 @@ let signature_mismatch_name = function
   | TypeDeclarationMismatch { name; _ } -> "type " ^ name
 
 let signature_mismatch_message = function
-  | MissingValue { name } ->
-      "signature inclusion failed: implementation does not export value " ^ name
-  | ValueTypeMismatch { name; expected; actual } ->
-      "signature inclusion failed: value "
-      ^ name
-      ^ " has type "
-      ^ actual
-      ^ " but the interface requires "
-      ^ expected
-  | MissingTypeDeclaration { name } ->
-      "signature inclusion failed: implementation does not export type " ^ name
-  | TypeDeclarationMismatch { name; expected; actual } ->
-      "signature inclusion failed: type "
-      ^ name
-      ^ " does not match the interface (expected "
-      ^ expected
-      ^ ", got "
-      ^ actual
-      ^ ")"
+  | MissingValue { name } -> "signature inclusion failed: implementation does not export value " ^ name
+  | ValueTypeMismatch { name; expected; actual } -> "signature inclusion failed: value "
+  ^ name
+  ^ " has type "
+  ^ actual
+  ^ " but the interface requires "
+  ^ expected
+  | MissingTypeDeclaration { name } -> "signature inclusion failed: implementation does not export type "
+  ^ name
+  | TypeDeclarationMismatch { name; expected; actual } -> "signature inclusion failed: type "
+  ^ name
+  ^ " does not match the interface (expected "
+  ^ expected
+  ^ ", got "
+  ^ actual
+  ^ ")"
 
 let rec match_witness_to_string = function
   | WildcardWitness -> "_"
   | BoolWitness value -> Bool.to_string value
   | UnitWitness -> "()"
-  | TupleWitness elements -> "("
-    ^ String.concat ", " (List.map match_witness_to_string elements)
-    ^ ")"
-  | ConstructorWitness { name = "::"; arguments = [ head; tail ] } ->
-      match_witness_atom_to_string head ^ " :: " ^ match_witness_atom_to_string tail
+  | TupleWitness elements -> "(" ^ String.concat ", " (List.map match_witness_to_string elements) ^ ")"
+  | ConstructorWitness { name="::"; arguments=[head;tail] } -> match_witness_atom_to_string head
+  ^ " :: "
+  ^ match_witness_atom_to_string tail
   | ConstructorWitness { name; arguments=[] } -> name
-  | ConstructorWitness { name; arguments=[ argument ] } ->
-      name ^ " " ^ match_witness_atom_to_string argument
-  | ConstructorWitness { name; arguments } ->
-      name
-      ^ " ("
-      ^ String.concat ", " (List.map match_witness_to_string arguments)
-      ^ ")"
+  | ConstructorWitness { name; arguments=[ argument ] } -> name
+  ^ " "
+  ^ match_witness_atom_to_string argument
+  | ConstructorWitness { name; arguments } -> name
+  ^ " ("
+  ^ String.concat ", " (List.map match_witness_to_string arguments)
+  ^ ")"
 
 and match_witness_atom_to_string = function
   | WildcardWitness as witness -> match_witness_to_string witness
@@ -459,26 +452,21 @@ let record_resolution_reason_to_json = function
 let names_to_json = fun names -> Data.Json.Array (List.map (fun name -> Data.Json.String name) names)
 
 let rec match_witness_to_json = function
-  | WildcardWitness ->
-      Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
-  | BoolWitness value ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "bool");
-        ("value", Data.Json.Bool value);
-      ]
-  | UnitWitness ->
-      Data.Json.Object [ ("tag", Data.Json.String "unit") ]
-  | TupleWitness elements ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "tuple");
-        ("elements", Data.Json.Array (List.map match_witness_to_json elements));
-      ]
-  | ConstructorWitness { name; arguments } ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "constructor");
-        ("name", Data.Json.String name);
-        ("arguments", Data.Json.Array (List.map match_witness_to_json arguments));
-      ]
+  | WildcardWitness -> Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
+  | BoolWitness value -> Data.Json.Object [
+    ("tag", Data.Json.String "bool");
+    ("value", Data.Json.Bool value);
+  ]
+  | UnitWitness -> Data.Json.Object [ ("tag", Data.Json.String "unit") ]
+  | TupleWitness elements -> Data.Json.Object [
+    ("tag", Data.Json.String "tuple");
+    ("elements", Data.Json.Array (List.map match_witness_to_json elements));
+  ]
+  | ConstructorWitness { name; arguments } -> Data.Json.Object [
+    ("tag", Data.Json.String "constructor");
+    ("name", Data.Json.String name);
+    ("arguments", Data.Json.Array (List.map match_witness_to_json arguments));
+  ]
 
 let signature_mismatch_to_json = function
   | MissingValue { name } -> Data.Json.Object [
@@ -573,10 +561,7 @@ let fields_to_json = function
         ("actual_names", names_to_json actual_names);
       ]
   | NonexhaustiveMatch { match_span; witness } ->
-      [
-        ("match_span", span_to_json match_span);
-        ("witness", match_witness_to_json witness);
-      ]
+      [ ("match_span", span_to_json match_span); ("witness", match_witness_to_json witness); ]
   | RedundantMatchCase { case_span } ->
       [ ("case_span", span_to_json case_span); ]
   | SignatureInclusionError { mismatch_span; counterpart_span; mismatch } ->

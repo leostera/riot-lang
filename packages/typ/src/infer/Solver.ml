@@ -134,12 +134,9 @@ let lower_expansive_var = fun (solver: t) (frame: frame) ~variance_of_named ty -
   lower !initial
 
 let finalize_groups = fun (solver: t) (frame: frame) ~variance_of_named groups ->
-  groups
-  |> List.map
+  groups |> List.map
     (fun (group: generalization_group) ->
-      let () =
-        List.iter (lower_expansive_var solver frame ~variance_of_named) group.expansive_roots
-      in
+      let () = List.iter (lower_expansive_var solver frame ~variance_of_named) group.expansive_roots in
       let () = Region.generalize_reachable_vars solver.regions frame group.roots in
       List.map TypeScheme.of_type group.roots)
 
@@ -261,13 +258,15 @@ let unify = fun (solver: t) ~left ~right ->
             tags=right_tags;
             inherited=right_inherited
           } ->
-              if not (same_poly_variant_bound left_bound right_bound)
+              if
+                not (same_poly_variant_bound left_bound right_bound)
                 || List.length left_inherited != List.length right_inherited
               then
                 Error (mismatch left right)
               else
                 let sort_tags tags =
-                  tags |> List.sort
+                  tags
+                  |> List.sort
                     (fun (left: TypeRepr.poly_variant_tag) (right: TypeRepr.poly_variant_tag) ->
                       String.compare left.name right.name)
                 in
@@ -275,22 +274,29 @@ let unify = fun (solver: t) ~left ~right ->
                 let right_tags = sort_tags right_tags in
                 let rec add_tag_pairs acc left_tags right_tags =
                   match (left_tags, right_tags) with
-                  | ([], []) -> Some acc
-                  | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, (right_tag: TypeRepr.poly_variant_tag) :: rest_right)
-                    when String.equal left_tag.name right_tag.name -> (
+                  | ([], []) ->
+                      Some acc
+                  | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, (
+                    right_tag: TypeRepr.poly_variant_tag
+                  ) :: rest_right) when String.equal left_tag.name right_tag.name -> (
                       match (left_tag.payload_type, right_tag.payload_type) with
                       | (None, None) -> add_tag_pairs acc rest_left rest_right
-                      | (Some left_payload, Some right_payload) ->
-                          add_tag_pairs ((left_payload, right_payload) :: acc) rest_left rest_right
+                      | (Some left_payload, Some right_payload) -> add_tag_pairs
+                        ((left_payload, right_payload) :: acc)
+                        rest_left
+                        rest_right
                       | _ -> None
                     )
-                  | _ -> None
+                  | _ ->
+                      None
                 in
                 (
                   match add_tag_pairs [] left_tags right_tags with
                   | None -> Error (mismatch left right)
-                  | Some tag_pairs ->
-                      loop (List.rev_append tag_pairs (List.rev_append (List.combine left_inherited right_inherited) rest))
+                  | Some tag_pairs -> loop
+                    (List.rev_append
+                      tag_pairs
+                      (List.rev_append (List.combine left_inherited right_inherited) rest))
                 )
           | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
               if List.length left_members != List.length right_members then

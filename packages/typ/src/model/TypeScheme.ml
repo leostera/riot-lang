@@ -116,22 +116,26 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
         else
           remember_replacement ty (make (TypeRepr.Named { head; arguments = arguments' }))
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' = map_preserving
-          (fun (tag: TypeRepr.poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type ->
-                let payload_type' = copy payload_type in
-                if Std.Ptr.equal payload_type payload_type' then
-                  tag
-                else
-                  { tag with payload_type = Some payload_type' }
-            | None -> tag)
-          tags in
+        let tags' =
+          map_preserving
+            (fun (tag: TypeRepr.poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type ->
+                  let payload_type' = copy payload_type in
+                  if Std.Ptr.equal payload_type payload_type' then
+                    tag
+                  else
+                    { tag with payload_type = Some payload_type' }
+              | None -> tag)
+            tags
+        in
         let inherited' = map_preserving copy inherited in
         if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
           remember_identity ty
         else
-          remember_replacement ty (make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' }))
+          remember_replacement
+            ty
+            (make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' }))
     | TypeRepr.Tuple members ->
         let members' = map_preserving copy members in
         if Std.Ptr.equal members members' then
@@ -148,8 +152,7 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
     | TypeRepr.Var { id; link=None; _ } ->
         if TypeRepr.is_generic_var ty then
           match Collections.HashMap.get generic_replacements id with
-          | Some replacement ->
-              remember_replacement ty replacement
+          | Some replacement -> remember_replacement ty replacement
           | None ->
               let replacement = fresh_var () in
               let _ = Collections.HashMap.insert generic_replacements id replacement in
@@ -227,12 +230,18 @@ let copy = fun scheme ->
         let level = TypeRepr.level ty in
         let replacement =
           match TypeRepr.view ty with
-          | TypeRepr.Int -> TypeRepr.int
-          | TypeRepr.Float -> TypeRepr.float
-          | TypeRepr.Bool -> TypeRepr.bool
-          | TypeRepr.String -> TypeRepr.string
-          | TypeRepr.Char -> TypeRepr.char
-          | TypeRepr.Unit -> TypeRepr.unit_
+          | TypeRepr.Int ->
+              TypeRepr.int
+          | TypeRepr.Float ->
+              TypeRepr.float
+          | TypeRepr.Bool ->
+              TypeRepr.bool
+          | TypeRepr.String ->
+              TypeRepr.string
+          | TypeRepr.Char ->
+              TypeRepr.char
+          | TypeRepr.Unit ->
+              TypeRepr.unit_
           | TypeRepr.Option element ->
               TypeRepr.of_desc ~level (TypeRepr.Option (clone element))
           | TypeRepr.Result (ok_ty, error_ty) ->
@@ -244,7 +253,9 @@ let copy = fun scheme ->
           | TypeRepr.Seq element ->
               TypeRepr.of_desc ~level (TypeRepr.Seq (clone element))
           | TypeRepr.Named { head; arguments } ->
-              TypeRepr.of_desc ~level (TypeRepr.Named { head; arguments = map_preserving clone arguments })
+              TypeRepr.of_desc
+                ~level
+                (TypeRepr.Named { head; arguments = map_preserving clone arguments })
           | TypeRepr.PolyVariant { bound; tags; inherited } ->
               let tags =
                 tags
@@ -265,15 +276,14 @@ let copy = fun scheme ->
               TypeRepr.of_desc ~level (TypeRepr.Tuple (map_preserving clone members))
           | TypeRepr.Arrow { label; lhs; rhs } ->
               TypeRepr.of_desc ~level (TypeRepr.Arrow { label; lhs = clone lhs; rhs = clone rhs })
-          | TypeRepr.Var { id; link=None; _ } ->
-              (
-                match Collections.HashMap.get var_replacements id with
-                | Some replacement -> replacement
-                | None ->
-                    let replacement = TypeRepr.make_var ~level id in
-                    let _ = Collections.HashMap.insert var_replacements id replacement in
-                    replacement
-              )
+          | TypeRepr.Var { id; link=None; _ } -> (
+              match Collections.HashMap.get var_replacements id with
+              | Some replacement -> replacement
+              | None ->
+                  let replacement = TypeRepr.make_var ~level id in
+                  let _ = Collections.HashMap.insert var_replacements id replacement in
+                  replacement
+            )
           | TypeRepr.Var { link=Some linked; _ } ->
               clone linked
           | TypeRepr.Hole id ->

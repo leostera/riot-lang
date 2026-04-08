@@ -46,8 +46,7 @@ let type_at = fun snapshot source_id position ->
       | None -> None
 
 let definition_target_of_position = fun (analysis: Session.SourceAnalysis.t) position ->
-  Option.and_then
-    (Analysis.TypeIndex.find_at analysis.type_index position)
+  Option.and_then (Analysis.TypeIndex.find_at analysis.type_index position)
     (fun entry ->
       analysis.expr_traces |> List.find_map
         (fun (trace: Analysis.Check_result.expr_trace) ->
@@ -65,7 +64,9 @@ let resolve_export_path =
       | Some (module_name, export_path) when not (IdentPath.is_empty export_path) -> (
           match Session.Snapshot.find_module_typings_by_name snapshot module_name with
           | Some typings -> (
-              match ModuleTypings.find_value_definition typings ~export_name:(IdentPath.to_string export_path) with
+              match ModuleTypings.find_value_definition
+                typings
+                ~export_name:(IdentPath.to_string export_path) with
               | Some (ModuleTypings.Site definition) -> Some definition
               | Some (ModuleTypings.Export redirected) -> loop snapshot (path :: visited) redirected
               | None -> None
@@ -80,11 +81,9 @@ let definition_at = fun snapshot source_id position ->
   match analysis_of_source snapshot source_id with
   | None -> None
   | Some analysis ->
-      Option.and_then
-        (definition_target_of_position analysis position)
+      Option.and_then (definition_target_of_position analysis position)
         (fun binding_ref ->
-          Option.and_then
-            (Session.SourceAnalysis.definition_target_of_binding_ref analysis binding_ref)
+          Option.and_then (Session.SourceAnalysis.definition_target_of_binding_ref analysis binding_ref)
             (
               function
               | ModuleTypings.Site definition -> Some definition
