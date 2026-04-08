@@ -35,15 +35,15 @@
     - Index access: O(1)
     - Iteration: O(n) with good cache locality *)
 
-(** The type of vectors containing elements of type `'a` *)
-type 'a t
-(** # Creation *)
+(** The type of vectors containing elements of type `'value` *)
+type 'value t
+
 (** Creates a new empty vector.
 
     ## Examples
 
     ```ocaml let vec = Vector.create () in assert (Vector.is_empty vec) ``` *)
-val create: unit -> 'a t
+val create: unit -> 'value t
 
 (** Creates a new empty vector with specified initial capacity.
 
@@ -55,7 +55,7 @@ val create: unit -> 'a t
     ```ocaml (* Pre-allocate for 1000 elements *) let vec = Vector.with_capacity
     1000 in for i = 0 to 999 do Vector.push vec i (* No reallocation needed *)
     done ``` *)
-val with_capacity: int -> 'a t
+val with_capacity: int -> 'value t
 
 (** Creates a vector from a list of elements.
 
@@ -63,46 +63,58 @@ val with_capacity: int -> 'a t
 
     ```ocaml let vec = Vector.of_list [1; 2; 3; 4; 5] in assert (Vector.len vec
     = 5); assert (Vector.get vec 2 = Some 3) ``` *)
-val of_list: 'a list -> 'a t
+val of_list: 'value list -> 'value t
 
 (** # Basic Operations *)
 (** [push vector value] adds an element to the end of the vector *)
-val push: 'a t -> 'a -> unit
+val push: 'value t -> 'value -> unit
 
 (** [pop vector] removes and returns the last element. Returns [Some element] if
     the vector is not empty, [None] otherwise. *)
-val pop: 'a t -> 'a option
+val pop: 'value t -> 'value option
 
 (** [insert vector index value] inserts an element at the given index *)
-val insert: 'a t -> int -> 'a -> unit
+val insert: 'value t -> int -> 'value -> unit
 
 (** [remove vector index] removes and returns the element at the given index.
     Returns [Some element] if the index is valid, [None] otherwise. *)
-val remove: 'a t -> int -> 'a option
+val remove: 'value t -> int -> 'value option
 
 (** [get vector index] returns the element at the given index. Returns
     [Some element] if the index is valid, [None] otherwise. *)
-val get: 'a t -> int -> 'a option
+val get: 'value t -> int -> 'value option
+
+(** [get_unchecked vector index] returns the element at the given index without
+    performing bounds checks. *)
+val get_unchecked: 'value t -> int -> 'value
 
 (** [set vector index value] sets the element at the given index *)
-val set: 'a t -> int -> 'a -> unit
+val set: 'value t -> int -> 'value -> unit
+
+(** [set_unchecked vector index value] sets the element at the given index
+    without performing bounds checks. *)
+val set_unchecked: 'value t -> int -> 'value -> unit
 
 (** {1 Collection Information} *)
 (** [len vector] returns the number of elements in the vector *)
-val len: 'a t -> int
+val len: 'value t -> int
 
 (** [is_empty vector] returns [true] if the vector contains no elements *)
-val is_empty: 'a t -> bool
+val is_empty: 'value t -> bool
 
 (** [capacity vector] returns the current capacity of the vector *)
-val capacity: 'a t -> int
+val capacity: 'value t -> int
 
 (** [clear vector] removes all elements from the vector *)
-val clear: 'a t -> unit
+val clear: 'value t -> unit
+
+(** [reserve vector additional] ensures the vector can hold at least
+    [additional] more elements without reallocating. *)
+val reserve: 'value t -> int -> unit
 
 (** {1 Iteration} *)
 (** [iter f vector] applies function [f] to each element *)
-val iter: ('a -> unit) -> 'a t -> unit
+val iter: ('value -> unit) -> 'value t -> unit
 
 (** Returns a mutable iterator over the vector's elements.
 
@@ -113,33 +125,32 @@ val iter: ('a -> unit) -> 'a t -> unit
 
     match Iter.MutIterator.next iter with | Some x -> (* 1 *) | None -> () ```
 *)
-val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
+val to_mut_iter: 'value t -> 'value Iter.MutIterator.t
 
 (** {1 Additional Operations} *)
 (** [append vector1 vector2] moves all elements from [vector2] into [vector1] *)
-val append: 'a t -> 'a t -> unit
+val append: 'value t -> 'value t -> unit
 
 (** [split_off vector index] splits the vector into two at the given index.
     Returns a new vector containing elements from [index] onwards. *)
-val split_off: 'a t -> int -> 'a t
+val split_off: 'value t -> int -> 'value t
 
 (** [sort vector] sorts the vector in-place using the default comparison *)
-val sort: 'a t -> unit
+val sort: 'value t -> unit
 
 (** [sort_by vector compare] sorts the vector in-place using a custom comparison
     function *)
-val sort_by: 'a t -> ('a -> 'a -> int) -> unit
+val sort_by: 'value t -> ('value -> 'value -> int) -> unit
 
 (** [reverse vector] reverses the order of elements in-place *)
-val reverse: 'a t -> unit
+val reverse: 'value t -> unit
 
 (** [first vector] returns the first element without removing it *)
-val first: 'a t -> 'a option
+val first: 'value t -> 'value option
 
 (** [last vector] returns the last element without removing it *)
-val last: 'a t -> 'a option
+val last: 'value t -> 'value option
 
-(** # Iteration *)
 (** Converts the vector into an immutable iterator.
     
     ## Examples
@@ -154,19 +165,4 @@ val last: 'a t -> 'a option
     (* [6; 8] *)
     ```
 *)
-val into_iter: 'a t -> 'a Iter.Iterator.t
-
-(** Converts the vector into a mutable iterator.
-    
-    ## Examples
-    
-    ```ocaml
-    let vec = Vector.of_list [1; 2; 3] in
-    vec
-    |> Vector.to_mut_iter
-    |> MutIterator.map ~fn:(fun x -> x * 2)
-    |> MutIterator.to_list
-    (* [2; 4; 6] *)
-    ```
-*)
-val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
+val into_iter: 'value t -> 'value Iter.Iterator.t
