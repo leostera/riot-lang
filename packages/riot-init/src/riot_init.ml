@@ -36,7 +36,7 @@ type event =
   | ScaffoldCreated of { path: string }
   | WorkspaceInitializationCompleted of {
       next_steps: string list;
-      package_hints: (package_kind * string) list;
+      package_hints: (package_kind * string) list
     }
 
 let package_hints = [
@@ -458,10 +458,7 @@ let run = fun ~on_event matches ->
         | Ok () -> Ok ()
         | Error _e -> Error (Failure "Failed to create directory")
       in
-      emit ~on_event (WorkspaceInitializationStarted {
-        name = validated_name;
-        target_dir;
-      });
+      emit ~on_event (WorkspaceInitializationStarted { name = validated_name; target_dir });
       (* Create all workspace files *)
       let* () = create_workspace_toml ~on_event target_dir validated_name in
       let* () = create_toolchain_toml ~on_event target_dir in
@@ -470,8 +467,10 @@ let run = fun ~on_event matches ->
       let* () = create_dockerfile ~on_event target_dir validated_name is_library in
       let* () = create_ci_workflow ~on_event target_dir in
       let* () = create_default_package ~on_event target_dir validated_name is_library in
-      emit ~on_event (WorkspaceInitializationCompleted {
-        next_steps = next_steps ~cwd ~target_dir ~path_arg ~is_library ~workspace_name:validated_name;
-        package_hints;
-      });
+      emit
+        ~on_event
+        (WorkspaceInitializationCompleted {
+          next_steps = next_steps ~cwd ~target_dir ~path_arg ~is_library ~workspace_name:validated_name;
+          package_hints
+        });
       Ok ()

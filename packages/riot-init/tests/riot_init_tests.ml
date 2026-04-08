@@ -20,12 +20,8 @@ let rec run_init = fun args ->
 and run_init_with_events = fun args ->
   let* matches = parse_init args in
   let events = ref [] in
-  let* () =
-    Riot_init.run
-      ~on_event:(fun event -> events := event :: !events)
-      matches
-    |> Result.map_error Exception.to_string
-  in
+  let* () = Riot_init.run ~on_event:(fun event -> events := event :: !events) matches
+  |> Result.map_error Exception.to_string in
   Ok (List.rev !events)
 
 let assert_exists = fun path ->
@@ -58,12 +54,12 @@ let with_current_dir_result = fun dir fn ->
   | Ok () -> result
 
 let completion_event = fun events ->
-  events
-  |> List.rev
-  |> List.find_opt
-    (function
-    | Riot_init.WorkspaceInitializationCompleted _ -> true
-    | _ -> false)
+  events |> List.rev |> List.find_opt
+    (
+      function
+      | Riot_init.WorkspaceInitializationCompleted _ -> true
+      | _ -> false
+    )
 
 let test_init_scaffolds_library_workspace = fun _ctx ->
   with_tempdir_result "riot_init_lib"
@@ -78,12 +74,8 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-app" / Path.v "tests" / Path.v test_file) in
       let* () = assert_contains Path.(workspace_root / Path.v "README.md") ".github/workflows/ci.yml" in
-      let* () = assert_contains
-        Path.(workspace_root / Path.v "README.md")
-        "riot new --lib ./packages/my-new-library" in
-      let* () = assert_contains
-        Path.(workspace_root / Path.v "README.md")
-        "riot new --bin ./packages/my-new-binary" in
+      let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot new --lib ./packages/my-new-library" in
+      let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot new --bin ./packages/my-new-binary" in
       let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "RUN riot test" in
       let* () = assert_contains
         Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml")
@@ -156,15 +148,17 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
           if
             package_hints
             = [
-                (Riot_init.Library, "riot new --lib ./packages/<name>");
-                (Riot_init.Binary, "riot new --bin ./packages/<name>");
-              ]
+              (Riot_init.Library, "riot new --lib ./packages/<name>");
+              (Riot_init.Binary, "riot new --bin ./packages/<name>");
+            ]
           then
             Ok ()
           else
             Error "expected init completion to advertise library and binary package hints"
-      | Some _ -> Error "expected final init event to be completion"
-      | None -> Error "expected init completion event")
+      | Some _ ->
+          Error "expected final init event to be completion"
+      | None ->
+          Error "expected init completion event")
 
 let tests =
   Test.[
