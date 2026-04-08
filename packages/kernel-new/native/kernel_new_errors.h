@@ -32,6 +32,7 @@
 
 static inline int kernel_new_error_of_errno(int error_number) {
   switch (error_number) {
+    case EPERM: return KERNEL_NEW_ERR_PERMISSION_DENIED;
     case EACCES: return KERNEL_NEW_ERR_PERMISSION_DENIED;
     case ENOENT: return KERNEL_NEW_ERR_NO_SUCH_FILE_OR_DIRECTORY;
     case EINTR: return KERNEL_NEW_ERR_INTERRUPTED;

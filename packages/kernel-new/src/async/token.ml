@@ -1,6 +1,6 @@
 type t
 
-external unsafe_cast : 'a -> 'b = "%identity"
+external unsafe_cast: 'a -> 'b = "%identity"
 
 let unsafe_to_value = fun (token: t) -> unsafe_cast token
 

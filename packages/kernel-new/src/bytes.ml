@@ -27,5 +27,4 @@ let sub = fun source offset len ->
   blit source offset out 0 len;
   out
 
-let sub_string = fun source offset len ->
-  to_string (sub source offset len)
+let sub_string = fun source offset len -> to_string (sub source offset len)

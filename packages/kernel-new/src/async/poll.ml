@@ -8,8 +8,7 @@ let make = fun () ->
   let* selector = Adapter.Selector.make () in
   Result.Ok { selector }
 
-let poll = fun ?max_events ?timeout t ->
-  Adapter.Selector.select ?timeout ?max_events t.selector
+let poll = fun ?max_events ?timeout t -> Adapter.Selector.select ?timeout ?max_events t.selector
 
 let register = fun t token interest source ->
   Source.register source t.selector token interest

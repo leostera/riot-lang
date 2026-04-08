@@ -16,3 +16,4 @@ module IO = IO
 module Async = Async
 module Fs = Fs
 module Time = Time
+module Net = Net

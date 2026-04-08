@@ -112,4 +112,4 @@ let to_string = function
   | Network_unreachable -> "network unreachable"
   | Unknown _ -> "unknown kernel error"
 
-external panic : string -> 'a = "kernel_new_panic"
+external panic: string -> 'a = "kernel_new_panic"

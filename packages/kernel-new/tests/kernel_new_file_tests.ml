@@ -13,24 +13,22 @@ let protect = fun ~finally fn ->
     let value = fn () in
     finally ();
     value
-  with error ->
-    finally ();
-    raise error
+  with
+  | error ->
+      finally ();
+      raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix
-          (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir)))
-  with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
 let with_temp_path = fun prefix filename fn ->
-  match Fs.with_tempdir ~prefix
-          (fun tempdir ->
-            let path =
-              Kernel.Path.(Path.to_string tempdir / filename)
-            in
-            fn path)
+  match
+    Fs.with_tempdir ~prefix
+      (fun tempdir ->
+        let path = Kernel.Path.(Path.to_string tempdir / filename) in
+        fn path)
   with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
@@ -45,30 +43,24 @@ let with_file = fun file fn ->
 let test_file_scalar_write_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "scalar.bin"
     (fun path ->
-      let* file =
-        lift (Kernel.Fs.File.open_write path)
-      in
+      let* file = lift (Kernel.Fs.File.open_write path) in
       let payload = Kernel.Bytes.of_string "hello kernel-new" in
       let* () =
-        with_file file (fun () ->
-          let* written =
-            lift (Kernel.Fs.File.write file payload)
-          in
-          if written = Kernel.Bytes.length payload then
-            Ok ()
-          else
-            Error "expected full scalar write")
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file payload) in
+            if written = Kernel.Bytes.length payload then
+              Ok ()
+            else
+              Error "expected full scalar write")
       in
-      let* file =
-        lift (Kernel.Fs.File.open_read path)
-      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
       let buf = Kernel.Bytes.create (Kernel.Bytes.length payload) in
       let* actual =
-        with_file file (fun () ->
-          let* read =
-            lift (Kernel.Fs.File.read file buf)
-          in
-          Ok (Kernel.Bytes.sub_string buf 0 read))
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file buf) in
+            Ok (Kernel.Bytes.sub_string buf 0 read))
       in
       if Kernel.String.equal actual "hello kernel-new" then
         Ok ()
@@ -78,33 +70,25 @@ let test_file_scalar_write_roundtrips = fun _ctx ->
 let test_file_vectored_write_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "vectored.bin"
     (fun path ->
-      let* file =
-        lift (Kernel.Fs.File.open_write path)
-      in
-      let payload =
-        Kernel.IO.Iovec.of_string_array [|"hello"; " "; "vectored"; " "; "world"|]
-      in
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let payload = Kernel.IO.Iovec.of_string_array [|"hello"; " "; "vectored"; " "; "world"|] in
       let* () =
-        with_file file (fun () ->
-          let expected = Kernel.IO.Iovec.length payload in
-          let* written =
-            lift (Kernel.Fs.File.write_vectored file payload)
-          in
-          if written = expected then
-            Ok ()
-          else
-            Error "expected full vectored write")
+        with_file file
+          (fun () ->
+            let expected = Kernel.IO.Iovec.length payload in
+            let* written = lift (Kernel.Fs.File.write_vectored file payload) in
+            if written = expected then
+              Ok ()
+            else
+              Error "expected full vectored write")
       in
-      let* file =
-        lift (Kernel.Fs.File.open_read path)
-      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
       let buf = Kernel.Bytes.create 64 in
       let* actual =
-        with_file file (fun () ->
-          let* read =
-            lift (Kernel.Fs.File.read file buf)
-          in
-          Ok (Kernel.Bytes.sub_string buf 0 read))
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file buf) in
+            Ok (Kernel.Bytes.sub_string buf 0 read))
       in
       if Kernel.String.equal actual "hello vectored world" then
         Ok ()
@@ -116,21 +100,17 @@ let test_create_dir_and_read_dir_names = fun _ctx ->
     (fun tempdir ->
       let child_dir = Kernel.Path.(tempdir / "child") in
       let child_file = Kernel.Path.(tempdir / "alpha.txt") in
-      let* () =
-        lift (Kernel.Fs.File.create_dir child_dir ~perm:0o755)
-      in
+      let* () = lift (Kernel.Fs.File.create_dir child_dir ~perm:0o755) in
       let* file = lift (Kernel.Fs.File.open_write child_file) in
       let* () =
-        with_file file (fun () ->
-          let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "a")) in
-          Ok ())
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "a")) in
+            Ok ())
       in
       let* names = lift (Kernel.Fs.File.read_dir_names tempdir) in
       let has_child =
-        Kernel.Array.fold_left
-          (fun found name -> found || Kernel.String.equal name "child")
-          false
-          names
+        Kernel.Array.fold_left (fun found name -> found || Kernel.String.equal name "child") false names
       in
       let has_file =
         Kernel.Array.fold_left
@@ -151,9 +131,10 @@ let test_symlink_metadata_and_canonicalize = fun _ctx ->
       let link = Kernel.Path.(tempdir / "latest") in
       let* file = lift (Kernel.Fs.File.open_write target) in
       let* () =
-        with_file file (fun () ->
-          let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
-          Ok ())
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            Ok ())
       in
       protect
         ~finally:(fun () ->
@@ -167,23 +148,15 @@ let test_symlink_metadata_and_canonicalize = fun _ctx ->
           let* raw = lift (Kernel.Fs.File.symlink_metadata link) in
           let* canonical = lift (Kernel.Fs.File.canonicalize link) in
           let* canonical_target = lift (Kernel.Fs.File.canonicalize target) in
-          let link_target_matches =
-            Kernel.String.equal
-              (Kernel.Path.to_string link_target)
-              (Kernel.Path.to_string target)
-          in
-          let canonical_matches =
-            Kernel.String.equal
-              (Kernel.Path.to_string canonical)
-              (Kernel.Path.to_string canonical_target)
-          in
+          let link_target_matches = Kernel.String.equal
+            (Kernel.Path.to_string link_target)
+            (Kernel.Path.to_string target) in
+          let canonical_matches = Kernel.String.equal
+            (Kernel.Path.to_string canonical)
+            (Kernel.Path.to_string canonical_target) in
           let followed_is_file = Kernel.Fs.File.Metadata.is_file followed in
           let raw_is_symlink = Kernel.Fs.File.Metadata.is_symlink raw in
-          if link_target_matches
-             && followed_is_file
-             && raw_is_symlink
-             && canonical_matches
-          then
+          if link_target_matches && followed_is_file && raw_is_symlink && canonical_matches then
             Ok ()
           else
             Error "expected symlink metadata and canonicalize to distinguish link from target"))
@@ -197,18 +170,20 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       let payload = Kernel.Bytes.of_string "copy me" in
       let* file = lift (Kernel.Fs.File.open_write source) in
       let* () =
-        with_file file (fun () ->
-          let* _ = lift (Kernel.Fs.File.write file payload) in
-          Ok ())
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file payload) in
+            Ok ())
       in
       let* () = lift (Kernel.Fs.File.copy ~src:source ~dst:copied) in
       let* () = lift (Kernel.Fs.File.rename ~src:copied ~dst:renamed) in
       let* file = lift (Kernel.Fs.File.open_read renamed) in
       let buf = Kernel.Bytes.create 16 in
       let* actual =
-        with_file file (fun () ->
-          let* read = lift (Kernel.Fs.File.read file buf) in
-          Ok (Kernel.Bytes.sub_string buf 0 read))
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file buf) in
+            Ok (Kernel.Bytes.sub_string buf 0 read))
       in
       let* exists = lift (Kernel.Fs.File.exists renamed) in
       if exists && Kernel.String.equal actual "copy me" then
@@ -220,15 +195,11 @@ let test_open_read_missing_file_maps_error = fun _ctx ->
   with_temp_path "kernel_new_file" "missing.bin"
     (fun path ->
       match Kernel.Fs.File.open_read path with
-      | Kernel.Result.Ok _ ->
-          Error "expected opening a missing file to fail"
-      | Kernel.Result.Error Kernel.Error.No_such_file_or_directory ->
-          Ok ()
-      | Kernel.Result.Error error ->
-          Error
-            (Kernel.String.append
-               "expected no-such-file error, got "
-               (Kernel.Error.to_string error)))
+      | Kernel.Result.Ok _ -> Error "expected opening a missing file to fail"
+      | Kernel.Result.Error Kernel.Error.No_such_file_or_directory -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.String.append
+        "expected no-such-file error, got "
+        (Kernel.Error.to_string error)))
 
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
@@ -239,7 +210,6 @@ let tests = [
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args
 
 let () = Actors.run ~main ~args:Env.args ()

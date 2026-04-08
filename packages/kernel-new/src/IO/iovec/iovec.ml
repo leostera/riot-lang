@@ -25,21 +25,24 @@ let create = fun ?(count = 1) ~size () ->
   let remainder = size mod count in
   Array.init count
     (fun index ->
-      let chunk = if index < remainder then base + 1 else base in
+      let chunk =
+        if index < remainder then
+          base + 1
+        else
+          base
+      in
       { buffer = Bytes.create chunk; offset = 0; length = chunk })
 
 let with_capacity = fun size -> create ~size ()
 
-let of_bytes = fun buffer ->
-  [|make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)|]
+let of_bytes = fun buffer -> [|make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)|]
 
 let of_string = fun value -> of_bytes (Bytes.of_string value)
 
 let of_bytes_array = fun buffers ->
   Array.map (fun buffer -> make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)) buffers
 
-let of_string_array = fun values ->
-  of_bytes_array (Array.map Bytes.of_string values)
+let of_string_array = fun values -> of_bytes_array (Array.map Bytes.of_string values)
 
 let length = fun segments ->
   Array.fold_left (fun total segment -> total + segment.length) 0 segments
@@ -65,16 +68,24 @@ let sub = fun ?(pos = 0) ~len segments ->
       if segment_end <= pos then
         loop (index + 1) segment_end acc
       else
-        let start_offset = if pos > segment_start then pos - segment_start else 0 in
+        let start_offset =
+          if pos > segment_start then
+            pos - segment_start
+          else
+            0
+        in
         let available = segment.length - start_offset in
         let remaining = pos + len - (segment_start + start_offset) in
-        let take = if available < remaining then available else remaining in
-        let next =
-          make_segment
-            ~buffer:segment.buffer
-            ~offset:(segment.offset + start_offset)
-            ~length:take
+        let take =
+          if available < remaining then
+            available
+          else
+            remaining
         in
+        let next = make_segment
+          ~buffer:segment.buffer
+          ~offset:((segment.offset + start_offset))
+          ~length:take in
         loop (index + 1) segment_end (next :: acc)
   in
   loop 0 0 []
@@ -93,5 +104,4 @@ let into_bytes = fun segments ->
   let _ = loop 0 0 in
   out
 
-let into_string = fun segments ->
-  Bytes.unsafe_to_string (into_bytes segments)
+let into_string = fun segments -> Bytes.unsafe_to_string (into_bytes segments)

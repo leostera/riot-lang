@@ -37,7 +37,6 @@ let tests = [
   Test.case "Time.SystemTime now has normalized nanoseconds" test_now_has_valid_nanoseconds;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args
 
 let () = Actors.run ~main ~args:Env.args ()

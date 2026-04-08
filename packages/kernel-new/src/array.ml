@@ -9,9 +9,16 @@ let init = fun length builder ->
     [||]
   else
     let out = make length (builder 0) in
-    for index = 1 to length - 1 do
-      Primitives.array_set out index (builder index)
-    done;
+    let rec fill index =
+      if index >= length then
+        out
+      else
+        (
+          Primitives.array_set out index (builder index);
+          fill (index + 1)
+        )
+    in
+    let _ = fill 1 in
     out
 
 let length = Primitives.array_length
@@ -21,9 +28,16 @@ let get = Primitives.array_get
 let set = Primitives.array_set
 
 let iter = fun fn array ->
-  for index = 0 to length array - 1 do
-    fn (get array index)
-  done
+  let rec loop index =
+    if index >= length array then
+      ()
+    else
+      (
+        fn (get array index);
+        loop (index + 1)
+      )
+  in
+  loop 0
 
 let map = fun fn array ->
   let count = length array in
@@ -31,9 +45,16 @@ let map = fun fn array ->
     [||]
   else
     let out = make count (fn (get array 0)) in
-    for index = 1 to count - 1 do
-      set out index (fn (get array index))
-    done;
+    let rec fill index =
+      if index >= count then
+        out
+      else
+        (
+          set out index (fn (get array index));
+          fill (index + 1)
+        )
+    in
+    let _ = fill 1 in
     out
 
 let fold_left = fun fn init array ->
@@ -48,14 +69,12 @@ let fold_left = fun fn init array ->
 let of_list = function
   | [] -> [||]
   | head :: tail ->
-      let rec list_length acc =
-        function
+      let rec list_length acc = function
         | [] -> acc
         | _ :: rest -> list_length (acc + 1) rest
       in
       let out = make (list_length 1 tail) head in
-      let rec fill index =
-        function
+      let rec fill index = function
         | [] -> out
         | value :: rest ->
             set out index value;

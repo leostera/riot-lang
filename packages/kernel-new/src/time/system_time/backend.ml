@@ -10,9 +10,7 @@ type t = {
 let epoch = { secs = 0; nanos = 0 }
 
 module FFI = struct
-  external now:
-    unit -> ((int * int), int) Result.t
-    = "kernel_new_time_system_time_now"
+  external now: unit -> ((int * int), int) Result.t = "kernel_new_time_system_time_now"
 end
 
 let validate_parts = fun ~secs:_ ~nanos ->

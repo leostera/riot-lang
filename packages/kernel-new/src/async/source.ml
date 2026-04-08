@@ -1,14 +1,10 @@
 module type Intf = sig
   type t
+  val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Error.t) Result.t
 
-  val register:
-    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Error.t) Result.t
+  val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Error.t) Result.t
 
-  val reregister:
-    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Error.t) Result.t
-
-  val deregister:
-    t -> Adapter.Selector.t -> (unit, Error.t) Result.t
+  val deregister: t -> Adapter.Selector.t -> (unit, Error.t) Result.t
 end
 
 type t =

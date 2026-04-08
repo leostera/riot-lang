@@ -11,17 +11,13 @@ type event = {
 }
 
 module FFI = struct
-  external selector_create:
-    unit -> (selector, int) Result.t
-    = "kernel_new_async_unix_selector_create"
+  external selector_create: unit -> (selector, int) Result.t = "kernel_new_async_unix_selector_create"
 
   external selector_wait:
     max_events:int -> timeout_ns:int64 -> selector -> (event array, int) Result.t
     = "kernel_new_async_unix_selector_wait"
 
-  external selector_apply:
-    selector -> event array -> int array -> (unit, int) Result.t
-    = "kernel_new_async_unix_selector_apply"
+  external selector_apply: selector -> event array -> int array -> (unit, int) Result.t = "kernel_new_async_unix_selector_apply"
 
   let create = fun () ->
     Result.map_error Error.of_code (selector_create ())
@@ -48,11 +44,9 @@ module Kevent = struct
 
   let is_writable = fun event -> event.filter = Libc.evfilt_write
 
-  let is_read_closed = fun event ->
-    is_readable event && event.flags land Libc.ev_eof != 0
+  let is_read_closed = fun event -> is_readable event && event.flags land Libc.ev_eof != 0
 
-  let is_write_closed = fun event ->
-    is_writable event && event.flags land Libc.ev_eof != 0
+  let is_write_closed = fun event -> is_writable event && event.flags land Libc.ev_eof != 0
 end
 
 module Selector = struct
@@ -68,9 +62,7 @@ module Selector = struct
       if index < 0 then
         acc
       else
-        to_list
-          (index - 1)
-          (Event.make (module Kevent) (Array.get events index) :: acc)
+        to_list (index - 1) (Event.make (module Kevent) (Array.get events index) :: acc)
     in
     Result.Ok (to_list (Array.length events - 1) [])
 
@@ -78,15 +70,12 @@ module Selector = struct
     let flags = Libc.(ev_clear lor ev_receipt lor ev_add) in
     let changes =
       match (Interest.is_readable interest, Interest.is_writable interest) with
-      | true, true ->
-          [
-            Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
-            Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
-          ]
-      | true, false ->
-          [Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token]
-      | false, true ->
-          [Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token]
+      | true, true -> [
+        Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
+        Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
+      ]
+      | true, false -> [ Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token ]
+      | false, true -> [ Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token ]
       | false, false -> []
     in
     FFI.apply selector (Array.of_list changes) [|Error.code_broken_pipe|]

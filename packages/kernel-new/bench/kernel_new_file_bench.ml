@@ -2,19 +2,16 @@ open Std
 module Kernel = Kernel_new
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix
-          (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir)))
-  with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
   | Ok value -> value
   | Error _ -> Kernel.Error.panic "failed to create temporary directory"
 
 let with_temp_path = fun prefix filename fn ->
-  match Fs.with_tempdir ~prefix
-          (fun tempdir ->
-            let path =
-              Kernel.Path.(Path.to_string tempdir / filename)
-            in
-            fn path)
+  match
+    Fs.with_tempdir ~prefix
+      (fun tempdir ->
+        let path = Kernel.Path.(Path.to_string tempdir / filename) in
+        fn path)
   with
   | Ok value -> value
   | Error _ -> Kernel.Error.panic "failed to create temporary directory"
@@ -24,85 +21,84 @@ let with_file = fun file fn ->
     let value = fn file in
     let _ = Kernel.Fs.File.close file in
     value
-  with error ->
-    let _ = Kernel.Fs.File.close file in
-    raise error
+  with
+  | error ->
+      let _ = Kernel.Fs.File.close file in
+      raise error
 
-let scalar_payload = Kernel.Bytes.of_string (Kernel.String.make 4096 'x')
+let scalar_payload = Kernel.Bytes.of_string (Kernel.String.make 4_096 'x')
 
 let vectored_payload =
   Kernel.IO.Iovec.of_string_array
-    (Kernel.Array.init 4 (fun _ -> Kernel.String.make 1024 'x'))
+    (
+      Kernel.Array.init 4
+        (fun _ ->
+          Kernel.String.make 1_024 'x')
+    )
 
 let bench_scalar_write = fun () ->
   with_temp_path "kernel_new_file_bench" "scalar.bin"
     (fun path ->
       match Kernel.Fs.File.open_write path with
-      | Kernel.Result.Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string error)
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
       | Kernel.Result.Ok file ->
-          with_file file (fun file ->
-            match Kernel.Fs.File.write file scalar_payload with
-            | Kernel.Result.Ok _ -> ()
-            | Kernel.Result.Error error ->
-                Kernel.Error.panic (Kernel.Error.to_string error)))
+          with_file file
+            (fun file ->
+              match Kernel.Fs.File.write file scalar_payload with
+              | Kernel.Result.Ok _ -> ()
+              | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)))
 
 let bench_vectored_write = fun () ->
   with_temp_path "kernel_new_file_bench" "vectored.bin"
     (fun path ->
       match Kernel.Fs.File.open_write path with
-      | Kernel.Result.Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string error)
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
       | Kernel.Result.Ok file ->
-          with_file file (fun file ->
-            match Kernel.Fs.File.write_vectored file vectored_payload with
-            | Kernel.Result.Ok _ -> ()
-            | Kernel.Result.Error error ->
-                Kernel.Error.panic (Kernel.Error.to_string error)))
+          with_file file
+            (fun file ->
+              match Kernel.Fs.File.write_vectored file vectored_payload with
+              | Kernel.Result.Ok _ -> ()
+              | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)))
 
 let bench_scalar_read = fun () ->
   with_temp_path "kernel_new_file_bench" "read.bin"
     (fun path ->
       let _ =
         match Kernel.Fs.File.open_write path with
-        | Kernel.Result.Error error ->
-            Kernel.Error.panic (Kernel.Error.to_string error)
+        | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
         | Kernel.Result.Ok file ->
-            with_file file (fun file ->
-              match Kernel.Fs.File.write file scalar_payload with
-              | Kernel.Result.Ok _ -> ()
-              | Kernel.Result.Error error ->
-                  Kernel.Error.panic (Kernel.Error.to_string error))
+            with_file file
+              (fun file ->
+                match Kernel.Fs.File.write file scalar_payload with
+                | Kernel.Result.Ok _ -> ()
+                | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
       in
       match Kernel.Fs.File.open_read path with
-      | Kernel.Result.Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string error)
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
       | Kernel.Result.Ok file ->
           let buffer = Kernel.Bytes.create (Kernel.Bytes.length scalar_payload) in
-          with_file file (fun file ->
-            match Kernel.Fs.File.read file buffer with
-            | Kernel.Result.Ok _ -> ()
-            | Kernel.Result.Error error ->
-                Kernel.Error.panic (Kernel.Error.to_string error)))
+          with_file file
+            (fun file ->
+              match Kernel.Fs.File.read file buffer with
+              | Kernel.Result.Ok _ -> ()
+              | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)))
 
 let bench_metadata = fun () ->
   with_temp_path "kernel_new_file_bench" "metadata.bin"
     (fun path ->
       let _ =
         match Kernel.Fs.File.open_write path with
-        | Kernel.Result.Error error ->
-            Kernel.Error.panic (Kernel.Error.to_string error)
+        | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
         | Kernel.Result.Ok file ->
-            with_file file (fun file ->
-              match Kernel.Fs.File.write file scalar_payload with
-              | Kernel.Result.Ok _ -> ()
-              | Kernel.Result.Error error ->
-                  Kernel.Error.panic (Kernel.Error.to_string error))
+            with_file file
+              (fun file ->
+                match Kernel.Fs.File.write file scalar_payload with
+                | Kernel.Result.Ok _ -> ()
+                | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
       in
       match Kernel.Fs.File.metadata path with
       | Kernel.Result.Ok _ -> ()
-      | Kernel.Result.Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string error))
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
 
 let bench_read_dir_names = fun () ->
   with_tempdir "kernel_new_file_bench"
@@ -110,52 +106,33 @@ let bench_read_dir_names = fun () ->
       let _ =
         match Kernel.Fs.File.create_dir Kernel.Path.(tempdir / "child") ~perm:0o755 with
         | Kernel.Result.Ok () -> ()
-        | Kernel.Result.Error error ->
-            Kernel.Error.panic (Kernel.Error.to_string error)
+        | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
       in
       let _ =
         match Kernel.Fs.File.open_write Kernel.Path.(tempdir / "alpha.txt") with
-        | Kernel.Result.Error error ->
-            Kernel.Error.panic (Kernel.Error.to_string error)
+        | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
         | Kernel.Result.Ok file ->
-            with_file file (fun file ->
-              match Kernel.Fs.File.write file (Kernel.Bytes.of_string "a") with
-              | Kernel.Result.Ok _ -> ()
-              | Kernel.Result.Error error ->
-                  Kernel.Error.panic (Kernel.Error.to_string error))
+            with_file file
+              (fun file ->
+                match Kernel.Fs.File.write file (Kernel.Bytes.of_string "a") with
+                | Kernel.Result.Ok _ -> ()
+                | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
       in
       match Kernel.Fs.File.read_dir_names tempdir with
       | Kernel.Result.Ok _ -> ()
-      | Kernel.Result.Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string error))
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
 
 let benchmarks =
   Bench.[
-    with_config
-      ~config:{ iterations = 20; warmup = 5 }
-      "file scalar write: 4KiB"
-      bench_scalar_write;
-    with_config
-      ~config:{ iterations = 20; warmup = 5 }
-      "file vectored write: 4 x 1KiB"
-      bench_vectored_write;
-    with_config
-      ~config:{ iterations = 20; warmup = 5 }
-      "file scalar read: 4KiB"
-      bench_scalar_read;
-    with_config
-      ~config:{ iterations = 20; warmup = 5 }
-      "file metadata: 4KiB"
-      bench_metadata;
-    with_config
-      ~config:{ iterations = 20; warmup = 5 }
-      "file read_dir_names: 2 entries"
-      bench_read_dir_names;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file scalar write: 4KiB" bench_scalar_write;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file vectored write: 4 x 1KiB" bench_vectored_write;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file scalar read: 4KiB" bench_scalar_read;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file metadata: 4KiB" bench_metadata;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file read_dir_names: 2 entries" bench_read_dir_names;
   ]
 
 let () =
   Actors.run
-    ~main:(fun ~args ->
-      Bench.Cli.main ~name:"kernel_new_file_bench" ~benchmarks ~args)
+    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_file_bench" ~benchmarks ~args)
     ~args:Env.args
     ()

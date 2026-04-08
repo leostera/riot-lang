@@ -1,7 +1,5 @@
 type t
-
 type error = Error.t
-
 type kind =
   | Regular_file
   | Directory
@@ -11,10 +9,8 @@ type kind =
   | Named_pipe
   | Socket
   | Unknown
-
 module Metadata: sig
   type t
-
   val file_type: t -> kind
 
   val is_file: t -> bool
@@ -56,24 +52,16 @@ type open_flag =
   | Truncate
   | Append
   | Exclusive
-
 type pipe = {
   read_end: t;
   write_end: t;
 }
-
-val open_file:
-  Path.t -> open_flag list -> perm:int -> (t, error) Result.t
+val open_file: Path.t -> open_flag list -> perm:int -> (t, error) Result.t
 
 val open_read: Path.t -> (t, error) Result.t
 
 val open_write:
-  ?create:bool ->
-  ?truncate:bool ->
-  ?append:bool ->
-  ?perm:int ->
-  Path.t ->
-  (t, error) Result.t
+  ?create:bool -> ?truncate:bool -> ?append:bool -> ?perm:int -> Path.t -> (t, error) Result.t
 
 val close: t -> (unit, error) Result.t
 

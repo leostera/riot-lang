@@ -117,19 +117,7 @@ let kind_of_code = function
   | 6 -> Socket
   | _ -> Unknown
 
-let metadata_of_tuple = fun
-  ( kind_code,
-    perm,
-    size,
-    link_count,
-    owner_uid,
-    owner_gid,
-    device,
-    inode,
-    raw_device,
-    accessed_time_ns,
-    modified_time_ns,
-    changed_time_ns ) ->
+let metadata_of_tuple = fun (kind_code, perm, size, link_count, owner_uid, owner_gid, device, inode, raw_device, accessed_time_ns, modified_time_ns, changed_time_ns) ->
   Metadata.{
     kind = kind_of_code kind_code;
     perm;
@@ -146,8 +134,7 @@ let metadata_of_tuple = fun
   }
 
 let flags_to_mask = fun flags ->
-  let rec loop acc =
-    function
+  let rec loop acc = function
     | [] -> acc
     | Read_only :: rest -> loop (acc lor flag_read_only) rest
     | Write_only :: rest -> loop (acc lor flag_write_only) rest
@@ -160,107 +147,83 @@ let flags_to_mask = fun flags ->
   loop 0 flags
 
 module FFI = struct
-  external open_file:
-    string -> int -> int -> (t, int) Result.t
-    = "kernel_new_fs_file_open"
+  external open_file: string -> int -> int -> (t, int) Result.t = "kernel_new_fs_file_open"
 
-  external close:
-    t -> (unit, int) Result.t
-    = "kernel_new_fs_file_close"
+  external close: t -> (unit, int) Result.t = "kernel_new_fs_file_close"
 
-  external read:
-    t -> bytes -> int -> int -> (int, int) Result.t
-    = "kernel_new_fs_file_read"
+  external read: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_read"
 
-  external write:
-    t -> bytes -> int -> int -> (int, int) Result.t
-    = "kernel_new_fs_file_write"
+  external write: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
-  external readv:
-    t -> IO.Iovec.t -> (int, int) Result.t
-    = "kernel_new_fs_file_readv"
+  external readv: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
-  external writev:
-    t -> IO.Iovec.t -> (int, int) Result.t
-    = "kernel_new_fs_file_writev"
+  external writev: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
 
-  external pipe:
-    unit -> ((t * t), int) Result.t
-    = "kernel_new_fs_file_pipe"
+  external pipe: unit -> ((t * t), int) Result.t = "kernel_new_fs_file_pipe"
 
-  external mkdir:
-    string -> int -> (unit, int) Result.t
-    = "kernel_new_fs_file_mkdir"
+  external mkdir: string -> int -> (unit, int) Result.t = "kernel_new_fs_file_mkdir"
 
-  external rmdir:
-    string -> (unit, int) Result.t
-    = "kernel_new_fs_file_rmdir"
+  external rmdir: string -> (unit, int) Result.t = "kernel_new_fs_file_rmdir"
 
-  external remove:
-    string -> (unit, int) Result.t
-    = "kernel_new_fs_file_remove"
+  external remove: string -> (unit, int) Result.t = "kernel_new_fs_file_remove"
 
-  external rename:
-    string -> string -> (unit, int) Result.t
-    = "kernel_new_fs_file_rename"
+  external rename: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_rename"
 
-  external link:
-    string -> string -> (unit, int) Result.t
-    = "kernel_new_fs_file_link"
+  external link: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_link"
 
-  external symlink:
-    string -> string -> (unit, int) Result.t
-    = "kernel_new_fs_file_symlink"
+  external symlink: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_symlink"
 
-  external readlink:
-    string -> (string, int) Result.t
-    = "kernel_new_fs_file_readlink"
+  external readlink: string -> (string, int) Result.t = "kernel_new_fs_file_readlink"
 
-  external realpath:
-    string -> (string, int) Result.t
-    = "kernel_new_fs_file_realpath"
+  external realpath: string -> (string, int) Result.t = "kernel_new_fs_file_realpath"
 
   external stat:
-    string -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
+    string ->
+    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
     = "kernel_new_fs_file_stat"
 
   external lstat:
-    string -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
+    string ->
+    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
     = "kernel_new_fs_file_lstat"
 
   external fstat:
-    t -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
+    t ->
+    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
     = "kernel_new_fs_file_fstat"
 
-  external readdir:
-    string -> (string array, int) Result.t
-    = "kernel_new_fs_file_readdir"
+  external readdir: string -> (string array, int) Result.t = "kernel_new_fs_file_readdir"
 
-  external getcwd:
-    unit -> (string, int) Result.t
-    = "kernel_new_fs_file_getcwd"
+  external getcwd: unit -> (string, int) Result.t = "kernel_new_fs_file_getcwd"
 
-  external chdir:
-    string -> (unit, int) Result.t
-    = "kernel_new_fs_file_chdir"
+  external chdir: string -> (unit, int) Result.t = "kernel_new_fs_file_chdir"
 
-  external is_tty:
-    t -> bool
-    = "kernel_new_fs_file_isatty"
+  external is_tty: t -> bool = "kernel_new_fs_file_isatty"
 end
 
 let open_file = fun path flags ~perm ->
-  Result.map_error Error.of_code
-    (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
+  Result.map_error Error.of_code (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
 
-let open_read = fun path ->
-  open_file path [Read_only] ~perm:0
+let open_read = fun path -> open_file path [ Read_only ] ~perm:0
 
 let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(perm = 0o644) path ->
   let flags =
-    let flags = if create then Create :: [Write_only] else [Write_only] in
-    let flags = if truncate then Truncate :: flags else flags in
-    if append then Append :: flags else flags
+    let flags =
+      if create then
+        Create :: [ Write_only ]
+      else
+        [ Write_only ]
+    in
+    let flags =
+      if truncate then
+        Truncate :: flags
+      else
+        flags
+    in
+    if append then
+      Append :: flags
+    else
+      flags
   in
   open_file path flags ~perm
 
@@ -272,12 +235,12 @@ let validate_slice = fun buf ~pos ~len ->
     Error.panic "invalid buffer bounds"
 
 let read = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
+  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
   validate_slice buf ~pos ~len;
   Result.map_error Error.of_code (FFI.read fd buf pos len)
 
 let write = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
+  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
   validate_slice buf ~pos ~len;
   Result.map_error Error.of_code (FFI.write fd buf pos len)
 
@@ -302,41 +265,28 @@ let remove_file = fun path ->
   Result.map_error Error.of_code (FFI.remove (Path.to_string path))
 
 let rename = fun ~src ~dst ->
-  Result.map_error
-    Error.of_code
-    (FFI.rename (Path.to_string src) (Path.to_string dst))
+  Result.map_error Error.of_code (FFI.rename (Path.to_string src) (Path.to_string dst))
 
 let hard_link = fun ~src ~dst ->
-  Result.map_error
-    Error.of_code
-    (FFI.link (Path.to_string src) (Path.to_string dst))
+  Result.map_error Error.of_code (FFI.link (Path.to_string src) (Path.to_string dst))
 
 let symlink = fun ~src ~dst ->
-  Result.map_error
-    Error.of_code
-    (FFI.symlink (Path.to_string src) (Path.to_string dst))
+  Result.map_error Error.of_code (FFI.symlink (Path.to_string src) (Path.to_string dst))
 
 let read_link = fun path ->
-  Result.map_error
-    Error.of_code
-    (Result.map Path.v (FFI.readlink (Path.to_string path)))
+  Result.map_error Error.of_code (Result.map Path.v (FFI.readlink (Path.to_string path)))
 
 let canonicalize = fun path ->
-  Result.map_error
-    Error.of_code
-    (Result.map Path.v (FFI.realpath (Path.to_string path)))
+  Result.map_error Error.of_code (Result.map Path.v (FFI.realpath (Path.to_string path)))
 
 let metadata = fun path ->
-  Result.map_error Error.of_code
-    (Result.map metadata_of_tuple (FFI.stat (Path.to_string path)))
+  Result.map_error Error.of_code (Result.map metadata_of_tuple (FFI.stat (Path.to_string path)))
 
 let symlink_metadata = fun path ->
-  Result.map_error Error.of_code
-    (Result.map metadata_of_tuple (FFI.lstat (Path.to_string path)))
+  Result.map_error Error.of_code (Result.map metadata_of_tuple (FFI.lstat (Path.to_string path)))
 
 let fstat = fun fd ->
-  Result.map_error Error.of_code
-    (Result.map metadata_of_tuple (FFI.fstat fd))
+  Result.map_error Error.of_code (Result.map metadata_of_tuple (FFI.fstat fd))
 
 let exists = fun path ->
   match metadata path with
@@ -354,15 +304,13 @@ let read_dir_names = fun path ->
   Result.map_error Error.of_code (FFI.readdir (Path.to_string path))
 
 let current_dir = fun () ->
-  Result.map_error
-    Error.of_code
-    (Result.map Path.v (FFI.getcwd ()))
+  Result.map_error Error.of_code (Result.map Path.v (FFI.getcwd ()))
 
 let set_current_dir = fun path ->
   Result.map_error Error.of_code (FFI.chdir (Path.to_string path))
 
 let copy = fun ~src ~dst ->
-  let rec write_all = fun fd buffer pos len ->
+  let rec write_all fd buffer pos len =
     if len <= 0 then
       Result.Ok ()
     else
@@ -374,28 +322,32 @@ let copy = fun ~src ~dst ->
             write_all fd buffer (pos + written) (len - written)
       | Result.Error error -> Result.Error error
   in
-  let rec copy_loop = fun src_fd dst_fd buffer ->
+  let rec copy_loop src_fd dst_fd buffer =
     match read src_fd buffer with
-    | Result.Ok 0 -> Result.Ok ()
-    | Result.Ok read_count ->
-        (match write_all dst_fd buffer 0 read_count with
-         | Result.Ok () -> copy_loop src_fd dst_fd buffer
-         | Result.Error error -> Result.Error error)
-    | Result.Error error -> Result.Error error
+    | Result.Ok 0 ->
+        Result.Ok ()
+    | Result.Ok read_count -> (
+        match write_all dst_fd buffer 0 read_count with
+        | Result.Ok () -> copy_loop src_fd dst_fd buffer
+        | Result.Error error -> Result.Error error
+      )
+    | Result.Error error ->
+        Result.Error error
   in
   match open_read src with
   | Result.Error error -> Result.Error error
-  | Result.Ok src_fd ->
-      (match open_write ~create:true ~truncate:true dst with
-       | Result.Error error ->
-           let _ = close src_fd in
-           Result.Error error
-       | Result.Ok dst_fd ->
-           let buffer = Bytes.create 65_536 in
-           let outcome = copy_loop src_fd dst_fd buffer in
-           let _ = close src_fd in
-           let _ = close dst_fd in
-           outcome)
+  | Result.Ok src_fd -> (
+      match open_write ~create:true ~truncate:true dst with
+      | Result.Error error ->
+          let _ = close src_fd in
+          Result.Error error
+      | Result.Ok dst_fd ->
+          let buffer = Bytes.create 65_536 in
+          let outcome = copy_loop src_fd dst_fd buffer in
+          let _ = close src_fd in
+          let _ = close dst_fd in
+          outcome
+    )
 
 let is_tty = FFI.is_tty
 
@@ -409,7 +361,6 @@ let to_source = fun fd ->
     let reregister = fun fd selector token interest ->
       Async.Adapter.Selector.reregister selector ~fd ~token ~interest
 
-    let deregister = fun fd selector ->
-      Async.Adapter.Selector.deregister selector ~fd
+    let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in
   Async.Source.make (module Source) fd

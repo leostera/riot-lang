@@ -10,13 +10,19 @@ let get = Primitives.string_get
 
 let init = fun length builder ->
   let out = Primitives.bytes_create length in
-  for index = 0 to length - 1 do
-    Primitives.bytes_set out index (builder index)
-  done;
+  let rec fill index =
+    if index >= length then
+      out
+    else
+      (
+        Primitives.bytes_set out index (builder index);
+        fill (index + 1)
+      )
+  in
+  let _ = fill 0 in
   Primitives.bytes_to_string out
 
-let make = fun length char ->
-  init length (fun _ -> char)
+let make = fun length char -> init length (fun _ -> char)
 
 let append = fun left right ->
   let left_length = length left in
@@ -27,16 +33,15 @@ let append = fun left right ->
   Primitives.bytes_to_string out
 
 let concat = fun separator values ->
-  let rec total_length acc =
-    function
+  let rec total_length acc = function
     | [] -> acc
-    | [value] -> acc + length value
+    | [ value ] -> acc + length value
     | value :: rest -> total_length (acc + length value + length separator) rest
   in
-  let rec fill out offset =
-    function
-    | [] -> out
-    | [value] ->
+  let rec fill out offset = function
+    | [] ->
+        out
+    | [ value ] ->
         let value_length = length value in
         Primitives.string_blit value 0 out offset value_length;
         out
@@ -48,8 +53,10 @@ let concat = fun separator values ->
         fill out (offset + value_length + separator_length) rest
   in
   match values with
-  | [] -> empty
-  | [value] -> value
+  | [] ->
+      empty
+  | [ value ] ->
+      value
   | values ->
       let out = Primitives.bytes_create (total_length 0 values) in
       Primitives.bytes_to_string (fill out 0 values)

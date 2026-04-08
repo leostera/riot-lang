@@ -1,7 +1,5 @@
 type t
-
 type error = Error.t
-
 val epoch: t
 
 val of_parts: secs:int -> nanos:int -> t
