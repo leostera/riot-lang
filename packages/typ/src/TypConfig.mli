@@ -75,4 +75,4 @@ val without_on_event: t -> t
 
 (** Emit one structured event when the config carries a sink. The thunk is only
     forced when event delivery is enabled. *)
-val emit_event: t -> (unit -> Event.t) -> unit
+val emit_event: t -> (unit -> Event.kind) -> unit

@@ -26,6 +26,7 @@ and record_pattern_field = {
 type pattern_node = {
   pat_id: PatId.t;
   origin_id: OriginId.t;
+  annotation: TypeRepr.t option;
   desc: pattern_desc;
 }
 
@@ -42,6 +43,7 @@ type label =
 
 type function_parameter = {
   label: label;
+  has_default: bool;
   pattern_id: PatId.t;
 }
 
@@ -180,7 +182,10 @@ let render_label = function
   | Optional label -> "?" ^ label
 
 let render_function_parameter = fun (parameter: function_parameter) ->
-  render_label parameter.label ^ ":" ^ PatId.to_string parameter.pattern_id
+  render_label parameter.label
+  ^ (if parameter.has_default then "=default" else "")
+  ^ ":"
+  ^ PatId.to_string parameter.pattern_id
 
 let render_apply_argument = fun (argument: apply_argument) ->
   render_label argument.label ^ ":" ^ ExprId.to_string argument.value_id
@@ -501,6 +506,7 @@ let label_to_json = function
 let function_parameter_to_json = fun (parameter: function_parameter) ->
   Data.Json.Object [
     ("label", label_to_json parameter.label);
+    ("has_default", Data.Json.Bool parameter.has_default);
     ("pattern_id", Data.Json.Int (PatId.to_int parameter.pattern_id));
   ]
 
@@ -647,11 +653,19 @@ let expr_desc_to_json = function
   ]
 
 let pattern_node_to_json = fun (node: pattern_node) ->
-  Data.Json.Object [
+  let annotation_fields =
+    match node.annotation with
+    | Some annotation -> [
+      ("annotation", Data.Json.String (TypePrinter.type_to_string annotation));
+    ]
+    | None -> []
+  in
+  Data.Json.Object ([
     ("pat_id", Data.Json.Int (PatId.to_int node.pat_id));
     ("origin_id", Data.Json.Int (OriginId.to_int node.origin_id));
     ("desc", pattern_desc_to_json node.desc);
   ]
+  @ annotation_fields)
 
 let expr_node_to_json = fun (node: expr_node) ->
   Data.Json.Object [
@@ -703,6 +717,11 @@ let to_string = fun arena ->
       ^ PatId.to_string node.pat_id
       ^ " "
       ^ OriginId.to_string node.origin_id
+      ^ (
+        match node.annotation with
+        | Some annotation -> " : " ^ TypePrinter.type_to_string annotation
+        | None -> ""
+      )
       ^ " "
       ^ render_pattern_desc node.desc) in
   let binding_lines = arena.bindings |> List.map render_binding in

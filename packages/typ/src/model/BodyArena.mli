@@ -46,6 +46,8 @@ type pattern_node = {
   pat_id: PatId.t;
   (** Source origin for this pattern node. *)
   origin_id: OriginId.t;
+  (** Optional explicit type annotation preserved from the source pattern. *)
+  annotation: TypeRepr.t option;
   (** Semantic payload for the pattern. *)
   desc: pattern_desc;
 }
@@ -67,6 +69,8 @@ type label =
 type function_parameter = {
   (** Calling-convention label preserved from the source surface. *)
   label: label;
+  (** Whether an optional parameter had a source default (`?(x = expr)`). *)
+  has_default: bool;
   (** Semantic pattern bound for this parameter. *)
   pattern_id: PatId.t;
 }

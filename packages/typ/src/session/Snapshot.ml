@@ -307,9 +307,51 @@ let required_local_module_names = fun (slot: analysis_slot) ->
   @ (slot.source.implicit_opens |> List.map IdentPath.to_string) in
   names |> List.sort_uniq String.compare
 
-let matches_required_local_module = fun ~current_module_name ~required_module_name candidate_module_name ->
+let split_internal_module_name = fun module_name ->
+  let rec find_separator index =
+    if index + 1 >= String.length module_name then
+      None
+    else if module_name.[index] = '_' && module_name.[index + 1] = '_' then
+      Some index
+    else
+      find_separator (index + 1)
+  in
+  let rec loop start acc =
+    if start >= String.length module_name then
+      List.rev acc
+    else
+      match find_separator start with
+      | Some index ->
+          let segment = String.sub module_name start (index - start) in
+          loop (index + 2) (segment :: acc)
+      | None ->
+          let segment = String.sub module_name start (String.length module_name - start) in
+          List.rev (segment :: acc)
+  in
+  loop 0 []
+
+let module_name_suffix_aliases = fun module_name ->
+  let segments =
+    module_name
+    |> String.split_on_char '.'
+    |> List.filter (fun segment -> not (String.equal segment ""))
+  in
+  let rec loop aliases = function
+    | [] -> List.rev aliases
+    | _ :: rest as current -> loop (String.concat "." current :: aliases) rest
+  in
+  loop [] segments |> List.sort_uniq String.compare
+
+let local_module_aliases_of_internal_module_name = fun module_name ->
+  match split_internal_module_name module_name with
+  | [] -> []
+  | [ _root ] -> []
+  | _root :: local_segments ->
+      module_name_suffix_aliases (String.concat "." local_segments)
+
+let matches_required_local_module = fun ~required_module_name candidate_module_name ->
   String.equal candidate_module_name required_module_name
-  || String.equal candidate_module_name (current_module_name ^ "." ^ required_module_name)
+  || List.mem required_module_name (local_module_aliases_of_internal_module_name candidate_module_name)
 
 let visiting_key = fun visiting ->
   visiting
@@ -330,7 +372,7 @@ let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
       not (String.equal current_module_name candidate_module_name)
       && List.exists
         (fun required_module_name ->
-          matches_required_local_module ~current_module_name ~required_module_name candidate_module_name)
+          matches_required_local_module ~required_module_name candidate_module_name)
         required_local_modules)
 
 let force_base_analysis = fun (slot: analysis_slot) ->
@@ -401,10 +443,11 @@ and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   |> List.map (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
-      qualify_exports
-        module_name
-        (ModuleTypings.type_decls result.ModulePairing.module_typings)
-        (ModuleTypings.exports result.ModulePairing.module_typings))
+      let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
+      let exports = ModuleTypings.exports result.ModulePairing.module_typings in
+      local_module_aliases_of_internal_module_name module_name
+      |> List.map (fun alias -> qualify_exports alias type_decls exports)
+      |> List.flatten)
   |> List.flatten in
   local_modules @ loaded_ambient_env_for slot
 
@@ -413,7 +456,10 @@ and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   |> List.map (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
-      ModuleTypings.type_decls result.ModulePairing.module_typings |> qualify_type_decls module_name)
+      let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
+      local_module_aliases_of_internal_module_name module_name
+      |> List.map (fun alias -> qualify_type_decls alias type_decls)
+      |> List.flatten)
   |> List.flatten in
   local_type_decls @ loaded_ambient_type_decls_for slot
 

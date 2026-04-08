@@ -337,11 +337,22 @@ let add_pattern = fun (state: state) ~syntax_node ~label desc ->
     state.next_pattern_id <- state.next_pattern_id + 1
   in
   let origin_id = add_origin state ~semantic_id:(OriginMap.Pattern pat_id) ~label syntax_node in
-  let node = { BodyArena.pat_id; origin_id; desc } in
+  let node = { BodyArena.pat_id; origin_id; annotation = None; desc } in
   let () =
     state.patterns <- node :: state.patterns
   in
   pat_id
+
+let annotate_pattern = fun (state: state) pat_id annotation ->
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | ((node: BodyArena.pattern_node) as node') :: rest ->
+        if PatId.equal node.pat_id pat_id then
+          List.rev_append acc ({ node' with annotation = Some annotation } :: rest)
+        else
+          loop (node' :: acc) rest
+  in
+  state.patterns <- loop [] state.patterns
 
 let add_expr = fun (state: state) ~syntax_node ~label desc ->
   let expr_id = ExprId.of_int state.next_expr_id in
@@ -1095,13 +1106,11 @@ let rec lower_pattern = fun (state: state) pattern ->
         (BodyArena.PPolyVariant { tag = Cst.Token.text tag_token; payload })
   | Cst.Pattern.Parenthesized { inner; _ } ->
       lower_pattern state inner
-  | Cst.Pattern.Typed { syntax_node; pattern; _ } ->
-      let () = add_diagnostic
-        state
-        (Typ_diagnostic.IgnoredPatternTypeConstraint {
-          constraint_span = Ceibo.Red.SyntaxNode.span syntax_node
-        }) in
-      lower_pattern state pattern
+  | Cst.Pattern.Typed { pattern; type_; _ } ->
+      let pattern_id = lower_pattern state pattern in
+      let annotation = lower_core_type state [] type_ in
+      let () = annotate_pattern state pattern_id annotation in
+      pattern_id
   | _ ->
       lower_unsupported_pattern
         state
@@ -1118,13 +1127,13 @@ let recovered_parameter_pattern = fun (state: state) syntax_node ~label paramete
     )
 
 let positional_function_parameter = fun pattern_id ->
-  ({ BodyArena.label = BodyArena.Positional; pattern_id }: BodyArena.function_parameter)
+  ({ BodyArena.label = BodyArena.Positional; has_default = false; pattern_id }: BodyArena.function_parameter)
 
 let labeled_function_parameter = fun label pattern_id ->
-  ({ BodyArena.label = BodyArena.Labeled label; pattern_id }: BodyArena.function_parameter)
+  ({ BodyArena.label = BodyArena.Labeled label; has_default = false; pattern_id }: BodyArena.function_parameter)
 
-let optional_function_parameter = fun label pattern_id ->
-  ({ BodyArena.label = BodyArena.Optional label; pattern_id }: BodyArena.function_parameter)
+let optional_function_parameter = fun label ~has_default pattern_id ->
+  ({ BodyArena.label = BodyArena.Optional label; has_default; pattern_id }: BodyArena.function_parameter)
 
 let rec lower_parameter = fun (state: state) parameter ->
   match parameter with
@@ -1143,7 +1152,10 @@ let rec lower_parameter = fun (state: state) parameter ->
         optional.syntax_node
         ~label:"optional_parameter_pattern"
         parameter in
-      optional_function_parameter (Cst.Token.text optional.label_token) pattern_id
+      optional_function_parameter
+        (Cst.Token.text optional.label_token)
+        ~has_default:(Option.is_some optional.default_value)
+        pattern_id
   | parameter ->
       let syntax_node = Cst.Parameter.syntax_node parameter in
       let () = add_diagnostic
@@ -1219,8 +1231,12 @@ and lower_binding_source = fun (state: state) ~syntax_node ~binding_pattern ~par
     | Cst.CoreType.Poly { binders; body; _ } ->
         let params = binders |> List.mapi (fun index binder -> (Cst.TypeBinder.text binder, index)) in
         TypeScheme.of_explicit ~quantified:(List.map snd params) (lower_core_type state params body)
-    | _ ->
-        TypeScheme.of_explicit ~quantified:[] (lower_core_type state [] core_type)
+    | core_type ->
+        let params =
+          collect_core_type_var_names core_type
+          |> List.mapi (fun index name -> (name, index))
+        in
+        TypeScheme.of_explicit ~quantified:(List.map snd params) (lower_core_type state params core_type)
   in
   let rec peel_binding_annotation ~parameters = function
     | Cst.Expression.Parenthesized { inner; _ } -> peel_binding_annotation ~parameters inner
@@ -1233,7 +1249,14 @@ and lower_binding_source = fun (state: state) ~syntax_node ~binding_pattern ~par
         if List.is_empty parameters then
           (expression, Some (explicit_scheme_of_core_type type_), None)
         else
-          (expression, None, Some (lower_core_type state [] type_))
+          (
+            expression,
+            None,
+            Some (
+              match TypeScheme.to_explicit (explicit_scheme_of_core_type type_) with
+              | (_quantified, body) -> body
+            )
+          )
     | expression -> (expression, None, None)
   in
   let pattern_id = lower_pattern state binding_pattern in

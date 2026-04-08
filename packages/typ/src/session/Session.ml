@@ -51,6 +51,14 @@ let source_ids_of_module = fun session module_name ->
   | Some source_ids -> source_ids
   | None -> []
 
+let local_source_ids_for_module = fun session module_name ->
+  source_ids_of_module session module_name
+
+let has_local_source_for_module = fun session module_name ->
+  match local_source_ids_for_module session module_name with
+  | _ :: _ -> true
+  | [] -> false
+
 let root_module_names = fun session roots ->
   roots
   |> List.filter_map (source_of_id session)
@@ -302,6 +310,10 @@ let collect_missing_module_summaries = fun session roots ->
   let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map IdentPath.to_string in
   let implicit_open_source_ids source = implicit_open_module_names source
   |> List.concat_map (source_ids_of_module session) in
+  let local_dependency_source_ids module_name = local_source_ids_for_module session module_name in
+  let dependency_is_loaded_only module_name =
+    Collections.HashSet.contains loaded_module_names module_name
+    && not (has_local_source_for_module session module_name) in
   let local_nested_module_prefixes_cache = Collections.HashMap.with_capacity 32 in
   let module_source_closure initial_source_ids =
     let seen = Collections.HashSet.with_capacity (List.length initial_source_ids) in
@@ -319,10 +331,7 @@ let collect_missing_module_summaries = fun session roots ->
               | Some source ->
                   let additional = (implicit_open_source_ids source)
                   @ (module_dependencies session ~deps_env_key ~deps_env source
-                  |> List.filter
-                    (fun dependency_module_name ->
-                      not (Collections.HashSet.contains loaded_module_names dependency_module_name))
-                  |> List.concat_map (source_ids_of_module session)) in
+                  |> List.concat_map local_dependency_source_ids) in
                   discover (additional @ rest) seen
             )
     in
@@ -431,7 +440,7 @@ let collect_missing_module_summaries = fun session roots ->
                     (fun module_name ->
                       let local_nested_modules = local_nested_module_prefixes module_name in
                       let loaded_nested_modules =
-                        if Collections.HashSet.contains loaded_module_names module_name then
+                        if dependency_is_loaded_only module_name then
                           loaded_nested_module_prefixes module_name
                         else
                           []
@@ -444,19 +453,18 @@ let collect_missing_module_summaries = fun session roots ->
                   source_modules
                   |> List.fold_left
                     (fun (missing, additional) module_name ->
-                      if Collections.HashSet.contains loaded_module_names module_name then
-                        (missing, additional)
-                      else
-                        match source_ids_of_module session module_name with
-                        | _ :: _ as dependency_source_ids -> (
-                          missing,
-                          dependency_source_ids @ additional
-                        )
-                        | [] ->
-                            if List.mem module_name dependency_nested_modules then
-                              (missing, additional)
-                            else
-                              (add_missing missing module_name source_id, additional))
+                      match local_dependency_source_ids module_name with
+                      | _ :: _ as dependency_source_ids -> (
+                        missing,
+                        dependency_source_ids @ additional
+                      )
+                      | [] ->
+                          if dependency_is_loaded_only module_name then
+                            (missing, additional)
+                          else if List.mem module_name dependency_nested_modules then
+                            (missing, additional)
+                          else
+                            (add_missing missing module_name source_id, additional))
                     (missing, opened_source_ids)
                 in
                 discover (additional @ rest) seen missing'
@@ -477,6 +485,7 @@ let local_source_closure = fun session roots ->
   let implicit_open_source_ids (source: Source.t) = source.implicit_opens
   |> List.map IdentPath.to_string
   |> List.concat_map (source_ids_of_module session) in
+  let local_dependency_source_ids module_name = local_source_ids_for_module session module_name in
   let initial_source_ids =
     roots
     |> List.filter_map
@@ -508,8 +517,11 @@ let local_source_closure = fun session roots ->
                 @ (module_dependencies session ~deps_env_key ~deps_env source
                 |> List.filter
                   (fun module_name ->
-                    not (Collections.HashSet.contains loaded_module_names module_name))
-                |> List.concat_map (source_ids_of_module session)) in
+                    not (
+                      Collections.HashSet.contains loaded_module_names module_name
+                      && not (has_local_source_for_module session module_name)
+                    ))
+                |> List.concat_map local_dependency_source_ids) in
                 discover (additional @ rest) seen
           )
   in

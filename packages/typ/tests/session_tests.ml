@@ -128,7 +128,8 @@ let trace_debug = fun snapshot source_id ->
 let module_typings_jsons = fun snapshot ->
   Snapshot.module_typings snapshot |> List.map ModuleTypings.Json.to_json
 
-let typ_event_name = function
+let typ_event_name = fun ({ Event.kind; _ }: Event.t) ->
+  match kind with
   | Event.PrepareSnapshotStarted _ -> "typ_prepare_snapshot_start"
   | Event.HydrateModuleTypingsStarted _ -> "typ_hydrate_module_typings_start"
   | Event.HydrateModuleTypingsFinished _ -> "typ_hydrate_module_typings_finish"
@@ -138,6 +139,14 @@ let typ_event_name = function
   | Event.SourceAnalysisFinished _ -> "typ_source_analysis_finish"
   | Event.ModulePairingStarted _ -> "typ_module_pairing_start"
   | Event.ModulePairingFinished _ -> "typ_module_pairing_finish"
+
+let typ_event_instants_are_monotonic = fun (events: Event.t list) ->
+  let rec loop previous = function
+    | [] -> true
+    | ({ Event.instant_us; _ }: Event.t) :: rest ->
+        instant_us >= previous && loop instant_us rest
+  in
+  loop 0 events
 
 let exported_type_names = fun snapshot source_id ->
   match Query.module_typings_of snapshot source_id with
@@ -590,6 +599,46 @@ let test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names
           Error ("unexpected answer type: " ^ show_option answer_type)
         else
           Ok ()
+
+let test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let int_text = "let hash value = value\n" in
+  let int_parse_result = Syn.parse ~filename:(Path.v "int.ml") int_text in
+  let int_cst = expect_cst ~filename:"int.ml" int_parse_result in
+  let (session, int_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Pkg__Int"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "int.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:int_cst)
+    ~parse_result:int_parse_result
+    ~cst:int_cst in
+  let session = Session.register_source_alias session int_source_id ~module_name:"Int" in
+  let token_text = "let value = Int.hash 1\n" in
+  let token_parse_result = Syn.parse ~filename:(Path.v "token.ml") token_text in
+  let token_cst = expect_cst ~filename:"token.ml" token_parse_result in
+  let (session, token_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Pkg__Token"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "token.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:token_cst)
+    ~parse_result:token_parse_result
+    ~cst:token_cst in
+  match prepare_snapshot_or_error session ~roots:[ token_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot token_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let value_type = export_scheme snapshot token_source_id "value" in
+        if value_type = Some "int" then
+          Ok ()
+        else
+          Error ("unexpected value type: " ^ show_option value_type)
 
 let test_implicit_opens_do_not_leak_into_module_exports = fun _ctx ->
   let config = Config.default |> Config.with_capture_traces ~capture_traces:true in
@@ -1356,31 +1405,35 @@ let test_prepare_snapshot_emits_structured_events = fun _ctx ->
   ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
   | Ok snapshot ->
       let _ = Query.analysis_of_source snapshot source_id |> Option.expect ~msg:"expected analysis" in
-      match !events with
+      if not (typ_event_instants_are_monotonic !events) then
+        Error ("expected monotonic typ event instants: "
+        ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+      else
+        match !events with
       | [
-        Event.PrepareSnapshotStarted _;
-        Event.PrepareSnapshotFinished _;
-        Event.ModulePairingStarted _;
-        Event.SourceAnalysisStarted {
+        { Event.kind = Event.PrepareSnapshotStarted _; _ };
+        { Event.kind = Event.PrepareSnapshotFinished _; _ };
+        { Event.kind = Event.ModulePairingStarted _; _ };
+        { Event.kind = Event.SourceAnalysisStarted {
           source_id=analysis_source_id;
           module_name;
           mode=Event.SnapshotAnalysis;
           _
-        };
-        Event.SourceAnalysisFinished {
+        }; _ };
+        { Event.kind = Event.SourceAnalysisFinished {
           source_id=finished_source_id;
           module_name=finished_module_name;
           mode=Event.SnapshotAnalysis;
           export_status=Event.TrustedExport;
           _
-        };
-        Event.ModulePairingFinished {
+        }; _ };
+        { Event.kind = Event.ModulePairingFinished {
           module_name=paired_module_name;
           export_status=Event.TrustedExport;
           export_count=1;
           type_decl_count=0;
           _
-        };
+        }; _ };
 
       ] ->
           let expected_source_id = SourceId.to_int source_id in
@@ -1431,7 +1484,8 @@ let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
         !events
         |> List.filter_map
           (
-            function
+            fun (event: Event.t) ->
+            match event.Event.kind with
             | Event.ModulePairingStarted { module_name; _ } -> Some module_name
             | _ -> None
           )
@@ -1495,10 +1549,10 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
           else
             match !events with
             | [
-              Event.PrepareSnapshotStarted _;
-              Event.HydrateModuleTypingsStarted { missing_modules; _ };
-              Event.HydrateModuleTypingsFinished { hydrated_modules; loaded_module_count; _ };
-              Event.PrepareSnapshotFinished { loaded_module_count=final_loaded_module_count; _ };
+              { Event.kind = Event.PrepareSnapshotStarted _; _ };
+              { Event.kind = Event.HydrateModuleTypingsStarted { missing_modules; _ }; _ };
+              { Event.kind = Event.HydrateModuleTypingsFinished { hydrated_modules; loaded_module_count; _ }; _ };
+              { Event.kind = Event.PrepareSnapshotFinished { loaded_module_count=final_loaded_module_count; _ }; _ };
 
             ] ->
                 if
@@ -1534,8 +1588,8 @@ let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx
       let () = Test.assert_equal ~expected ~actual in
       match !events with
       | [
-        Event.PrepareSnapshotStarted _;
-        Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ };
+        { Event.kind = Event.PrepareSnapshotStarted _; _ };
+        { Event.kind = Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ }; _ };
 
       ] ->
           let () = Test.assert_equal
@@ -4083,6 +4137,10 @@ let test_external_identity_cast_token_shape_typechecks = fun _ctx ->
   let source = {ocaml|
 type t
 
+module Int = struct
+  let hash value = value
+end
+
 external unsafe_cast : 'a -> 'b = "%identity"
 
 let unsafe_to_value = fun (token: t) -> unsafe_cast token
@@ -4090,6 +4148,9 @@ let unsafe_to_value = fun (token: t) -> unsafe_cast token
 let unsafe_to_int: t -> int = fun token -> unsafe_to_value token
 
 let hash = fun token -> Int.hash (unsafe_to_int token)
+
+let equal: ?eq:('value -> 'value -> bool) -> t -> t -> bool = fun ?eq:_ left right ->
+  unsafe_to_int left = unsafe_to_int right
 
 let make: 'value -> t = fun value -> unsafe_cast value
 |ocaml}
@@ -4106,10 +4167,12 @@ let make: 'value -> t = fun value -> unsafe_cast value
   else
     let unsafe_to_value_type = export_scheme snapshot source_id "unsafe_to_value" in
     let unsafe_to_int_type = export_scheme snapshot source_id "unsafe_to_int" in
+    let equal_type = export_scheme snapshot source_id "equal" in
     let make_type = export_scheme snapshot source_id "make" in
     if
       unsafe_to_value_type = Some "'a. t -> 'a"
       && unsafe_to_int_type = Some "t -> int"
+      && equal_type = Some "'a. ?eq:('a -> 'a -> bool) -> t -> t -> bool"
       && make_type = Some "'a. 'a -> t"
     then
       Ok ()
@@ -4118,6 +4181,8 @@ let make: 'value -> t = fun value -> unsafe_cast value
       ^ show_option unsafe_to_value_type
       ^ ", unsafe_to_int="
       ^ show_option unsafe_to_int_type
+      ^ ", equal="
+      ^ show_option equal_type
       ^ ", make="
       ^ show_option make_type)
 
@@ -5346,6 +5411,7 @@ let () =
         Test.case "snapshot without traces still reports diagnostics and module typings" test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
         Test.case "prepare_snapshot uses implicit-opened alias modules with internal names" test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
+        Test.case "prepare_snapshot resolves internal module dependencies by local alias" test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias;
         Test.case "implicit opens do not leak into module exports" test_implicit_opens_do_not_leak_into_module_exports;
         Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
         Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;

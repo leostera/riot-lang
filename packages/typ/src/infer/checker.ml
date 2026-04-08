@@ -1553,6 +1553,16 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
   match SemanticTree.find_pattern state.file pat_id with
   | None -> []
   | Some pattern -> (
+      let () =
+        match pattern.annotation with
+        | Some annotation ->
+            try_unify
+              state
+              ~origin:(origin_of_pattern state pat_id)
+              expected_ty
+              (canonicalize_type_in_env state env annotation)
+        | None -> ()
+      in
       match pattern.desc with
       | BodyArena.PVar name ->
           [ generalized_pattern_binding state pat_id ~name expected_ty ]
@@ -2069,7 +2079,12 @@ and infer_expr = fun (state: state) env expr_id ->
               | [] -> infer_expr state env body_id
               | (parameter: BodyArena.function_parameter) :: rest ->
                   let arg_ty = fresh_var state in
-                  let bindings = bind_pattern state env parameter.pattern_id arg_ty in
+                  let bound_ty =
+                    match (parameter.label, parameter.has_default) with
+                    | (BodyArena.Optional _, false) -> TypeRepr.option arg_ty
+                    | _ -> arg_ty
+                  in
+                  let bindings = bind_pattern state env parameter.pattern_id bound_ty in
                   let body_ty = lower_parameters (Env.extend env bindings) rest in
                   make_type
                     state

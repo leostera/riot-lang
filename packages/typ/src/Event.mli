@@ -13,7 +13,7 @@ type export_status =
   | TrustedExport
   | ErroredExport
   | MissingExport
-type t =
+type kind =
   | PrepareSnapshotStarted of {
       roots: SourceId.t list;
       root_modules: string list;
@@ -67,6 +67,11 @@ type t =
       mismatch_subjects: string list;
       mismatch_messages: string list
     }
+
+type t = {
+  instant_us: int;
+  kind: kind;
+}
 
 (** Convert a [typ] event into a machine-readable JSON object. *)
 val to_json: t -> Data.Json.t
