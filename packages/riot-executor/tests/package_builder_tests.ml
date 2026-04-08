@@ -129,6 +129,7 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         in
         let workspace =
           Riot_model.Workspace.{
+            name = None;
             root = tmpdir;
             target_dir_root =
               Path.(tmpdir / Path.v "target");

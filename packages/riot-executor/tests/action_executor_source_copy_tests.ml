@@ -7,6 +7,7 @@ let test_toolchain = fun () ->
 
 let make_workspace = fun root ->
   Riot_model.Workspace.{
+    name = None;
     root;
     target_dir_root =
       Path.(root / Path.v "target");
