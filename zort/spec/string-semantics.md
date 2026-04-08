@@ -54,3 +54,18 @@
   - interior-NUL awareness
   - floatarray flattening
   - boxed-vs-flat float semantics for generic array operations
+
+## zort language surface notes
+
+- zort keeps a simpler string/bytes rule than OCaml:
+  - logical length is stored explicitly,
+  - payload storage is `len + 1` with a sentinel `0`,
+  - bytes and strings share the same semantic runtime representation.
+- The public semantic surface now exposes explicit bytes aliases:
+  - `allocBytes`
+  - `bytesLength`
+  - `bytesSlice`
+  - `setBytes`
+- This is an intentional design choice:
+  - bytes mutability stays a surface-level convention,
+  - the core runtime does not introduce a separate bytes object kind.

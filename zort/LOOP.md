@@ -193,15 +193,20 @@ Refs:
 - [`spec/exceptions-callbacks-and-backtraces.md`](./spec/exceptions-callbacks-and-backtraces.md)
 
 Tasks:
-- Rebuild tuple, string, bytes, boxed int, and boxed float APIs on semantic core.
-- Implement locale-independent float parse/format behavior.
-- Preserve explicit length and bytes semantics.
-- Use typed constructor APIs instead of generic tag allocators.
-- Add boundary/error tests for each primitive path.
+- [x] Rebuild tuple, string, bytes, boxed int, and boxed float APIs on semantic core.
+- [x] Implement locale-independent float parse/format behavior.
+- [x] Preserve explicit length and bytes semantics.
+- [x] Use typed constructor APIs instead of generic tag allocators.
+- [x] Add boundary/error tests for each primitive path.
 
 Exit criteria:
 - Public API is semantic and typed.
 - String and numeric behavior is backed by spec-linked tests.
+
+Status:
+- Done.
+- `Language` owns typed tuple/string/bytes/boxed-number operations and float text conversion.
+- `Runtime` delegates semantic language operations to `Language` instead of growing more direct heap/object logic.
 
 ### 7. Event Sink, Stats, And Bench Integration
 

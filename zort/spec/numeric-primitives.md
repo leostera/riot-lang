@@ -98,3 +98,19 @@
 - A zort rewrite should keep locale-independent float parsing/formatting. That is an observable language/runtime guarantee, not an incidental libc detail.
 - Flat-float-array behavior and the young-to-major avoidance path in `Array.make` are the main runtime-level array semantics worth preserving if zort wants native-code compatibility.
 - String/bytes primitives are simple, but their exact bounds, endianness, and C-safety rules are part of the observable runtime contract.
+
+## zort language surface notes
+
+- zort now exposes typed boxed-number accessors in the semantic surface:
+  - `allocI32` / `allocI64`
+  - `allocF64`
+  - `unboxI64`
+  - `unboxF64`
+- Float parsing/formatting is intentionally locale-stable in the semantic surface:
+  - parsing strips `_` separators before delegating to Zig parsing,
+  - invalid literals require full-string rejection,
+  - formatting special-cases `nan`, `inf`, and `-inf`,
+  - ordinary formatting uses Zig's locale-independent formatter.
+- Current intentional divergence:
+  - zort does not yet claim OCaml-identical coverage for every float literal form,
+  - especially around OCaml's dedicated hex-float parser edge cases.

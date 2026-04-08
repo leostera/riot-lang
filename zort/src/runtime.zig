@@ -2,6 +2,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
+const language_mod = @import("language.zig");
 const mutator = @import("mutator.zig");
 const root_registry = @import("root_registry.zig");
 
@@ -12,10 +13,11 @@ pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
 pub const Collector = collector_mod.Collector;
+pub const Language = language_mod.Language;
 pub const Mutator = mutator.Mutator;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
-pub const Error = mutator.Error;
+pub const Error = language_mod.Error;
 
 pub const Runtime = struct {
     pub const GcStrategy = collector_mod.GcStrategy;
@@ -103,46 +105,64 @@ pub const Runtime = struct {
         return Mutator.init(self.currentAllocator(), &self.heap_store);
     }
 
+    pub fn language(self: *Runtime) Language {
+        return Language.init(self.allocator, self.currentAllocator(), &self.heap_store);
+    }
+
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
         var writer = self.mutator();
         return writer.allocCompat(arity, tag);
     }
 
     pub fn allocTuple(self: *Runtime, len: usize) !Value {
-        return self.alloc(len, .tuple);
+        var surface = self.language();
+        return surface.allocTuple(len);
     }
 
     /// Allocate a tuple and initialize all fields from `fields`.
     pub fn tuple(self: *Runtime, fields: []const Value) !Value {
-        var writer = self.mutator();
-        const result = try writer.allocTuple(fields.len);
-        if (fields.len == 0) return result;
-        try writer.initTupleFromSlice(result, fields);
-        return result;
+        var surface = self.language();
+        return surface.tuple(fields);
+    }
+
+    pub fn tupleLength(self: *Runtime, block_value: Value) !usize {
+        var surface = self.language();
+        return surface.tupleLength(block_value);
     }
 
     pub fn allocString(self: *Runtime, bytes: []const u8) !Value {
-        return self.allocStringWithInit(bytes.len, bytes);
+        var surface = self.language();
+        return surface.allocString(bytes);
     }
 
     pub fn allocStringWithFill(self: *Runtime, len: usize, fill: u8) !Value {
-        var writer = self.mutator();
-        const string = try writer.allocStringLen(len);
-        try writer.fillString(string, fill);
-        return string;
+        var surface = self.language();
+        return surface.allocStringWithFill(len, fill);
     }
 
     pub fn allocStringWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
-        if (initial_bytes.len > len) return Error.OutOfMemory;
-        var writer = self.mutator();
-        const string = try writer.allocStringLen(len);
-        try writer.initStringBytes(string, initial_bytes);
-        return string;
+        var surface = self.language();
+        return surface.allocStringWithInit(len, initial_bytes);
+    }
+
+    pub fn allocBytes(self: *Runtime, bytes: []const u8) !Value {
+        var surface = self.language();
+        return surface.allocBytes(bytes);
+    }
+
+    pub fn allocBytesWithFill(self: *Runtime, len: usize, fill: u8) !Value {
+        var surface = self.language();
+        return surface.allocBytesWithFill(len, fill);
+    }
+
+    pub fn allocBytesWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
+        var surface = self.language();
+        return surface.allocBytesWithInit(len, initial_bytes);
     }
 
     pub fn allocI64(self: *Runtime, n: i64) !Value {
-        var writer = self.mutator();
-        return writer.allocBoxedI64(n);
+        var surface = self.language();
+        return surface.allocI64(n);
     }
 
     pub fn allocInt64(self: *Runtime, n: i64) !Value {
@@ -154,12 +174,13 @@ pub const Runtime = struct {
     }
 
     pub fn allocI32(self: *Runtime, n: i32) !Value {
-        return self.allocI64(@as(i64, n));
+        var surface = self.language();
+        return surface.allocI32(n);
     }
 
     pub fn allocF64(self: *Runtime, number: f64) !Value {
-        var writer = self.mutator();
-        return writer.allocBoxedF64(number);
+        var surface = self.language();
+        return surface.allocF64(number);
     }
 
     pub fn allocDouble(self: *Runtime, number: f64) !Value {
@@ -167,36 +188,73 @@ pub const Runtime = struct {
     }
 
     pub fn field(self: *Runtime, block_value: Value, idx: usize) !Value {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        const fields = obj.tupleFields() orelse return Error.InvalidValue;
-        if (idx >= fields.len) return Error.InvalidValue;
-        return fields[idx];
+        var surface = self.language();
+        return surface.field(block_value, idx);
     }
 
     pub fn setField(self: *Runtime, block_value: Value, idx: usize, next: Value) !void {
-        var writer = self.mutator();
-        try writer.writeField(block_value, idx, next);
+        var surface = self.language();
+        try surface.setField(block_value, idx, next);
     }
 
     pub fn setStringBytes(self: *Runtime, block_value: Value, bytes: []const u8) !void {
-        var writer = self.mutator();
-        try writer.writeStringBytes(block_value, bytes);
+        var surface = self.language();
+        try surface.setStringBytes(block_value, bytes);
+    }
+
+    pub fn setBytes(self: *Runtime, block_value: Value, bytes: []const u8) !void {
+        var surface = self.language();
+        try surface.setBytes(block_value, bytes);
     }
 
     pub fn stringLength(self: *Runtime, block_value: Value) !usize {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        if (obj.kind() != .string) return Error.InvalidValue;
-        return obj.wosize();
+        var surface = self.language();
+        return surface.stringLength(block_value);
+    }
+
+    pub fn bytesLength(self: *Runtime, block_value: Value) !usize {
+        var surface = self.language();
+        return surface.bytesLength(block_value);
     }
 
     pub fn stringSlice(self: *Runtime, block_value: Value) ![]const u8 {
-        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
-        return obj.stringSlice() orelse Error.InvalidValue;
+        var surface = self.language();
+        return surface.stringSlice(block_value);
+    }
+
+    pub fn bytesSlice(self: *Runtime, block_value: Value) ![]const u8 {
+        var surface = self.language();
+        return surface.bytesSlice(block_value);
     }
 
     pub fn isString(self: *Runtime, block_value: Value) bool {
-        const obj = self.objectFrom(block_value) orelse return false;
-        return obj.kind() == .string;
+        var surface = self.language();
+        return surface.isString(block_value);
+    }
+
+    pub fn isBytes(self: *Runtime, block_value: Value) bool {
+        var surface = self.language();
+        return surface.isBytes(block_value);
+    }
+
+    pub fn unboxI64(self: *Runtime, boxed_value: Value) !i64 {
+        var surface = self.language();
+        return surface.unboxI64(boxed_value);
+    }
+
+    pub fn unboxF64(self: *Runtime, boxed_value: Value) !f64 {
+        var surface = self.language();
+        return surface.unboxF64(boxed_value);
+    }
+
+    pub fn parseF64(self: *Runtime, literal: []const u8) !Value {
+        var surface = self.language();
+        return surface.parseF64(literal);
+    }
+
+    pub fn formatF64(self: *Runtime, boxed_value: Value, buffer: []u8) ![]const u8 {
+        var surface = self.language();
+        return surface.formatF64(boxed_value, buffer);
     }
 
     pub fn registerRoot(self: *Runtime, slot: *const Value) !void {
@@ -316,6 +374,31 @@ test "runtime: boxed constructors have canonical names" {
     const f64_compat = try rt.allocDouble(12.375);
     try std.testing.expectEqual(@as(?ObjectKind, .boxed_i64), rt.objectFrom(i32_compat).?.kind());
     try std.testing.expectEqual(@as(?ObjectKind, .boxed_f64), rt.objectFrom(f64_compat).?.kind());
+    rt.deinit();
+}
+
+test "runtime: bytes helpers share string representation" {
+    var rt = Runtime.init(std.testing.allocator);
+    const bytes = try rt.allocBytes("abc");
+
+    try std.testing.expect(rt.isBytes(bytes));
+    try std.testing.expect(rt.isString(bytes));
+    try std.testing.expectEqual(@as(usize, 3), try rt.bytesLength(bytes));
+    try std.testing.expectEqualSlices(u8, "abc", try rt.bytesSlice(bytes));
+
+    try rt.setBytes(bytes, "xy");
+    try std.testing.expectEqualSlices(u8, "xy\x00", try rt.bytesSlice(bytes));
+    rt.deinit();
+}
+
+test "runtime: float parse and format use semantic API" {
+    var rt = Runtime.init(std.testing.allocator);
+    const parsed = try rt.parseF64("1_23.5");
+    try std.testing.expectApproxEqRel(@as(f64, 123.5), try rt.unboxF64(parsed), 1e-12);
+
+    var buffer: [64]u8 = undefined;
+    try std.testing.expectEqualSlices(u8, "123.5", try rt.formatF64(parsed, &buffer));
+    try std.testing.expectError(Error.InvalidFloatLiteral, rt.parseF64("12.5ms"));
     rt.deinit();
 }
 
