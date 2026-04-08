@@ -47,10 +47,34 @@ let bench_pipe_wakeup = fun () ->
           let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L poll in
           ())
 
+let bench_reregister = fun () ->
+  with_pipe
+    (fun pipe ->
+      match Kernel.Async.Poll.make () with
+      | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+      | Ok poll ->
+          let source = Kernel.Fs.File.to_source pipe.write_end in
+          let _ =
+            Kernel.Async.Poll.register
+              poll
+              (Kernel.Async.Token.make 11)
+              Kernel.Async.Interest.writable
+              source
+          in
+          let _ =
+            Kernel.Async.Poll.reregister
+              poll
+              (Kernel.Async.Token.make 12)
+              Kernel.Async.Interest.writable
+              source
+          in
+          ())
+
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 50; warmup = 10 } "async register+deregister pipe source" bench_register_and_deregister;
     with_config ~config:{ iterations = 50; warmup = 10 } "async pipe wakeup" bench_pipe_wakeup;
+    with_config ~config:{ iterations = 50; warmup = 10 } "async reregister pipe source" bench_reregister;
   ]
 
 let () =

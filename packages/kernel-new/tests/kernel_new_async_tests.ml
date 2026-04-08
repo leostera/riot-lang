@@ -27,6 +27,9 @@ let with_pipe = fun fn ->
       ())
     (fun () -> fn pipe.read_end pipe.write_end)
 
+let wait_for_event = fun ?(timeout = 100_000_000L) poll ->
+  lift (Kernel.Async.Poll.poll ~timeout poll)
+
 let test_poll_reports_pipe_readability = fun _ctx ->
   with_pipe
     (fun read_end write_end ->
@@ -56,7 +59,59 @@ let test_poll_reports_pipe_readability = fun _ctx ->
         else
           Error "expected poll to report readability for pipe source")
 
-let tests = [ Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability; ]
+let test_reregister_updates_pipe_token = fun _ctx ->
+  with_pipe
+    (fun _read_end write_end ->
+      let* poll = lift (Kernel.Async.Poll.make ()) in
+      let token_a = Kernel.Async.Token.make "first" in
+      let token_b = Kernel.Async.Token.make "second" in
+      let source = Kernel.Fs.File.to_source write_end in
+      let* () =
+        lift
+          (Kernel.Async.Poll.register
+             poll
+             token_a
+             Kernel.Async.Interest.writable
+             source)
+      in
+      let* () =
+        lift
+          (Kernel.Async.Poll.reregister
+             poll
+             token_b
+             Kernel.Async.Interest.writable
+             source)
+      in
+      let* events = wait_for_event poll in
+      let found =
+        List.exists
+          (fun event ->
+            Kernel.Async.Event.is_writable event
+            && Kernel.String.equal
+                 (Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event))
+                 "second")
+          events
+      in
+      if found then
+        Ok ()
+      else
+        Error "expected reregister to replace the writable token")
+
+let test_token_roundtrips_structured_values = fun _ctx ->
+  let token = Kernel.Async.Token.make ("pipe", 99) in
+  let tag, value =
+    Kernel.Async.Token.unsafe_to_value token
+  in
+  if Kernel.String.equal tag "pipe" && value = 99 then
+    Ok ()
+  else
+    Error "expected token to roundtrip its structured value"
+
+let tests = [
+  Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
+  Test.case "Async reregister updates pipe token" test_reregister_updates_pipe_token;
+  Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
+]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_async_tests" ~tests ~args
 

@@ -20,6 +20,7 @@ typedef struct token_binding {
 } token_binding;
 
 static token_binding *kernel_new_async_bindings = NULL;
+static intnat kernel_new_async_next_token_id = 0;
 
 static token_binding *kernel_new_async_find_binding(int selector_fd, int target_fd, int filter) {
   token_binding *binding = kernel_new_async_bindings;
@@ -102,6 +103,28 @@ static int kernel_new_async_ignore_error(value ignored_errors_val, int code) {
   return 0;
 }
 
+CAMLprim value kernel_new_async_token_make(value payload_val) {
+  CAMLparam1(payload_val);
+  CAMLlocal1(token_val);
+
+  kernel_new_async_next_token_id += 1;
+  token_val = caml_alloc_tuple(2);
+  Store_field(token_val, 0, Val_long(kernel_new_async_next_token_id));
+  Store_field(token_val, 1, payload_val);
+
+  CAMLreturn(token_val);
+}
+
+CAMLprim value kernel_new_async_token_id(value token_val) {
+  CAMLparam1(token_val);
+  CAMLreturn(Field(token_val, 0));
+}
+
+CAMLprim value kernel_new_async_token_value(value token_val) {
+  CAMLparam1(token_val);
+  CAMLreturn(Field(token_val, 1));
+}
+
 CAMLprim value kernel_new_async_unix_selector_create(value unit_val) {
   CAMLparam1(unit_val);
 
@@ -151,17 +174,21 @@ CAMLprim value kernel_new_async_unix_selector_wait(value max_events_val, value t
     int code = kernel_new_error_of_errno(errno);
     free(events);
     if (code == KERNEL_NEW_ERR_INTERRUPTED) {
-      out = caml_alloc(0, 0);
+      out = Atom(0);
       result = kernel_new_result_ok(out);
       CAMLreturn(result);
     }
     CAMLreturn(kernel_new_result_error(code));
   }
 
-  out = caml_alloc(ready_count, 0);
-  for (int index = 0; index < ready_count; index++) {
-    event_val = kernel_new_async_event_to_ocaml(&events[index]);
-    Store_field(out, index, event_val);
+  if (ready_count == 0) {
+    out = Atom(0);
+  } else {
+    out = caml_alloc(ready_count, 0);
+    for (int index = 0; index < ready_count; index++) {
+      event_val = kernel_new_async_event_to_ocaml(&events[index]);
+      Store_field(out, index, event_val);
+    }
   }
 
   free(events);
@@ -189,8 +216,15 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
     value token = Field(event_val, 3);
 
     if ((flags & EV_DELETE) != 0) {
-      kernel_new_async_remove_binding(selector_fd, target_fd, filter);
-      EV_SET(&changes[index], target_fd, filter, flags, 0, 0, NULL);
+      token_binding *binding = kernel_new_async_find_binding(selector_fd, target_fd, filter);
+      EV_SET(
+        &changes[index],
+        target_fd,
+        filter,
+        flags,
+        0,
+        0,
+        binding == NULL ? NULL : binding->token_root);
     } else {
       token_binding *binding =
         kernel_new_async_store_binding(selector_fd, target_fd, filter, token);
