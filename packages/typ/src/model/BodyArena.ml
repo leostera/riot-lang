@@ -15,6 +15,7 @@ type pattern_desc =
   | PRecord of { fields: record_pattern_field list; open_: bool }
   | PList of PatId.t list
   | PAlias of { pattern_id: PatId.t; alias: string }
+  | PFirstClassModule of { module_name: string option; package_type: TypeRepr.t option }
   | PPolyVariant of { tag: string; payload: PatId.t option }
   | PUnsupported of string
 
@@ -81,6 +82,7 @@ type expr_desc =
   | ETry of ExprId.t * match_case list
   | EPolyVariant of { tag: string; payload: ExprId.t option }
   | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
+  | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   | EUnsupported of string
   | EHole of string
@@ -235,6 +237,18 @@ let render_pattern_desc = function
       "list [" ^ render_ids PatId.to_string elements ^ "]"
   | PAlias { pattern_id; alias } ->
       "alias " ^ alias ^ " = " ^ PatId.to_string pattern_id
+  | PFirstClassModule { module_name; package_type } ->
+      let binding =
+        match module_name with
+        | Some module_name -> module_name
+        | None -> "_"
+      in
+      let annotation =
+        match package_type with
+        | Some package_type -> " : " ^ TypePrinter.type_to_string package_type
+        | None -> ""
+      in
+      "module (" ^ binding ^ annotation ^ ")"
   | PPolyVariant { tag; payload } -> (
       match payload with
       | Some pattern_id -> "poly_variant `" ^ tag ^ " " ^ PatId.to_string pattern_id
@@ -356,6 +370,13 @@ let render_expr_desc = function
     )
   | ECoerce { value_id; target_type } ->
       "coerce " ^ ExprId.to_string value_id ^ " :> " ^ TypePrinter.type_to_string target_type
+  | EModulePack { module_path; package_type } ->
+      let annotation =
+        match package_type with
+        | Some package_type -> " : " ^ TypePrinter.type_to_string package_type
+        | None -> ""
+      in
+      "pack " ^ IdentPath.to_string module_path ^ annotation
   | ELocalOpen { module_path; body_id } ->
       "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
@@ -437,6 +458,22 @@ let pattern_desc_to_json = function
     ("pattern_id", Data.Json.Int (PatId.to_int pattern_id));
     ("alias", Data.Json.String alias)
   ]
+  | PFirstClassModule { module_name; package_type } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "first_class_module");
+        (
+          "module_name",
+          match module_name with
+          | Some module_name -> Data.Json.String module_name
+          | None -> Data.Json.Null
+        );
+        (
+          "package_type",
+          match package_type with
+          | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
+          | None -> Data.Json.Null
+        );
+      ]
   | PPolyVariant { tag; payload } ->
       Data.Json.Object [
         ("tag", Data.Json.String "poly_variant");
@@ -637,6 +674,16 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "coerce");
     ("value_id", Data.Json.Int (ExprId.to_int value_id));
     ("target_type", Data.Json.String (TypePrinter.type_to_string target_type));
+  ]
+  | EModulePack { module_path; package_type } -> Data.Json.Object [
+    ("tag", Data.Json.String "module_pack");
+    ("module_path", Data.Json.String (IdentPath.to_string module_path));
+    (
+      "package_type",
+      match package_type with
+      | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
+      | None -> Data.Json.Null
+    );
   ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");

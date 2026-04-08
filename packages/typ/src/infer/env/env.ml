@@ -615,6 +615,12 @@ let introduced_entries = fun before after ->
 let module_table_singleton = fun binding ->
   Name_map.add binding.name binding Name_map.empty
 
+let singleton_module = fun ~name module_env ->
+  {
+    empty
+    with modules = module_table_singleton { name; components = module_scope_of_env module_env }
+  }
+
 let entries_for_include = fun env module_path ->
   match lookup_module_scope env module_path with
   | Some scope ->

@@ -30,6 +30,8 @@ type pattern_desc =
   | PList of PatId.t list
   (** Alias pattern that binds the matched value under an extra name. *)
   | PAlias of { pattern_id: PatId.t; alias: string }
+  (** Unpack pattern that binds one packaged module under a module name. *)
+  | PFirstClassModule of { module_name: string option; package_type: TypeRepr.t option }
   (** Lenient polymorphic-variant pattern with an optional payload pattern. *)
   | PPolyVariant of { tag: string; payload: PatId.t option }
   (** Recovery pattern preserved after unsupported surface syntax. *)
@@ -131,6 +133,8 @@ type expr_desc =
   | EPolyVariant of { tag: string; payload: ExprId.t option }
   (** Explicit coercion expression lowered from `(expr :> target)`. *)
   | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
+  (** First-class module pack expression lowered from `(module M [: S])`. *)
+  | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
   (** Local module open expression with the lowered body expression. *)
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   (** Unsupported semantic node that still reached the inferencer. *)

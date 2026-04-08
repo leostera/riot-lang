@@ -162,6 +162,21 @@ let rec qualify_type = fun local_types module_name ty ->
         ty
       else
         TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
+  | TypeRepr.Package signature ->
+      let values' =
+        signature.values
+        |> List.map
+          (fun (value: TypeRepr.package_value) ->
+            let scheme' = qualify_type local_types module_name value.scheme in
+            if Std.Ptr.equal value.scheme scheme' then
+              value
+            else
+              { value with scheme = scheme' })
+      in
+      if List.for_all2 Std.Ptr.equal signature.values values' then
+        ty
+      else
+        TypeRepr.package ~values:values'
 
 let qualify_scheme = fun local_types module_name scheme ->
   let quantified, body = TypeScheme.to_explicit scheme in

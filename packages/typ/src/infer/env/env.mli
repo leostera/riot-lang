@@ -60,6 +60,8 @@ val singleton_constructor:
   inline_record_labels:TypeDecl.label list option ->
   t
 
+val singleton_module: name:string -> t -> t
+
 val bindings: t -> bindings
 
 val type_decls: t -> FileSummary.type_decl list

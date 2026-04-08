@@ -92,6 +92,15 @@ let rec render_type = fun state ~nested ty ->
         "(" ^ text ^ ")"
       else
         text
+  | TypeRepr.Package signature ->
+      let values =
+        signature.values
+        |> List.map
+          (fun (value: TypeRepr.package_value) ->
+            "val " ^ value.name ^ " : " ^ render_type state ~nested:false value.scheme)
+        |> String.concat "; "
+      in
+      "(module sig " ^ values ^ " end)"
   | TypeRepr.Named { head={ name; _ }; arguments } -> (
       match arguments with
       | [] -> IdentPath.to_string name

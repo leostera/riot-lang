@@ -109,6 +109,21 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
           remember_identity ty
         else
           remember_replacement ty (make (TypeRepr.Seq element'))
+    | TypeRepr.Package signature ->
+        let values' =
+          map_preserving
+            (fun (value: TypeRepr.package_value) ->
+              let scheme' = copy value.scheme in
+              if Std.Ptr.equal value.scheme scheme' then
+                value
+              else
+                { value with scheme = scheme' })
+            signature.values
+        in
+        if Std.Ptr.equal signature.values values' then
+          remember_identity ty
+        else
+          remember_replacement ty (make (TypeRepr.Package { values = values' }))
     | TypeRepr.Named { head; arguments } ->
         let arguments' = map_preserving copy arguments in
         if Std.Ptr.equal arguments arguments' then
@@ -252,6 +267,14 @@ let copy = fun scheme ->
               TypeRepr.of_desc ~level (TypeRepr.List (clone element))
           | TypeRepr.Seq element ->
               TypeRepr.of_desc ~level (TypeRepr.Seq (clone element))
+          | TypeRepr.Package signature ->
+              let values =
+                map_preserving
+                  (fun (value: TypeRepr.package_value) ->
+                    { value with scheme = clone value.scheme })
+                  signature.values
+              in
+              TypeRepr.of_desc ~level (TypeRepr.Package { values })
           | TypeRepr.Named { head; arguments } ->
               TypeRepr.of_desc
                 ~level

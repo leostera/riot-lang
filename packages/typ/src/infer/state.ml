@@ -159,6 +159,21 @@ let substitute_type_vars_with = fun ~make ty mapping ->
           ty
         else
           make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+    | TypeRepr.Package signature ->
+        let values' =
+          map_preserving
+            (fun (value: TypeRepr.package_value) ->
+              let scheme' = loop value.scheme in
+              if Std.Ptr.equal value.scheme scheme' then
+                value
+              else
+                { value with scheme = scheme' })
+            signature.values
+        in
+        if Std.Ptr.equal signature.values values' then
+          ty
+        else
+          TypeRepr.package ~values:values'
     | TypeRepr.Var { id; link=None; _ } -> (
         match Collections.HashMap.get mapping id with
         | Some replacement -> replacement
@@ -296,6 +311,21 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
           ty
         else
           make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+    | TypeRepr.Package signature ->
+        let values' =
+          map_preserving
+            (fun (value: TypeRepr.package_value) ->
+              let scheme' = loop value.scheme in
+              if Std.Ptr.equal value.scheme scheme' then
+                value
+              else
+                { value with scheme = scheme' })
+            signature.values
+        in
+        if Std.Ptr.equal signature.values values' then
+          ty
+        else
+          make (TypeRepr.Package { values = values' })
   in
   loop
 
@@ -482,6 +512,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
     | TypeRepr.Arrow { lhs; rhs; _ } ->
         let () = collect_type_variances_into visiting (TypeDecl.flip_variance variance) acc lhs in
         collect_type_variances_into visiting variance acc rhs
+    | TypeRepr.Package signature ->
+        List.iter
+          (fun (value: TypeRepr.package_value) ->
+            collect_type_variances_into visiting variance acc value.scheme)
+          signature.values
     | TypeRepr.Var var -> (
         match var.link with
         | Some linked -> collect_type_variances_into visiting variance acc linked

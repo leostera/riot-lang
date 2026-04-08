@@ -120,6 +120,11 @@ let lower_expansive_var = fun (solver: t) (frame: frame) ~variance_of_named ty -
                   List.fold_left (fun acc member -> (variance, member) :: acc) rest members
               | TypeRepr.Arrow { lhs; rhs; _ } ->
                   (TypeDecl.flip_variance variance, lhs) :: (variance, rhs) :: rest
+              | TypeRepr.Package signature ->
+                  List.fold_left
+                    (fun acc (value: TypeRepr.package_value) -> (variance, value.scheme) :: acc)
+                    rest
+                    signature.values
             in
             lower rest
   in
@@ -239,6 +244,31 @@ let unify = fun (solver: t) ~left ~right ->
               loop ((left_element, right_element) :: rest)
           | TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error) ->
               loop ((left_ok, right_ok) :: (left_error, right_error) :: rest)
+          | TypeRepr.Package left_signature, TypeRepr.Package right_signature ->
+              let sort_values values =
+                values
+                |> List.sort
+                  (fun (left: TypeRepr.package_value) (right: TypeRepr.package_value) ->
+                    String.compare left.name right.name)
+              in
+              let left_values = sort_values left_signature.values in
+              let right_values = sort_values right_signature.values in
+              let rec add_value_pairs acc left_values right_values =
+                match (left_values, right_values) with
+                | ([], []) ->
+                    Some acc
+                | ((left_value: TypeRepr.package_value) :: left_rest, (
+                  right_value: TypeRepr.package_value
+                ) :: right_rest) when String.equal left_value.name right_value.name ->
+                    add_value_pairs ((left_value.scheme, right_value.scheme) :: acc) left_rest right_rest
+                | _ ->
+                    None
+              in
+              (
+                match add_value_pairs [] left_values right_values with
+                | Some value_pairs -> loop (List.rev_append value_pairs rest)
+                | None -> Error (mismatch left right)
+              )
           | (TypeRepr.Hole _, _)
           | (_, TypeRepr.Hole _) ->
               loop rest

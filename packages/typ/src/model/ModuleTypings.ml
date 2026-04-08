@@ -112,6 +112,21 @@ let canonicalize_type_for_persistence = fun by_path ->
           ty
         else
           TypeRepr.seq element'
+    | TypeRepr.Package signature ->
+        let values =
+          signature.values
+          |> map_preserving
+            (fun (value: TypeRepr.package_value) ->
+              let scheme' = loop value.scheme in
+              if Std.Ptr.equal value.scheme scheme' then
+                value
+              else
+                { value with scheme = scheme' })
+        in
+        if Std.Ptr.equal signature.values values then
+          ty
+        else
+          TypeRepr.package ~values
     | TypeRepr.Named { head; arguments } ->
         let arguments' = map_preserving loop arguments in
         (
@@ -398,6 +413,22 @@ let rec type_to_json = fun ty ->
       Data.Json.Object [ ("tag", Data.Json.String "list"); ("element", type_to_json element); ]
   | TypeRepr.Seq element ->
       Data.Json.Object [ ("tag", Data.Json.String "seq"); ("element", type_to_json element); ]
+  | TypeRepr.Package signature ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "package");
+        ("values", Data.Json.Array (
+          signature.values
+          |> List.map
+            (fun (value: TypeRepr.package_value) ->
+              let quantified, body = TypeScheme.to_explicit value.scheme in
+              Data.Json.Object [
+                ("name", Data.Json.String value.name);
+                ("scheme", Data.Json.Object [
+                  ("quantified", Data.Json.Array (List.map (fun id -> Data.Json.Int id) quantified));
+                  ("body", type_to_json body);
+                ]);
+              ])));
+      ]
   | TypeRepr.Named { head={ type_constructor_id; name }; arguments } ->
       Data.Json.Object [
         ("tag", Data.Json.String "named");
@@ -664,6 +695,21 @@ let rec type_of_json = fun json ->
       let* element_json = field "element" fields in
       let* element = type_of_json element_json in
       Ok (TypeRepr.seq element)
+  | "package" ->
+      let* values_json = field "values" fields in
+      let* values_json = get_array values_json in
+      let rec loop acc = function
+        | [] -> Ok (List.rev acc)
+        | value_json :: rest ->
+            let* value_fields = get_object value_json in
+            let* name_json = field "name" value_fields in
+            let* scheme_json = field "scheme" value_fields in
+            let* name = get_string name_json in
+            let* scheme = scheme_of_json scheme_json in
+            loop (TypeRepr.package_value ~name ~scheme :: acc) rest
+      in
+      let* values = loop [] values_json in
+      Ok (TypeRepr.package ~values)
   | "named" ->
       let* type_constructor_json = field "type_constructor_id" fields in
       let* type_constructor_id = TypeConstructorId.of_json type_constructor_json in
@@ -748,7 +794,7 @@ let rec type_of_json = fun json ->
   | other ->
       Error ("unknown module typings type tag " ^ other)
 
-let scheme_of_json = function
+and scheme_of_json = function
   | Data.Json.Object fields -> (
       match (List.assoc_opt "quantified" fields, List.assoc_opt "body" fields) with
       | (Some (Data.Json.Array quantified_json), Some body_json) ->

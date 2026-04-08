@@ -1,1 +1,1 @@
-module File: module type of File
+module File = File

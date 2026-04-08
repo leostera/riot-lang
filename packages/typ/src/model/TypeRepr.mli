@@ -15,6 +15,15 @@ and named_type_head = {
   name: IdentPath.t;
 }
 
+and package_value = {
+  name: string;
+  scheme: t;
+}
+
+and package_signature = {
+  values: package_value list;
+}
+
 and poly_variant_bound =
   | Exact
   | UpperBound
@@ -38,6 +47,7 @@ and desc =
   | List of t
   | Seq of t
   | Named of { head: named_type_head; arguments: t list }
+  | Package of package_signature
   | PolyVariant of { bound: poly_variant_bound; tags: poly_variant_tag list; inherited: t list }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
@@ -80,6 +90,10 @@ val named_head: type_constructor_id:TypeConstructorId.t -> name:IdentPath.t -> n
 val named: head:named_type_head -> arguments:t list -> t
 
 val named_path: name:IdentPath.t -> arguments:t list -> t
+
+val package_value: name:string -> scheme:t -> package_value
+
+val package: values:package_value list -> t
 
 val poly_variant_tag: ?payload_type:t -> string -> poly_variant_tag
 

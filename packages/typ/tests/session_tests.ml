@@ -304,6 +304,8 @@ let scheme_has_named_path =
             | None -> false)
           tags || List.exists type_has_named_path inherited
     | TypeRepr.Arrow { lhs; rhs; _ } -> type_has_named_path lhs || type_has_named_path rhs
+    | TypeRepr.Package signature ->
+        List.exists (fun (value: TypeRepr.package_value) -> type_has_named_path value.scheme) signature.values
     | TypeRepr.Int
     | TypeRepr.Float
     | TypeRepr.Bool
@@ -4132,6 +4134,46 @@ let countdown start =
       ^ ", countdown="
       ^ show_option countdown_type)
 
+let test_let_operator_lower_and_typecheck = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+type error =
+  | Boom
+
+type ('a, 'e) result =
+  | Ok of 'a
+  | Error of 'e
+
+module Result = struct
+  let and_then result fn =
+    match result with
+    | Ok value -> fn value
+    | Error error -> Error error
+end
+
+let ( let* ) = Result.and_then
+
+let increment_ok input =
+  let* value = Ok input in
+  Ok (value + 1)
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "let_operator.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let increment_ok_type = export_scheme snapshot source_id "increment_ok" in
+    if increment_ok_type = Some "'a. int -> (int, 'a) result" then
+      Ok ()
+    else
+      Error ("unexpected increment_ok type: " ^ show_option increment_ok_type)
+
 let test_external_identity_cast_token_shape_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let source = {ocaml|
@@ -4185,6 +4227,92 @@ let make: 'value -> t = fun value -> unsafe_cast value
       ^ show_option equal_type
       ^ ", make="
       ^ show_option make_type)
+
+let test_first_class_module_pack_and_unpack_typecheck = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+module type Intf = sig
+  type t
+  val run: t -> int
+end
+
+module Impl = struct
+  type t = int
+  let run value = value
+end
+
+let packed : (module Intf with type t = int) = (module Impl : Intf with type t = int)
+
+let run_packed =
+  let (module M : Intf with type t = int) = packed in
+  M.run 1
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "first_class_module_pack_and_unpack.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let run_packed_type = export_scheme snapshot source_id "run_packed" in
+    if run_packed_type = Some "int" then
+      Ok ()
+    else
+      Error ("unexpected run_packed type: " ^ show_option run_packed_type)
+
+let test_first_class_module_existential_event_shape_typechecks = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+module type Intf = sig
+  type t
+  val is_error: t -> bool
+  val token: t -> int
+end
+
+type t =
+  | E : (module Intf with type t = 'state) * 'state -> t
+
+let make = fun implementation state -> E (implementation, state)
+
+module Impl = struct
+  type t = int
+  let is_error _value = false
+  let token value = value
+end
+
+let value = make (module Impl) 1
+
+let token = fun (E ((module Event), state)) -> Event.token state
+
+let is_error = fun (E ((module Event), state)) -> Event.is_error state
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "first_class_module_existential_event.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let value_type = export_scheme snapshot source_id "value" in
+    let token_type = export_scheme snapshot source_id "token" in
+    let is_error_type = export_scheme snapshot source_id "is_error" in
+    if value_type = Some "t" && token_type = Some "t -> int" && is_error_type = Some "t -> bool" then
+      Ok ()
+    else
+      Error ("unexpected first-class module existential types: value="
+      ^ show_option value_type
+      ^ ", token="
+      ^ show_option token_type
+      ^ ", is_error="
+      ^ show_option is_error_type)
 
 let test_gadt_constructor_existentials_typecheck = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -5505,7 +5633,10 @@ let () =
         Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
         Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
         Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
+        Test.case "let operators lower and typecheck" test_let_operator_lower_and_typecheck;
         Test.case "external identity cast token shape typechecks" test_external_identity_cast_token_shape_typechecks;
+        Test.case "first-class module pack and unpack typecheck" test_first_class_module_pack_and_unpack_typecheck;
+        Test.case "first-class module existential event shape typechecks" test_first_class_module_existential_event_shape_typechecks;
         Test.case "GADT constructor existentials typecheck" test_gadt_constructor_existentials_typecheck;
         Test.case "GADT tuple constructor existentials typecheck" test_gadt_tuple_constructor_existentials_typecheck;
         Test.case "selector receive with existential constructors typechecks" test_selector_receive_with_existential_constructors_typecheck;

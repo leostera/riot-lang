@@ -4,6 +4,6 @@ type t = int
 
 let make = fun value ->
   if value = 0 then
-    None
+    Option.None
   else
-    Some value
+    Option.Some value
