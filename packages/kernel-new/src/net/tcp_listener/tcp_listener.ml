@@ -7,7 +7,9 @@ type error = Error.t
 module FFI = struct
   external bind: string -> int -> bool -> bool -> int -> (t, int) Result.t = "kernel_new_net_tcp_listener_bind"
 
-  external accept: t -> ((int * (string * int)), int) Result.t = "kernel_new_net_tcp_listener_accept"
+  external accept:
+    t -> ((Tcp_stream.t * (string * int)), int) Result.t
+    = "kernel_new_net_tcp_listener_accept"
 
   external close: t -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
@@ -28,7 +30,7 @@ let accept = fun listener ->
   Result.map_error
     Error.of_code
     (Result.map
-      (fun (fd, addr) -> (Tcp_stream.of_raw fd, socket_addr_of_pair addr))
+      (fun (stream, addr) -> (stream, socket_addr_of_pair addr))
       (FFI.accept listener))
 
 let close = fun listener ->

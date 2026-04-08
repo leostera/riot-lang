@@ -8,8 +8,6 @@ type connect_result =
   | Connected of t
   | In_progress of t
 
-let of_raw = fun fd -> fd
-
 let connect_result_connected = 0
 
 let connect_result_in_progress = 1
@@ -49,9 +47,9 @@ let connect = fun addr ->
       Result.map
         (fun (fd, state) ->
           if state = connect_result_connected then
-            Connected (of_raw fd)
+            Connected fd
           else
-            In_progress (of_raw fd))
+            In_progress fd)
         (FFI.connect ip port)
     )
 

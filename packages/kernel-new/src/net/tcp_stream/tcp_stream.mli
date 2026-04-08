@@ -1,9 +1,8 @@
-type t = private int
+type t
 type error = Error.t
 type connect_result =
   | Connected of t
   | In_progress of t
-val of_raw: int -> t
 
 val connect: Socket_addr.t -> (connect_result, error) Result.t
 
