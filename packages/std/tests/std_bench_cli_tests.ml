@@ -31,6 +31,18 @@ let bench_names_from_json = fun stdout ->
           | _ -> None)
   | _ -> []
 
+let listed_benchmark_fields_from_json = fun stdout ->
+  let json = parse_json_output stdout in
+  match Data.Json.get_field "benchmarks" json with
+  | Some (Data.Json.Array benchmarks) ->
+      benchmarks |> List.filter_map
+        (
+          function
+          | Data.Json.Object fields -> Some fields
+          | _ -> None
+        )
+  | _ -> []
+
 let test_list_benchmarks_lists_all_cases = fun _ctx ->
   let output = run_sample_capture [ "list-benchmarks" ] in
   if not (Int.equal output.status 0) then
@@ -45,6 +57,39 @@ let test_list_benchmarks_lists_all_cases = fun _ctx ->
       Ok ()
     else
       Error ("unexpected listed benchmark names: " ^ String.concat ", " lines)
+
+let test_list_benchmarks_json_includes_metadata = fun _ctx ->
+  let output = run_sample_capture [ "list-benchmarks"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected list-benchmarks --json to succeed, got " ^ Int.to_string output.status)
+  else
+    match listed_benchmark_fields_from_json output.stdout with
+    | first :: _ ->
+        let has name value = List.assoc_opt name first = Some value in
+        if
+          has "index" (Data.Json.Int 1)
+          && has "name" (Data.Json.String "alpha_long")
+          && has "kind" (Data.Json.String "benchmark")
+          && has "iterations" (Data.Json.Int 1)
+          && has "warmup" (Data.Json.Int 0)
+          && has "skip" (Data.Json.Bool false)
+        then
+          Ok ()
+        else
+          Error "expected list-benchmarks --json to include metadata fields"
+    | [] -> Error "expected list-benchmarks --json to include benchmarks"
+
+let test_list_benchmarks_respects_pattern = fun _ctx ->
+  let output = run_sample_capture [ "list-benchmarks"; "--json"; "_long" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered list-benchmarks --json to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = bench_names_from_json output.stdout |> List.sort String.compare in
+    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort String.compare in
+    if names = expected then
+      Ok ()
+    else
+      Error ("unexpected filtered benchmark names: " ^ String.concat ", " names)
 
 let test_run_benchmarks_pattern_matches_substring = fun _ctx ->
   let output = run_sample_capture [ "run-benchmarks"; "_long" ] in
@@ -115,6 +160,8 @@ let test_run_benchmarks_json_includes_timing_fields = fun _ctx ->
 
 let meta_tests = [
   Test.case "list-benchmarks lists all sample cases" test_list_benchmarks_lists_all_cases;
+  Test.case "list-benchmarks --json includes metadata" test_list_benchmarks_json_includes_metadata;
+  Test.case "list-benchmarks respects pattern" test_list_benchmarks_respects_pattern;
   Test.case "run-benchmarks pattern matches substring" test_run_benchmarks_pattern_matches_substring;
   Test.case "run-benchmarks succeeds when the query matches no benchmarks" test_run_benchmarks_succeeds_with_zero_matches;
   Test.case "run-benchmarks --json filters results" test_run_benchmarks_json_flag_filters_results;

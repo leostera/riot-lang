@@ -39,14 +39,12 @@ let finalize = fun (summary: Test_result.summary) ->
               ("examples", int examples)
             ]
           in
-          let timing_fields =
-            [
-              ("duration_us", int (duration_us r.duration));
-              ("attempts", int r.attempts);
-              ("size", size_to_json r.size);
-            ]
-            @ reliability_fields r.reliability
-          in
+          let timing_fields = [
+            ("duration_us", int (duration_us r.duration));
+            ("attempts", int r.attempts);
+            ("size", size_to_json r.size);
+          ]
+          @ reliability_fields r.reliability in
           let base_fields =
             match r.result with
             | Test_result.Passed -> [ ("name", string r.name); ("status", string "passed") ]

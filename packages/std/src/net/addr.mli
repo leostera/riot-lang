@@ -47,7 +47,11 @@ val parse: string -> (stream_addr, error) result
 val parse_datagram: string -> (datagram_addr, error) result
 
 (** Extract the IP or host portion of a socket address. *)
-val ip: [< socket_addr ] -> string
+val ip: [<
+    socket_addr
+  ] -> string
 
 (** Extract the port portion of a socket address. *)
-val port: [< socket_addr ] -> int
+val port: [<
+    socket_addr
+  ] -> int

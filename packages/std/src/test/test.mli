@@ -46,8 +46,7 @@ type reliability = Test_case.reliability =
 type test_case = Test_case.t
 
 (** [case name fn] creates a regular unit test. *)
-val case:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
+val case: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [property name ~examples fn] creates a property test.
     Use this for property-based tests to show the number of examples tested.
@@ -61,11 +60,15 @@ val case:
     ]}
 *)
 val property:
-  ?size:size -> ?reliability:reliability -> string -> examples:int -> (ctx -> (unit, string) result) -> test_case
+  ?size:size ->
+  ?reliability:reliability ->
+  string ->
+  examples:int ->
+  (ctx -> (unit, string) result) ->
+  test_case
 
 (** [skip name fn] creates a skipped test. *)
-val skip:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
+val skip: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: ?size:size -> ?reliability:reliability -> string -> test_case

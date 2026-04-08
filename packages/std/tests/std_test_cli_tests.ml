@@ -7,17 +7,16 @@ let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
   Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
-  Test.case
-    ~reliability:Test.(Flaky { retry_attempts = 2 })
-    "flaky_then_ok"
+  Test.case ~reliability:Test.(Flaky { retry_attempts = 2 }) "flaky_then_ok"
     (fun _ctx ->
       if Sync.Atomic.fetch_and_add flaky_counter 1 = 0 then
         Error "transient failure"
       else
         Ok ());
-  Test.case "timeout_probe" (fun _ctx ->
-    sleep (Time.Duration.from_millis 20);
-    Ok ());
+  Test.case "timeout_probe"
+    (fun _ctx ->
+      sleep (Time.Duration.from_millis 20);
+      Ok ());
 ]
 
 let self_executable = fun () ->
@@ -41,6 +40,18 @@ let test_names_from_json = fun stdout ->
           | _ -> None)
   | _ -> []
 
+let listed_test_fields_from_json = fun stdout ->
+  let json = parse_json_output stdout in
+  match Data.Json.get_field "tests" json with
+  | Some (Data.Json.Array tests) ->
+      tests |> List.filter_map
+        (
+          function
+          | Data.Json.Object fields -> Some fields
+          | _ -> None
+        )
+  | _ -> []
+
 let run_sample_capture = fun args ->
   let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
@@ -57,6 +68,47 @@ let test_list_tests_lists_all_cases = fun _ctx ->
       Ok ()
     else
       Error ("unexpected listed test names: " ^ String.concat ", " names)
+
+let test_list_tests_json_includes_metadata = fun _ctx ->
+  let output = run_sample_capture [ "list-tests"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected list-tests --json to succeed, got " ^ Int.to_string output.status)
+  else
+    match listed_test_fields_from_json output.stdout with
+    | first :: _ ->
+        let has name value = List.assoc_opt name first = Some value in
+        if
+          has "index" (Data.Json.Int 1)
+          && has "name" (Data.Json.String "alpha_large")
+          && has "type" (Data.Json.String "test")
+          && has "size" (Data.Json.String "large")
+          && has "reliability" (Data.Json.String "stable")
+          && has "skip" (Data.Json.Bool false)
+        then
+          Ok ()
+        else
+          Error "expected list-tests --json to include metadata fields"
+    | [] -> Error "expected list-tests --json to include tests"
+
+let test_list_tests_respects_filters = fun _ctx ->
+  let output = run_sample_capture [ "list-tests"; "--json"; "--flaky"; "flaky" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered list-tests --json to succeed, got " ^ Int.to_string output.status)
+  else
+    let names =
+      listed_test_fields_from_json output.stdout
+      |> List.filter_map (List.assoc_opt "name")
+      |> List.filter_map
+        (
+          function
+          | Data.Json.String name -> Some name
+          | _ -> None
+        )
+    in
+    if names = [ "flaky_then_ok" ] then
+      Ok ()
+    else
+      Error ("unexpected filtered list test names: " ^ String.concat ", " names)
 
 let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "_large"; "--format"; "json" ] in
@@ -133,7 +185,8 @@ let test_run_tests_flaky_flag_filters_flaky_tests = fun _ctx ->
   else if test_names_from_json output.stdout = [ "flaky_then_ok" ] then
     Ok ()
   else
-    Error ("unexpected filtered names for --flaky: " ^ String.concat ", " (test_names_from_json output.stdout))
+    Error ("unexpected filtered names for --flaky: "
+    ^ String.concat ", " (test_names_from_json output.stdout))
 
 let test_run_tests_json_includes_timing_fields = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "_large"; "--json" ] in
@@ -188,11 +241,11 @@ let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
           Ok ()
         else
           Error "expected flaky json output to include reliability metadata"
-    | _ ->
-        Error "expected exactly one flaky test in json output"
+    | _ -> Error "expected exactly one flaky test in json output"
 
 let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "timeout_probe"; "--json"; "--small-timeout-ms"; "1" ] in
+  let output = run_sample_capture
+    [ "run-tests"; "timeout_probe"; "--json"; "--small-timeout-ms"; "1" ] in
   if Int.equal output.status 0 then
     Error "expected timeout probe to fail"
   else
@@ -200,18 +253,16 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
         let has name value = List.assoc_opt name fields = Some value in
-        if
-          has "status" (Data.Json.String "timed_out")
-          && has "timeout_ms" (Data.Json.Int 1)
-        then
+        if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 1) then
           Ok ()
         else
           Error "expected timeout probe json output to report a timeout"
-    | _ ->
-        Error "expected exactly one timeout probe test in json output"
+    | _ -> Error "expected exactly one timeout probe test in json output"
 
 let meta_tests = [
   Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
+  Test.case "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
+  Test.case "list-tests respects filters" test_list_tests_respects_filters;
   Test.case "run-tests pattern matches suffix substring" test_run_tests_pattern_matches_suffix_substring;
   Test.case "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
   Test.case "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;

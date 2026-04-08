@@ -10,7 +10,8 @@ let string_of_udp_error = function
 let string_of_udp_server_error = function
   | Net.UdpServer.System_error err -> IO.error_message err
 
-let local_udp_addr = fun port -> Net.Addr.udp "127.0.0.1" port
+let local_udp_addr = fun port ->
+  Net.Addr.udp "127.0.0.1" port
 
 let bind_socket = fun addr ->
   match Net.UdpSocket.bind addr with
@@ -19,8 +20,8 @@ let bind_socket = fun addr ->
 
 let test_udp_socket_send_to_and_recv_from = fun _ctx ->
   match (bind_socket (local_udp_addr 0), bind_socket (local_udp_addr 0)) with
-  | Error err, _
-  | _, Error err -> Error err
+  | (Error err, _)
+  | (_, Error err) -> Error err
   | Ok server, Ok client ->
       let server_addr = Net.UdpSocket.local_addr server in
       let client_addr = Net.UdpSocket.local_addr client in
@@ -34,28 +35,40 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
           Net.UdpSocket.close server;
           Error ("client send_to failed: " ^ string_of_udp_error err)
       | Ok _ -> (
-          match Net.UdpSocket.recv_from server server_buffer ~timeout:(Time.Duration.from_millis 500) () with
+          match Net.UdpSocket.recv_from
+            server
+            server_buffer
+            ~timeout:(Time.Duration.from_millis 500)
+            () with
           | Error err ->
               Net.UdpSocket.close client;
               Net.UdpSocket.close server;
               Error ("server recv_from failed: " ^ string_of_udp_error err)
           | Ok { bytes_read; from } ->
-              if not (String.equal (Bytes.sub_string server_buffer 0 bytes_read) "ping") then (
-                Net.UdpSocket.close client;
-                Net.UdpSocket.close server;
-                Error "server received the wrong datagram payload"
-              ) else if not (Int.equal (Net.Addr.port from) (Net.Addr.port client_addr)) then (
-                Net.UdpSocket.close client;
-                Net.UdpSocket.close server;
-                Error "server recv_from should report the sender port"
-              ) else
+              if not (String.equal (Bytes.sub_string server_buffer 0 bytes_read) "ping") then
+                (
+                  Net.UdpSocket.close client;
+                  Net.UdpSocket.close server;
+                  Error "server received the wrong datagram payload"
+                )
+              else if not (Int.equal (Net.Addr.port from) (Net.Addr.port client_addr)) then
+                (
+                  Net.UdpSocket.close client;
+                  Net.UdpSocket.close server;
+                  Error "server recv_from should report the sender port"
+                )
+              else
                 match Net.UdpSocket.send_to server from pong () with
                 | Error err ->
                     Net.UdpSocket.close client;
                     Net.UdpSocket.close server;
                     Error ("server send_to failed: " ^ string_of_udp_error err)
                 | Ok _ -> (
-                    match Net.UdpSocket.recv_from client client_buffer ~timeout:(Time.Duration.from_millis 500) () with
+                    match Net.UdpSocket.recv_from
+                      client
+                      client_buffer
+                      ~timeout:(Time.Duration.from_millis 500)
+                      () with
                     | Error err ->
                         Net.UdpSocket.close client;
                         Net.UdpSocket.close server;
@@ -74,16 +87,16 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
 
 let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
   match (bind_socket (local_udp_addr 0), bind_socket (local_udp_addr 0)) with
-  | Error err, _
-  | _, Error err -> Error err
+  | (Error err, _)
+  | (_, Error err) -> Error err
   | Ok server, Ok client ->
       let server_addr = Net.UdpSocket.local_addr server in
       let client_addr = Net.UdpSocket.local_addr client in
       let server_buffer = Bytes.create 32 in
       let client_buffer = Bytes.create 32 in
       match (Net.UdpSocket.connect server client_addr, Net.UdpSocket.connect client server_addr) with
-      | Error err, _
-      | _, Error err ->
+      | (Error err, _)
+      | (_, Error err) ->
           Net.UdpSocket.close client;
           Net.UdpSocket.close server;
           Error ("udp connect failed: " ^ string_of_udp_error err)
@@ -94,24 +107,34 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
               Net.UdpSocket.close server;
               Error ("connected send failed: " ^ string_of_udp_error err)
           | Ok _ -> (
-              match Net.UdpSocket.recv server server_buffer ~timeout:(Time.Duration.from_millis 500) () with
+              match Net.UdpSocket.recv
+                server
+                server_buffer
+                ~timeout:(Time.Duration.from_millis 500)
+                () with
               | Error err ->
                   Net.UdpSocket.close client;
                   Net.UdpSocket.close server;
                   Error ("connected recv failed: " ^ string_of_udp_error err)
               | Ok bytes_read ->
-                  if not (String.equal (Bytes.sub_string server_buffer 0 bytes_read) "hello") then (
-                    Net.UdpSocket.close client;
-                    Net.UdpSocket.close server;
-                    Error "connected recv returned the wrong payload"
-                  ) else
+                  if not (String.equal (Bytes.sub_string server_buffer 0 bytes_read) "hello") then
+                    (
+                      Net.UdpSocket.close client;
+                      Net.UdpSocket.close server;
+                      Error "connected recv returned the wrong payload"
+                    )
+                  else
                     match Net.UdpSocket.send server (Bytes.of_string "world") () with
                     | Error err ->
                         Net.UdpSocket.close client;
                         Net.UdpSocket.close server;
                         Error ("connected reply send failed: " ^ string_of_udp_error err)
                     | Ok _ -> (
-                        match Net.UdpSocket.recv client client_buffer ~timeout:(Time.Duration.from_millis 500) () with
+                        match Net.UdpSocket.recv
+                          client
+                          client_buffer
+                          ~timeout:(Time.Duration.from_millis 500)
+                          () with
                         | Error err ->
                             Net.UdpSocket.close client;
                             Net.UdpSocket.close server;
@@ -129,7 +152,7 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
 
 let test_udp_server_serves_one_datagram = fun _ctx ->
   let parent = Actors.self () in
-  let handler = fun ~socket ~from payload ~len ->
+  let handler ~socket ~from payload ~len =
     let received = Bytes.sub_string payload 0 len in
     Actors.send parent (Udp_server_received received);
     ignore (Net.UdpSocket.send_to socket from (Bytes.of_string "pong") ());
@@ -139,9 +162,10 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
   | Error err -> Error ("UdpServer.bind failed: " ^ string_of_udp_server_error err)
   | Ok server -> (
       let _server_pid =
-        Actors.spawn (fun () ->
-          ignore (Net.UdpServer.serve server);
-          Ok ())
+        Actors.spawn
+          (fun () ->
+            ignore (Net.UdpServer.serve server);
+            Ok ())
       in
       match bind_socket (local_udp_addr 0) with
       | Error err ->
@@ -149,24 +173,35 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
           Error err
       | Ok client ->
           let buffer = Bytes.create 32 in
-          match Net.UdpSocket.send_to client (Net.UdpServer.local_addr server) (Bytes.of_string "ping") () with
+          match Net.UdpSocket.send_to
+            client
+            (Net.UdpServer.local_addr server)
+            (Bytes.of_string "ping")
+            () with
           | Error err ->
               Net.UdpSocket.close client;
               Net.UdpServer.close server;
               Error ("client send_to server failed: " ^ string_of_udp_error err)
           | Ok _ -> (
-              match Actors.receive
-                      ~selector:(function
-                        | Udp_server_received payload -> `select payload
-                        | _ -> `skip)
-                      ~timeout:1.0
-                      ()
+              match
+                Actors.receive
+                  ~selector:(
+                    function
+                    | Udp_server_received payload -> `select payload
+                    | _ -> `skip
+                  )
+                  ~timeout:1.0
+                  ()
               with
               | payload when not (String.equal payload "ping") ->
                   Net.UdpSocket.close client;
                   Error "UdpServer handler received the wrong payload"
               | _ -> (
-                  match Net.UdpSocket.recv_from client buffer ~timeout:(Time.Duration.from_millis 500) () with
+                  match Net.UdpSocket.recv_from
+                    client
+                    buffer
+                    ~timeout:(Time.Duration.from_millis 500)
+                    () with
                   | Error err ->
                       Net.UdpSocket.close client;
                       Error ("client recv_from server reply failed: " ^ string_of_udp_error err)

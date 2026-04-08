@@ -64,14 +64,10 @@ let test_intersection_respects_endpoint_inclusion = fun _ctx ->
   let touching_open = Range.open_closed ~compare:Int.compare 5 8 in
   let touching_closed = Range.closed ~compare:Int.compare 5 8 in
   match (Range.intersect left touching_open, Range.intersect left touching_closed) with
-  | None, Some intersection when Range.contains intersection 5 && not (Range.contains intersection 4) ->
-      Ok ()
-  | Some _, _ ->
-      Error "Intersection should be empty when the touching endpoint is excluded"
-  | None, None ->
-      Error "Closed ranges that touch at the endpoint should intersect"
-  | None, Some _ ->
-      Error "Closed touching ranges should intersect at the shared point"
+  | None, Some intersection when Range.contains intersection 5 && not (Range.contains intersection 4) -> Ok ()
+  | Some _, _ -> Error "Intersection should be empty when the touching endpoint is excluded"
+  | None, None -> Error "Closed ranges that touch at the endpoint should intersect"
+  | None, Some _ -> Error "Closed touching ranges should intersect at the shared point"
 
 let test_hull_covers_both_ranges = fun _ctx ->
   let left = Range.open_closed ~compare:Int.compare 3 6 in

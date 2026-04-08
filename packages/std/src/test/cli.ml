@@ -33,8 +33,7 @@ let matches_size = fun ~small_only ~large_only (test: Test_case.t) ->
   | _ -> false
 
 let matches_flaky = fun ~flaky_only (test: Test_case.t) ->
-  not flaky_only
-  || match test.reliability with
+  not flaky_only || match test.reliability with
   | Test_case.Stable -> false
   | Test_case.Flaky _ -> true
 
@@ -67,7 +66,7 @@ let list_tests = fun ~json tests ->
     write_tests_json tests
   else
     List.iter (fun (test: Test_case.t) -> println test.name) tests;
-  Ok ()
+    Ok ()
 
 let parse_format_to_reporter = function
   | "tap" -> Ok (module Reporter.TAP : Reporter.Intf)
@@ -102,16 +101,17 @@ let run_tests_cmd =
       ]
 
 let list_tests_cmd =
-  let open Arg in
-    command "list-tests" |> about "List all tests" |> args
-      [
-        positional "query" |> required false |> help "Test name substring to filter by";
-        flag "json" |> long "json" |> help "Emit machine-readable JSON output";
-        flag "small" |> long "small" |> help "List only tests marked small";
-        flag "large" |> long "large" |> help "List only tests marked large";
-        flag "flaky" |> long "flaky" |> help "List only tests marked flaky";
-        option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
-      ]
+  let open Arg in command "list-tests"
+  |> about "List all tests"
+  |> args
+    [
+      positional "query" |> required false |> help "Test name substring to filter by";
+      flag "json" |> long "json" |> help "Emit machine-readable JSON output";
+      flag "small" |> long "small" |> help "List only tests marked small";
+      flag "large" |> long "large" |> help "List only tests marked large";
+      flag "flaky" |> long "flaky" |> help "List only tests marked flaky";
+      option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
+    ]
 
 let get_suite_info name: Reporter.suite_info =
   let binary_path = List.hd Env.args |> Path.v in

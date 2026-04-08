@@ -7,15 +7,6 @@ let parse_format_to_reporter = function
   | "json" -> Ok (module Reporter.Reporter_json : Reporter.Intf.Intf)
   | other -> Error ("Unknown format: " ^ other)
 
-let list_benchmarks = fun benchmarks ->
-  List.iter
-    (fun item ->
-      match item with
-      | Bench_runner.Single case -> println case.Bench_case.name
-      | Bench_runner.Compare comp -> println (comp.Bench_comparison.description ^ " (comparison)"))
-    benchmarks;
-  Ok ()
-
 let run_benchmarks_cmd =
   let open Arg in command "run-benchmarks"
   |> about "Run benchmarks"
@@ -32,8 +23,6 @@ let run_benchmarks_cmd =
       option "warmup" |> long "warmup" |> help "Override warmup count for all benchmarks";
     ]
 
-let list_benchmarks_cmd = command "list-benchmarks" |> about "List all benchmarks"
-
 let get_suite_info name: Reporter.Intf.suite_info = { name }
 
 let benchmark_name = function
@@ -42,6 +31,55 @@ let benchmark_name = function
 
 let matches_pattern = fun ~pattern bench_item ->
   String.contains (benchmark_name bench_item) pattern
+
+let list_benchmarks_cmd =
+  let open Arg in command "list-benchmarks"
+  |> about "List all benchmarks"
+  |> args
+    [
+      positional "pattern" |> required false |> help "List only benchmarks whose names contain this substring";
+      flag "json" |> long "json" |> help "Emit machine-readable JSON output";
+      option "iterations" |> long "iterations" |> help "Override iteration count for all benchmarks";
+      option "warmup" |> long "warmup" |> help "Override warmup count for all benchmarks";
+    ]
+
+let bench_item_to_json = fun index item ->
+  match item with
+  | Bench_runner.Single case -> Data.Json.Object [
+    ("index", Data.Json.Int index);
+    ("name", Data.Json.String case.Bench_case.name);
+    ("kind", Data.Json.String "benchmark");
+    ("iterations", Data.Json.Int case.config.iterations);
+    ("warmup", Data.Json.Int case.config.warmup);
+    ("skip", Data.Json.Bool case.skip);
+  ]
+  | Bench_runner.Compare comp -> Data.Json.Object [
+    ("index", Data.Json.Int index);
+    ("name", Data.Json.String comp.Bench_comparison.description);
+    ("kind", Data.Json.String "comparison");
+    ("iterations", Data.Json.Int comp.config.iterations);
+    ("warmup", Data.Json.Int comp.config.warmup);
+    (
+      "cases",
+      Data.Json.Array (List.map (fun (case: Bench_case.t) -> Data.Json.String case.name) comp.cases)
+    );
+  ]
+
+let list_benchmarks = fun ~json benchmarks ->
+  if json then
+    let payload = benchmarks
+    |> List.mapi (fun idx item -> bench_item_to_json (idx + 1) item)
+    |> fun benchmarks -> Data.Json.Object [ ("benchmarks", Data.Json.Array benchmarks) ] in
+    print (Data.Json.to_string payload);
+    print "\n"
+  else
+    List.iter
+      (fun item ->
+        match item with
+        | Bench_runner.Single case -> println case.Bench_case.name
+        | Bench_runner.Compare comp -> println (comp.Bench_comparison.description ^ " (comparison)"))
+      benchmarks;
+    Ok ()
 
 (** Apply CLI overrides to benchmark items *)
 let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
@@ -85,8 +123,17 @@ let main = fun ~name ~benchmarks ~args ->
       Error (Failure (error_message err))
   | Ok matches -> (
       match get_subcommand matches with
-      | Some ("list-benchmarks", _) ->
-          list_benchmarks benchmarks
+      | Some ("list-benchmarks", sub_matches) ->
+          let pattern = get_one sub_matches "pattern" in
+          let iterations_override = get_int sub_matches "iterations" in
+          let warmup_override = get_int sub_matches "warmup" in
+          let benchmarks_to_list = apply_overrides ~iterations_override ~warmup_override benchmarks in
+          let benchmarks_to_list =
+            match pattern with
+            | Some pattern -> List.filter (matches_pattern ~pattern) benchmarks_to_list
+            | None -> benchmarks_to_list
+          in
+          list_benchmarks ~json:(get_flag sub_matches "json") benchmarks_to_list
       | Some ("run-benchmarks", sub_matches) ->
           let pattern = get_one sub_matches "pattern" in
           let format_str =

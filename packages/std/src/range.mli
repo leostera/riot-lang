@@ -39,7 +39,6 @@ type 'a bound =
   | Included of 'a
   | Excluded of 'a
   | Unbounded
-
 (** An interval over ordered values.
 
     The stored comparator determines how endpoints and membership are evaluated.
@@ -48,11 +47,7 @@ type 'a bound =
 type 'a t
 
 (** Build a range from explicit bounds and a comparator. *)
-val make:
-  lower:'a bound ->
-  upper:'a bound ->
-  compare:('a -> 'a -> int) ->
-  'a t
+val make: lower:'a bound -> upper:'a bound -> compare:('a -> 'a -> int) -> 'a t
 
 (** An unbounded range that contains every value in the chosen ordering. *)
 val all: compare:('a -> 'a -> int) -> 'a t

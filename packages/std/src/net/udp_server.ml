@@ -30,9 +30,13 @@ let serve = fun t ->
     match Udp_socket.recv_from t.socket buffer () with
     | Ok { bytes_read; from } ->
         let payload = Bytes.sub buffer 0 bytes_read in
-        ignore (Actors.spawn (fun () ->
-          t.handler ~socket:t.socket ~from payload ~len:bytes_read;
-          Ok ()));
+        ignore
+          (
+            Actors.spawn
+              (fun () ->
+                t.handler ~socket:t.socket ~from payload ~len:bytes_read;
+                Ok ())
+          );
         loop ()
     | Error (Udp_socket.System_error err) -> Error (System_error err)
   in

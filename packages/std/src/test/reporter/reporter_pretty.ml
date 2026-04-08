@@ -54,9 +54,11 @@ let on_result = fun _idx (result: Test_result.t) ->
         | Test_case.UnitTest -> "ok"
         | Test_case.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+      println
+        (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Test_result.Failed msg ->
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+      println
+        (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       println ("       " ^ msg)
   | Test_result.Timed_out { timeout } ->
       println

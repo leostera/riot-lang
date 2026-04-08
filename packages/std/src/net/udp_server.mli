@@ -19,13 +19,10 @@ open Global
     ignore (Net.UdpServer.listen addr ~handler)
     ```
 *)
-
 type t
-
 (** Errors returned by UDP server operations. *)
 type error =
   | System_error of IO.error
-
 (** Datagram handler invoked for each received packet. The [payload] bytes are
     trimmed to the datagram length. *)
 type handler = socket:Udp_socket.t -> from:Addr.datagram_addr -> bytes -> len:int -> unit

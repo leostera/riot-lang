@@ -20,8 +20,8 @@ let finalize = fun (summary: Test_result.summary) ->
           let attrs =
             match r.reliability with
             | Test_case.Stable -> attrs
-            | Test_case.Flaky { retry_attempts } ->
-                attrs @ [ ("reliability", "flaky"); ("retry_attempts", string_of_int retry_attempts) ]
+            | Test_case.Flaky { retry_attempts } -> attrs
+            @ [ ("reliability", "flaky"); ("retry_attempts", string_of_int retry_attempts) ]
           in
           match r.result with
           | Test_result.Passed -> element "testcase" ~attrs []
@@ -35,7 +35,12 @@ let finalize = fun (summary: Test_result.summary) ->
             [
               element
                 "failure"
-                ~attrs:[ ("message", "timed out after " ^ string_of_int (Time.Duration.to_millis timeout) ^ "ms") ]
+                ~attrs:[
+                  (
+                    "message",
+                    "timed out after " ^ string_of_int (Time.Duration.to_millis timeout) ^ "ms"
+                  )
+                ]
                 [];
             ]
           | Test_result.Skipped -> element "testcase" ~attrs [ element "skipped" [] ])
