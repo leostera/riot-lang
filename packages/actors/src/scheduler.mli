@@ -9,7 +9,6 @@ open Kernel
 
 (** Opaque scheduler runtime handle. *)
 type t
-
 (** Snapshot of scheduler counters used for multicore tracing. *)
 type trace_counters = {
   steals: int;

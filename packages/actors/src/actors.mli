@@ -34,29 +34,24 @@ end
 module Process: sig
   (** The reason a process exited. *)
   type exit_reason = exn
-
   (** Process flags. *)
   type flag =
     | TrapExit of bool
-
   (** Opaque reference to a monitor registration. *)
   type monitor_ref
-
   type Message.t +=
     | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
     | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
 
   (** Scheduler-visible process state. *)
   type state =
-    private
-    | Uninitialized
+    private | Uninitialized
     | Runnable
     | Waiting_message
     | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t }
     | Running
     | Exited of (unit, exit_reason) result
     | Finalized
-
   (** Opaque process handle. *)
   type t
 

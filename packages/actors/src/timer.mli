@@ -1,13 +1,11 @@
 (** An opaque timer identifier. *)
 type id = Timer_id.t
-
 (** Timer firing mode. *)
 type mode =
   (** Fire once, then remove the timer. *)
   | One_shot
   (** Fire repeatedly with the given interval in nanoseconds. *)
   | Interval of int64
-
 (** Action performed when a timer fires. *)
 type action =
   (** Wake a sleeping process, for example after a receive or syscall timeout. *)
@@ -15,7 +13,6 @@ type action =
   (** Send a message to a process, for example for [`send_after`] or
       [`send_interval`] style timers. *)
   | Send_message of Pid.t * Message.t
-
 (** A scheduled timer. *)
 type t = {
   id: id;

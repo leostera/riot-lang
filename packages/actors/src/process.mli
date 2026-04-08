@@ -3,14 +3,11 @@ open Kernel
 
 (** The reason a process exited. *)
 type exit_reason = exn
-
 (** Opaque reference to a monitor registration. *)
 type monitor_ref
-
 (** Process flags. *)
 type flag =
   | TrapExit of bool
-
 module Messages: sig
   type Message.t +=
     | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
@@ -19,18 +16,15 @@ end
 
 (** Scheduler-visible process state. *)
 type state =
-  private
-  | Uninitialized
+  private | Uninitialized
   | Runnable
   | Waiting_message
   | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t }
   | Running
   | Exited of (unit, exit_reason) result
   | Finalized
-
 (** Opaque process handle. *)
 type t
-
 (** Result of spending one cooperative scheduling reduction. *)
 type reduction_result =
   | Continue
@@ -196,7 +190,6 @@ val take_receive_timeout_fired: t -> bool
 val take_syscall_timeout_fired: t -> bool
 
 (** {1 Process Flags} *)
-
 (** Set the process flags. *)
 val set_flags: t -> flag list -> unit
 
@@ -204,7 +197,6 @@ val set_flags: t -> flag list -> unit
 val get_trap_exit: t -> bool
 
 (** {1 Process Links and Monitors} *)
-
 (** Create a bidirectional link between this process and the target PID. *)
 val link: t -> Pid.t -> unit
 

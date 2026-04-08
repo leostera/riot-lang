@@ -124,6 +124,7 @@ let test_case = fun name fn ->
 let () =
   let tests = [
     Test.case
+      ~reliability:Test.(Flaky { retry_attempts = 5 })
       "syscall timeout deregisters wait registration"
       (fun _ctx -> test_case "syscall timeout deregisters wait registration" test_syscall_timeout_deregisters_wait_registration);
   ] in

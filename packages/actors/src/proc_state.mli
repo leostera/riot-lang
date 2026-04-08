@@ -5,19 +5,16 @@ exception Unwind
 
 (** Captured process continuation. *)
 type ('a, 'b) continuation
-
 (** Error details captured when a process finishes with an exception. *)
 type error_info = {
   exn: exn;
   backtrace: Kernel.Exception.raw_backtrace;
 }
-
 (** The current state of a process continuation. *)
 type 'a t =
   | Finished of ('a, error_info) result
   | Suspended: ('a, 'b) continuation * 'a Effect.t -> 'b t
   | Unhandled: ('a, 'b) continuation * 'a -> 'b t
-
 (** A scheduler step produced while advancing a process continuation. *)
 type 'a step =
   | Continue of 'a
@@ -27,10 +24,8 @@ type 'a step =
   | Suspend: 'a step
   | Yield: unit step
   | Terminate: 'a step
-
 (** Callback used to interpret an effect and resume the process. *)
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
-
 (** Effect interpreter used while running a process. *)
 type perform = {
   perform: 'a 'b. ('a, 'b) step_callback;

@@ -117,8 +117,7 @@ let () =
       "monitor receives DOWN across workers"
       (fun _ctx -> test_case "monitor receives DOWN" test_monitor_receives_down);
     Test.case
-      ~size:Test.Large
-      "demonitor suppresses DOWN across workers"
+      ~size:Test.Large "demonitor suppresses DOWN across workers"
       (fun _ctx -> test_case "demonitor suppresses DOWN" test_demonitor_suppresses_down);
   ] in
   let normalize_args = function

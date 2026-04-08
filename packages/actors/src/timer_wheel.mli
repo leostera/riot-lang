@@ -1,5 +1,4 @@
 (** Hierarchical timing wheel for efficient timer management. *)
-
 (** A hierarchical timing wheel. *)
 type t
 
