@@ -22,6 +22,11 @@ let protect = fun ~finally fn ->
       finally ();
       raise error
 
+let with_tempdir = fun prefix fn ->
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let with_process = fun process fn ->
   protect
     ~finally:(fun () ->
@@ -90,6 +95,25 @@ let read_once = fun poll ~token file ->
   in
   loop ()
 
+let read_all = fun poll ~token file ->
+  let buffer = Kernel.Bytes.create 128 in
+  let rec loop parts =
+    match Kernel.Fs.File.read file buffer with
+    | Kernel.Result.Ok 0 ->
+        Ok (Kernel.String.concat "" (List.rev parts))
+    | Kernel.Result.Ok count ->
+        loop (Kernel.Bytes.sub_string buffer 0 count :: parts)
+    | Kernel.Result.Error error ->
+        if is_would_block error then
+          let* () =
+            wait_readable poll ~token (Kernel.Fs.File.to_source file)
+          in
+          loop parts
+        else
+          Error (Kernel.Error.to_string error)
+  in
+  loop []
+
 let write_all = fun poll ~token file buffer ->
   let rec loop = fun pos len ->
     if len = 0 then
@@ -120,7 +144,6 @@ let test_current_pid_is_positive = fun _ctx ->
 
 let test_stdout_pipe_roundtrips = fun _ctx ->
   let stdio = Kernel.Process.{
-    default_stdio with
     stdin = `Null;
     stdout = `Pipe;
     stderr = `Null;
@@ -140,10 +163,10 @@ let test_stdout_pipe_roundtrips = fun _ctx ->
       | Some stdout ->
           with_poll
             (fun poll ->
-              let* payload =
-                read_once poll ~token:(Kernel.Async.Token.make 501) stdout
-              in
               let* status = lift (Kernel.Process.wait process) in
+              let* payload =
+                read_all poll ~token:(Kernel.Async.Token.make 501) stdout
+              in
               if payload = "hello" && status = Kernel.Process.Exited 0 then
                 Ok ()
               else
@@ -151,7 +174,6 @@ let test_stdout_pipe_roundtrips = fun _ctx ->
 
 let test_stdin_and_stdout_pipes_roundtrip = fun _ctx ->
   let stdio = Kernel.Process.{
-    default_stdio with
     stdin = `Pipe;
     stdout = `Pipe;
     stderr = `Null;
@@ -190,7 +212,6 @@ let test_stdin_and_stdout_pipes_roundtrip = fun _ctx ->
 
 let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
   let stdio = Kernel.Process.{
-    default_stdio with
     stdin = `Null;
     stdout = `Pipe;
     stderr = `Redirect_to_stdout;
@@ -210,10 +231,10 @@ let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
       | Some stdout ->
           with_poll
             (fun poll ->
-              let* payload =
-                read_once poll ~token:(Kernel.Async.Token.make 504) stdout
-              in
               let* status = lift (Kernel.Process.wait process) in
+              let* payload =
+                read_all poll ~token:(Kernel.Async.Token.make 504) stdout
+              in
               if payload = "outerr" && status = Kernel.Process.Exited 0 then
                 Ok ()
               else
@@ -221,7 +242,6 @@ let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
 
 let test_try_wait_reports_running_then_exit = fun _ctx ->
   let stdio = Kernel.Process.{
-    default_stdio with
     stdin = `Null;
     stdout = `Null;
     stderr = `Null;
@@ -251,7 +271,6 @@ let test_try_wait_reports_running_then_exit = fun _ctx ->
 
 let test_kill_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{
-    default_stdio with
     stdin = `Null;
     stdout = `Null;
     stderr = `Null;
@@ -273,6 +292,84 @@ let test_kill_reports_signaled_status = fun _ctx ->
       else
         Error "expected killed process to report a signaled status")
 
+let test_spawn_applies_custom_environment = fun _ctx ->
+  let stdio = Kernel.Process.{
+    stdin = `Null;
+    stdout = `Pipe;
+    stderr = `Null;
+  } in
+  let* process =
+    lift
+      (Kernel.Process.spawn
+         ~program:"/bin/sh"
+         ~args:[| "-c"; "printf %s \"$KERNEL_NEW_PROCESS_TEST\"" |]
+         ~env:[|("KERNEL_NEW_PROCESS_TEST", "env-ok")|]
+         ~stdio
+         ())
+  in
+  with_process process
+    (fun process ->
+      match Kernel.Process.stdout process with
+      | None -> Error "expected stdout pipe"
+      | Some stdout ->
+          with_poll
+            (fun poll ->
+              let* status = lift (Kernel.Process.wait process) in
+              let* payload =
+                read_all poll ~token:(Kernel.Async.Token.make 505) stdout
+              in
+              if payload = "env-ok" && status = Kernel.Process.Exited 0 then
+                Ok ()
+              else
+                Error "expected spawned process to see custom environment"))
+
+let test_spawn_applies_current_dir = fun _ctx ->
+  with_tempdir "kernel_new_process"
+    (fun tempdir ->
+      let stdio = Kernel.Process.{
+        stdin = `Null;
+        stdout = `Pipe;
+        stderr = `Null;
+      } in
+      let* process =
+        lift
+          (Kernel.Process.spawn
+             ~program:"/bin/pwd"
+             ~args:[||]
+             ~current_dir:tempdir
+             ~stdio
+             ())
+      in
+      with_process process
+        (fun process ->
+          match Kernel.Process.stdout process with
+          | None -> Error "expected stdout pipe"
+          | Some stdout ->
+              with_poll
+                (fun poll ->
+                  let* status = lift (Kernel.Process.wait process) in
+                  let* payload =
+                    read_all poll ~token:(Kernel.Async.Token.make 506) stdout
+                  in
+                  let output =
+                    if String.length payload != 0 && String.get payload (String.length payload - 1) = '\n' then
+                      String.sub payload 0 (String.length payload - 1)
+                    else
+                      payload
+                  in
+                  let* expected =
+                    lift (Kernel.Fs.File.canonicalize tempdir)
+                  in
+                  let* actual =
+                    lift (Kernel.Fs.File.canonicalize (Kernel.Path.v output))
+                  in
+                  if Kernel.Path.to_string actual = Kernel.Path.to_string expected
+                     && status = Kernel.Process.Exited 0
+                  then
+                    Ok ()
+                  else
+                    Error "expected spawned process to run in the configured current_dir")))
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
@@ -280,6 +377,8 @@ let tests = [
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
+  Test.case "Process spawn applies custom environment" test_spawn_applies_custom_environment;
+  Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
 ]
 
 let main = fun ~args ->
