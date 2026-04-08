@@ -2,6 +2,7 @@ module Model = Model
 module Analysis = Analysis
 module Lower = Lower
 module Infer = Infer
+module Event = Event
 module Diagnostics = Diagnostics
 module Query = Query
 module Session = Session

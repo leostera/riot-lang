@@ -13,6 +13,9 @@ open Std
       CST-to-semantic-tree lowering and origin/binding construction
     - `Typ.Infer`
       solver state, regions, and the prototype inference engine
+    - `Typ.Event`
+      structured debug/progress events emitted by rooted snapshot preparation
+      and source analysis
     - `Typ.Diagnostics`
       user-facing explanations and report rendering
     - `Typ.Query`
@@ -36,6 +39,8 @@ module Analysis: module type of Analysis
 module Lower: module type of Lower
 
 module Infer: module type of Infer
+
+module Event: module type of Event
 
 module Diagnostics: module type of Diagnostics
 

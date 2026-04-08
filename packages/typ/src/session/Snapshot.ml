@@ -18,6 +18,18 @@ type t = {
   module_results_cache: (string, (string * ModulePairing.t) list) Collections.HashMap.t;
 }
 
+let export_status_of_file_summary = fun summary ->
+  match summary.FileSummary.export_result with
+  | FileSummary.TrustedExport _ -> Event.TrustedExport
+  | FileSummary.ErroredExport _ -> Event.ErroredExport
+  | FileSummary.NoExport -> Event.MissingExport
+
+let export_status_of_module_typings = fun module_typings ->
+  match ModuleTypings.export_result module_typings with
+  | FileSummary.TrustedExport _ -> Event.TrustedExport
+  | FileSummary.ErroredExport _ -> Event.ErroredExport
+  | FileSummary.NoExport -> Event.MissingExport
+
 let make = fun ~revision ~roots ~config ~sources ->
   let analyses =
     sources
@@ -128,10 +140,35 @@ let force_base_analysis = fun (slot: analysis_slot) ->
   match slot.base_analysis with
   | Some analysis -> analysis
   | None ->
+      let ambient = loaded_ambient_env_for slot in
+      let ambient_type_decls = loaded_ambient_type_decls_for slot in
       let config = slot.config
-      |> TypConfig.with_ambient ~ambient:(loaded_ambient_env_for slot)
-      |> TypConfig.with_ambient_type_decls ~ambient_type_decls:(loaded_ambient_type_decls_for slot) in
+      |> TypConfig.with_ambient ~ambient
+      |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
+      let () = TypConfig.emit_event slot.config
+        (fun () ->
+          Event.SourceAnalysisStarted {
+            source_id = slot.source_id;
+            module_name = Source.module_name slot.source;
+            mode = Event.BaseAnalysis;
+            loaded_module_count = List.length slot.config.loaded_modules;
+            ambient_binding_count = List.length ambient;
+            ambient_type_decl_count = List.length ambient_type_decls;
+          })
+      in
       let analysis = SourceAnalysis.analyze ~config slot.source in
+      let () = TypConfig.emit_event slot.config
+        (fun () ->
+          Event.SourceAnalysisFinished {
+            source_id = slot.source_id;
+            module_name = Source.module_name slot.source;
+            mode = Event.BaseAnalysis;
+            parse_diagnostic_count = List.length analysis.parse_diagnostics;
+            lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
+            typing_diagnostic_count = List.length analysis.typing_diagnostics;
+            export_status = export_status_of_file_summary analysis.file_summary;
+          })
+      in
       let () =
         slot.base_analysis <- Some analysis
       in
@@ -203,11 +240,36 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
   | Some analysis -> analysis
   | None ->
       let visiting = slot.source_id :: visiting in
+      let ambient = ambient_env_for snapshot visiting slot in
+      let ambient_type_decls = ambient_type_decls_for snapshot visiting slot in
       let config = slot.config
-      |> TypConfig.with_ambient ~ambient:(ambient_env_for snapshot visiting slot)
+      |> TypConfig.with_ambient ~ambient
       |> TypConfig.with_ambient_type_decls
-        ~ambient_type_decls:(ambient_type_decls_for snapshot visiting slot) in
+        ~ambient_type_decls in
+      let () = TypConfig.emit_event slot.config
+        (fun () ->
+          Event.SourceAnalysisStarted {
+            source_id = slot.source_id;
+            module_name = Source.module_name slot.source;
+            mode = Event.SnapshotAnalysis;
+            loaded_module_count = List.length slot.config.loaded_modules;
+            ambient_binding_count = List.length ambient;
+            ambient_type_decl_count = List.length ambient_type_decls;
+          })
+      in
       let analysis = SourceAnalysis.analyze ~config slot.source in
+      let () = TypConfig.emit_event slot.config
+        (fun () ->
+          Event.SourceAnalysisFinished {
+            source_id = slot.source_id;
+            module_name = Source.module_name slot.source;
+            mode = Event.SnapshotAnalysis;
+            parse_diagnostic_count = List.length analysis.parse_diagnostics;
+            lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
+            typing_diagnostic_count = List.length analysis.typing_diagnostics;
+            export_status = export_status_of_file_summary analysis.file_summary;
+          })
+      in
       let () =
         match visiting with
         | [ source_id ] when SourceId.equal source_id slot.source_id -> slot.analysis <- Some analysis
@@ -216,8 +278,21 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
       analysis
 
 and module_result_for = fun (snapshot: t) visiting module_name ->
+  let slots = module_slots snapshot module_name in
+  let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
+  let () =
+    match slots with
+    | [] -> ()
+    | slot :: _ ->
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.ModulePairingStarted {
+              module_name;
+              source_ids;
+            })
+  in
   let sources =
-    module_slots snapshot module_name
+    slots
     |> List.map
       (fun (slot: analysis_slot) ->
         let analysis =
@@ -228,7 +303,22 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
         in
         (slot.source, analysis))
   in
-  ModulePairing.of_sources ~module_name sources
+  let result = ModulePairing.of_sources ~module_name sources in
+  let () =
+    match slots with
+    | [] -> ()
+    | slot :: _ ->
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.ModulePairingFinished {
+              module_name;
+              source_ids;
+              export_status = export_status_of_module_typings result.ModulePairing.module_typings;
+              export_count = List.length (ModuleTypings.exports result.ModulePairing.module_typings);
+              type_decl_count = List.length (ModuleTypings.type_decls result.ModulePairing.module_typings);
+            })
+  in
+  result
 
 let revision = fun snapshot -> snapshot.revision
 

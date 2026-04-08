@@ -51,6 +51,12 @@ let source_ids_of_module = fun session module_name ->
   | Some source_ids -> source_ids
   | None -> []
 
+let root_module_names = fun session roots ->
+  roots
+  |> List.filter_map (source_of_id session)
+  |> List.map Source.module_name
+  |> List.sort_uniq String.compare
+
 let replace_source = fun sources updated ->
   sources |> List.map
     (fun (source: Source.t) ->
@@ -454,9 +460,20 @@ let local_source_closure = fun session roots ->
       Collections.HashSet.contains closure_source_ids (SourceId.to_int source.source_id))
 
 let prepare_snapshot = fun session ~roots ->
-  let missing_roots = roots
+  let missing_root_source_ids = roots
   |> List.filter (fun root_id -> Option.is_none (source_of_id session root_id))
+  in
+  let missing_roots = missing_root_source_ids
   |> List.map (fun source_id -> MissingRequirements.MissingRootSource { source_id }) in
+  let () = TypConfig.emit_event session.config
+    (fun () ->
+      Event.PrepareSnapshotStarted {
+        roots;
+        root_modules = root_module_names session roots;
+        session_source_count = List.length session.sources;
+        loaded_module_count = List.length session.config.loaded_modules;
+      })
+  in
   let rec hydrate_session session =
     let missing_modules = collect_missing_module_summaries session roots in
     match session.config.store with
@@ -472,12 +489,42 @@ let prepare_snapshot = fun session ~roots ->
             )
           |> List.sort_uniq String.compare
         in
+        let () =
+          if List.is_empty missing_module_names then
+            ()
+          else
+            TypConfig.emit_event session.config
+              (fun () ->
+                Event.HydrateModuleTypingsStarted {
+                  roots;
+                  missing_modules = missing_module_names;
+                })
+        in
         let hydrated = missing_module_names
         |> List.filter_map (fun module_name -> Store.load_module_typings store ~module_name) in
+        let loaded_modules =
+          if List.is_empty hydrated then
+            session.config.loaded_modules
+          else
+            merge_loaded_modules session.config.loaded_modules hydrated in
+        let () =
+          if List.is_empty missing_module_names then
+            ()
+          else
+            TypConfig.emit_event session.config
+              (fun () ->
+                Event.HydrateModuleTypingsFinished {
+                  roots;
+                  hydrated_modules =
+                    hydrated
+                    |> List.map ModuleTypings.module_name
+                    |> List.sort_uniq String.compare;
+                  loaded_module_count = List.length loaded_modules;
+                })
+        in
         if List.is_empty hydrated then
           (session, missing_modules)
         else
-          let loaded_modules = merge_loaded_modules session.config.loaded_modules hydrated in
           let session = {
             session
             with config = TypConfig.with_loaded_modules session.config ~loaded_modules
@@ -489,8 +536,33 @@ let prepare_snapshot = fun session ~roots ->
     (missing_roots @ MissingRequirements.requirements missing_modules) in
   if MissingRequirements.(missing_requirements |> is_empty) then
     let sources = local_source_closure session roots in
+    let () = TypConfig.emit_event session.config
+      (fun () ->
+        Event.PrepareSnapshotFinished {
+          roots;
+          local_source_count = List.length sources;
+          loaded_module_count = List.length session.config.loaded_modules;
+          revision = session.next_revision;
+        })
+    in
     Ok (Snapshot.make ~revision:session.next_revision ~roots ~config:session.config ~sources)
   else
+    let () = TypConfig.emit_event session.config
+      (fun () ->
+        Event.PrepareSnapshotFailed {
+          roots;
+          missing_root_source_ids;
+          missing_modules =
+            MissingRequirements.requirements missing_modules
+            |> List.filter_map
+              (
+                function
+                | MissingRequirements.MissingModuleSummary { module_name; _ } -> Some module_name
+                | MissingRequirements.MissingRootSource _ -> None
+              )
+            |> List.sort_uniq String.compare;
+        })
+    in
     Error missing_requirements
 
 let snapshot = fun session ->

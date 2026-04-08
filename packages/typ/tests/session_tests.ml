@@ -121,6 +121,17 @@ let trace_debug = fun snapshot source_id ->
 let module_typings_jsons = fun snapshot ->
   Snapshot.module_typings snapshot |> List.map ModuleTypings.Json.to_json
 
+let typ_event_name = function
+  | Event.PrepareSnapshotStarted _ -> "typ_prepare_snapshot_start"
+  | Event.HydrateModuleTypingsStarted _ -> "typ_hydrate_module_typings_start"
+  | Event.HydrateModuleTypingsFinished _ -> "typ_hydrate_module_typings_finish"
+  | Event.PrepareSnapshotFailed _ -> "typ_prepare_snapshot_failed"
+  | Event.PrepareSnapshotFinished _ -> "typ_prepare_snapshot_finish"
+  | Event.SourceAnalysisStarted _ -> "typ_source_analysis_start"
+  | Event.SourceAnalysisFinished _ -> "typ_source_analysis_finish"
+  | Event.ModulePairingStarted _ -> "typ_module_pairing_start"
+  | Event.ModulePairingFinished _ -> "typ_module_pairing_finish"
+
 let exported_type_names = fun snapshot source_id ->
   match Query.module_typings_of snapshot source_id with
   | None -> []
@@ -1086,6 +1097,197 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
             let () = Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type in
             let () = Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type in
             Ok ())
+
+let test_prepare_snapshot_emits_structured_events = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "demo.ml")
+    ~text:{ocaml|
+      let answer = 1
+    |ocaml} in
+  match Session.prepare_snapshot session ~roots:[ source_id ] with
+  | Error missing -> Error ("expected rooted snapshot, got "
+  ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
+  | Ok snapshot ->
+      let _ = Query.analysis_of_source snapshot source_id |> Option.expect ~msg:"expected analysis" in
+      match !events with
+      | [
+        Event.PrepareSnapshotStarted _;
+        Event.PrepareSnapshotFinished _;
+        Event.ModulePairingStarted _;
+        Event.ModulePairingStarted _;
+        Event.SourceAnalysisStarted {
+          source_id = base_source_id;
+          module_name = base_module_name;
+          mode = Event.BaseAnalysis;
+          _
+        };
+        Event.SourceAnalysisFinished {
+          source_id = finished_base_source_id;
+          module_name = finished_base_module_name;
+          mode = Event.BaseAnalysis;
+          export_status = Event.TrustedExport;
+          _
+        };
+        Event.ModulePairingFinished {
+          module_name = paired_base_module_name;
+          export_status = Event.TrustedExport;
+          export_count = 1;
+          type_decl_count = 0;
+          _
+        };
+        Event.SourceAnalysisStarted {
+          source_id = analysis_source_id;
+          module_name;
+          mode = Event.SnapshotAnalysis;
+          _
+        };
+        Event.SourceAnalysisFinished {
+          source_id = finished_source_id;
+          module_name = finished_module_name;
+          mode = Event.SnapshotAnalysis;
+          export_status = Event.TrustedExport;
+          _
+        };
+        Event.ModulePairingFinished {
+          module_name = paired_module_name;
+          export_status = Event.TrustedExport;
+          export_count = 1;
+          type_decl_count = 0;
+          _
+        };
+      ] ->
+          let expected_source_id = SourceId.to_int source_id in
+          if List.for_all
+            (fun actual_source_id ->
+              SourceId.to_int actual_source_id = expected_source_id)
+            [ base_source_id; finished_base_source_id; analysis_source_id; finished_source_id ]
+             && List.for_all
+               (fun actual_module_name -> String.equal actual_module_name "Demo")
+               [
+                 base_module_name;
+                 finished_base_module_name;
+                 paired_base_module_name;
+                 module_name;
+                 finished_module_name;
+                 paired_module_name;
+               ]
+          then
+            Ok ()
+          else
+            Error ("unexpected structured event payloads: "
+            ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+      | _ -> Error ("unexpected typ event payloads: "
+      ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+
+let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
+  with_typ_store
+    (fun store ->
+      let baseline_loaded_module_count = List.length Config.default.loaded_modules in
+      let seed_session = Session.empty ~config:Config.default in
+      let (seed_session, colors_source_id) = create_source
+        seed_session
+        ~kind:Source.File
+        ~origin:(Source.Label "colors.ml")
+        ~text:{ocaml|
+          module RGB = struct
+            let blend x y = x
+          end
+
+          let to_string value = value
+        |ocaml} in
+      let seed_snapshot = Session.snapshot seed_session in
+      let loaded_colors =
+        match Query.module_typings_of seed_snapshot colors_source_id with
+        | Some typings -> typings
+        | None -> panic "expected seed module typings"
+      in
+      let _ = Store.save_module_typings store loaded_colors |> Result.expect ~msg:"save_module_typings should succeed" in
+      let events = ref [] in
+      let config = Config.default
+      |> Config.with_store ~store:(Some store)
+      |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+      let session = Session.empty ~config in
+      let (session, demo_source_id) = create_source
+        session
+        ~kind:Source.File
+        ~origin:(Source.Label "blend_demo.ml")
+        ~text:{ocaml|
+          open Colors
+
+          let midpoint = RGB.blend 1 2
+          let label = to_string "ok"
+        |ocaml} in
+      match Session.prepare_snapshot session ~roots:[ demo_source_id ] with
+      | Error missing -> Error ("expected store-backed snapshot, got "
+      ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
+      | Ok _snapshot ->
+          let actual = !events |> List.map typ_event_name in
+          let expected = [
+            "typ_prepare_snapshot_start";
+            "typ_hydrate_module_typings_start";
+            "typ_hydrate_module_typings_finish";
+            "typ_prepare_snapshot_finish";
+          ] in
+          if not (actual = expected) then
+            Error ("unexpected hydration event order: "
+            ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+          else
+            match !events with
+            | [
+              Event.PrepareSnapshotStarted _;
+              Event.HydrateModuleTypingsStarted { missing_modules; _ };
+              Event.HydrateModuleTypingsFinished { hydrated_modules; loaded_module_count; _ };
+              Event.PrepareSnapshotFinished { loaded_module_count = final_loaded_module_count; _ };
+            ] ->
+                if missing_modules = [ "Colors"; "RGB" ]
+                   && hydrated_modules = [ "Colors" ]
+                   && loaded_module_count = baseline_loaded_module_count + 1
+                   && final_loaded_module_count = baseline_loaded_module_count + 1
+                then
+                  Ok ()
+                else
+                  Error ("unexpected hydration payloads: "
+                  ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+            | _ -> Error ("unexpected hydration events: "
+            ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string)))
+
+let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "demo.ml")
+    ~text:{ocaml|
+      open Missing
+
+      let answer = value
+    |ocaml} in
+  match Session.prepare_snapshot session ~roots:[ source_id ] with
+  | Ok _ -> Error "expected missing module requirements"
+  | Error _missing ->
+      let actual = !events |> List.map typ_event_name in
+      let expected = [
+        "typ_prepare_snapshot_start";
+        "typ_prepare_snapshot_failed";
+      ] in
+      let () = Test.assert_equal ~expected ~actual in
+      match !events with
+      | [
+        Event.PrepareSnapshotStarted _;
+        Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ };
+      ] ->
+          let () = Test.assert_equal ~expected:[] ~actual:(missing_root_source_ids |> List.map SourceId.to_int) in
+          let () = Test.assert_equal ~expected:[ "Missing" ] ~actual:missing_modules in
+          Ok ()
+      | _ -> Error ("unexpected missing-requirements events: "
+      ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
 
 let test_prepare_snapshot_reports_match_coverage_diagnostics = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -3026,6 +3228,13 @@ let () =
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
         Test.case "snapshot uses bootstrap Float.to_string" test_snapshot_uses_bootstrap_float_to_string;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
+        Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
+        Test.case
+          "prepare_snapshot store hydration emits structured events"
+          test_prepare_snapshot_store_hydration_emits_structured_events;
+        Test.case
+          "prepare_snapshot missing requirements emit structured events"
+          test_prepare_snapshot_missing_requirements_emit_structured_events;
         Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
         Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
         Test.case "loaded module typings override store" test_loaded_module_typings_override_store;

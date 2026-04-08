@@ -27,6 +27,9 @@ type t = {
   ambient_type_decls: FileSummary.type_decl list;
   (** Snapshot-scoped visible type context built from [ambient_type_decls]. *)
   ambient_visible_types: VisibleTypes.t;
+  (** Optional structured event sink used to observe snapshot preparation and
+      source analysis progress without scraping logs. *)
+  on_event: (Event.t -> unit) option;
 }
 
 (** Default host configuration used by the current prototype and tests.
@@ -63,3 +66,13 @@ val with_store: t -> store:Store.t option -> t
     still computes diagnostics and module typings, but omits trace payloads and
     leaves the type index empty. *)
 val with_capture_traces: t -> capture_traces:bool -> t
+
+(** Attach one structured event sink to the config. *)
+val with_on_event: t -> on_event:(Event.t -> unit) -> t
+
+(** Remove any structured event sink from the config. *)
+val without_on_event: t -> t
+
+(** Emit one structured event when the config carries a sink. The thunk is only
+    forced when event delivery is enabled. *)
+val emit_event: t -> (unit -> Event.t) -> unit

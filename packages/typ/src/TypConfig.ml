@@ -11,6 +11,7 @@ type t = {
   ambient: env;
   ambient_type_decls: FileSummary.type_decl list;
   ambient_visible_types: VisibleTypes.t;
+  on_event: (Event.t -> unit) option;
 }
 
 let default = {
@@ -21,6 +22,7 @@ let default = {
   ambient = [];
   ambient_type_decls = [];
   ambient_visible_types = VisibleTypes.empty;
+  on_event = None;
 }
 
 let with_ambient = fun config ~ambient -> { config with ambient }
@@ -44,3 +46,12 @@ let with_loaded_modules = fun config ~loaded_modules -> { config with loaded_mod
 let with_store = fun config ~store -> { config with store }
 
 let with_capture_traces = fun config ~capture_traces -> { config with capture_traces }
+
+let with_on_event = fun config ~on_event -> { config with on_event = Some on_event }
+
+let without_on_event = fun config -> { config with on_event = None }
+
+let emit_event = fun config build_event ->
+  match config.on_event with
+  | None -> ()
+  | Some on_event -> on_event (build_event ())
