@@ -140,6 +140,8 @@ val make:
   unit ->
   t
 
+val scan_sources: package_path:Path.t -> ?excluded_relpaths:Path.t list -> unit -> sources
+
 val synthetic: name:string -> path:Path.t -> relative_path:Path.t -> t
 
 val key_of_string: string -> key

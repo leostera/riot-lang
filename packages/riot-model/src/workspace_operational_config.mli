@@ -18,6 +18,7 @@ type error =
   | ParseFailed of { path: Path.t; error: string }
   | InvalidConfig of { path: Path.t; error: string }
 val default_cache_policy: cache_policy
+
 val default_test_policy: test_policy
 
 val default: t

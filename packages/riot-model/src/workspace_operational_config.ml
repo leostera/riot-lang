@@ -131,8 +131,8 @@ let duration_unit_seconds = function
   | ""
   | "s" -> Some 1.0
   | "ms" -> Some 0.001
-  | "us" -> Some 0.000001
-  | "ns" -> Some 0.000000001
+  | "us" -> Some 0.000_001
+  | "ns" -> Some 0.000_000_001
   | "m" -> Some 60.0
   | "h" -> Some 3600.0
   | _ -> None
@@ -167,13 +167,17 @@ let parse_duration = fun raw ->
       )
 
 let find_field = fun names fields ->
-  names |> List.find_map (fun name -> List.assoc_opt name fields)
+  names |> List.find_map
+    (fun name ->
+      List.assoc_opt name fields)
 
 let parse_test_policy = fun ~path fields ->
   let small_test_timeout =
     match find_field [ "small_test_timeout" ] fields with
-    | None -> Ok default_test_policy.small_test_timeout
-    | Some (Toml.String raw) -> parse_duration raw |> Result.map Option.some
+    | None ->
+        Ok default_test_policy.small_test_timeout
+    | Some (Toml.String raw) ->
+        parse_duration raw |> Result.map Option.some
     | Some value -> (
         match Toml.get_int value with
         | Some millis when millis >= 0 -> Ok (Some (Time.Duration.from_millis millis))
@@ -182,7 +186,9 @@ let parse_test_policy = fun ~path fields ->
       )
   in
   let flaky_max_retries =
-    match find_field [ "flaky_max_retries"; "flaky_max_retry"; "flakey_max_retries"; "flakey_max_retry" ] fields with
+    match find_field
+      [ "flaky_max_retries"; "flaky_max_retry"; "flakey_max_retries"; "flakey_max_retry" ]
+      fields with
     | None -> Ok default_test_policy.flaky_max_retries
     | Some value -> (
         match Toml.get_int value with
@@ -207,13 +213,19 @@ let of_toml = fun ~path toml ->
             match List.assoc_opt "cache" riot_fields with
             | None -> Ok default_cache_policy
             | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
-            | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.cache] must be a table" })
+            | Some _ -> Error (InvalidConfig {
+              path;
+              error = "top-level [riot.cache] must be a table"
+            })
           in
           let test =
             match List.assoc_opt "test" riot_fields with
             | None -> Ok default_test_policy
             | Some (Toml.Table test_fields) -> parse_test_policy ~path test_fields
-            | Some _ -> Error (InvalidConfig { path; error = "top-level [riot.test] must be a table" })
+            | Some _ -> Error (InvalidConfig {
+              path;
+              error = "top-level [riot.test] must be a table"
+            })
           in
           (
             match cache, test with
