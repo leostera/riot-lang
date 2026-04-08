@@ -46,11 +46,11 @@ type t = {
 
 type raw_stdio = {
   stdin_mode: int;
-  stdin_file: int;
+  stdin_file: Fs.File.t option;
   stdout_mode: int;
-  stdout_file: int;
+  stdout_file: Fs.File.t option;
   stderr_mode: int;
-  stderr_file: int;
+  stderr_file: Fs.File.t option;
 }
 
 let stdio_null = 0
@@ -69,14 +69,6 @@ let status_signaled = 1
 
 let status_stopped = 2
 
-let no_file = -1
-
-external unsafe_cast: 'a -> 'b = "%identity"
-
-let raw_of_file = fun (file: Fs.File.t) : int -> unsafe_cast file
-
-let file_of_raw = fun (fd: int) : Fs.File.t -> unsafe_cast fd
-
 module FFI = struct
   external spawn:
     string ->
@@ -84,7 +76,7 @@ module FFI = struct
     (string * string) array ->
     string option ->
     raw_stdio ->
-    ((int * int option * int option * int option), int) Result.t
+    ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t
     = "kernel_new_process_spawn"
 
   external try_wait:
@@ -111,23 +103,23 @@ let default_stdio = {
 }
 
 let encode_input_stdio = function
-  | `Null -> (stdio_null, no_file)
-  | `Pipe -> (stdio_pipe, no_file)
-  | `Inherit -> (stdio_inherit, no_file)
-  | `File file -> (stdio_file, raw_of_file file)
+  | `Null -> (stdio_null, None)
+  | `Pipe -> (stdio_pipe, None)
+  | `Inherit -> (stdio_inherit, None)
+  | `File file -> (stdio_file, Some file)
 
 let encode_output_stdio = function
-  | `Null -> (stdio_null, no_file)
-  | `Pipe -> (stdio_pipe, no_file)
-  | `Inherit -> (stdio_inherit, no_file)
-  | `File file -> (stdio_file, raw_of_file file)
+  | `Null -> (stdio_null, None)
+  | `Pipe -> (stdio_pipe, None)
+  | `Inherit -> (stdio_inherit, None)
+  | `File file -> (stdio_file, Some file)
 
 let encode_error_stdio = function
-  | `Null -> (stdio_null, no_file)
-  | `Pipe -> (stdio_pipe, no_file)
-  | `Inherit -> (stdio_inherit, no_file)
-  | `Redirect_to_stdout -> (stdio_redirect_to_stdout, no_file)
-  | `File file -> (stdio_file, raw_of_file file)
+  | `Null -> (stdio_null, None)
+  | `Pipe -> (stdio_pipe, None)
+  | `Inherit -> (stdio_inherit, None)
+  | `Redirect_to_stdout -> (stdio_redirect_to_stdout, None)
+  | `File file -> (stdio_file, Some file)
 
 let raw_stdio_of_config = fun config ->
   let stdin_mode, stdin_file = encode_input_stdio config.stdin in
@@ -169,9 +161,9 @@ let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
        (fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
          {
            pid;
-           stdin_pipe = Option.map file_of_raw stdin_pipe;
-           stdout_pipe = Option.map file_of_raw stdout_pipe;
-           stderr_pipe = Option.map file_of_raw stderr_pipe;
+           stdin_pipe;
+           stdout_pipe;
+           stderr_pipe;
            status = Running;
          })
        (FFI.spawn program args env current_dir raw_stdio))

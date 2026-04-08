@@ -67,6 +67,13 @@ static value kernel_new_process_some_int(int raw) {
   CAMLreturn(result);
 }
 
+static int kernel_new_process_option_fd(value option_val) {
+  if (Is_long(option_val)) {
+    return -1;
+  }
+  return Int_val(Field(option_val, 0));
+}
+
 static value kernel_new_process_some_status(int tag, int code) {
   CAMLparam0();
   CAMLlocal2(tuple, result);
@@ -238,11 +245,11 @@ CAMLprim value kernel_new_process_spawn(
   int stderr_read_end = -1;
   int stderr_write_end = -1;
   int stdin_mode = Int_val(Field(stdio_val, 0));
-  int stdin_file = Int_val(Field(stdio_val, 1));
+  int stdin_file = kernel_new_process_option_fd(Field(stdio_val, 1));
   int stdout_mode = Int_val(Field(stdio_val, 2));
-  int stdout_file = Int_val(Field(stdio_val, 3));
+  int stdout_file = kernel_new_process_option_fd(Field(stdio_val, 3));
   int stderr_mode = Int_val(Field(stdio_val, 4));
-  int stderr_file = Int_val(Field(stdio_val, 5));
+  int stderr_file = kernel_new_process_option_fd(Field(stdio_val, 5));
 
   if (argv == NULL) {
     caml_raise_out_of_memory();
