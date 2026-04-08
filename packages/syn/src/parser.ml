@@ -2514,11 +2514,30 @@ and parse_primary_pattern = fun parser ->
   | Token.Hash ->
       let hash = consume parser in
       let trivia_after_hash = consume_trivia parser in
-      let type_name =
+      let rec collect_path_segments acc =
+        match peek_kind parser with
+        | Token.Dot -> (
+            match (peek_n parser 1).Token.kind with
+            | Token.Ident _ ->
+                let trivia_after = consume_trivia parser in
+                let dot = consume parser in
+                let trivia_after_dot = consume_trivia parser in
+                let next_ident = consume parser in
+                collect_path_segments
+                  (acc
+                  @ tokens_to_green parser trivia_after
+                  @ [ make_token parser dot ]
+                  @ tokens_to_green parser trivia_after_dot
+                  @ [ make_token parser next_ident ])
+            | _ -> (acc, consume_trivia parser)
+          )
+        | _ -> (acc, consume_trivia parser)
+      in
+      let type_path_segments, trivia_after_name =
         match peek_kind parser with
         | Token.Ident _ ->
             let ident = consume parser in
-            make_token parser ident
+            collect_path_segments [ make_token parser ident ]
         | _ ->
             let found_tok = peek parser in
             let diagnostic = Diagnostic.invalid_pattern
@@ -2526,14 +2545,13 @@ and parse_primary_pattern = fun parser ->
               ~text:(token_text parser found_tok)
               ~span:(expected_span parser) in
             report_diagnostic parser diagnostic;
-            make_token parser found_tok
+            ([ make_token parser found_tok ], [])
       in
-      let trivia_after_name = consume_trivia parser in
       make_node
         Syntax_kind.POLY_VARIANT_TYPE_PATTERN
         ([ make_token parser hash ]
         @ tokens_to_green parser trivia_after_hash
-        @ [ type_name ]
+        @ type_path_segments
         @ tokens_to_green parser trivia_after_name)
   | Token.Keyword Keyword.Lazy ->
       (* Lazy pattern: lazy p *)

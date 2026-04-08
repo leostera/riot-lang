@@ -3160,6 +3160,35 @@ type t =
 
 type source_file = t
 
+let semantic_hash = fun source_file ->
+  let module H = Crypto.Sha256 in
+  let state = H.create () in
+  let write = H.write state in
+  let write_sep () = write "\x1f" in
+  let write_kind kind =
+    write (Syntax_kind.to_string kind);
+    write_sep ()
+  in
+  let syntax_node =
+    match source_file with
+    | Implementation source_file ->
+        write "implementation";
+        source_file.syntax_node
+    | Interface source_file ->
+        write "interface";
+        source_file.syntax_node
+  in
+  let () = write_sep () in
+  let () =
+    Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.iter
+      (fun token ->
+        write_kind (Ceibo.Red.SyntaxToken.kind token);
+        write (Ceibo.Red.SyntaxToken.text token);
+        write_sep ())
+  in
+  H.finish state
+
 module SourceFile = struct
   type t = source_file
 

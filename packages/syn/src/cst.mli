@@ -4485,6 +4485,14 @@ type t =
 *)
 (** Returns the root `syntax_node` for the parsed source file. *)
 type source_file = t
+
+(** Compute a stable typing-oriented hash for a successful CST.
+
+    The hash is derived from the source-file kind plus the underlying
+    non-trivia token stream, so comments, docstrings, whitespace, and source
+    offsets do not affect it. *)
+val semantic_hash: source_file -> Crypto.hash
+
 module SourceFile: sig
   type t = source_file
   val syntax_node: t -> syntax_node

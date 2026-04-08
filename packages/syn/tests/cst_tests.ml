@@ -45,6 +45,8 @@ let parse_mli = fun source -> Syn.parse ~filename:sample_mli source |> with_opti
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 
+let semantic_hash_hex = fun cst -> Syn.Cst.semantic_hash cst |> Crypto.Digest.hex
+
 let assert_cst_json_snapshot = fun ~ctx parsed ->
   let cst = expect_some parsed.cst ~msg:"expected CST for diagnostics-free parse"
   |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
@@ -332,6 +334,16 @@ let tests = [
         | None -> ()
       );
       Ok ());
+  Test.case "cst semantic hash ignores comments and docstrings"
+    (fun _ctx ->
+      let left = parse_ml "let id x = x\n" in
+      let right = parse_ml "(** docs *)\n(* banner *)\nlet id (* note *) x = x\n" in
+      let left_cst = expect_some left.cst ~msg:"expected CST for first source"
+      |> Result.expect ~msg:"expected CST for first source" in
+      let right_cst = expect_some right.cst ~msg:"expected CST for second source"
+      |> Result.expect ~msg:"expected CST for second source" in
+      Test.assert_equal ~expected:(semantic_hash_hex left_cst) ~actual:(semantic_hash_hex right_cst);
+      Ok ());
   Test.case "cst root distinguishes interfaces from implementations"
     (fun _ctx ->
       let result = parse_mli "val create : int -> int\n" in
@@ -339,6 +351,20 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       Test.assert_equal ~expected:`Interface ~actual:(Syn.Cst.SourceFile.kind cst);
       Ok ());
+  Test.case "cst semantic hash distinguishes implementation and interface roots"
+    (fun _ctx ->
+      let implementation = parse_ml "type t\n" in
+      let interface = parse_mli "type t\n" in
+      let implementation_cst = expect_some implementation.cst ~msg:"expected implementation CST"
+      |> Result.expect ~msg:"expected implementation CST" in
+      let interface_cst = expect_some interface.cst ~msg:"expected interface CST"
+      |> Result.expect ~msg:"expected interface CST" in
+      let implementation_hash = semantic_hash_hex implementation_cst in
+      let interface_hash = semantic_hash_hex interface_cst in
+      if String.equal implementation_hash interface_hash then
+        Error "expected implementation and interface semantic hashes to differ"
+      else
+        Ok ());
   Test.case "cst source files expose top-level phrase separator tokens"
     (fun _ctx ->
       let result = parse_ml
@@ -373,6 +399,28 @@ let tests = [
                 ~actual:((Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text));
               Ok ()
           | _ -> Error "expected polymorphic-variant inherit match cases"
+        )
+      | _ -> Error "expected let binding with match expression");
+  Test.case "cst polymorphic-variant inherit alias patterns keep qualified paths"
+    (fun _ctx ->
+      let result = parse_ml
+        "let x value =\n\
+             match value with\n\
+             | #Rio.io_error as err -> err\n\
+             | other -> other\n"
+      in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding { value=Match { cases; _ }; _ } :: _ -> (
+          match cases with
+          | { pattern=Alias { pattern=PolyVariantInherit inherited; name_token; _ }; _ } :: _ ->
+              Test.assert_equal
+                ~expected:[ "Rio"; "io_error" ]
+                ~actual:((Syn.Cst.Ident.segments inherited.type_path |> List.map Syn.Cst.Token.text));
+              Test.assert_equal ~expected:"err" ~actual:(Syn.Cst.Token.text name_token);
+              Ok ()
+          | _ -> Error "expected aliased polymorphic-variant inherit match case"
         )
       | _ -> Error "expected let binding with match expression");
   Test.case "cst is absent when parse diagnostics exist"
