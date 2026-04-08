@@ -1,12 +1,7 @@
 open Global0
 
 type t
-
-val bind:
-  ?reuse_addr:bool ->
-  ?reuse_port:bool ->
-  Addr.datagram_addr ->
-  (t, IO.error) result
+val bind: ?reuse_addr:bool -> ?reuse_port:bool -> Addr.datagram_addr -> (t, IO.error) result
 
 val connect: t -> Addr.datagram_addr -> (unit, IO.error) result
 

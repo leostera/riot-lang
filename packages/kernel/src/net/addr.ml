@@ -20,8 +20,7 @@ type datagram_addr =
   `Udp of tcp_addr * int
 ]
 
-type socket_addr =
-[
+type socket_addr = [
   stream_addr
   | datagram_addr
 ]
@@ -71,7 +70,7 @@ let resolve_host_addresses = fun host service ->
     (fun () ->
       let info = Unix.getaddrinfo host service [] in
       List.filter_map
-        (fun Unix.{ ai_addr; _ } ->
+        (fun (Unix.{ ai_addr; _ }) ->
           match ai_addr with
           | Unix.ADDR_INET (addr, _port) -> Some (Unix.string_of_inet_addr addr)
           | Unix.ADDR_UNIX _ -> None)
@@ -132,11 +131,9 @@ let resolve_host = fun ~host ~port ~wrap ->
     | Ok [] -> Error (IO.Unknown_error "No address info found")
     | Error err -> Error err
 
-let of_host_and_port = fun ~host ~port ->
-  resolve_host ~host ~port ~wrap:tcp
+let of_host_and_port = fun ~host ~port -> resolve_host ~host ~port ~wrap:tcp
 
-let of_host_and_port_datagram = fun ~host ~port ->
-  resolve_host ~host ~port ~wrap:udp
+let of_host_and_port_datagram = fun ~host ~port -> resolve_host ~host ~port ~wrap:udp
 
 let get_info = fun (`Tcp (host, port)) ->
   match resolve_host_addresses host (Int.to_string port) with

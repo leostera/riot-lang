@@ -1,29 +1,23 @@
 open Global0
 
 type 't raw_addr = string
-
 type tcp_addr =
   ([
     `v4
     | `v6
   ]) raw_addr
-
 type stream_addr =
 [
   `Tcp of tcp_addr * int
 ]
-
 type datagram_addr =
 [
   `Udp of tcp_addr * int
 ]
-
-type socket_addr =
-[
+type socket_addr = [
   stream_addr
   | datagram_addr
 ]
-
 module Ipaddr: sig
   val to_unix: tcp_addr -> Unix.inet_addr
 
@@ -36,9 +30,13 @@ val tcp: string -> int -> stream_addr
 
 val udp: string -> int -> datagram_addr
 
-val to_unix: [< socket_addr ] -> Unix.socket_type * Unix.sockaddr
+val to_unix: [<
+    socket_addr
+  ] -> Unix.socket_type * Unix.sockaddr
 
-val to_domain: [< socket_addr ] -> Unix.socket_domain
+val to_domain: [<
+    socket_addr
+  ] -> Unix.socket_domain
 
 val of_unix: Unix.sockaddr -> stream_addr
 
@@ -58,6 +56,10 @@ val get_info: stream_addr -> (stream_addr list, IO.error) result
 
 val get_info_datagram: datagram_addr -> (datagram_addr list, IO.error) result
 
-val ip: [< socket_addr ] -> tcp_addr
+val ip: [<
+    socket_addr
+  ] -> tcp_addr
 
-val port: [< socket_addr ] -> int
+val port: [<
+    socket_addr
+  ] -> int
