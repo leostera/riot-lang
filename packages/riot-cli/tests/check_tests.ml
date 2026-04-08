@@ -575,7 +575,7 @@ let test_check_package_filter_human_output_shows_cached_dependency_progress = fu
               Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should succeed";
               Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
               Test.assert_equal
-                ~expected:(package_progress_line "Check" "tty")
+                ~expected:(package_progress_line "Checking" "tty")
                 ~actual:(stderr_contents ());
               Ok ()
         ))

@@ -2,6 +2,7 @@ open Std
 open Model
 module Snapshot = Snapshot
 module SourceAnalysis = SourceAnalysis
+module ModulePairing = ModulePairing
 module MissingRequirements = MissingRequirements
 
 type t = {
@@ -95,28 +96,19 @@ let loaded_modules_key = fun loaded_modules ->
   |> List.sort String.compare
   |> String.concat "|"
 
-let create_prepared_source = fun session ~kind ~origin ~source_hash ~parse_result ~cst ->
+let create_source =
+  fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
   let source = Source.make_prepared
     ~source_id
     ~kind
+    ~module_name
+    ~implicit_opens
     ~origin
     ~revision:session.next_revision
     ~source_hash
     ~parse_result
     ~cst in
-  let session = {
-    session
-    with next_source_id = session.next_source_id + 1;
-    next_revision = session.next_revision + 1;
-    sources = session.sources @ [ source ]
-  }
-  |> fun session -> add_source_indexes session source in
-  (session, source_id)
-
-let create_source = fun session ~kind ~origin ~text ->
-  let source_id = SourceId.of_int session.next_source_id in
-  let source = Source.make ~source_id ~kind ~origin ~revision:session.next_revision ~text in
   let session = {
     session
     with next_source_id = session.next_source_id + 1;
@@ -144,12 +136,21 @@ let merge_loaded_modules = fun preferred fallback ->
   in
   loop [] [] (preferred @ fallback)
 
-let update_source_text = fun session source_id ~text ->
+let update_source = fun session source_id ~source_hash ~parse_result ~cst ->
   let revision = session.next_revision in
   match source_of_id session source_id with
   | None -> { session with next_revision = revision + 1 }
   | Some source ->
-      let updated = Source.update_text source ~revision ~text in
+      let updated = Source.make_prepared
+        ~source_id:source.source_id
+        ~kind:source.kind
+        ~module_name:source.module_name
+        ~implicit_opens:source.implicit_opens
+        ~origin:source.origin
+        ~revision
+        ~source_hash
+        ~parse_result
+        ~cst in
       { session with next_revision = revision + 1; sources = replace_source session.sources updated }
       |> fun session -> update_source_indexes session updated
 
@@ -222,21 +223,18 @@ let declared_modules = fun session (source: Source.t) ->
   | None ->
       let modules =
         match source.cst with
-        | Ok (Syn.Cst.Implementation implementation) ->
+        | Syn.Cst.Implementation implementation ->
             implementation.Syn.Cst.items |> List.filter_map
               (fun (item: Syn.Cst.StructureItem.t) ->
                 match item with
-                | Syn.Cst.StructureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleStructure.name
-                  declaration)
+                | Syn.Cst.StructureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleStructure.name declaration)
                 | _ -> None)
-        | Ok (Syn.Cst.Interface interface) ->
+        | Syn.Cst.Interface interface ->
             interface.Syn.Cst.items |> List.filter_map
               (fun (item: Syn.Cst.SignatureItem.t) ->
                 match item with
-                | Syn.Cst.SignatureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleSignature.name
-                  declaration)
+                | Syn.Cst.SignatureItem.ModuleDeclaration declaration -> Some (Syn.Cst.ModuleSignature.name declaration)
                 | _ -> None)
-        | Error _ -> []
       in
       let _ = Collections.HashMap.insert session.declared_modules_by_source_hash key modules in
       modules
@@ -259,6 +257,12 @@ let collect_missing_module_summaries = fun session roots ->
   let loaded_module_names = session.config.loaded_modules
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
+  let implicit_open_module_names (source: Source.t) =
+    source.implicit_opens |> List.map IdentPath.to_string
+  in
+  let implicit_open_source_ids source =
+    implicit_open_module_names source |> List.concat_map (source_ids_of_module session)
+  in
   let local_nested_module_prefixes module_name = source_ids_of_module session module_name
   |> List.filter_map (source_of_id session)
   |> List.concat_map (declared_modules session)
@@ -277,6 +281,19 @@ let collect_missing_module_summaries = fun session roots ->
             match segments with
             | head :: _ :: _ when String.length head > 0 && is_uppercase_ascii head.[0] -> Some head
             | _ -> None) |> List.sort_uniq String.compare
+  in
+  let implicit_open_nested_modules source =
+    implicit_open_module_names source
+    |> List.concat_map
+      (fun module_name ->
+        let loaded_nested_modules =
+          if Collections.HashSet.contains loaded_module_names module_name then
+            loaded_nested_module_prefixes module_name
+          else
+            []
+        in
+        local_nested_module_prefixes module_name @ loaded_nested_modules)
+    |> List.sort_uniq String.compare
   in
   let rec add_missing missing module_name requested_by =
     let rec loop = function
@@ -323,6 +340,7 @@ let collect_missing_module_summaries = fun session roots ->
             | None -> discover rest seen missing
             | Some source ->
                 let source_modules = module_dependencies session ~deps_env_key ~deps_env source in
+                let opened_source_ids = implicit_open_source_ids source in
                 let dependency_nested_modules =
                   source_modules
                   |> List.concat_map
@@ -335,6 +353,8 @@ let collect_missing_module_summaries = fun session roots ->
                           []
                       in
                       local_nested_modules @ loaded_nested_modules)
+                  |> fun nested_modules ->
+                  nested_modules @ implicit_open_nested_modules source
                   |> List.sort_uniq String.compare
                 in
                 let (missing', additional) =
@@ -354,7 +374,7 @@ let collect_missing_module_summaries = fun session roots ->
                               (missing, additional)
                             else
                               (add_missing missing module_name source_id, additional))
-                    (missing, [])
+                    (missing, opened_source_ids)
                 in
                 discover (additional @ rest) seen missing'
           )
@@ -371,6 +391,11 @@ let local_source_closure = fun session roots ->
   let loaded_module_names = session.config.loaded_modules
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
+  let implicit_open_source_ids (source: Source.t) =
+    source.implicit_opens
+    |> List.map IdentPath.to_string
+    |> List.concat_map (source_ids_of_module session)
+  in
   let initial_source_ids =
     roots
     |> List.filter_map
@@ -398,11 +423,12 @@ let local_source_closure = fun session roots ->
             match source_of_id session source_id with
             | None -> discover rest seen
             | Some source ->
-                let additional = module_dependencies session ~deps_env_key ~deps_env source
-                |> List.filter
-                  (fun module_name ->
-                    not (Collections.HashSet.contains loaded_module_names module_name))
-                |> List.concat_map (source_ids_of_module session) in
+                let additional = (implicit_open_source_ids source)
+                @ (module_dependencies session ~deps_env_key ~deps_env source
+                  |> List.filter
+                    (fun module_name ->
+                      not (Collections.HashSet.contains loaded_module_names module_name))
+                  |> List.concat_map (source_ids_of_module session)) in
                 discover (additional @ rest) seen
           )
   in

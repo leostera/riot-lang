@@ -9,6 +9,7 @@ module Typ_file_summary = Typ.Model.FileSummary
 module Typ_module_typings = Typ.Model.ModuleTypings
 module Typ_source = Typ.Model.Source
 module Typ_source_id = Typ.Model.SourceId
+module Typ_module_pairing = Typ.Session.ModulePairing
 module Typ_snapshot = Typ.Session.Snapshot
 module Typ_source_analysis = Typ.Session.SourceAnalysis
 
@@ -39,6 +40,14 @@ type planned_typ_source = {
 type checked_group = {
   checked_files: State.checked_file list;
   module_typings: Typ_module_typings.t list;
+}
+
+type package_scan_ambient_state = {
+  loaded_modules: Typ_module_typings.t list;
+  qualified_exports_by_module: (string * Typ.Config.env) list;
+  qualified_type_decls_by_module: (string * Typ_file_summary.type_decl list) list;
+  ambient_all: Typ.Config.env;
+  ambient_type_decls_all: Typ_file_summary.type_decl list;
 }
 
 let emit_event = fun ?on_event event ->
@@ -512,6 +521,67 @@ let qualify_typings_type_decls = fun module_name type_decls ->
       })
     type_decls
 
+let package_scan_ambient_empty = {
+  loaded_modules = [];
+  qualified_exports_by_module = [];
+  qualified_type_decls_by_module = [];
+  ambient_all = [];
+  ambient_type_decls_all = [];
+}
+
+let package_scan_ambient_rebuild_all = fun qualified_exports_by_module qualified_type_decls_by_module ->
+  (
+    qualified_exports_by_module |> List.concat_map snd,
+    qualified_type_decls_by_module |> List.concat_map snd
+  )
+
+let package_scan_ambient_with_typings = fun state typings ->
+  let module_name = Typ_module_typings.module_name typings in
+  let qualified_exports =
+    qualify_typings_exports module_name (Typ_module_typings.exports typings)
+  in
+  let qualified_type_decls =
+    qualify_typings_type_decls module_name (Typ_module_typings.type_decls typings)
+  in
+  let loaded_modules = merge_loaded_module_typings [ typings ] state.loaded_modules in
+  match
+    List.assoc_opt module_name state.qualified_exports_by_module,
+    List.assoc_opt module_name state.qualified_type_decls_by_module
+  with
+  | None, None ->
+      {
+        loaded_modules;
+        qualified_exports_by_module =
+          state.qualified_exports_by_module @ [ (module_name, qualified_exports) ];
+        qualified_type_decls_by_module =
+          state.qualified_type_decls_by_module @ [ (module_name, qualified_type_decls) ];
+        ambient_all = state.ambient_all @ qualified_exports;
+        ambient_type_decls_all = state.ambient_type_decls_all @ qualified_type_decls;
+      }
+  | _ ->
+      let qualified_exports_by_module =
+        (module_name, qualified_exports) :: List.remove_assoc module_name state.qualified_exports_by_module
+      in
+      let qualified_type_decls_by_module =
+        (module_name, qualified_type_decls)
+        :: List.remove_assoc module_name state.qualified_type_decls_by_module
+      in
+      let (ambient_all, ambient_type_decls_all) =
+        package_scan_ambient_rebuild_all
+          qualified_exports_by_module
+          qualified_type_decls_by_module
+      in
+      {
+        loaded_modules;
+        qualified_exports_by_module;
+        qualified_type_decls_by_module;
+        ambient_all;
+        ambient_type_decls_all;
+      }
+
+let package_scan_ambient_of_loaded_modules = fun loaded_modules ->
+  loaded_modules |> List.fold_left package_scan_ambient_with_typings package_scan_ambient_empty
+
 let relative_module_name = fun ~current_local_module_name module_name ->
   let current_scope_path =
     current_local_module_name
@@ -586,6 +656,39 @@ let ambient_type_decls_for_loaded_modules =
         (Typ_module_typings.module_name typings)
         (Typ_module_typings.type_decls typings)))
   @ relative_ambient_type_decls_for_loaded_modules ~current_local_module_name loaded_modules
+
+let package_scan_ambient_for_source =
+  fun (state: package_scan_ambient_state) ~(current_module_name:string) ~(current_local_module_name:string) ->
+  let base_ambient =
+    match List.assoc_opt current_module_name state.qualified_exports_by_module with
+    | None -> state.ambient_all
+    | Some _ ->
+        state.qualified_exports_by_module
+        |> List.filter (fun (module_name, _) -> not (String.equal module_name current_module_name))
+        |> List.concat_map snd
+  in
+  let base_ambient_type_decls =
+    match List.assoc_opt current_module_name state.qualified_type_decls_by_module with
+    | None -> state.ambient_type_decls_all
+    | Some _ ->
+        state.qualified_type_decls_by_module
+        |> List.filter (fun (module_name, _) -> not (String.equal module_name current_module_name))
+        |> List.concat_map snd
+  in
+  let loaded_modules =
+    match List.assoc_opt current_module_name state.qualified_exports_by_module with
+    | None -> state.loaded_modules
+    | Some _ ->
+        state.loaded_modules
+        |> List.filter
+          (fun typings -> not (String.equal current_module_name (Typ_module_typings.module_name typings)))
+  in
+  (
+    base_ambient
+    @ relative_ambient_exports_for_loaded_modules ~current_local_module_name loaded_modules,
+    base_ambient_type_decls
+    @ relative_ambient_type_decls_for_loaded_modules ~current_local_module_name loaded_modules
+  )
 
 let readable_typ_source_of_prepared = function
   | Unreadable_source _ -> None
@@ -717,22 +820,20 @@ let ordered_readable_typ_sources = fun readable_sources ->
       | None -> [])
 
 let analyze_package_typ_sources_in_order = fun config ordered_sources ->
-  let rec loop loaded_modules analyses remaining =
+  let rec loop ambient_state analyses remaining =
     match remaining with
     | [] -> List.rev analyses
     | (source: package_typ_source) :: rest ->
+        let (ambient, ambient_type_decls) =
+          package_scan_ambient_for_source
+            ambient_state
+            ~current_module_name:source.internal_module_name
+            ~current_local_module_name:source.local_module_name
+        in
         let config = config
-        |> Typ.Config.with_loaded_modules ~loaded_modules
-        |> Typ.Config.with_ambient
-          ~ambient:(ambient_env_for_loaded_modules
-            ~current_module_name:source.internal_module_name
-            ~current_local_module_name:source.local_module_name
-            loaded_modules)
-        |> Typ.Config.with_ambient_type_decls
-          ~ambient_type_decls:(ambient_type_decls_for_loaded_modules
-            ~current_module_name:source.internal_module_name
-            ~current_local_module_name:source.local_module_name
-            loaded_modules) in
+        |> Typ.Config.with_loaded_modules ~loaded_modules:ambient_state.loaded_modules
+        |> Typ.Config.with_ambient ~ambient
+        |> Typ.Config.with_ambient_type_decls ~ambient_type_decls in
         let analysis = Typ_source_analysis.analyze ~config source.source in
         let typings = Typ_module_typings.of_file_summary
           ~module_name:source.internal_module_name
@@ -756,7 +857,7 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
               with
               | Failure message ->
                   let loaded_module_names =
-                    loaded_modules
+                    ambient_state.loaded_modules
                     |> List.map Typ_module_typings.module_name
                     |> List.sort String.compare
                   in
@@ -777,29 +878,63 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
             )
           | None -> ()
         in
-        let loaded_modules =
-          merge_loaded_module_typings
-            (typings :: (local_typings |> Option.to_list))
-            loaded_modules in
-        loop loaded_modules ((source.source_id, analysis) :: analyses) rest
+        let ambient_state =
+          typings :: (local_typings |> Option.to_list)
+          |> List.fold_left package_scan_ambient_with_typings ambient_state
+        in
+        loop ambient_state ((source.source_id, analysis) :: analyses) rest
   in
-  loop config.Typ.Config.loaded_modules [] ordered_sources
+  loop (package_scan_ambient_of_loaded_modules config.Typ.Config.loaded_modules) [] ordered_sources
 
-let package_module_typings_of_analyses = fun ordered_sources analyses ->
+let source_analyses_of_analyses = fun ordered_sources analyses ->
   analyses |> List.filter_map
     (fun (source_id, analysis) ->
-      match
-        List.find_opt
-          (fun (source: package_typ_source) ->
-            Typ_source_id.equal source.source_id source_id)
-          ordered_sources
-      with
-      | None -> None
-      | Some { public_module_name=None; _ } -> None
-      | Some source -> Some (Typ_module_typings.of_file_summary
-        ~module_name:(Option.expect ~msg:"public module name" source.public_module_name)
-        ~source_hash:(Typ_source.input_hash source.source)
-        analysis.Typ_source_analysis.file_summary)) |> merge_loaded_module_typings []
+      ordered_sources |> List.find_opt
+        (fun (source: package_typ_source) ->
+          Typ_source_id.equal source.source_id source_id)
+      |> Option.map (fun source -> (source, analysis)))
+
+let group_source_analyses_by = fun key_of source_analyses ->
+  source_analyses |> List.fold_left
+    (fun grouped ((source: package_typ_source), analysis) ->
+      let key = key_of source in
+      let existing =
+        match List.assoc_opt key grouped with
+        | Some existing -> existing
+        | None -> []
+      in
+      (key, ((source.source, analysis) :: existing)) :: List.remove_assoc key grouped)
+    []
+  |> List.rev
+  |> List.map (fun (key, sources) -> (key, List.rev sources))
+
+let internal_module_results_of_analyses = fun ordered_sources analyses ->
+  source_analyses_of_analyses ordered_sources analyses
+  |> group_source_analyses_by (fun (source: package_typ_source) -> source.internal_module_name)
+  |> List.map
+    (fun (module_name, sources) ->
+      (module_name, Typ_module_pairing.of_sources ~module_name sources))
+
+let package_module_typings_of_analyses = fun ordered_sources analyses ->
+  source_analyses_of_analyses ordered_sources analyses
+  |> List.filter_map
+    (fun ((source: package_typ_source), analysis) ->
+      source.public_module_name |> Option.map
+        (fun module_name -> (module_name, (source.source, analysis))))
+  |> List.fold_left
+    (fun grouped (module_name, source_analysis) ->
+      let existing =
+        match List.assoc_opt module_name grouped with
+        | Some existing -> existing
+        | None -> []
+      in
+      (module_name, source_analysis :: existing) :: List.remove_assoc module_name grouped)
+    []
+  |> List.rev
+  |> List.map
+    (fun (module_name, sources) ->
+      Typ_module_pairing.of_sources ~module_name (List.rev sources) |> fun result -> result.module_typings)
+  |> merge_loaded_module_typings []
 
 let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
   match Typ.Store.load_package_module_typings store ~package_name:pkg.name with
@@ -914,6 +1049,57 @@ let prepared_sources_by_path = fun prepared_sources ->
   |> List.fold_left
     (fun prepared_by_path prepared -> (path_key (prepared_source_path prepared), prepared) :: prepared_by_path)
     []
+
+let analysis_by_source_id = fun analyses ->
+  analyses |> List.fold_left
+    (fun by_source_id (source_id, analysis) ->
+      (Typ_source_id.to_int source_id, analysis) :: by_source_id)
+    []
+
+let ordered_sources_by_path = fun ordered_sources ->
+  ordered_sources |> List.fold_left
+    (fun by_path (source: package_typ_source) ->
+      (path_key source.display_path, source) :: by_path)
+    []
+
+let checked_group_for_package_scan = fun config ~package_name ordered_sources target_paths ->
+  let analyses = analyze_package_typ_sources_in_order config ordered_sources in
+  let analysis_by_source_id =
+    internal_module_results_of_analyses ordered_sources analyses
+    |> List.concat_map
+      (fun (_module_name, (result: Typ_module_pairing.t)) -> result.analyses_by_source)
+    |> analysis_by_source_id
+  in
+  let sources_by_path = ordered_sources_by_path ordered_sources in
+  let module_typings = package_module_typings_of_analyses ordered_sources analyses in
+  let () =
+    match config.Typ.Config.store with
+    | Some store ->
+        persist_module_typings store ~package_name module_typings
+    | None -> ()
+  in
+  {
+    checked_files =
+      target_paths |> List.map
+        (fun path ->
+          match List.assoc_opt (path_key path) sources_by_path with
+          | None ->
+              State.Unreadable {
+                path;
+                reason = "planner did not produce an ordered prepared source for this file";
+              }
+          | Some source -> (
+              match List.assoc_opt (Typ_source_id.to_int source.source_id) analysis_by_source_id with
+              | Some analysis -> checked_file_of_analysis path analysis
+              | None ->
+                  State.Unreadable {
+                    path;
+                    reason = "missing type analysis for " ^ Path.to_string path;
+                  }
+            ))
+    ;
+    module_typings;
+  }
 
 let checked_group_for_session = fun config session prepared_by_path root_paths ->
   let target_prepared_sources =
@@ -1092,6 +1278,11 @@ let check_target_files = fun ~workspace ~scan_mode ?on_event ?on_result target_f
                 let () = emit_event ?on_event (Check_event.Package { package_name = pkg.name }) in
                 match package_typ_sources_from_planner ~include_dev:true ~workspace ~pkg with
                 | None -> emit_unreadable ("failed to prepare planner-owned sources for package " ^ pkg.name)
+                | Some ordered_sources when scan_mode ->
+                    let checked_group =
+                      checked_group_for_package_scan config ~package_name:pkg.name ordered_sources group_targets
+                    in
+                    checked_group.checked_files |> List.iter emit
                 | Some ordered_sources ->
                     let session, prepared_sources = create_typ_session config ordered_sources in
                     let prepared_by_path = prepared_sources_by_path prepared_sources in

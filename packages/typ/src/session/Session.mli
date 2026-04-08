@@ -5,6 +5,8 @@ module Snapshot: module type of Snapshot
 
 module SourceAnalysis: module type of SourceAnalysis
 
+module ModulePairing: module type of ModulePairing
+
 module MissingRequirements: module type of MissingRequirements
 
 (** Mutable host-owned set of logical sources. *)
@@ -19,25 +21,31 @@ val config: t -> TypConfig.t
 (** Replace the host configuration while preserving the current sources. *)
 val with_config: t -> config:TypConfig.t -> t
 
-(** Add one logical source and return its stable [SourceId]. *)
-val create_source: t -> kind:Source.kind -> origin:Source.origin -> text:string -> t * SourceId.t
-
 (** Add one logical source whose parse result and CST were prepared by the
-    host ahead of time.
+    host ahead of time and return its stable [SourceId].
 
-    Hosts should use this when they already have planner-owned parse artifacts
-    and want to seed a session without reparsing the same source again. *)
-val create_prepared_source:
+    Hosts should use this when they already have planner-owned or editor-owned
+    parse artifacts and want to seed a session without reparsing the same
+    source again. *)
+val create_source:
   t ->
   kind:Source.kind ->
+  module_name:string ->
+  implicit_opens:IdentPath.t list ->
   origin:Source.origin ->
   source_hash:Crypto.hash ->
   parse_result:Syn.Parser.parse_result ->
-  cst:(Syn.Cst.source_file, Syn.build_cst_error) result ->
+  cst:Syn.Cst.source_file ->
   t * SourceId.t
 
-(** Replace the text for one existing source while preserving its [SourceId]. *)
-val update_source_text: t -> SourceId.t -> text:string -> t
+(** Replace one existing source while preserving its [SourceId]. *)
+val update_source:
+  t ->
+  SourceId.t ->
+  source_hash:Crypto.hash ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:Syn.Cst.source_file ->
+  t
 
 (** Remove one logical source from future snapshots. *)
 val remove_source: t -> SourceId.t -> t

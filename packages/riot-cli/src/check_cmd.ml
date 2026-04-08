@@ -37,7 +37,7 @@ let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
       ()
   | Check.Event.Package { package_name } ->
       if not quiet then
-        stderr (package_progress_line "Check" package_name)
+        stderr (package_progress_line "Checking" package_name)
   | Check.Event.PackageCached { package_name } ->
       ignore package_name
   | Check.Event.File checked_file ->
