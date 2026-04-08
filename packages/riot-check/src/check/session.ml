@@ -342,6 +342,12 @@ let merge_loaded_module_typings = fun preferred fallback ->
   in
   loop [] [] (preferred @ fallback)
 
+let default_typ_loaded_modules =
+  merge_loaded_module_typings Typ.OCamlStdlib.summaries Typ.Config.default.loaded_modules
+
+let default_typ_config =
+  Typ.Config.default |> Typ.Config.with_loaded_modules ~loaded_modules:default_typ_loaded_modules
+
 let rebind_module_typings_name = fun ~module_name (typings: Typ_module_typings.t) ->
   match Typ_module_typings.export_result typings with
   | Typ_file_summary.TrustedExport { exports } -> Typ_module_typings.trusted
@@ -1371,8 +1377,8 @@ let workspace_module_typings_for_package =
               let () = emit_event ?on_event (Check_event.Package { package_name = pkg.name }) in
               let loaded_modules = merge_loaded_module_typings
                 dependency_typings
-                Typ.Config.default.loaded_modules in
-              let config = Typ.Config.default
+                default_typ_loaded_modules in
+              let config = default_typ_config
               |> Typ.Config.with_loaded_modules ~loaded_modules
               |> Typ.Config.with_store ~store:(Some typ_store)
               |> Typ.Config.with_capture_traces ~capture_traces:false in
@@ -1396,8 +1402,8 @@ let workspace_module_typings_for_package =
               let () = emit_event ?on_event (Check_event.Package { package_name = pkg.name }) in
               let loaded_modules = merge_loaded_module_typings
                 dependency_typings
-                Typ.Config.default.loaded_modules in
-              let config = Typ.Config.default
+                default_typ_loaded_modules in
+              let config = default_typ_config
               |> Typ.Config.with_loaded_modules ~loaded_modules
               |> Typ.Config.with_store ~store:(Some typ_store)
               |> Typ.Config.with_capture_traces ~capture_traces:false in
@@ -1430,13 +1436,13 @@ let workspace_module_typings_for_package =
 let typ_config_for_source_group = fun ~workspace ~summary_cache ?on_event paths ->
   match paths with
   | [] -> {
-    config = Typ.Config.default |> Typ.Config.with_capture_traces ~capture_traces:false;
+    config = default_typ_config |> Typ.Config.with_capture_traces ~capture_traces:false;
     dependency_packages = []
   }
   | path :: _ -> (
       match Workspace.find_package_for_path workspace ~path with
       | None -> {
-        config = Typ.Config.default |> Typ.Config.with_capture_traces ~capture_traces:false;
+        config = default_typ_config |> Typ.Config.with_capture_traces ~capture_traces:false;
         dependency_packages = []
       }
       | Some pkg ->
@@ -1446,9 +1452,9 @@ let typ_config_for_source_group = fun ~workspace ~summary_cache ?on_event paths 
             (fun dependency_pkg ->
               workspace_module_typings_for_package summary_cache typ_store workspace ?on_event dependency_pkg) in
           let dependency_typings = package_typings_of_cached_packages dependency_packages in
-          let loaded_modules = merge_loaded_module_typings dependency_typings Typ.Config.default.loaded_modules in
+          let loaded_modules = merge_loaded_module_typings dependency_typings default_typ_loaded_modules in
           {
-            config = Typ.Config.default
+            config = default_typ_config
             |> Typ.Config.with_loaded_modules ~loaded_modules
             |> Typ.Config.with_store ~store:(Some typ_store)
             |> Typ.Config.with_capture_traces ~capture_traces:false;

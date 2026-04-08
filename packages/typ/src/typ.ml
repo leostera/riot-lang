@@ -9,3 +9,4 @@ module Store = Store
 module Batch = Batch
 module Check = Check
 module Config = TypConfig
+module OCamlStdlib = OCamlStdlib

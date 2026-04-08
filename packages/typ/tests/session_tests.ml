@@ -1608,6 +1608,83 @@ let test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings = fun
   else
     Ok ()
 
+let test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "hashtbl.mli")
+    ~text:"include module type of Stdlib.Hashtbl\n" in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  let exports = export_names (Query.export_of snapshot source_id) |> List.sort String.compare in
+  let expected_exports = [
+    "clear";
+    "copy";
+    "create";
+    "find";
+    "fold";
+    "hash";
+    "iter";
+    "length";
+    "mem";
+    "remove";
+    "replace";
+    "seeded_hash";
+  ] in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else if not (List.equal String.equal exports expected_exports) then
+    Error ("unexpected exports: " ^ String.concat ", " exports)
+  else
+    Ok ()
+
+let test_ocaml_stdlib_root_operators_typecheck = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ops.ml")
+    ~text:
+      "let sum = Stdlib.( + ) 1 2\n\
+       let ok = Stdlib.( && ) true false\n\
+       let eq = Stdlib.( = ) 1 1\n\
+       let xs = Stdlib.( @ ) [1] [2]\n\
+       let piped = Stdlib.( |> ) 1 Stdlib.succ\n" in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "sum") in
+    let () = Test.assert_equal ~expected:(Some "bool") ~actual:(export_scheme snapshot source_id "ok") in
+    let () = Test.assert_equal ~expected:(Some "bool") ~actual:(export_scheme snapshot source_id "eq") in
+    let () = Test.assert_equal ~expected:(Some "int list") ~actual:(export_scheme snapshot source_id "xs") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot source_id "piped") in
+    Ok ()
+
+let test_ocaml_stdlib_sys_signal_behavior_typechecks = fun _ctx ->
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:OCamlStdlib.summaries in
+  let session = Session.empty ~config in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "system.ml")
+    ~text:
+      "type nonrec signal_behavior = Stdlib.Sys.signal_behavior =\n\
+       | Signal_default\n\
+       | Signal_ignore\n\
+       | Signal_handle of (int -> unit)\n\
+       let previous = Stdlib.Sys.signal Stdlib.Sys.sigint (Stdlib.Sys.Signal_handle (fun _ -> ()))\n" in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    Ok ()
+
 let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
   let (seed_session, actors_source_id) = create_source
@@ -2830,6 +2907,15 @@ let () =
         Test.case
           "include module type of stdlib float uses bootstrap module typings"
           test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings;
+        Test.case
+          "include module type of ocaml stdlib hashtbl uses loaded module typings"
+          test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings;
+        Test.case
+          "ocaml stdlib root operators typecheck"
+          test_ocaml_stdlib_root_operators_typecheck;
+        Test.case
+          "ocaml stdlib sys signal behavior typechecks"
+          test_ocaml_stdlib_sys_signal_behavior_typechecks;
         Test.case "source analysis with loaded modules canonicalizes nominal types" test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
         Test.case "source analysis with opened loaded module canonicalizes nominal types" test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
         Test.case "snapshot exports opened loaded nominal types from implementation" test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
