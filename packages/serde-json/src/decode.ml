@@ -1441,6 +1441,85 @@ and record_backend:
           done;
           finish !acc
 
+and record_mut_backend:
+  'field 'builder 'value. state ->
+  fields:'field De.Fields.t ->
+  create:(unit -> 'builder) ->
+  step:('builder -> 'field option -> unit) ->
+  finish:('builder -> 'value) ->
+  'value = fun state ~fields ~create ~step ~finish ->
+  match state.input with
+  | Input.Reader_input reader ->
+      reader_skip_whitespace reader;
+      reader_expect_char state reader '{' "object";
+      reader_skip_whitespace reader;
+      let builder = create () in
+      (
+        match reader_current_char reader with
+        | Some '}' ->
+            reader_advance reader;
+            finish builder
+        | _ ->
+            let first = ref true in
+            let finished = ref false in
+            while not !finished do
+              if !first then
+                first := false
+              else
+                (
+                  reader_skip_whitespace reader;
+                  reader_expect_char state reader ',' "object delimiter"
+                );
+              let field = read_field_tag_reader state reader fields in
+              reader_skip_whitespace reader;
+              reader_expect_char state reader ':' "':' after object key";
+              step builder field;
+              reader_skip_whitespace reader;
+              match reader_current_char reader with
+              | Some '}' ->
+                  reader_advance reader;
+                  finished := true
+              | Some _ ->
+                  ()
+              | None ->
+                  unexpected_end state "object"
+            done;
+            finish builder
+      )
+  | Input.String_input _ ->
+      skip_then_expect_char state '{' "object";
+      Input.skip_whitespace state.input;
+      let builder = create () in
+      match Input.current_char state.input with
+      | Some '}' ->
+          Input.advance state.input;
+          finish builder
+      | _ ->
+          let first = ref true in
+          let finished = ref false in
+          while not !finished do
+            if !first then
+              first := false
+            else
+              (
+                Input.skip_whitespace state.input;
+                expect_char state ',' "object delimiter"
+              );
+            let field = read_field_tag state fields in
+            skip_then_expect_char state ':' "':' after object key";
+            step builder field;
+            Input.skip_whitespace state.input;
+            match Input.current_char state.input with
+            | Some '}' ->
+                Input.advance state.input;
+                finished := true
+            | Some _ ->
+                ()
+            | None ->
+                unexpected_end state "object"
+          done;
+          finish builder
+
 and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun state cases ->
   let rec find_unit tag = function
     | [] -> raise (Serde.Decode_error `invalid_tag)
@@ -1509,6 +1588,7 @@ and backend: state De.backend = {
   option = option_backend;
   list = list_backend;
   record = record_backend;
+  record_mut = record_mut_backend;
   variant = variant_backend;
 }
 

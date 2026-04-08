@@ -77,6 +77,13 @@ module De: sig
       step:('acc -> 'field option -> 'acc) ->
       finish:('acc -> 'value) ->
       'value;
+    record_mut:
+      'field 'builder 'value. 'state ->
+      fields:'field Fields.t ->
+      create:(unit -> 'builder) ->
+      step:('builder -> 'field option -> unit) ->
+      finish:('builder -> 'value) ->
+      'value;
     variant: 'value. 'state -> 'value variant_cases -> 'value;
   }
   (** Reader passed into record steps so fields can decode nested values. *)
@@ -170,6 +177,14 @@ module De: sig
     init:'acc ->
     step:(reader -> 'acc -> 'field option -> 'acc) ->
     finish:('acc -> 'value) ->
+    'value t
+
+  (** Decode a record-shaped value through a mutable builder. *)
+  val record_mut:
+    fields:'field Fields.t ->
+    create:(unit -> 'builder) ->
+    step:(reader -> 'builder -> 'field option -> unit) ->
+    finish:('builder -> 'value) ->
     'value t
 
   (** Decode a tagged variant value. *)

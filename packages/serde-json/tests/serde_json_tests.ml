@@ -100,6 +100,21 @@ type prefix_field =
   | Prefix_hello
   | Prefix_hellsinborg
 
+type person_builder = {
+  mutable name: string option;
+  mutable age: int option;
+  mutable active: bool option;
+  mutable tags: string vec option;
+  mutable nickname: string option option;
+  mutable pet: pet option;
+}
+
+type prefix_builder = {
+  mutable help: int option;
+  mutable hello: int option;
+  mutable hellsinborg: int option;
+}
+
 let person_fields = De.fields
   [
     De.field "name" Field_name;
@@ -134,64 +149,77 @@ let pet_encode = Ser.variant
       ); ]
 
 let person_decode =
-  De.record ~fields:person_fields ~init:(None, None, None, None, None, None)
-    ~step:(fun reader (name, age, active, tags, nickname, pet) field ->
+  De.record_mut ~fields:person_fields
+    ~create:(fun () : person_builder ->
+      {
+        name = None;
+        age = None;
+        active = None;
+        tags = None;
+        nickname = None;
+        pet = None;
+      })
+    ~step:(fun reader builder field ->
       match field with
       | Some Field_name ->
-          (Some (De.read reader De.string), age, active, tags, nickname, pet)
+          builder.name <- Some (De.read reader De.string)
       | Some Field_age ->
-          (name, Some (De.read reader De.int), active, tags, nickname, pet)
+          builder.age <- Some (De.read reader De.int)
       | Some Field_active ->
-          (name, age, Some (De.read reader De.bool), tags, nickname, pet)
+          builder.active <- Some (De.read reader De.bool)
       | Some Field_tags ->
-          (name, age, active, Some (De.read reader (De.list De.string)), nickname, pet)
+          builder.tags <- Some (De.read reader (De.list De.string))
       | Some Field_nickname ->
-          (name, age, active, tags, Some (De.read reader (De.option De.string)), pet)
+          builder.nickname <- Some (De.read reader (De.option De.string))
       | Some Field_pet ->
-          (name, age, active, tags, nickname, Some (De.read reader pet_decode))
+          builder.pet <- Some (De.read reader pet_decode)
       | None ->
-          let () = De.read reader De.skip_any in
-          (name, age, active, tags, nickname, pet))
-    ~finish:(fun (name, age, active, tags, nickname, pet) ->
-      match (name, age, active, tags, nickname, pet) with
+          ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: person_builder) ->
+      match (builder.name, builder.age, builder.active, builder.tags, builder.nickname, builder.pet) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet) ->
-          {
+          ({
             name;
             age;
             active;
             tags;
             nickname;
             pet;
-          }
+          }: person)
       | _ -> De.missing_field ())
 
 let person_encode = Ser.record
   (Ser.fields
     [
-      Ser.field "name" Ser.string (fun value -> value.name);
-      Ser.field "age" Ser.int (fun value -> value.age);
-      Ser.field "active" Ser.bool (fun value -> value.active);
-      Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
-      Ser.field "nickname" (Ser.option Ser.string) (fun value -> value.nickname);
-      Ser.field "pet" pet_encode (fun value -> value.pet);
+      Ser.field "name" Ser.string (fun (value: person) -> value.name);
+      Ser.field "age" Ser.int (fun (value: person) -> value.age);
+      Ser.field "active" Ser.bool (fun (value: person) -> value.active);
+      Ser.field "tags" (Ser.list Ser.string) (fun (value: person) -> value.tags);
+      Ser.field "nickname" (Ser.option Ser.string) (fun (value: person) -> value.nickname);
+      Ser.field "pet" pet_encode (fun (value: person) -> value.pet);
     ])
 
 let prefix_decode =
-  De.record ~fields:prefix_fields ~init:(None, None, None)
-    ~step:(fun reader (help, hello, hellsinborg) field ->
+  De.record_mut ~fields:prefix_fields
+    ~create:(fun () : prefix_builder ->
+      {
+        help = None;
+        hello = None;
+        hellsinborg = None;
+      })
+    ~step:(fun reader builder field ->
       match field with
       | Some Prefix_help ->
-          (Some (De.read reader De.int), hello, hellsinborg)
+          builder.help <- Some (De.read reader De.int)
       | Some Prefix_hello ->
-          (help, Some (De.read reader De.int), hellsinborg)
+          builder.hello <- Some (De.read reader De.int)
       | Some Prefix_hellsinborg ->
-          (help, hello, Some (De.read reader De.int))
+          builder.hellsinborg <- Some (De.read reader De.int)
       | None ->
-          let () = De.read reader De.skip_any in
-          (help, hello, hellsinborg))
-    ~finish:(fun (help, hello, hellsinborg) ->
-      match (help, hello, hellsinborg) with
-      | (Some help, Some hello, Some hellsinborg) -> { help; hello; hellsinborg }
+          ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: prefix_builder) ->
+      match (builder.help, builder.hello, builder.hellsinborg) with
+      | (Some help, Some hello, Some hellsinborg) -> ({ help; hello; hellsinborg }: prefix_record)
       | _ -> De.missing_field ())
 
 let expect_equal = fun ~expected ~actual ~message ->
@@ -205,7 +233,7 @@ let vec_to_list = fun values ->
   Vector.iter (fun value -> items := value :: !items) values;
   List.rev !items
 
-let equal_person = fun left right ->
+let equal_person = fun (left: person) (right: person) ->
   String.equal left.name right.name
   && Int.equal left.age right.age
   && Bool.equal left.active right.active
@@ -224,7 +252,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
       "unknown":{"nested":[1,2,3],"more":{"answer":42}}
     }|}
   in
-  let expected = {
+  let expected: person = {
     name = "Leo";
     age = 33;
     active = true;
@@ -243,7 +271,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
 
 let test_decodes_unit_variant = fun _ctx ->
   let input = {|{"name":"Leo","age":33,"active":true,"tags":["riot"],"nickname":"captain","pet":"Cat"}|} in
-  let expected = {
+  let expected: person = {
     name = "Leo";
     age = 33;
     active = true;
@@ -262,7 +290,7 @@ let test_decodes_unit_variant = fun _ctx ->
 
 let test_decodes_from_reader = fun _ctx ->
   let input = {|{"name":"Leo","age":33,"active":true,"tags":["riot"],"nickname":"captain","pet":"Cat"}|} in
-  let expected = {
+  let expected: person = {
     name = "Leo";
     age = 33;
     active = true;
@@ -286,7 +314,7 @@ let test_decodes_from_reader = fun _ctx ->
 
 let test_matches_shared_prefix_fields = fun _ctx ->
   let input = {|{"help":1,"hello":2,"hellsinborg":3}|} in
-  let expected = { help = 1; hello = 2; hellsinborg = 3 } in
+  let expected: prefix_record = { help = 1; hello = 2; hellsinborg = 3 } in
   match Serde_json.of_string prefix_decode input with
   | Ok actual -> expect_equal ~expected ~actual ~message:"expected serde-json decoder to distinguish shared-prefix field names"
   | Error err -> Error ("shared-prefix decode failed: " ^ Serde.Error.to_string err)
@@ -302,7 +330,7 @@ let test_decodes_numeric_scalars = fun _ctx ->
   expect_ok De.float "1.25e3" 1250.0 "expected serde-json decoder to parse top-level floats with exponents"
 
 let test_encodes_record = fun _ctx ->
-  let person = {
+  let person: person = {
     name = "Leo";
     age = 33;
     active = true;
@@ -317,7 +345,7 @@ let test_encodes_record = fun _ctx ->
   | Error err -> Error ("encode failed: " ^ Serde.Error.to_string err)
 
 let test_encodes_escaped_strings = fun _ctx ->
-  let person = {
+  let person: person = {
     name = "Le\"o\n";
     age = 33;
     active = true;
@@ -332,7 +360,7 @@ let test_encodes_escaped_strings = fun _ctx ->
   | Error err -> Error ("escaped-string encode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
-  let person = {
+  let person: person = {
     name = "Leo";
     age = 33;
     active = true;
@@ -348,7 +376,7 @@ let test_writes_to_writer = fun _ctx ->
   | Error err -> Error ("writer encode failed: " ^ Serde.Error.to_string err)
 
 let test_roundtrips_record = fun _ctx ->
-  let person = {
+  let person: person = {
     name = "Leo";
     age = 33;
     active = true;

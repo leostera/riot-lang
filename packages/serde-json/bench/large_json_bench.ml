@@ -51,6 +51,28 @@ type dataset_field =
   | Dataset_items
   | Dataset_unknown
 
+type child_builder = {
+  mutable owner: string option;
+  mutable score: float option;
+  mutable flags: bool vec option;
+}
+
+type item_builder = {
+  mutable id: int option;
+  mutable name: string option;
+  mutable active: bool option;
+  mutable tags: string vec option;
+  mutable metrics: int vec option;
+  mutable child: child option;
+  mutable note: string option option;
+}
+
+type dataset_builder = {
+  mutable version: int option;
+  mutable source: string option;
+  mutable items: item vec option;
+}
+
 type fixture = {
   json: Json.t;
   dataset: dataset;
@@ -160,50 +182,64 @@ let decode_vec = fun values decode ->
   loop values
 
 let child_decode =
-  De.record ~fields:child_fields ~init:(None, None, None)
-    ~step:(fun reader (owner, score, flags) next ->
+  De.record_mut ~fields:child_fields
+    ~create:(fun () : child_builder ->
+      {
+        owner = None;
+        score = None;
+        flags = None;
+      })
+    ~step:(fun reader builder next ->
       match next with
       | Some Child_owner ->
-          (Some (De.read reader De.string), score, flags)
+          builder.owner <- Some (De.read reader De.string)
       | Some Child_score ->
-          (owner, Some (De.read reader De.float), flags)
+          builder.score <- Some (De.read reader De.float)
       | Some Child_flags ->
-          (owner, score, Some (De.read reader (De.list De.bool)))
+          builder.flags <- Some (De.read reader (De.list De.bool))
       | Some Child_unknown
       | None ->
-          let () = De.read reader De.skip_any in
-          (owner, score, flags))
-    ~finish:(fun (owner, score, flags) ->
-      match (owner, score, flags) with
-      | (Some owner, Some score, Some flags) -> { owner; score; flags }
+          ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: child_builder) ->
+      match (builder.owner, builder.score, builder.flags) with
+      | (Some owner, Some score, Some flags) -> ({ owner; score; flags }: child)
       | _ -> De.missing_field ())
 
 let item_decode =
-  De.record ~fields:item_fields ~init:(None, None, None, None, None, None, None)
-    ~step:(fun reader (id, name, active, tags, metrics, child, note) next ->
+  De.record_mut ~fields:item_fields
+    ~create:(fun () : item_builder ->
+      {
+        id = None;
+        name = None;
+        active = None;
+        tags = None;
+        metrics = None;
+        child = None;
+        note = None;
+      })
+    ~step:(fun reader builder next ->
       match next with
       | Some Item_id ->
-          (Some (De.read reader De.int), name, active, tags, metrics, child, note)
+          builder.id <- Some (De.read reader De.int)
       | Some Item_name ->
-          (id, Some (De.read reader De.string), active, tags, metrics, child, note)
+          builder.name <- Some (De.read reader De.string)
       | Some Item_active ->
-          (id, name, Some (De.read reader De.bool), tags, metrics, child, note)
+          builder.active <- Some (De.read reader De.bool)
       | Some Item_tags ->
-          (id, name, active, Some (De.read reader (De.list De.string)), metrics, child, note)
+          builder.tags <- Some (De.read reader (De.list De.string))
       | Some Item_metrics ->
-          (id, name, active, tags, Some (De.read reader (De.list De.int)), child, note)
+          builder.metrics <- Some (De.read reader (De.list De.int))
       | Some Item_child ->
-          (id, name, active, tags, metrics, Some (De.read reader child_decode), note)
+          builder.child <- Some (De.read reader child_decode)
       | Some Item_note ->
-          (id, name, active, tags, metrics, child, Some (De.read reader (De.option De.string)))
+          builder.note <- Some (De.read reader (De.option De.string))
       | Some Item_unknown
       | None ->
-          let () = De.read reader De.skip_any in
-          (id, name, active, tags, metrics, child, note))
-    ~finish:(fun (id, name, active, tags, metrics, child, note) ->
-      match (id, name, active, tags, metrics, child, note) with
+          ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: item_builder) ->
+      match (builder.id, builder.name, builder.active, builder.tags, builder.metrics, builder.child, builder.note) with
       | (Some id, Some name, Some active, Some tags, Some metrics, Some child, Some note) ->
-          {
+          ({
             id;
             name;
             active;
@@ -211,54 +247,59 @@ let item_decode =
             metrics;
             child;
             note;
-          }
+          }: item)
       | _ -> De.missing_field ())
 
 let dataset_decode =
-  De.record ~fields:dataset_fields ~init:(None, None, None)
-    ~step:(fun reader (version, source, items) next ->
+  De.record_mut ~fields:dataset_fields
+    ~create:(fun () : dataset_builder ->
+      {
+        version = None;
+        source = None;
+        items = None;
+      })
+    ~step:(fun reader builder next ->
       match next with
       | Some Dataset_version ->
-          (Some (De.read reader De.int), source, items)
+          builder.version <- Some (De.read reader De.int)
       | Some Dataset_source ->
-          (version, Some (De.read reader De.string), items)
+          builder.source <- Some (De.read reader De.string)
       | Some Dataset_items ->
-          (version, source, Some (De.read reader (De.list item_decode)))
+          builder.items <- Some (De.read reader (De.list item_decode))
       | Some Dataset_unknown
       | None ->
-          let () = De.read reader De.skip_any in
-          (version, source, items))
-    ~finish:(fun (version, source, items) ->
-      match (version, source, items) with
-      | (Some version, Some source, Some items) -> { version; source; items }
+          ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: dataset_builder) ->
+      match (builder.version, builder.source, builder.items) with
+      | (Some version, Some source, Some items) -> ({ version; source; items }: dataset)
       | _ -> De.missing_field ())
 
 let child_encode = Ser.record
   (Ser.fields
     [
-      Ser.field "owner" Ser.string (fun value -> value.owner);
-      Ser.field "score" Ser.float (fun value -> value.score);
-      Ser.field "flags" (Ser.list Ser.bool) (fun value -> value.flags);
+      Ser.field "owner" Ser.string (fun (value: child) -> value.owner);
+      Ser.field "score" Ser.float (fun (value: child) -> value.score);
+      Ser.field "flags" (Ser.list Ser.bool) (fun (value: child) -> value.flags);
     ])
 
 let item_encode = Ser.record
   (Ser.fields
     [
-      Ser.field "id" Ser.int (fun value -> value.id);
-      Ser.field "name" Ser.string (fun value -> value.name);
-      Ser.field "active" Ser.bool (fun value -> value.active);
-      Ser.field "tags" (Ser.list Ser.string) (fun value -> value.tags);
-      Ser.field "metrics" (Ser.list Ser.int) (fun value -> value.metrics);
-      Ser.field "child" child_encode (fun value -> value.child);
-      Ser.field "note" (Ser.option Ser.string) (fun value -> value.note);
+      Ser.field "id" Ser.int (fun (value: item) -> value.id);
+      Ser.field "name" Ser.string (fun (value: item) -> value.name);
+      Ser.field "active" Ser.bool (fun (value: item) -> value.active);
+      Ser.field "tags" (Ser.list Ser.string) (fun (value: item) -> value.tags);
+      Ser.field "metrics" (Ser.list Ser.int) (fun (value: item) -> value.metrics);
+      Ser.field "child" child_encode (fun (value: item) -> value.child);
+      Ser.field "note" (Ser.option Ser.string) (fun (value: item) -> value.note);
     ])
 
 let dataset_encode = Ser.record
   (Ser.fields
     [
-      Ser.field "version" Ser.int (fun value -> value.version);
-      Ser.field "source" Ser.string (fun value -> value.source);
-      Ser.field "items" (Ser.list item_encode) (fun value -> value.items);
+      Ser.field "version" Ser.int (fun (value: dataset) -> value.version);
+      Ser.field "source" Ser.string (fun (value: dataset) -> value.source);
+      Ser.field "items" (Ser.list item_encode) (fun (value: dataset) -> value.items);
     ])
 
 let manual_bool_vec = fun values ->
@@ -282,7 +323,7 @@ and manual_child_of_json = fun json ->
         let* values = expect_array value in
         manual_bool_vec values)
   in
-  Ok { owner; score; flags }
+  Ok ({ owner; score; flags }: child)
 
 and manual_item_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -311,7 +352,7 @@ and manual_item_of_json = fun json ->
             let* note = expect_string value in
             Ok (Some note))
   in
-  Ok {
+  Ok ({
     id;
     name;
     active;
@@ -319,7 +360,7 @@ and manual_item_of_json = fun json ->
     metrics;
     child;
     note;
-  }
+  }: item)
 
 let manual_dataset_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -331,16 +372,16 @@ let manual_dataset_of_json = fun json ->
         let* values = expect_array value in
         manual_items_of_json values)
   in
-  Ok { version; source; items }
+  Ok ({ version; source; items }: dataset)
 
-let rec child_to_json = fun value ->
+let rec child_to_json = fun (value: child) ->
   Json.Object [
     ("owner", Json.String value.owner);
     ("score", Json.Float value.score);
     ("flags", Json.Array (vec_map_to_list (fun flag -> Json.Bool flag) value.flags));
   ]
 
-and item_to_json = fun value ->
+and item_to_json = fun (value: item) ->
   Json.Object [
     ("id", Json.Int value.id);
     ("name", Json.String value.name);
@@ -356,7 +397,7 @@ and item_to_json = fun value ->
     );
   ]
 
-let dataset_to_json = fun value ->
+let dataset_to_json = fun (value: dataset) ->
   Json.Object [
     ("version", Json.Int value.version);
     ("source", Json.String value.source);
@@ -376,15 +417,15 @@ let load_fixture = fun () ->
   let dataset = manual_dataset_of_json json |> Result.expect ~msg:"expected benchmark payload to decode into the typed dataset" in
   { json; dataset; text; bytes }
 
-let repeat_items = fun items ~count ->
+let repeat_items = fun (items: item vec) ~count ->
   let base_count = Vector.len items in
   if Int.equal base_count 0 then
     Vector.create ()
   else
     let repeated = Vector.with_capacity count in
     for index = 0 to count - 1 do
-      let template = vec_get_exn items (index mod base_count) in
-      let item = {
+      let template: item = vec_get_exn items (index mod base_count) in
+      let item: item = {
         template with
         id = template.id + index;
         name = template.name ^ "-" ^ Int.to_string index;
@@ -397,13 +438,13 @@ let repeat_items = fun items ~count ->
     done;
     repeated
 
-let dataset_with_target_size = fun base_dataset ~target_bytes ->
+let dataset_with_target_size = fun (base_dataset: dataset) ~target_bytes ->
   let base_count = Vector.len base_dataset.items in
   if Int.equal base_count 0 then
     panic "expected benchmark fixture to contain at least one item"
   else
     let rec grow current_count =
-      let dataset = {
+      let dataset: dataset = {
         version = base_dataset.version;
         source = base_dataset.source ^ "-100mb";
         items = repeat_items base_dataset.items ~count:current_count;

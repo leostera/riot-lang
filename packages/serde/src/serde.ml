@@ -273,6 +273,13 @@ and 'state backend = {
     step:('acc -> 'field option -> 'acc) ->
     finish:('acc -> 'value) ->
     'value;
+  record_mut:
+    'field 'builder 'value. 'state ->
+    fields:'field Fields.t ->
+    create:(unit -> 'builder) ->
+    step:('builder -> 'field option -> unit) ->
+    finish:('builder -> 'value) ->
+    'value;
   variant: 'value. 'state -> 'value variant_cases -> 'value;
 }
 
@@ -368,19 +375,29 @@ let array_of_list = fun values ->
 
 let array_of_vec = fun values -> Vector.to_array values
 
+let reader_of_backend = fun backend state ->
+  {
+    read =
+      fun decode ->
+        decode.run backend state;
+  }
+
 let array = fun decode -> map (list decode) array_of_vec
 
 let record = fun ~fields ~init ~step ~finish ->
   {
     run =
       fun backend state ->
-        let reader = {
-          read =
-            fun decode ->
-              decode.run backend state;
-        }
-        in
+        let reader = reader_of_backend backend state in
         backend.record state ~fields ~init ~step:(fun acc field -> step reader acc field) ~finish;
+  }
+
+let record_mut = fun ~fields ~create ~step ~finish ->
+  {
+    run =
+      fun backend state ->
+        let reader = reader_of_backend backend state in
+        backend.record_mut state ~fields ~create ~step:(fun builder field -> step reader builder field) ~finish;
   }
 
 let variant = fun cases ->
@@ -419,6 +436,13 @@ module De = struct
       init:'acc ->
       step:('acc -> 'field option -> 'acc) ->
       finish:('acc -> 'value) ->
+      'value;
+    record_mut:
+      'field 'builder 'value. 'state ->
+      fields:'field Fields.t ->
+      create:(unit -> 'builder) ->
+      step:('builder -> 'field option -> unit) ->
+      finish:('builder -> 'value) ->
       'value;
     variant: 'value. 'state -> 'value variant_cases -> 'value;
   }
@@ -514,6 +538,21 @@ module De = struct
           }
           in
           backend.record state ~fields ~init ~step:(fun acc field -> step reader acc field) ~finish;
+    }
+
+  let record_mut = fun ~fields ~create ~step ~finish ->
+    {
+      run =
+        fun backend state ->
+          let reader = {
+            read =
+              fun decode ->
+                decode.run backend state;
+          }
+          in
+          backend.record_mut state ~fields ~create
+            ~step:(fun builder field -> step reader builder field)
+            ~finish;
     }
 
   let variant = fun cases ->
