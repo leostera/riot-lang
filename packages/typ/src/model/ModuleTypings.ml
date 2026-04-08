@@ -435,13 +435,6 @@ let exports_to_json = fun exports ->
         Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_json); ])
   )
 
-let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
-  Data.Json.Object [
-    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
-    ("name", Data.Json.String constructor.name);
-    ("scheme", scheme_to_json constructor.scheme);
-  ]
-
 let label_decl_to_json = fun (label: TypeDecl.label) ->
   Data.Json.Object [
     ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
@@ -449,6 +442,19 @@ let label_decl_to_json = fun (label: TypeDecl.label) ->
     ("field_type", type_to_json label.field_type);
     ("mutable", Data.Json.Bool label.mutable_);
   ]
+
+let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
+  let fields = [
+    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
+    ("name", Data.Json.String constructor.name);
+    ("scheme", scheme_to_json constructor.scheme);
+  ] in
+  let fields =
+    match constructor.inline_record_labels with
+    | Some labels -> fields @ [ ("inline_record_labels", Data.Json.Array (List.map label_decl_to_json labels)) ]
+    | None -> fields
+  in
+  Data.Json.Object fields
 
 let manifest_to_json = function
   | TypeDecl.Alias manifest_type -> Data.Json.Object [
@@ -777,8 +783,43 @@ let constructor_of_json = fun json ->
   let* constructor_id = get_int constructor_id_json in
   let* name = get_string name_json in
   let* scheme = scheme_of_json scheme_json in
+  let* inline_record_labels =
+    match List.assoc_opt "inline_record_labels" fields with
+    | Some labels_json ->
+        let* labels_json = get_array labels_json in
+        let parse_label_json = fun label_json ->
+          let* fields = get_object label_json in
+          let* label_id_json = field "label_id" fields in
+          let* name_json = field "name" fields in
+          let* field_type_json = field "field_type" fields in
+          let* mutable_json = field "mutable" fields in
+          let* label_id = get_int label_id_json in
+          let* name = get_string name_json in
+          let* field_type = type_of_json field_type_json in
+          let mutable_ =
+            match mutable_json with
+            | Data.Json.Bool mutable_ -> Ok mutable_
+            | other -> error_expected "bool" other
+          in
+          let* mutable_ = mutable_ in
+          Ok { TypeDecl.label_id = LabelId.of_int label_id; name; field_type; mutable_ }
+        in
+        let rec parse_labels acc = function
+          | [] -> Ok (Some (List.rev acc))
+          | label_json :: rest ->
+              let* label = parse_label_json label_json in
+              parse_labels (label :: acc) rest
+        in
+        parse_labels [] labels_json
+    | None -> Ok None
+  in
   Ok (
-    { TypeDecl.constructor_id = ConstructorId.of_int constructor_id; name; scheme }: TypeDecl.constructor
+    {
+      TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
+      name;
+      scheme;
+      inline_record_labels;
+    }: TypeDecl.constructor
   )
 
 let label_decl_of_json = fun json ->

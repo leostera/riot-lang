@@ -24,13 +24,14 @@ let var = fun id -> TypeRepr.make_var id
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
+let named_with_type_constructor_id = fun ~type_constructor_id name ->
+  let path = IdentPath.of_name name in
+  let head = TypeRepr.named_head ~type_constructor_id ~name:path in
+  TypeRepr.named ~head ~arguments:[]
+
 let bare_named = fun name ->
   let path = IdentPath.of_name name in
-  let head =
-    match BuiltinTypeConstructors.head_of_path path with
-    | Some head -> head
-    | None -> raise (Failure ("missing builtin type head " ^ IdentPath.to_string path))
-  in
+  let head = TypeRepr.named_head ~type_constructor_id:(TypeConstructorId.of_path path) ~name:path in
   TypeRepr.named ~head ~arguments:[]
 
 let named_path = fun path -> TypeRepr.named_path ~name:(IdentPath.of_string path) ~arguments:[]
@@ -71,7 +72,12 @@ let alias_type_decl = fun ~scope_path ~path ~type_name ?(param_ids = []) ?(param
     }
 
 let constructor = fun name scheme ->
-  ({ TypeDecl.constructor_id = ConstructorId.of_int (next_constructor_id ()); name; scheme }: TypeDecl.constructor)
+  ({
+    TypeDecl.constructor_id = ConstructorId.of_int (next_constructor_id ());
+    name;
+    scheme;
+    inline_record_labels = None;
+  }: TypeDecl.constructor)
 
 let label = fun ?(mutable_ = false) name field_type ->
   ({ TypeDecl.label_id = LabelId.of_int (next_label_id ()); name; field_type; mutable_ }: TypeDecl.label)
@@ -197,7 +203,9 @@ let polymorphic_array_blit =
       (TypeRepr.array element)
       (arrow TypeRepr.int (arrow (TypeRepr.array element) (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.unit_)))))
 
-let exn_type = bare_named "exn"
+let exn_type = named_with_type_constructor_id
+  ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
+  "exn"
 
 let bytes_type = bare_named "bytes"
 
@@ -208,6 +216,10 @@ let buffer_type = named_path "Buffer.t"
 let stdlib_uchar_type = named_path "Stdlib.Uchar.t"
 
 let uchar_type = named_path "Uchar.t"
+
+let stdlib_uchar_utf_decode_type = named_path "Stdlib.Uchar.utf_decode"
+
+let nativeint_type = bare_named "nativeint"
 
 let stdlib_hashtbl_type key value =
   TypeRepr.named_path ~name:(IdentPath.of_string "Stdlib.Hashtbl.t") ~arguments:[ key; value ]
@@ -292,6 +304,10 @@ let polymorphic_raise =
 let polymorphic_invalid_arg =
   let result = var 0 in
   TypeScheme.of_explicit ~quantified:[ 0 ] (arrow TypeRepr.string result)
+
+let polymorphic_exit =
+  let result = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow TypeRepr.int result)
 
 let polymorphic_obj_magic =
   let source = var 0 in
@@ -489,9 +505,250 @@ let int32_type = bare_named "int32"
 
 let int64_type = bare_named "int64"
 
+let int32_value = TypeScheme.of_type int32_type
+
+let int64_value = TypeScheme.of_type int64_type
+
+let int32_unop = TypeScheme.of_type (arrow int32_type int32_type)
+
+let int64_unop = TypeScheme.of_type (arrow int64_type int64_type)
+
+let int32_binop = TypeScheme.of_type (arrow int32_type (arrow int32_type int32_type))
+
+let int64_binop = TypeScheme.of_type (arrow int64_type (arrow int64_type int64_type))
+
+let int32_compare = TypeScheme.of_type (arrow int32_type (arrow int32_type TypeRepr.int))
+
+let int64_compare = TypeScheme.of_type (arrow int64_type (arrow int64_type TypeRepr.int))
+
+let int32_equal = TypeScheme.of_type (arrow int32_type (arrow int32_type TypeRepr.bool))
+
+let int64_equal = TypeScheme.of_type (arrow int64_type (arrow int64_type TypeRepr.bool))
+
 let stdlib_int32_to_string = TypeScheme.of_type (arrow int32_type TypeRepr.string)
 
 let stdlib_int64_to_string = TypeScheme.of_type (arrow int64_type TypeRepr.string)
+
+let stdlib_int32_of_int = TypeScheme.of_type (arrow TypeRepr.int int32_type)
+
+let stdlib_int64_of_int = TypeScheme.of_type (arrow TypeRepr.int int64_type)
+
+let stdlib_int32_to_int = TypeScheme.of_type (arrow int32_type TypeRepr.int)
+
+let stdlib_int64_to_int = TypeScheme.of_type (arrow int64_type TypeRepr.int)
+
+let stdlib_int32_unsigned_to_int = TypeScheme.of_type (arrow int32_type (TypeRepr.option TypeRepr.int))
+
+let stdlib_int64_unsigned_to_int = TypeScheme.of_type (arrow int64_type (TypeRepr.option TypeRepr.int))
+
+let stdlib_int32_of_float = TypeScheme.of_type (arrow TypeRepr.float int32_type)
+
+let stdlib_int64_of_float = TypeScheme.of_type (arrow TypeRepr.float int64_type)
+
+let stdlib_int32_to_float = TypeScheme.of_type (arrow int32_type TypeRepr.float)
+
+let stdlib_int64_to_float = TypeScheme.of_type (arrow int64_type TypeRepr.float)
+
+let stdlib_int32_of_string = TypeScheme.of_type (arrow TypeRepr.string int32_type)
+
+let stdlib_int64_of_string = TypeScheme.of_type (arrow TypeRepr.string int64_type)
+
+let stdlib_int32_of_string_opt = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option int32_type))
+
+let stdlib_int64_of_string_opt = TypeScheme.of_type (arrow TypeRepr.string (TypeRepr.option int64_type))
+
+let stdlib_int32_bits_of_float = TypeScheme.of_type (arrow TypeRepr.float int32_type)
+
+let stdlib_int64_bits_of_float = TypeScheme.of_type (arrow TypeRepr.float int64_type)
+
+let stdlib_int32_float_of_bits = TypeScheme.of_type (arrow int32_type TypeRepr.float)
+
+let stdlib_int64_float_of_bits = TypeScheme.of_type (arrow int64_type TypeRepr.float)
+
+let stdlib_int64_of_int32 = TypeScheme.of_type (arrow int32_type int64_type)
+
+let stdlib_int64_to_int32 = TypeScheme.of_type (arrow int64_type int32_type)
+
+let stdlib_int64_of_nativeint = TypeScheme.of_type (arrow nativeint_type int64_type)
+
+let stdlib_int64_to_nativeint = TypeScheme.of_type (arrow int64_type nativeint_type)
+
+let stdlib_int32_seeded_hash = TypeScheme.of_type (arrow TypeRepr.int (arrow int32_type TypeRepr.int))
+
+let stdlib_int64_seeded_hash = TypeScheme.of_type (arrow TypeRepr.int (arrow int64_type TypeRepr.int))
+
+let stdlib_int32_hash = TypeScheme.of_type (arrow int32_type TypeRepr.int)
+
+let stdlib_int64_hash = TypeScheme.of_type (arrow int64_type TypeRepr.int)
+
+let stdlib_uchar_value = TypeScheme.of_type stdlib_uchar_type
+
+let stdlib_uchar_pred_succ = TypeScheme.of_type (arrow stdlib_uchar_type stdlib_uchar_type)
+
+let stdlib_uchar_of_int = TypeScheme.of_type (arrow TypeRepr.int stdlib_uchar_type)
+
+let stdlib_uchar_to_int = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.int)
+
+let stdlib_uchar_is_valid = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.bool)
+
+let stdlib_uchar_is_char = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.bool)
+
+let stdlib_uchar_of_char = TypeScheme.of_type (arrow TypeRepr.char stdlib_uchar_type)
+
+let stdlib_uchar_to_char = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.char)
+
+let stdlib_uchar_equal = TypeScheme.of_type
+  (arrow stdlib_uchar_type (arrow stdlib_uchar_type TypeRepr.bool))
+
+let stdlib_uchar_compare = TypeScheme.of_type
+  (arrow stdlib_uchar_type (arrow stdlib_uchar_type TypeRepr.int))
+
+let stdlib_uchar_seeded_hash = TypeScheme.of_type
+  (arrow TypeRepr.int (arrow stdlib_uchar_type TypeRepr.int))
+
+let stdlib_uchar_hash = TypeScheme.of_type (arrow stdlib_uchar_type TypeRepr.int)
+
+let stdlib_uchar_utf_decode_is_valid = TypeScheme.of_type
+  (arrow stdlib_uchar_utf_decode_type TypeRepr.bool)
+
+let stdlib_uchar_utf_decode_uchar = TypeScheme.of_type
+  (arrow stdlib_uchar_utf_decode_type stdlib_uchar_type)
+
+let stdlib_uchar_utf_decode_length = TypeScheme.of_type
+  (arrow stdlib_uchar_utf_decode_type TypeRepr.int)
+
+let stdlib_uchar_utf_decode = TypeScheme.of_type
+  (arrow TypeRepr.int (arrow stdlib_uchar_type stdlib_uchar_utf_decode_type))
+
+let stdlib_uchar_utf_decode_invalid = TypeScheme.of_type
+  (arrow TypeRepr.int stdlib_uchar_utf_decode_type)
+
+let stdlib_uchar_utf_8_byte_length = TypeScheme.of_type
+  (arrow stdlib_uchar_type TypeRepr.int)
+
+let stdlib_uchar_utf_16_byte_length = TypeScheme.of_type
+  (arrow stdlib_uchar_type TypeRepr.int)
+
+let stdlib_random_state_type = named_path "Stdlib.Random.State.t"
+
+let stdlib_random_init = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.unit_)
+
+let stdlib_random_full_init = TypeScheme.of_type
+  (arrow (TypeRepr.array TypeRepr.int) TypeRepr.unit_)
+
+let stdlib_random_self_init = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.unit_)
+
+let stdlib_random_bits = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.int)
+
+let stdlib_random_int = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.int)
+
+let stdlib_random_full_int = TypeScheme.of_type (arrow TypeRepr.int TypeRepr.int)
+
+let stdlib_random_int_in_range = TypeScheme.of_type
+  (arrow
+    ~label:(TypeRepr.Labelled "min")
+    TypeRepr.int
+    (arrow ~label:(TypeRepr.Labelled "max") TypeRepr.int TypeRepr.int))
+
+let stdlib_random_int32 = TypeScheme.of_type (arrow int32_type int32_type)
+
+let stdlib_random_int32_in_range = TypeScheme.of_type
+  (arrow
+    ~label:(TypeRepr.Labelled "min")
+    int32_type
+    (arrow ~label:(TypeRepr.Labelled "max") int32_type int32_type))
+
+let stdlib_random_int64 = TypeScheme.of_type (arrow int64_type int64_type)
+
+let stdlib_random_int64_in_range = TypeScheme.of_type
+  (arrow
+    ~label:(TypeRepr.Labelled "min")
+    int64_type
+    (arrow ~label:(TypeRepr.Labelled "max") int64_type int64_type))
+
+let stdlib_random_float = TypeScheme.of_type (arrow TypeRepr.float TypeRepr.float)
+
+let stdlib_random_bool = TypeScheme.of_type (arrow TypeRepr.unit_ TypeRepr.bool)
+
+let stdlib_random_bits32 = TypeScheme.of_type (arrow TypeRepr.unit_ int32_type)
+
+let stdlib_random_bits64 = TypeScheme.of_type (arrow TypeRepr.unit_ int64_type)
+
+let stdlib_random_get_state = TypeScheme.of_type (arrow TypeRepr.unit_ stdlib_random_state_type)
+
+let stdlib_random_set_state = TypeScheme.of_type
+  (arrow stdlib_random_state_type TypeRepr.unit_)
+
+let stdlib_random_split = TypeScheme.of_type (arrow TypeRepr.unit_ stdlib_random_state_type)
+
+let stdlib_random_state_make = TypeScheme.of_type
+  (arrow (TypeRepr.array TypeRepr.int) stdlib_random_state_type)
+
+let stdlib_random_state_make_self_init = TypeScheme.of_type
+  (arrow TypeRepr.unit_ stdlib_random_state_type)
+
+let stdlib_random_state_copy = TypeScheme.of_type
+  (arrow stdlib_random_state_type stdlib_random_state_type)
+
+let stdlib_random_state_bits = TypeScheme.of_type
+  (arrow stdlib_random_state_type TypeRepr.int)
+
+let stdlib_random_state_int = TypeScheme.of_type
+  (arrow stdlib_random_state_type (arrow TypeRepr.int TypeRepr.int))
+
+let stdlib_random_state_full_int = TypeScheme.of_type
+  (arrow stdlib_random_state_type (arrow TypeRepr.int TypeRepr.int))
+
+let stdlib_random_state_int_in_range = TypeScheme.of_type
+  (arrow
+    stdlib_random_state_type
+    (arrow
+      ~label:(TypeRepr.Labelled "min")
+      TypeRepr.int
+      (arrow ~label:(TypeRepr.Labelled "max") TypeRepr.int TypeRepr.int)))
+
+let stdlib_random_state_int32 = TypeScheme.of_type
+  (arrow stdlib_random_state_type (arrow int32_type int32_type))
+
+let stdlib_random_state_int32_in_range = TypeScheme.of_type
+  (arrow
+    stdlib_random_state_type
+    (arrow
+      ~label:(TypeRepr.Labelled "min")
+      int32_type
+      (arrow ~label:(TypeRepr.Labelled "max") int32_type int32_type)))
+
+let stdlib_random_state_int64 = TypeScheme.of_type
+  (arrow stdlib_random_state_type (arrow int64_type int64_type))
+
+let stdlib_random_state_int64_in_range = TypeScheme.of_type
+  (arrow
+    stdlib_random_state_type
+    (arrow
+      ~label:(TypeRepr.Labelled "min")
+      int64_type
+      (arrow ~label:(TypeRepr.Labelled "max") int64_type int64_type)))
+
+let stdlib_random_state_float = TypeScheme.of_type
+  (arrow stdlib_random_state_type (arrow TypeRepr.float TypeRepr.float))
+
+let stdlib_random_state_bool = TypeScheme.of_type
+  (arrow stdlib_random_state_type TypeRepr.bool)
+
+let stdlib_random_state_bits32 = TypeScheme.of_type
+  (arrow stdlib_random_state_type int32_type)
+
+let stdlib_random_state_bits64 = TypeScheme.of_type
+  (arrow stdlib_random_state_type int64_type)
+
+let stdlib_random_state_split = TypeScheme.of_type
+  (arrow stdlib_random_state_type stdlib_random_state_type)
+
+let stdlib_random_state_to_binary_string = TypeScheme.of_type
+  (arrow stdlib_random_state_type TypeRepr.string)
+
+let stdlib_random_state_of_binary_string = TypeScheme.of_type
+  (arrow TypeRepr.string stdlib_random_state_type)
 
 let fun_protect =
   let result = var 0 in
@@ -724,7 +981,10 @@ let domain_dls_new_key =
   let value = var 0 in
   TypeScheme.of_explicit
     ~quantified:[ 0 ]
-    (arrow (arrow TypeRepr.unit_ value) (domain_dls_key_type value))
+    (arrow
+      ~label:(TypeRepr.Optional "split_from_parent")
+      (arrow value value)
+      (arrow (arrow TypeRepr.unit_ value) (domain_dls_key_type value)))
 
 let domain_dls_get =
   let value = var 0 in
@@ -742,11 +1002,29 @@ let stdlib_uchar_t_decl = abstract_type_decl
   ~type_name:"t"
   ()
 
+let stdlib_uchar_utf_decode_decl = abstract_type_decl
+  ~scope_path:(IdentPath.of_string "Uchar")
+  ~path:"Stdlib.Uchar.utf_decode"
+  ~type_name:"utf_decode"
+  ()
+
 let uchar_t_decl = abstract_type_decl
   ~scope_path:IdentPath.empty
   ~path:"Uchar.t"
   ~type_name:"t"
   ()
+
+let stdlib_int32_t_decl = alias_type_decl
+  ~scope_path:(IdentPath.of_name "Int32")
+  ~path:"Stdlib.Int32.t"
+  ~type_name:"t"
+  int32_type
+
+let stdlib_int64_t_decl = alias_type_decl
+  ~scope_path:(IdentPath.of_name "Int64")
+  ~path:"Stdlib.Int64.t"
+  ~type_name:"t"
+  int64_type
 
 let stdlib_bytes_t_decl = alias_type_decl
   ~scope_path:(IdentPath.of_string "Bytes")
@@ -881,6 +1159,12 @@ let stdlib_type_id_decl = abstract_type_decl
   ~type_name:"t"
   ~param_ids:[ 0 ]
   ~param_variances:[ TypeDecl.Invariant ]
+  ()
+
+let stdlib_random_state_t_decl = abstract_type_decl
+  ~scope_path:(IdentPath.of_string "Random.State")
+  ~path:"Stdlib.Random.State.t"
+  ~type_name:"t"
   ()
 
 let unix_file_descr_decl = abstract_type_decl
@@ -1291,11 +1575,93 @@ let stdlib_char_exports = [
 ]
 
 let stdlib_int32_exports = [
+  ("abs", int32_unop);
+  ("add", int32_binop);
+  ("bits_of_float", stdlib_int32_bits_of_float);
+  ("compare", int32_compare);
+  ("div", int32_binop);
+  ("equal", int32_equal);
+  ("float_of_bits", stdlib_int32_float_of_bits);
+  ("hash", stdlib_int32_hash);
+  ("logand", int32_binop);
+  ("lognot", int32_unop);
+  ("logor", int32_binop);
+  ("logxor", int32_binop);
+  ("max", int32_binop);
+  ("max_int", int32_value);
+  ("min", int32_binop);
+  ("min_int", int32_value);
+  ("minus_one", int32_value);
+  ("mul", int32_binop);
+  ("neg", int32_unop);
+  ("of_float", stdlib_int32_of_float);
+  ("of_int", stdlib_int32_of_int);
+  ("of_string", stdlib_int32_of_string);
+  ("of_string_opt", stdlib_int32_of_string_opt);
+  ("one", int32_value);
+  ("pred", int32_unop);
+  ("rem", int32_binop);
+  ("seeded_hash", stdlib_int32_seeded_hash);
+  ("shift_left", TypeScheme.of_type (arrow int32_type (arrow TypeRepr.int int32_type)));
+  ("shift_right", TypeScheme.of_type (arrow int32_type (arrow TypeRepr.int int32_type)));
+  ("shift_right_logical", TypeScheme.of_type (arrow int32_type (arrow TypeRepr.int int32_type)));
+  ("sub", int32_binop);
+  ("succ", int32_unop);
+  ("to_float", stdlib_int32_to_float);
+  ("to_int", stdlib_int32_to_int);
   ("to_string", stdlib_int32_to_string);
+  ("unsigned_compare", int32_compare);
+  ("unsigned_div", int32_binop);
+  ("unsigned_rem", int32_binop);
+  ("unsigned_to_int", stdlib_int32_unsigned_to_int);
+  ("zero", int32_value);
 ]
 
 let stdlib_int64_exports = [
+  ("abs", int64_unop);
+  ("add", int64_binop);
+  ("bits_of_float", stdlib_int64_bits_of_float);
+  ("compare", int64_compare);
+  ("div", int64_binop);
+  ("equal", int64_equal);
+  ("float_of_bits", stdlib_int64_float_of_bits);
+  ("hash", stdlib_int64_hash);
+  ("logand", int64_binop);
+  ("lognot", int64_unop);
+  ("logor", int64_binop);
+  ("logxor", int64_binop);
+  ("max", int64_binop);
+  ("max_int", int64_value);
+  ("min", int64_binop);
+  ("min_int", int64_value);
+  ("minus_one", int64_value);
+  ("mul", int64_binop);
+  ("neg", int64_unop);
+  ("of_float", stdlib_int64_of_float);
+  ("of_int", stdlib_int64_of_int);
+  ("of_int32", stdlib_int64_of_int32);
+  ("of_nativeint", stdlib_int64_of_nativeint);
+  ("of_string", stdlib_int64_of_string);
+  ("of_string_opt", stdlib_int64_of_string_opt);
+  ("one", int64_value);
+  ("pred", int64_unop);
+  ("rem", int64_binop);
+  ("seeded_hash", stdlib_int64_seeded_hash);
+  ("shift_left", TypeScheme.of_type (arrow int64_type (arrow TypeRepr.int int64_type)));
+  ("shift_right", TypeScheme.of_type (arrow int64_type (arrow TypeRepr.int int64_type)));
+  ("shift_right_logical", TypeScheme.of_type (arrow int64_type (arrow TypeRepr.int int64_type)));
+  ("sub", int64_binop);
+  ("succ", int64_unop);
+  ("to_float", stdlib_int64_to_float);
+  ("to_int", stdlib_int64_to_int);
+  ("to_int32", stdlib_int64_to_int32);
+  ("to_nativeint", stdlib_int64_to_nativeint);
   ("to_string", stdlib_int64_to_string);
+  ("unsigned_compare", int64_compare);
+  ("unsigned_div", int64_binop);
+  ("unsigned_rem", int64_binop);
+  ("unsigned_to_int", stdlib_int64_unsigned_to_int);
+  ("zero", int64_value);
 ]
 
 let stdlib_bytes_exports = [
@@ -1396,9 +1762,79 @@ let stdlib_effect_exports = [
   ("perform", effect_perform);
 ]
 
+let stdlib_random_exports = [
+  ("bits", stdlib_random_bits);
+  ("bits32", stdlib_random_bits32);
+  ("bits64", stdlib_random_bits64);
+  ("bool", stdlib_random_bool);
+  ("float", stdlib_random_float);
+  ("full_init", stdlib_random_full_init);
+  ("full_int", stdlib_random_full_int);
+  ("get_state", stdlib_random_get_state);
+  ("init", stdlib_random_init);
+  ("int", stdlib_random_int);
+  ("int32", stdlib_random_int32);
+  ("int32_in_range", stdlib_random_int32_in_range);
+  ("int64", stdlib_random_int64);
+  ("int64_in_range", stdlib_random_int64_in_range);
+  ("int_in_range", stdlib_random_int_in_range);
+  ("self_init", stdlib_random_self_init);
+  ("set_state", stdlib_random_set_state);
+  ("split", stdlib_random_split);
+]
+
+let stdlib_random_state_exports = [
+  ("bits", stdlib_random_state_bits);
+  ("bits32", stdlib_random_state_bits32);
+  ("bits64", stdlib_random_state_bits64);
+  ("bool", stdlib_random_state_bool);
+  ("copy", stdlib_random_state_copy);
+  ("float", stdlib_random_state_float);
+  ("full_int", stdlib_random_state_full_int);
+  ("int", stdlib_random_state_int);
+  ("int32", stdlib_random_state_int32);
+  ("int32_in_range", stdlib_random_state_int32_in_range);
+  ("int64", stdlib_random_state_int64);
+  ("int64_in_range", stdlib_random_state_int64_in_range);
+  ("int_in_range", stdlib_random_state_int_in_range);
+  ("make", stdlib_random_state_make);
+  ("make_self_init", stdlib_random_state_make_self_init);
+  ("of_binary_string", stdlib_random_state_of_binary_string);
+  ("split", stdlib_random_state_split);
+  ("to_binary_string", stdlib_random_state_to_binary_string);
+]
+
 let stdlib_type_id_exports = [
   ("make", type_id_make);
   ("uid", type_id_uid);
+]
+
+let stdlib_uchar_exports = [
+  ("bom", stdlib_uchar_value);
+  ("compare", stdlib_uchar_compare);
+  ("equal", stdlib_uchar_equal);
+  ("hash", stdlib_uchar_hash);
+  ("is_char", stdlib_uchar_is_char);
+  ("is_valid", stdlib_uchar_is_valid);
+  ("max", stdlib_uchar_value);
+  ("min", stdlib_uchar_value);
+  ("of_char", stdlib_uchar_of_char);
+  ("of_int", stdlib_uchar_of_int);
+  ("pred", stdlib_uchar_pred_succ);
+  ("rep", stdlib_uchar_value);
+  ("seeded_hash", stdlib_uchar_seeded_hash);
+  ("succ", stdlib_uchar_pred_succ);
+  ("to_char", stdlib_uchar_to_char);
+  ("to_int", stdlib_uchar_to_int);
+  ("unsafe_of_int", stdlib_uchar_of_int);
+  ("unsafe_to_char", stdlib_uchar_to_char);
+  ("utf_16_byte_length", stdlib_uchar_utf_16_byte_length);
+  ("utf_8_byte_length", stdlib_uchar_utf_8_byte_length);
+  ("utf_decode", stdlib_uchar_utf_decode);
+  ("utf_decode_invalid", stdlib_uchar_utf_decode_invalid);
+  ("utf_decode_is_valid", stdlib_uchar_utf_decode_is_valid);
+  ("utf_decode_length", stdlib_uchar_utf_decode_length);
+  ("utf_decode_uchar", stdlib_uchar_utf_decode_uchar);
 ]
 
 let bytes_exports = stdlib_bytes_exports
@@ -1528,7 +1964,7 @@ let stdlib_root_exports = [
   ("cos", float_unop);
   ("cosh", float_unop);
   ("epsilon_float", TypeScheme.of_type TypeRepr.float);
-  ("exit", TypeScheme.of_type (arrow TypeRepr.int TypeRepr.unit_));
+  ("exit", polymorphic_exit);
   ("exp", float_unop);
   ("expm1", float_unop);
   ("float", TypeScheme.of_type (arrow TypeRepr.int TypeRepr.float));
@@ -1608,12 +2044,15 @@ let summaries = [
     @ prefix_exports "Int32" stdlib_int32_exports
     @ prefix_exports "Int64" stdlib_int64_exports
     @ prefix_exports "List" stdlib_list_exports
+    @ prefix_exports "Random" stdlib_random_exports
+    @ prefix_exports "Random.State" stdlib_random_state_exports
     @ prefix_exports "Seq" stdlib_seq_exports
     @ prefix_exports "Obj" obj_exports
     @ prefix_exports "Printexc" stdlib_printexc_exports
     @ prefix_exports "String" stdlib_string_exports
     @ prefix_exports "Sys" stdlib_sys_exports
-    @ prefix_exports "Type.Id" stdlib_type_id_exports,
+    @ prefix_exports "Type.Id" stdlib_type_id_exports
+    @ prefix_exports "Uchar" stdlib_uchar_exports,
     [
       domain_dls_key_type_decl;
       domain_type_decl;
@@ -1622,12 +2061,16 @@ let summaries = [
       stdlib_bytes_t_decl;
       stdlib_fpclass_decl;
       stdlib_hashtbl_t_decl;
+      stdlib_int32_t_decl;
+      stdlib_int64_t_decl;
+      stdlib_random_state_t_decl;
       stdlib_seq_node_decl;
       stdlib_seq_t_decl;
       stdlib_sys_signal_behavior_decl;
       stdlib_type_eq_decl;
       stdlib_type_id_decl;
       stdlib_uchar_t_decl;
+      stdlib_uchar_utf_decode_decl;
     ]
   );
   ("Array", stdlib_array_exports, []);
@@ -1640,6 +2083,7 @@ let summaries = [
     ("create", buffer_create);
   ], [ buffer_t_decl ]);
   ("Bytes", bytes_exports, [ bytes_t_decl ]);
+  ("Dynlink", [], []);
   ("Float", stdlib_float_exports, []);
   ("Hashtbl", hashtbl_exports, [ hashtbl_t_decl ]);
   ("Int", stdlib_int_exports, []);

@@ -15,6 +15,16 @@ type exception_item = {
   scheme: TypeScheme.t;
 }
 
+type extension_constructor_item = {
+  item_id: ItemId.t;
+  origin_id: OriginId.t;
+  scope_path: IdentPath.t;
+  constructor_id: ConstructorId.t;
+  constructor_name: string;
+  scheme: TypeScheme.t;
+  inline_record_labels: TypeDecl.label list option;
+}
+
 type value_item = {
   item_id: ItemId.t;
   origin_id: OriginId.t;
@@ -63,6 +73,7 @@ type module_alias_item = {
 type item =
   | Type of type_item
   | Exception of exception_item
+  | ExtensionConstructor of extension_constructor_item
   | Value of value_item
   | DeclaredValue of declared_value_item
   | Open of open_item
@@ -78,6 +89,7 @@ type t = {
 let item_id_of_item = function
   | Type (item: type_item) -> item.item_id
   | Exception (item: exception_item) -> item.item_id
+  | ExtensionConstructor (item: extension_constructor_item) -> item.item_id
   | Value (item: value_item) -> item.item_id
   | DeclaredValue (item: declared_value_item) -> item.item_id
   | Open (item: open_item) -> item.item_id
@@ -129,6 +141,36 @@ let item_to_json = function
     );
     ("exception_name", Data.Json.String item.exception_name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
+  ]
+  | ExtensionConstructor (item: extension_constructor_item) -> Data.Json.Object [
+    ("tag", Data.Json.String "extension_constructor");
+    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
+    (
+      "scope_path",
+      Data.Json.Array (IdentPath.to_segments item.scope_path
+      |> List.map (fun segment -> Data.Json.String segment))
+    );
+    ("constructor_id", Data.Json.Int (ConstructorId.to_int item.constructor_id));
+    ("constructor_name", Data.Json.String item.constructor_name);
+    ("scheme", Data.Json.String (TypePrinter.scheme_to_string item.scheme));
+    (
+      "inline_record_labels",
+      match item.inline_record_labels with
+      | Some labels ->
+          Data.Json.Array (
+            List.map
+              (fun (label: TypeDecl.label) ->
+                Data.Json.Object [
+                  ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
+                  ("name", Data.Json.String label.name);
+                  ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
+                  ("mutable", Data.Json.Bool label.mutable_);
+                ])
+              labels
+          )
+      | None -> Data.Json.Null
+    );
   ]
   | Value (item: value_item) -> Data.Json.Object [
     ("tag", Data.Json.String "value");
@@ -242,6 +284,22 @@ let to_string = fun items ->
               ^ OriginId.to_string item.origin_id
               ^ " "
               ^ item.exception_name
+              ^ " : "
+              ^ TypePrinter.scheme_to_string item.scheme
+          | ExtensionConstructor (item: extension_constructor_item) ->
+              let scope_prefix =
+                if IdentPath.is_empty item.scope_path then
+                  ""
+                else
+                  IdentPath.to_string item.scope_path ^ " "
+              in
+              "  "
+              ^ ItemId.to_string item.item_id
+              ^ " extension_constructor "
+              ^ scope_prefix
+              ^ OriginId.to_string item.origin_id
+              ^ " "
+              ^ item.constructor_name
               ^ " : "
               ^ TypePrinter.scheme_to_string item.scheme
           | Value (item: value_item) ->

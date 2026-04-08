@@ -153,6 +153,8 @@ and binding = {
   name: string option;
   (** Pattern bound by this binding. *)
   pattern_id: PatId.t;
+  (** Optional explicit type annotation preserved from the binding source. *)
+  annotation: TypeScheme.t option;
   (** Value expression assigned by this binding. *)
   value_id: ExprId.t;
   (** Whether the binding participates in a recursive group. *)

@@ -2,6 +2,7 @@
   "body_arena": {
     "bindings": [
       {
+        "annotation": "int -> int",
         "binding_id": 0,
         "name": "id",
         "origin_id": 5,
@@ -108,7 +109,7 @@
   "exports": [
     {
       "name": "id",
-      "scheme": "'a. 'a -> 'a"
+      "scheme": "int -> int"
     },
     {
       "name": "packed",
@@ -224,7 +225,7 @@
         },
         {
           "name": "value",
-          "scheme": "'a. 'a"
+          "scheme": "int"
         },
         {
           "name": "|>",
@@ -236,7 +237,7 @@
         }
       ],
       "expr_id": 0,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -363,7 +364,7 @@
         }
       ],
       "expr_id": 1,
-      "inferred_type": "'a -> 'a",
+      "inferred_type": "int -> int",
       "origin": {
         "label": "fun_expression",
         "span": {
@@ -466,7 +467,7 @@
         },
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         },
         {
           "name": "max",
@@ -597,7 +598,7 @@
         },
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         },
         {
           "name": "max",
@@ -728,7 +729,7 @@
         },
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         },
         {
           "name": "max",
@@ -773,7 +774,7 @@
       "exports": [
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         },
         {
           "name": "packed",
@@ -798,7 +799,7 @@
       "exports_after": [
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         }
       ],
       "item_id": 1
@@ -810,7 +811,7 @@
       "exports_after": [
         {
           "name": "id",
-          "scheme": "'a. 'a -> 'a"
+          "scheme": "int -> int"
         },
         {
           "name": "packed",
@@ -1083,7 +1084,7 @@
     },
     {
       "expr_id": 0,
-      "inferred_type": "'a",
+      "inferred_type": "int",
       "origin_id": 3,
       "span": {
         "end": 50,
@@ -1101,7 +1102,7 @@
     },
     {
       "expr_id": 1,
-      "inferred_type": "'a -> 'a",
+      "inferred_type": "int -> int",
       "origin_id": 4,
       "span": {
         "end": 50,

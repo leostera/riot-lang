@@ -8,7 +8,7 @@ type t = {
 
       This must stay small. Library/module APIs should arrive through persisted
       module summaries and host-provided ambient inputs, not by growing the
-      default prelude. *)
+      default prelude beyond syntax-backed language forms. *)
   prelude: env;
   (** Host-loaded reusable module typings available to every source in the
       session. *)
@@ -34,11 +34,11 @@ type t = {
 
 (** Default host configuration used by the current prototype and tests.
 
-    The default keeps [prelude] limited to language-level intrinsics and seeds
-    a small set of bootstrap module typings through [loaded_modules]. Those
-    seeded typings are a temporary stand-in for real persisted module exports
-    and intentionally flow through the same [ModuleTypings] boundary that hosts
-    will later hydrate from cache or build outputs. *)
+    The default keeps [prelude] limited to syntax-backed language intrinsics
+    and seeds a small set of bootstrap module typings through [loaded_modules].
+    Those seeded typings are a temporary stand-in for real persisted module
+    exports and intentionally flow through the same [ModuleTypings] boundary
+    that hosts will later hydrate from cache or build outputs. *)
 val default: t
 
 (** Replace the snapshot ambient environment while preserving the base prelude. *)

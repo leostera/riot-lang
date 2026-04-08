@@ -16,6 +16,7 @@ type t = {
   analyses: analysis_slot list;
   qualified_typings_cache: (string, ModuleTypings.t list) Collections.HashMap.t;
   module_results_cache: (string, (string * ModulePairing.t) list) Collections.HashMap.t;
+  module_result_cache: (string, ModulePairing.t) Collections.HashMap.t;
 }
 
 let export_status_of_file_summary = fun summary ->
@@ -29,6 +30,15 @@ let export_status_of_module_typings = fun module_typings ->
   | FileSummary.TrustedExport _ -> Event.TrustedExport
   | FileSummary.ErroredExport _ -> Event.ErroredExport
   | FileSummary.NoExport -> Event.MissingExport
+
+let signature_mismatch_subject = function
+  | Diagnostic.MissingValue { name }
+  | Diagnostic.ValueTypeMismatch { name; _ } -> "value " ^ name
+  | Diagnostic.MissingTypeDeclaration { name }
+  | Diagnostic.TypeDeclarationMismatch { name; _ } -> "type " ^ name
+
+let signature_mismatch_message = fun mismatch ->
+  Diagnostic.signature_mismatch_message mismatch
 
 let make = fun ~revision ~roots ~config ~sources ->
   let analyses =
@@ -49,20 +59,189 @@ let make = fun ~revision ~roots ~config ~sources ->
     analyses;
     qualified_typings_cache = Collections.HashMap.with_capacity 8;
     module_results_cache = Collections.HashMap.with_capacity 8;
+    module_result_cache = Collections.HashMap.with_capacity 32;
   }
 
-let qualify_exports = fun module_name exports ->
+let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
+  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+
+let local_type_decl_index = fun type_decls ->
+  let by_path = Collections.HashMap.with_capacity (List.length type_decls) in
+  let () =
+    List.iter
+      (fun (type_decl: FileSummary.type_decl) ->
+        let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
+        ())
+      type_decls
+  in
+  by_path
+
+let qualify_local_name = fun local_types module_name name ->
+  match Collections.HashMap.get local_types name with
+  | Some _ -> IdentPath.prepend_name module_name name
+  | None -> name
+
+let rec qualify_type = fun local_types module_name ty ->
+  let ty = TypeRepr.prune ty in
+  match TypeRepr.view ty with
+  | TypeRepr.Int
+  | TypeRepr.Float
+  | TypeRepr.Bool
+  | TypeRepr.String
+  | TypeRepr.Char
+  | TypeRepr.Unit
+  | TypeRepr.Hole _
+  | TypeRepr.Var _ ->
+      ty
+  | TypeRepr.Option element ->
+      let element' = qualify_type local_types module_name element in
+      if Std.Ptr.equal element element' then
+        ty
+      else
+        TypeRepr.option element'
+  | TypeRepr.Result (ok_ty, error_ty) ->
+      let ok_ty' = qualify_type local_types module_name ok_ty in
+      let error_ty' = qualify_type local_types module_name error_ty in
+      if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        ty
+      else
+        TypeRepr.result ok_ty' error_ty'
+  | TypeRepr.Array element ->
+      let element' = qualify_type local_types module_name element in
+      if Std.Ptr.equal element element' then
+        ty
+      else
+        TypeRepr.array element'
+  | TypeRepr.List element ->
+      let element' = qualify_type local_types module_name element in
+      if Std.Ptr.equal element element' then
+        ty
+      else
+        TypeRepr.list element'
+  | TypeRepr.Seq element ->
+      let element' = qualify_type local_types module_name element in
+      if Std.Ptr.equal element element' then
+        ty
+      else
+        TypeRepr.seq element'
+  | TypeRepr.Named { head; arguments } ->
+      let arguments' = List.map (qualify_type local_types module_name) arguments in
+      let head' = { head with name = qualify_local_name local_types module_name head.name } in
+      if Std.Ptr.equal head head' && List.for_all2 Std.Ptr.equal arguments arguments' then
+        ty
+      else
+        TypeRepr.named ~head:head' ~arguments:arguments'
+  | TypeRepr.PolyVariant { bound; tags; inherited } ->
+      let tags' =
+        tags
+        |> List.map
+          (fun (tag: TypeRepr.poly_variant_tag) ->
+            match tag.payload_type with
+            | Some payload_type ->
+                let payload_type' = qualify_type local_types module_name payload_type in
+                if Std.Ptr.equal payload_type payload_type' then
+                  tag
+                else
+                  { tag with payload_type = Some payload_type' }
+            | None -> tag)
+      in
+      let inherited' = List.map (qualify_type local_types module_name) inherited in
+      if List.for_all2 Std.Ptr.equal tags tags' && List.for_all2 Std.Ptr.equal inherited inherited' then
+        ty
+      else
+        TypeRepr.poly_variant ~bound ~tags:tags' ~inherited:inherited'
+  | TypeRepr.Tuple members ->
+      let members' = List.map (qualify_type local_types module_name) members in
+      if List.for_all2 Std.Ptr.equal members members' then
+        ty
+      else
+        TypeRepr.tuple members'
+  | TypeRepr.Arrow { label; lhs; rhs } ->
+      let lhs' = qualify_type local_types module_name lhs in
+      let rhs' = qualify_type local_types module_name rhs in
+      if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        ty
+      else
+        TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
+
+let qualify_scheme = fun local_types module_name scheme ->
+  let quantified, body = TypeScheme.to_explicit scheme in
+  let body' = qualify_type local_types module_name body in
+  if Std.Ptr.equal body body' then
+    scheme
+  else
+    TypeScheme.of_explicit ~quantified body'
+
+let qualify_inline_record_labels = fun local_types module_name labels ->
+  labels
+  |> List.map
+    (fun (label: TypeDecl.label) ->
+      let field_type' = qualify_type local_types module_name label.field_type in
+      if Std.Ptr.equal label.field_type field_type' then
+        label
+      else
+        { label with field_type = field_type' })
+
+let qualify_exports = fun module_name type_decls exports ->
   let module_path = IdentPath.of_name module_name in
+  let local_types = local_type_decl_index type_decls in
   List.map
-    (fun (name, scheme) -> (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
+    (fun (name, scheme) ->
+      (
+        IdentPath.append_path module_path (IdentPath.of_string name),
+        qualify_scheme local_types module_name scheme
+      ))
     exports
 
 let qualify_type_decls = fun module_name type_decls ->
+  let local_types = local_type_decl_index type_decls in
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
+      let declaration = type_decl.declaration in
+      let manifest =
+        match declaration.manifest with
+        | None -> None
+        | Some (TypeDecl.Alias manifest_type) ->
+            Some (TypeDecl.Alias (qualify_type local_types module_name manifest_type))
+        | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
+            Some (TypeDecl.PolyVariant {
+              bound;
+              tags =
+                tags
+                |> List.map
+                  (fun (tag: TypeDecl.poly_variant_tag) ->
+                    match tag.payload_type with
+                    | Some payload_type ->
+                        { tag with payload_type = Some (qualify_type local_types module_name payload_type) }
+                    | None -> tag);
+              inherited = List.map (qualify_type local_types module_name) inherited;
+            })
+      in
+      let constructors =
+        declaration.constructors
+        |> List.map
+          (fun (constructor: TypeDecl.constructor) ->
+            {
+              constructor with
+              scheme = qualify_scheme local_types module_name constructor.scheme;
+              inline_record_labels =
+                constructor.inline_record_labels
+                |> Option.map (qualify_inline_record_labels local_types module_name)
+            })
+      in
+      let labels =
+        declaration.labels
+        |> List.map
+          (fun (label: TypeDecl.label) ->
+            let field_type' = qualify_type local_types module_name label.field_type in
+            if Std.Ptr.equal label.field_type field_type' then
+              label
+            else
+              { label with field_type = field_type' })
+      in
       {
         FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
-        declaration = type_decl.declaration
+        declaration = { declaration with manifest; constructors; labels }
       })
     type_decls
 
@@ -102,7 +281,10 @@ let loaded_ambient_env_for = fun (slot: analysis_slot) ->
     (fun typings -> not (String.equal (ModuleTypings.module_name typings) current_module_name))
   |> List.map
     (fun typings ->
-      ModuleTypings.exports typings |> qualify_exports (ModuleTypings.module_name typings))
+      qualify_exports
+        (ModuleTypings.module_name typings)
+        (ModuleTypings.type_decls typings)
+        (ModuleTypings.exports typings))
   |> List.flatten
 
 let loaded_ambient_type_decls_for = fun (slot: analysis_slot) ->
@@ -136,6 +318,25 @@ let visiting_key = fun visiting ->
   |> List.map Int.to_string
   |> String.concat ","
 
+let module_result_cache_key = fun visiting module_name ->
+  visiting_key visiting ^ "|" ^ module_name
+
+let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
+  let current_module_name = Source.module_name slot.source in
+  let required_local_modules = required_local_module_names slot in
+  snapshot.analyses
+  |> module_names_of_slots
+  |> List.filter
+    (fun candidate_module_name ->
+      not (String.equal current_module_name candidate_module_name)
+      && List.exists
+        (fun required_module_name ->
+          matches_required_local_module
+            ~current_module_name
+            ~required_module_name
+            candidate_module_name)
+        required_local_modules)
+
 let force_base_analysis = fun (slot: analysis_slot) ->
   match slot.base_analysis with
   | Some analysis -> analysis
@@ -167,6 +368,8 @@ let force_base_analysis = fun (slot: analysis_slot) ->
             lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
             typing_diagnostic_count = List.length analysis.typing_diagnostics;
             export_status = export_status_of_file_summary analysis.file_summary;
+            export_count = List.length (FileSummary.exports analysis.file_summary);
+            type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
           })
       in
       let () =
@@ -196,39 +399,22 @@ and qualified_typings = fun (snapshot: t) ?(visiting = []) () ->
       typings
 
 and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
-  let current_module_name = Source.module_name slot.source in
-  let required_local_modules = required_local_module_names slot in
-  let local_modules = module_results_for snapshot visiting
-  |> List.filter
-    (fun (module_name, _result) ->
-      not (String.equal current_module_name module_name)
-      && List.exists
-        (fun required_module_name ->
-          matches_required_local_module
-            ~current_module_name
-            ~required_module_name
-            module_name)
-        required_local_modules)
+  let local_modules = local_module_names_for snapshot slot
+  |> List.map
+    (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
-      ModuleTypings.exports result.ModulePairing.module_typings |> qualify_exports module_name)
+      qualify_exports
+        module_name
+        (ModuleTypings.type_decls result.ModulePairing.module_typings)
+        (ModuleTypings.exports result.ModulePairing.module_typings))
   |> List.flatten in
   local_modules @ loaded_ambient_env_for slot
 
 and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
-  let current_module_name = Source.module_name slot.source in
-  let required_local_modules = required_local_module_names slot in
-  let local_type_decls = module_results_for snapshot visiting
-  |> List.filter
-    (fun (module_name, _result) ->
-      not (String.equal current_module_name module_name)
-      && List.exists
-        (fun required_module_name ->
-          matches_required_local_module
-            ~current_module_name
-            ~required_module_name
-            module_name)
-        required_local_modules)
+  let local_type_decls = local_module_names_for snapshot slot
+  |> List.map
+    (fun module_name -> (module_name, module_result_for snapshot visiting module_name))
   |> List.map
     (fun (module_name, result) ->
       ModuleTypings.type_decls result.ModulePairing.module_typings |> qualify_type_decls module_name)
@@ -268,6 +454,8 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
             lowering_diagnostic_count = List.length analysis.lowering_diagnostics;
             typing_diagnostic_count = List.length analysis.typing_diagnostics;
             export_status = export_status_of_file_summary analysis.file_summary;
+            export_count = List.length (FileSummary.exports analysis.file_summary);
+            type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
           })
       in
       let () =
@@ -278,47 +466,60 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
       analysis
 
 and module_result_for = fun (snapshot: t) visiting module_name ->
-  let slots = module_slots snapshot module_name in
-  let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
-  let () =
-    match slots with
-    | [] -> ()
-    | slot :: _ ->
-        TypConfig.emit_event slot.config
-          (fun () ->
-            Event.ModulePairingStarted {
-              module_name;
-              source_ids;
-            })
-  in
-  let sources =
-    slots
-    |> List.map
-      (fun (slot: analysis_slot) ->
-        let analysis =
-          if List.exists (SourceId.equal slot.source_id) visiting then
-            force_base_analysis slot
-          else
-            force_analysis snapshot ~visiting slot
-        in
-        (slot.source, analysis))
-  in
-  let result = ModulePairing.of_sources ~module_name sources in
-  let () =
-    match slots with
-    | [] -> ()
-    | slot :: _ ->
-        TypConfig.emit_event slot.config
-          (fun () ->
-            Event.ModulePairingFinished {
-              module_name;
-              source_ids;
-              export_status = export_status_of_module_typings result.ModulePairing.module_typings;
-              export_count = List.length (ModuleTypings.exports result.ModulePairing.module_typings);
-              type_decl_count = List.length (ModuleTypings.type_decls result.ModulePairing.module_typings);
-            })
-  in
-  result
+  let cache_key = module_result_cache_key visiting module_name in
+  match Collections.HashMap.get snapshot.module_result_cache cache_key with
+  | Some result -> result
+  | None ->
+      let slots = module_slots snapshot module_name in
+      let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
+      let () =
+        match slots with
+        | [] -> ()
+        | slot :: _ ->
+            TypConfig.emit_event slot.config
+              (fun () ->
+                Event.ModulePairingStarted {
+                  module_name;
+                  source_ids;
+                })
+      in
+      let sources =
+        slots
+        |> List.map
+          (fun (slot: analysis_slot) ->
+            let analysis =
+              if List.exists (SourceId.equal slot.source_id) visiting then
+                force_base_analysis slot
+              else
+                force_analysis snapshot ~visiting slot
+            in
+            (slot.source, analysis))
+      in
+      let result = ModulePairing.of_sources ~module_name sources in
+      let _ = Collections.HashMap.insert snapshot.module_result_cache cache_key result in
+      let () =
+        match slots with
+        | [] -> ()
+        | slot :: _ ->
+            TypConfig.emit_event slot.config
+              (fun () ->
+                Event.ModulePairingFinished {
+                  module_name;
+                  source_ids;
+                  export_status = export_status_of_module_typings result.ModulePairing.module_typings;
+                  export_count = List.length (ModuleTypings.exports result.ModulePairing.module_typings);
+                  type_decl_count = List.length (ModuleTypings.type_decls result.ModulePairing.module_typings);
+                  mismatch_count = List.length result.ModulePairing.signature_mismatches;
+                  mismatch_subjects =
+                    result.ModulePairing.signature_mismatches
+                    |> List.map signature_mismatch_subject
+                    |> List.sort_uniq String.compare;
+                  mismatch_messages =
+                    result.ModulePairing.signature_mismatches
+                    |> List.map signature_mismatch_message;
+                })
+      in
+      result
 
 let revision = fun snapshot -> snapshot.revision
 

@@ -49,9 +49,22 @@ val singleton:
   provenance:Binding.provenance ->
   t
 
+val singleton_constructor:
+  make_ident:(string -> Binding.ident) ->
+  name:string ->
+  scheme:TypeScheme.t ->
+  provenance:Binding.provenance ->
+  owner_path:IdentPath.t ->
+  owner_type_constructor_id:TypeConstructorId.t ->
+  constructor_id:ConstructorId.t ->
+  inline_record_labels:TypeDecl.label list option ->
+  t
+
 val bindings: t -> bindings
 
 val type_decls: t -> FileSummary.type_decl list
+
+val visible_type_decls: t -> FileSummary.type_decl list
 
 val types: t -> Type_env.t
 

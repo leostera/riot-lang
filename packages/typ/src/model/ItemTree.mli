@@ -24,6 +24,24 @@ type exception_item = {
   (** Constructor scheme used by expressions, patterns, and [raise]. *)
   scheme: TypeScheme.t;
 }
+(** One extensible-variant constructor exported as a term-level constructor. *)
+type extension_constructor_item = {
+  (** Stable item identity. *)
+  item_id: ItemId.t;
+  (** Source origin for this item shell. *)
+  origin_id: OriginId.t;
+  (** Lexical module path that owns this item, empty at top level. *)
+  scope_path: IdentPath.t;
+  (** Stable constructor identity allocated during lowering. *)
+  constructor_id: ConstructorId.t;
+  (** Declared extension constructor name. *)
+  constructor_name: string;
+  (** Constructor scheme used by expressions and patterns. *)
+  scheme: TypeScheme.t;
+  (** Inline-record payload labels when the constructor was declared as
+      [Ctor of { ... }]. *)
+  inline_record_labels: TypeDecl.label list option;
+}
 (** Body-stable item skeleton for one lowered source. *)
 type value_item = {
   (** Stable item identity. *)
@@ -96,6 +114,8 @@ type item =
   | Type of type_item
   (** Exception declaration exported as a constructor. *)
   | Exception of exception_item
+  (** Extensible-variant constructor exported as a constructor. *)
+  | ExtensionConstructor of extension_constructor_item
   (** Value-bearing top-level item. *)
   | Value of value_item
   (** Interface value declaration exported without a body. *)

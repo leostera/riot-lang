@@ -104,8 +104,13 @@ let resolve_named_type_head_in_env = fun (state: state) env name ->
         State.resolve_named_type_head state name)
 
 let canonicalize_scheme_in_env = fun (state: state) env scheme ->
-  let visible_types = VisibleTypes.bind state.visible_types (Env.type_decls env) in
+  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
   VisibleTypes.canonicalize_scheme visible_types scheme
+
+let canonicalize_scheme_heads_in_env = fun (state: state) env scheme ->
+  State.canonicalize_scheme_with_named_type_head
+    (fun name -> resolve_named_type_head_in_env state env name)
+    scheme
 
 let canonicalize_type_in_env = fun (state: state) env ty ->
   let rec resolve_env_heads ty =
@@ -195,22 +200,83 @@ let canonicalize_type_in_env = fun (state: state) env ty ->
         else
           TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
   in
-  let visible_types = VisibleTypes.bind state.visible_types (Env.type_decls env) in
+  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
   VisibleTypes.canonicalize_type visible_types (resolve_env_heads ty)
 
 let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSummary.type_decl) ->
-  let visible_types = VisibleTypes.bind state.visible_types (Env.type_decls env) in
+  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
   VisibleTypes.canonicalize_type_decl visible_types type_decl
 
+let constructor_bindings = fun
+  (state: state)
+  env
+  ~name
+  ~scheme
+  ~provenance
+  ~constructor_id
+  ~inline_record_labels
+  ->
+  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
+  let scheme = canonicalize_scheme_in_env state env scheme in
+  let inline_record_labels =
+    inline_record_labels
+    |> Option.map (VisibleTypes.canonicalize_inline_record_labels visible_types)
+  in
+  let rec owner_result_type ty =
+    let ty = TypeRepr.prune ty in
+    match TypeRepr.view ty with
+    | TypeRepr.Arrow { rhs; _ } -> owner_result_type rhs
+    | _ -> ty
+  in
+  let owner_ty = owner_result_type (TypeScheme.body scheme) in
+  match TypeRepr.view (TypeRepr.prune owner_ty) with
+  | TypeRepr.Named { head; _ } ->
+      Env.singleton_constructor
+        ~make_ident:(fresh_binding_ident state)
+        ~name
+        ~scheme
+        ~provenance
+        ~owner_path:head.name
+        ~owner_type_constructor_id:head.type_constructor_id
+        ~constructor_id
+        ~inline_record_labels
+  | _ ->
+      Env.singleton
+        ~make_ident:(fresh_binding_ident state)
+        ~name
+        ~scheme
+        ~provenance
+
 let exception_bindings = fun (state: state) env (exception_item: ItemTree.exception_item) ->
-  Env.singleton
-    ~make_ident:(fresh_binding_ident state)
+  constructor_bindings
+    state
+    env
     ~name:exception_item.exception_name
-    ~scheme:(canonicalize_scheme_in_env state env exception_item.scheme)
+    ~scheme:exception_item.scheme
     ~provenance:(Binding.Exception {
       name = exception_item.exception_name;
       scope_path = exception_item.scope_path
     })
+    ~constructor_id:(ConstructorId.of_path
+      (IdentPath.append_name exception_item.scope_path exception_item.exception_name))
+    ~inline_record_labels:None
+
+let extension_constructor_bindings = fun
+  (state: state)
+  env
+  (extension_item: ItemTree.extension_constructor_item)
+  ->
+  constructor_bindings
+    state
+    env
+    ~name:extension_item.constructor_name
+    ~scheme:extension_item.scheme
+    ~provenance:(Binding.Declared_value {
+      name = extension_item.constructor_name;
+      scope_path = extension_item.scope_path
+    })
+    ~constructor_id:extension_item.constructor_id
+    ~inline_record_labels:extension_item.inline_record_labels
 
 let declared_value_bindings = fun (state: state) env (
   declared_value_item: ItemTree.declared_value_item
@@ -796,6 +862,56 @@ let rec decompose_arrow_type = fun ty ->
       (lhs :: arguments, result_ty)
   | _ -> ([], ty)
 
+type instantiated_constructor_entry = {
+  argument_types: TypeRepr.t list;
+  result_ty: TypeRepr.t;
+  inline_record_labels: TypeDecl.label list option;
+}
+
+let instantiate_constructor_entry = fun (state: state) constructor_entry ->
+  let quantified, body = TypeScheme.to_explicit (Env.Constructor_env.scheme constructor_entry) in
+  let mapping = Collections.HashMap.with_capacity (List.length quantified) in
+  let () =
+    quantified
+    |> List.iter
+      (fun quantified_id ->
+        let _ = Collections.HashMap.insert mapping quantified_id (fresh_var state) in
+        ())
+  in
+  let body = substitute_type_vars state body mapping in
+  let inline_record_labels =
+    Env.Constructor_env.inline_record_labels constructor_entry
+    |> Option.map
+      (List.map
+        (fun (label: TypeDecl.label) ->
+          let field_type = substitute_type_vars state label.field_type mapping in
+          if Std.Ptr.equal label.field_type field_type then
+            label
+          else
+            { label with field_type }))
+  in
+  let (argument_types, result_ty) = decompose_arrow_type body in
+  { argument_types; result_ty; inline_record_labels }
+
+let field_types_of_labels = fun labels ->
+  labels
+  |> List.fold_left
+    (fun acc (label: TypeDecl.label) ->
+      Label_name_map.add
+        (Env.Label_env.lookup_name label.name)
+        label.field_type
+        acc)
+    Label_name_map.empty
+
+let missing_inline_record_fields = fun labels field_names ->
+  labels
+  |> List.filter_map
+    (fun (label: TypeDecl.label) ->
+      if List.exists (fun requested_name -> String.equal (Env.Label_env.lookup_name requested_name) label.name) field_names then
+        None
+      else
+        Some label.name)
+
 let pattern_name = fun path ->
   IdentPath.last_name path |> Option.unwrap_or ~default:(IdentPath.to_string path)
 
@@ -1244,12 +1360,111 @@ let diagnostic_span = fun origin ->
   | Some (origin: OriginMap.origin) -> origin.span
   | None -> empty_span
 
+let zero_arity_named_type = fun (state: state) name ->
+  let path = IdentPath.of_name name in
+  match BuiltinTypeConstructors.head_of_path path with
+  | Some head -> make_type state (TypeRepr.Named { head; arguments = [] })
+  | None -> TypeRepr.named_path ~name:path ~arguments:[]
+
+let integer_literal_type = fun (state: state) text ->
+  match String.length text with
+  | 0 -> TypeRepr.int
+  | length -> (
+      match String.get text (length - 1) with
+      | 'l' -> zero_arity_named_type state "int32"
+      | 'L' -> zero_arity_named_type state "int64"
+      | 'n' -> zero_arity_named_type state "nativeint"
+      | _ -> TypeRepr.int
+    )
+
 exception Unify_error of Typ_diagnostic.mismatch
 
+let exact_poly_variant_tags = fun ty ->
+  match TypeRepr.view (TypeRepr.prune ty) with
+  | TypeRepr.PolyVariant { bound = TypeRepr.Exact; tags; inherited = [] } -> Some tags
+  | _ -> None
+
+let merge_exact_poly_variant_tags = fun (state: state) left_tags right_tags ->
+  let merged = Collections.HashMap.with_capacity (List.length left_tags + List.length right_tags) in
+  let insert_tag = fun (tag: TypeRepr.poly_variant_tag) ->
+    match Collections.HashMap.get merged tag.name with
+    | None ->
+        let _ = Collections.HashMap.insert merged tag.name tag in
+        Ok ()
+    | Some existing_tag -> (
+        match (existing_tag.payload_type, tag.payload_type) with
+        | (None, None) -> Ok ()
+        | (Some existing_payload, Some payload) -> (
+            match Solver.unify state.solver ~left:existing_payload ~right:payload with
+            | Ok () -> Ok ()
+            | Error _ -> Error ()
+          )
+        | _ -> Error ()
+      )
+  in
+  let rec add_tags = function
+    | [] -> Ok ()
+    | tag :: rest -> (
+        match insert_tag tag with
+        | Ok () -> add_tags rest
+        | Error () -> Error ()
+      )
+  in
+  match add_tags left_tags with
+  | Error () -> None
+  | Ok () -> (
+      match add_tags right_tags with
+      | Error () -> None
+      | Ok () ->
+          Some (
+            Collections.HashMap.to_list merged
+            |> List.map snd
+            |> List.sort
+              (fun (left: TypeRepr.poly_variant_tag) (right: TypeRepr.poly_variant_tag) ->
+                String.compare left.name right.name)
+          )
+    )
+
+let merge_poly_variant_accumulator = fun (state: state) left right ->
+  let merge_into_var var linked other =
+    match (exact_poly_variant_tags linked, exact_poly_variant_tags other) with
+    | (Some linked_tags, Some other_tags) -> (
+        match merge_exact_poly_variant_tags state linked_tags other_tags with
+        | Some merged_tags ->
+            let merged_ty = make_type
+              state
+              (TypeRepr.PolyVariant {
+                bound = TypeRepr.Exact;
+                tags = merged_tags;
+                inherited = []
+              }) in
+            let () = var.TypeRepr.link <- Some merged_ty in
+            true
+        | None -> false
+      )
+    | _ -> false
+  in
+  match (TypeRepr.view left, TypeRepr.view right) with
+  | (TypeRepr.Var ({ link = Some linked; _ } as var), _) -> merge_into_var var linked right
+  | (_, TypeRepr.Var ({ link = Some linked; _ } as var)) -> merge_into_var var linked left
+  | _ -> false
+
 let unify = fun (state: state) ~origin:_ left right ->
-  match Solver.unify state.solver ~left ~right with
+  if merge_poly_variant_accumulator state left right then
+    ()
+  else
+    match Solver.unify state.solver ~left ~right with
   | Ok () -> ()
-  | Error mismatch -> raise (Unify_error mismatch)
+  | Error mismatch -> (
+      let left' = canonicalize_type state left in
+      let right' = canonicalize_type state right in
+      if Std.Ptr.equal left left' && Std.Ptr.equal right right' then
+        raise (Unify_error mismatch)
+      else
+        match Solver.unify state.solver ~left:left' ~right:right' with
+        | Ok () -> ()
+        | Error mismatch -> raise (Unify_error mismatch)
+    )
 
 let try_unify = fun (state: state) ~origin left right ->
   try
@@ -1293,7 +1508,49 @@ let rec constructor_pattern_argument_types = fun (state: state) constructor_ty a
         origin in
       (argument_ty :: rest_argument_types, final_result_ty)
 
-let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
+and bind_inline_record_pattern = fun (state: state) env pat_id labels fields open_ ->
+  let origin = origin_of_pattern state pat_id in
+  let field_types = field_types_of_labels labels in
+  let field_names = List.map (fun (field: BodyArena.record_pattern_field) -> field.label) fields in
+  let missing_fields =
+    if open_ then
+      []
+    else
+      missing_inline_record_fields labels field_names
+  in
+  let () =
+    if not (List.is_empty missing_fields) then
+      add_record_resolution_error
+        state
+        ~span:(diagnostic_span origin)
+        ~context:Typ_diagnostic.RecordPattern
+        (Typ_diagnostic.MissingRecordFields missing_fields)
+  in
+  fields
+  |> List.map
+    (fun (field: BodyArena.record_pattern_field) ->
+      let field_ty =
+        match record_field_type field_types field.label with
+        | Some field_ty -> field_ty
+        | None -> fresh_hole state
+      in
+      bind_pattern state env field.pattern_id field_ty)
+  |> List.flatten
+
+and bind_argument_patterns = fun (state: state) env arguments argument_types ->
+  let rec loop acc arguments argument_types =
+    match (arguments, argument_types) with
+    | ([], []) -> List.rev acc |> List.flatten
+    | (argument_id :: rest_arguments, argument_ty :: rest_types) ->
+        loop (bind_pattern state env argument_id argument_ty :: acc) rest_arguments rest_types
+    | (argument_id :: rest_arguments, []) ->
+        loop (bind_pattern state env argument_id (fresh_hole state) :: acc) rest_arguments []
+    | ([], _ :: _) ->
+        List.rev acc |> List.flatten
+  in
+  loop [] arguments argument_types
+
+and bind_pattern = fun (state: state) env pat_id expected_ty ->
   let normalize_bindings bindings = bindings |> Env.of_bindings |> Env.unique |> Env.render in
   let binding_names bindings = bindings |> List.map fst in
   let scheme_type = TypeScheme.body in
@@ -1335,8 +1592,12 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           [ generalized_pattern_binding state pat_id ~name expected_ty ]
       | BodyArena.PWildcard ->
           []
-      | BodyArena.PInt _ ->
-          let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.int in
+      | BodyArena.PInt text ->
+          let () = try_unify
+            state
+            ~origin:(origin_of_pattern state pat_id)
+            expected_ty
+            (integer_literal_type state text) in
           []
       | BodyArena.PFloat _ ->
           let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty TypeRepr.float in
@@ -1379,19 +1640,25 @@ let rec bind_pattern = fun (state: state) env pat_id expected_ty ->
           match resolve_constructor_entry state env constructor ~expected_ty with
           | Some constructor_entry ->
               let origin = origin_of_pattern state pat_id in
-              let constructor_ty = instantiate state (Env.Constructor_env.scheme constructor_entry) in
-              let (argument_types, result_ty) = constructor_pattern_argument_types
-                state
-                constructor_ty
-                arguments
-                origin in
-              let () = try_unify state ~origin expected_ty result_ty in
-              List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
+              let instantiated = instantiate_constructor_entry state constructor_entry in
+              let () = try_unify state ~origin expected_ty instantiated.result_ty in
+              (
+                match (instantiated.inline_record_labels, arguments) with
+                | (Some labels, [ argument_id ]) -> (
+                    match SemanticTree.find_pattern state.file argument_id with
+                    | Some { desc=BodyArena.PRecord { fields; open_ }; _ } ->
+                        bind_inline_record_pattern state env argument_id labels fields open_
+                    | _ ->
+                        bind_argument_patterns state env arguments instantiated.argument_types
+                  )
+                | _ ->
+                    bind_argument_patterns state env arguments instantiated.argument_types
+              )
           | None ->
               let argument_types =
                 List.map (fun _ -> fresh_var state) arguments
               in
-              List.map2 (bind_pattern state env) arguments argument_types |> List.flatten
+              bind_argument_patterns state env arguments argument_types
         )
       | BodyArena.PRecord { fields; open_ } -> (
           let origin = origin_of_pattern state pat_id in
@@ -1639,6 +1906,29 @@ let rec infer_match_case = fun (state: state) env scrutinee_ty result_ty (case: 
   let case_ty = infer_expr state case_env case.body_id in
   try_unify state ~origin:(origin_of_expr state case.body_id) result_ty case_ty
 
+and infer_inline_record_expr = fun (state: state) env expr_id fields labels ->
+  let field_types = field_types_of_labels labels in
+  let field_names = List.map (fun (field: BodyArena.record_expr_field) -> field.label) fields in
+  let missing_fields = missing_inline_record_fields labels field_names in
+  let () =
+    if not (List.is_empty missing_fields) then
+      add_record_resolution_error
+        state
+        ~span:(diagnostic_span (origin_of_expr state expr_id))
+        ~context:Typ_diagnostic.RecordConstruction
+        (Typ_diagnostic.MissingRecordFields missing_fields)
+  in
+  List.iter
+    (fun (field: BodyArena.record_expr_field) ->
+      let field_ty =
+        match record_field_type field_types field.label with
+        | Some field_ty -> field_ty
+        | None -> fresh_hole state
+      in
+      let inferred_field_ty = infer_expr state env field.value_id in
+      try_unify state ~origin:(origin_of_expr state field.value_id) field_ty inferred_field_ty)
+    fields
+
 and infer_record_expr = fun (state: state) env expr_id base_id fields ->
   let operation_span = diagnostic_span (origin_of_expr state expr_id) in
   let base_ty =
@@ -1728,7 +2018,9 @@ and infer_expr = fun (state: state) env expr_id ->
         match expr.desc with
         | BodyArena.EVar name -> (
             match Env.lookup env name with
-            | Some binding -> instantiate state (Binding.scheme binding)
+            | Some binding ->
+                let scheme = canonicalize_scheme_in_env state env (Binding.scheme binding) in
+                instantiate state scheme
             | None -> (
                 match origin_of_expr state expr_id with
                 | Some origin when String.equal origin.label "constructor_expression"
@@ -1758,8 +2050,8 @@ and infer_expr = fun (state: state) env expr_id ->
                     hole
               )
           )
-        | BodyArena.EInt _ ->
-            TypeRepr.int
+        | BodyArena.EInt text ->
+            integer_literal_type state text
         | BodyArena.EFloat _ ->
             TypeRepr.float
         | BodyArena.EBool _ ->
@@ -2024,9 +2316,15 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
               | Some { desc=BodyArena.EVar constructor; _ } -> (
                   match resolve_constructor_entry state env constructor ~expected_ty with
                   | Some constructor_entry ->
-                      let callee_ty = instantiate
-                        state
-                        (Env.Constructor_env.scheme constructor_entry) in
+                      let instantiated = instantiate_constructor_entry state constructor_entry in
+                      let callee_ty =
+                        List.fold_right
+                          (fun argument_ty result_ty ->
+                            make_type
+                              state
+                              (TypeRepr.Arrow { label = TypeRepr.Nolabel; lhs = argument_ty; rhs = result_ty }))
+                          instantiated.argument_types
+                          instantiated.result_ty in
                       let rec apply_with_known_type current_ty arguments =
                         match arguments with
                         | [] ->
@@ -2060,7 +2358,22 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
                                 inferred_type
                           )
                       in
-                      apply_with_known_type callee_ty arguments
+                      (
+                        match (instantiated.inline_record_labels, arguments) with
+                        | (Some labels, [ argument ]) when argument_matches_parameter_label TypeRepr.Nolabel argument.label -> (
+                            match SemanticTree.find_expr state.file argument.value_id with
+                            | Some { desc=BodyArena.ERecord { base_id=None; fields }; _ } ->
+                                let () = infer_inline_record_expr state env argument.value_id fields labels in
+                                let () = try_unify
+                                  state
+                                  ~origin:(origin_of_expr state expr_id)
+                                  expected_ty
+                                  instantiated.result_ty in
+                                instantiated.result_ty
+                            | _ -> apply_with_known_type callee_ty arguments
+                          )
+                        | _ -> apply_with_known_type callee_ty arguments
+                      )
                   | None ->
                       let inferred_type = infer_expr state env expr_id in
                       let () = try_unify state ~origin:(origin_of_expr state expr_id) expected_ty inferred_type in
@@ -2111,6 +2424,11 @@ and infer_binding_group = fun (state: state) env binding_ids ->
   else
     infer_nonrecursive_group state env bindings
 
+and exported_schemes_for_binding = fun annotation_scheme (binding: BodyArena.binding) entries schemes ->
+  match (annotation_scheme, binding.name, entries, schemes) with
+  | (Some annotation, Some _, [ _ ], [ _ ]) -> [ annotation ]
+  | _ -> schemes
+
 and infer_nonrecursive_group = fun (state: state) env bindings ->
   let (inferred_bindings, generalized_groups) =
     Solver.with_local_level_gen state.solver ~variance_of_named:(variances_for_named_type state)
@@ -2118,10 +2436,21 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
         let inferred_bindings =
           List.map
             (fun (binding: BodyArena.binding) ->
-              let value_ty = infer_expr state env binding.value_id in
+              let annotation_scheme =
+                binding.annotation |> Option.map (canonicalize_scheme_in_env state env)
+              in
+              let value_ty =
+                match annotation_scheme with
+                | Some annotation ->
+                    let expected_ty = instantiate state annotation in
+                    let _ = infer_expr_against state env binding.value_id expected_ty in
+                    expected_ty
+                | None ->
+                    infer_expr state env binding.value_id
+              in
               let bound_entries = bind_pattern state env binding.pattern_id value_ty in
               (
-                (binding, bound_entries),
+                (binding, annotation_scheme, bound_entries),
                 solver_group_for_entries state binding.value_id value_ty bound_entries
               ))
             bindings
@@ -2130,7 +2459,8 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
   in
   let generalized_bindings =
     List.map2
-      (fun (binding, entries) schemes ->
+      (fun (binding, annotation_scheme, entries) schemes ->
+        let schemes = exported_schemes_for_binding annotation_scheme binding entries schemes in
         let generalized_entries =
           List.map2
             (fun entry scheme ->
@@ -2155,48 +2485,58 @@ and infer_recursive_group = fun (state: state) env bindings ->
       bindings
   in
   if List.is_empty unsupported_bindings then
-    let (placeholders, generalized_groups) =
+    let (placeholder_info, generalized_groups) =
       Solver.with_local_level_gen state.solver ~variance_of_named:(variances_for_named_type state)
         (fun () ->
-          let placeholders =
-            bindings
-            |> List.map (fun (binding: BodyArena.binding) -> (binding, fresh_var state))
-            |> List.filter_map
-              (fun ((binding: BodyArena.binding), ty) ->
-                match binding.name with
-                | Some name -> Some (generalized_pattern_binding state binding.pattern_id ~name ty)
-                | None -> None)
-          in
-          let provisional_env = Env.extend env placeholders in
-          let () =
-            List.iter2
-              (fun (binding: BodyArena.binding) placeholder_ty ->
-                let value_ty = infer_expr state provisional_env binding.value_id in
-                try_unify state ~origin:(origin_of_binding state binding) placeholder_ty value_ty)
-              bindings
-              (placeholders |> List.map (fun entry -> TypeScheme.body (Binding.scheme entry)))
+        let placeholder_info =
+          bindings
+          |> List.filter_map
+            (fun (binding: BodyArena.binding) ->
+              let annotation_scheme =
+                binding.annotation |> Option.map (canonicalize_scheme_in_env state env)
+              in
+              let placeholder_ty =
+                match annotation_scheme with
+                | Some annotation -> instantiate state annotation
+                | None -> fresh_var state
+              in
+              match binding.name with
+              | Some name ->
+                  let entry = generalized_pattern_binding state binding.pattern_id ~name placeholder_ty in
+                  Some (binding, annotation_scheme, placeholder_ty, entry)
+              | None -> None)
+        in
+        let placeholders = placeholder_info |> List.map (fun (_, _, _, entry) -> entry) in
+        let provisional_env = Env.extend env placeholders in
+        let () =
+          List.iter
+            (fun ((binding: BodyArena.binding), _annotation_scheme, placeholder_ty, _entry) ->
+              let value_ty = infer_expr state provisional_env binding.value_id in
+              try_unify state ~origin:(origin_of_binding state binding) placeholder_ty value_ty)
+            placeholder_info
           in
           let groups =
-            List.map2
-              (fun (binding: BodyArena.binding) entry ->
-                solver_group_for_entries
-                  state
-                  binding.value_id
-                  (TypeScheme.body (Binding.scheme entry))
-                  [ entry ])
-              bindings
-              placeholders
+            placeholder_info
+            |> List.map
+              (fun ((binding: BodyArena.binding), _annotation_scheme, placeholder_ty, entry) ->
+                solver_group_for_entries state binding.value_id placeholder_ty [ entry ])
           in
-          (placeholders, groups))
+          (placeholder_info, groups))
     in
     let generalized =
-      List.map2
-        (fun entry schemes ->
-          match schemes with
-          | [ scheme ] -> Binding.with_scheme scheme entry
-          | _ -> entry)
-        placeholders
-        generalized_groups
+      let rec loop acc placeholder_info generalized_groups =
+        match (placeholder_info, generalized_groups) with
+        | ((binding, annotation_scheme, _placeholder_ty, entry) :: rest_bindings, schemes :: rest_groups) ->
+            let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
+            let entry =
+              match schemes with
+              | [ scheme ] -> Binding.with_scheme scheme entry
+              | _ -> entry
+            in
+            loop (entry :: acc) rest_bindings rest_groups
+        | _ -> List.rev acc
+      in
+      loop [] placeholder_info generalized_groups
     in
     Env.extend env generalized
   else
@@ -2322,6 +2662,44 @@ let infer_file = fun ~config ~(source:Source.t) file ->
                 let exports_after = Env.render exports_after_env in
                 state.item_traces <- (
                   { Check_result.item_id = exception_item.item_id; binding_names; exports_after }:
+                    Check_result.item_trace
+                )
+                :: state.item_traces
+            in
+            loop export_state type_decls scope rest
+        | ItemTree.ExtensionConstructor extension_item ->
+            let item_env = Env.for_item_scope export_state scope ~scope_path:extension_item.scope_path in
+            let introduced = extension_constructor_bindings state item_env extension_item in
+            let visible_exports_before =
+              if state.config.capture_traces then
+                Some (Env.export config export_state)
+              else
+                None
+            in
+            let (export_state, scope) =
+              if IdentPath.is_empty extension_item.scope_path then
+                (Env.bind export_state introduced, scope)
+              else
+                (
+                  Env.bind_in_scope export_state ~scope_path:extension_item.scope_path introduced,
+                  Env.register_entries scope ~scope_path:extension_item.scope_path introduced
+                )
+            in
+            let () =
+              if state.config.capture_traces then
+                let exports_after_env = Env.export config export_state in
+                let binding_names =
+                  match visible_exports_before with
+                  | Some visible_exports_before -> Env.introduced_names visible_exports_before exports_after_env
+                  | None -> []
+                in
+                let exports_after = Env.render exports_after_env in
+                state.item_traces <- (
+                  {
+                    Check_result.item_id = extension_item.item_id;
+                    binding_names;
+                    exports_after
+                  }:
                     Check_result.item_trace
                 )
                 :: state.item_traces
@@ -2549,10 +2927,33 @@ let infer_file = fun ~config ~(source:Source.t) file ->
     ~config:state.config
     ~forced_export_names:state.forced_export_names
     exports in
+  let annotated_export_overrides =
+    ItemTree.items file.item_tree
+    |> List.fold_left
+      (fun acc item ->
+        match item with
+        | ItemTree.Value { scope_path; binding_ids; _ } when IdentPath.is_empty scope_path ->
+            binding_ids
+            |> List.fold_left
+              (fun acc binding_id ->
+                match SemanticTree.find_binding state.file binding_id with
+                | Some ({ name = Some name; annotation = Some annotation; _ }: BodyArena.binding) ->
+                    (name, canonicalize_scheme_heads_in_env state final_env annotation) :: acc
+                | _ -> acc)
+              acc
+        | _ -> acc)
+      [] in
   let export_bindings = export_binding_refs export_env in
   let exports = export_env
   |> Env.render
-  |> List.map (fun (name, scheme) -> (name, canonicalize_scheme_in_env state final_env scheme)) in
+  |> List.map
+    (fun (name, scheme) ->
+      let scheme =
+        match List.assoc_opt name annotated_export_overrides with
+        | Some annotation_scheme -> annotation_scheme
+        | None -> canonicalize_scheme_in_env state final_env scheme
+      in
+      (name, scheme)) in
   {
     exports;
     export_bindings;

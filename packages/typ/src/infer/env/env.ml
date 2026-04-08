@@ -350,6 +350,30 @@ let singleton = fun ~make_ident ~name ~scheme ~provenance ->
   of_bindings
     [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
 
+let singleton_constructor = fun
+  ~make_ident
+  ~name
+  ~scheme
+  ~provenance
+  ~owner_path
+  ~owner_type_constructor_id
+  ~constructor_id
+  ~inline_record_labels
+  ->
+  let binding = Binding.make
+    ~ident:(make_ident name)
+    ~path:(IdentPath.of_name name)
+    ~scheme
+    ~provenance in
+  {
+    empty
+    with values = Value_env.of_bindings [ binding ];
+         constructors = Constructor_env.singleton
+           ~owner_path
+           ~owner_type_constructor_id
+           ~constructor:{ TypeDecl.constructor_id; name; scheme; inline_record_labels };
+  }
+
 let extend = fun env introduced -> bind env (of_bindings introduced)
 
 let rec lookup_module_scope_in: module_table -> IdentPath.t -> module_scope option = fun modules module_path ->
@@ -516,6 +540,9 @@ and module_type_decls_with_prefix: IdentPath.t -> module_table -> FileSummary.ty
 let type_decls = fun env ->
   Type_env.type_decls env.types @ module_type_decls_with_prefix IdentPath.empty env.modules
 
+let visible_type_decls = fun env ->
+  Type_env.visible_type_decls env.types @ module_type_decls_with_prefix IdentPath.empty env.modules
+
 let types = fun env -> env.types
 
 let record_decls = fun env -> Label_env.of_type_decls (type_decls env) |> Label_env.record_decls |> dedupe_record_decls
@@ -562,12 +589,23 @@ let introduced_names = fun before after ->
 let hidden_name_set = fun (config: TypConfig.t) ->
   Collections.HashSet.of_list (List.map fst (config.prelude @ config.ambient))
 
+let is_hidden_export_binding = fun hidden_name_set binding ->
+  Collections.HashSet.contains hidden_name_set (Binding.path binding)
+  && match Binding.provenance binding with
+  | Binding.Prelude
+  | Binding.Ambient -> true
+  | Binding.Lowered_pattern _
+  | Binding.Type_constructor _
+  | Binding.Exception _
+  | Binding.Declared_value _
+  | Binding.Included _
+  | Binding.Module_alias _ -> false
+
 let export = fun config env ->
   let hidden_name_set = hidden_name_set config in
   env
   |> canonical_bindings
-  |> List.filter
-    (fun binding -> not (Collections.HashSet.contains hidden_name_set (Binding.path binding)))
+  |> List.filter (fun binding -> not (is_hidden_export_binding hidden_name_set binding))
   |> of_bindings
 
 let export_with_forced_names = fun ~config ~forced_export_names env ->
@@ -577,7 +615,7 @@ let export_with_forced_names = fun ~config ~forced_export_names env ->
     (fun binding ->
       let path = Binding.path binding in
       let name = IdentPath.to_string path in
-      not (Collections.HashSet.contains hidden_name_set path)
+      not (is_hidden_export_binding hidden_name_set binding)
       || Collections.HashSet.contains forced_name_set name) |> of_bindings
 
 let introduced_entries = fun before after ->

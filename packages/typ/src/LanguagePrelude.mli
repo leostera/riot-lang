@@ -3,18 +3,13 @@ open Model
 
 (** Minimal language-level bindings visible in every typing query.
 
-    This prelude is intentionally small. It should only contain bindings that
-    behave like intrinsic or pervasive language constructs for the current
-    prototype, not ordinary module APIs that should instead arrive through
-    persisted module summaries. *)
+    This prelude is intentionally small. It should only contain bindings backed
+    by explicit source syntax or core language forms, not ordinary module APIs
+    that should instead arrive through persisted module summaries. *)
 type env = (IdentPath.t * TypeScheme.t) list
 
-(** Minimal intrinsic bindings used by the prototype checker. *)
+(** Minimal syntax-backed intrinsic bindings used by the prototype checker. *)
 val bindings: env
 
-(** Minimal intrinsic type declarations used by the prototype checker. *)
+(** Minimal syntax-backed type declarations used by the prototype checker. *)
 val type_decls: FileSummary.type_decl list
-
-val exn_type_constructor_id: TypeConstructorId.t
-
-val type_head_of_path: IdentPath.t -> TypeRepr.named_type_head option

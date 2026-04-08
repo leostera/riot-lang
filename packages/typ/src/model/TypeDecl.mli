@@ -1,14 +1,5 @@
 open Std
 
-(** One exported constructor recovered from a lowered type declaration. *)
-type constructor = {
-  (** Stable descriptor identity for this constructor. *)
-  constructor_id: ConstructorId.t;
-  (** Stable constructor name as it will appear in the term environment. *)
-  name: string;
-  (** Constructor scheme derived from the declaration payload. *)
-  scheme: TypeScheme.t;
-}
 (** One record label recovered from a lowered type declaration. *)
 type label = {
   (** Stable descriptor identity for this label. *)
@@ -19,6 +10,18 @@ type label = {
   field_type: TypeRepr.t;
   (** Whether the field was declared mutable. *)
   mutable_: bool;
+}
+(** One exported constructor recovered from a lowered type declaration. *)
+type constructor = {
+  (** Stable descriptor identity for this constructor. *)
+  constructor_id: ConstructorId.t;
+  (** Stable constructor name as it will appear in the term environment. *)
+  name: string;
+  (** Constructor scheme derived from the declaration payload. *)
+  scheme: TypeScheme.t;
+  (** Inline-record payload labels when the constructor was declared as
+      [Ctor of { ... }]. *)
+  inline_record_labels: label list option;
 }
 (** Bound kind carried by lowered polymorphic-variant declarations. *)
 type variance =

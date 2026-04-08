@@ -11,13 +11,9 @@ let var = fun id -> TypeRepr.make_var id
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
-let bare_named = fun name ->
+let named_with_type_constructor_id = fun ~type_constructor_id name ->
   let path = IdentPath.of_name name in
-  let head =
-    match BuiltinTypeConstructors.head_of_path path with
-    | Some head -> head
-    | None -> raise (Failure ("missing builtin type head " ^ IdentPath.to_string path))
-  in
+  let head = TypeRepr.named_head ~type_constructor_id ~name:path in
   TypeRepr.named ~head ~arguments:[]
 
 let named_path = fun path -> TypeRepr.named_path ~name:(IdentPath.of_string path) ~arguments:[]
@@ -175,7 +171,11 @@ let buffer_add_char = TypeScheme.of_type (arrow buffer_type (arrow TypeRepr.char
 let buffer_add_string = TypeScheme.of_type
   (arrow buffer_type (arrow TypeRepr.string TypeRepr.unit_))
 
-let printexc_to_string = TypeScheme.of_type (arrow (bare_named "exn") TypeRepr.string)
+let exn_type = named_with_type_constructor_id
+  ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
+  "exn"
+
+let printexc_to_string = TypeScheme.of_type (arrow exn_type TypeRepr.string)
 
 let stdlib_float_exports = [
   ("cbrt", float_unop);

@@ -14,6 +14,7 @@ type t = {
   semantic_tree: SemanticTree.file option;
   lowering_diagnostics: Typ_diagnostic.t list;
   typing_diagnostics: Typ_diagnostic.t list;
+  ambient_type_decls: FileSummary.type_decl list;
   file_summary: FileSummary.t;
   export_bindings: Check_result.binding_ref list;
   type_index: TypeIndex.t;
@@ -35,6 +36,8 @@ let declared_value_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_pat
     (
       function
       | ItemTree.DeclaredValue item when String.equal name item.value_name
+        && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      | ItemTree.ExtensionConstructor item when String.equal name item.constructor_name
         && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
       | _ -> None
     )
@@ -134,6 +137,7 @@ let analyze = fun ~config (source: Source.t) ->
     semantic_tree = Some semantic_tree;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
+    ambient_type_decls = config.ambient_type_decls;
     file_summary;
     export_bindings = inferred.export_bindings;
     type_index;

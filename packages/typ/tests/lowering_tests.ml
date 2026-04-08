@@ -98,6 +98,12 @@ let type_item_summary_to_json = function
       ]
   | ItemTree.Exception _ ->
       Data.Json.Object [ ("tag", Data.Json.String "exception") ]
+  | ItemTree.ExtensionConstructor extension_item ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "extension_constructor");
+        ("constructor_name", Data.Json.String extension_item.constructor_name);
+        ("scheme", Data.Json.String (TypePrinter.scheme_to_string extension_item.scheme));
+      ]
   | ItemTree.Open _ ->
       Data.Json.Object [ ("tag", Data.Json.String "open") ]
   | ItemTree.Include _ ->
@@ -338,6 +344,16 @@ let expected_include_module_type_of_lowering_json = Data.Json.Object [
   ("lowering_diagnostics", Data.Json.Array []);
 ]
 
+let expected_include_module_type_with_constraint_lowering_json = Data.Json.Object [
+  (
+    "items",
+    Data.Json.Array [
+      Data.Json.Object [ ("tag", Data.Json.String "include") ];
+    ]
+  );
+  ("lowering_diagnostics", Data.Json.Array []);
+]
+
 let test_fun_cases_preserve_preceding_parameters = fun ctx ->
   let source = String.concat
     "\n"
@@ -397,6 +413,37 @@ let test_include_module_type_of_lowers_to_include_item = fun ctx ->
   let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_module_type_of.mli") source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_include_module_type_of_lowering_json
 
+let test_include_dotted_module_path_lowers_to_include_item = fun ctx ->
+  let source = String.concat
+    "\n"
+    [
+      "include Kernel.Int64";
+      "";
+    ] in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_dotted_module_path.ml") source in
+  Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:(Data.Json.Object [
+    (
+      "items",
+      Data.Json.Array [
+        Data.Json.Object [ ("tag", Data.Json.String "include") ];
+      ]
+    );
+    ("lowering_diagnostics", Data.Json.Array []);
+  ])
+
+let test_include_module_type_with_constraint_lowers_to_include_item = fun ctx ->
+  let source = String.concat
+    "\n"
+    [
+      "include module type of Kernel.Int64 with type t = int64";
+      "";
+    ] in
+  let report = check_source_text ~filename:(Path.v "packages/typ/tests/include_module_type_with_constraint.mli") source in
+  Test.Snapshot.assert_inline_json
+    ~ctx
+    ~actual:(actual_type_item_lowering_json report)
+    ~expected:expected_include_module_type_with_constraint_lowering_json
+
 let () =
   Actors.run
     ~main:(fun ~args ->
@@ -407,6 +454,8 @@ let () =
         Test.case "arrow type aliases preserve labels during lowering" test_arrow_type_aliases_preserve_labels_during_lowering;
         Test.case "polymorphic-variant type declarations lower to type items" test_poly_variant_type_declarations_lower_to_type_items;
         Test.case "include module type of lowers to include items" test_include_module_type_of_lowers_to_include_item;
+        Test.case "include dotted module path lowers to include item" test_include_dotted_module_path_lowers_to_include_item;
+        Test.case "include module type with constraint lowers to include item" test_include_module_type_with_constraint_lowers_to_include_item;
       ] in
       Test.Cli.main ~name:"typ:lowering" ~tests ~args)
     ~args:Env.args

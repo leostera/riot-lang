@@ -101,6 +101,11 @@ type t =
   | RedundantMatchCase of { case_span: Syn.Ceibo.Span.t }
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
+
+val signature_mismatch_name: signature_mismatch -> string
+
+val signature_mismatch_message: signature_mismatch -> string
+
 val code: t -> string
 
 val name: t -> string

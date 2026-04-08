@@ -10,6 +10,8 @@ val local_only: t -> t
 
 val type_decls: t -> FileSummary.type_decl list
 
+val visible_type_decls: t -> FileSummary.type_decl list
+
 val bind: t -> t -> t
 
 val add_open: root:IdentPath.t -> t -> t -> t

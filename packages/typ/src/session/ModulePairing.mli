@@ -13,6 +13,8 @@ type t = {
   module_typings: ModuleTypings.t;
   (** Per-source analyses adjusted with signature-inclusion diagnostics. *)
   analyses_by_source: (SourceId.t * SourceAnalysis.t) list;
+  (** Signature mismatches observed while reconciling interface and implementation. *)
+  signature_mismatches: Diagnostic.signature_mismatch list;
 }
 
 (** Pair all analyzed sources for one logical module name. *)

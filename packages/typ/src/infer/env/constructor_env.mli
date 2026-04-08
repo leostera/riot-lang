@@ -7,6 +7,12 @@ val empty: t
 
 val of_type_decls: FileSummary.type_decl list -> t
 
+val singleton:
+  owner_path:IdentPath.t ->
+  owner_type_constructor_id:TypeConstructorId.t ->
+  constructor:TypeDecl.constructor ->
+  t
+
 val local_only: t -> t
 
 val bind: t -> t -> t
@@ -28,3 +34,5 @@ val owner_path: entry -> IdentPath.t
 val owner_type_constructor_id: entry -> TypeConstructorId.t
 
 val scheme: entry -> TypeScheme.t
+
+val inline_record_labels: entry -> TypeDecl.label list option

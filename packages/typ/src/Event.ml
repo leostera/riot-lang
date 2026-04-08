@@ -53,6 +53,8 @@ type t =
       lowering_diagnostic_count: int;
       typing_diagnostic_count: int;
       export_status: export_status;
+      export_count: int;
+      type_decl_count: int;
     }
   | ModulePairingStarted of {
       module_name: string;
@@ -64,6 +66,9 @@ type t =
       export_status: export_status;
       export_count: int;
       type_decl_count: int;
+      mismatch_count: int;
+      mismatch_subjects: string list;
+      mismatch_messages: string list;
     }
 
 let source_ids_to_json = fun source_ids ->
@@ -152,7 +157,9 @@ let to_json = function
     parse_diagnostic_count;
     lowering_diagnostic_count;
     typing_diagnostic_count;
-    export_status
+    export_status;
+    export_count;
+    type_decl_count
   } -> Data.Json.Object [
       ("type", Data.Json.String "typ_source_analysis_finish");
       ("source_id", Data.Json.Int (SourceId.to_int source_id));
@@ -162,6 +169,8 @@ let to_json = function
       ("lowering_diagnostic_count", Data.Json.Int lowering_diagnostic_count);
       ("typing_diagnostic_count", Data.Json.Int typing_diagnostic_count);
       ("export_status", Data.Json.String (export_status_to_string export_status));
+      ("export_count", Data.Json.Int export_count);
+      ("type_decl_count", Data.Json.Int type_decl_count);
     ]
   | ModulePairingStarted { module_name; source_ids } -> Data.Json.Object [
       ("type", Data.Json.String "typ_module_pairing_start");
@@ -173,7 +182,10 @@ let to_json = function
     source_ids;
     export_status;
     export_count;
-    type_decl_count
+    type_decl_count;
+    mismatch_count;
+    mismatch_subjects;
+    mismatch_messages
   } -> Data.Json.Object [
       ("type", Data.Json.String "typ_module_pairing_finish");
       ("module_name", Data.Json.String module_name);
@@ -181,4 +193,7 @@ let to_json = function
       ("export_status", Data.Json.String (export_status_to_string export_status));
       ("export_count", Data.Json.Int export_count);
       ("type_decl_count", Data.Json.Int type_decl_count);
+      ("mismatch_count", Data.Json.Int mismatch_count);
+      ("mismatch_subjects", strings_to_json mismatch_subjects);
+      ("mismatch_messages", strings_to_json mismatch_messages);
     ]

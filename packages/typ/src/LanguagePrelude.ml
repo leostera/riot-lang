@@ -25,10 +25,6 @@ let polymorphic_pipe =
   let output = var 1 in
   TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow input (arrow (arrow input output) output))
 
-let polymorphic_min_max =
-  let element = var 0 in
-  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow element (arrow element element))
-
 let int_binop = monomorphic (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.int))
 
 let float_binop = monomorphic (arrow TypeRepr.float (arrow TypeRepr.float TypeRepr.float))
@@ -45,74 +41,15 @@ let list_cons =
     ~quantified:[ 0 ]
     (arrow element (arrow (TypeRepr.list element) (TypeRepr.list element)))
 
-let option_none =
-  let element = var 0 in
-  TypeScheme.of_explicit ~quantified:[ 0 ] (TypeRepr.option element)
-
-let option_some =
-  let element = var 0 in
-  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow element (TypeRepr.option element))
-
-let result_ok =
-  let ok_ty = var 0 in
-  let err_ty = var 1 in
-  TypeScheme.of_explicit ~quantified:[ 1; 0 ] (arrow ok_ty (TypeRepr.result ok_ty err_ty))
-
-let result_error =
-  let ok_ty = var 0 in
-  let err_ty = var 1 in
-  TypeScheme.of_explicit ~quantified:[ 1; 0 ] (arrow err_ty (TypeRepr.result ok_ty err_ty))
-
 let prelude_list_type_constructor_id = BuiltinTypeConstructors.list_type_constructor_id
-
-let prelude_option_type_constructor_id = BuiltinTypeConstructors.option_type_constructor_id
-
-let prelude_result_type_constructor_id = BuiltinTypeConstructors.result_type_constructor_id
-
-let exn_type_constructor_id = BuiltinTypeConstructors.exn_type_constructor_id
-
-let type_head_of_path = BuiltinTypeConstructors.head_of_path
-
-let bare_named = fun name ->
-  let path = IdentPath.of_name name in
-  let head =
-    match type_head_of_path path with
-    | Some head -> head
-    | None -> raise (Failure ("missing intrinsic type head " ^ IdentPath.to_string path))
-  in
-  TypeRepr.named ~head ~arguments:[]
-
-let polymorphic_raise =
-  let result = var 0 in
-  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow (bare_named "exn") result)
-
-let named = fun path ->
-  let head =
-    match type_head_of_path path with
-    | Some head -> head
-    | None -> raise (Failure ("missing intrinsic type head " ^ IdentPath.to_string path))
-  in
-  TypeRepr.named ~head ~arguments:[]
 
 let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 
 let prelude_cons_constructor_id = ConstructorId.of_int (-2)
 
-let prelude_none_constructor_id = ConstructorId.of_int (-3)
-
-let prelude_some_constructor_id = ConstructorId.of_int (-4)
-
-let prelude_ok_constructor_id = ConstructorId.of_int (-5)
-
-let prelude_error_constructor_id = ConstructorId.of_int (-6)
-
 let bindings = [
   (IdentPath.of_name "[]", list_nil);
   (IdentPath.of_name "::", list_cons);
-  (IdentPath.of_name "None", option_none);
-  (IdentPath.of_name "Some", option_some);
-  (IdentPath.of_name "Ok", result_ok);
-  (IdentPath.of_name "Error", result_error);
   (IdentPath.of_name "+", int_binop);
   (IdentPath.of_name "-", int_binop);
   (IdentPath.of_name "*", int_binop);
@@ -129,15 +66,11 @@ let bindings = [
   (IdentPath.of_name ">=", polymorphic_compare);
   (IdentPath.of_name "&&", bool_binop);
   (IdentPath.of_name "||", bool_binop);
-  (IdentPath.of_name "not", monomorphic (arrow TypeRepr.bool TypeRepr.bool));
   (IdentPath.of_name "|>", polymorphic_pipe);
   (
     IdentPath.of_name "^",
     monomorphic (arrow TypeRepr.string (arrow TypeRepr.string TypeRepr.string))
   );
-  (IdentPath.of_name "raise", polymorphic_raise);
-  (IdentPath.of_name "min", polymorphic_min_max);
-  (IdentPath.of_name "max", polymorphic_min_max);
 ]
 
 let type_decls = [ {
@@ -149,64 +82,20 @@ let type_decls = [ {
         param_ids = [ 0 ];
         param_variances = [ TypeDecl.Covariant ];
         constructors = [
-          { TypeDecl.constructor_id = prelude_nil_constructor_id; name = "[]"; scheme = list_nil };
-          { TypeDecl.constructor_id = prelude_cons_constructor_id; name = "::"; scheme = list_cons };
-        ];
-        labels = [];
-        manifest = None;
-      };
-  }; {
-    FileSummary.scope_path = IdentPath.empty;
-    declaration =
-      {
-        TypeDecl.type_constructor_id = prelude_option_type_constructor_id;
-        type_name = "option";
-        param_ids = [ 0 ];
-        param_variances = [ TypeDecl.Covariant ];
-        constructors = [
           {
-            TypeDecl.constructor_id = prelude_none_constructor_id;
-            name = "None";
-            scheme = option_none
+            TypeDecl.constructor_id = prelude_nil_constructor_id;
+            name = "[]";
+            scheme = list_nil;
+            inline_record_labels = None;
           };
           {
-            TypeDecl.constructor_id = prelude_some_constructor_id;
-            name = "Some";
-            scheme = option_some
+            TypeDecl.constructor_id = prelude_cons_constructor_id;
+            name = "::";
+            scheme = list_cons;
+            inline_record_labels = None;
           };
         ];
         labels = [];
         manifest = None;
       };
-  }; {
-    FileSummary.scope_path = IdentPath.empty;
-    declaration =
-      {
-        TypeDecl.type_constructor_id = exn_type_constructor_id;
-        type_name = "exn";
-        param_ids = [];
-        param_variances = [];
-        constructors = [];
-        labels = [];
-        manifest = None;
-      };
-  }; {
-    FileSummary.scope_path = IdentPath.empty;
-    declaration =
-      {
-        TypeDecl.type_constructor_id = prelude_result_type_constructor_id;
-        type_name = "result";
-        param_ids = [ 0; 1 ];
-        param_variances = [ TypeDecl.Covariant; TypeDecl.Covariant ];
-        constructors = [
-          { TypeDecl.constructor_id = prelude_ok_constructor_id; name = "Ok"; scheme = result_ok };
-          {
-            TypeDecl.constructor_id = prelude_error_constructor_id;
-            name = "Error";
-            scheme = result_error
-          };
-        ];
-        labels = [];
-        manifest = None;
-      };
-  }; ]
+  } ]

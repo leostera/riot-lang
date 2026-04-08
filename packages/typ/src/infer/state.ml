@@ -359,10 +359,23 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         (fun (constructor: TypeDecl.constructor) ->
           let body = TypeScheme.body constructor.scheme in
           let body' = resolve_type body in
-          if Std.Ptr.equal body body' then
+          let inline_record_labels =
+            constructor.inline_record_labels
+            |> Option.map
+              (List.map
+                (fun (label: TypeDecl.label) ->
+                  let field_type' = resolve_type label.field_type in
+                  if Std.Ptr.equal label.field_type field_type' then
+                    label
+                  else
+                    { label with field_type = field_type' }))
+          in
+          if Std.Ptr.equal body body'
+            && Option.equal (fun left right -> List.for_all2 Std.Ptr.equal left right) constructor.inline_record_labels inline_record_labels
+          then
             constructor
           else
-            { constructor with scheme = TypeScheme.of_type body' })
+            { constructor with scheme = TypeScheme.of_type body'; inline_record_labels })
     in
     let labels =
       declaration.labels
@@ -603,6 +616,12 @@ let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~
   type_decl: FileSummary.type_decl
 ) ->
   let canonicalize_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
+  let canonicalize_inline_record_labels labels =
+    labels
+    |> List.map
+      (fun (label: TypeDecl.label) ->
+        { label with field_type = canonicalize_type label.field_type })
+  in
   let declaration = type_decl.declaration in
   let manifest =
     match declaration.manifest with
@@ -629,7 +648,13 @@ let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~
   let constructors = declaration.constructors
   |> List.map
     (fun (constructor: TypeDecl.constructor) ->
-      { constructor with scheme = canonicalize_scheme_with canonicalize_type constructor.scheme }) in
+      {
+        constructor with
+        scheme = canonicalize_scheme_with canonicalize_type constructor.scheme;
+        inline_record_labels =
+          constructor.inline_record_labels
+          |> Option.map canonicalize_inline_record_labels
+      }) in
   let labels = declaration.labels
   |> List.map
     (fun (label: TypeDecl.label) -> { label with field_type = canonicalize_type label.field_type }) in

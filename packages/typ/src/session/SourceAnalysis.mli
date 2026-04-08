@@ -18,6 +18,8 @@ type t = {
   lowering_diagnostics: Diagnostic.t list;
   (** Diagnostics emitted during inference. *)
   typing_diagnostics: Diagnostic.t list;
+  (** Visible ambient type declarations available while analyzing this source. *)
+  ambient_type_decls: FileSummary.type_decl list;
   (** Export-facing summary for this analyzed source. *)
   file_summary: FileSummary.t;
   (** Export-facing binding references retained for definition queries. *)

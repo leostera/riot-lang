@@ -156,9 +156,21 @@ let rec module_path_segments_of_module_expression = function
     inner
   | _ -> None
 
+let rec include_target_path_of_module_type = function
+  | Cst.ModuleType.Path path -> Some (ident_path path)
+  | Cst.ModuleType.TypeOf { module_path; _ } -> Some (ident_path module_path)
+  | Cst.ModuleType.Parenthesized { inner; _ }
+  | Cst.ModuleType.Attribute { module_type=inner; _ }
+  | Cst.ModuleType.With { base=inner; _ } -> include_target_path_of_module_type inner
+  | _ -> None
+
 let binding_name_of_pattern =
+  let operator_name operator_tokens =
+    operator_tokens |> List.map Cst.Token.text |> String.concat ""
+  in
   let rec loop = function
     | Cst.Pattern.Identifier { name_token; _ } -> Some (Cst.Token.text name_token)
+    | Cst.Pattern.Operator { operator_tokens; _ } -> Some (operator_name operator_tokens)
     | Cst.Pattern.Parenthesized { inner; _ } -> loop inner
     | Cst.Pattern.Typed { pattern; _ } -> loop pattern
     | _ -> None
@@ -172,6 +184,13 @@ let type_param_bindings = fun (declaration: Cst.TypeDeclaration.t) ->
       | Some type_variable -> Some (Cst.TypeVariable.name type_variable)
       | None -> None) |> List.mapi (fun index name -> (name, index))
 
+let type_parameter_bindings = fun parameters ->
+  parameters |> List.filter_map
+    (fun parameter ->
+      match Cst.TypeParameter.type_variable parameter with
+      | Some type_variable -> Some (Cst.TypeVariable.name type_variable)
+      | None -> None) |> List.mapi (fun index name -> (name, index))
+
 let builtin_type_of_name = fun name arguments ->
   match (name, arguments) with
   | ("int", []) -> Some TypeRepr.int
@@ -180,12 +199,8 @@ let builtin_type_of_name = fun name arguments ->
   | ("string", []) -> Some TypeRepr.string
   | ("char", []) -> Some TypeRepr.char
   | ("unit", []) -> Some TypeRepr.unit_
-  | ("option", [ argument ]) -> Some (TypeRepr.option argument)
-  | ("result", [ok_ty;error_ty]) -> Some (TypeRepr.result ok_ty error_ty)
   | ("array", [ argument ]) -> Some (TypeRepr.array argument)
   | ("list", [ argument ]) -> Some (TypeRepr.list argument)
-  | ("Seq.t", [ argument ])
-  | ("Std.Seq.t", [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None
 
 let lower_arrow_label = fun (label: Cst.arrow_label option) ->
@@ -209,19 +224,28 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
       let name = ident_path constructor_path in
       let arguments = List.map (lower_core_type state type_params) arguments in
       begin
-        match builtin_type_of_name (IdentPath.to_string name) arguments with
-        | Some builtin -> builtin
-        | None ->
-            let head =
-              match Cst.Ident.segments constructor_path with
-              | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
-              | _ -> resolve_named_type_path state name
-            in
-            (
-              match head with
-              | Some head -> TypeRepr.named ~head ~arguments
-              | None -> TypeRepr.named_path ~name ~arguments
-            )
+        match
+          match (arguments, Cst.Ident.segments constructor_path) with
+          | ([], [ segment ]) -> List.assoc_opt (Cst.Token.text segment) type_params
+          | _ -> None
+        with
+        | Some id ->
+            TypeRepr.make_var id
+        | None -> (
+            match builtin_type_of_name (IdentPath.to_string name) arguments with
+            | Some builtin -> builtin
+            | None ->
+                let head =
+                  match Cst.Ident.segments constructor_path with
+                  | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
+                  | _ -> resolve_named_type_path state name
+                in
+                (
+                  match head with
+                  | Some head -> TypeRepr.named ~head ~arguments
+                  | None -> TypeRepr.named_path ~name ~arguments
+                )
+          )
       end
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
       TypeRepr.arrow
@@ -248,6 +272,8 @@ let variant_constructor_payload = fun (state: state) type_params (
   constructor: Cst.VariantConstructor.t
 ) ->
   match Cst.VariantConstructor.arguments constructor with
+  | Some (Cst.ConstructorArguments.Tuple [ Cst.CoreType.Record _ ]) ->
+      Some (TypeRepr.hole unsupported_record_constructor_payload_hole_id)
   | Some (Cst.ConstructorArguments.Tuple members) ->
       let members = List.map (lower_core_type state type_params) members in
       begin
@@ -332,7 +358,7 @@ let add_expr = fun (state: state) ~syntax_node ~label desc ->
   in
   expr_id
 
-let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~value_id ~recursive ->
+let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~annotation ~value_id ~recursive ->
   let binding_id = BindingId.of_int state.next_binding_id in
   let () =
     state.next_binding_id <- state.next_binding_id + 1
@@ -344,6 +370,7 @@ let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~value_id ~r
     scope_path = state.scope_path;
     name;
     pattern_id;
+    annotation;
     value_id;
     recursive;
   }
@@ -374,6 +401,16 @@ let add_item = fun (state: state) ~syntax_node item ->
           scope_path = state.scope_path;
           exception_name;
           scheme;
+        }
+    | `ExtensionConstructor (constructor_id, constructor_name, scheme, inline_record_labels) ->
+        ItemTree.ExtensionConstructor {
+          item_id;
+          origin_id;
+          scope_path = state.scope_path;
+          constructor_id;
+          constructor_name;
+          scheme;
+          inline_record_labels;
         }
     | `Value (binding_ids, recursive) ->
         ItemTree.Value {
@@ -435,6 +472,117 @@ let lower_record_label = fun (state: state) type_params (field: Cst.RecordField.
       state.next_label_id <- state.next_label_id + 1
     in
     label
+
+let lower_record_type_label = fun (state: state) type_params (field: Cst.record_type_field) ->
+  {
+    TypeDecl.label_id = LabelId.of_int state.next_label_id;
+    TypeDecl.name = Cst.Token.text field.field_name;
+    field_type = lower_core_type state type_params field.field_type;
+    mutable_ = Option.is_some field.mutable_token;
+  }
+  |> fun label ->
+    let () =
+      state.next_label_id <- state.next_label_id + 1
+    in
+    label
+
+let rec collect_core_type_var_names = fun core_type ->
+  let append_unique acc name =
+    if List.exists (String.equal name) acc then
+      acc
+    else
+      acc @ [ name ]
+  in
+  let collect_many items =
+    List.fold_left
+      (fun acc item -> collect_core_type_var_names item |> List.fold_left append_unique acc)
+      []
+      items
+  in
+  match core_type with
+  | Cst.CoreType.Parenthesized { inner; _ }
+  | Cst.CoreType.Attribute { type_=inner; _ }
+  | Cst.CoreType.Alias { type_=inner; _ } -> collect_core_type_var_names inner
+  | Cst.CoreType.Var { name_token; _ } -> [ Cst.Token.text name_token ]
+  | Cst.CoreType.Constr { arguments; _ } -> collect_many arguments
+  | Cst.CoreType.Arrow { parameter_type; result_type; _ } -> collect_many
+    [ parameter_type; result_type ]
+  | Cst.CoreType.Tuple { elements; _ } -> collect_many elements
+  | Cst.CoreType.Record { fields; _ } ->
+      fields
+      |> List.fold_left
+        (fun acc (field: Cst.record_type_field) ->
+          collect_core_type_var_names field.field_type
+          |> List.fold_left append_unique acc)
+        []
+  | _ -> []
+
+let append_constructor_type_var_name = fun acc name ->
+  if List.exists (fun (existing, _) -> String.equal existing name) acc then
+    acc
+  else
+    acc @ [ (name, List.length acc) ]
+
+let extend_constructor_type_params = fun params names ->
+  List.fold_left append_constructor_type_var_name params names
+
+let collect_record_type_field_var_names = fun fields ->
+  fields
+  |> List.fold_left
+    (fun acc (field: Cst.record_type_field) ->
+      collect_core_type_var_names field.field_type
+      |> List.fold_left
+        (fun acc name ->
+          if List.exists (String.equal name) acc then
+            acc
+          else
+            acc @ [ name ])
+        acc)
+    []
+
+let inline_record_labels_for_constructor = fun (state: state) constructor_params (constructor: Cst.VariantConstructor.t) ->
+  match Cst.VariantConstructor.arguments constructor with
+  | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
+      Some (List.map (lower_record_label state constructor_params) fields)
+  | Some (Cst.ConstructorArguments.Tuple [ Cst.CoreType.Record { fields; _ } ]) ->
+      Some (List.map (lower_record_type_label state constructor_params) fields)
+  | _ -> (
+      match Cst.VariantConstructor.payload_type constructor with
+      | Some (Cst.CoreType.Record { fields; _ }) ->
+          Some (List.map (lower_record_type_label state constructor_params) fields)
+      | _ -> None
+    )
+
+let constructor_type_param_bindings = fun params (constructor: Cst.VariantConstructor.t) ->
+  let params =
+    match Cst.VariantConstructor.arguments constructor with
+    | Some (Cst.ConstructorArguments.Tuple members) ->
+        members
+        |> List.fold_left
+          (fun acc member ->
+            extend_constructor_type_params acc (collect_core_type_var_names member))
+          params
+    | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
+        fields
+        |> List.fold_left
+          (fun acc field ->
+            extend_constructor_type_params acc
+              (collect_core_type_var_names (Cst.RecordField.field_type field)))
+          params
+    | None -> (
+        match Cst.VariantConstructor.payload_type constructor with
+        | Some (Cst.CoreType.Record { fields; _ }) ->
+            collect_record_type_field_var_names fields
+            |> List.fold_left append_constructor_type_var_name params
+        | Some payload_type ->
+            extend_constructor_type_params params (collect_core_type_var_names payload_type)
+        | None -> params
+      )
+  in
+  match Cst.VariantConstructor.result_type constructor with
+  | Some result_type ->
+      extend_constructor_type_params params (collect_core_type_var_names result_type)
+  | None -> params
 
 let lower_poly_variant_bound = function
   | Cst.PolyVariantBound.Exact -> TypeDecl.Exact
@@ -539,11 +687,21 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           constructors =
             constructors |> List.map
               (fun (constructor: Cst.VariantConstructor.t) ->
-                let payload_type = variant_constructor_payload state params constructor in
+                let constructor_params = constructor_type_param_bindings params constructor in
+                let payload_type = variant_constructor_payload state constructor_params constructor in
+                let result_type =
+                  match Cst.VariantConstructor.result_type constructor with
+                  | Some result_type -> lower_core_type state constructor_params result_type
+                  | None -> result_type
+                in
+                let inline_record_labels =
+                  inline_record_labels_for_constructor state constructor_params constructor
+                in
                 {
                   TypeDecl.constructor_id = ConstructorId.of_int state.next_constructor_id;
                   TypeDecl.name = Cst.VariantConstructor.name constructor;
-                  scheme = constructor_scheme ~params ~result_type payload_type
+                  scheme = constructor_scheme ~params:constructor_params ~result_type payload_type;
+                  inline_record_labels;
                 }
                 |> fun constructor ->
                   let () =
@@ -572,6 +730,16 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           constructors = [];
           labels = [];
           manifest = Some (lower_poly_variant_manifest state params poly_variant);
+        }
+    | Cst.TypeDefinition.Extensible _ ->
+        Some {
+          TypeDecl.type_constructor_id;
+          TypeDecl.type_name = type_name;
+          param_ids = List.map snd params;
+          param_variances = invariant_param_variances params;
+          constructors = [];
+          labels = [];
+          manifest = None;
         }
     | _ -> None
   in
@@ -603,6 +771,48 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
   let _ = add_item state ~syntax_node:declaration.syntax_node (`Exception (exception_name, scheme)) in
   ()
 
+let extension_target_result_type = fun (state: state) type_params (extension: Cst.TypeExtension.t) ->
+  let owner_path = ident_path (Cst.TypeExtension.type_name extension) in
+  let result_path =
+    if IdentPath.is_bare owner_path && not (IdentPath.is_empty state.scope_path) then
+      IdentPath.append_path state.scope_path owner_path
+    else
+      owner_path
+  in
+  let arguments = List.map (fun (_, id) -> TypeRepr.make_var id) type_params in
+  TypeRepr.named_path ~name:result_path ~arguments
+
+let lower_type_extension = fun (state: state) (extension: Cst.TypeExtension.t) ->
+  let syntax_node = Cst.TypeExtension.syntax_node extension in
+  let params = type_parameter_bindings (Cst.TypeExtension.type_params extension) in
+  let default_result_type = extension_target_result_type state params extension in
+  let () =
+    Cst.TypeExtension.constructors extension
+    |> List.iter
+      (fun (constructor: Cst.VariantConstructor.t) ->
+        let constructor_params = constructor_type_param_bindings params constructor in
+        let payload_type = variant_constructor_payload state constructor_params constructor in
+        let result_type =
+          match Cst.VariantConstructor.result_type constructor with
+          | Some result_type -> lower_core_type state constructor_params result_type
+          | None -> default_result_type
+        in
+        let scheme = constructor_scheme ~params:constructor_params ~result_type payload_type in
+        let constructor_id = ConstructorId.of_int state.next_constructor_id in
+        let inline_record_labels =
+          inline_record_labels_for_constructor state constructor_params constructor
+        in
+        let () =
+          state.next_constructor_id <- state.next_constructor_id + 1
+        in
+        let _ = add_item
+          state
+          ~syntax_node
+          (`ExtensionConstructor (constructor_id, Cst.VariantConstructor.name constructor, scheme, inline_record_labels)) in
+        ())
+  in
+  ()
+
 let declared_value_name = fun name_tokens ->
   let texts = List.map Cst.Token.text name_tokens in
   match texts with
@@ -612,30 +822,6 @@ let declared_value_name = fun name_tokens ->
       | _ -> String.concat "" texts
     )
   | _ -> String.concat "" texts
-
-let rec collect_core_type_var_names = fun core_type ->
-  let append_unique acc name =
-    if List.exists (String.equal name) acc then
-      acc
-    else
-      acc @ [ name ]
-  in
-  let collect_many items =
-    List.fold_left
-      (fun acc item -> collect_core_type_var_names item |> List.fold_left append_unique acc)
-      []
-      items
-  in
-  match core_type with
-  | Cst.CoreType.Parenthesized { inner; _ }
-  | Cst.CoreType.Attribute { type_=inner; _ }
-  | Cst.CoreType.Alias { type_=inner; _ } -> collect_core_type_var_names inner
-  | Cst.CoreType.Var { name_token; _ } -> [ Cst.Token.text name_token ]
-  | Cst.CoreType.Constr { arguments; _ } -> collect_many arguments
-  | Cst.CoreType.Arrow { parameter_type; result_type; _ } -> collect_many
-    [ parameter_type; result_type ]
-  | Cst.CoreType.Tuple { elements; _ } -> collect_many elements
-  | _ -> []
 
 let rec first_unsupported_core_type = fun core_type ->
   let find_many items =
@@ -724,6 +910,16 @@ let float_text = fun (float_: Cst.float_constant) ->
 
 let unsupported_syntax_kind = fun syntax_node -> Cst.syntax_kind syntax_node
 
+let operator_name = fun operator_tokens ->
+  operator_tokens |> List.map Cst.Token.text |> String.concat ""
+
+let prefix_operator_name = function
+  | "-" -> "~-"
+  | "+" -> "~+"
+  | "-." -> "~-."
+  | "+." -> "~+."
+  | operator -> operator
+
 let supported_literal_subset = [
   Typ_diagnostic.IntLiteral;
   Typ_diagnostic.FloatLiteral;
@@ -779,6 +975,12 @@ let rec lower_pattern = fun (state: state) pattern ->
         ~syntax_node
         ~label:"identifier_pattern"
         (BodyArena.PVar (Cst.Token.text name_token))
+  | Cst.Pattern.Operator { syntax_node; operator_tokens; _ } ->
+      add_pattern
+        state
+        ~syntax_node
+        ~label:"operator_pattern"
+        (BodyArena.PVar (operator_name operator_tokens))
   | Cst.Pattern.Wildcard { syntax_node; _ } ->
       add_pattern state ~syntax_node ~label:"wildcard_pattern" BodyArena.PWildcard
   | Cst.Pattern.Literal { syntax_node; literal; _ } -> (
@@ -862,6 +1064,17 @@ let rec lower_pattern = fun (state: state) pattern ->
   | Cst.Pattern.List { syntax_node; elements; _ } ->
       let element_ids = List.map (lower_pattern state) elements in
       add_pattern state ~syntax_node ~label:"list_pattern" (BodyArena.PList element_ids)
+  | Cst.Pattern.Cons { syntax_node; head; tail; _ } ->
+      let head_id = lower_pattern state head in
+      let tail_id = lower_pattern state tail in
+      add_pattern
+        state
+        ~syntax_node
+        ~label:"cons_pattern"
+        (BodyArena.PConstructor {
+          constructor = IdentPath.of_name "::";
+          arguments = [ head_id; tail_id ];
+        })
   | Cst.Pattern.Alias { syntax_node; pattern; name_token; _ } ->
       let pattern_id = lower_pattern state pattern in
       add_pattern
@@ -955,11 +1168,21 @@ let rec lower_match_cases = fun (state: state) cases ->
       { BodyArena.pattern_id; guard_id; body_id })
     cases
 
-and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body ->
+and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body_annotation ~body ->
   let parameter_ids = List.map (lower_parameter state) parameters in
+  let wrap_body_annotation = fun body_id ->
+    match body_annotation with
+    | Some target_type ->
+        add_expr
+          state
+          ~syntax_node
+          ~label:"annotated_function_body"
+          (BodyArena.ECoerce { value_id = body_id; target_type })
+    | None -> body_id
+  in
   let body_id =
     match body with
-    | `Expr expression -> lower_expr state expression
+    | `Expr expression -> lower_expr state expression |> wrap_body_annotation
     | `Cases cases ->
         let (synthetic_name, synthetic_pattern_id) = synthetic_var_pattern state syntax_node ~label:"function_arg" in
         let argument_expr_id = add_expr
@@ -972,6 +1195,7 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body ->
           ~syntax_node
           ~label:"function_match_body"
           (BodyArena.EMatch (argument_expr_id, lower_match_cases state cases)) in
+        let match_id = wrap_body_annotation match_id in
         let parameter_ids = parameter_ids @ [ positional_function_parameter synthetic_pattern_id ] in
         add_expr state ~syntax_node ~label:"wrapped_fun" (BodyArena.EFun (parameter_ids, match_id))
   in
@@ -984,14 +1208,43 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body ->
   | `Cases _ -> body_id
 
 and lower_binding_source = fun (state: state) ~syntax_node ~binding_pattern ~parameters ~value ~recursive ->
+  let rec explicit_scheme_of_core_type = fun core_type ->
+    match core_type with
+    | Cst.CoreType.Parenthesized { inner; _ }
+    | Cst.CoreType.Attribute { type_=inner; _ } -> explicit_scheme_of_core_type inner
+    | Cst.CoreType.Poly { binders; body; _ } ->
+        let params = binders |> List.mapi (fun index binder -> (Cst.TypeBinder.text binder, index)) in
+        TypeScheme.of_explicit
+          ~quantified:(List.map snd params)
+          (lower_core_type state params body)
+    | _ ->
+        TypeScheme.of_explicit ~quantified:[] (lower_core_type state [] core_type)
+  in
+  let rec peel_binding_annotation ~parameters = function
+    | Cst.Expression.Parenthesized { inner; _ } ->
+        peel_binding_annotation ~parameters inner
+    | Cst.Expression.Polymorphic { expression; type_; _ } ->
+        if List.is_empty parameters then
+          (expression, Some (explicit_scheme_of_core_type type_), None)
+        else
+          (expression, None, None)
+    | Cst.Expression.TypeAscription { expression; kind=Cst.Type { type_; _ }; _ } ->
+        if List.is_empty parameters then
+          (expression, Some (explicit_scheme_of_core_type type_), None)
+        else
+          (expression, None, Some (lower_core_type state [] type_))
+    | expression ->
+        (expression, None, None)
+  in
   let pattern_id = lower_pattern state binding_pattern in
+  let (value, annotation, body_annotation) = peel_binding_annotation ~parameters value in
   let value_id =
     match parameters with
     | [] -> lower_expr state value
-    | _ -> lower_function_like state ~syntax_node ~parameters ~body:(`Expr value)
+    | _ -> lower_function_like state ~syntax_node ~parameters ~body_annotation ~body:(`Expr value)
   in
   let name = binding_name_of_pattern binding_pattern in
-  add_binding state ~syntax_node ~name ~pattern_id ~value_id ~recursive
+  add_binding state ~syntax_node ~name ~pattern_id ~annotation ~value_id ~recursive
 
 and lower_let_binding_group = fun (state: state) let_binding ->
   let recursive = Cst.LetBinding.is_recursive let_binding in
@@ -1278,15 +1531,17 @@ and lower_expr = fun (state: state) expression ->
       lower_expr state expression
   | Cst.Expression.Fun { syntax_node; parameters; body; _ } -> (
       match body with
-      | Cst.Expression body -> lower_function_like state ~syntax_node ~parameters ~body:(`Expr body)
+      | Cst.Expression body ->
+          lower_function_like state ~syntax_node ~parameters ~body_annotation:None ~body:(`Expr body)
       | Cst.Cases body -> lower_function_like
         state
         ~syntax_node
         ~parameters
+        ~body_annotation:None
         ~body:(`Cases body.cases)
     )
   | Cst.Expression.Function { syntax_node; cases; _ } ->
-      lower_function_like state ~syntax_node ~parameters:[] ~body:(`Cases cases)
+      lower_function_like state ~syntax_node ~parameters:[] ~body_annotation:None ~body:(`Cases cases)
   | Cst.Expression.Apply _ ->
       lower_apply state expression
   | Cst.Expression.Index { syntax_node; collection; index; _ } ->
@@ -1368,7 +1623,7 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"prefix_operator"
-            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text operator_token))) in
+            (BodyArena.EVar (IdentPath.of_name (prefix_operator_name (Cst.Token.text operator_token)))) in
           let operand_id = lower_expr state operand in
           add_expr
             state
@@ -1389,7 +1644,9 @@ let lower_top_level_expression = fun (state: state) expression ->
   let syntax_node = Cst.Expression.syntax_node expression in
   let pattern_id = add_pattern state ~syntax_node ~label:"top_level_expression_pattern" BodyArena.PWildcard in
   let value_id = lower_expr state expression in
-  let binding_id = add_binding state ~syntax_node ~name:None ~pattern_id ~value_id ~recursive:false in
+  let binding_id =
+    add_binding state ~syntax_node ~name:None ~pattern_id ~annotation:None ~value_id ~recursive:false
+  in
   add_item state ~syntax_node (`Value ([ binding_id ], false))
 
 let rec lower_structure_item = fun (state: state) item ->
@@ -1424,6 +1681,10 @@ let rec lower_structure_item = fun (state: state) item ->
         | None -> ()
       in
       loop declaration
+  | Cst.StructureItem.TypeExtension extension ->
+      lower_type_extension state extension
+  | Cst.StructureItem.ExternalDeclaration declaration ->
+      lower_value_declaration state declaration.syntax_node declaration.name_tokens declaration.type_
   | Cst.StructureItem.ExceptionDeclaration declaration ->
       lower_exception_declaration state declaration
   | Cst.StructureItem.ModuleDeclaration declaration ->
@@ -1474,6 +1735,8 @@ and lower_signature_item = fun (state: state) item ->
         | None -> ()
       in
       loop declaration
+  | Cst.SignatureItem.TypeExtension extension ->
+      lower_type_extension state extension
   | Cst.SignatureItem.ExceptionDeclaration declaration ->
       lower_exception_declaration state declaration
   | Cst.SignatureItem.OpenStatement open_statement -> (
@@ -1512,19 +1775,11 @@ and lower_signature_include_statement = fun (state: state) (include_statement: C
   let syntax_node = include_statement.syntax_node in
   match include_statement.target with
   | Cst.ModuleType module_type -> (
-      match module_type with
-      | Cst.ModuleType.Path path ->
-          let _ = add_item state ~syntax_node (`Include (ident_path path)) in
+      match include_target_path_of_module_type module_type with
+      | Some module_path ->
+          let _ = add_item state ~syntax_node (`Include module_path) in
           ()
-      | Cst.ModuleType.TypeOf { module_path; _ } ->
-          let _ = add_item state ~syntax_node (`Include (ident_path module_path)) in
-          ()
-      | Cst.ModuleType.Parenthesized { inner; _ }
-      | Cst.ModuleType.Attribute { module_type=inner; _ } ->
-          lower_signature_include_statement
-            state
-            { include_statement with target = Cst.ModuleType inner }
-      | _ ->
+      | None ->
           lower_signature_items_of_module_type
             state
             module_type

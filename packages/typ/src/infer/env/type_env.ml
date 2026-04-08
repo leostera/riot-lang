@@ -144,6 +144,26 @@ let local_only = fun env -> env |> type_decls |> of_type_decls
 let qualify_type_decl = fun prefix (type_decl: FileSummary.type_decl) ->
   { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path }
 
+let visible_type_decls =
+  let rec collect env =
+    let current = current_visible_components env |> fun components -> components.by_name in
+    match env.layer with
+    | Nothing ->
+        current
+    | Open { root; components; next } ->
+        let opened = Name_map.map (qualify_type_decl root) components.by_name in
+        current
+        |> merge_visible_by_name opened
+        |> merge_visible_by_name (collect next)
+    | Map { map_decl; next } ->
+        let next_visible = Name_map.map map_decl (collect next) in
+        merge_visible_by_name current next_visible
+  in
+  fun env ->
+    collect env
+    |> Name_map.bindings
+    |> List.map snd
+
 let map = fun map_decl env ->
   if is_empty env then
     env

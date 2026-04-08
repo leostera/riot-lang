@@ -93,6 +93,7 @@ and binding = {
   scope_path: IdentPath.t;
   name: string option;
   pattern_id: PatId.t;
+  annotation: TypeScheme.t option;
   value_id: ExprId.t;
   recursive: bool;
 }
@@ -354,6 +355,11 @@ let render_binding = fun (binding: binding) ->
   ^ qualified_name
   ^ " "
   ^ PatId.to_string binding.pattern_id
+  ^ (
+      match binding.annotation with
+      | Some annotation -> " : " ^ TypePrinter.scheme_to_string annotation
+      | None -> ""
+    )
   ^ " "
   ^ ExprId.to_string binding.value_id
   ^ " recursive="
@@ -636,7 +642,12 @@ let binding_to_json = fun (binding: binding) ->
     | Some name -> Data.Json.String name
     | None -> Data.Json.Null
   in
-  Data.Json.Object [
+  let annotation_fields =
+    match binding.annotation with
+    | Some annotation -> [ ("annotation", Data.Json.String (TypePrinter.scheme_to_string annotation)); ]
+    | None -> []
+  in
+  Data.Json.Object ([
     ("binding_id", Data.Json.Int (BindingId.to_int binding.binding_id));
     ("origin_id", Data.Json.Int (OriginId.to_int binding.origin_id));
     (
@@ -648,7 +659,7 @@ let binding_to_json = fun (binding: binding) ->
     ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));
     ("value_id", Data.Json.Int (ExprId.to_int binding.value_id));
     ("recursive", Data.Json.Bool binding.recursive);
-  ]
+  ] @ annotation_fields)
 
 let to_json = fun arena ->
   Data.Json.Object [

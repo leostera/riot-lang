@@ -1,16 +1,17 @@
 open Std
 
-type constructor = {
-  constructor_id: ConstructorId.t;
-  name: string;
-  scheme: TypeScheme.t;
-}
-
 type label = {
   label_id: LabelId.t;
   name: string;
   field_type: TypeRepr.t;
   mutable_: bool;
+}
+
+type constructor = {
+  constructor_id: ConstructorId.t;
+  name: string;
+  scheme: TypeScheme.t;
+  inline_record_labels: label list option;
 }
 
 type variance =
@@ -77,13 +78,6 @@ let constructor_entries = fun decl ->
   decl.constructors
   |> List.map (fun (constructor: constructor) -> (constructor.name, constructor.scheme))
 
-let constructor_to_json = fun (constructor: constructor) ->
-  Data.Json.Object [
-    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
-    ("name", Data.Json.String constructor.name);
-    ("scheme", Data.Json.String (TypePrinter.scheme_to_string constructor.scheme));
-  ]
-
 let label_to_json = fun (label: label) ->
   Data.Json.Object [
     ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
@@ -91,6 +85,19 @@ let label_to_json = fun (label: label) ->
     ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
     ("mutable", Data.Json.Bool label.mutable_);
   ]
+
+let constructor_to_json = fun (constructor: constructor) ->
+  let fields = [
+    ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
+    ("name", Data.Json.String constructor.name);
+    ("scheme", Data.Json.String (TypePrinter.scheme_to_string constructor.scheme));
+  ] in
+  let fields =
+    match constructor.inline_record_labels with
+    | Some labels -> fields @ [ ("inline_record_labels", Data.Json.Array (List.map label_to_json labels)) ]
+    | None -> fields
+  in
+  Data.Json.Object fields
 
 let poly_variant_bound_to_string = function
   | Exact -> "exact"
@@ -178,9 +185,24 @@ let to_string = fun decl ->
     | constructors -> constructors
     |> List.map
       (fun (constructor: constructor) ->
+        let inline_record =
+          match constructor.inline_record_labels with
+          | Some labels ->
+              " of { "
+              ^ (
+                  labels
+                  |> List.map
+                    (fun (label: label) ->
+                      label.name ^ " : " ^ TypePrinter.type_to_string label.field_type)
+                  |> String.concat "; "
+                )
+              ^ " }"
+          | None -> ""
+        in
         ConstructorId.to_string constructor.constructor_id
         ^ " "
         ^ constructor.name
+        ^ inline_record
         ^ " : "
         ^ TypePrinter.scheme_to_string constructor.scheme)
     |> String.concat ", "

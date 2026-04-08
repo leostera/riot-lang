@@ -59,6 +59,8 @@ type t =
       lowering_diagnostic_count: int;
       typing_diagnostic_count: int;
       export_status: export_status;
+      export_count: int;
+      type_decl_count: int;
     }
   | ModulePairingStarted of {
       module_name: string;
@@ -70,6 +72,9 @@ type t =
       export_status: export_status;
       export_count: int;
       type_decl_count: int;
+      mismatch_count: int;
+      mismatch_subjects: string list;
+      mismatch_messages: string list;
     }
 
 (** Convert a [typ] event into a machine-readable JSON object. *)

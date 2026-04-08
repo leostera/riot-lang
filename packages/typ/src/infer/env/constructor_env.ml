@@ -53,6 +53,8 @@ let owner_type_constructor_id = fun entry -> entry.owner_type_constructor_id
 
 let scheme = fun entry -> entry.constructor.scheme
 
+let inline_record_labels = fun entry -> entry.constructor.inline_record_labels
+
 let prepend_entry = fun index entry ->
   let existing = Name_map.find_opt (name entry) index |> Option.unwrap_or ~default:[] in
   Name_map.add (name entry) (entry :: existing) index
@@ -129,6 +131,14 @@ let of_type_decls = fun type_decls ->
   {
     current = current_of_entries entries;
     by_owner = owner_index_of_entries entries;
+    layer = Nothing
+  }
+
+let singleton = fun ~owner_path ~owner_type_constructor_id ~constructor ->
+  let entry = { owner_path; owner_type_constructor_id; constructor } in
+  {
+    current = current_of_entries [ entry ];
+    by_owner = owner_index_of_entries [ entry ];
     layer = Nothing
   }
 

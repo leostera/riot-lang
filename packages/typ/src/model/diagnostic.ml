@@ -250,6 +250,27 @@ let signature_mismatch_name = function
   | MissingTypeDeclaration { name } -> "type " ^ name
   | TypeDeclarationMismatch { name; _ } -> "type " ^ name
 
+let signature_mismatch_message = function
+  | MissingValue { name } ->
+      "signature inclusion failed: implementation does not export value " ^ name
+  | ValueTypeMismatch { name; expected; actual } ->
+      "signature inclusion failed: value "
+      ^ name
+      ^ " has type "
+      ^ actual
+      ^ " but the interface requires "
+      ^ expected
+  | MissingTypeDeclaration { name } ->
+      "signature inclusion failed: implementation does not export type " ^ name
+  | TypeDeclarationMismatch { name; expected; actual } ->
+      "signature inclusion failed: type "
+      ^ name
+      ^ " does not match the interface (expected "
+      ^ expected
+      ^ ", got "
+      ^ actual
+      ^ ")"
+
 let rec match_witness_to_string = function
   | WildcardWitness -> "_"
   | BoolWitness value -> Bool.to_string value
@@ -369,25 +390,8 @@ let message = function
       "non-exhaustive match: missing case " ^ match_witness_to_string witness
   | RedundantMatchCase _ ->
       "match case is redundant"
-  | SignatureInclusionError { mismatch=MissingValue { name }; _ } ->
-      "signature inclusion failed: implementation does not export value " ^ name
-  | SignatureInclusionError { mismatch=ValueTypeMismatch { name; expected; actual }; _ } ->
-      "signature inclusion failed: value "
-      ^ name
-      ^ " has type "
-      ^ actual
-      ^ " but the interface requires "
-      ^ expected
-  | SignatureInclusionError { mismatch=MissingTypeDeclaration { name }; _ } ->
-      "signature inclusion failed: implementation does not export type " ^ name
-  | SignatureInclusionError { mismatch=TypeDeclarationMismatch { name; expected; actual }; _ } ->
-      "signature inclusion failed: type "
-      ^ name
-      ^ " does not match the interface (expected "
-      ^ expected
-      ^ ", got "
-      ^ actual
-      ^ ")"
+  | SignatureInclusionError { mismatch; _ } ->
+      signature_mismatch_message mismatch
   | UnsupportedSemanticExpression { summary; _ } ->
       "unsupported semantic expression reached inference: " ^ summary
   | RecursiveGroupRequiresSimpleVariableBinders _ ->

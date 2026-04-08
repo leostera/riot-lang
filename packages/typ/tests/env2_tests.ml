@@ -182,6 +182,28 @@ let test_env_replay_matches_lookup = fun _ctx ->
   else
     Ok ()
 
+let test_builtin_type_constructors_only_expose_syntax_backed_names = fun _ctx ->
+  let forbidden = [
+    "result";
+    "option";
+    "bytes";
+    "int32";
+    "int64";
+    "nativeint";
+    "lazy_t";
+    "ref";
+    "in_channel";
+    "out_channel";
+  ] in
+  match
+    List.find_opt
+      (fun name ->
+        Option.is_some (BuiltinTypeConstructors.head_of_path (IdentPath.of_name name)))
+      forbidden
+  with
+  | None -> Ok ()
+  | Some name -> Error ("expected bare " ^ name ^ " to require an explicit dependency")
+
 let test_bind_in_scope_keeps_local_module_names = fun _ctx ->
   let env = Env.empty
   |> fun env ->
@@ -460,6 +482,9 @@ let () =
       let tests = [
         Test.case "summary2 roundtrips env summaries" test_summary2_roundtrip;
         Test.case "env replay matches nested module lookups" test_env_replay_matches_lookup;
+        Test.case
+          "builtin type constructors only expose syntax backed names"
+          test_builtin_type_constructors_only_expose_syntax_backed_names;
         Test.case "bind_in_scope keeps local module names" test_bind_in_scope_keeps_local_module_names;
         Test.case "include entries strip module prefix once" test_include_entries_strip_module_prefix_once;
         Test.case "module alias entries prefix once" test_module_alias_entries_prefix_once;
