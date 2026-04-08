@@ -3,6 +3,7 @@ module Test = Std.Test
 
 let make_test_workspace = fun tmpdir ->
   Riot_model.Workspace.{
+    name = None;
     root = tmpdir;
     target_dir_root =
       Path.(tmpdir / Path.v "target");
