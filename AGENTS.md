@@ -9,6 +9,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 ## Routing Table
 
 - `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
+- `packages/kernel-new/AGENTS.md`: new platform abstraction layer, Riot-owned native shims, and Unix-first kernel bootstrap
 - `packages/actors/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
 - `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
