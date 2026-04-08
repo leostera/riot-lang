@@ -1,7 +1,9 @@
 const std = @import("std");
+const event_sink = @import("event_sink.zig");
 const value = @import("value.zig");
 
 pub const Value = value.Value;
+pub const EventSink = event_sink.EventSink;
 
 pub const Stats = struct {
     root_generation: usize,
@@ -23,13 +25,17 @@ pub const RootHandle = struct {
 
 pub const RootRegistry = struct {
     allocator: std.mem.Allocator,
+    event_sink: EventSink,
     roots: std.ArrayListUnmanaged(*const Value) = .{},
     root_generation: usize = 0,
     root_registrations: usize = 0,
     root_unregistrations: usize = 0,
 
-    pub fn init(allocator: std.mem.Allocator) RootRegistry {
-        return .{ .allocator = allocator };
+    pub fn init(allocator: std.mem.Allocator, sink: EventSink) RootRegistry {
+        return .{
+            .allocator = allocator,
+            .event_sink = sink,
+        };
     }
 
     pub fn deinit(self: *RootRegistry) void {
@@ -52,6 +58,10 @@ pub const RootRegistry = struct {
         try self.roots.append(self.allocator, slot);
         self.root_generation +%= 1;
         self.root_registrations +%= 1;
+        self.event_sink.emit(.{ .root = .{
+            .action = .register,
+            .is_block = slot.*.isBlock(),
+        } });
     }
 
     pub fn scoped(self: *RootRegistry, slot: *const Value) !RootHandle {
@@ -69,6 +79,10 @@ pub const RootRegistry = struct {
                 _ = self.roots.swapRemove(i);
                 self.root_generation +%= 1;
                 self.root_unregistrations +%= 1;
+                self.event_sink.emit(.{ .root = .{
+                    .action = .unregister,
+                    .is_block = slot.*.isBlock(),
+                } });
                 return;
             }
             i += 1;
@@ -86,7 +100,7 @@ pub const RootRegistry = struct {
 };
 
 test "root_registry: counters track registration and unregister" {
-    var registry = RootRegistry.init(std.testing.allocator);
+    var registry = RootRegistry.init(std.testing.allocator, EventSink.noop());
     defer registry.deinit();
 
     var slot = Value.fromInt(1);
@@ -102,7 +116,7 @@ test "root_registry: counters track registration and unregister" {
 }
 
 test "root_registry: scoped handle unregisters on deinit" {
-    var registry = RootRegistry.init(std.testing.allocator);
+    var registry = RootRegistry.init(std.testing.allocator, EventSink.noop());
     defer registry.deinit();
 
     var slot = Value.fromInt(7);
@@ -125,7 +139,7 @@ fn rootIsValid(valid: []const Value, rooted: Value) bool {
 }
 
 test "root_registry: verify consults external validity hook" {
-    var registry = RootRegistry.init(std.testing.allocator);
+    var registry = RootRegistry.init(std.testing.allocator, EventSink.noop());
     defer registry.deinit();
 
     var rooted = Value.fromHeapRef(.{ .index = 1, .generation = 2 });
@@ -133,4 +147,18 @@ test "root_registry: verify consults external validity hook" {
 
     const valid: []const Value = &[_]Value{rooted};
     registry.verify(valid, rootIsValid);
+}
+
+test "root_registry: emits registration events" {
+    var recorder = event_sink.Recorder{};
+    var registry = RootRegistry.init(std.testing.allocator, recorder.sink());
+    defer registry.deinit();
+
+    var rooted = Value.fromHeapRef(.{ .index = 1, .generation = 1 });
+    try registry.register(&rooted);
+    registry.unregister(&rooted);
+
+    const counters = recorder.snapshot();
+    try std.testing.expectEqual(@as(usize, 1), counters.root_registrations);
+    try std.testing.expectEqual(@as(usize, 1), counters.root_unregistrations);
 }

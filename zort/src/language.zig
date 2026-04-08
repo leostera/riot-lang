@@ -1,4 +1,5 @@
 const std = @import("std");
+const event_sink = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
 const mutator_mod = @import("mutator.zig");
 const value = @import("value.zig");
@@ -13,17 +14,18 @@ pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
 pub const HeapStore = heap_store.HeapStore;
 pub const Mutator = mutator_mod.Mutator;
+pub const EventSink = event_sink.EventSink;
 
 pub const Language = struct {
     host_allocator: std.mem.Allocator,
     heap_store: *HeapStore,
     writer: Mutator,
 
-    pub fn init(host_allocator: std.mem.Allocator, heap_allocator: std.mem.Allocator, heap: *HeapStore) Language {
+    pub fn init(host_allocator: std.mem.Allocator, heap_allocator: std.mem.Allocator, heap: *HeapStore, sink: EventSink) Language {
         return .{
             .host_allocator = host_allocator,
             .heap_store = heap,
-            .writer = Mutator.init(heap_allocator, heap),
+            .writer = Mutator.init(heap_allocator, heap, sink),
         };
     }
 
@@ -207,7 +209,7 @@ pub const Language = struct {
 test "language: bytes alias string representation and length semantics" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var language = Language.init(std.testing.allocator, std.testing.allocator, &store);
+    var language = Language.init(std.testing.allocator, std.testing.allocator, &store, EventSink.noop());
 
     const bytes = try language.allocBytes("abc");
     try std.testing.expect(language.isBytes(bytes));
@@ -222,7 +224,7 @@ test "language: bytes alias string representation and length semantics" {
 test "language: tuple and boxed accessors are semantic and typed" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var language = Language.init(std.testing.allocator, std.testing.allocator, &store);
+    var language = Language.init(std.testing.allocator, std.testing.allocator, &store, EventSink.noop());
 
     const tuple = try language.tuple(&.{ Value.fromInt(1), Value.fromInt(2) });
     try std.testing.expectEqual(@as(usize, 2), try language.tupleLength(tuple));
@@ -239,7 +241,7 @@ test "language: tuple and boxed accessors are semantic and typed" {
 test "language: float parse strips underscores and format is locale-stable" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var language = Language.init(std.testing.allocator, std.testing.allocator, &store);
+    var language = Language.init(std.testing.allocator, std.testing.allocator, &store, EventSink.noop());
 
     const parsed = try language.parseF64("1_23.5");
     try std.testing.expectApproxEqRel(@as(f64, 123.5), try language.unboxF64(parsed), 1e-12);

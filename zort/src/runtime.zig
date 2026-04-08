@@ -1,5 +1,6 @@
 const std = @import("std");
 const value = @import("value.zig");
+const event_sink_mod = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
 const language_mod = @import("language.zig");
@@ -9,6 +10,10 @@ const root_registry = @import("root_registry.zig");
 pub const Value = value.Value;
 pub const Tag = value.Tag;
 pub const HeapRef = value.HeapRef;
+pub const Event = event_sink_mod.Event;
+pub const EventCounters = event_sink_mod.Counters;
+pub const EventRecorder = event_sink_mod.Recorder;
+pub const EventSink = event_sink_mod.EventSink;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
@@ -25,6 +30,7 @@ pub const Runtime = struct {
     pub const Config = struct {
         debugRootChecks: bool = false,
         fixedArena: ?[]u8 = null,
+        eventSink: EventSink = EventSink.noop(),
         /// Strategy selection for collection:
         /// - .mark_sweep: root-based mark-and-sweep (default, baseline behavior)
         /// - .bump: experimental full reset path
@@ -39,6 +45,7 @@ pub const Runtime = struct {
     };
 
     allocator: std.mem.Allocator,
+    event_sink: EventSink,
     heap_store: HeapStore,
     root_registry: RootRegistry,
     debug_root_checks: bool = false,
@@ -54,8 +61,9 @@ pub const Runtime = struct {
     pub fn initWithConfig(allocator: std.mem.Allocator, config: Config) Runtime {
         var runtime = Runtime{
             .allocator = allocator,
+            .event_sink = config.eventSink,
             .heap_store = HeapStore.init(allocator),
-            .root_registry = RootRegistry.init(allocator),
+            .root_registry = RootRegistry.init(allocator, config.eventSink),
             .debug_root_checks = config.debugRootChecks,
         };
         if (config.fixedArena) |buffer| {
@@ -98,15 +106,16 @@ pub const Runtime = struct {
             &self.fixed_arena,
             self.fixed_arena_buffer,
             self.gc_strategy,
+            self.event_sink,
         );
     }
 
     pub fn mutator(self: *Runtime) Mutator {
-        return Mutator.init(self.currentAllocator(), &self.heap_store);
+        return Mutator.init(self.currentAllocator(), &self.heap_store, self.event_sink);
     }
 
     pub fn language(self: *Runtime) Language {
-        return Language.init(self.allocator, self.currentAllocator(), &self.heap_store);
+        return Language.init(self.allocator, self.currentAllocator(), &self.heap_store, self.event_sink);
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {

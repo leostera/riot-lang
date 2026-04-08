@@ -71,6 +71,7 @@ Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - `cd zort && zig build bench -- --iters 1000 --gc-strategy=bump`
 - `cd zort && zig build bench -- --iters 1000 --gc-strategy=both`
 - `cd zort && zig build bench -- --filter=string`
+- `cd zort && zig build bench -- --filter=string --csv=notes/benchmarks.csv`
 - `cd zort && zig build bench -- --filter=alloc-pressure-small`
 - `cd zort && zig build bench -- --iters 1000 --filter=root-churn --gc-strategy=both`
 - `cd zort && zig build bench -- --iters 1000 --filter=long-lived-sweep`

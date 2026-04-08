@@ -1,6 +1,8 @@
 const std = @import("std");
 const runtime = @import("runtime.zig");
 
+const EventCounters = runtime.EventCounters;
+const EventRecorder = runtime.EventRecorder;
 const Runtime = runtime.Runtime;
 const Value = runtime.Value;
 
@@ -26,6 +28,7 @@ const BenchCase = struct {
 const Config = struct {
     iters: usize,
     filter: ?[]const u8 = null,
+    csv_path: ?[]const u8 = null,
     gc_strategy: Runtime.GcStrategy = .mark_sweep,
     compare_strategies: bool = false,
 };
@@ -49,6 +52,7 @@ fn parseConfig() Config {
 
     var iters: usize = DefaultIters;
     var filter: ?[]const u8 = null;
+    var csv_path: ?[]const u8 = null;
     var next_is_iters = false;
     var gc_strategy: Runtime.GcStrategy = .mark_sweep;
     var compare_strategies = false;
@@ -74,6 +78,10 @@ fn parseConfig() Config {
 
         if (std.mem.startsWith(u8, arg, "--filter=")) {
             filter = arg[9..];
+            continue;
+        }
+        if (std.mem.startsWith(u8, arg, "--csv=")) {
+            csv_path = arg[6..];
             continue;
         }
         if (std.mem.startsWith(u8, arg, "--gc-strategy=")) {
@@ -104,6 +112,7 @@ fn parseConfig() Config {
     return .{
         .iters = iters,
         .filter = filter,
+        .csv_path = csv_path,
         .gc_strategy = gc_strategy,
         .compare_strategies = compare_strategies,
     };
@@ -126,26 +135,66 @@ fn consume(value: Value) void {
 
 fn runSuite(
     rt: *Runtime,
+    recorder: *EventRecorder,
+    csv_file: ?*std.fs.File,
     iters: usize,
     label: []const u8,
     strategy: Runtime.GcStrategy,
     f: *const fn (*Runtime, usize) anyerror!u64,
 ) !void {
+    const before = recorder.snapshot();
     const elapsed = try f(rt, iters);
+    const delta = EventCounters.diff(recorder.snapshot(), before);
     const ns_per_op = runNanos(elapsed, iters);
-    std.log.info("{s}:{s}: iters={d} ns/op={d:.2}", .{ @tagName(strategy), label, iters, ns_per_op });
-}
-
-fn runAllCases(rt: *Runtime, iters: usize, filter: ?[]const u8, strategy: Runtime.GcStrategy, cases: []const BenchCase) !void {
-    for (cases) |case| {
-        if (!shouldRun(case.label, filter)) continue;
-        try runSuite(rt, iters, case.label, strategy, case.run);
+    std.log.info(
+        "{s}:{s}: iters={d} ns/op={d:.2} alloc={d} field={d} bytes={d} root+={d} root-={d} collect={d} reclaim={d}",
+        .{
+            @tagName(strategy),
+            label,
+            iters,
+            ns_per_op,
+            delta.allocations,
+            delta.field_writes,
+            delta.bytes_writes,
+            delta.root_registrations,
+            delta.root_unregistrations,
+            delta.collections,
+            delta.reclaims,
+        },
+    );
+    if (csv_file) |file| {
+        try appendCsvRow(file, label, strategy, iters, ns_per_op, delta);
     }
 }
 
-fn runBenchcases(allocator: std.mem.Allocator, iters: usize, filter: ?[]const u8, gc_strategy: Runtime.GcStrategy) !void {
-    var rt = Runtime.initWithConfig(allocator, .{ .gcStrategy = gc_strategy });
+fn runAllCases(
+    rt: *Runtime,
+    recorder: *EventRecorder,
+    csv_file: ?*std.fs.File,
+    iters: usize,
+    filter: ?[]const u8,
+    strategy: Runtime.GcStrategy,
+    cases: []const BenchCase,
+) !void {
+    for (cases) |case| {
+        if (!shouldRun(case.label, filter)) continue;
+        try runSuite(rt, recorder, csv_file, iters, case.label, strategy, case.run);
+    }
+}
+
+fn runBenchcases(allocator: std.mem.Allocator, config: Config, gc_strategy: Runtime.GcStrategy) !void {
+    var recorder = EventRecorder{};
+    var rt = Runtime.initWithConfig(allocator, .{
+        .gcStrategy = gc_strategy,
+        .eventSink = recorder.sink(),
+    });
     defer rt.deinit();
+    var csv_file: ?std.fs.File = null;
+    defer if (csv_file) |*file| file.close();
+
+    if (config.csv_path) |path| {
+        csv_file = try openCsvAppend(path);
+    }
 
     const cases = [_]BenchCase{
         .{ .label = "tuple-alloc", .run = benchmarkTupleAlloc },
@@ -164,11 +213,73 @@ fn runBenchcases(allocator: std.mem.Allocator, iters: usize, filter: ?[]const u8
     };
 
     bench_sink = 0;
-    std.log.info("gc-strategy={s} iters={d}", .{ @tagName(gc_strategy), iters });
-    try runAllCases(&rt, iters, filter, gc_strategy, &cases);
+    std.log.info("gc-strategy={s} iters={d}", .{ @tagName(gc_strategy), config.iters });
+    try runAllCases(&rt, &recorder, if (csv_file) |*file| file else null, config.iters, config.filter, gc_strategy, &cases);
 
     rt.collect();
-    std.log.info("gc-strategy={s} sink={d}", .{ @tagName(gc_strategy), bench_sink });
+    const totals = recorder.snapshot();
+    std.log.info(
+        "gc-strategy={s} sink={d} totals alloc={d} field={d} bytes={d} root+={d} root-={d} collect={d} reclaim={d}",
+        .{
+            @tagName(gc_strategy),
+            bench_sink,
+            totals.allocations,
+            totals.field_writes,
+            totals.bytes_writes,
+            totals.root_registrations,
+            totals.root_unregistrations,
+            totals.collections,
+            totals.reclaims,
+        },
+    );
+}
+
+fn openCsvAppend(path: []const u8) !std.fs.File {
+    if (std.fs.path.dirname(path)) |dir| {
+        if (dir.len > 0) try std.fs.cwd().makePath(dir);
+    }
+
+    var file = std.fs.cwd().openFile(path, .{ .mode = .read_write }) catch |err| switch (err) {
+        error.FileNotFound => try std.fs.cwd().createFile(path, .{ .read = true }),
+        else => return err,
+    };
+
+    const stat = try file.stat();
+    if (stat.size == 0) {
+        try file.writeAll("timestamp_ms,strategy,label,iters,ns_per_op,allocations,field_writes,bytes_writes,root_registrations,root_unregistrations,collections,reclaims\n");
+    }
+    try file.seekFromEnd(0);
+    return file;
+}
+
+fn appendCsvRow(
+    file: *std.fs.File,
+    label: []const u8,
+    strategy: Runtime.GcStrategy,
+    iters: usize,
+    ns_per_op: f64,
+    counters: EventCounters,
+) !void {
+    var buffer: [256]u8 = undefined;
+    const row = try std.fmt.bufPrint(
+        &buffer,
+        "{d},{s},{s},{d},{d:.2},{d},{d},{d},{d},{d},{d},{d}\n",
+        .{
+            std.time.milliTimestamp(),
+            @tagName(strategy),
+            label,
+            iters,
+            ns_per_op,
+            counters.allocations,
+            counters.field_writes,
+            counters.bytes_writes,
+            counters.root_registrations,
+            counters.root_unregistrations,
+            counters.collections,
+            counters.reclaims,
+        },
+    );
+    try file.writeAll(row);
 }
 
 fn benchmarkTupleAlloc(rt: *Runtime, iters: usize) !u64 {
@@ -416,9 +527,9 @@ pub fn main() !void {
 
     if (config.compare_strategies) {
         for (all_strategies) |strategy| {
-            try runBenchcases(gpa.allocator(), config.iters, config.filter, strategy);
+            try runBenchcases(gpa.allocator(), config, strategy);
         }
     } else {
-        try runBenchcases(gpa.allocator(), config.iters, config.filter, config.gc_strategy);
+        try runBenchcases(gpa.allocator(), config, config.gc_strategy);
     }
 }

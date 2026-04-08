@@ -216,14 +216,19 @@ Refs:
 - [`spec/gc-control-and-stats.md`](./spec/gc-control-and-stats.md)
 
 Tasks:
-- Move observability into an event/stats sink subsystem.
-- Decouple benchmark hooks from core runtime policy.
-- Capture benchmark baselines for touched subsystem runs.
-- Add lightweight benchmark governance + CSV append flow in `notes/`.
+- [x] Move observability into an event/stats sink subsystem.
+- [x] Decouple benchmark hooks from core runtime policy.
+- [x] Capture benchmark baselines for touched subsystem runs.
+- [x] Add lightweight benchmark governance + CSV append flow in `notes/`.
 
 Exit criteria:
 - Runtime can run with observability disabled.
 - Bench and stats collection uses explicit hooks, not scattered prints.
+
+Status:
+- Done.
+- `EventSink` is explicit and defaults to a no-op implementation.
+- Bench runs use `EventRecorder` and can append per-case CSV rows into `notes/benchmarks.csv`.
 
 ### 8. Minimal Compatibility Layer
 

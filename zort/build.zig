@@ -35,6 +35,9 @@ pub fn build(b: *std.Build) void {
         .root_module = bench_module,
     });
     const run_bench = b.addRunArtifact(bench);
+    if (b.args) |args| {
+        run_bench.addArgs(args);
+    }
     const bench_step = b.step("bench", "Run zort benchmarks");
     bench_step.dependOn(&run_bench.step);
 

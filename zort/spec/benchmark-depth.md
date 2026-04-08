@@ -78,3 +78,18 @@ documents OCaml runtime observability surfaces rather than zort-only benchmark n
   - a structured event stream
   - a clear story for heap verification
   - repeatable backtrace capture / restore semantics
+
+## zort event sink notes
+
+- zort now has an explicit `EventSink` subsystem in `src/event_sink.zig`.
+- `Mutator`, `RootRegistry`, and `Collector` emit typed events instead of burying observability in ad hoc counters or bench-only logic.
+- `Runtime` accepts an `eventSink` in `Runtime.Config`; the default remains a no-op sink.
+- Bench runs use `EventRecorder` to capture per-case deltas for:
+  - allocations
+  - field writes
+  - bytes writes
+  - root registrations/unregistrations
+  - collections
+  - reclaims
+- `zig build bench -- --csv=notes/benchmarks.csv` appends per-case rows in a lightweight CSV format under `zort/notes/`.
+- Bench argument forwarding now happens through `zort/build.zig`, so `--filter=` reaches the executable as intended.
