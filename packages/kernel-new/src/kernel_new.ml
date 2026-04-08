@@ -18,3 +18,4 @@ module Fs = Fs
 module Time = Time
 module Net = Net
 module Env = Env
+module Process = Process
