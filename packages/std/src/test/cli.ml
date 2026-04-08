@@ -2,8 +2,71 @@ open Global
 open Collections
 open Arg_parser
 
-let list_tests = fun tests ->
-  List.iter (fun (test: Test_case.t) -> println test.name) tests;
+let test_type_fields = function
+  | Test_case.UnitTest -> [ ("type", Data.Json.String "test") ]
+  | Test_case.Property { examples } -> [
+    ("type", Data.Json.String "property");
+    ("examples", Data.Json.Int examples);
+  ]
+
+let size_to_json = function
+  | Test_case.Small -> Data.Json.String "small"
+  | Test_case.Large -> Data.Json.String "large"
+
+let reliability_fields = function
+  | Test_case.Stable -> [ ("reliability", Data.Json.String "stable") ]
+  | Test_case.Flaky { retry_attempts } -> [
+    ("reliability", Data.Json.String "flaky");
+    ("retry_attempts", Data.Json.Int retry_attempts);
+  ]
+
+let matches_query = fun query (test: Test_case.t) ->
+  match query with
+  | None -> true
+  | Some query -> String.contains test.name query
+
+let matches_size = fun ~small_only ~large_only (test: Test_case.t) ->
+  match (small_only, large_only, test.size) with
+  | (false, false, _)
+  | (true, false, Test_case.Small)
+  | (false, true, Test_case.Large) -> true
+  | _ -> false
+
+let matches_flaky = fun ~flaky_only (test: Test_case.t) ->
+  not flaky_only
+  || match test.reliability with
+  | Test_case.Stable -> false
+  | Test_case.Flaky _ -> true
+
+let filtered_tests = fun ~query ~small_only ~large_only ~flaky_only tests ->
+  List.filter
+    (fun (test: Test_case.t) ->
+      matches_query query test
+      && matches_size ~small_only ~large_only test
+      && matches_flaky ~flaky_only test)
+    tests
+
+let write_tests_json = fun tests ->
+  let tests_json =
+    tests
+    |> List.mapi
+      (fun idx (test: Test_case.t) ->
+        let base_fields = [
+          ("index", Data.Json.Int (idx + 1));
+          ("name", Data.Json.String test.name);
+          ("size", size_to_json test.size);
+          ("skip", Data.Json.Bool test.skip);
+        ] in
+        Data.Json.Object (base_fields @ test_type_fields test.test_type @ reliability_fields test.reliability))
+  in
+  print (Data.Json.to_string (Data.Json.Object [ ("tests", Data.Json.Array tests_json) ]));
+  print "\n"
+
+let list_tests = fun ~json tests ->
+  if json then
+    write_tests_json tests
+  else
+    List.iter (fun (test: Test_case.t) -> println test.name) tests;
   Ok ()
 
 let parse_format_to_reporter = function
@@ -15,32 +78,40 @@ let parse_format_to_reporter = function
   | other -> Error ("Unknown format: " ^ other)
 
 let run_tests_cmd =
-  let open Arg in command "run-tests"
-  |> about "Run tests that match query"
-  |> args
-    [
-      positional "query" |> required false |> help "Test name substring to filter by";
-      flag "json" |> long "json" |> help "Emit machine-readable JSON output";
-      option "format"
-      |> long "format"
-      |> help "Output format: tap, json, junit, pretty, minimal"
-      |> default "pretty"
-      |> possible_values [ "tap"; "json"; "junit"; "pretty"; "minimal" ];
-      flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
-      option "concurrency" |> long "concurrency" |> help "Number of concurrent workers" |> default "1";
-      flag "small" |> long "small" |> help "Run only tests marked small";
-      flag "large" |> long "large" |> help "Run only tests marked large";
-      flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
-      option "small-timeout-ms"
-      |> long "small-timeout-ms"
-      |> help "Timeout to apply to tests marked small";
-      option "flaky-max-retries"
-      |> long "flaky-max-retries"
-      |> help "Retry budget for tests marked flaky";
-      option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
-    ]
+  let open Arg in
+    command "run-tests" |> about "Run tests that match query" |> args
+      [
+        positional "query" |> required false |> help "Test name substring to filter by";
+        flag "json" |> long "json" |> help "Emit machine-readable JSON output";
+        option "format"
+        |> long "format"
+        |> help "Output format: tap, json, junit, pretty, minimal"
+        |> default "pretty"
+        |> possible_values [ "tap"; "json"; "junit"; "pretty"; "minimal" ];
+        flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
+        option "concurrency"
+        |> long "concurrency"
+        |> help "Number of concurrent workers"
+        |> default "1";
+        flag "small" |> long "small" |> help "Run only tests marked small";
+        flag "large" |> long "large" |> help "Run only tests marked large";
+        flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
+        option "small-timeout-ms" |> long "small-timeout-ms" |> help "Timeout to apply to tests marked small";
+        option "flaky-max-retries" |> long "flaky-max-retries" |> help "Retry budget for tests marked flaky";
+        option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
+      ]
 
-let list_tests_cmd = command "list-tests" |> about "List all tests"
+let list_tests_cmd =
+  let open Arg in
+    command "list-tests" |> about "List all tests" |> args
+      [
+        positional "query" |> required false |> help "Test name substring to filter by";
+        flag "json" |> long "json" |> help "Emit machine-readable JSON output";
+        flag "small" |> long "small" |> help "List only tests marked small";
+        flag "large" |> long "large" |> help "List only tests marked large";
+        flag "flaky" |> long "flaky" |> help "List only tests marked flaky";
+        option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
+      ]
 
 let get_suite_info name: Reporter.suite_info =
   let binary_path = List.hd Env.args |> Path.v in
@@ -57,8 +128,20 @@ let main = fun ~name ~tests ~args ->
       Error (Failure (error_message err))
   | Ok matches -> (
       match get_subcommand matches with
-      | Some ("list-tests", _) ->
-          list_tests tests
+      | Some ("list-tests", sub_matches) ->
+          let small_only = get_flag sub_matches "small" in
+          let large_only = get_flag sub_matches "large" in
+          if small_only && large_only then
+            Error (Failure "Cannot combine --small and --large")
+          else
+            let flaky_only = get_flag sub_matches "flaky" in
+            let query =
+              match get_one sub_matches "query" with
+              | Some query -> Some query
+              | None -> get_one sub_matches "pattern"
+            in
+            filtered_tests ~query ~small_only ~large_only ~flaky_only tests
+            |> list_tests ~json:(get_flag sub_matches "json")
       | Some ("run-tests", sub_matches) -> (
           let format_str =
             if get_flag sub_matches "json" then
@@ -92,21 +175,11 @@ let main = fun ~name ~tests ~args ->
                   else
                     Runner.All_sizes
                 in
-                let small_test_timeout =
-                  get_int sub_matches "small-timeout-ms"
-                  |> Option.map Time.Duration.from_millis
-                in
-                let flaky_max_retries =
-                  get_int sub_matches "flaky-max-retries"
-                  |> Option.unwrap_or ~default:0
-                in
-                let target =
-                  Runner.{
-                    query;
-                    size_filter;
-                    flaky_only;
-                  }
-                in
+                let small_test_timeout = get_int sub_matches "small-timeout-ms"
+                |> Option.map Time.Duration.from_millis in
+                let flaky_max_retries = get_int sub_matches "flaky-max-retries"
+                |> Option.unwrap_or ~default:0 in
+                let target = Runner.{ query; size_filter; flaky_only } in
                 let mode =
                   if shuffle then
                     Runner.Shuffle
@@ -137,11 +210,7 @@ let main = fun ~name ~tests ~args ->
               concurrency = 1;
               reporter;
               mode = Sequential;
-              target = {
-                query = None;
-                size_filter = All_sizes;
-                flaky_only = false;
-              };
+              target = { query = None; size_filter = All_sizes; flaky_only = false };
               policy = default_policy;
               suite_info;
             }

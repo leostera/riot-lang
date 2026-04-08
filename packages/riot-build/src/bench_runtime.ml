@@ -8,6 +8,7 @@ type suite_binary = Test_runtime.suite_binary = {
 type bench_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
+  suite_filter: string option;
   profile: string;
   extra_args: string list;
 }
@@ -31,6 +32,26 @@ type bench_case_result = {
   index: int;
   name: string;
   result: bench_case_status;
+}
+
+type listed_bench_item_kind =
+  | Benchmark
+  | Comparison
+
+type listed_bench_item = {
+  index: int;
+  name: string;
+  kind: listed_bench_item_kind;
+  iterations: int;
+  warmup: int;
+  skip: bool;
+  cases: string list;
+}
+
+type listed_bench_suite = {
+  suite: suite_binary;
+  source_path: Path.t option;
+  benchmarks: listed_bench_item list;
 }
 
 type bench_comparison_case_result = {
@@ -77,7 +98,12 @@ type bench_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 
+type Message.t +=
+  | ListedBenchmarksReady of (suite_binary * (listed_bench_suite, bench_error) result)
+
 let no_event: bench_event -> unit = fun _ -> ()
+let no_listed_suite: listed_bench_suite -> unit = fun _ -> ()
+let no_list_error: suite_binary -> bench_error -> unit = fun _ _ -> ()
 
 let is_benchmark_binary_name = fun name ->
   String.ends_with ~suffix:"_bench" name || String.ends_with ~suffix:"-bench" name
@@ -90,7 +116,7 @@ let compare_suite_binary = fun left right ->
 let requested_packages = fun suites ->
   suites |> List.map (fun (suite: suite_binary) -> suite.package_name) |> List.sort_uniq String.compare
 
-let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
+let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
   workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
     (fun (pkg: Riot_model.Package.t) ->
       match package_filter with
@@ -99,11 +125,28 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
     (fun (pkg: Riot_model.Package.t) ->
       List.filter_map
         (fun (bin: Riot_model.Package.binary) ->
-          if is_benchmark_binary_name bin.name then
+          if is_benchmark_binary_name bin.name && (
+              match suite_filter with
+              | None -> true
+              | Some suite_name -> String.equal bin.name suite_name
+            ) then
             Some { package_name = pkg.name; suite_name = bin.name }
           else
             None)
         pkg.binaries) |> List.sort compare_suite_binary
+
+let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: suite_binary) ->
+  workspace.packages |> List.find_map
+    (fun (pkg: Riot_model.Package.t) ->
+      if String.equal pkg.name suite.package_name then
+        pkg.binaries |> List.find_map
+          (fun (bin: Riot_model.Package.binary) ->
+            if String.equal bin.name suite.suite_name then
+              Some Path.(pkg.path / bin.path)
+            else
+              None)
+      else
+        None)
 
 let bench_error_message = function
   | BuildFailed err -> Build_runtime.error_message err
@@ -146,6 +189,10 @@ let get_float = function
   | Data.Json.Int value -> Ok (float_of_int value)
   | other -> error_expected "float" other
 
+let get_bool = function
+  | Data.Json.Bool value -> Ok value
+  | other -> error_expected "bool" other
+
 let field = fun name fields ->
   match List.assoc_opt name fields with
   | Some value -> Ok value
@@ -184,6 +231,16 @@ let split_json_stdout = fun stdout ->
       Ok (prefix, json_line)
 
 let remove_json_args = fun args ->
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | "--json" :: rest -> loop acc rest
+    | "--format" :: _value :: rest -> loop acc rest
+    | arg :: rest when String.starts_with ~prefix:"--format=" arg -> loop acc rest
+    | arg :: rest -> loop (arg :: acc) rest
+  in
+  loop [] args
+
+let remove_list_args = fun args ->
   let rec loop acc = function
     | [] -> List.rev acc
     | "--json" :: rest -> loop acc rest
@@ -257,6 +314,46 @@ let speedup_ratio_of_json = fun json ->
   let* name = get_string name_json in
   let* ratio = get_float ratio_json in
   Ok (name, ratio)
+
+let listed_bench_item_of_json = fun json ->
+  let* fields = get_object json in
+  let* index_json = field "index" fields in
+  let* name_json = field "name" fields in
+  let* kind_json = field "kind" fields in
+  let* iterations_json = field "iterations" fields in
+  let* warmup_json = field "warmup" fields in
+  let* index = get_int index_json in
+  let* name = get_string name_json in
+  let* kind_name = get_string kind_json in
+  let* iterations = get_int iterations_json in
+  let* warmup = get_int warmup_json in
+  let* kind =
+    match kind_name with
+    | "benchmark" -> Ok Benchmark
+    | "comparison" -> Ok Comparison
+    | other -> Error ("unknown benchmark list item kind " ^ other)
+  in
+  let skip =
+    match List.assoc_opt "skip" fields with
+    | Some value -> get_bool value
+    | None -> Ok false
+  in
+  let cases =
+    match List.assoc_opt "cases" fields with
+    | None -> Ok []
+    | Some value ->
+        let* values = get_array value in
+        let rec loop acc = function
+          | [] -> Ok (List.rev acc)
+          | value :: rest ->
+              let* name = get_string value in
+              loop (name :: acc) rest
+        in
+        loop [] values
+  in
+  let* skip = skip in
+  let* cases = cases in
+  Ok { index; name; kind; iterations; warmup; skip; cases }
 
 let comparison_case_result_of_json = fun json ->
   let* fields = get_object json in
@@ -487,8 +584,175 @@ let run_suite_binary_capture = fun ~extra_args binary_path ->
   let cmd = Command.make binary_path ~args:(("run-benchmarks" :: extra_args)) in
   Command.output cmd
 
+let list_suite_binary_capture = fun ~extra_args binary_path ->
+  let extra_args = remove_list_args extra_args @ [ "--json" ] in
+  let cmd = Command.make binary_path ~args:(("list-benchmarks" :: extra_args)) in
+  Command.output cmd
+
+let parse_listed_benchmarks_output = fun stdout ->
+  let* (_prefix_stdout, json_line) = split_json_stdout stdout in
+  let* json = Data.Json.of_string json_line |> Result.map_error Data.Json.error_to_string in
+  let* fields = get_object json in
+  let* benchmarks_json = field "benchmarks" fields in
+  let* benchmarks = get_array benchmarks_json in
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | json :: rest ->
+        let* listed = listed_bench_item_of_json json in
+        loop (listed :: acc) rest
+  in
+  loop [] benchmarks
+
+let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args binary_path ->
+  match list_suite_binary_capture ~extra_args binary_path with
+  | Error (Command.SystemError reason) ->
+      Error (SuiteExecutionError { suite; reason })
+  | Ok output -> (
+      match parse_listed_benchmarks_output output.stdout with
+      | Error reason -> Error (SuiteExecutionError {
+        suite;
+        reason = "failed to parse benchmark results from suite '"
+        ^ suite.suite_name
+        ^ "': "
+        ^ reason
+      })
+      | Ok benchmarks ->
+          Ok {
+            suite;
+            source_path = find_suite_source_path ~workspace suite;
+            benchmarks;
+          }
+    )
+
+let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (request: bench_request) ->
+  let suites = collect_suite_binaries
+    request.workspace
+    ?package_filter:request.package_filter
+    ?suite_filter:request.suite_filter
+    () in
+  if suites = [] then
+    Ok []
+  else
+    match
+      Build_runtime.build_best_effort ~record_cache_generation:false
+        {
+          workspace = request.workspace;
+          packages = requested_packages suites;
+          targets = Build_runtime.Host;
+          scope = Build_runtime.Dev;
+          profile = request.profile;
+        }
+    with
+    | Error err -> Error (BuildFailed err)
+    | Ok results ->
+        let store = Riot_store.Store.create_for_lane
+          ~workspace:request.workspace
+          ~profile:request.profile
+          ~target:(Riot_model.Riot_dirs.host_target ()) in
+        let rec resolve_binaries acc = function
+          | [] -> (List.rev acc, [])
+          | suite :: rest -> (
+              match find_suite_binary_path ~store ~suite results with
+              | Ok binary_path ->
+                  let resolved, missing = resolve_binaries ((suite, binary_path) :: acc) rest in
+                  (resolved, missing)
+              | Error err ->
+                  let resolved, missing = resolve_binaries acc rest in
+                  (resolved, (suite, err) :: missing)
+            )
+        in
+        let suite_binaries, missing_suites = resolve_binaries [] suites in
+        List.iter
+          (fun (suite, err) -> on_suite_error suite err)
+          missing_suites;
+        if suite_binaries = [] then
+          Ok []
+        else
+          let concurrency = Int.max 1 (Int.min 8 System.available_parallelism) in
+          let parent = self () in
+          let rec spawn_initial active remaining =
+            if active >= concurrency then
+              (active, remaining)
+            else
+              match remaining with
+              | [] -> (active, [])
+              | (suite, binary_path) :: rest ->
+                  let _worker =
+                    spawn
+                      (fun () ->
+                        let result =
+                          try list_suite
+                            ~workspace:request.workspace
+                            ~suite
+                            ~extra_args:request.extra_args
+                            binary_path
+                          with
+                          | exn -> Error (SuiteExecutionError {
+                            suite;
+                            reason = Exception.to_string exn
+                          })
+                        in
+                        send parent (ListedBenchmarksReady (suite, result));
+                        Ok ())
+                  in
+                  spawn_initial (active + 1) rest
+          in
+          let rec collect active remaining acc =
+            if active <= 0 then
+              Ok (List.rev acc)
+            else
+              let suite, result = receive
+                ~selector:(fun (msg: Message.t) ->
+                  match msg with
+                  | ListedBenchmarksReady payload -> `select payload
+                  | _ -> `skip)
+                () in
+              let acc =
+                match result with
+                | Ok listed ->
+                    on_suite listed;
+                    (suite, listed) :: acc
+                | Error err ->
+                    on_suite_error suite err;
+                    acc
+              in
+              match remaining with
+              | [] -> collect (active - 1) [] acc
+              | (next_suite, next_binary_path) :: rest ->
+                  let _worker =
+                    spawn
+                      (fun () ->
+                        let result =
+                          try list_suite
+                            ~workspace:request.workspace
+                            ~suite:next_suite
+                            ~extra_args:request.extra_args
+                            next_binary_path
+                          with
+                          | exn -> Error (SuiteExecutionError {
+                            suite = next_suite;
+                            reason = Exception.to_string exn
+                          })
+                        in
+                        send parent (ListedBenchmarksReady (next_suite, result));
+                        Ok ())
+                  in
+                  collect active rest acc
+          in
+          let initial_active, remaining = spawn_initial 0 suite_binaries in
+          collect initial_active remaining []
+          |> Result.map
+            (fun collected ->
+              collected
+              |> List.sort (fun (left, _) (right, _) -> compare_suite_binary left right)
+              |> List.map snd)
+
 let bench = fun ?(on_event = no_event) (request: bench_request) ->
-  let suites = collect_suite_binaries request.workspace ?package_filter:request.package_filter () in
+  let suites = collect_suite_binaries
+    request.workspace
+    ?package_filter:request.package_filter
+    ?suite_filter:request.suite_filter
+    () in
   if suites = [] then
     (
       on_event (NoSuitesFound { package_name = request.package_filter });

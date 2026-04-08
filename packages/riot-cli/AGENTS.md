@@ -52,6 +52,9 @@
 44. `riot check` should resolve explicit file and directory arguments against the process cwd before workspace/package lookup so relative paths keep the same package context as absolute paths.
 45. `riot build` should exit when the build is done. Do not hide synchronous post-build type-cache warmups or second workspace-preparation passes behind the build command.
 46. `riot init` should delegate scaffolding decisions to `riot-init` and only render the structured init event stream in the CLI. Keep package-creation hints and current-directory handling consistent with the emitted events rather than duplicating that policy in `cli.ml`.
+47. `riot info --json` is the canonical editor-facing workspace introspection surface. Keep it workspace-root scoped, include the resolved workspace manifest plus each package manifest, and encode workspace-load failures as structured stdout payloads in JSON mode.
+48. `riot test --list --json` and `riot bench --list --json` should stream discovery as JSONL so large workspaces can populate editor UIs incrementally. Preserve partial results when some suites fail to build or list, and surface suite-list failures as structured events instead of aborting the whole listing pass.
+49. `riot run --list --json` should identify whether each runnable is a normal binary or an example. Keep that metadata in the machine-readable payload so editors do not have to infer it from paths.
 
 ## Validate
 
