@@ -272,6 +272,11 @@ Exit criteria:
 - Effects are isolated as control flow, not GC/exceptions.
 - Suspended stack liveness is explicit and verified.
 
+Status:
+- In progress.
+- `Collector` now traces `RootProvider` inputs instead of a hard-coded explicit-root slice.
+- `RootRegistry` is the first provider; `ControlKernel` suspended-state providers are next.
+
 ### 10. Native Boundary Services
 
 Refs:

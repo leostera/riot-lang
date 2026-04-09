@@ -1,12 +1,15 @@
 const std = @import("std");
 const event_sink = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
+const root_provider = @import("root_provider.zig");
 const root_registry = @import("root_registry.zig");
 const value = @import("value.zig");
 
 pub const Value = value.Value;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
+pub const RootProvider = root_provider.RootProvider;
+pub const RootVisitor = root_provider.RootVisitor;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const EventSink = event_sink.EventSink;
 
@@ -17,7 +20,7 @@ pub const GcStrategy = enum {
 
 pub const Collector = struct {
     heap_store: *HeapStore,
-    explicit_roots: []const *const Value,
+    root_providers: []const RootProvider,
     gc_strategy: GcStrategy,
     fixed_arena: *?std.heap.FixedBufferAllocator,
     fixed_arena_buffer: ?[]u8,
@@ -25,7 +28,7 @@ pub const Collector = struct {
 
     pub fn init(
         heap: *HeapStore,
-        explicit_roots: []const *const Value,
+        root_providers: []const RootProvider,
         fixed_arena: *?std.heap.FixedBufferAllocator,
         fixed_arena_buffer: ?[]u8,
         gc_strategy: GcStrategy,
@@ -33,7 +36,7 @@ pub const Collector = struct {
     ) Collector {
         return .{
             .heap_store = heap,
-            .explicit_roots = explicit_roots,
+            .root_providers = root_providers,
             .gc_strategy = gc_strategy,
             .fixed_arena = fixed_arena,
             .fixed_arena_buffer = fixed_arena_buffer,
@@ -42,10 +45,11 @@ pub const Collector = struct {
     }
 
     pub fn collect(self: *Collector) void {
+        const root_count = self.rootCount();
         self.event_sink.emit(.{ .collect = .{
             .phase = .start,
             .strategy = self.collectStrategy(),
-            .explicit_roots = self.explicit_roots.len,
+            .root_count = root_count,
             .reclaimed = 0,
         } });
         var reclaimed: usize = 0;
@@ -56,14 +60,18 @@ pub const Collector = struct {
         self.event_sink.emit(.{ .collect = .{
             .phase = .end,
             .strategy = self.collectStrategy(),
-            .explicit_roots = self.explicit_roots.len,
+            .root_count = root_count,
             .reclaimed = reclaimed,
         } });
     }
 
     fn collectMarkSweep(self: *Collector) usize {
-        for (self.explicit_roots) |slot| {
-            self.mark(slot.*);
+        const visitor = RootVisitor{
+            .ctx = self,
+            .visit_fn = visitRoot,
+        };
+        for (self.root_providers) |provider| {
+            provider.visit(visitor);
         }
 
         const fixed_arena = self.fixed_arena_buffer != null;
@@ -139,6 +147,19 @@ pub const Collector = struct {
             .bump => .bump,
         };
     }
+
+    fn rootCount(self: *const Collector) usize {
+        var count: usize = 0;
+        for (self.root_providers) |provider| {
+            count += provider.count();
+        }
+        return count;
+    }
+
+    fn visitRoot(ctx: ?*anyopaque, rooted: Value) void {
+        const self: *Collector = @ptrCast(@alignCast(ctx.?));
+        self.mark(rooted);
+    }
 };
 
 test "collector: mark-sweep keeps rooted graph and reclaims unreachable objects" {
@@ -158,12 +179,14 @@ test "collector: mark-sweep keeps rooted graph and reclaims unreachable objects"
 
     try roots.register(&root);
 
-    var collector = Collector.init(&heap, roots.items(), &fixed_arena, null, .mark_sweep, EventSink.noop());
+    var providers = [_]RootProvider{roots.provider()};
+    var collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 2), heap.count());
 
     roots.unregister(&root);
-    collector = Collector.init(&heap, roots.items(), &fixed_arena, null, .mark_sweep, EventSink.noop());
+    providers[0] = roots.provider();
+    collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 0), heap.count());
 }
@@ -184,7 +207,8 @@ test "collector: bump strategy resets fixed arena allocation state" {
     }
     try std.testing.expectEqual(@as(usize, 1), heap.count());
 
-    var collector = Collector.init(&heap, roots.items(), &fixed_arena, arena_bytes[0..], .bump, EventSink.noop());
+    var providers = [_]RootProvider{roots.provider()};
+    var collector = Collector.init(&heap, providers[0..], &fixed_arena, arena_bytes[0..], .bump, EventSink.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 0), heap.count());
 
@@ -208,7 +232,8 @@ test "collector: emits collection and reclaim events" {
     var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop());
     _ = try writer.allocTuple(0);
 
-    var gc = Collector.init(&heap, roots.items(), &fixed_arena, null, .mark_sweep, recorder.sink());
+    var providers = [_]RootProvider{roots.provider()};
+    var gc = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, recorder.sink());
     gc.collect();
 
     const counters = recorder.snapshot();

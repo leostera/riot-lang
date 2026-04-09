@@ -15,6 +15,7 @@ pub const HeapStore = @import("runtime.zig").HeapStore;
 pub const Object = @import("runtime.zig").Object;
 pub const ObjectKind = @import("runtime.zig").ObjectKind;
 pub const Mutator = @import("runtime.zig").Mutator;
+pub const RootProvider = @import("runtime.zig").RootProvider;
 pub const RootRegistry = @import("runtime.zig").RootRegistry;
 pub const RootHandle = @import("runtime.zig").RootHandle;
 pub const Runtime = @import("runtime.zig").Runtime;
@@ -28,6 +29,7 @@ test {
     std.testing.refAllDecls(@import("language.zig"));
     std.testing.refAllDecls(@import("mutator.zig"));
     std.testing.refAllDecls(@import("primitive_registry.zig"));
+    std.testing.refAllDecls(@import("root_provider.zig"));
     std.testing.refAllDecls(@import("root_registry.zig"));
     std.testing.refAllDecls(@import("runtime.zig"));
 }

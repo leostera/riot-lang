@@ -51,7 +51,7 @@ pub const RootEvent = struct {
 pub const CollectEvent = struct {
     phase: CollectPhase,
     strategy: CollectStrategy,
-    explicit_roots: usize,
+    root_count: usize,
     reclaimed: usize,
 };
 
@@ -93,7 +93,7 @@ pub const Counters = struct {
 
 pub const Recorder = struct {
     counters: Counters = .{},
-    last_collect_roots: usize = 0,
+    last_collect_root_count: usize = 0,
     last_collect_reclaimed: usize = 0,
 
     pub fn sink(self: *Recorder) EventSink {
@@ -120,7 +120,7 @@ pub const Recorder = struct {
             .collect => |collect_event| {
                 if (collect_event.phase == .end) {
                     self.counters.collections +%= 1;
-                    self.last_collect_roots = collect_event.explicit_roots;
+                    self.last_collect_root_count = collect_event.root_count;
                     self.last_collect_reclaimed = collect_event.reclaimed;
                 }
             },
@@ -174,7 +174,7 @@ test "event_sink: recorder tracks counters by event kind" {
     sink.emit(.{ .collect = .{
         .phase = .end,
         .strategy = .mark_sweep,
-        .explicit_roots = 1,
+        .root_count = 1,
         .reclaimed = 1,
     } });
 
@@ -185,6 +185,6 @@ test "event_sink: recorder tracks counters by event kind" {
     try std.testing.expectEqual(@as(usize, 1), counters.root_registrations);
     try std.testing.expectEqual(@as(usize, 1), counters.reclaims);
     try std.testing.expectEqual(@as(usize, 1), counters.collections);
-    try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_roots);
+    try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_root_count);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_reclaimed);
 }

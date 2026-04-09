@@ -87,9 +87,10 @@
 - zort currently uses a deliberately simpler collector baseline than OCaml:
   - `Collector` is a dedicated subsystem in `src/collector.zig`
   - `HeapStore` owns storage and reclamation primitives
-  - `RootRegistry` owns explicit roots and root enumeration
+  - `RootRegistry` owns explicit roots
+  - `RootProvider` is the collector-facing root enumeration seam
 - The baseline `mark_sweep` strategy:
-  - traces from explicit roots only
+  - traces from registered root providers
   - walks tuple edges transitively
   - reclaims through `HeapStore.reclaimSlot`
 - The experimental `bump` strategy:

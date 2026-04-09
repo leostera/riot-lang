@@ -95,5 +95,7 @@
   - registration/unregistration bookkeeping,
   - scoped root handles,
   - debug validation through an external validity hook.
-- `Runtime` consumes registered roots through `RootRegistry.items()` during collection.
+- `RootRegistry` also exposes a `RootProvider` view through `zort/src/root_provider.zig`.
+- `Runtime` now builds the collector's root set from providers instead of hard-coding explicit-root slices.
 - Scoped root handles are an ownership tool only; they do not yet model stack roots, callback roots, or effect-parent roots.
+- This is the seam zort will use for suspended fibers, continuations, callback-owned roots, and other non-registry liveness owners.

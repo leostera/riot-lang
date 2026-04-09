@@ -1,9 +1,12 @@
 const std = @import("std");
 const event_sink = @import("event_sink.zig");
+const root_provider = @import("root_provider.zig");
 const value = @import("value.zig");
 
 pub const Value = value.Value;
 pub const EventSink = event_sink.EventSink;
+pub const RootProvider = root_provider.RootProvider;
+pub const RootVisitor = root_provider.RootVisitor;
 
 pub const Stats = struct {
     root_generation: usize,
@@ -54,6 +57,14 @@ pub const RootRegistry = struct {
         return self.roots.items;
     }
 
+    pub fn provider(self: *RootRegistry) RootProvider {
+        return .{
+            .ctx = self,
+            .count_fn = countRoots,
+            .visit_fn = visitRoots,
+        };
+    }
+
     pub fn register(self: *RootRegistry, slot: *const Value) !void {
         try self.roots.append(self.allocator, slot);
         self.root_generation +%= 1;
@@ -95,6 +106,18 @@ pub const RootRegistry = struct {
             if (rooted.isBlock() and !is_valid(context, rooted)) {
                 @panic("zort: root points to non-runtime object");
             }
+        }
+    }
+
+    fn countRoots(ctx: ?*anyopaque) usize {
+        const self: *RootRegistry = @ptrCast(@alignCast(ctx.?));
+        return self.roots.items.len;
+    }
+
+    fn visitRoots(ctx: ?*anyopaque, visitor: RootVisitor) void {
+        const self: *RootRegistry = @ptrCast(@alignCast(ctx.?));
+        for (self.roots.items) |slot| {
+            visitor.visit(slot.*);
         }
     }
 };
@@ -161,4 +184,35 @@ test "root_registry: emits registration events" {
     const counters = recorder.snapshot();
     try std.testing.expectEqual(@as(usize, 1), counters.root_registrations);
     try std.testing.expectEqual(@as(usize, 1), counters.root_unregistrations);
+}
+
+test "root_registry: provider enumerates rooted values" {
+    var registry = RootRegistry.init(std.testing.allocator, EventSink.noop());
+    defer registry.deinit();
+
+    var left = Value.fromInt(7);
+    var right = Value.fromHeapRef(.{ .index = 3, .generation = 9 });
+    try registry.register(&left);
+    try registry.register(&right);
+
+    var seen = std.ArrayListUnmanaged(Value){};
+    defer seen.deinit(std.testing.allocator);
+
+    const Collect = struct {
+        fn visit(ctx: ?*anyopaque, rooted: Value) void {
+            const items: *std.ArrayListUnmanaged(Value) = @ptrCast(@alignCast(ctx.?));
+            items.append(std.testing.allocator, rooted) catch unreachable;
+        }
+    };
+
+    const provider = registry.provider();
+    try std.testing.expectEqual(@as(usize, 2), provider.count());
+    provider.visit(.{
+        .ctx = &seen,
+        .visit_fn = Collect.visit,
+    });
+
+    try std.testing.expectEqual(@as(usize, 2), seen.items.len);
+    try std.testing.expectEqual(left, seen.items[0]);
+    try std.testing.expectEqual(right, seen.items[1]);
 }

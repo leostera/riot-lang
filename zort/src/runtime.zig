@@ -5,6 +5,7 @@ const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
 const language_mod = @import("language.zig");
 const mutator = @import("mutator.zig");
+const root_provider_mod = @import("root_provider.zig");
 const root_registry = @import("root_registry.zig");
 
 pub const Value = value.Value;
@@ -20,6 +21,7 @@ pub const ObjectKind = heap_store.ObjectKind;
 pub const Collector = collector_mod.Collector;
 pub const Language = language_mod.Language;
 pub const Mutator = mutator.Mutator;
+pub const RootProvider = root_provider_mod.RootProvider;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const Error = language_mod.Error;
@@ -99,10 +101,10 @@ pub const Runtime = struct {
         return self.heap_store.count();
     }
 
-    pub fn collector(self: *Runtime) Collector {
+    fn collectorWithProviders(self: *Runtime, root_providers: []const RootProvider) Collector {
         return Collector.init(
             &self.heap_store,
-            self.root_registry.items(),
+            root_providers,
             &self.fixed_arena,
             self.fixed_arena_buffer,
             self.gc_strategy,
@@ -281,7 +283,9 @@ pub const Runtime = struct {
     pub fn collect(self: *Runtime) void {
         if (self.debug_root_checks) self.verifyRoots();
         self.collect_generations +%= 1;
-        var gc = self.collector();
+        var providers_buffer: [1]RootProvider = undefined;
+        const providers = self.fillRootProviders(&providers_buffer);
+        var gc = self.collectorWithProviders(providers);
         gc.collect();
     }
 
@@ -292,6 +296,12 @@ pub const Runtime = struct {
 
     fn verifyRoots(self: *Runtime) void {
         self.root_registry.verify(self, isValidRootedValue);
+    }
+
+    fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
+        std.debug.assert(buffer.len >= 1);
+        buffer[0] = self.root_registry.provider();
+        return buffer[0..1];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
