@@ -481,9 +481,10 @@ pub const Runtime = struct {
         const fiber = continuation.fiber;
         const fiber_domain = continuation.domain;
         const self_handled = continuation.handler_fiber.index == fiber.index and continuation.handler_fiber.generation == fiber.generation;
+        const was_suspended = continuation.status == .suspended;
         const dropped = self.control_kernel.dropContinuation(handle);
         if (!dropped) return false;
-        if (!self_handled) {
+        if (was_suspended and !self_handled) {
             _ = self.fiber_scheduler.discardSuspended(fiber_domain, fiber) catch return false;
             self.control_kernel.discardFiber(fiber) catch return false;
         }
@@ -1783,6 +1784,31 @@ test "runtime: stack limits configure managed continuation snapshots" {
 
     _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(8));
     try std.testing.expectError(error.AlreadyResumed, rt.snapshotContinuationStack(std.testing.allocator, performed.continuation));
+}
+
+test "runtime: dropping a resumed continuation does not discard the resumed fiber" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const effect: EffectId = 19;
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
+        .effect = effect,
+        .handle_effect = Value.fromInt(1),
+    });
+    defer _ = rt.popEffectHandler(main) catch {};
+
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
+    try rt.pushFiberFrame(child, 1901);
+
+    const performed = try rt.performEffectAt(1901, effect, Value.fromInt(3), &.{});
+    _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(4));
+    try std.testing.expect(rt.dropContinuation(performed.continuation));
+    try std.testing.expectEqual(child, rt.currentFiber());
+    try std.testing.expect(rt.controlKernel().fiber(child) != null);
+    _ = try rt.popFiberFrame(child);
+    try rt.verifyDebugState();
 }
 
 test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {

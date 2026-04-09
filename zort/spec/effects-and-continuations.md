@@ -204,6 +204,10 @@
 - `resumeContinuation` consumes a continuation once:
   - the first resume reactivates the captured fiber,
   - the second resume fails with an explicit `AlreadyResumed` error.
+- Dropping a continuation now follows ownership state explicitly:
+  - dropping a still-suspended continuation tears down its suspended-fiber ownership,
+  - dropping a resumed continuation only frees the continuation record,
+  - zort does not discard the resumed fiber after ownership has already moved back into scheduler/control state.
 - `reperform` now exists as a distinct search rule:
   - it skips handlers on the current fiber,
   - it resumes handler search at the parent-fiber chain,

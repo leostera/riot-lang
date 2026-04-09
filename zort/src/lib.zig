@@ -68,5 +68,6 @@ test {
     std.testing.refAllDecls(@import("root_registry.zig"));
     std.testing.refAllDecls(@import("runtime.zig"));
     std.testing.refAllDecls(@import("runtime_services.zig"));
+    std.testing.refAllDecls(@import("stress.zig"));
     std.testing.refAllDecls(@import("stw_coordinator.zig"));
 }
