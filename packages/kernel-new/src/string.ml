@@ -19,7 +19,7 @@ let init = fun length builder ->
     )
   in
   let _ = fill 0 in
-  Caml_runtime.bytes_to_string out
+  Caml_runtime.bytes_unsafe_to_string out
 
 let make = fun length char -> init length (fun _ -> char)
 
@@ -29,7 +29,7 @@ let append = fun left right ->
   let out = Caml_runtime.bytes_create (left_length + right_length) in
   Caml_runtime.string_blit left 0 out 0 left_length;
   Caml_runtime.string_blit right 0 out left_length right_length;
-  Caml_runtime.bytes_to_string out
+  Caml_runtime.bytes_unsafe_to_string out
 
 let concat = fun separator values ->
   let rec total_length acc = function
@@ -58,7 +58,7 @@ let concat = fun separator values ->
       value
   | values ->
       let out = Caml_runtime.bytes_create (total_length 0 values) in
-      Caml_runtime.bytes_to_string (fill out 0 values)
+      Caml_runtime.bytes_unsafe_to_string (fill out 0 values)
 
 let equal = Caml_runtime.equal
 

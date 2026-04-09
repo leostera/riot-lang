@@ -17,6 +17,8 @@ val equal: t -> t -> bool
 
 val compare: t -> t -> int
 
+(** Use `of_bytes value` to copy `value` into a fresh immutable string. *)
 val of_bytes: bytes -> t
 
+(** Use `to_bytes value` to copy `value` into fresh mutable bytes. *)
 val to_bytes: t -> bytes

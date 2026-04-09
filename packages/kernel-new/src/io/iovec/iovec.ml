@@ -103,4 +103,4 @@ let into_bytes = fun segments ->
   let _ = loop 0 0 in
   out
 
-let into_string = fun segments -> Bytes.to_string (into_bytes segments)
+let into_string = fun segments -> Caml_runtime.bytes_unsafe_to_string (into_bytes segments)

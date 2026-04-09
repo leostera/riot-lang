@@ -66,9 +66,21 @@ external bytes_blit: bytes -> int -> bytes -> int -> int -> unit = "caml_blit_by
 
 external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_string" [@@noalloc]
 
-external bytes_to_string: bytes -> string = "%bytes_to_string"
+external bytes_unsafe_to_string: bytes -> string = "%bytes_to_string"
 
-external bytes_of_string: string -> bytes = "%bytes_of_string"
+external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
+
+let bytes_to_string = fun value ->
+  let length = bytes_length value in
+  let out = bytes_create length in
+  bytes_blit value 0 out 0 length;
+  bytes_unsafe_to_string out
+
+let bytes_of_string = fun value ->
+  let length = string_length value in
+  let out = bytes_create length in
+  string_blit value 0 out 0 length;
+  out
 
 external int64_of_int: int -> int64 = "%int64_of_int"
 

@@ -58,4 +58,4 @@ let to_string = fun value ->
     if negative then
       Caml_runtime.bytes_set out 0 '-';
     fill (width - 1) value;
-    Caml_runtime.bytes_to_string out
+    Caml_runtime.bytes_unsafe_to_string out
