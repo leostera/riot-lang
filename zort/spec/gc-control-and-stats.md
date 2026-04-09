@@ -137,7 +137,11 @@
     - strategy
     - root count
     - marked counts by object kind
+    - promoted counts by object kind
+    - promoted words
     - reclaimed counts by object kind
+    - current live nursery object/word counts
+    - current live major object/word counts
     - timings for root enumeration, marking, weak processing, finalizer processing, sweeping, and total collection
 - Mutation observability now includes:
   - `barrier` events for remembered-set recording

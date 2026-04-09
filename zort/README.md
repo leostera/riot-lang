@@ -142,7 +142,7 @@ Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - `--gc-strategy=<mark-sweep|mark_sweep|generational|bump|both>` selects collection mode (default: `mark-sweep`).
   - `--gc-strategy=both` runs the full suite once per strategy and prints separate strategy labels.
 - `--trace-gc` prints collection start/end, root-provider counts, reclaim events, and GC snapshots.
-- `--trace-gc` also prints explicit collector phases and weak/finalizer hook counts.
+- `--trace-gc` also prints explicit collector phases, promotion counts, live nursery/major usage, and weak/finalizer hook counts.
 - `--trace-effects` prints continuation/fiber events only.
 - `--trace-memprof` enables memprof sampling and prints sampled allocation/promotion/reclaim events only.
 - `--trace` prints all recorded events for the selected cases.

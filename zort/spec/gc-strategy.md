@@ -95,6 +95,8 @@
   - reclaims through `HeapStore.reclaimSlot`
 - zort now also has a native `generational` baseline:
   - small allocations go to a nursery space in `HeapStore`,
+  - `custom` blocks allocate directly to major space even when the nursery is enabled,
+  - the runtime can trigger `collectMinor` before an allocation when configured live nursery object/word limits would be exceeded,
   - `collectMinor` traces root providers plus remembered-set edges,
   - reachable nursery objects are promoted in place to major space,
   - unreachable nursery objects are reclaimed without sweeping the whole major heap.
@@ -116,4 +118,9 @@
   - promotion preserves stable `HeapRef` identity instead of exposing forwarding-pointer states,
   - nursery and major live in one slot table instead of separate heaps,
   - there is no domain/STW coordination yet.
+- `gc_snapshot` observability now reports:
+  - promoted counts by object kind,
+  - promoted words,
+  - current live nursery objects/words,
+  - current live major objects/words.
 - Future work must add more root providers, richer object tracing, and stronger policy hooks without collapsing storage and collection back into `Runtime`.

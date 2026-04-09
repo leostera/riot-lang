@@ -80,6 +80,8 @@ pub const Runtime = struct {
         /// - .bump: experimental full reset path
         gcStrategy: GcStrategy = .mark_sweep,
         nurseryObjectWords: usize = 32,
+        nurseryLiveWords: usize = 1024,
+        nurseryLiveObjects: usize = 256,
         memprof: MemprofConfig = .{},
     };
 
@@ -100,6 +102,10 @@ pub const Runtime = struct {
         root_unregistrations: usize,
         collect_generations: usize,
         minor_collect_generations: usize,
+        nursery_objects: usize,
+        nursery_words: usize,
+        major_objects: usize,
+        major_words: usize,
     };
 
     pub const PendingSignal = struct {
@@ -155,6 +161,8 @@ pub const Runtime = struct {
         runtime.heap_store.configureNursery(.{
             .enabled = config.gcStrategy == .generational,
             .max_object_words = config.nurseryObjectWords,
+            .max_live_words = config.nurseryLiveWords,
+            .max_live_objects = config.nurseryLiveObjects,
         });
         runtime.services.startup() catch unreachable;
         return runtime;
@@ -174,6 +182,10 @@ pub const Runtime = struct {
             .root_unregistrations = stats.root_unregistrations,
             .collect_generations = self.collect_generations,
             .minor_collect_generations = self.minor_collect_generations,
+            .nursery_objects = self.heap_store.spaceStats(.nursery).objects,
+            .nursery_words = self.heap_store.spaceStats(.nursery).words,
+            .major_objects = self.heap_store.spaceStats(.major).objects,
+            .major_words = self.heap_store.spaceStats(.major).words,
         };
     }
 
@@ -248,6 +260,7 @@ pub const Runtime = struct {
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
+        self.prepareCompatAllocation(arity, tag);
         var writer = self.mutator();
         const allocated = try writer.allocCompat(arity, tag);
         self.trackAllocationSample(allocated);
@@ -255,6 +268,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocTuple(self: *Runtime, len: usize) !Value {
+        self.prepareAllocation(.tuple, len);
         var surface = self.language();
         const allocated = try surface.allocTuple(len);
         self.trackAllocationSample(allocated);
@@ -263,6 +277,7 @@ pub const Runtime = struct {
 
     /// Allocate a tuple and initialize all fields from `fields`.
     pub fn tuple(self: *Runtime, fields: []const Value) !Value {
+        self.prepareAllocation(.tuple, fields.len);
         var surface = self.language();
         const allocated = try surface.tuple(fields);
         self.trackAllocationSample(allocated);
@@ -275,6 +290,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocString(self: *Runtime, bytes: []const u8) !Value {
+        self.prepareAllocation(.string, bytes.len);
         var surface = self.language();
         const allocated = try surface.allocString(bytes);
         self.trackAllocationSample(allocated);
@@ -282,6 +298,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocStringWithFill(self: *Runtime, len: usize, fill: u8) !Value {
+        self.prepareAllocation(.string, len);
         var surface = self.language();
         const allocated = try surface.allocStringWithFill(len, fill);
         self.trackAllocationSample(allocated);
@@ -289,6 +306,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocStringWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
+        self.prepareAllocation(.string, len);
         var surface = self.language();
         const allocated = try surface.allocStringWithInit(len, initial_bytes);
         self.trackAllocationSample(allocated);
@@ -296,6 +314,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytes(self: *Runtime, bytes: []const u8) !Value {
+        self.prepareAllocation(.string, bytes.len);
         var surface = self.language();
         const allocated = try surface.allocBytes(bytes);
         self.trackAllocationSample(allocated);
@@ -303,6 +322,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytesWithFill(self: *Runtime, len: usize, fill: u8) !Value {
+        self.prepareAllocation(.string, len);
         var surface = self.language();
         const allocated = try surface.allocBytesWithFill(len, fill);
         self.trackAllocationSample(allocated);
@@ -310,6 +330,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytesWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
+        self.prepareAllocation(.string, len);
         var surface = self.language();
         const allocated = try surface.allocBytesWithInit(len, initial_bytes);
         self.trackAllocationSample(allocated);
@@ -317,6 +338,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocI64(self: *Runtime, n: i64) !Value {
+        self.prepareAllocation(.boxed_i64, 1);
         var surface = self.language();
         const allocated = try surface.allocI64(n);
         self.trackAllocationSample(allocated);
@@ -332,6 +354,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocI32(self: *Runtime, n: i32) !Value {
+        self.prepareAllocation(.boxed_i64, 1);
         var surface = self.language();
         const allocated = try surface.allocI32(n);
         self.trackAllocationSample(allocated);
@@ -339,6 +362,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocF64(self: *Runtime, number: f64) !Value {
+        self.prepareAllocation(.boxed_f64, 1);
         var surface = self.language();
         const allocated = try surface.allocF64(number);
         self.trackAllocationSample(allocated);
@@ -410,6 +434,7 @@ pub const Runtime = struct {
     }
 
     pub fn parseF64(self: *Runtime, literal: []const u8) !Value {
+        self.prepareAllocation(.boxed_f64, 1);
         var surface = self.language();
         const allocated = try surface.parseF64(literal);
         self.trackAllocationSample(allocated);
@@ -640,6 +665,25 @@ pub const Runtime = struct {
             sites[index] = frame.site_id;
         }
         self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, sites);
+    }
+
+    fn prepareCompatAllocation(self: *Runtime, arity: usize, tag: Tag) void {
+        const kind, const words = switch (tag) {
+            .tuple => .{ .tuple, arity },
+            .string => .{ .string, arity },
+            .int64 => .{ .boxed_i64, 1 },
+            .double => .{ .boxed_f64, 1 },
+            .custom => .{ .custom, arity },
+        };
+        self.prepareAllocation(kind, words);
+    }
+
+    fn prepareAllocation(self: *Runtime, kind: ObjectKind, words: usize) void {
+        if (self.gc_strategy != .generational) return;
+        if (kind == .custom) return;
+        if (words > self.heap_store.nursery_config.max_object_words) return;
+        if (!self.heap_store.shouldCollectBeforeNurseryAlloc(words)) return;
+        self.collectMinor();
     }
 
     fn objectFrom(self: *Runtime, block_value: Value) ?*Object {
@@ -1406,6 +1450,32 @@ test "runtime: generational minor collection promotes live nursery objects" {
     try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root));
     try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(child));
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: nursery pressure triggers minor collection before allocation" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+        .nurseryLiveWords = 1,
+        .nurseryLiveObjects = 1,
+    });
+    defer rt.deinit();
+
+    var root = try rt.allocTuple(1);
+    try rt.registerRoot(&root);
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(u64, 0), rt.rootStats().minor_collect_generations);
+
+    const next = try rt.allocTuple(1);
+
+    try std.testing.expectEqual(@as(u64, 1), rt.rootStats().minor_collect_generations);
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(next));
+
+    const stats = rt.rootStats();
+    try std.testing.expectEqual(@as(usize, 1), stats.nursery_objects);
+    try std.testing.expectEqual(@as(usize, 1), stats.nursery_words);
+    try std.testing.expectEqual(@as(usize, 1), stats.major_objects);
+    try std.testing.expectEqual(@as(usize, 1), stats.major_words);
 }
 
 test "runtime: remembered edges keep nursery children alive from major parents" {

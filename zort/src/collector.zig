@@ -207,10 +207,12 @@ pub const Collector = struct {
         if (self.fixed_arena_buffer) |buffer| {
             self.fixed_arena.* = std.heap.FixedBufferAllocator.init(buffer);
             self.heap_store.clear(true);
+            self.captureSpaceStats(summary);
             return reclaimed;
         }
 
         self.heap_store.clear(false);
+        self.captureSpaceStats(summary);
         return reclaimed;
     }
 
@@ -312,6 +314,7 @@ pub const Collector = struct {
             }
         }
         if (self.remembered_set) |set| set.compact(self.heap_store);
+        self.captureSpaceStats(summary);
         summary.timings.sweep_ns = timer.read();
         self.emitPhase(.sweep, summary.timings.sweep_ns);
         return reclaimed;
@@ -345,7 +348,12 @@ pub const Collector = struct {
             }
 
             slot.object.marked = false;
-            slot.space = .major;
+            summary.promoted.bump(slot.object.kind().?);
+            summary.promoted_words += slot.object.wosize();
+            _ = self.heap_store.promote(.{
+                .index = @intCast(slot_index),
+                .generation = slot.generation,
+            });
             if (self.memprof) |memprof| {
                 memprof.notePromotion(.{
                     .index = @intCast(slot_index),
@@ -355,6 +363,7 @@ pub const Collector = struct {
             summary.marked.bump(slot.object.kind().?);
         }
         if (self.remembered_set) |set| set.compact(self.heap_store);
+        self.captureSpaceStats(summary);
         summary.timings.sweep_ns = timer.read();
         self.emitPhase(.sweep, summary.timings.sweep_ns);
         return reclaimed;
@@ -395,6 +404,15 @@ pub const Collector = struct {
             .phase = phase,
             .elapsed_ns = elapsed_ns,
         } });
+    }
+
+    fn captureSpaceStats(self: *Collector, summary: *GcSnapshotEvent) void {
+        const nursery = self.heap_store.spaceStats(.nursery);
+        const major = self.heap_store.spaceStats(.major);
+        summary.nursery_objects = nursery.objects;
+        summary.nursery_words = nursery.words;
+        summary.major_objects = major.objects;
+        summary.major_words = major.words;
     }
 
     fn visitRoot(ctx: ?*anyopaque, rooted: Value) void {
@@ -549,6 +567,10 @@ test "collector: phase hooks run between tracing and completion" {
 test "collector: generational minor collection promotes reachable nursery objects" {
     const mutator_mod = @import("mutator.zig");
 
+    var trace = event_sink.TraceRecorder.init(std.testing.allocator, .{
+        .capture_events = true,
+    });
+    defer trace.deinit();
     var remembered = RememberedSet.init(std.testing.allocator);
     defer remembered.deinit();
     var heap = HeapStore.init(std.testing.allocator);
@@ -573,11 +595,17 @@ test "collector: generational minor collection promotes reachable nursery object
     try std.testing.expectEqual(@as(usize, 3), heap.nurseryCount());
 
     var providers = [_]RootProvider{roots.provider()};
-    var gc = Collector.init(&heap, &remembered, null, providers[0..], &fixed_arena, null, .generational, EventSink.noop(), Collector.PhaseHooks.noop());
+    var gc = Collector.init(&heap, &remembered, null, providers[0..], &fixed_arena, null, .generational, trace.sink(), Collector.PhaseHooks.noop());
     gc.collectMinor();
 
     try std.testing.expectEqual(@as(usize, 0), heap.nurseryCount());
     try std.testing.expectEqual(@as(?Space, .major), heap.spaceOf(root.asHeapRef().?));
     try std.testing.expectEqual(@as(?Space, .major), heap.spaceOf(child.asHeapRef().?));
     try std.testing.expectEqual(@as(usize, 2), heap.count());
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.promoted.tuple);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 0), trace.last_gc_snapshot.?.nursery_objects);
+    try std.testing.expectEqual(@as(usize, 0), trace.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.major_objects);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.major_words);
 }

@@ -143,9 +143,15 @@ pub const GcSnapshotEvent = struct {
     strategy: CollectStrategy,
     root_count: usize,
     marked: ObjectKindCounts = .{},
+    promoted: ObjectKindCounts = .{},
     reclaimed: ObjectKindCounts = .{},
+    promoted_words: usize = 0,
     weak_processed: usize = 0,
     finalizers_ready: usize = 0,
+    nursery_objects: usize = 0,
+    nursery_words: usize = 0,
+    major_objects: usize = 0,
+    major_words: usize = 0,
     timings: CollectTimings = .{},
 };
 
@@ -532,6 +538,12 @@ test "event_sink: recorder tracks counters by event kind" {
         .strategy = .mark_sweep,
         .root_count = 1,
         .reclaimed = .{ .tuple = 1 },
+        .promoted = .{ .boxed_i64 = 1 },
+        .promoted_words = 3,
+        .nursery_objects = 2,
+        .nursery_words = 5,
+        .major_objects = 4,
+        .major_words = 9,
         .timings = .{ .total_ns = 12 },
     } });
     sink.emit(.{ .collect = .{
@@ -557,6 +569,12 @@ test "event_sink: recorder tracks counters by event kind" {
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_root_count);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_reclaimed);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_gc_snapshot.?.reclaimed.tuple);
+    try std.testing.expectEqual(@as(usize, 1), recorder.last_gc_snapshot.?.promoted.boxed_i64);
+    try std.testing.expectEqual(@as(usize, 3), recorder.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 2), recorder.last_gc_snapshot.?.nursery_objects);
+    try std.testing.expectEqual(@as(usize, 5), recorder.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 4), recorder.last_gc_snapshot.?.major_objects);
+    try std.testing.expectEqual(@as(usize, 9), recorder.last_gc_snapshot.?.major_words);
 }
 
 test "event_sink: trace recorder stores object history and gc snapshot" {
@@ -598,6 +616,12 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .strategy = .mark_sweep,
         .root_count = 2,
         .marked = .{ .boxed_i64 = 1 },
+        .promoted = .{ .tuple = 1 },
+        .promoted_words = 2,
+        .nursery_objects = 1,
+        .nursery_words = 2,
+        .major_objects = 3,
+        .major_words = 4,
         .weak_processed = 1,
         .timings = .{ .mark_ns = 7, .total_ns = 44 },
     } });
@@ -620,6 +644,12 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
     try std.testing.expectEqual(@as(usize, 9), trace.traceEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.rootProviderEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.marked.boxed_i64);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.promoted.tuple);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.nursery_objects);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 3), trace.last_gc_snapshot.?.major_objects);
+    try std.testing.expectEqual(@as(usize, 4), trace.last_gc_snapshot.?.major_words);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.weak_processed);
     try std.testing.expectEqual(@as(usize, 1), trace.snapshot().memprof_samples);
     const last = trace.lastObjectEvent(handle).?;
