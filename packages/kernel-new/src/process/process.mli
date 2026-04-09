@@ -47,6 +47,9 @@ type stdio_config = {
 (** Default stdio inherits the parent process streams. *)
 val default_stdio: stdio_config
 
+(** Use `spawn ...` for immediate process creation.
+
+    Waiting for exit stays separate through `try_wait` and `to_source`. *)
 val spawn:
   program:string ->
   args:string array ->
@@ -58,29 +61,31 @@ val spawn:
 
 val pid: t -> int
 
-(** Pipe handles are present only when the corresponding stdio mode requested [Stdin.Pipe],
-    [Stdout.Pipe], or [Stderr.Pipe]. *)
+(** Pipe handles are present only when the corresponding stdio mode requested `Stdin.Pipe`,
+    `Stdout.Pipe`, or `Stderr.Pipe`. *)
 val stdin: t -> Fs.File.t option
 
 val stdout: t -> Fs.File.t option
 
 val stderr: t -> Fs.File.t option
 
-(** [try_wait process] is stable after readiness and after exit.
+(** Use `try_wait process` to observe exit state without blocking.
 
-    Once it returns [Some status], repeated calls keep returning the same status. *)
+    Once it returns `Some status`, repeated calls keep returning the same status. *)
 val try_wait: t -> (status option, error) Result.t
 
-(** [to_source process] becomes ready when [try_wait] can observe an exit status.
+(** Use `to_source process` when you want readiness for `try_wait`.
 
     Exit observation remains valid even if owned stdio handles are closed before the process is
     reaped. *)
 val to_source: t -> Async.Source.t
 
+(** Use `kill process ~signal` to send a signal immediately without waiting for exit. *)
 val kill: t -> signal:int -> (unit, error) Result.t
 
-(** [close process] closes owned pipe handles but does not discard exit observation through
-    [try_wait] or [to_source]. *)
+(** Use `close process` to close owned pipe handles without discarding exit observation through
+    `try_wait` or `to_source`. *)
 val close: t -> (unit, error) Result.t
 
+(** Use `current_pid ()` to read the current process identifier immediately. *)
 val current_pid: unit -> int

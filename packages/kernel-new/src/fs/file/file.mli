@@ -60,6 +60,10 @@ type pipe = {
   read_end: t;
   write_end: t;
 }
+
+(** Open, close, metadata, path, directory, and link helpers are immediate filesystem syscalls.
+
+    Readiness waiting stays separate through `to_source`. *)
 val open_file: Path.t -> open_flag list -> perm:int -> (t, error) Result.t
 
 val open_read: Path.t -> (t, error) Result.t
@@ -95,16 +99,16 @@ val read_link: Path.t -> (Path.t, error) Result.t
 
 val canonicalize: Path.t -> (Path.t, error) Result.t
 
-(** [metadata path] follows symbolic links.
+(** Use `metadata path` to follow symbolic links.
 
     For a symlink, the returned metadata describes the final target. Dangling symlinks report
-    [NoSuchFileOrDirectory]. *)
+    `NoSuchFileOrDirectory`. *)
 val metadata: Path.t -> (Metadata.t, error) Result.t
 
-(** [lstat path] inspects the path itself without following a symbolic link. *)
+(** Use `lstat path` to inspect the path itself without following a symbolic link. *)
 val lstat: Path.t -> (Metadata.t, error) Result.t
 
-(** [symlink_metadata path] is an alias for [lstat]. *)
+(** Use `symlink_metadata path` as an alias for `lstat`. *)
 val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
 
 val fstat: t -> (Metadata.t, error) Result.t
@@ -113,13 +117,16 @@ val exists: Path.t -> (bool, error) Result.t
 
 val is_directory: Path.t -> (bool, error) Result.t
 
-(** [read_dir_names path] returns a snapshot of the directory entries visible for that call.
+(** Use `read_dir_names path` to get a snapshot of the directory entries visible for that call.
 
-    The result excludes [.] and [..]. Ordering is not part of the contract. *)
+    The result excludes `.` and `..`. Ordering is not part of the contract. *)
 val read_dir_names: Path.t -> (string array, error) Result.t
 
 val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
 
 val is_tty: t -> bool
 
+(** Use `to_source file` to expose readiness for an already-open descriptor.
+
+    Use it for readiness waiting instead of adding blocking wait helpers around file operations. *)
 val to_source: t -> Async.Source.t

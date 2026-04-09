@@ -78,53 +78,11 @@ Keep pure modules pure. Do not add backend files where the code is platform-free
 - Keep the package error story layered: local module error first, `SystemError.t` for shared native/system failures, and `Kernel_new.Error.t` for package boundaries.
 - `IO` is intentionally small. Its public role is `IO.Iovec`; generic catch-all I/O error aliases do not belong there.
 - `Async.Adapter` and `Async.Source.make` are backend-facing seams used by `kernel-new` itself. Consumers should prefer `Async.Poll` plus `to_source` values from public modules.
-
-## Readiness Audit
-
-Readiness-backed operations:
-
-- `Async.Poll` and the selector-backed source registration path
-- `Fs.File.to_source`
-- `Net.TcpListener.to_source`, `Net.TcpStream.to_source`, and `Net.UdpSocket.to_source`
-- `Process.to_source`
-- `Time.Timer.to_source`
-- `Net.TcpStream.finish_connect`
-
-Immediate syscall-shaped operations that remain synchronous by design:
-
-- `Env.get`, `Env.vars`, `Env.current_dir`, `Env.set_var`, `Env.remove_var`, `Env.set_current_dir`
-- `Time.SystemTime.now` and `Time.Monotonic.now`
-- `Fs.File` metadata, path, directory, link, open, close, and copy helpers
-- `Process.spawn`, `Process.try_wait`, `Process.kill`, and `Process.close`
-- `Net.IpAddr.of_string`, `Net.SocketAddr.make`, and socket address inspection helpers
-- `Net.TcpListener.bind` / `local_addr`, `Net.TcpStream.connect` / `shutdown`, and `Net.UdpSocket.bind` / `local_addr` / `connect`
-
-Nonblocking rule of thumb:
-
-- if a capability has a `to_source`, do not add a separate blocking wait helper for it
-- if an operation is exposed as an immediate syscall-shaped primitive, document why it is intentionally synchronous
-
-## Native Entrypoint Audit
-
-Selector-backed readiness paths:
-
-- `Async.Adapter.Unix.FFI.selector_wait` drives readiness polling
-- `Async.Adapter.Unix.FFI.selector_apply` mutates selector interest sets
-- `Async.Adapter.Unix.FFI.selector_register_process` / `selector_reregister_process` / `selector_deregister_process` wire process readiness into the selector
-- `Async.Adapter.Unix.FFI.selector_register_timer` / `selector_reregister_timer` / `selector_deregister_timer` wire timer readiness into the selector
-
-Intentionally synchronous native calls:
-
-- `Time.SystemTime.Unix.FFI.now` and `Time.Monotonic.Unix.FFI.now` are immediate clock reads
-- `Env.Unix.FFI.*` is immediate process-environment state
-- `Fs.File.Unix.FFI.*` covers file-descriptor I/O plus metadata, directory, path, and link syscalls
-- `Process.Unix.FFI.spawn`, `try_wait`, `kill`, and `current_pid` are immediate process syscalls
-- `Net.IpAddr.Unix.FFI.is_valid` is immediate input validation
-- `Net.TcpListener.Unix.FFI.*`, `Net.TcpStream.Unix.FFI.*`, and `Net.UdpSocket.Unix.FFI.*` expose nonblocking socket operations; readiness waiting stays in `Async`
-
-Review rule:
-
-- any new external must be classified here as either readiness-backed or intentionally synchronous
+- Readiness-backed and intentionally synchronous behavior notes should live in the relevant `.mli`
+  next to the APIs they describe, not only in package-level docs.
+- If a capability has a `to_source`, do not add a separate blocking wait helper for it.
+- Any new external should be documented in code as either readiness-backed or intentionally
+  synchronous.
 
 ## Review Checklist
 

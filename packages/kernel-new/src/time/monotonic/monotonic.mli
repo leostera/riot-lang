@@ -10,6 +10,9 @@ val secs: t -> int
 
 val subsec_nanos: t -> int
 
+(** Use `now ()` for an immediate monotonic clock read.
+
+    It does not participate in readiness waiting and intentionally stays synchronous. *)
 val now: unit -> (t, error) Result.t
 
 val compare: t -> t -> int

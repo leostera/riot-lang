@@ -11,13 +11,11 @@ val blit: t -> int -> t -> int -> int -> unit
 
 val fill: t -> int -> int -> char -> unit
 
+(** Use `of_string value` to copy `value` into fresh mutable bytes. *)
 val of_string: string -> t
 
+(** Use `to_string value` to copy `value` into a fresh immutable string. *)
 val to_string: t -> string
-
-val unsafe_of_string: string -> t
-
-val unsafe_to_string: t -> string
 
 val sub: t -> int -> int -> t
 
