@@ -9,7 +9,7 @@
 3. Keep `Reader` and `Writer` out of `kernel-new`; those stay in `std`.
 4. Put all native code in `native/`, and keep it Riot-authored.
 5. Do not depend on `stdlib` or `unix` in `kernel-new` implementation code. If a compiler-owned type such as `string` or `option` must be referenced, keep that dependency explicit and minimal.
-6. Prefer explicit error variants over exception-driven APIs. Native stubs should return `Result.t` with canonical `Error.t` codes instead of surfacing Unix exceptions into OCaml.
+6. Prefer explicit error variants over exception-driven APIs. Each public module should own a small typed `error` type, and `Kernel_new.Error` should wrap those typed errors at package boundaries. Native stubs should return `Result.t` with canonical `SystemError.t` codes instead of surfacing platform exceptions into OCaml.
 7. Build new native stubs mechanically and narrowly. Avoid monolithic helpers that smuggle policy into C.
 8. Tests belong in `tests/` and benchmarks in `bench/`, using `std` as a dev-dependency.
 9. Start with the Unix backend, but keep the directory structure ready for additional backends under each public module.
