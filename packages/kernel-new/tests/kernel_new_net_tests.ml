@@ -309,11 +309,31 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
       let* client_peer =
         lift (Kernel.Net.TcpStream.peer_addr client)
       in
+      let* server_local =
+        lift (Kernel.Net.TcpStream.local_addr server)
+      in
+      let* server_peer =
+        lift (Kernel.Net.TcpStream.peer_addr server)
+      in
       let listener_port = Kernel.Net.SocketAddr.port listener_addr in
       let client_local_port = Kernel.Net.SocketAddr.port client_local in
       let client_peer_port = Kernel.Net.SocketAddr.port client_peer in
+      let server_local_port = Kernel.Net.SocketAddr.port server_local in
+      let server_peer_port = Kernel.Net.SocketAddr.port server_peer in
       let accepted_peer_port = Kernel.Net.SocketAddr.port peer in
-      if client_peer_port != listener_port || accepted_peer_port != client_local_port then
+      let listener_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip listener_addr) in
+      let client_local_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip client_local) in
+      let client_peer_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip client_peer) in
+      let server_local_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip server_local) in
+      let server_peer_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip server_peer) in
+      if client_peer_port != listener_port
+         || server_local_port != listener_port
+         || accepted_peer_port != client_local_port
+         || server_peer_port != client_local_port
+         || client_peer_ip != listener_ip
+         || server_local_ip != listener_ip
+         || server_peer_ip != client_local_ip
+      then
         Error "expected tcp peer addresses to line up across connect and accept"
       else
         let ping = Kernel.Bytes.of_string "ping" in
@@ -379,6 +399,21 @@ let test_tcp_stream_reports_eof_after_peer_close = fun _ctx ->
         Ok ()
       else
         Error "expected tcp stream read to report eof after peer close")
+
+let test_tcp_listener_ipv6_local_addr_roundtrips = fun _ctx ->
+  let* listener =
+    lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0))
+  in
+  protect
+    ~finally:(fun () -> close_listener listener)
+    (fun () ->
+      let* addr = lift (Kernel.Net.TcpListener.local_addr listener) in
+      if Kernel.Net.SocketAddr.port addr > 0
+         && Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip addr) = "::1"
+      then
+        Ok ()
+      else
+        Error "expected ipv6 tcp listener to preserve the loopback address")
 
 let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
   let* listener =
@@ -525,13 +560,28 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
                         | Kernel.Result.Ok _ ->
                             Error "expected connected udp socket to ignore datagrams from other peers")))))
 
+let test_udp_send_requires_connected_peer = fun _ctx ->
+  let* socket =
+    lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+  in
+  protect
+    ~finally:(fun () -> close_udp socket)
+    (fun () ->
+      match Kernel.Net.UdpSocket.send socket (Kernel.Bytes.of_string "ping") with
+      | Kernel.Result.Error _ ->
+          Ok ()
+      | Kernel.Result.Ok _ ->
+          Error "expected udp send to fail for an unconnected socket")
+
 let tests = [
   Test.case "Net.IpAddr validates ipv4 and ipv6" test_ip_addr_validates_ipv4_and_ipv6;
   Test.case "Net.TcpListener and TcpStream roundtrip over loopback" test_tcp_listener_and_stream_roundtrip;
   Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
+  Test.case "Net.TcpListener ipv6 local_addr preserves loopback" test_tcp_listener_ipv6_local_addr_roundtrips;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
   Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
+  Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
 ]
 
 let main = fun ~args ->

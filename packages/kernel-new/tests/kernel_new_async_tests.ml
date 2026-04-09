@@ -88,6 +88,35 @@ let test_poll_reports_pipe_readability = fun _ctx ->
             else
               Error "expected poll to report readability for pipe source"))
 
+let test_poll_reports_pipe_read_closed = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let token = Kernel.Async.Token.make 411 in
+          let source = Kernel.Fs.File.to_source read_end in
+          let* () =
+            lift
+              (Kernel.Async.Poll.register
+                 poll
+                 token
+                 Kernel.Async.Interest.readable
+                 source)
+          in
+          let* () = lift (Kernel.Fs.File.close write_end) in
+          let* events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+          let found =
+            List.exists
+              (fun event ->
+                Kernel.Async.Event.is_read_closed event
+                && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+              events
+          in
+          if found then
+            Ok ()
+          else
+            Error "expected poll to report read closure when the pipe writer closes"))
+
 let test_deregister_removes_pipe_source = fun _ctx ->
   with_pipe
     (fun read_end write_end ->
@@ -265,6 +294,7 @@ let test_token_roundtrips_structured_values = fun _ctx ->
 
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
+  Test.case "Async poll reports pipe read closure" test_poll_reports_pipe_read_closed;
   Test.case "Async deregister removes pipe source" test_deregister_removes_pipe_source;
   Test.case "Async reregister updates pipe token" test_reregister_updates_pipe_token;
   Test.case "Async reregister replaces writable interest" test_reregister_replaces_interest;

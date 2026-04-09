@@ -23,6 +23,19 @@ let protect = fun ~finally fn ->
     finally ();
     raise error
 
+let vars_contain = fun entries ~name ?value () ->
+  Kernel.Array.fold_left
+    (fun found (entry_name, entry_value) ->
+      found
+      || (
+        Kernel.String.equal entry_name name
+        && match value with
+           | None -> true
+           | Some value -> Kernel.String.equal entry_value value
+      ))
+    false
+    entries
+
 let test_args_include_program_name = fun _ctx ->
   if Kernel.Array.length Kernel.Env.args > 0 then
     Ok ()
@@ -60,6 +73,49 @@ let test_set_get_and_remove_var_roundtrip = fun _ctx ->
         Ok ()
       else
         Error "expected kernel env variable roundtrip to preserve value and cleanup")
+
+let test_missing_var_and_home_dir_behave_as_expected = fun _ctx ->
+  let name = "RIOT_KERNEL_NEW_ENV_MISSING" in
+  let _ = Kernel.Env.remove_var ~name in
+  let snapshot = Kernel.Env.vars () in
+  let missing =
+    Kernel.Env.get name = None
+    && not (vars_contain snapshot ~name ())
+  in
+  let home_matches =
+    match (Kernel.Env.get "HOME", Kernel.Env.home_dir ()) with
+    | (None, None) -> true
+    | (Some home, Some path) -> Kernel.Path.to_string path = home
+    | _ -> false
+  in
+  if missing && home_matches then
+    Ok ()
+  else
+    Error "expected missing vars and home_dir to reflect the process environment"
+
+let test_vars_snapshots_are_independent = fun _ctx ->
+  let name = "RIOT_KERNEL_NEW_ENV_SNAPSHOT" in
+  let _ = Kernel.Env.remove_var ~name in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Env.remove_var ~name in
+      ())
+    (fun () ->
+      let* () =
+        lift (Kernel.Env.set_var ~name ~value:"before")
+      in
+      let before = Kernel.Env.vars () in
+      let* () =
+        lift (Kernel.Env.set_var ~name ~value:"after")
+      in
+      let after = Kernel.Env.vars () in
+      if vars_contain before ~name ~value:"before" ()
+         && not (vars_contain before ~name ~value:"after" ())
+         && vars_contain after ~name ~value:"after" ()
+      then
+        Ok ()
+      else
+        Error "expected env snapshots to preserve the values visible at each call site")
 
 let test_current_dir_roundtrips = fun _ctx ->
   let* original =
@@ -103,6 +159,8 @@ let test_current_dir_roundtrips = fun _ctx ->
 let tests = [
   Test.case "Env.args includes the program name" test_args_include_program_name;
   Test.case "Env set_var, get, vars, and remove_var roundtrip" test_set_get_and_remove_var_roundtrip;
+  Test.case "Env missing vars and home_dir reflect the process environment" test_missing_var_and_home_dir_behave_as_expected;
+  Test.case "Env vars snapshots preserve each call result" test_vars_snapshots_are_independent;
   Test.case "Env current_dir and set_current_dir roundtrip" test_current_dir_roundtrips;
 ]
 
