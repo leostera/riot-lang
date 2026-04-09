@@ -3,6 +3,7 @@ const control_kernel_mod = @import("control_kernel.zig");
 const domain_registry_mod = @import("domain_registry.zig");
 const value = @import("value.zig");
 const event_sink_mod = @import("event_sink.zig");
+const fiber_scheduler_mod = @import("fiber_scheduler.zig");
 const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
 const language_mod = @import("language.zig");
@@ -13,6 +14,7 @@ const remembered_set_mod = @import("remembered_set.zig");
 const root_provider_mod = @import("root_provider.zig");
 const root_registry = @import("root_registry.zig");
 const runtime_services_mod = @import("runtime_services.zig");
+const stw_coordinator_mod = @import("stw_coordinator.zig");
 
 pub const Value = value.Value;
 pub const Tag = value.Tag;
@@ -46,6 +48,7 @@ pub const HandlerFrame = control_kernel_mod.HandlerFrame;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const DomainRegistry = domain_registry_mod.DomainRegistry;
 pub const DomainStatus = domain_registry_mod.DomainStatus;
+pub const FiberScheduler = fiber_scheduler_mod.FiberScheduler;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
@@ -68,6 +71,7 @@ pub const RootProvider = root_provider_mod.RootProvider;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const RuntimeServices = runtime_services_mod.RuntimeServices;
+pub const StopTheWorldCoordinator = stw_coordinator_mod.StopTheWorldCoordinator;
 pub const Error = language_mod.Error;
 
 pub const Runtime = struct {
@@ -126,6 +130,8 @@ pub const Runtime = struct {
     event_sink: EventSink,
     domains: DomainRegistry,
     control_kernel: ControlKernel,
+    fiber_scheduler: FiberScheduler,
+    stw: StopTheWorldCoordinator,
     heap_store: HeapStore,
     remembered_set: RememberedSet,
     root_registry: RootRegistry,
@@ -150,6 +156,8 @@ pub const Runtime = struct {
             .event_sink = config.eventSink,
             .domains = DomainRegistry.init(allocator),
             .control_kernel = undefined,
+            .fiber_scheduler = undefined,
+            .stw = StopTheWorldCoordinator.init(allocator, config.eventSink),
             .heap_store = HeapStore.init(allocator),
             .remembered_set = RememberedSet.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
@@ -163,6 +171,12 @@ pub const Runtime = struct {
             .event_sink = config.eventSink,
             .initial_domain = runtime.domains.mainDomain(),
         });
+        runtime.fiber_scheduler = FiberScheduler.init(
+            allocator,
+            config.eventSink,
+            runtime.domains.mainDomain(),
+            runtime.control_kernel.currentFiber(),
+        );
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
             runtime.fixed_arena_buffer = buffer;
@@ -208,6 +222,8 @@ pub const Runtime = struct {
         self.remembered_set.deinit();
         self.root_registry.deinit();
         self.control_kernel.deinit();
+        self.fiber_scheduler.deinit();
+        self.stw.deinit();
         self.domains.deinit();
     }
 
@@ -258,6 +274,14 @@ pub const Runtime = struct {
         return &self.domains;
     }
 
+    pub fn fiberScheduler(self: *Runtime) *FiberScheduler {
+        return &self.fiber_scheduler;
+    }
+
+    pub fn stwCoordinator(self: *Runtime) *StopTheWorldCoordinator {
+        return &self.stw;
+    }
+
     pub fn currentDomain(self: *Runtime) DomainHandle {
         return self.control_kernel.currentDomain();
     }
@@ -279,7 +303,9 @@ pub const Runtime = struct {
     }
 
     pub fn createDomain(self: *Runtime) !DomainHandle {
-        return self.domains.createDomain();
+        const domain = try self.domains.createDomain();
+        try self.fiber_scheduler.registerDomain(domain);
+        return domain;
     }
 
     pub fn attachDomain(self: *Runtime, handle: DomainHandle) !void {
@@ -294,6 +320,61 @@ pub const Runtime = struct {
         const state = self.domains.domain(domain) orelse return error.InvalidDomain;
         if (state.status == .detached) return error.DomainDetached;
         return self.control_kernel.createFiberInDomain(parent, domain);
+    }
+
+    pub fn spawnFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
+        const fiber = try self.createFiberInDomain(parent, domain);
+        try self.fiber_scheduler.enqueue(domain, fiber);
+        return fiber;
+    }
+
+    pub fn activateFiberInDomain(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
+        try self.fiber_scheduler.setCurrent(domain, fiber);
+        try self.control_kernel.activateFiber(fiber);
+    }
+
+    pub fn scheduleNextFiber(self: *Runtime, domain: DomainHandle) !?FiberHandle {
+        const next = try self.fiber_scheduler.switchToNext(domain) orelse return null;
+        try self.control_kernel.activateFiber(next);
+        return next;
+    }
+
+    pub fn yieldCurrentFiber(self: *Runtime) !?FiberHandle {
+        const next = try self.fiber_scheduler.yieldCurrent(self.currentDomain()) orelse return null;
+        try self.control_kernel.activateFiber(next);
+        return next;
+    }
+
+    pub fn parkCurrentFiber(self: *Runtime) !?FiberHandle {
+        const next = try self.fiber_scheduler.parkCurrent(self.currentDomain()) orelse return null;
+        try self.control_kernel.activateFiber(next);
+        return next;
+    }
+
+    pub fn unparkFiber(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
+        try self.fiber_scheduler.unpark(domain, fiber);
+    }
+
+    pub fn requestStopTheWorld(self: *Runtime) !usize {
+        const generation = try self.stw.request(self.currentDomain());
+        const Pause = struct {
+            stw: *StopTheWorldCoordinator,
+
+            fn visit(ctx: *@This(), domain: DomainHandle) void {
+                ctx.stw.markPaused(domain) catch unreachable;
+            }
+        };
+        var pause_ctx = Pause{ .stw = &self.stw };
+        self.domains.visitAttached(&pause_ctx, Pause.visit);
+        return generation;
+    }
+
+    pub fn enterSafepoint(self: *Runtime, domain: DomainHandle) !void {
+        try self.stw.markPaused(domain);
+    }
+
+    pub fn resumeTheWorld(self: *Runtime) void {
+        self.stw.resumeWorld();
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
@@ -591,11 +672,13 @@ pub const Runtime = struct {
         };
     }
 
-    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError;
+    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError || fiber_scheduler_mod.FiberScheduler.VerifyError || stw_coordinator_mod.StopTheWorldCoordinator.VerifyError;
 
     pub fn verifyDebugState(self: *Runtime) VerifyError!void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         try self.domains.verify();
+        try self.fiber_scheduler.verify();
+        try self.stw.verify();
         if (self.debug_checks.verify_heap_store) try self.heap_store.verifyInvariants();
         if (self.debug_checks.verify_control_kernel) try self.control_kernel.verify(self, isValidRootedValue);
     }
@@ -610,6 +693,8 @@ pub const Runtime = struct {
 
     pub fn collectMinor(self: *Runtime) void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
+        _ = self.requestStopTheWorld() catch unreachable;
+        defer self.resumeTheWorld();
         self.collect_generations +%= 1;
         self.minor_collect_generations +%= 1;
         var providers_buffer: [4]RootProvider = undefined;
@@ -627,6 +712,8 @@ pub const Runtime = struct {
 
     pub fn collectMajor(self: *Runtime) void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
+        _ = self.requestStopTheWorld() catch unreachable;
+        defer self.resumeTheWorld();
         self.collect_generations +%= 1;
         var providers_buffer: [4]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
@@ -1420,6 +1507,50 @@ test "runtime: continuations can migrate across attached domains" {
 
     try std.testing.expectEqual(other_domain, rt.currentDomain());
     try std.testing.expectEqual(other_domain, rt.controlKernel().fiber(child).?.domain);
+}
+
+test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const main_domain = rt.currentDomain();
+    const first = try rt.spawnFiberInDomain(null, main_domain);
+    const second = try rt.spawnFiberInDomain(null, main_domain);
+
+    try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
+    try std.testing.expectEqual(first, (try rt.scheduleNextFiber(main_domain)).?);
+    try std.testing.expectEqual(first, rt.controlKernel().currentFiber());
+
+    try std.testing.expectEqual(second, (try rt.yieldCurrentFiber()).?);
+    try std.testing.expectEqual(second, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(main_domain));
+
+    try std.testing.expectEqual(first, (try rt.parkCurrentFiber()).?);
+    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().parkedCount(main_domain));
+    try std.testing.expectEqual(first, rt.controlKernel().currentFiber());
+
+    try rt.unparkFiber(main_domain, second);
+    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(main_domain));
+    try rt.verifyDebugState();
+}
+
+test "runtime: stop-the-world hooks pause attached domains in the single-threaded model" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const other = try rt.createDomain();
+    try rt.attachDomain(other);
+
+    const generation = try rt.requestStopTheWorld();
+    try std.testing.expectEqual(@as(usize, 1), generation);
+    try std.testing.expect(rt.stwCoordinator().isActive());
+    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), rt.stwCoordinator().pausedCount());
+    try std.testing.expect(rt.stwCoordinator().isPaused(rt.currentDomain()));
+    try std.testing.expect(rt.stwCoordinator().isPaused(other));
+
+    rt.resumeTheWorld();
+    try std.testing.expect(!rt.stwCoordinator().isActive());
+    try std.testing.expectEqual(@as(usize, 0), rt.stwCoordinator().pausedCount());
 }
 
 test "runtime: explainValue reports root ownership and last object event" {

@@ -22,6 +22,7 @@ pub const GcSnapshotEvent = @import("runtime.zig").GcSnapshotEvent;
 pub const ObjectExplain = @import("runtime.zig").ObjectExplain;
 pub const EffectId = @import("runtime.zig").EffectId;
 pub const FiberHandle = @import("runtime.zig").FiberHandle;
+pub const FiberScheduler = @import("runtime.zig").FiberScheduler;
 pub const HandlerFrame = @import("runtime.zig").HandlerFrame;
 pub const Language = @import("runtime.zig").Language;
 pub const HeapStore = @import("runtime.zig").HeapStore;
@@ -41,6 +42,7 @@ pub const RootRegistry = @import("runtime.zig").RootRegistry;
 pub const RootHandle = @import("runtime.zig").RootHandle;
 pub const Runtime = @import("runtime.zig").Runtime;
 pub const RuntimeServices = @import("runtime.zig").RuntimeServices;
+pub const StopTheWorldCoordinator = @import("runtime.zig").StopTheWorldCoordinator;
 pub const TraceEntry = @import("runtime.zig").TraceEntry;
 pub const TraceRecorder = @import("runtime.zig").TraceRecorder;
 pub const WeakRefHandle = @import("runtime.zig").WeakRefHandle;
@@ -52,6 +54,7 @@ test {
     std.testing.refAllDecls(@import("control_kernel.zig"));
     std.testing.refAllDecls(@import("domain_registry.zig"));
     std.testing.refAllDecls(@import("event_sink.zig"));
+    std.testing.refAllDecls(@import("fiber_scheduler.zig"));
     std.testing.refAllDecls(@import("heap_store.zig"));
     std.testing.refAllDecls(@import("liveness.zig"));
     std.testing.refAllDecls(@import("language.zig"));
@@ -63,4 +66,5 @@ test {
     std.testing.refAllDecls(@import("root_registry.zig"));
     std.testing.refAllDecls(@import("runtime.zig"));
     std.testing.refAllDecls(@import("runtime_services.zig"));
+    std.testing.refAllDecls(@import("stw_coordinator.zig"));
 }

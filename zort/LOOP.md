@@ -308,7 +308,7 @@ Status:
 - In progress.
 - `RuntimeServices` in `src/runtime_services.zig` now owns runtime-local startup/shutdown state, pending signals, signal handlers, blocking sections, and named values as a collector-visible provider.
 - `Runtime.deliverPendingActions(...)` now delivers pending signal handlers and ready finalizers through explicit callback-boundary entry.
-- Signal-stack policy, dynlink registration, sync primitives, and domain/STW coordination remain open.
+- Signal-stack policy, dynlink registration, sync primitives, and real parallel domain/STW coordination remain open.
 
 ### 11. Extended Semantic Surface
 
@@ -353,7 +353,7 @@ Status:
 - Prerequisites are landing before collector replacement work.
 - `Collector` now emits explicit phases, supports weak/finalizer hooks, and has a `generational` nursery/major baseline with in-place promotion.
 - `Mutator` now records major-to-nursery edges through `src/remembered_set.zig`.
-- Nursery/promotion policy exists; domain/STW-aware major-heap policy is still deferred.
+- Nursery/promotion policy exists; scheduler/STW hooks now exist, but domain-aware major-heap policy and parallel collection remain deferred.
 
 ## Anti-Goals During Rebuild
 

@@ -72,6 +72,26 @@ pub const DomainRegistry = struct {
         return self.domain(handle) != null;
     }
 
+    pub fn attachedCount(self: *const DomainRegistry) usize {
+        var count: usize = 0;
+        for (self.domains.items) |slot| {
+            if (!slot.alive) continue;
+            if (slot.domain.status != .detached) count += 1;
+        }
+        return count;
+    }
+
+    pub fn visitAttached(self: *const DomainRegistry, context: anytype, comptime visit: fn (@TypeOf(context), DomainHandle) void) void {
+        for (self.domains.items, 0..) |slot, index| {
+            if (!slot.alive) continue;
+            if (slot.domain.status == .detached) continue;
+            visit(context, .{
+                .index = @intCast(index),
+                .generation = slot.generation,
+            });
+        }
+    }
+
     pub fn domain(self: *const DomainRegistry, handle: DomainHandle) ?*const DomainState {
         if (handle.index >= self.domains.items.len) return null;
         const slot = &self.domains.items[handle.index];

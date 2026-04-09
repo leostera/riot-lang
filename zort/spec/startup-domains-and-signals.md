@@ -81,13 +81,15 @@
   - a main attached domain created at runtime startup,
   - explicit domain creation plus attach/detach lifecycle,
   - per-domain blocking depth and blocked/attached state transitions,
-  - fibers and suspended continuations carrying domain ownership in the control kernel.
+  - fibers and suspended continuations carrying domain ownership in the control kernel,
+  - per-domain scheduler lanes with explicit current/runnable/parked fiber states,
+  - a stop-the-world coordinator with explicit request/pause/resume hooks.
 - This is an intentional simplification of OCaml's runtime-global model:
   - services are attached to one `Runtime` instance,
   - named values are runtime-local rather than process-global,
-  - there is still no stop-the-world coordination or per-domain scheduler yet.
+  - scheduler lanes and STW coordination currently exist as single-threaded scaffolding rather than a fully parallel runtime protocol.
 - zort now explicitly allows a suspended fiber to resume in a different attached domain:
   - the resumed fiber adopts the resumer's active domain,
   - this is the current migration seam for multicore fibers,
-  - scheduler/work-stealing policy still remains future work.
+  - work stealing, cross-domain runnable-queue policy, and backup-thread/STW servicing still remain future work.
 - The important architectural change is that startup/signal/native-service state now has a home outside the semantic value and collector core.

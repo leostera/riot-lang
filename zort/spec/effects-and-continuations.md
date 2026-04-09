@@ -210,6 +210,14 @@
   - the saved parent link is restored when the callback exits.
 - `captureBacktrace` now walks managed frames across the parent-fiber chain instead of only reporting the current fiber.
 - `captureContinuationBacktrace` now inspects a suspended continuation's managed stack plus its parent-fiber chain without resuming it.
+- Fibers now also move through explicit per-domain scheduler lanes:
+  - one active `current` fiber per domain,
+  - a runnable queue,
+  - and a parked queue used for explicit suspension/wakeup policy.
+- The runtime now exposes explicit stop-the-world hooks around collection:
+  - STW requests,
+  - per-domain safepoint pauses,
+  - and world-resume events.
 - Control-kernel activity is now observable through typed events carrying:
   - action kind
   - effect id
@@ -221,8 +229,9 @@
 - Bench runs can surface those events with `--trace-effects`.
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
-  - per-domain fiber scheduling and parked-run-queue ownership,
   - deeper callback-boundary behavior at FFI/native entrypoints,
-  - stop-the-world/safepoint coordination between domains and suspended stacks,
+  - domain-owned root-provider integration for parked fibers and suspended stacks,
+  - work stealing and explicit cross-domain runnable migration policy,
+  - real parallel stop-the-world/safepoint handshakes instead of the current single-threaded coordination scaffold,
   - richer backtrace integration beyond managed-frame walking,
   - lower-level stack/runtime switching mechanics if zort chooses to model them explicitly.

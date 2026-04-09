@@ -155,7 +155,9 @@ For benchmark snapshots, capture rows as CSV with columns:
 
 - Keep shrinking `runtime.zig` toward orchestration-only code.
 - Decide which native boundary services belong in zort core versus the outer shim.
-- Decide how far runtime-local services should grow before domain/STW work starts.
-- Extend the generational baseline toward a truer nursery/major collector before domains/STW work.
+- Harden the new per-domain scheduler with parked-fiber ownership, work stealing, and cross-domain migration policy.
+- Replace the current single-threaded STW coordinator with real parallel safepoint handshakes.
+- Make parked fibers and suspended continuations explicit domain-owned root providers for GC.
+- Extend the generational baseline toward a truer nursery/major collector under the new domain/STW control surface.
 - Decide how much of weak/finalizer/ephemeron behavior should become heap-visible language surface versus stay runtime-managed.
 - Use `zig build test` to run the full test suite (`zig build` does not run tests by default).

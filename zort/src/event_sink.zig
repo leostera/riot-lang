@@ -39,12 +39,19 @@ pub const MemprofAction = enum {
 
 pub const ControlAction = enum {
     fiber_activate,
+    fiber_enqueue,
+    fiber_yield,
+    fiber_park,
+    fiber_unpark,
     continuation_capture,
     continuation_resume,
     continuation_drop,
     effect_unhandled,
     callback_enter,
     callback_exit,
+    stw_request,
+    stw_pause,
+    stw_resume,
 };
 
 pub const ObjectKindCounts = struct {
@@ -284,11 +291,12 @@ pub const Recorder = struct {
             },
             .control => |control_event| switch (control_event.action) {
                 .fiber_activate => self.counters.fiber_activations +%= 1,
+                .fiber_enqueue, .fiber_yield, .fiber_park, .fiber_unpark => {},
                 .continuation_capture => self.counters.continuation_captures +%= 1,
                 .continuation_resume => self.counters.continuation_resumes +%= 1,
                 .continuation_drop => self.counters.continuation_drops +%= 1,
                 .effect_unhandled => self.counters.unhandled_effects +%= 1,
-                .callback_enter, .callback_exit => {},
+                .callback_enter, .callback_exit, .stw_request, .stw_pause, .stw_resume => {},
             },
         }
     }
@@ -421,11 +429,12 @@ pub const TraceRecorder = struct {
             },
             .control => |control_event| switch (control_event.action) {
                 .fiber_activate => self.counters.fiber_activations +%= 1,
+                .fiber_enqueue, .fiber_yield, .fiber_park, .fiber_unpark => {},
                 .continuation_capture => self.counters.continuation_captures +%= 1,
                 .continuation_resume => self.counters.continuation_resumes +%= 1,
                 .continuation_drop => self.counters.continuation_drops +%= 1,
                 .effect_unhandled => self.counters.unhandled_effects +%= 1,
-                .callback_enter, .callback_exit => {},
+                .callback_enter, .callback_exit, .stw_request, .stw_pause, .stw_resume => {},
             },
         }
     }
