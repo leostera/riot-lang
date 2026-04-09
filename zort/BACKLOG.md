@@ -18,6 +18,22 @@ Current focus:
 - add new `.ml` fixtures first, then implement only the `zort` capability needed to make each one link, run, trace, and benchmark;
 - stage coverage from "startup and return" to allocation, GC, externals, exceptions, and then fibers/effects.
 
+Architecture constraints for backlog items:
+- Keep `zort` multicore-first. Do not add backlog items that assume a
+  permanently single-domain or non-migratable runtime shape.
+- Keep `zort` multi-platform. Target-specific work is allowed, but it must stay
+  in the compatibility layer or host substrate and must not redefine the
+  semantic kernel around one OS or ABI.
+- Keep the rule `zort provides capability, userland provides policy`. Prefer
+  backlog items that expose scheduler, fiber, domain, and host capabilities
+  cleanly instead of hard-coding policy into the runtime.
+- Keep platform gating explicit through `TargetCaps ∩ BuildCaps ∩
+  RuntimePermissions`. New host-facing work should either compile out on
+  unsupported targets or stay outside the semantic core.
+- Prefer fixture additions that strengthen multicore effects semantics,
+  migratable fibers, or cross-platform host boundaries over fixture additions
+  that only deepen one target-specific compatibility corner.
+
 ## now
 
 - [ ] [P1] Add `e2e/ml/min_pure_startup.ml` and make it run against `zort`. Why: we need the smallest compiler-emitted program that does not depend on externals at all; What we need: real startup metadata handling for `caml_frametable`, `<unit>.gc_roots`, and code fragments on the locked `aarch64-apple-darwin` path; Cannot do yet: trust startup, backtraces, or exception unwinding for ordinary compiler-emitted code without shim-only externals.
