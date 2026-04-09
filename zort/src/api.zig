@@ -105,16 +105,28 @@ pub fn caml_gc_get_heap_size() usize {
 
 pub fn caml_gc_init() void {}
 
-pub fn zort_primitive_call0(name: []const u8) CompatValue {
+fn primitiveCall0(name: []const u8) CompatValue {
     return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{}) catch oom());
 }
 
-pub fn zort_primitive_call1(name: []const u8, arg0: CompatValue) CompatValue {
+fn primitiveCall1(name: []const u8, arg0: CompatValue) CompatValue {
     return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{decode(arg0)}) catch oom());
 }
 
-pub fn zort_primitive_call2(name: []const u8, arg0: CompatValue, arg1: CompatValue) CompatValue {
+fn primitiveCall2(name: []const u8, arg0: CompatValue, arg1: CompatValue) CompatValue {
     return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{ decode(arg0), decode(arg1) }) catch oom());
+}
+
+pub fn zort_primitive_call0(name_ptr: [*]const u8, name_len: usize) CompatValue {
+    return primitiveCall0(name_ptr[0..name_len]);
+}
+
+pub fn zort_primitive_call1(name_ptr: [*]const u8, name_len: usize, arg0: CompatValue) CompatValue {
+    return primitiveCall1(name_ptr[0..name_len], arg0);
+}
+
+pub fn zort_primitive_call2(name_ptr: [*]const u8, name_len: usize, arg0: CompatValue, arg1: CompatValue) CompatValue {
+    return primitiveCall2(name_ptr[0..name_len], arg0, arg1);
 }
 
 pub fn caml_shutdown() void {
@@ -149,7 +161,8 @@ test "api: typed primitive calls use compat boundary values" {
 
     const left = encode(stateRef().runtime.allocI64(20) catch oom());
     const right = encode(stateRef().runtime.allocI64(22) catch oom());
-    const result = zort_primitive_call2("zort.add_i64", left, right);
+    const name = "zort.add_i64";
+    const result = zort_primitive_call2(name.ptr, name.len, left, right);
 
     const decoded = decode(result);
     try std.testing.expectEqual(@as(i64, 42), try stateRef().runtime.unboxI64(decoded));

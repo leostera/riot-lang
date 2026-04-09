@@ -238,15 +238,20 @@ Refs:
 - [`spec/constructors.md`](./spec/constructors.md)
 
 Tasks:
-- Keep legacy `api.zig` as explicit shim only.
-- Add compile-time flag to include/exclude the shim.
-- Encode/decode OCaml-compat values at the boundary.
-- Introduce pointer-safe handles for any C-facing export.
-- Stop compatibility logic from entering semantic core modules.
+- [x] Keep legacy `api.zig` as explicit shim only.
+- [x] Add compile-time flag to include/exclude the shim.
+- [x] Encode/decode OCaml-compat values at the boundary.
+- [x] Introduce pointer-safe handles for any C-facing export.
+- [x] Stop compatibility logic from entering semantic core modules.
 
 Exit criteria:
 - Core runtime builds with shim disabled.
 - Dependency direction is one-way: shim -> core.
+
+Status:
+- Done.
+- `api.zig` is a shim-only module built behind `-Dcompat-shim`.
+- Compat values are encoded/decoded in `compat.zig`, and exported heap values use rooted opaque handles.
 
 ### 9. Control Kernel: Effects, Fibers, Continuations
 

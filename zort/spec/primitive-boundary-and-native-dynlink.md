@@ -104,3 +104,9 @@
   - explicit arity,
   - semantic `Value` arguments/results,
   - explicit lookup/arity errors.
+- The shim is build-gated:
+  - `zig build compat` builds the shim artifact,
+  - `zig build test -Dcompat-shim=false` exercises the core runtime without the shim.
+- The current exported primitive-call surface is pointer-safe:
+  - `(name_ptr, name_len, args...)` at the boundary,
+  - semantic decode/dispatch only inside the shim.
