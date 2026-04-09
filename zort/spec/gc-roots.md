@@ -102,4 +102,5 @@
 - `ControlKernel` is now the second built-in provider:
   - handler values live as control-owned roots,
   - suspended continuations contribute payload plus captured roots,
-  - collection can retain control-state-owned heap values without routing them through `RootRegistry`.
+  - collection can retain control-state-owned heap values without routing them through `RootRegistry`,
+  - consumed continuations stop contributing those captured roots after `resumeContinuation`.

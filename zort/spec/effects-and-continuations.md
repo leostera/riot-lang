@@ -178,9 +178,15 @@
   - typed `ContinuationHandle`s with owned captured roots,
   - per-fiber handler stacks with explicit `handle_effect` / `handle_value` / `handle_exn` fields.
 - Suspended continuations expose their captured values to the collector through the generic `RootProvider` interface instead of special GC-only hooks.
+- `perform` now walks the current fiber's handler stack and then the parent-fiber chain to find the nearest matching handler.
+- `resumeContinuation` consumes a continuation once:
+  - the first resume reactivates the captured fiber,
+  - the second resume fails with an explicit `AlreadyResumed` error.
+- `perform` with no matching handler fails with an explicit `UnhandledEffect` error.
+- Resumed continuations stop contributing captured roots to the collector provider view.
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
-  - handler lookup during `perform`,
-  - one-shot resume enforcement,
-  - unhandled-effect paths,
-  - event/observability coverage for capture and resume.
+  - richer resume ownership rules,
+  - callback-boundary behavior,
+  - backtrace integration across parent fibers,
+  - lower-level stack/runtime switching mechanics if zort chooses to model them explicitly.

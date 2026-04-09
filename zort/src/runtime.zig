@@ -71,7 +71,7 @@ pub const Runtime = struct {
         var runtime = Runtime{
             .allocator = allocator,
             .event_sink = config.eventSink,
-            .control_kernel = ControlKernel.init(allocator),
+            .control_kernel = ControlKernel.initWithSink(allocator, config.eventSink),
             .heap_store = HeapStore.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
             .debug_root_checks = config.debugRootChecks,
@@ -929,7 +929,7 @@ test "runtime: gc collects unreachable values" {
     runtime.deinit();
 }
 
-test "runtime: suspended control state keeps heap values alive across collection" {
+test "runtime: performed continuations keep heap values alive until resumed" {
     var rt = Runtime.init(std.testing.allocator);
     defer rt.deinit();
 
@@ -944,13 +944,13 @@ test "runtime: suspended control state keeps heap values alive across collection
 
     const child = try rt.controlKernel().createFiber(main);
     try rt.controlKernel().activateFiber(child);
-    const continuation = try rt.controlKernel().captureContinuation(1, Value.fromInt(0), &.{captured_value});
+    const performed = try rt.controlKernel().perform(1, Value.fromInt(0), &.{captured_value});
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
     _ = try rt.controlKernel().popHandler(main);
-    try std.testing.expect(rt.controlKernel().dropContinuation(continuation));
+    _ = try rt.controlKernel().resumeContinuation(performed.continuation, Value.fromInt(123));
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());

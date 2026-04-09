@@ -262,22 +262,21 @@ Refs:
 - [`spec/exceptions-callbacks-and-backtraces.md`](./spec/exceptions-callbacks-and-backtraces.md)
 
 Tasks:
-- Add dedicated control subsystem for fibers and continuations.
-- Implement one-shot typed continuation handles.
-- Make suspended stack state an explicit root provider.
-- Model handler stack and parent links with testable invariants.
-- Add tests for unhandled effects and already-resumed continuations.
+- [x] Add dedicated control subsystem for fibers and continuations.
+- [x] Implement one-shot typed continuation handles.
+- [x] Make suspended stack state an explicit root provider.
+- [x] Model handler stack and parent links with testable invariants.
+- [x] Add tests for unhandled effects and already-resumed continuations.
 
 Exit criteria:
 - Effects are isolated as control flow, not GC/exceptions.
 - Suspended stack liveness is explicit and verified.
 
 Status:
-- In progress.
-- `Collector` now traces `RootProvider` inputs instead of a hard-coded explicit-root slice.
-- `RootRegistry` and `ControlKernel` are now the built-in providers.
-- Fibers, continuations, and handler stacks have typed semantic state in `src/control_kernel.zig`.
-- The remaining work is behavioral `perform` / `resume` semantics and their failure paths.
+- Done.
+- `Collector` now traces `RootRegistry` and `ControlKernel` through `RootProvider`.
+- `ControlKernel` owns typed fibers, continuations, parent links, and handler stacks in `src/control_kernel.zig`.
+- `perform` and `resumeContinuation` now provide the first explicit one-shot effects path with unhandled/resumed failure tests.
 
 ### 10. Native Boundary Services
 

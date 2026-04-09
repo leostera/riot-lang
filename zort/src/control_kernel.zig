@@ -1,7 +1,9 @@
 const std = @import("std");
+const event_sink_mod = @import("event_sink.zig");
 const root_provider = @import("root_provider.zig");
 const value = @import("value.zig");
 
+pub const EventSink = event_sink_mod.EventSink;
 pub const RootProvider = root_provider.RootProvider;
 pub const RootVisitor = root_provider.RootVisitor;
 pub const Value = value.Value;
@@ -60,13 +62,15 @@ pub const FiberState = struct {
 
 pub const ContinuationStatus = enum {
     suspended,
+    resumed,
     dropped,
 };
 
 pub const ContinuationState = struct {
     fiber: FiberHandle,
     parent: ?FiberHandle,
-    handler_depth: usize,
+    handler_fiber: FiberHandle,
+    handler_index: usize,
     effect: EffectId,
     payload: Value,
     status: ContinuationStatus = .suspended,
@@ -76,7 +80,8 @@ pub const ContinuationState = struct {
         return .{
             .fiber = .{ .index = 0, .generation = 0 },
             .parent = null,
-            .handler_depth = 0,
+            .handler_fiber = .{ .index = 0, .generation = 0 },
+            .handler_index = 0,
             .effect = 0,
             .payload = value.Unit,
             .status = .dropped,
@@ -104,6 +109,7 @@ const ContinuationSlot = struct {
 
 pub const ControlKernel = struct {
     allocator: std.mem.Allocator,
+    event_sink: EventSink,
     fibers: std.ArrayListUnmanaged(FiberSlot) = .{},
     free_fibers: std.ArrayListUnmanaged(u32) = .{},
     continuations: std.ArrayListUnmanaged(ContinuationSlot) = .{},
@@ -111,8 +117,13 @@ pub const ControlKernel = struct {
     current_fiber: FiberHandle,
 
     pub fn init(allocator: std.mem.Allocator) ControlKernel {
+        return initWithSink(allocator, EventSink.noop());
+    }
+
+    pub fn initWithSink(allocator: std.mem.Allocator, sink: EventSink) ControlKernel {
         var kernel = ControlKernel{
             .allocator = allocator,
+            .event_sink = sink,
             .current_fiber = .{ .index = 0, .generation = 0 },
         };
         kernel.current_fiber = kernel.addFiber(FiberState.init(null, .active)) catch {
@@ -181,6 +192,7 @@ pub const ControlKernel = struct {
         const next = self.fiberMut(handle).?;
         next.status = .active;
         self.current_fiber = handle;
+        self.event_sink.emit(.{ .control = .{ .action = .fiber_activate } });
     }
 
     pub fn pushHandler(self: *ControlKernel, fiber_handle: FiberHandle, handler: HandlerFrame) !void {
@@ -211,12 +223,62 @@ pub const ControlKernel = struct {
         var captured = ContinuationState{
             .fiber = fiber_handle,
             .parent = fiber_state.parent,
-            .handler_depth = fiber_state.handlers.items.len,
+            .handler_fiber = fiber_handle,
+            .handler_index = fiber_state.handlers.items.len,
             .effect = effect,
             .payload = payload,
         };
         try captured.captured_roots.appendSlice(self.allocator, captured_roots);
-        return self.addContinuation(captured);
+        const handle = try self.addContinuation(captured);
+        self.event_sink.emit(.{ .control = .{ .action = .continuation_capture } });
+        return handle;
+    }
+
+    pub const PerformResult = struct {
+        continuation: ContinuationHandle,
+        handler_fiber: FiberHandle,
+        handler_index: usize,
+        handler: HandlerFrame,
+    };
+
+    pub const ResumeResult = struct {
+        fiber: FiberHandle,
+        value: Value,
+    };
+
+    pub fn perform(
+        self: *ControlKernel,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        const match = self.findHandler(self.current_fiber, effect) orelse {
+            self.event_sink.emit(.{ .control = .{ .action = .effect_unhandled } });
+            return error.UnhandledEffect;
+        };
+
+        const captured_handle = try self.captureMatchedContinuation(match, effect, payload, captured_roots);
+        return .{
+            .continuation = captured_handle,
+            .handler_fiber = match.fiber,
+            .handler_index = match.index,
+            .handler = match.handler,
+        };
+    }
+
+    pub fn resumeContinuation(self: *ControlKernel, handle: ContinuationHandle, value_to_resume: Value) !ResumeResult {
+        const slot = self.continuationSlotMut(handle) orelse return error.InvalidContinuation;
+        switch (slot.continuation.status) {
+            .suspended => {},
+            .resumed, .dropped => return error.AlreadyResumed,
+        }
+        slot.continuation.status = .resumed;
+        try self.activateFiber(slot.continuation.fiber);
+        self.event_sink.emit(.{ .control = .{ .action = .continuation_resume } });
+        return .{
+            .fiber = slot.continuation.fiber,
+            .value = value_to_resume,
+        };
     }
 
     pub fn dropContinuation(self: *ControlKernel, handle: ContinuationHandle) bool {
@@ -274,6 +336,65 @@ pub const ControlKernel = struct {
         return .{ .index = @intCast(slot_index), .generation = 1 };
     }
 
+    const HandlerMatch = struct {
+        fiber: FiberHandle,
+        index: usize,
+        handler: HandlerFrame,
+    };
+
+    fn continuationSlotMut(self: *ControlKernel, handle: ContinuationHandle) ?*ContinuationSlot {
+        if (handle.index >= self.continuations.items.len) return null;
+        const slot = &self.continuations.items[handle.index];
+        if (!slot.alive or slot.generation != handle.generation) return null;
+        return slot;
+    }
+
+    fn findHandler(self: *const ControlKernel, fiber_handle: FiberHandle, effect: EffectId) ?HandlerMatch {
+        var cursor: ?FiberHandle = fiber_handle;
+        while (cursor) |current| {
+            const fiber_state = self.fiber(current) orelse return null;
+            var i = fiber_state.handlers.items.len;
+            while (i > 0) {
+                i -= 1;
+                const handler = fiber_state.handlers.items[i];
+                if (handler.effect == effect) {
+                    return .{
+                        .fiber = current,
+                        .index = i,
+                        .handler = handler,
+                    };
+                }
+            }
+            cursor = fiber_state.parent;
+        }
+        return null;
+    }
+
+    fn captureMatchedContinuation(
+        self: *ControlKernel,
+        match: HandlerMatch,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !ContinuationHandle {
+        const fiber_handle = self.current_fiber;
+        const fiber_state = self.fiberMut(fiber_handle) orelse return error.InvalidFiber;
+        fiber_state.status = .suspended;
+
+        var captured = ContinuationState{
+            .fiber = fiber_handle,
+            .parent = fiber_state.parent,
+            .handler_fiber = match.fiber,
+            .handler_index = match.index,
+            .effect = effect,
+            .payload = payload,
+        };
+        try captured.captured_roots.appendSlice(self.allocator, captured_roots);
+        const handle = try self.addContinuation(captured);
+        self.event_sink.emit(.{ .control = .{ .action = .continuation_capture } });
+        return handle;
+    }
+
     fn countRoots(ctx: ?*anyopaque) usize {
         const self: *ControlKernel = @ptrCast(@alignCast(ctx.?));
         var count: usize = 0;
@@ -284,6 +405,7 @@ pub const ControlKernel = struct {
         }
         for (self.continuations.items) |slot| {
             if (!slot.alive) continue;
+            if (slot.continuation.status != .suspended) continue;
             count += 1 + slot.continuation.captured_roots.items.len;
         }
         return count;
@@ -298,6 +420,7 @@ pub const ControlKernel = struct {
         }
         for (self.continuations.items) |slot| {
             if (!slot.alive) continue;
+            if (slot.continuation.status != .suspended) continue;
             visitor.visit(slot.continuation.payload);
             for (slot.continuation.captured_roots.items) |rooted| {
                 visitor.visit(rooted);
@@ -392,4 +515,72 @@ test "control_kernel: provider exposes handler and suspended continuation roots"
     try std.testing.expectEqual(Value.fromHeapRef(.{ .index = 3, .generation = 1 }), seen.items[2]);
     try std.testing.expectEqual(Value.fromInt(5), seen.items[3]);
     try std.testing.expectEqual(Value.fromHeapRef(.{ .index = 4, .generation = 1 }), seen.items[4]);
+}
+
+test "control_kernel: perform walks parent handlers and returns continuation" {
+    var kernel = ControlKernel.init(std.testing.allocator);
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 11,
+        .handle_effect = Value.fromInt(99),
+    });
+
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+
+    const performed = try kernel.perform(11, Value.fromInt(7), &.{Value.fromInt(8)});
+    try std.testing.expectEqual(main, performed.handler_fiber);
+    try std.testing.expectEqual(@as(usize, 0), performed.handler_index);
+    try std.testing.expectEqual(@as(i64, 99), performed.handler.handle_effect.asInt());
+
+    const captured = kernel.continuation(performed.continuation).?;
+    try std.testing.expectEqual(child, captured.fiber);
+    try std.testing.expectEqual(main, captured.handler_fiber);
+    try std.testing.expectEqual(@as(usize, 0), captured.handler_index);
+    try std.testing.expectEqual(@as(usize, 1), captured.captured_roots.items.len);
+}
+
+test "control_kernel: unhandled effects are explicit" {
+    var recorder = event_sink_mod.Recorder{};
+    var kernel = ControlKernel.initWithSink(std.testing.allocator, recorder.sink());
+    defer kernel.deinit();
+
+    try std.testing.expectError(error.UnhandledEffect, kernel.perform(44, Value.fromInt(1), &.{}));
+
+    const counters = recorder.snapshot();
+    try std.testing.expectEqual(@as(usize, 1), counters.unhandled_effects);
+}
+
+test "control_kernel: resume is one-shot and suspended roots disappear after resume" {
+    var recorder = event_sink_mod.Recorder{};
+    var kernel = ControlKernel.initWithSink(std.testing.allocator, recorder.sink());
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 1,
+        .handle_effect = Value.fromInt(17),
+    });
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+
+    const performed = try kernel.perform(1, Value.fromHeapRef(.{ .index = 1, .generation = 1 }), &.{
+        Value.fromHeapRef(.{ .index = 2, .generation = 1 }),
+    });
+    try std.testing.expectEqual(@as(usize, 3), kernel.provider().count());
+
+    const resumed = try kernel.resumeContinuation(performed.continuation, Value.fromInt(42));
+    try std.testing.expectEqual(child, resumed.fiber);
+    try std.testing.expectEqual(@as(i64, 42), resumed.value.asInt());
+    try std.testing.expectEqual(@as(usize, 1), kernel.provider().count());
+    try std.testing.expectEqual(child, kernel.currentFiber());
+    try std.testing.expectEqual(@as(FiberStatus, .active), kernel.fiber(child).?.status);
+    try std.testing.expectError(error.AlreadyResumed, kernel.resumeContinuation(performed.continuation, Value.fromInt(0)));
+
+    const counters = recorder.snapshot();
+    try std.testing.expectEqual(@as(usize, 1), counters.continuation_captures);
+    try std.testing.expectEqual(@as(usize, 1), counters.continuation_resumes);
+    try std.testing.expect(counters.fiber_activations >= 2);
 }
