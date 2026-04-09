@@ -63,10 +63,49 @@ let test_process_surface_avoids_blocking_wait_api = fun _ctx ->
   else
     Ok ()
 
+let test_public_handle_interfaces_stay_abstract = fun _ctx ->
+  let targets = [
+    Path.v "packages/kernel-new/src/fs/file/file.mli";
+    Path.v "packages/kernel-new/src/net/tcp_listener/tcp_listener.mli";
+    Path.v "packages/kernel-new/src/net/tcp_stream/tcp_stream.mli";
+    Path.v "packages/kernel-new/src/net/udp_socket/udp_socket.mli";
+    Path.v "packages/kernel-new/src/process/process.mli";
+  ] in
+  let rec loop = function
+    | [] -> Ok ()
+    | path :: rest ->
+        let* content = read_file path in
+        if String.contains content "type t =" then
+          Error ("expected public kernel handle interfaces to stay abstract, found concrete representation in "
+          ^ Path.to_string path)
+        else
+          loop rest
+  in
+  loop targets
+
+let test_platform_modules_use_directory_backends = fun _ctx ->
+  let targets = [
+    Path.v "packages/kernel-new/src/process/process.ml";
+    Path.v "packages/kernel-new/src/env/env.ml";
+  ] in
+  let rec loop = function
+    | [] -> Ok ()
+    | path :: rest ->
+        let* content = read_file path in
+        if String.contains content "include Unix" then
+          loop rest
+        else
+          Error ("expected platform-backed kernel module to include its local Unix backend: "
+          ^ Path.to_string path)
+  in
+  loop targets
+
 let tests = [
   Test.case "Kernel-new source avoids Unix and Stdlib references" test_source_avoids_stdlib_and_unix_references;
   Test.case "Kernel-new source limits %identity casts to primitives" test_source_limits_identity_casts_to_primitives;
   Test.case "Kernel-new process avoids a blocking wait api" test_process_surface_avoids_blocking_wait_api;
+  Test.case "Kernel-new public handle interfaces stay abstract" test_public_handle_interfaces_stay_abstract;
+  Test.case "Kernel-new platform modules use directory backends" test_platform_modules_use_directory_backends;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_hygiene_tests" ~tests ~args

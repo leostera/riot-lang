@@ -399,6 +399,56 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
               else
                 Error "expected file-backed stdio to roundtrip through the child process")))
 
+let test_file_backed_stdio_uses_no_kernel_pipes = fun _ctx ->
+  with_tempdir "kernel_new_process"
+    (fun tempdir ->
+      let input_path = Kernel.Path.(tempdir / "stdin.txt") in
+      let output_path = Kernel.Path.(tempdir / "stdout.txt") in
+      let* input_file = lift_file (Kernel.Fs.File.open_write input_path) in
+      let* () =
+        with_file input_file
+          (fun () ->
+            let* _ = lift_file
+              (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "file-stdio")) in
+            Ok ())
+      in
+      let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close stdin_file in
+          ())
+        (fun () ->
+          let* stdout_file = lift_file
+            (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Fs.File.close stdout_file in
+              ())
+            (fun () ->
+              let stdio =
+                Kernel.Process.{
+                  stdin = `File stdin_file;
+                  stdout = `File stdout_file;
+                  stderr = `Null
+                } in
+              let* process = lift_process
+                (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
+              with_process process
+                (fun process ->
+                  let* status =
+                    with_poll
+                      (fun poll -> wait_for_exit poll ~token:(Kernel.Async.Token.make 532) process)
+                  in
+                  if
+                    status = Kernel.Process.Exited 0
+                    && Kernel.Process.stdin process = None
+                    && Kernel.Process.stdout process = None
+                    && Kernel.Process.stderr process = None
+                  then
+                    Ok ()
+                  else
+                    Error "expected file-backed stdio to avoid creating kernel pipe handles"))))
+
 let test_inherited_stdio_uses_no_kernel_pipes = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Inherit; stdout = `Inherit; stderr = `Inherit } in
   let* process = lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
@@ -416,6 +466,31 @@ let test_inherited_stdio_uses_no_kernel_pipes = fun _ctx ->
             Ok ()
           else
             Error "expected inherited stdio to avoid creating kernel pipes"))
+
+let test_requested_pipe_ownership_matches_stdio = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Pipe; stdout = `Null; stderr = `Pipe } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "cat >&2"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          match (
+            Kernel.Process.stdin process,
+            Kernel.Process.stdout process,
+            Kernel.Process.stderr process
+          ) with
+          | (Some stdin, None, Some stderr) ->
+              let payload = Kernel.Bytes.of_string "pipes" in
+              let* () = write_all poll ~token:(Kernel.Async.Token.make 507) stdin payload in
+              let* () = lift_file (Kernel.Fs.File.close stdin) in
+              let* echoed = read_once poll ~token:(Kernel.Async.Token.make 508) stderr in
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 533) process in
+              if echoed = "pipes" && status = Kernel.Process.Exited 0 then
+                Ok ()
+              else
+                Error "expected pipe-backed stdio ownership to match the requested channels"
+          | _ -> Error "expected only stdin and stderr kernel pipes to be present"))
 
 let test_spawn_missing_program_reports_no_such_file = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
@@ -454,7 +529,9 @@ let tests = [
   Test.case "Process spawn applies custom environment" test_spawn_applies_custom_environment;
   Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
   Test.case "Process file-backed stdio roundtrips" test_file_backed_stdio_roundtrips;
+  Test.case "Process file-backed stdio uses no kernel pipes" test_file_backed_stdio_uses_no_kernel_pipes;
   Test.case "Process inherited stdio uses no kernel pipes" test_inherited_stdio_uses_no_kernel_pipes;
+  Test.case "Process requested pipe ownership matches stdio" test_requested_pipe_ownership_matches_stdio;
   Test.case "Process spawn missing program reports no-such-file" test_spawn_missing_program_reports_no_such_file;
   Test.case "Process close tolerates preclosed pipe handles" test_process_close_tolerates_preclosed_pipe_handles;
 ]

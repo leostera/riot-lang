@@ -1,6 +1,9 @@
 type t
 type error =
-  System of System_error.t
+  | Invalid_backlog of { backlog: int }
+  | Address_in_use
+  | Address_not_available
+  | System of System_error.t
 val error_to_string: error -> string
 
 val bind:

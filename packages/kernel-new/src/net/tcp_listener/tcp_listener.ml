@@ -3,7 +3,10 @@ open Prelude
 type t = int
 
 type error =
-  System of System_error.t
+  | Invalid_backlog of { backlog: int }
+  | Address_in_use
+  | Address_not_available
+  | System of System_error.t
 
 module FFI = struct
   external bind: string -> int -> bool -> bool -> int -> (t, int) Result.t = "kernel_new_net_tcp_listener_bind"
@@ -21,26 +24,39 @@ let socket_addr_of_pair = fun (ip, port) ->
   | Result.Error _ -> System_error.panic "kernel returned an invalid ip address"
 
 let error_to_string = function
+  | Invalid_backlog { backlog } -> String.concat
+    ""
+    [ "invalid listener backlog: "; Int.to_string backlog ]
+  | Address_in_use -> "address already in use"
+  | Address_not_available -> "address not available"
   | System error -> System_error.to_string error
 
+let error_of_system = function
+  | System_error.Address_in_use -> Address_in_use
+  | System_error.Address_not_available -> Address_not_available
+  | error -> System error
+
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr ->
-  let ip = Ip_addr.to_string (Socket_addr.ip addr) in
-  let port = Socket_addr.port addr in
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.bind ip port reuse_addr reuse_port backlog)
+  if backlog <= 0 then
+    Result.Error (Invalid_backlog { backlog })
+  else
+    let ip = Ip_addr.to_string (Socket_addr.ip addr) in
+    let port = Socket_addr.port addr in
+    Result.map_error
+      (fun code -> error_of_system (System_error.of_code code))
+      (FFI.bind ip port reuse_addr reuse_port backlog)
 
 let accept = fun listener ->
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (Result.map (fun (stream, addr) -> (stream, socket_addr_of_pair addr)) (FFI.accept listener))
 
 let close = fun listener ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close listener)
+  Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.close listener)
 
 let local_addr = fun listener ->
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (Result.map socket_addr_of_pair (FFI.local_addr listener))
 
 let to_source = fun fd ->

@@ -6,6 +6,10 @@ type t = int
 
 type error =
   | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | Not_connected
+  | Message_too_long
+  | Destination_address_required
+  | Address_in_use
   | System of System_error.t
 
 module FFI = struct
@@ -48,38 +52,53 @@ let error_to_string = function
       ", buffer_len=";
       Int.to_string buffer_len;
     ]
+  | Not_connected -> "socket is not connected"
+  | Message_too_long -> "message too long"
+  | Destination_address_required -> "destination address required"
+  | Address_in_use -> "address already in use"
   | System error -> System_error.to_string error
+
+let error_of_system = function
+  | System_error.Not_connected -> Not_connected
+  | System_error.Message_too_long -> Message_too_long
+  | System_error.Destination_address_required -> Destination_address_required
+  | System_error.Address_in_use -> Address_in_use
+  | error -> System error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (FFI.bind ip port reuse_addr reuse_port)
 
 let connect = fun socket addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.connect socket ip port)
+  Result.map_error
+    (fun code -> error_of_system (System_error.of_code code))
+    (FFI.connect socket ip port)
 
 let close = fun socket ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close socket)
+  Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.close socket)
 
 let local_addr = fun socket ->
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (Result.map socket_addr_of_pair (FFI.local_addr socket))
 
 let recv = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.recv socket buf pos len)
+  Result.map_error
+    (fun code -> error_of_system (System_error.of_code code))
+    (FFI.recv socket buf pos len)
 
 let recv_from = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
   let* () = validate_slice buf ~pos ~len in
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (Result.map
       (fun (read_count, addr) -> (read_count, socket_addr_of_pair addr))
       (FFI.recv_from socket buf pos len))
@@ -87,7 +106,9 @@ let recv_from = fun socket ?(pos = 0) ?len buf ->
 let send = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.send socket buf pos len)
+  Result.map_error
+    (fun code -> error_of_system (System_error.of_code code))
+    (FFI.send socket buf pos len)
 
 let send_to = fun socket addr ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
@@ -95,7 +116,7 @@ let send_to = fun socket addr ?(pos = 0) ?len buf ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
   Result.map_error
-    (fun code -> System (System_error.of_code code))
+    (fun code -> error_of_system (System_error.of_code code))
     (FFI.send_to socket ip port buf (pos, len))
 
 let to_source = fun fd ->

@@ -41,6 +41,7 @@ let lift_udp = function
 
 let is_tcp_listener_would_block = function
   | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
 
 let is_tcp_stream_would_block = function
   | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
@@ -83,6 +84,19 @@ let close_listener = fun listener ->
 let close_udp = fun socket ->
   let _ = Kernel.Net.UdpSocket.close socket in
   ()
+
+let rec close_streams = function
+  | [] -> ()
+  | stream :: rest ->
+      close_stream stream;
+      close_streams rest
+
+let rec close_udp_pairs = function
+  | [] -> ()
+  | (server, client) :: rest ->
+      close_udp server;
+      close_udp client;
+      close_udp_pairs rest
 
 let with_poll = fun fn ->
   let poll = lift_async (Kernel.Async.Poll.make ()) in
@@ -341,12 +355,105 @@ let bench_udp_connected_roundtrip = fun () ->
               let client_buf = Kernel.Bytes.create 32 in
               ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf))))
 
+let bench_udp_many_source_readiness = fun () ->
+  with_poll
+    (fun poll ->
+      let rec bind_many remaining acc =
+        if remaining = 0 then
+          acc
+        else
+          let server = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+          let client = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+          bind_many (remaining - 1) ((server, client) :: acc)
+      in
+      let pairs = List.rev (bind_many 16 []) in
+      protect ~finally:(fun () -> close_udp_pairs pairs)
+        (fun () ->
+          let rec register index = function
+            | [] -> ()
+            | (server, _) :: rest ->
+                let _ = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Net.UdpSocket.to_source server)) in
+                register (index + 1) rest
+          in
+          let rec send_all = function
+            | [] -> ()
+            | (server, client) :: rest ->
+                let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+                let _ = lift_udp
+                  (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
+                send_all rest
+          in
+          let () = register 0 pairs in
+          let () = send_all pairs in
+          let _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+          ()))
+
+let bench_tcp_many_stream_readiness = fun () ->
+  with_poll
+    (fun poll ->
+      let listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let rec connect_many remaining clients servers =
+            if remaining = 0 then
+              (List.rev clients, List.rev servers)
+            else
+              let client = connect_stream poll addr in
+              let server = accept_stream poll listener in
+              connect_many (remaining - 1) (client :: clients) (server :: servers)
+          in
+          let clients, servers = connect_many 16 [] [] in
+          protect
+            ~finally:(fun () ->
+              close_streams clients;
+              close_streams servers)
+            (fun () ->
+              let rec register index = function
+                | [] -> ()
+                | server :: rest ->
+                    let _ = lift_async
+                      (Kernel.Async.Poll.register
+                        poll
+                        (Kernel.Async.Token.make index)
+                        Kernel.Async.Interest.readable
+                        (Kernel.Net.TcpStream.to_source server)) in
+                    register (index + 1) rest
+              in
+              let rec send_all index = function
+                | [] -> ()
+                | client :: rest ->
+                    let payload = Kernel.Bytes.of_string "x" in
+                    write_all_stream
+                      poll
+                      ~token:(Kernel.Async.Token.make (800 + index))
+                      client
+                      payload
+                      ~pos:0
+                      ~len:1;
+                    send_all (index + 1) rest
+              in
+              let () = register 0 servers in
+              let () = send_all 0 clients in
+              let _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              ())))
+
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 25; warmup = 5 } "net tcp loopback roundtrip" bench_tcp_loopback_roundtrip;
     with_config ~config:{ iterations = 25; warmup = 5 } "net tcp vectored roundtrip" bench_tcp_vectored_roundtrip;
     with_config ~config:{ iterations = 25; warmup = 5 } "net udp loopback datagram" bench_udp_loopback_datagram;
     with_config ~config:{ iterations = 25; warmup = 5 } "net udp connected roundtrip" bench_udp_connected_roundtrip;
+    with_config ~config:{ iterations = 20; warmup = 5 } "net udp many-source readiness" bench_udp_many_source_readiness;
+    with_config ~config:{ iterations = 20; warmup = 5 } "net tcp many-stream readiness" bench_tcp_many_stream_readiness;
   ]
 
 let () =

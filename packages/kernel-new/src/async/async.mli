@@ -1,4 +1,6 @@
 type error =
+  | Invalid_timeout_ns of { timeout_ns: int64 }
+  | Invalid_max_events of { max_events: int }
   | System of System_error.t
 val error_to_string: error -> string
 

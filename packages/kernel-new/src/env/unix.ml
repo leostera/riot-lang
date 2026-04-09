@@ -1,7 +1,10 @@
 open Prelude
 
+let ( let* ) = Result.and_then
+
 type error =
-  System of System_error.t
+  | Invalid_var_name of { name: string }
+  | System of System_error.t
 
 external args: string array = "%sys_argv"
 
@@ -22,12 +25,30 @@ end
 let get = FFI.get
 
 let error_to_string = function
+  | Invalid_var_name { name } -> String.concat "" [ "invalid environment variable name: "; name ]
   | System error -> System_error.to_string error
 
+let validate_var_name = fun name ->
+  let length = String.length name in
+  let rec loop index =
+    if index >= length then
+      Result.Ok ()
+    else if String.get name index = '=' then
+      Result.Error (Invalid_var_name { name })
+    else
+      loop (index + 1)
+  in
+  if length = 0 then
+    Result.Error (Invalid_var_name { name })
+  else
+    loop 0
+
 let set_var = fun ~name ~value ->
+  let* () = validate_var_name name in
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.set_var name value)
 
 let remove_var = fun ~name ->
+  let* () = validate_var_name name in
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.remove_var name)
 
 let vars = FFI.vars

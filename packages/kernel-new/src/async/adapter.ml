@@ -4,7 +4,9 @@ open Prelude
 type selector = int
 
 type error =
-  System of System_error.t
+  | Invalid_timeout_ns of { timeout_ns: int64 }
+  | Invalid_max_events of { max_events: int }
+  | System of System_error.t
 
 type event = {
   fd: int;
@@ -92,14 +94,19 @@ module Selector = struct
   let close = FFI.close
 
   let select = fun ?(timeout = 500_000_000L) ?(max_events = 1_024) selector ->
-    let* events = FFI.wait ~max_events ~timeout_ns:timeout selector in
-    let rec to_list index acc =
-      if index < 0 then
-        acc
-      else
-        to_list (index - 1) (Event.make (module Kevent) (Array.get events index) :: acc)
-    in
-    Result.Ok (to_list (Array.length events - 1) [])
+    if timeout < 0L then
+      Result.Error (Invalid_timeout_ns { timeout_ns = timeout })
+    else if max_events <= 0 then
+      Result.Error (Invalid_max_events { max_events })
+    else
+      let* events = FFI.wait ~max_events ~timeout_ns:timeout selector in
+      let rec to_list index acc =
+        if index < 0 then
+          acc
+        else
+          to_list (index - 1) (Event.make (module Kevent) (Array.get events index) :: acc)
+      in
+      Result.Ok (to_list (Array.length events - 1) [])
 
   let register = fun selector ~fd ~token ~interest ->
     let flags = Libc.(ev_clear lor ev_receipt lor ev_add) in

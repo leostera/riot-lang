@@ -5,6 +5,12 @@ type shutdown =
   | Read_write
 type error =
   | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | Connection_refused
+  | Connection_reset
+  | Timed_out
+  | Broken_pipe
+  | Not_connected
+  | Connection_aborted
   | System of System_error.t
 val error_to_string: error -> string
 

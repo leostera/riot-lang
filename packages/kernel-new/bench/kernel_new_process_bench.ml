@@ -30,6 +30,12 @@ let with_process = fun process fn ->
       let _ = Kernel.Process.close process in
       raise error
 
+let rec close_processes = function
+  | [] -> ()
+  | process :: rest ->
+      let _ = Kernel.Process.close process in
+      close_processes rest
+
 let protect = fun ~finally fn ->
   try
     let value = fn () in
@@ -47,6 +53,19 @@ let with_poll = fun fn ->
       let _ = Kernel.Async.Poll.close poll in
       ())
     (fun () -> fn poll)
+
+let with_processes = fun count fn ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let rec spawn remaining acc =
+    if remaining = 0 then
+      List.rev acc
+    else
+      let process = lift_process
+        (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+      spawn (remaining - 1) (process :: acc)
+  in
+  let processes = spawn count [] in
+  protect ~finally:(fun () -> close_processes processes) (fun () -> fn processes)
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
   let _ = lift_async (Kernel.Async.Poll.register poll token interest source) in
@@ -132,6 +151,67 @@ let bench_spawn_echo_with_pipe = fun () ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
               ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 611) process)))
 
+let bench_many_process_exit_sources = fun () ->
+  with_poll
+    (fun poll ->
+      with_processes 16
+        (fun processes ->
+          let rec register index = function
+            | [] -> ()
+            | process :: rest ->
+                let _ = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.priority
+                    (Kernel.Process.to_source process)) in
+                register (index + 1) rest
+          in
+          let seen = Kernel.Array.make 16 false in
+          let rec mark_events = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_priority event then
+                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 16 then
+                    Kernel.Array.set seen token true;
+                  mark_events rest
+          in
+          let rec mark_exits index = function
+            | [] -> ()
+            | process :: rest ->
+                let () =
+                  match Kernel.Process.try_wait process with
+                  | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) ->
+                      if index < 16 then
+                        Kernel.Array.set seen index true
+                  | _ -> ()
+                in
+                mark_exits (index + 1) rest
+          in
+          let rec all_seen index =
+            if index = 16 then
+              true
+            else if Kernel.Array.get seen index then
+              all_seen (index + 1)
+            else
+              false
+          in
+          let rec poll_until attempts =
+            if all_seen 0 then
+              ()
+            else if attempts = 0 then
+              Kernel.Error.panic "expected many child processes to report exit readiness"
+            else
+              let events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let () = mark_events events in
+              let () = mark_exits 0 processes in
+              poll_until (attempts - 1)
+          in
+          let () = register 0 processes in
+          poll_until 16))
+
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 25; warmup = 5 } "process spawn true and poll exit" bench_spawn_true;
@@ -139,6 +219,7 @@ let benchmarks =
       ~config:{ iterations = 25; warmup = 5 }
       "process spawn echo with stdout pipe and poll exit"
       bench_spawn_echo_with_pipe;
+    with_config ~config:{ iterations = 15; warmup = 3 } "process many child exit sources" bench_many_process_exit_sources;
   ]
 
 let () =

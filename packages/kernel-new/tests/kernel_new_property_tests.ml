@@ -33,6 +33,16 @@ let with_temp_path = fun prefix filename fn ->
   | Ok value -> value
   | Error err -> fail (IO.error_message err)
 
+let ipv4_text = fun a b c d ->
+  String.concat
+    "."
+    [
+      Int.to_string (Int.abs a mod 256);
+      Int.to_string (Int.abs b mod 256);
+      Int.to_string (Int.abs c mod 256);
+      Int.to_string (Int.abs d mod 256);
+    ]
+
 let iovec_into_string_roundtrips =
   property "IO.Iovec of_string_array flattens with preserved order" Arbitrary.(array string)
     (fun values ->
@@ -84,6 +94,19 @@ let path_fold_join_preserves_many_segment_order =
       | None -> false
       | Some actual -> Kernel.Path.to_string actual = String.concat "/" simple)
 
+let path_join_is_associative_for_simple_segments =
+  property "Path.join is associative for simple segments" Arbitrary.(triple string string string)
+    (fun (a, b, c) ->
+      assume (String.length a > 0);
+      assume (String.length b > 0);
+      assume (String.length c > 0);
+      assume (not (contains_slash a));
+      assume (not (contains_slash b));
+      assume (not (contains_slash c));
+      let left = Kernel.Path.to_string (Kernel.Path.join (Kernel.Path.join a b) c) in
+      let right = Kernel.Path.to_string (Kernel.Path.join a (Kernel.Path.join b c)) in
+      left = right)
+
 let ip_addr_loopback_parse_render_roundtrips =
   property "Net.IpAddr loopback parse/render roundtrips" Arbitrary.bool
     (fun use_v6 ->
@@ -95,6 +118,14 @@ let ip_addr_loopback_parse_render_roundtrips =
       in
       match Kernel.Net.IpAddr.of_string (Kernel.Net.IpAddr.to_string value) with
       | Kernel.Result.Ok parsed -> Kernel.Net.IpAddr.equal parsed value
+      | Kernel.Result.Error _ -> false)
+
+let ip_addr_ipv4_parse_render_roundtrips =
+  property "Net.IpAddr ipv4 parse/render roundtrips" Arbitrary.(pair (pair int int) (pair int int))
+    (fun ((a, b), (c, d)) ->
+      let text = ipv4_text a b c d in
+      match Kernel.Net.IpAddr.of_string text with
+      | Kernel.Result.Ok parsed -> Kernel.Net.IpAddr.to_string parsed = text
       | Kernel.Result.Error _ -> false)
 
 let socket_addr_roundtrips =
@@ -112,6 +143,22 @@ let socket_addr_roundtrips =
       | Kernel.Result.Ok addr ->
           let addr_ip, addr_port = Kernel.Net.SocketAddr.to_parts addr in
           Kernel.Net.IpAddr.equal addr_ip ip && addr_port = port)
+
+let socket_addr_ipv4_roundtrips =
+  property "Net.SocketAddr.make roundtrips arbitrary ipv4 parts" Arbitrary.(pair
+    (pair (pair int int) (pair int int))
+    int)
+    (fun (((a, b), (c, d)), raw_port) ->
+      let text = ipv4_text a b c d in
+      let port = Int.abs raw_port mod 65_536 in
+      match Kernel.Net.IpAddr.of_string text with
+      | Kernel.Result.Error _ -> false
+      | Kernel.Result.Ok ip ->
+          match Kernel.Net.SocketAddr.make ~ip ~port with
+          | Kernel.Result.Error _ -> false
+          | Kernel.Result.Ok addr ->
+              let addr_ip, addr_port = Kernel.Net.SocketAddr.to_parts addr in
+              Kernel.Net.IpAddr.equal addr_ip ip && addr_port = port)
 
 let file_slice_roundtrips =
   property "Fs.File partial write and read preserve the selected slice" Arbitrary.(pair
@@ -206,15 +253,60 @@ let file_vectored_roundtrips =
               in
               result))
 
+let file_scalar_write_vectored_read_roundtrips =
+  property "Fs.File scalar writes and vectored reads preserve payload" Arbitrary.string
+    (fun payload ->
+      assume (String.length payload > 0);
+      assume (String.length payload <= 256);
+      with_temp_path "kernel_new_property" "vectored-read.bin"
+        (fun path ->
+          let bytes = Kernel.Bytes.of_string payload in
+          match Kernel.Fs.File.open_write path with
+          | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok file ->
+              let result =
+                try
+                  match Kernel.Fs.File.write file bytes with
+                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                  | Kernel.Result.Ok written ->
+                      let _ = Kernel.Fs.File.close file in
+                      if written != Kernel.Bytes.length bytes then
+                        false
+                      else
+                        match Kernel.Fs.File.open_read path with
+                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                        | Kernel.Result.Ok input ->
+                            let iov = Kernel.IO.Iovec.create ~count:4 ~size:64 () in
+                            let read_result =
+                              match Kernel.Fs.File.read_vectored input iov with
+                              | Kernel.Result.Error error -> fail
+                                (Kernel.Fs.File.error_to_string error)
+                              | Kernel.Result.Ok read ->
+                                  let _ = Kernel.Fs.File.close input in
+                                  read = String.length payload
+                                  && String.sub (Kernel.IO.Iovec.into_string iov) 0 read = payload
+                            in
+                            read_result
+                with
+                | error ->
+                    let _ = Kernel.Fs.File.close file in
+                    raise error
+              in
+              result))
+
 let tests = [
   iovec_into_string_roundtrips;
   iovec_sub_matches_flattened_substring;
   path_join_preserves_segment_order;
   path_fold_join_preserves_many_segment_order;
+  path_join_is_associative_for_simple_segments;
   ip_addr_loopback_parse_render_roundtrips;
+  ip_addr_ipv4_parse_render_roundtrips;
   socket_addr_roundtrips;
+  socket_addr_ipv4_roundtrips;
   file_slice_roundtrips;
   file_vectored_roundtrips;
+  file_scalar_write_vectored_read_roundtrips;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_property_tests" ~tests ~args

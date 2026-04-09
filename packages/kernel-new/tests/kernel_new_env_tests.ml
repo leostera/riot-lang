@@ -120,12 +120,22 @@ let test_current_dir_roundtrips = fun _ctx ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let test_invalid_var_name_is_rejected = fun _ctx ->
+  match (Kernel.Env.set_var ~name:"bad=name" ~value:"x", Kernel.Env.remove_var ~name:"") with
+  | (Kernel.Result.Error (Kernel.Env.Invalid_var_name { name="bad=name" }), Kernel.Result.Error (Kernel.Env.Invalid_var_name {
+    name=""
+  })) -> Ok ()
+  | (Kernel.Result.Error error, _) -> Error (Kernel.Env.error_to_string error)
+  | (_, Kernel.Result.Error error) -> Error (Kernel.Env.error_to_string error)
+  | _ -> Error "expected invalid env variable names to be rejected in kernel-new"
+
 let tests = [
   Test.case "Env.args includes the program name" test_args_include_program_name;
   Test.case "Env set_var, get, vars, and remove_var roundtrip" test_set_get_and_remove_var_roundtrip;
   Test.case "Env missing vars and home_dir reflect the process environment" test_missing_var_and_home_dir_behave_as_expected;
   Test.case "Env vars snapshots preserve each call result" test_vars_snapshots_are_independent;
   Test.case "Env current_dir and set_current_dir roundtrip" test_current_dir_roundtrips;
+  Test.case "Env rejects invalid variable names" test_invalid_var_name_is_rejected;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_env_tests" ~tests ~args

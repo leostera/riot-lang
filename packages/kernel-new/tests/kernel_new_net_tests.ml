@@ -42,6 +42,7 @@ let protect = fun ~finally fn ->
 
 let is_tcp_listener_would_block = function
   | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
 
 let is_tcp_stream_would_block = function
   | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
@@ -354,8 +355,8 @@ let test_tcp_stream_shutdown_write_rejects_further_writes = fun _ctx ->
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
       match Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x") with
-      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.Broken_pipe) -> Ok ()
-      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.Not_connected) -> Ok ()
+      | Kernel.Result.Error Kernel.Net.TcpStream.Broken_pipe -> Ok ()
+      | Kernel.Result.Error Kernel.Net.TcpStream.Not_connected -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected write-shutdown tcp stream to reject further writes")
 
@@ -383,7 +384,7 @@ let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
       | Kernel.Result.Ok extra ->
           let _ = Kernel.Net.TcpListener.close extra in
           Error "expected second tcp listener bind to fail on the same address"
-      | Kernel.Result.Error (Kernel.Net.TcpListener.System Kernel.SystemError.Address_in_use) ->
+      | Kernel.Result.Error Kernel.Net.TcpListener.Address_in_use ->
           Ok ()
       | Kernel.Result.Error error ->
           Error (string_of_tcp_listener_error error))
@@ -557,17 +558,135 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
           in
           poll_until 16))
 
+let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let rec bind_many remaining acc =
+        if remaining = 0 then
+          Ok acc
+        else
+          let* server = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+          let* client = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+          bind_many (remaining - 1) ((server, client) :: acc)
+      in
+      let rec close_many = function
+        | [] -> ()
+        | (server, client) :: rest ->
+            let _ = Kernel.Net.UdpSocket.close server in
+            let _ = Kernel.Net.UdpSocket.close client in
+            close_many rest
+      in
+      let* pairs = bind_many 8 [] in
+      protect ~finally:(fun () -> close_many pairs)
+        (fun () ->
+          let pairs = List.rev pairs in
+          let rec register index = function
+            | [] -> Ok ()
+            | (server, _) :: rest ->
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Net.UdpSocket.to_source server)) in
+                register (index + 1) rest
+          in
+          let rec close_even index = function
+            | [] -> ()
+            | (server, _) :: rest ->
+                if index land 1 = 0 then
+                  close_udp server;
+                close_even (index + 1) rest
+          in
+          let rec send_live index = function
+            | [] -> Ok ()
+            | (server, client) :: rest ->
+                if index land 1 = 0 then
+                  send_live (index + 1) rest
+                else
+                  let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+                  let* sent = lift_udp
+                    (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
+                  if sent != 1 then
+                    Error "expected udp send_to to write one byte"
+                  else
+                    send_live (index + 1) rest
+          in
+          let seen = Kernel.Array.make 8 false in
+          let rec mark = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_readable event then
+                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 8 then
+                    Kernel.Array.set seen token true;
+                  mark rest
+          in
+          let rec live_seen index =
+            if index = 8 then
+              true
+            else if index land 1 = 0 then
+              live_seen (index + 1)
+            else if Kernel.Array.get seen index then
+              live_seen (index + 1)
+            else
+              false
+          in
+          let* () = register 0 pairs in
+          let () = close_even 0 pairs in
+          let* () = send_live 0 pairs in
+          let rec poll_until attempts =
+            if attempts = 0 then
+              Error "expected closed registered udp sockets to not poison remaining readiness"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let () = mark events in
+              if live_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
+          in
+          poll_until 8))
+
 let test_udp_send_requires_connected_peer = fun _ctx ->
   let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
   protect ~finally:(fun () -> close_udp socket)
     (fun () ->
       match Kernel.Net.UdpSocket.send socket (Kernel.Bytes.of_string "ping") with
-      | Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.Destination_address_required) -> Ok ()
-      | Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.Not_connected) -> Ok ()
+      | Kernel.Result.Error Kernel.Net.UdpSocket.Destination_address_required -> Ok ()
+      | Kernel.Result.Error Kernel.Net.UdpSocket.Not_connected -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.String.append
         "expected destination-address error, got "
         (string_of_udp_error error))
       | Kernel.Result.Ok _ -> Error "expected udp send to fail for an unconnected socket")
+
+let test_udp_bind_rejects_in_use_address = fun _ctx ->
+  let addr = Kernel.Net.SocketAddr.loopback_v4 ~port:0 in
+  let* first = lift_udp (Kernel.Net.UdpSocket.bind addr) in
+  protect ~finally:(fun () -> close_udp first)
+    (fun () ->
+      let* bound_addr = lift_udp (Kernel.Net.UdpSocket.local_addr first) in
+      match Kernel.Net.UdpSocket.bind ~reuse_addr:false ~reuse_port:false bound_addr with
+      | Kernel.Result.Error Kernel.Net.UdpSocket.Address_in_use ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (string_of_udp_error error)
+      | Kernel.Result.Ok socket ->
+          close_udp socket;
+          Error "expected binding the same udp address twice to fail")
+
+let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
+  match Kernel.Net.TcpListener.bind ~backlog:0 (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+  | Kernel.Result.Error (Kernel.Net.TcpListener.Invalid_backlog { backlog=0 }) ->
+      Ok ()
+  | Kernel.Result.Error error ->
+      Error (string_of_tcp_listener_error error)
+  | Kernel.Result.Ok listener ->
+      close_listener listener;
+      Error "expected invalid backlog to be rejected before binding"
 
 let tests = [
   Test.case "Net.IpAddr validates ipv4 and ipv6" test_ip_addr_validates_ipv4_and_ipv6;
@@ -576,10 +695,13 @@ let tests = [
   Test.case "Net.TcpStream write shutdown reports eof to the peer" test_tcp_stream_shutdown_write_reports_eof_to_peer;
   Test.case "Net.TcpStream write shutdown rejects further writes" test_tcp_stream_shutdown_write_rejects_further_writes;
   Test.case "Net.TcpListener ipv6 local_addr preserves loopback" test_tcp_listener_ipv6_local_addr_roundtrips;
+  Test.case "Net.TcpListener bind rejects invalid backlog" test_tcp_listener_bind_rejects_invalid_backlog;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
   Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
   Test.case "Async poll handles many udp sockets" test_async_poll_handles_many_udp_sockets;
+  Test.case "Async poll tolerates closed registered udp sockets" test_async_poll_tolerates_closed_registered_udp_sockets;
+  Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
 ]
 

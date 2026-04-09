@@ -215,6 +215,34 @@ let test_dangling_symlink_still_has_symlink_metadata = fun _ctx ->
           else
             Error "expected dangling symlink_metadata to preserve symlink kind"))
 
+let test_metadata_follows_symlink_but_remove_only_unlinks_symlink = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "alias.txt") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            Ok ())
+      in
+      let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+      let* followed = lift (Kernel.Fs.File.metadata link) in
+      let* raw = lift (Kernel.Fs.File.symlink_metadata link) in
+      let* () = lift (Kernel.Fs.File.remove_file link) in
+      let* target_exists = lift (Kernel.Fs.File.exists target) in
+      let* link_exists = lift (Kernel.Fs.File.exists link) in
+      if
+        Kernel.Fs.File.Metadata.is_file followed
+        && Kernel.Fs.File.Metadata.is_symlink raw
+        && target_exists
+        && not link_exists
+      then
+        Ok ()
+      else
+        Error "expected metadata to follow symlinks while removing the symlink leaves the target intact")
+
 let test_copy_and_rename_roundtrip = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -418,6 +446,7 @@ let tests = [
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
   Test.case "Fs.File dangling symlink still reports symlink metadata" test_dangling_symlink_still_has_symlink_metadata;
+  Test.case "Fs.File metadata follows symlink but remove_file only unlinks the symlink" test_metadata_follows_symlink_but_remove_only_unlinks_symlink;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
   Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
   Test.case "Fs.File hard_link and remove ops update filesystem state" test_hard_link_updates_link_count_and_remove_ops;

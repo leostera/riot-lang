@@ -38,6 +38,12 @@ let rec close_pipes = function
       let _ = Kernel.Fs.File.close write_end in
       close_pipes rest
 
+let rec close_processes = function
+  | [] -> ()
+  | process :: rest ->
+      let _ = Kernel.Process.close process in
+      close_processes rest
+
 let with_pipes = fun count fn ->
   let rec create remaining acc =
     if remaining = 0 then
@@ -56,6 +62,19 @@ let with_poll = fun fn ->
       let _ = Kernel.Async.Poll.close poll in
       ())
     (fun () -> fn poll)
+
+let with_processes = fun count fn ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let rec spawn remaining acc =
+    if remaining = 0 then
+      Ok acc
+    else
+      match Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio () with
+      | Kernel.Result.Ok process -> spawn (remaining - 1) (process :: acc)
+      | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
+  in
+  let* processes = spawn count [] in
+  protect ~finally:(fun () -> close_processes processes) (fun () -> fn (List.rev processes))
 
 let wait_for_event = fun ?(timeout = 100_000_000L) poll ->
   lift_async (Kernel.Async.Poll.poll ~timeout poll)
@@ -254,6 +273,84 @@ let test_token_roundtrips_structured_values = fun _ctx ->
   else
     Error "expected token to roundtrip its structured value"
 
+let test_poll_rejects_invalid_limits = fun _ctx ->
+  with_poll
+    (fun poll ->
+      match (Kernel.Async.Poll.poll ~timeout:(-1L) poll, Kernel.Async.Poll.poll ~max_events:0 poll) with
+      | (Kernel.Result.Error (Kernel.Async.Invalid_timeout_ns { timeout_ns }), Kernel.Result.Error (Kernel.Async.Invalid_max_events {
+        max_events
+      })) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
+      | (Kernel.Result.Error error, _) -> Error (Kernel.Async.error_to_string error)
+      | (_, Kernel.Result.Error error) -> Error (Kernel.Async.error_to_string error)
+      | _ -> Error "expected async poll to reject invalid timeout and max_events")
+
+let test_poll_handles_many_process_exits = fun _ctx ->
+  with_poll
+    (fun poll ->
+      with_processes 16
+        (fun processes ->
+          let rec register index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.priority
+                    (Kernel.Process.to_source process)) in
+                register (index + 1) rest
+          in
+          let seen = Kernel.Array.make 16 false in
+          let rec mark_events = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_priority event then
+                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 16 then
+                    Kernel.Array.set seen token true;
+                  mark_events rest
+          in
+          let rec mark_exits index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* status =
+                  match Kernel.Process.try_wait process with
+                  | Kernel.Result.Ok status -> Ok status
+                  | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
+                in
+                let () =
+                  match status with
+                  | Some (Kernel.Process.Exited 0) ->
+                      if index < 16 then
+                        Kernel.Array.set seen index true
+                  | _ -> ()
+                in
+                mark_exits (index + 1) rest
+          in
+          let rec all_seen index =
+            if index = 16 then
+              true
+            else if Kernel.Array.get seen index then
+              all_seen (index + 1)
+            else
+              false
+          in
+          let* () = register 0 processes in
+          let rec poll_until attempts =
+            if attempts = 0 then
+              Error "expected many registered child processes to report exit readiness"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let () = mark_events events in
+              let* () = mark_exits 0 processes in
+              if all_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
+          in
+          poll_until 16))
+
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
   Test.case "Async poll reports pipe read closure" test_poll_reports_pipe_read_closed;
@@ -262,6 +359,8 @@ let tests = [
   Test.case "Async reregister replaces writable interest" test_reregister_replaces_interest;
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
+  Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;
+  Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_async_tests" ~tests ~args
