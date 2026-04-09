@@ -19,6 +19,94 @@ const MetadataSummary = struct {
     data_segment_count: usize = 0,
 };
 
+const MetadataTables = struct {
+    frametables: ?[*]const ?[*]const Intnat = null,
+    globals: ?[*]const ?[*]const RawValue = null,
+    code_segments: ?[*]const Segment = null,
+    data_segments: ?[*]const Segment = null,
+
+    fn isEmpty(self: MetadataTables) bool {
+        return self.frametables == null and
+            self.globals == null and
+            self.code_segments == null and
+            self.data_segments == null;
+    }
+
+    fn summarize(self: MetadataTables) MetadataSummary {
+        const frametables = self.frametables orelse return .{};
+        const globals = self.globals orelse return .{};
+        const code_segments = self.code_segments orelse return .{};
+        const data_segments = self.data_segments orelse return .{};
+        return summarizeMetadata(frametables, globals, code_segments, data_segments);
+    }
+
+    fn captureExtern() MetadataTables {
+        if (builtin.is_test) return .{};
+
+        return .{
+            .frametables = externSymbolPtr([*]const ?[*]const Intnat, "caml_frametable"),
+            .globals = externSymbolPtr([*]const ?[*]const RawValue, "caml_globals"),
+            .code_segments = externSymbolPtr([*]const Segment, "caml_code_segments"),
+            .data_segments = externSymbolPtr([*]const Segment, "caml_data_segments"),
+        };
+    }
+};
+
+const RawRootSlotVisitor = struct {
+    ctx: ?*anyopaque,
+    visit_fn: *const fn (?*anyopaque, *const RawValue) void,
+
+    fn visit(self: RawRootSlotVisitor, slot: *const RawValue) void {
+        self.visit_fn(self.ctx, slot);
+    }
+};
+
+const CompilerCompatState = struct {
+    const StartupMetadata = struct {
+        tables: MetadataTables,
+        summary: MetadataSummary,
+    };
+
+    startup_metadata: ?StartupMetadata = null,
+
+    fn reset(self: *CompilerCompatState) void {
+        self.startup_metadata = null;
+    }
+
+    fn registerStartupMetadata(self: *CompilerCompatState, tables: MetadataTables) void {
+        if (tables.isEmpty()) {
+            self.reset();
+            return;
+        }
+
+        self.startup_metadata = .{
+            .tables = tables,
+            .summary = tables.summarize(),
+        };
+    }
+
+    fn hasStartupMetadata(self: *const CompilerCompatState) bool {
+        return self.startup_metadata != null;
+    }
+
+    fn summary(self: *const CompilerCompatState) MetadataSummary {
+        return if (self.startup_metadata) |metadata| metadata.summary else .{};
+    }
+
+    fn visitGcRootTableEntries(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
+        const metadata = self.startup_metadata orelse return;
+        const globals = metadata.tables.globals orelse return;
+
+        var global_index: usize = 0;
+        while (globals[global_index]) |table| : (global_index += 1) {
+            var root_index: usize = 0;
+            while (table[root_index] != 0) : (root_index += 1) {
+                visitor.visit(&table[root_index]);
+            }
+        }
+    }
+};
+
 const FakeDomainState = extern struct {
     pad0: [0x28]u8 = [_]u8{0} ** 0x28,
     stack_anchor: usize = 0,
@@ -28,11 +116,6 @@ extern fn caml_start_program(state: *FakeDomainState) callconv(.c) RawValue;
 comptime {
     if (builtin.is_test) {
         _ = struct {
-            pub export fn caml_start_program(state: *FakeDomainState) callconv(.c) RawValue {
-                _ = state;
-                return raw_unit;
-            }
-
             pub export fn caml_program() callconv(.c) RawValue {
                 return raw_unit;
             }
@@ -41,6 +124,7 @@ comptime {
 }
 
 var fake_domain = FakeDomainState{};
+var compiler_compat_state = CompilerCompatState{};
 
 pub export var caml_globals_inited: usize = 0;
 pub export var @"caml_system$frametable": [1]usize = .{0};
@@ -48,6 +132,7 @@ pub export var zort_last_emitted_int: i64 = -1;
 pub export var zort_startup_calls: usize = 0;
 pub export var zort_start_program_calls: usize = 0;
 pub export var zort_last_start_program_result: RawValue = raw_unit;
+pub export var zort_metadata_registered: usize = 0;
 pub export var zort_metadata_frametables: usize = 0;
 pub export var zort_metadata_frame_descriptors: usize = 0;
 pub export var zort_metadata_gc_root_tables: usize = 0;
@@ -94,22 +179,13 @@ fn externSymbolPtr(comptime T: type, comptime name: []const u8) T {
     return @ptrCast(@alignCast(@extern(*const anyopaque, .{ .name = name })));
 }
 
-fn captureMetadataSummary() MetadataSummary {
-    if (builtin.is_test) return .{};
-
-    return summarizeMetadata(
-        externSymbolPtr([*]const ?[*]const Intnat, "caml_frametable"),
-        externSymbolPtr([*]const ?[*]const RawValue, "caml_globals"),
-        externSymbolPtr([*]const Segment, "caml_code_segments"),
-        externSymbolPtr([*]const Segment, "caml_data_segments"),
-    );
-}
-
 fn resetObservability() void {
+    compiler_compat_state.reset();
     zort_last_emitted_int = -1;
     zort_startup_calls = 0;
     zort_start_program_calls = 0;
     zort_last_start_program_result = raw_unit;
+    zort_metadata_registered = 0;
     zort_metadata_frametables = 0;
     zort_metadata_frame_descriptors = 0;
     zort_metadata_gc_root_tables = 0;
@@ -122,7 +198,10 @@ fn startupCommon() RawValue {
     resetObservability();
     zort_startup_calls = 1;
 
-    const metadata = captureMetadataSummary();
+    compiler_compat_state.registerStartupMetadata(MetadataTables.captureExtern());
+    zort_metadata_registered = @intFromBool(compiler_compat_state.hasStartupMetadata());
+
+    const metadata = compiler_compat_state.summary();
     zort_metadata_frametables = metadata.frametable_count;
     zort_metadata_frame_descriptors = metadata.frame_descriptor_count;
     zort_metadata_gc_root_tables = metadata.gc_root_table_count;
@@ -219,4 +298,89 @@ test "compiler compat: summarize startup metadata tables" {
     try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
     try std.testing.expectEqual(@as(usize, 2), summary.code_segment_count);
     try std.testing.expectEqual(@as(usize, 1), summary.data_segment_count);
+}
+
+test "compiler compat: state retains startup metadata and visits gc root entries" {
+    const frametable = [_]Intnat{1};
+    const frametables = [_]?[*]const Intnat{
+        frametable[0..].ptr,
+        null,
+    };
+    const roots = [_]RawValue{ 0x10, 0x20, 0 };
+    const globals = [_]?[*]const RawValue{
+        roots[0..].ptr,
+        null,
+    };
+    const code_segments = [_]Segment{
+        .{ .begin = @ptrFromInt(0x10), .end = @ptrFromInt(0x20) },
+        .{},
+    };
+    const data_segments = [_]Segment{
+        .{ .begin = @ptrFromInt(0x30), .end = @ptrFromInt(0x40) },
+        .{},
+    };
+
+    var state = CompilerCompatState{};
+    state.registerStartupMetadata(.{
+        .frametables = frametables[0..].ptr,
+        .globals = globals[0..].ptr,
+        .code_segments = code_segments[0..].ptr,
+        .data_segments = data_segments[0..].ptr,
+    });
+
+    const summary = state.summary();
+    try std.testing.expect(state.hasStartupMetadata());
+    try std.testing.expectEqual(@as(usize, 1), summary.frametable_count);
+    try std.testing.expectEqual(@as(usize, 1), summary.gc_root_table_count);
+    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
+
+    var seen = std.ArrayListUnmanaged(RawValue){};
+    defer seen.deinit(std.testing.allocator);
+
+    const Collect = struct {
+        fn visit(ctx: ?*anyopaque, slot: *const RawValue) void {
+            const items: *std.ArrayListUnmanaged(RawValue) = @ptrCast(@alignCast(ctx.?));
+            items.append(std.testing.allocator, slot.*) catch unreachable;
+        }
+    };
+
+    state.visitGcRootTableEntries(.{
+        .ctx = &seen,
+        .visit_fn = Collect.visit,
+    });
+
+    try std.testing.expectEqual(@as(usize, 2), seen.items.len);
+    try std.testing.expectEqual(@as(RawValue, 0x10), seen.items[0]);
+    try std.testing.expectEqual(@as(RawValue, 0x20), seen.items[1]);
+}
+
+test "compiler compat: state reset clears registered startup metadata" {
+    const frametable = [_]Intnat{1};
+    const frametables = [_]?[*]const Intnat{
+        frametable[0..].ptr,
+        null,
+    };
+    const roots = [_]RawValue{ 0x10, 0 };
+    const globals = [_]?[*]const RawValue{
+        roots[0..].ptr,
+        null,
+    };
+    const segments = [_]Segment{
+        .{ .begin = @ptrFromInt(0x10), .end = @ptrFromInt(0x20) },
+        .{},
+    };
+
+    var state = CompilerCompatState{};
+    state.registerStartupMetadata(.{
+        .frametables = frametables[0..].ptr,
+        .globals = globals[0..].ptr,
+        .code_segments = segments[0..].ptr,
+        .data_segments = segments[0..].ptr,
+    });
+    try std.testing.expect(state.hasStartupMetadata());
+
+    state.reset();
+
+    try std.testing.expect(!state.hasStartupMetadata());
+    try std.testing.expectEqual(MetadataSummary{}, state.summary());
 }
