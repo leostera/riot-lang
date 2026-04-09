@@ -1,8 +1,10 @@
 type t
 type error =
   | Invalid_backlog of { backlog: int }
+  | Would_block
   | Address_in_use
   | Address_not_available
+  | Connection_aborted
   | System of System_error.t
 val error_to_string: error -> string
 

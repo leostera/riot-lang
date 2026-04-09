@@ -71,6 +71,14 @@ module Adapter: sig
     val reregister_process: t -> pid:int -> token:Token.t -> (unit, error) Result.t
 
     val deregister_process: t -> pid:int -> (unit, error) Result.t
+
+    val register_timer:
+      t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+
+    val reregister_timer:
+      t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+
+    val deregister_timer: t -> timer_id:int -> (unit, error) Result.t
   end
 end
 

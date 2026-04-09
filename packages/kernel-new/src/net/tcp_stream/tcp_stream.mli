@@ -5,12 +5,14 @@ type shutdown =
   | Read_write
 type error =
   | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | Would_block
   | Connection_refused
   | Connection_reset
   | Timed_out
   | Broken_pipe
   | Not_connected
   | Connection_aborted
+  | Network_unreachable
   | System of System_error.t
 val error_to_string: error -> string
 
@@ -20,6 +22,8 @@ type connect_result =
 val connect: Socket_addr.t -> (connect_result, error) Result.t
 
 val close: t -> (unit, error) Result.t
+
+val finish_connect: t -> (unit, error) Result.t
 
 val shutdown: t -> shutdown -> (unit, error) Result.t
 

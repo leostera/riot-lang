@@ -516,6 +516,73 @@ let test_process_close_tolerates_preclosed_pipe_handles = fun _ctx ->
       let _ = Kernel.Process.close process in
       Error "expected process pipes to exist"
 
+let test_try_wait_is_stable_after_exit = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* first = wait_for_exit poll ~token:(Kernel.Async.Token.make 534) process in
+          let* second = lift_process (Kernel.Process.try_wait process) in
+          match second with
+          | Some status when first = Kernel.Process.Exited 0 && status = Kernel.Process.Exited 0 ->
+              Ok ()
+          | Some _ ->
+              Error "expected try_wait to remain stable after the process exits"
+          | None ->
+              Error "expected exited process to stay observable through try_wait"))
+
+let test_kill_after_exit_reports_no_such_process = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 535) process in
+          match Kernel.Process.kill process ~signal:9 with
+          | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.No_such_process) ->
+              Ok ()
+          | Kernel.Result.Error error ->
+              Error (Kernel.Process.error_to_string error)
+          | Kernel.Result.Ok () ->
+              Error "expected signaling an exited process to report no_such_process"))
+
+let test_process_close_is_idempotent = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Pipe; stdout = `Pipe; stderr = `Null } in
+  let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+  let* () = lift_process (Kernel.Process.close process) in
+  let* () = lift_process (Kernel.Process.close process) in
+  Ok ()
+
+let test_repeated_spawn_and_poll_exit_stays_healthy = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  with_poll
+    (fun poll ->
+      let rec loop remaining =
+        if remaining = 0 then
+          Ok ()
+        else
+          let* process = lift_process
+            (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
+          let outcome =
+            with_process
+              process
+              (fun process ->
+                let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make (600 + remaining)) process in
+                if status = Kernel.Process.Exited 0 then
+                  Ok ()
+                else
+                  Error "expected repeated spawned process to exit cleanly")
+          in
+          let* () = outcome in
+          loop (remaining - 1)
+      in
+      loop 32)
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
@@ -534,6 +601,10 @@ let tests = [
   Test.case "Process requested pipe ownership matches stdio" test_requested_pipe_ownership_matches_stdio;
   Test.case "Process spawn missing program reports no-such-file" test_spawn_missing_program_reports_no_such_file;
   Test.case "Process close tolerates preclosed pipe handles" test_process_close_tolerates_preclosed_pipe_handles;
+  Test.case "Process try_wait is stable after exit" test_try_wait_is_stable_after_exit;
+  Test.case "Process kill after exit reports no-such-process" test_kill_after_exit_reports_no_such_process;
+  Test.case "Process close is idempotent" test_process_close_is_idempotent;
+  Test.case ~size:Test.Large "Process repeated spawn and poll exit stays healthy" test_repeated_spawn_and_poll_exit_stays_healthy;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_process_tests" ~tests ~args

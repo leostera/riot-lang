@@ -2,7 +2,7 @@ open Prelude
 
 type 'a t = 'a array
 
-let make = Primitives.array_make
+let make = Caml_runtime.array_make
 
 let init = fun length builder ->
   if length = 0 then
@@ -13,18 +13,18 @@ let init = fun length builder ->
       if index >= length then
         out
       else (
-        Primitives.array_set out index (builder index);
+        Caml_runtime.array_set out index (builder index);
         fill (index + 1)
       )
     in
     let _ = fill 1 in
     out
 
-let length = Primitives.array_length
+let length = Caml_runtime.array_length
 
-let get = Primitives.array_get
+let get = Caml_runtime.array_get
 
-let set = Primitives.array_set
+let set = Caml_runtime.array_set
 
 let iter = fun fn array ->
   let rec loop index =

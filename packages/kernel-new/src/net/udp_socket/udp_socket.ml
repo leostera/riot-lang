@@ -6,10 +6,16 @@ type t = int
 
 type error =
   | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | Would_block
+  | Timed_out
+  | Connection_refused
+  | Connection_reset
+  | Network_unreachable
   | Not_connected
   | Message_too_long
   | Destination_address_required
   | Address_in_use
+  | Address_not_available
   | System of System_error.t
 
 module FFI = struct
@@ -52,17 +58,29 @@ let error_to_string = function
       ", buffer_len=";
       Int.to_string buffer_len;
     ]
+  | Would_block -> "operation would block"
+  | Timed_out -> "timed out"
+  | Connection_refused -> "connection refused"
+  | Connection_reset -> "connection reset by peer"
+  | Network_unreachable -> "network unreachable"
   | Not_connected -> "socket is not connected"
   | Message_too_long -> "message too long"
   | Destination_address_required -> "destination address required"
   | Address_in_use -> "address already in use"
+  | Address_not_available -> "address not available"
   | System error -> System_error.to_string error
 
 let error_of_system = function
+  | System_error.Would_block -> Would_block
+  | System_error.Timed_out -> Timed_out
+  | System_error.Connection_refused -> Connection_refused
+  | System_error.Connection_reset -> Connection_reset
+  | System_error.Network_unreachable -> Network_unreachable
   | System_error.Not_connected -> Not_connected
   | System_error.Message_too_long -> Message_too_long
   | System_error.Destination_address_required -> Destination_address_required
   | System_error.Address_in_use -> Address_in_use
+  | System_error.Address_not_available -> Address_not_available
   | error -> System error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->

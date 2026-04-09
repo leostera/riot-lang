@@ -4,8 +4,10 @@ type t = int
 
 type error =
   | Invalid_backlog of { backlog: int }
+  | Would_block
   | Address_in_use
   | Address_not_available
+  | Connection_aborted
   | System of System_error.t
 
 module FFI = struct
@@ -27,13 +29,17 @@ let error_to_string = function
   | Invalid_backlog { backlog } -> String.concat
     ""
     [ "invalid listener backlog: "; Int.to_string backlog ]
+  | Would_block -> "operation would block"
   | Address_in_use -> "address already in use"
   | Address_not_available -> "address not available"
+  | Connection_aborted -> "connection aborted"
   | System error -> System_error.to_string error
 
 let error_of_system = function
+  | System_error.Would_block -> Would_block
   | System_error.Address_in_use -> Address_in_use
   | System_error.Address_not_available -> Address_not_available
+  | System_error.Connection_aborted -> Connection_aborted
   | error -> System error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr ->

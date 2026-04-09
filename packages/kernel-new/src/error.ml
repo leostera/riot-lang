@@ -12,6 +12,7 @@ type t =
   | Process of Process.error
   | Time_system_time of Time.SystemTime.error
   | Time_monotonic of Time.Monotonic.error
+  | Time_timer of Time.Timer.error
 
 let of_async = fun error -> Async error
 
@@ -35,6 +36,8 @@ let of_time_system_time = fun error -> Time_system_time error
 
 let of_time_monotonic = fun error -> Time_monotonic error
 
+let of_time_timer = fun error -> Time_timer error
+
 let to_string = function
   | Async error -> Async.error_to_string error
   | Env error -> Env.error_to_string error
@@ -47,5 +50,6 @@ let to_string = function
   | Process error -> Process.error_to_string error
   | Time_system_time error -> Time.SystemTime.error_to_string error
   | Time_monotonic error -> Time.Monotonic.error_to_string error
+  | Time_timer error -> Time.Timer.error_to_string error
 
 let panic = System_error.panic

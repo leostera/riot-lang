@@ -12,6 +12,7 @@ type t =
   | Process of Process.error
   | Time_system_time of Time.SystemTime.error
   | Time_monotonic of Time.Monotonic.error
+  | Time_timer of Time.Timer.error
 val of_async: Async.error -> t
 
 val of_env: Env.error -> t
@@ -33,6 +34,8 @@ val of_process: Process.error -> t
 val of_time_system_time: Time.SystemTime.error -> t
 
 val of_time_monotonic: Time.Monotonic.error -> t
+
+val of_time_timer: Time.Timer.error -> t
 
 val to_string: t -> string
 

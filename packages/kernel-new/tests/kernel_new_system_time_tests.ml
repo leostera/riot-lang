@@ -13,6 +13,54 @@ let lift_monotonic = function
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
 
+let lift_timer = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+
+let lift_async = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_async error))
+
+let protect = fun ~finally fn ->
+  try
+    let value = fn () in
+    finally ();
+    value
+  with
+  | error ->
+      finally ();
+      raise error
+
+let with_poll = fun fn ->
+  let* poll = lift_async (Kernel.Async.Poll.make ()) in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.close poll in
+      ())
+    (fun () -> fn poll)
+
+let wait_for_timer = fun poll ~token timer ->
+  let source = Kernel.Time.Timer.to_source timer in
+  let* () = lift_async
+    (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.deregister poll source in
+      ())
+    (fun () ->
+      let* events = lift_async
+        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+      if
+        List.exists
+          (fun event ->
+            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+            && Kernel.Async.Event.is_readable event)
+          events
+      then
+        Ok ()
+      else
+        Error "expected timer source to wake the poller")
+
 let test_of_parts_roundtrips = fun _ctx ->
   let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:42 ~nanos:123_456_789) in
   let (secs, nanos) = Kernel.Time.SystemTime.to_parts value in
@@ -73,6 +121,53 @@ let test_monotonic_diff_ns_matches_parts = fun _ctx ->
   else
     Error "expected monotonic diff_ns to preserve raw nanosecond deltas"
 
+let test_timer_rejects_non_positive_timeout = fun _ctx ->
+  match Kernel.Time.Timer.after_ns 0L with
+  | Kernel.Result.Error (Kernel.Time.Timer.Invalid_timeout_ns { timeout_ns=0L }) ->
+      Ok ()
+  | Kernel.Result.Error error ->
+      Error (Kernel.Time.Timer.error_to_string error)
+  | Kernel.Result.Ok _ ->
+      Error "expected timer source construction to reject a non-positive timeout"
+
+let test_timer_after_ns_wakes_poll = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      wait_for_timer poll ~token:(Kernel.Async.Token.make 700) timer)
+
+let test_timer_every_ns_repeats = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.every_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 701 in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let rec poll_twice remaining =
+            if remaining = 0 then
+              Ok ()
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+              if
+                List.exists
+                  (fun event ->
+                    Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                    && Kernel.Async.Event.is_readable event)
+                  events
+              then
+                poll_twice (remaining - 1)
+              else
+                Error "expected repeating timer to remain readable across multiple polls"
+          in
+          poll_twice 2))
+
 let tests = [
   Test.case "Time.SystemTime of_parts roundtrips" test_of_parts_roundtrips;
   Test.case "Time.SystemTime now is at or after epoch" test_now_is_at_or_after_epoch;
@@ -81,6 +176,9 @@ let tests = [
   Test.case "Time.Monotonic now is non-decreasing" test_monotonic_now_is_non_decreasing;
   Test.case "Time.Monotonic now has normalized nanoseconds" test_monotonic_now_has_valid_nanoseconds;
   Test.case "Time.Monotonic diff_ns matches raw parts" test_monotonic_diff_ns_matches_parts;
+  Test.case "Time.Timer rejects non-positive timeout" test_timer_rejects_non_positive_timeout;
+  Test.case "Time.Timer after_ns wakes poll" test_timer_after_ns_wakes_poll;
+  Test.case "Time.Timer every_ns repeats" test_timer_every_ns_repeats;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args

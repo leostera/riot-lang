@@ -1,83 +1,43 @@
-external equal: 'a -> 'a -> bool = "%equal"
+let ( = ) = Caml_runtime.equal
 
-let ( = ) = equal
+let ( != ) = Caml_runtime.not_equal
 
-external not_equal: 'a -> 'a -> bool = "%notequal"
+let ( < ) = Caml_runtime.less_than
 
-let ( != ) = not_equal
+let ( > ) = Caml_runtime.greater_than
 
-external less_than: 'a -> 'a -> bool = "%lessthan"
+let ( <= ) = Caml_runtime.less_or_equal
 
-let ( < ) = less_than
+let ( >= ) = Caml_runtime.greater_or_equal
 
-external greater_than: 'a -> 'a -> bool = "%greaterthan"
+let ( ~- ) = Caml_runtime.neg_int
 
-let ( > ) = greater_than
+let ( + ) = Caml_runtime.add_int
 
-external less_or_equal: 'a -> 'a -> bool = "%lessequal"
+let ( - ) = Caml_runtime.sub_int
 
-let ( <= ) = less_or_equal
+let ( * ) = Caml_runtime.mul_int
 
-external greater_or_equal: 'a -> 'a -> bool = "%greaterequal"
+let ( / ) = Caml_runtime.div_int
 
-let ( >= ) = greater_or_equal
+let ( mod ) = Caml_runtime.mod_int
 
-external neg_int: int -> int = "%negint"
+let ( land ) = Caml_runtime.int_logand
 
-let ( ~- ) = neg_int
+let ( lor ) = Caml_runtime.int_logor
 
-external add_int: int -> int -> int = "%addint"
-
-let ( + ) = add_int
-
-external sub_int: int -> int -> int = "%subint"
-
-let ( - ) = sub_int
-
-external mul_int: int -> int -> int = "%mulint"
-
-let ( * ) = mul_int
-
-external div_int: int -> int -> int = "%divint"
-
-let ( / ) = div_int
-
-external rem_int: int -> int -> int = "%modint"
-
-let ( mod ) = rem_int
-
-external int_logand: int -> int -> int = "%andint"
-
-let ( land ) = int_logand
-
-external int_logor: int -> int -> int = "%orint"
-
-let ( lor ) = int_logor
-
-external int_logxor: int -> int -> int = "%xorint"
-
-let ( lxor ) = int_logxor
+let ( lxor ) = Caml_runtime.int_logxor
 
 let lnot value = value lxor (-1)
 
-external shift_left_int: int -> int -> int = "%lslint"
+let ( lsl ) = Caml_runtime.shift_left_int
 
-let ( lsl ) = shift_left_int
+let ( lsr ) = Caml_runtime.shift_right_logical_int
 
-external shift_right_logical_int: int -> int -> int = "%lsrint"
+let ( asr ) = Caml_runtime.shift_right_int
 
-let ( lsr ) = shift_right_logical_int
+let not = Caml_runtime.not_bool
 
-external shift_right_int: int -> int -> int = "%asrint"
+let ( && ) = Caml_runtime.and_bool
 
-let ( asr ) = shift_right_int
-
-external not: bool -> bool = "%boolnot"
-
-external and_bool: bool -> bool -> bool = "%sequand"
-
-let ( && ) = and_bool
-
-external or_bool: bool -> bool -> bool = "%sequor"
-
-let ( || ) = or_bool
+let ( || ) = Caml_runtime.or_bool

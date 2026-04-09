@@ -1,11 +1,11 @@
 type t = char
 
-let equal = Primitives.equal
+let equal = Caml_runtime.equal
 
-let compare = Primitives.compare
+let compare = Caml_runtime.compare
 
-let of_int = Primitives.char_of_int
+let of_int = Caml_runtime.char_of_int
 
-let unsafe_of_int = Primitives.char_of_int
+let unsafe_of_int = Caml_runtime.char_of_int
 
-let to_int = Primitives.int_of_char
+let to_int = Caml_runtime.int_of_char

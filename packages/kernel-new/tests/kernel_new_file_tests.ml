@@ -215,6 +215,36 @@ let test_dangling_symlink_still_has_symlink_metadata = fun _ctx ->
           else
             Error "expected dangling symlink_metadata to preserve symlink kind"))
 
+let test_lstat_matches_symlink_metadata = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "alias.txt") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            Ok ())
+      in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          let _ = Kernel.Fs.File.remove_file target in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+          let* by_lstat = lift (Kernel.Fs.File.lstat link) in
+          let* by_symlink_metadata = lift (Kernel.Fs.File.symlink_metadata link) in
+          if
+            Kernel.Fs.File.Metadata.is_symlink by_lstat
+            && Kernel.Fs.File.Metadata.is_symlink by_symlink_metadata
+            && Kernel.Fs.File.Metadata.ino by_lstat = Kernel.Fs.File.Metadata.ino by_symlink_metadata
+          then
+            Ok ()
+          else
+            Error "expected lstat to match symlink_metadata for a symbolic link"))
+
 let test_metadata_follows_symlink_but_remove_only_unlinks_symlink = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -439,6 +469,18 @@ let test_remove_missing_paths_report_no_such_file = fun _ctx ->
       | (Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory), Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory)) -> Ok ()
       | _ -> Error "expected removing missing file and dir to report no-such-file")
 
+let test_repeated_pipe_open_and_close_stays_healthy = fun _ctx ->
+  let rec loop remaining =
+    if remaining = 0 then
+      Ok ()
+    else
+      let* pipe = lift (Kernel.Fs.File.pipe ()) in
+      let* () = lift (Kernel.Fs.File.close pipe.read_end) in
+      let* () = lift (Kernel.Fs.File.close pipe.write_end) in
+      loop (remaining - 1)
+  in
+  loop 256
+
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
@@ -446,6 +488,7 @@ let tests = [
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
   Test.case "Fs.File dangling symlink still reports symlink metadata" test_dangling_symlink_still_has_symlink_metadata;
+  Test.case "Fs.File lstat matches symlink_metadata" test_lstat_matches_symlink_metadata;
   Test.case "Fs.File metadata follows symlink but remove_file only unlinks the symlink" test_metadata_follows_symlink_but_remove_only_unlinks_symlink;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
   Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
@@ -456,6 +499,7 @@ let tests = [
   Test.case "Fs.File is_tty is false for files and pipes" test_is_tty_is_false_for_files_and_pipes;
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
   Test.case "Fs.File remove missing paths reports no-such-file" test_remove_missing_paths_report_no_such_file;
+  Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args

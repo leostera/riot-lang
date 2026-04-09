@@ -39,6 +39,8 @@ Examples:
 - Keep public APIs portable even when the backend is Unix-only today.
 - Prefer structured errors over stringly errors or native exceptions.
 - If an operation has a real async/readiness path, prefer exposing that path instead of a blocking helper. Fast metadata-style syscalls are still fine when they are inherently synchronous.
+- Keep source-layout and code-hygiene checks out of unit tests. Those rules belong in docs or separate tooling because tests may run without source access.
+- Do not add `Backend.ml` shim modules. Use local backend files like `env/unix.ml` where the planner supports them; otherwise keep the implementation in the public module until the nested-backend layout is supported cleanly.
 
 ## For `std`
 

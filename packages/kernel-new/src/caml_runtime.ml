@@ -2,7 +2,23 @@ external equal: 'a -> 'a -> bool = "%equal"
 
 external compare: 'a -> 'a -> int = "%compare"
 
+external not_equal: 'a -> 'a -> bool = "%notequal"
+
+external less_than: 'a -> 'a -> bool = "%lessthan"
+
+external greater_than: 'a -> 'a -> bool = "%greaterthan"
+
+external less_or_equal: 'a -> 'a -> bool = "%lessequal"
+
+external greater_or_equal: 'a -> 'a -> bool = "%greaterequal"
+
 external not_bool: bool -> bool = "%boolnot"
+
+external and_bool: bool -> bool -> bool = "%sequand"
+
+external or_bool: bool -> bool -> bool = "%sequor"
+
+external neg_int: int -> int = "%negint"
 
 external add_int: int -> int -> int = "%addint"
 
@@ -14,9 +30,23 @@ external div_int: int -> int -> int = "%divint"
 
 external mod_int: int -> int -> int = "%modint"
 
+external int_logand: int -> int -> int = "%andint"
+
+external int_logor: int -> int -> int = "%orint"
+
+external int_logxor: int -> int -> int = "%xorint"
+
+external shift_left_int: int -> int -> int = "%lslint"
+
+external shift_right_logical_int: int -> int -> int = "%lsrint"
+
+external shift_right_int: int -> int -> int = "%asrint"
+
 external int_of_char: char -> int = "%identity"
 
 external char_of_int: int -> char = "%identity"
+
+external argv: string array = "%sys_argv"
 
 external string_length: string -> int = "%string_length"
 
@@ -39,6 +69,18 @@ external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_
 external bytes_to_string: bytes -> string = "%bytes_to_string"
 
 external bytes_of_string: string -> bytes = "%bytes_of_string"
+
+external int64_of_int: int -> int64 = "%int64_of_int"
+
+external int64_to_int: int64 -> int = "%int64_to_int"
+
+external int64_add: int64 -> int64 -> int64 = "%int64_add"
+
+external int64_mul: int64 -> int64 -> int64 = "%int64_mul"
+
+external int64_div: int64 -> int64 -> int64 = "%int64_div"
+
+external int64_rem: int64 -> int64 -> int64 = "%int64_mod"
 
 external array_length: 'a array -> int = "%array_length"
 

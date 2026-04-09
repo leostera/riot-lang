@@ -1,10 +1,16 @@
 type t
 type error =
   | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | Would_block
+  | Timed_out
+  | Connection_refused
+  | Connection_reset
+  | Network_unreachable
   | Not_connected
   | Message_too_long
   | Destination_address_required
   | Address_in_use
+  | Address_not_available
   | System of System_error.t
 val error_to_string: error -> string
 

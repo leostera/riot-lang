@@ -22,6 +22,21 @@ typedef struct token_binding {
 static token_binding *kernel_new_async_bindings = NULL;
 static intnat kernel_new_async_next_token_id = 0;
 
+static void kernel_new_async_remove_selector_bindings(int selector_fd) {
+  token_binding **cursor = &kernel_new_async_bindings;
+  while (*cursor != NULL) {
+    token_binding *binding = *cursor;
+    if (binding->selector_fd == selector_fd) {
+      caml_remove_generational_global_root(binding->token_root);
+      free(binding->token_root);
+      *cursor = binding->next;
+      free(binding);
+    } else {
+      cursor = &binding->next;
+    }
+  }
+}
+
 static token_binding *kernel_new_async_find_binding(int selector_fd, int target_fd, int filter) {
   token_binding *binding = kernel_new_async_bindings;
   while (binding != NULL) {
@@ -146,10 +161,12 @@ CAMLprim value kernel_new_async_unix_selector_create(value unit_val) {
 CAMLprim value kernel_new_async_unix_selector_close(value selector_val) {
   CAMLparam1(selector_val);
 
-  if (close(Int_val(selector_val)) == -1) {
+  int selector_fd = Int_val(selector_val);
+  if (close(selector_fd) == -1) {
     CAMLreturn(kernel_new_result_errno());
   }
 
+  kernel_new_async_remove_selector_bindings(selector_fd);
   CAMLreturn(kernel_new_result_ok(Val_unit));
 }
 
@@ -339,6 +356,82 @@ static value kernel_new_async_process_change(
   CAMLreturn(kernel_new_result_ok(Val_unit));
 }
 
+static value kernel_new_async_timer_change(
+  value selector_val,
+  value timer_id_val,
+  value timeout_parts_val,
+  value repeat_val,
+  value token_val,
+  int flags
+) {
+  CAMLparam5(selector_val, timer_id_val, timeout_parts_val, repeat_val, token_val);
+
+  int selector_fd = Int_val(selector_val);
+  int timer_id = Int_val(timer_id_val);
+  int filter = EVFILT_TIMER;
+  struct kevent change;
+  token_binding *binding = NULL;
+
+  if ((flags & EV_DELETE) != 0) {
+    binding = kernel_new_async_find_binding(selector_fd, timer_id, filter);
+    if (binding == NULL) {
+      CAMLreturn(kernel_new_result_ok(Val_unit));
+    }
+  } else {
+    binding = kernel_new_async_store_binding(selector_fd, timer_id, filter, token_val);
+  }
+
+  int kevent_flags = flags | EV_ENABLE;
+  if (Bool_val(repeat_val) == 0) {
+    kevent_flags |= EV_ONESHOT;
+  }
+
+  int64_t timeout_ns = 0;
+  if ((flags & EV_DELETE) == 0) {
+    int timeout_secs = Int_val(Field(timeout_parts_val, 0));
+    int timeout_nanos = Int_val(Field(timeout_parts_val, 1));
+    timeout_ns =
+      ((int64_t)timeout_secs * 1000000000LL) + (int64_t)timeout_nanos;
+  }
+
+  EV_SET(
+    &change,
+    (uintptr_t)timer_id,
+    filter,
+    kevent_flags,
+    NOTE_NSECONDS,
+    timeout_ns,
+    binding->token_root);
+
+  int syscall_result;
+  caml_enter_blocking_section();
+  syscall_result = kevent(selector_fd, &change, 1, NULL, 0, NULL);
+  caml_leave_blocking_section();
+
+  if (syscall_result == -1) {
+    int code = kernel_new_error_of_errno(errno);
+    if ((flags & EV_DELETE) == 0) {
+      kernel_new_async_remove_binding(selector_fd, timer_id, filter);
+    }
+    if (
+      code == KERNEL_NEW_ERR_INTERRUPTED
+      || code == KERNEL_NEW_ERR_NO_SUCH_FILE_OR_DIRECTORY
+    ) {
+      if ((flags & EV_DELETE) != 0) {
+        kernel_new_async_remove_binding(selector_fd, timer_id, filter);
+      }
+      CAMLreturn(kernel_new_result_ok(Val_unit));
+    }
+    CAMLreturn(kernel_new_result_error(code));
+  }
+
+  if ((flags & EV_DELETE) != 0) {
+    kernel_new_async_remove_binding(selector_fd, timer_id, filter);
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
 CAMLprim value kernel_new_async_unix_selector_register_process(
   value selector_val,
   value pid_val,
@@ -372,6 +465,54 @@ CAMLprim value kernel_new_async_unix_selector_deregister_process(
   return kernel_new_async_process_change(
     selector_val,
     pid_val,
+    Val_int(0),
+    EV_DELETE | EV_RECEIPT
+  );
+}
+
+CAMLprim value kernel_new_async_unix_selector_register_timer(
+  value selector_val,
+  value timer_id_val,
+  value timeout_parts_val,
+  value repeat_val,
+  value token_val
+) {
+  return kernel_new_async_timer_change(
+    selector_val,
+    timer_id_val,
+    timeout_parts_val,
+    repeat_val,
+    token_val,
+    EV_ADD | EV_RECEIPT | EV_CLEAR
+  );
+}
+
+CAMLprim value kernel_new_async_unix_selector_reregister_timer(
+  value selector_val,
+  value timer_id_val,
+  value timeout_parts_val,
+  value repeat_val,
+  value token_val
+) {
+  return kernel_new_async_timer_change(
+    selector_val,
+    timer_id_val,
+    timeout_parts_val,
+    repeat_val,
+    token_val,
+    EV_ADD | EV_RECEIPT | EV_CLEAR
+  );
+}
+
+CAMLprim value kernel_new_async_unix_selector_deregister_timer(
+  value selector_val,
+  value timer_id_val
+) {
+  return kernel_new_async_timer_change(
+    selector_val,
+    timer_id_val,
+    Val_int(0),
+    Val_false,
     Val_int(0),
     EV_DELETE | EV_RECEIPT
   );

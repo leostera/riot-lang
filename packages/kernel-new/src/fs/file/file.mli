@@ -97,6 +97,8 @@ val canonicalize: Path.t -> (Path.t, error) Result.t
 
 val metadata: Path.t -> (Metadata.t, error) Result.t
 
+val lstat: Path.t -> (Metadata.t, error) Result.t
+
 val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
 
 val fstat: t -> (Metadata.t, error) Result.t

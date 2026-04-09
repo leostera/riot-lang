@@ -10,9 +10,19 @@ let contains_slash = fun value ->
     else if String.get value index = '/' then
       true
     else
-      loop (index + 1)
+  loop (index + 1)
   in
   loop 0
+
+let protect = fun ~finally fn ->
+  try
+    let value = fn () in
+    finally ();
+    value
+  with
+  | error ->
+      finally ();
+      raise error
 
 let array_to_list = fun values ->
   let rec loop index acc =
@@ -32,6 +42,167 @@ let with_temp_path = fun prefix filename fn ->
   with
   | Ok value -> value
   | Error err -> fail (IO.error_message err)
+
+let with_poll = fun fn ->
+  match Kernel.Async.Poll.make () with
+  | Kernel.Result.Ok poll ->
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.close poll in
+          ())
+        (fun () -> fn poll)
+  | Kernel.Result.Error error ->
+      fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+
+let is_tcp_listener_would_block = function
+  | Kernel.Net.TcpListener.Would_block -> true
+  | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
+
+let is_tcp_stream_would_block = function
+  | Kernel.Net.TcpStream.Would_block -> true
+  | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
+
+let is_udp_would_block = function
+  | Kernel.Net.UdpSocket.Would_block -> true
+  | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
+
+let wait_for = fun poll ~token ~interest ~source ~pred ->
+  match Kernel.Async.Poll.register poll token interest source with
+  | Kernel.Result.Error error ->
+      fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+  | Kernel.Result.Ok () ->
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          match Kernel.Async.Poll.poll ~timeout:100_000_000L poll with
+          | Kernel.Result.Error error ->
+              fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+          | Kernel.Result.Ok events ->
+              List.exists
+                (fun event ->
+                  Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                  && pred event)
+                events)
+
+let wait_readable = fun poll ~token source ->
+  wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
+
+let wait_writable = fun poll ~token source ->
+  wait_for poll ~token ~interest:Kernel.Async.Interest.writable ~source ~pred:Kernel.Async.Event.is_writable
+
+let close_stream = fun stream ->
+  let _ = Kernel.Net.TcpStream.close stream in
+  ()
+
+let close_listener = fun listener ->
+  let _ = Kernel.Net.TcpListener.close listener in
+  ()
+
+let close_udp = fun socket ->
+  let _ = Kernel.Net.UdpSocket.close socket in
+  ()
+
+let connect_stream = fun poll addr ->
+  match Kernel.Net.TcpStream.connect addr with
+  | Kernel.Result.Error error ->
+      fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  | Kernel.Result.Ok Kernel.Net.TcpStream.Connected stream -> stream
+  | Kernel.Result.Ok (Kernel.Net.TcpStream.In_progress stream) ->
+      let token = Kernel.Async.Token.make 801 in
+      let rec finish attempts =
+        if attempts = 0 then
+          fail "expected property tcp connect to complete"
+        else if wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) then
+          match Kernel.Net.TcpStream.finish_connect stream with
+          | Kernel.Result.Ok () -> stream
+          | Kernel.Result.Error error ->
+              if is_tcp_stream_would_block error then
+                finish (attempts - 1)
+              else
+                fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+        else
+          fail "expected property tcp connect to become writable"
+      in
+      finish 8
+
+let accept_stream = fun poll listener ->
+  let rec loop () =
+    match Kernel.Net.TcpListener.accept listener with
+    | Kernel.Result.Ok (stream, _) -> stream
+    | Kernel.Result.Error error ->
+        if is_tcp_listener_would_block error then
+          if wait_readable poll ~token:(Kernel.Async.Token.make 802) (Kernel.Net.TcpListener.to_source listener) then
+            loop ()
+          else
+            fail "expected property tcp listener to become readable"
+        else
+          fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+  in
+  loop ()
+
+let write_all_stream = fun poll ~token stream buffer ->
+  let rec loop pos len =
+    if len = 0 then
+      ()
+    else
+      match Kernel.Net.TcpStream.write stream ~pos ~len buffer with
+      | Kernel.Result.Ok written ->
+          if written <= 0 then
+            fail "expected property tcp write to make progress"
+          else
+            loop (pos + written) (len - written)
+      | Kernel.Result.Error error ->
+          if is_tcp_stream_would_block error then
+            if wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) then
+              loop pos len
+            else
+              fail "expected property tcp write to become writable"
+          else
+            fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  in
+  loop 0 (Kernel.Bytes.length buffer)
+
+let read_exact_stream = fun poll ~token stream buffer ->
+  let rec loop pos len =
+    if len = 0 then
+      ()
+    else
+      match Kernel.Net.TcpStream.read stream ~pos ~len buffer with
+      | Kernel.Result.Ok read ->
+          if read <= 0 then
+            fail "expected property tcp read to make progress"
+          else
+            loop (pos + read) (len - read)
+      | Kernel.Result.Error error ->
+          if is_tcp_stream_would_block error then
+            if wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream) then
+              loop pos len
+            else
+              fail "expected property tcp read to become readable"
+          else
+            fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  in
+  loop 0 (Kernel.Bytes.length buffer)
+
+let recv_from_udp = fun poll ~token socket buffer ->
+  let rec loop () =
+    match Kernel.Net.UdpSocket.recv_from socket buffer with
+    | Kernel.Result.Ok value -> value
+    | Kernel.Result.Error error ->
+        if is_udp_would_block error then
+          if wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket) then
+            loop ()
+          else
+            fail "expected property udp socket to become readable"
+        else
+          fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+  in
+  loop ()
 
 let ipv4_text = fun a b c d ->
   String.concat
@@ -294,6 +465,76 @@ let file_scalar_write_vectored_read_roundtrips =
               in
               result))
 
+let tcp_loopback_roundtrips_small_payload =
+  property "Net.TcpStream loopback roundtrips small payloads" Arbitrary.string
+    (fun payload ->
+      assume (String.length payload > 0);
+      assume (String.length payload <= 64);
+      with_poll
+        (fun poll ->
+          match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+          | Kernel.Result.Error error ->
+              fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+          | Kernel.Result.Ok listener ->
+              protect
+                ~finally:(fun () -> close_listener listener)
+                (fun () ->
+                  match Kernel.Net.TcpListener.local_addr listener with
+                  | Kernel.Result.Error error ->
+                      fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+                  | Kernel.Result.Ok addr ->
+                      let client = connect_stream poll addr in
+                      protect
+                        ~finally:(fun () -> close_stream client)
+                        (fun () ->
+                          let server = accept_stream poll listener in
+                          protect
+                            ~finally:(fun () -> close_stream server)
+                            (fun () ->
+                              let bytes = Kernel.Bytes.of_string payload in
+                              let buffer = Kernel.Bytes.create (String.length payload) in
+                              write_all_stream poll ~token:(Kernel.Async.Token.make 803) client bytes;
+                              read_exact_stream poll ~token:(Kernel.Async.Token.make 804) server buffer;
+                              Kernel.Bytes.sub_string buffer 0 (String.length payload) = payload)))))
+
+let udp_loopback_roundtrips_small_payload =
+  property "Net.UdpSocket loopback preserves small datagrams" Arbitrary.string
+    (fun payload ->
+      assume (String.length payload > 0);
+      assume (String.length payload <= 64);
+      with_poll
+        (fun poll ->
+          match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+          | Kernel.Result.Error error ->
+              fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+          | Kernel.Result.Ok server ->
+              protect
+                ~finally:(fun () -> close_udp server)
+                (fun () ->
+                  match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+                  | Kernel.Result.Error error ->
+                      fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                  | Kernel.Result.Ok client ->
+                      protect
+                        ~finally:(fun () -> close_udp client)
+                        (fun () ->
+                          match Kernel.Net.UdpSocket.local_addr server with
+                          | Kernel.Result.Error error ->
+                              fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                          | Kernel.Result.Ok server_addr ->
+                              let bytes = Kernel.Bytes.of_string payload in
+                              match Kernel.Net.UdpSocket.send_to client server_addr bytes with
+                              | Kernel.Result.Error error ->
+                                  fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                              | Kernel.Result.Ok written ->
+                                  if written != String.length payload then
+                                    false
+                                  else
+                                    let buffer = Kernel.Bytes.create 96 in
+                                    let read, _from = recv_from_udp poll ~token:(Kernel.Async.Token.make 805) server buffer in
+                                    read = String.length payload
+                                    && Kernel.Bytes.sub_string buffer 0 read = payload))))
+
 let tests = [
   iovec_into_string_roundtrips;
   iovec_sub_matches_flattened_substring;
@@ -307,6 +548,8 @@ let tests = [
   file_slice_roundtrips;
   file_vectored_roundtrips;
   file_scalar_write_vectored_read_roundtrips;
+  tcp_loopback_roundtrips_small_payload;
+  udp_loopback_roundtrips_small_payload;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_property_tests" ~tests ~args

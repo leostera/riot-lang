@@ -6,7 +6,7 @@ type error =
   | Invalid_var_name of { name: string }
   | System of System_error.t
 
-external args: string array = "%sys_argv"
+let args = Caml_runtime.argv
 
 module FFI = struct
   external get: string -> string option = "kernel_new_env_get"

@@ -99,6 +99,23 @@ let bench_reregister = fun () ->
             source in
           ()))
 
+let bench_timer_wakeup = fun () ->
+  with_poll
+    (fun poll ->
+      match Kernel.Time.Timer.after_ns 1_000_000L with
+      | Error error ->
+          Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+      | Ok timer ->
+          let source = Kernel.Time.Timer.to_source timer in
+          let _ = Kernel.Async.Poll.register
+            poll
+            (Kernel.Async.Token.make 13)
+            Kernel.Async.Interest.readable
+            source in
+          let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L poll in
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+
 let bench_many_source_poll = fun () ->
   with_pipes 64
     (fun pipes ->
@@ -132,6 +149,7 @@ let benchmarks =
     with_config ~config:{ iterations = 50; warmup = 10 } "async register+deregister pipe source" bench_register_and_deregister;
     with_config ~config:{ iterations = 50; warmup = 10 } "async pipe wakeup" bench_pipe_wakeup;
     with_config ~config:{ iterations = 50; warmup = 10 } "async reregister pipe source" bench_reregister;
+    with_config ~config:{ iterations = 50; warmup = 10 } "async timer wakeup" bench_timer_wakeup;
     with_config ~config:{ iterations = 25; warmup = 5 } "async many-source pipe wakeup" bench_many_source_poll;
   ]
 

@@ -2,25 +2,25 @@ open Prelude
 
 type t = bytes
 
-let create = Primitives.bytes_create
+let create = Caml_runtime.bytes_create
 
-let length = Primitives.bytes_length
+let length = Caml_runtime.bytes_length
 
-let get = Primitives.bytes_get
+let get = Caml_runtime.bytes_get
 
-let set = Primitives.bytes_set
+let set = Caml_runtime.bytes_set
 
-let blit = Primitives.bytes_blit
+let blit = Caml_runtime.bytes_blit
 
-let fill = Primitives.bytes_fill
+let fill = Caml_runtime.bytes_fill
 
-let of_string = Primitives.bytes_of_string
+let of_string = Caml_runtime.bytes_of_string
 
-let to_string = Primitives.bytes_to_string
+let to_string = Caml_runtime.bytes_to_string
 
-let unsafe_of_string = Primitives.bytes_of_string
+let unsafe_of_string = Caml_runtime.bytes_of_string
 
-let unsafe_to_string = Primitives.bytes_to_string
+let unsafe_to_string = Caml_runtime.bytes_to_string
 
 let sub = fun source offset len ->
   let out = create len in

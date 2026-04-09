@@ -40,14 +40,17 @@ let lift_udp = function
   | Kernel.Result.Error error -> panic_udp error
 
 let is_tcp_listener_would_block = function
+  | Kernel.Net.TcpListener.Would_block -> true
   | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let is_tcp_stream_would_block = function
+  | Kernel.Net.TcpStream.Would_block -> true
   | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let is_udp_would_block = function
+  | Kernel.Net.UdpSocket.Would_block -> true
   | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
@@ -110,8 +113,22 @@ let connect_stream = fun poll addr ->
   match lift_tcp_stream (Kernel.Net.TcpStream.connect addr) with
   | Kernel.Net.TcpStream.Connected stream -> stream
   | Kernel.Net.TcpStream.In_progress stream ->
-      wait_writable poll ~token:(Kernel.Async.Token.make 401) (Kernel.Net.TcpStream.to_source stream);
-      stream
+      let token = Kernel.Async.Token.make 401 in
+      let rec finish attempts =
+        if attempts = 0 then
+          Kernel.Error.panic "expected nonblocking tcp connect to eventually complete"
+        else (
+          wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream);
+          match Kernel.Net.TcpStream.finish_connect stream with
+          | Kernel.Result.Ok () -> stream
+          | Kernel.Result.Error error ->
+              if is_tcp_stream_would_block error then
+                finish (attempts - 1)
+              else
+                panic_tcp_stream error
+        )
+      in
+      finish 8
 
 let rec accept_stream = fun poll listener ->
   match Kernel.Net.TcpListener.accept listener with

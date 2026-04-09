@@ -1,5 +1,5 @@
 type t = int32
 
-let equal = Primitives.equal
+let equal = Caml_runtime.equal
 
-let compare = Primitives.compare
+let compare = Caml_runtime.compare

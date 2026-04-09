@@ -351,6 +351,87 @@ let test_poll_handles_many_process_exits = fun _ctx ->
           in
           poll_until 16))
 
+let test_poll_handles_many_timer_sources = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let rec create remaining acc =
+        if remaining = 0 then
+          Ok acc
+        else
+          let* timer =
+            match Kernel.Time.Timer.after_ns 5_000_000L with
+            | Kernel.Result.Ok timer -> Ok timer
+            | Kernel.Result.Error error -> Error (Kernel.Time.Timer.error_to_string error)
+          in
+          create (remaining - 1) (timer :: acc)
+      in
+      let* timers = create 16 [] in
+      let timers = List.rev timers in
+      let rec register index = function
+        | [] -> Ok ()
+        | timer :: rest ->
+            let* () = lift_async
+              (Kernel.Async.Poll.register
+                poll
+                (Kernel.Async.Token.make index)
+                Kernel.Async.Interest.readable
+                (Kernel.Time.Timer.to_source timer)) in
+            register (index + 1) rest
+      in
+      let seen = Kernel.Array.make 16 false in
+      let rec mark = function
+        | [] -> ()
+        | event :: rest ->
+            if Kernel.Async.Event.is_readable event then
+              let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+              if token >= 0 && token < 16 then
+                Kernel.Array.set seen token true;
+              mark rest
+      in
+      let rec all_seen index =
+        if index = 16 then
+          true
+        else if Kernel.Array.get seen index then
+          all_seen (index + 1)
+        else
+          false
+      in
+      let* () = register 0 timers in
+      let rec poll_until attempts =
+        if attempts = 0 then
+          Error "expected many timer sources to wake the poller"
+        else
+          let* events = lift_async
+            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+          let () = mark events in
+          if all_seen 0 then
+            Ok ()
+          else
+            poll_until (attempts - 1)
+      in
+      poll_until 8)
+
+let test_repeated_register_and_deregister_stays_healthy = fun _ctx ->
+  with_pipe
+    (fun read_end _write_end ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Fs.File.to_source read_end in
+          let rec loop remaining =
+            if remaining = 0 then
+              Ok ()
+            else
+              let* () = lift_async
+                (Kernel.Async.Poll.register
+                  poll
+                  (Kernel.Async.Token.make remaining)
+                  Kernel.Async.Interest.readable
+                  source) in
+              let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+              loop (remaining - 1)
+          in
+          loop 256))
+
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
   Test.case "Async poll reports pipe read closure" test_poll_reports_pipe_read_closed;
@@ -360,7 +441,9 @@ let tests = [
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
   Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;
+  Test.case ~size:Test.Large "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
   Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
+  Test.case ~size:Test.Large "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_async_tests" ~tests ~args

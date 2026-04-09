@@ -224,6 +224,33 @@ CAMLprim value kernel_new_net_socket_local_addr(value fd_val) {
   CAMLreturn(kernel_new_net_copy_socket_addr((struct sockaddr *)&storage, addr_len));
 }
 
+CAMLprim value kernel_new_net_tcp_stream_finish_connect(value fd_val) {
+  CAMLparam1(fd_val);
+
+  int fd = Int_val(fd_val);
+  int so_error = 0;
+  socklen_t so_error_len = sizeof(so_error);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_error, &so_error_len) == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  if (so_error != 0) {
+    errno = so_error;
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  struct sockaddr_storage storage;
+  socklen_t addr_len = sizeof(storage);
+  if (getpeername(fd, (struct sockaddr *)&storage, &addr_len) == -1) {
+    if (errno == ENOTCONN) {
+      errno = EAGAIN;
+    }
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
 CAMLprim value kernel_new_net_tcp_stream_connect(value ip_val, value port_val) {
   CAMLparam2(ip_val, port_val);
   CAMLlocal2(tuple, result);

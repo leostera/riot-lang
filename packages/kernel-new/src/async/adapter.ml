@@ -32,6 +32,17 @@ module FFI = struct
 
   external selector_deregister_process: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_process"
 
+  external selector_register_timer:
+    selector -> int -> (int * int) -> bool -> Token.t -> (unit, int) Result.t
+    = "kernel_new_async_unix_selector_register_timer"
+
+  external selector_reregister_timer:
+    selector -> int -> (int * int) -> bool -> Token.t -> (unit, int) Result.t
+    = "kernel_new_async_unix_selector_reregister_timer"
+
+  external selector_deregister_timer: selector -> int -> (unit, int) Result.t
+    = "kernel_new_async_unix_selector_deregister_timer"
+
   let create = fun () ->
     Result.map_error (fun code -> System (System_error.of_code code)) (selector_create ())
 
@@ -62,6 +73,21 @@ module FFI = struct
     Result.map_error
       (fun code -> System (System_error.of_code code))
       (selector_deregister_process selector pid)
+
+  let register_timer = fun selector ~timer_id ~timeout_parts ~repeat ~token ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_register_timer selector timer_id timeout_parts repeat token)
+
+  let reregister_timer = fun selector ~timer_id ~timeout_parts ~repeat ~token ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_reregister_timer selector timer_id timeout_parts repeat token)
+
+  let deregister_timer = fun selector ~timer_id ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_deregister_timer selector timer_id)
 end
 
 module Kevent = struct
@@ -75,7 +101,8 @@ module Kevent = struct
 
   let is_priority = fun event -> event.filter = Libc.evfilt_proc
 
-  let is_readable = fun event -> event.filter = Libc.evfilt_read
+  let is_readable = fun event ->
+    event.filter = Libc.evfilt_read || event.filter = Libc.evfilt_timer
 
   let is_writable = fun event -> event.filter = Libc.evfilt_write
 
@@ -159,4 +186,12 @@ module Selector = struct
   let reregister_process = fun selector ~pid ~token -> FFI.reregister_process selector ~pid ~token
 
   let deregister_process = fun selector ~pid -> FFI.deregister_process selector ~pid
+
+  let register_timer = fun selector ~timer_id ~token ~timeout_parts ~repeat ->
+    FFI.register_timer selector ~timer_id ~timeout_parts ~repeat ~token
+
+  let reregister_timer = fun selector ~timer_id ~token ~timeout_parts ~repeat ->
+    FFI.reregister_timer selector ~timer_id ~timeout_parts ~repeat ~token
+
+  let deregister_timer = fun selector ~timer_id -> FFI.deregister_timer selector ~timer_id
 end

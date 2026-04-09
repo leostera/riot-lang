@@ -41,14 +41,17 @@ let protect = fun ~finally fn ->
       raise error
 
 let is_tcp_listener_would_block = function
+  | Kernel.Net.TcpListener.Would_block -> true
   | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let is_tcp_stream_would_block = function
+  | Kernel.Net.TcpStream.Would_block -> true
   | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let is_udp_would_block = function
+  | Kernel.Net.UdpSocket.Would_block -> true
   | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
@@ -184,11 +187,21 @@ let connect_stream = fun poll addr ->
   match connect_result with
   | Kernel.Net.TcpStream.Connected stream -> Ok stream
   | Kernel.Net.TcpStream.In_progress stream ->
-      let* () = wait_writable
-        poll
-        ~token:(Kernel.Async.Token.make 302)
-        (Kernel.Net.TcpStream.to_source stream) in
-      Ok stream
+      let token = Kernel.Async.Token.make 302 in
+      let rec finish attempts =
+        if attempts = 0 then
+          Error "expected nonblocking tcp connect to eventually complete"
+        else
+          let* () = wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) in
+          match Kernel.Net.TcpStream.finish_connect stream with
+          | Kernel.Result.Ok () -> Ok stream
+          | Kernel.Result.Error error ->
+              if is_tcp_stream_would_block error then
+                finish (attempts - 1)
+              else
+                Error (string_of_tcp_stream_error error)
+      in
+      finish 8
 
 let with_tcp_pair = fun fn ->
   with_poll
@@ -389,6 +402,145 @@ let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
       | Kernel.Result.Error error ->
           Error (string_of_tcp_listener_error error))
 
+let test_tcp_listener_accept_reports_would_block = fun _ctx ->
+  let* listener = lift_tcp_listener
+    (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+  protect ~finally:(fun () -> close_listener listener)
+    (fun () ->
+      match Kernel.Net.TcpListener.accept listener with
+      | Kernel.Result.Error Kernel.Net.TcpListener.Would_block ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (string_of_tcp_listener_error error)
+      | Kernel.Result.Ok (stream, _) ->
+          close_stream stream;
+          Error "expected nonblocking tcp listener accept to report would_block without a pending peer")
+
+let test_tcp_stream_finish_connect_reports_connection_refused = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let* addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+      let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
+      let* connect_result = lift_tcp_stream (Kernel.Net.TcpStream.connect addr) in
+      match connect_result with
+      | Kernel.Net.TcpStream.Connected stream ->
+          close_stream stream;
+          Error "expected tcp connect to a closed port to fail"
+      | Kernel.Net.TcpStream.In_progress stream ->
+          protect ~finally:(fun () -> close_stream stream)
+            (fun () ->
+              let token = Kernel.Async.Token.make 313 in
+              let rec loop attempts =
+                if attempts = 0 then
+                  Error "expected nonblocking tcp connect to report a refused connection"
+                else
+                  let* () = wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) in
+                  match Kernel.Net.TcpStream.finish_connect stream with
+                  | Kernel.Result.Ok () ->
+                      Error "expected refused connect to fail after readiness"
+                  | Kernel.Result.Error Kernel.Net.TcpStream.Connection_refused ->
+                      Ok ()
+                  | Kernel.Result.Error error ->
+                      if is_tcp_stream_would_block error then
+                        loop (attempts - 1)
+                      else
+                        Error (string_of_tcp_stream_error error)
+              in
+              loop 8))
+
+let test_async_poll_handles_many_tcp_streams = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let* listener_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let rec connect_many remaining acc =
+            if remaining = 0 then
+              Ok acc
+            else
+              let* stream = connect_stream poll listener_addr in
+              connect_many (remaining - 1) (stream :: acc)
+          in
+          let rec accept_many remaining acc =
+            if remaining = 0 then
+              Ok acc
+            else
+              let* (stream, _) = accept_stream poll listener in
+              accept_many (remaining - 1) (stream :: acc)
+          in
+          let rec close_streams = function
+            | [] -> ()
+            | stream :: rest ->
+                close_stream stream;
+                close_streams rest
+          in
+          let* clients = connect_many 12 [] in
+          protect ~finally:(fun () -> close_streams clients)
+            (fun () ->
+              let* servers = accept_many 12 [] in
+              protect ~finally:(fun () -> close_streams servers)
+                (fun () ->
+                  let clients = List.rev clients in
+                  let servers = List.rev servers in
+                  let rec register index = function
+                    | [] -> Ok ()
+                    | stream :: rest ->
+                        let* () = lift_async
+                          (Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make index)
+                            Kernel.Async.Interest.readable
+                            (Kernel.Net.TcpStream.to_source stream)) in
+                        register (index + 1) rest
+                  in
+                  let rec write_all_clients = function
+                    | [] -> Ok ()
+                    | stream :: rest ->
+                        let* written = lift_tcp_stream
+                          (Kernel.Net.TcpStream.write stream (Kernel.Bytes.of_string "x")) in
+                        if written != 1 then
+                          Error "expected tcp write to make progress during many-stream readiness"
+                        else
+                          write_all_clients rest
+                  in
+                  let seen = Kernel.Array.make 12 false in
+                  let rec mark = function
+                    | [] -> ()
+                    | event :: rest ->
+                        if Kernel.Async.Event.is_readable event then
+                          let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                          if token >= 0 && token < 12 then
+                            Kernel.Array.set seen token true;
+                          mark rest
+                  in
+                  let rec all_seen index =
+                    if index = 12 then
+                      true
+                    else if Kernel.Array.get seen index then
+                      all_seen (index + 1)
+                    else
+                      false
+                  in
+                  let* () = register 0 servers in
+                  let* () = write_all_clients clients in
+                  let rec poll_until attempts =
+                    if attempts = 0 then
+                      Error "expected many tcp streams to become readable after client writes"
+                    else
+                      let* events = lift_async
+                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:64 poll) in
+                      let () = mark events in
+                      if all_seen 0 then
+                        Ok ()
+                      else
+                        poll_until (attempts - 1)
+                  in
+                  poll_until 12))))
+
 let test_udp_socket_send_to_and_recv_from = fun _ctx ->
   with_poll
     (fun poll ->
@@ -473,8 +625,7 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
                         in
                         let buffer = Kernel.Bytes.create 32 in
                         match Kernel.Net.UdpSocket.recv server buffer with
-                        | Kernel.Result.Error (Kernel.Net.UdpSocket.System error) when not server_ready
-                        && Kernel.SystemError.is_would_block error -> Ok ()
+                        | Kernel.Result.Error Kernel.Net.UdpSocket.Would_block when not server_ready -> Ok ()
                         | Kernel.Result.Error error -> Error (string_of_udp_error error)
                         | Kernel.Result.Ok _ -> Error "expected connected udp socket to ignore datagrams from other peers")))))
 
@@ -697,9 +848,12 @@ let tests = [
   Test.case "Net.TcpListener ipv6 local_addr preserves loopback" test_tcp_listener_ipv6_local_addr_roundtrips;
   Test.case "Net.TcpListener bind rejects invalid backlog" test_tcp_listener_bind_rejects_invalid_backlog;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
+  Test.case "Net.TcpListener accept reports would_block without pending peers" test_tcp_listener_accept_reports_would_block;
+  Test.case "Net.TcpStream finish_connect reports connection refused" test_tcp_stream_finish_connect_reports_connection_refused;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
   Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
   Test.case "Async poll handles many udp sockets" test_async_poll_handles_many_udp_sockets;
+  Test.case ~size:Test.Large "Async poll handles many tcp streams" test_async_poll_handles_many_tcp_streams;
   Test.case "Async poll tolerates closed registered udp sockets" test_async_poll_tolerates_closed_registered_udp_sockets;
   Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
