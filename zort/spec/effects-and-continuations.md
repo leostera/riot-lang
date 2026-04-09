@@ -169,3 +169,18 @@
   - how parent handlers are linked
   - how root scanning sees suspended computations
   - how C/FFI boundaries block or permit effect propagation
+
+## zort control-kernel baseline notes
+
+- zort now has a dedicated `ControlKernel` subsystem in `zort/src/control_kernel.zig`.
+- The current semantic model includes:
+  - typed `FiberHandle`s with explicit parent links,
+  - typed `ContinuationHandle`s with owned captured roots,
+  - per-fiber handler stacks with explicit `handle_effect` / `handle_value` / `handle_exn` fields.
+- Suspended continuations expose their captured values to the collector through the generic `RootProvider` interface instead of special GC-only hooks.
+- This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
+- The remaining control-kernel work is behavioral:
+  - handler lookup during `perform`,
+  - one-shot resume enforcement,
+  - unhandled-effect paths,
+  - event/observability coverage for capture and resume.

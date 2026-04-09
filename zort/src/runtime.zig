@@ -1,4 +1,5 @@
 const std = @import("std");
+const control_kernel_mod = @import("control_kernel.zig");
 const value = @import("value.zig");
 const event_sink_mod = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
@@ -15,6 +16,11 @@ pub const Event = event_sink_mod.Event;
 pub const EventCounters = event_sink_mod.Counters;
 pub const EventRecorder = event_sink_mod.Recorder;
 pub const EventSink = event_sink_mod.EventSink;
+pub const ControlKernel = control_kernel_mod.ControlKernel;
+pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
+pub const EffectId = control_kernel_mod.EffectId;
+pub const FiberHandle = control_kernel_mod.FiberHandle;
+pub const HandlerFrame = control_kernel_mod.HandlerFrame;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
@@ -48,6 +54,7 @@ pub const Runtime = struct {
 
     allocator: std.mem.Allocator,
     event_sink: EventSink,
+    control_kernel: ControlKernel,
     heap_store: HeapStore,
     root_registry: RootRegistry,
     debug_root_checks: bool = false,
@@ -64,6 +71,7 @@ pub const Runtime = struct {
         var runtime = Runtime{
             .allocator = allocator,
             .event_sink = config.eventSink,
+            .control_kernel = ControlKernel.init(allocator),
             .heap_store = HeapStore.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
             .debug_root_checks = config.debugRootChecks,
@@ -95,6 +103,7 @@ pub const Runtime = struct {
     pub fn deinit(self: *Runtime) void {
         self.heap_store.deinit(self.fixed_arena_buffer != null);
         self.root_registry.deinit();
+        self.control_kernel.deinit();
     }
 
     pub fn objectCount(self: *Runtime) usize {
@@ -118,6 +127,10 @@ pub const Runtime = struct {
 
     pub fn language(self: *Runtime) Language {
         return Language.init(self.allocator, self.currentAllocator(), &self.heap_store, self.event_sink);
+    }
+
+    pub fn controlKernel(self: *Runtime) *ControlKernel {
+        return &self.control_kernel;
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
@@ -283,7 +296,7 @@ pub const Runtime = struct {
     pub fn collect(self: *Runtime) void {
         if (self.debug_root_checks) self.verifyRoots();
         self.collect_generations +%= 1;
-        var providers_buffer: [1]RootProvider = undefined;
+        var providers_buffer: [2]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         gc.collect();
@@ -299,9 +312,10 @@ pub const Runtime = struct {
     }
 
     fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
-        std.debug.assert(buffer.len >= 1);
+        std.debug.assert(buffer.len >= 2);
         buffer[0] = self.root_registry.provider();
-        return buffer[0..1];
+        buffer[1] = self.control_kernel.provider();
+        return buffer[0..2];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
@@ -915,7 +929,34 @@ test "runtime: gc collects unreachable values" {
     runtime.deinit();
 }
 
-    test "runtime: debug object layout sizes" {
+test "runtime: suspended control state keeps heap values alive across collection" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const handler_value = try rt.allocTuple(0);
+    const captured_value = try rt.allocTuple(0);
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 1,
+        .handle_effect = handler_value,
+    });
+
+    const child = try rt.controlKernel().createFiber(main);
+    try rt.controlKernel().activateFiber(child);
+    const continuation = try rt.controlKernel().captureContinuation(1, Value.fromInt(0), &.{captured_value});
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+
+    _ = try rt.controlKernel().popHandler(main);
+    try std.testing.expect(rt.controlKernel().dropContinuation(continuation));
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
+}
+
+test "runtime: debug object layout sizes" {
     if (false) {
         std.debug.print("value-size={d} object-size={d}\n", .{ @sizeOf(Value), @sizeOf(Object) });
     }

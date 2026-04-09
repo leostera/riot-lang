@@ -99,3 +99,7 @@
 - `Runtime` now builds the collector's root set from providers instead of hard-coding explicit-root slices.
 - Scoped root handles are an ownership tool only; they do not yet model stack roots, callback roots, or effect-parent roots.
 - This is the seam zort will use for suspended fibers, continuations, callback-owned roots, and other non-registry liveness owners.
+- `ControlKernel` is now the second built-in provider:
+  - handler values live as control-owned roots,
+  - suspended continuations contribute payload plus captured roots,
+  - collection can retain control-state-owned heap values without routing them through `RootRegistry`.

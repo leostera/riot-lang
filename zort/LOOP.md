@@ -275,7 +275,9 @@ Exit criteria:
 Status:
 - In progress.
 - `Collector` now traces `RootProvider` inputs instead of a hard-coded explicit-root slice.
-- `RootRegistry` is the first provider; `ControlKernel` suspended-state providers are next.
+- `RootRegistry` and `ControlKernel` are now the built-in providers.
+- Fibers, continuations, and handler stacks have typed semantic state in `src/control_kernel.zig`.
+- The remaining work is behavioral `perform` / `resume` semantics and their failure paths.
 
 ### 10. Native Boundary Services
 
