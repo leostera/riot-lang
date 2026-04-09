@@ -65,12 +65,42 @@ let test_error_envelope_extracts_nested_read_dir_file_system_errors = fun _ctx -
   else
     Error "expected read_dir file errors to expose their nested system cause"
 
+let test_system_error_of_code_maps_known_values = fun _ctx ->
+  if
+    Kernel.SystemError.of_code 3 = Kernel.SystemError.NoSuchFileOrDirectory
+    && Kernel.SystemError.of_code 12 = Kernel.SystemError.WouldBlock
+    && Kernel.SystemError.of_code 27 = Kernel.SystemError.DirectoryNotEmpty
+  then
+    Ok ()
+  else
+    Error "expected SystemError.of_code to keep representative known mappings stable"
+
+let test_system_error_of_code_preserves_unknown_payloads = fun _ctx ->
+  match Kernel.SystemError.of_code 9_999 with
+  | Kernel.SystemError.Unknown 9_999 ->
+      if Kernel.SystemError.to_string (Kernel.SystemError.Unknown 9_999) = "unknown kernel error" then
+        Ok ()
+      else
+        Error "expected unknown system errors to keep the stable textual fallback"
+  | _ -> Error "expected SystemError.of_code to preserve unknown numeric payloads"
+
+let test_error_to_string_prefixes_the_stable_module_name = fun _ctx ->
+  let error = Kernel.Error.of_net_addr (Kernel.Net.Addr.HostNotFound { host = "riot.invalid" })
+  |> Kernel.Error.to_string in
+  if String.starts_with ~prefix:"net.addr: " error then
+    Ok ()
+  else
+    Error "expected Error.to_string to prefix the stable module name"
+
 let tests = [
   Test.case "Error envelope reports module and system context" test_error_envelope_reports_module_and_system;
   Test.case "Error envelope extracts nested process file system errors" test_error_envelope_extracts_nested_process_file_system_errors;
   Test.case "Error envelope reports stable module tags" test_error_envelope_reports_stable_module_tags;
   Test.case "Error envelope keeps non-system errors distinct" test_error_envelope_system_is_none_for_non_system_errors;
   Test.case "Error envelope extracts nested read_dir file system errors" test_error_envelope_extracts_nested_read_dir_file_system_errors;
+  Test.case "SystemError.of_code maps representative known values" test_system_error_of_code_maps_known_values;
+  Test.case "SystemError.of_code preserves unknown payloads" test_system_error_of_code_preserves_unknown_payloads;
+  Test.case "Error.to_string prefixes the stable module name" test_error_to_string_prefixes_the_stable_module_name;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_error_tests" ~tests ~args

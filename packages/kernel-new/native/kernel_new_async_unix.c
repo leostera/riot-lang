@@ -232,6 +232,10 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
   struct kevent *changes = malloc(sizeof(struct kevent) * change_count);
   int applied_change_count = 0;
 
+  if (fcntl(selector_fd, F_GETFD) == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
   if (changes == NULL) {
     caml_raise_out_of_memory();
   }

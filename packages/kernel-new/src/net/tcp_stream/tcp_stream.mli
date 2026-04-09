@@ -42,6 +42,7 @@ val finish_connect: t -> (unit, error) Result.t
     - `Write` surfaces EOF to the peer and rejects later local writes.
     - `Read` disables the local read half while preserving the local write half.
     - `ReadWrite` disables both local halves and surfaces EOF to the peer.
+    - Repeating the same local shutdown is an idempotent no-op.
 
     If the peer shuts down its write half first, local reads observe EOF while the local write
     half remains usable. *)

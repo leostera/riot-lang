@@ -48,6 +48,18 @@ let with_pipe = fun fn ->
       ())
     (fun () -> fn pipe.read_end pipe.write_end)
 
+let with_two_pipes = fun fn ->
+  let* first = lift_file (Kernel.Fs.File.pipe ()) in
+  let* second = lift_file (Kernel.Fs.File.pipe ()) in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Fs.File.close first.read_end in
+      let _ = Kernel.Fs.File.close first.write_end in
+      let _ = Kernel.Fs.File.close second.read_end in
+      let _ = Kernel.Fs.File.close second.write_end in
+      ())
+    (fun () -> fn first second)
+
 let rec close_pipes pipes =
   match pipes with
   | [] -> ()
@@ -85,6 +97,18 @@ let with_poll = fun fn ->
       let _ = Kernel.Async.Poll.close poll in
       ())
     (fun () -> fn poll)
+
+let drain_one_byte = fun file ->
+  let buffer = Kernel.Bytes.create 1 in
+  match Kernel.Fs.File.read file buffer with
+  | Kernel.Result.Ok _ -> Ok ()
+  | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+
+let has_token = fun token events ->
+  List.exists
+    (fun event ->
+      Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+    events
 
 let with_processes = fun count fn ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -730,6 +754,177 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                   in
                   poll_until 8))))
 
+let test_interest_add_and_remove_roundtrip = fun _ctx ->
+  let both = Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable in
+  match Kernel.Async.Interest.remove both Kernel.Async.Interest.writable with
+  | Some interest ->
+      if
+        Kernel.Async.Interest.is_readable interest
+        && not (Kernel.Async.Interest.is_writable interest)
+      then
+        Ok ()
+      else
+        Error "expected Interest.remove to leave only the readable bit"
+  | None -> Error "expected removing one bit from a combined interest to keep the other bit"
+
+let test_interest_remove_all_bits_returns_none = fun _ctx ->
+  let both = Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable in
+  match Kernel.Async.Interest.remove both both with
+  | None -> Ok ()
+  | Some _ -> Error "expected removing all interest bits to return None"
+
+let test_token_id_is_stable = fun _ctx ->
+  let token = Kernel.Async.Token.make "stable" in
+  if Kernel.Async.Token.id token = Kernel.Async.Token.id token then
+    Ok ()
+  else
+    Error "expected Token.id to stay stable for the same token"
+
+let test_fresh_poll_timeout_zero_is_quiet = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+      if events = [] then
+        Ok ()
+      else
+        Error "expected a fresh poller with timeout=0 to be quiet")
+
+let test_poll_max_events_batches_without_dropping_readiness = fun _ctx ->
+  with_two_pipes
+    (fun first second ->
+      with_poll
+        (fun poll ->
+          let first_token = Kernel.Async.Token.make 1 in
+          let second_token = Kernel.Async.Token.make 2 in
+          let first_source = Kernel.Fs.File.to_source first.read_end in
+          let second_source = Kernel.Fs.File.to_source second.read_end in
+          let payload = Kernel.Bytes.of_string "x" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable first_source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll second_token Kernel.Async.Interest.readable second_source) in
+          let* _ = lift_file (Kernel.Fs.File.write first.write_end payload) in
+          let* _ = lift_file (Kernel.Fs.File.write second.write_end payload) in
+          let* first_batch = lift_async
+            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
+          let first_seen =
+            if has_token first_token first_batch then
+              Some (first.read_end, first_token, second_token)
+            else if has_token second_token first_batch then
+              Some (second.read_end, second_token, first_token)
+            else
+              None
+          in
+          match first_seen with
+          | None -> Error "expected the first max_events=1 poll to report one ready source"
+          | Some (ready_file, ready_token, other_token) ->
+              let* () = drain_one_byte ready_file in
+              let* second_batch = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
+              if
+                has_token ready_token first_batch
+                && not (has_token other_token first_batch)
+                && has_token other_token second_batch
+              then
+                Ok ()
+              else
+                Error "expected max_events=1 polls to batch readiness across successive calls"))
+
+let test_duplicate_register_same_token_does_not_duplicate_event = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let token = Kernel.Async.Token.make 11 in
+          let source = Kernel.Fs.File.to_source read_end in
+          let payload = Kernel.Bytes.of_string "x" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* _ = lift_file (Kernel.Fs.File.write write_end payload) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+          let matches =
+            List.filter
+              (fun event ->
+                Kernel.Async.Event.is_readable event
+                && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+              events
+          in
+          if List.length matches <= 1 then
+            Ok ()
+          else
+            Error "expected duplicate registration with the same token to avoid duplicate readiness events"))
+
+let test_pipe_writer_reports_write_closed_after_reader_closes = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let token = Kernel.Async.Token.make 12 in
+          let source = Kernel.Fs.File.to_source write_end in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
+          let* () = lift_file (Kernel.Fs.File.close read_end) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+          if
+            List.exists
+              (fun event ->
+                Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                && Kernel.Async.Event.is_write_closed event)
+              events
+          then
+            Ok ()
+          else
+            Error "expected a pipe writer to report write_closed after the reader closes"))
+
+let test_normal_readiness_events_are_not_error_events = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let token = Kernel.Async.Token.make 13 in
+          let source = Kernel.Fs.File.to_source read_end in
+          let payload = Kernel.Bytes.of_string "x" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* _ = lift_file (Kernel.Fs.File.write write_end payload) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+          if
+            List.exists
+              (fun event ->
+                Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                && Kernel.Async.Event.is_readable event
+                && not (Kernel.Async.Event.is_error event))
+              events
+          then
+            Ok ()
+          else
+            Error "expected ordinary readiness events to stay out of the error bucket"))
+
+let test_closed_poller_rejects_later_operations = fun _ctx ->
+  with_pipe
+    (fun read_end _write_end ->
+      let source = Kernel.Fs.File.to_source read_end in
+      let token = Kernel.Async.Token.make 14 in
+      let expect_bad_fd = function
+        | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.BadFileDescriptor) -> true
+        | _ -> false
+      in
+      let* poll = lift_async (Kernel.Async.Poll.make ()) in
+      let* () = lift_async (Kernel.Async.Poll.close poll) in
+      if
+        expect_bad_fd (Kernel.Async.Poll.poll ~timeout:0L poll)
+        && expect_bad_fd
+          (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+        && expect_bad_fd
+          (Kernel.Async.Poll.reregister poll token Kernel.Async.Interest.readable source)
+        && expect_bad_fd (Kernel.Async.Poll.deregister poll source)
+      then
+        Ok ()
+      else
+        Error "expected a closed poller to reject later operations with a typed bad-fd error")
+
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
   Test.case "Async poll reports pipe read closure" test_poll_reports_pipe_read_closed;
@@ -741,6 +936,15 @@ let tests = [
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
   Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;
+  Test.case "Async.Interest add and remove roundtrip" test_interest_add_and_remove_roundtrip;
+  Test.case "Async.Interest remove-all returns None" test_interest_remove_all_bits_returns_none;
+  Test.case "Async.Token.id is stable" test_token_id_is_stable;
+  Test.case "A fresh Poll.poll timeout=0 is quiet" test_fresh_poll_timeout_zero_is_quiet;
+  Test.case "Poll max_events=1 batches readiness across polls" test_poll_max_events_batches_without_dropping_readiness;
+  Test.case "Duplicate register with the same token does not duplicate one readiness event" test_duplicate_register_same_token_does_not_duplicate_event;
+  Test.case "A pipe writer reports write_closed after the reader closes" test_pipe_writer_reports_write_closed_after_reader_closes;
+  Test.case "Normal readiness events are not error events" test_normal_readiness_events_are_not_error_events;
+  Test.case "A closed poller rejects later operations consistently" test_closed_poller_rejects_later_operations;
   Test.case "Async poll handles mixed pipe, timer, udp, and process sources" test_poll_handles_mixed_source_types;
   Test.case "Async poll tolerates closed registered pipe sources" test_poll_tolerates_closed_registered_pipe_sources;
   Test.case ~size:Test.Large "Async poll handles many timer sources" test_poll_handles_many_timer_sources;

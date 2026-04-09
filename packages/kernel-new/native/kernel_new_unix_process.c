@@ -24,6 +24,7 @@
 #define KERNEL_NEW_PROCESS_STATUS_EXITED 0
 #define KERNEL_NEW_PROCESS_STATUS_SIGNALED 1
 #define KERNEL_NEW_PROCESS_STATUS_STOPPED 2
+#define KERNEL_NEW_PROCESS_STATUS_CONTINUED 3
 
 extern char **environ;
 
@@ -475,7 +476,7 @@ CAMLprim value kernel_new_process_try_wait(value pid_val) {
 
   int status = 0;
   pid_t result;
-  result = waitpid(Int_val(pid_val), &status, WNOHANG | WUNTRACED);
+  result = waitpid(Int_val(pid_val), &status, WNOHANG | WUNTRACED | WCONTINUED);
 
   if (result == 0) {
     CAMLreturn(kernel_new_result_ok(Val_int(0)));
@@ -498,6 +499,11 @@ CAMLprim value kernel_new_process_try_wait(value pid_val) {
   if (WIFSTOPPED(status)) {
     CAMLreturn(kernel_new_result_ok(
       kernel_new_process_some_status(KERNEL_NEW_PROCESS_STATUS_STOPPED, WSTOPSIG(status))));
+  }
+
+  if (WIFCONTINUED(status)) {
+    CAMLreturn(kernel_new_result_ok(
+      kernel_new_process_some_status(KERNEL_NEW_PROCESS_STATUS_CONTINUED, 0)));
   }
 
   CAMLreturn(kernel_new_result_ok(Val_int(0)));

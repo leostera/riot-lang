@@ -981,6 +981,405 @@ let test_read_dir_names_handles_larger_snapshots_with_renames_and_removes = fun 
       else
         Error "expected larger read_dir_names snapshots to reflect renames and removals across calls")
 
+let test_close_twice_reports_bad_file_descriptor = fun _ctx ->
+  with_temp_path "kernel_new_file" "close-twice.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* () = lift (Kernel.Fs.File.close file) in
+      match Kernel.Fs.File.close file with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.BadFileDescriptor) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected closing the same file twice to report bad_file_descriptor")
+
+let test_open_write_without_create_rejects_missing_paths = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let missing = Kernel.Path.(tempdir / "missing.txt") in
+      match Kernel.Fs.File.open_write ~create:false missing with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory) ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok file ->
+          let _ = Kernel.Fs.File.close file in
+          Error "expected open_write ~create:false to reject a missing path")
+
+let test_open_write_append_preserves_existing_bytes = fun _ctx ->
+  with_temp_path "kernel_new_file" "append.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write ~create:true ~truncate:true path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "old")) in
+            if written = 3 then
+              Ok ()
+            else
+              Error "expected append fixture write to make progress")
+      in
+      let* file = lift (Kernel.Fs.File.open_write ~create:false ~truncate:false ~append:true path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "new")) in
+            if written = 3 then
+              Ok ()
+            else
+              Error "expected append write to make progress")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buffer = Kernel.Bytes.create 16 in
+      let* payload =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer 0 read))
+      in
+      if payload = "oldnew" then
+        Ok ()
+      else
+        Error "expected append mode to preserve the existing bytes and extend the file")
+
+let test_read_len_zero_is_a_no_op = fun _ctx ->
+  with_temp_path "kernel_new_file" "read-zero.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")) in
+            if written = 4 then
+              Ok ()
+            else
+              Error "expected zero-read fixture write to make progress")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buffer = Kernel.Bytes.of_string "unchanged" in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file ~pos:2 ~len:0 buffer) in
+            Ok (read, Kernel.Bytes.to_string buffer))
+      in
+      match actual with
+      | (0, "unchanged") -> Ok ()
+      | _ -> Error "expected File.read ~len:0 to leave the buffer unchanged and return zero")
+
+let test_write_len_zero_is_a_no_op = fun _ctx ->
+  with_temp_path "kernel_new_file" "write-zero.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* written =
+        with_file
+          file
+          (fun () -> lift (Kernel.Fs.File.write file ~pos:1 ~len:0 (Kernel.Bytes.of_string "riot")))
+      in
+      if written != 0 then
+        Error "expected File.write ~len:0 to report zero bytes written"
+      else
+        let* file = lift (Kernel.Fs.File.open_read path) in
+        let buffer = Kernel.Bytes.create 8 in
+        let* read =
+          with_file file (fun () -> lift (Kernel.Fs.File.read file buffer))
+        in
+        if read = 0 then
+          Ok ()
+        else
+          Error "expected File.write ~len:0 to leave file contents unchanged")
+
+let test_read_rejects_negative_pos = fun _ctx ->
+  with_temp_path "kernel_new_file" "read-negative-pos.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* _ =
+        with_file file (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buffer = Kernel.Bytes.create 4 in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close file in
+          ())
+        (fun () ->
+          match Kernel.Fs.File.read file ~pos:(-1) buffer with
+          | Kernel.Result.Error (Kernel.Fs.File.InvalidSlice { pos=(-1); _ }) -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected File.read to reject a negative buffer offset"))
+
+let test_write_rejects_negative_len = fun _ctx ->
+  with_temp_path "kernel_new_file" "write-negative-len.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close file in
+          ())
+        (fun () ->
+          match Kernel.Fs.File.write file ~len:(-1) (Kernel.Bytes.of_string "riot") with
+          | Kernel.Result.Error (Kernel.Fs.File.InvalidSlice { len=(-1); _ }) -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected File.write to reject a negative slice length"))
+
+let test_read_rejects_slices_past_the_buffer_end = fun _ctx ->
+  with_temp_path "kernel_new_file" "read-overflow.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* _ =
+        with_file file (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buffer = Kernel.Bytes.create 4 in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close file in
+          ())
+        (fun () ->
+          match Kernel.Fs.File.read file ~pos:2 ~len:3 buffer with
+          | Kernel.Result.Error (Kernel.Fs.File.InvalidSlice { pos=2; len=3; buffer_len=4 }) -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected File.read to reject slices that extend past the buffer end"))
+
+let test_write_rejects_slices_past_the_buffer_end = fun _ctx ->
+  with_temp_path "kernel_new_file" "write-overflow.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close file in
+          ())
+        (fun () ->
+          match Kernel.Fs.File.write file ~pos:2 ~len:3 (Kernel.Bytes.create 4) with
+          | Kernel.Result.Error (Kernel.Fs.File.InvalidSlice { pos=2; len=3; buffer_len=4 }) -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected File.write to reject slices that extend past the buffer end"))
+
+let test_read_vectored_ignores_zero_length_segments = fun _ctx ->
+  with_temp_path "kernel_new_file" "read-vectored-zero-segments.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")) in
+            if written = 4 then
+              Ok ()
+            else
+              Error "expected vectored zero-segment fixture write to make progress")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let iov = Kernel.IO.Iovec.of_bytes_array
+        [|
+          Kernel.Bytes.create 0;
+          Kernel.Bytes.create 2;
+          Kernel.Bytes.create 0;
+          Kernel.Bytes.create 2;
+        |] in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read_vectored file iov) in
+            Ok (read, Kernel.IO.Iovec.into_string iov))
+      in
+      match actual with
+      | (4, "riot") -> Ok ()
+      | _ -> Error "expected read_vectored to ignore zero-length segments and preserve the payload")
+
+let test_write_vectored_zero_total_length_is_a_no_op = fun _ctx ->
+  with_temp_path "kernel_new_file" "write-vectored-zero.txt"
+    (fun path ->
+      let iov = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0; Kernel.Bytes.create 0|] in
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* written =
+        with_file file (fun () -> lift (Kernel.Fs.File.write_vectored file iov))
+      in
+      if written != 0 then
+        Error "expected write_vectored with zero total length to report zero bytes written"
+      else
+        let* file = lift (Kernel.Fs.File.open_read path) in
+        let buffer = Kernel.Bytes.create 8 in
+        let* read =
+          with_file file (fun () -> lift (Kernel.Fs.File.read file buffer))
+        in
+        if read = 0 then
+          Ok ()
+        else
+          Error "expected zero-length write_vectored to leave the file empty")
+
+let test_create_dir_on_existing_directory_reports_already_exists = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let directory = Kernel.Path.(tempdir / "existing") in
+      let* () = lift (Kernel.Fs.File.create_dir directory ~perm:0o755) in
+      match Kernel.Fs.File.create_dir directory ~perm:0o755 with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected create_dir on an existing directory to fail")
+
+let test_remove_dir_on_regular_file_reports_not_directory = fun _ctx ->
+  with_temp_path "kernel_new_file" "remove-dir-regular.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* _ =
+        with_file file (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+      in
+      match Kernel.Fs.File.remove_dir path with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotDirectory) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected remove_dir on a regular file to report not_directory")
+
+let test_remove_file_on_directory_reports_a_directory_error = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let directory = Kernel.Path.(tempdir / "dir") in
+      let* () = lift (Kernel.Fs.File.create_dir directory ~perm:0o755) in
+      match Kernel.Fs.File.remove_file directory with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.IsDirectory) -> Ok ()
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.PermissionDenied) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected remove_file on a directory to fail with a directory-related error")
+
+let test_read_link_on_non_symlink_reports_invalid_argument = fun _ctx ->
+  with_temp_path "kernel_new_file" "not-a-link.txt"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* _ =
+        with_file file (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+      in
+      match Kernel.Fs.File.read_link path with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.InvalidArgument) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok _ -> Error "expected read_link on a non-symlink path to fail cleanly")
+
+let test_is_directory_reports_false_for_dangling_symlinks = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target-dir") in
+      let link = Kernel.Path.(tempdir / "dangling-dir-link") in
+      let* () = lift (Kernel.Fs.File.create_dir target ~perm:0o755) in
+      let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          let _ = Kernel.Fs.File.remove_dir target in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.remove_dir target) in
+          let* is_directory = lift (Kernel.Fs.File.is_directory link) in
+          if not is_directory then
+            Ok ()
+          else
+            Error "expected is_directory on a dangling symlink to report false"))
+
+let test_copy_overwrites_existing_destination_bytes = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source.txt") in
+      let destination = Kernel.Path.(tempdir / "destination.txt") in
+      let* source_file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file source_file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write source_file (Kernel.Bytes.of_string "new")) in
+            if written = 3 then
+              Ok ()
+            else
+              Error "expected source fixture write to make progress")
+      in
+      let* destination_file = lift (Kernel.Fs.File.open_write destination) in
+      let* () =
+        with_file destination_file
+          (fun () ->
+            let* written = lift
+              (Kernel.Fs.File.write destination_file (Kernel.Bytes.of_string "old-old")) in
+            if written = 7 then
+              Ok ()
+            else
+              Error "expected destination fixture write to make progress")
+      in
+      let* () = lift (Kernel.Fs.File.copy ~src:source ~dst:destination) in
+      let* destination_file = lift (Kernel.Fs.File.open_read destination) in
+      let buffer = Kernel.Bytes.create 16 in
+      let* payload =
+        with_file destination_file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read destination_file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer 0 read))
+      in
+      if payload = "new" then
+        Ok ()
+      else
+        Error "expected copy to overwrite the destination contents instead of appending")
+
+let test_copy_preserves_large_payloads_beyond_the_internal_chunk_size = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source-large.bin") in
+      let destination = Kernel.Path.(tempdir / "destination-large.bin") in
+      let payload = Kernel.Bytes.create 80_000 in
+      let rec fill index =
+        if index = Kernel.Bytes.length payload then
+          ()
+        else (
+          Kernel.Bytes.set payload index (Char.chr (65 + (index mod 26)));
+          fill (index + 1)
+        )
+      in
+      fill 0;
+      let* source_file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file source_file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write source_file payload) in
+            if written = Kernel.Bytes.length payload then
+              Ok ()
+            else
+              Error "expected large copy fixture write to write the whole payload")
+      in
+      let* () = lift (Kernel.Fs.File.copy ~src:source ~dst:destination) in
+      let* destination_file = lift (Kernel.Fs.File.open_read destination) in
+      let buffer = Kernel.Bytes.create (Kernel.Bytes.length payload) in
+      let* actual =
+        with_file destination_file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read destination_file buffer) in
+            Ok (read, Kernel.Bytes.to_string buffer))
+      in
+      match actual with
+      | (read, contents) when read = Kernel.Bytes.length payload
+      && contents = Kernel.Bytes.to_string payload -> Ok ()
+      | _ -> Error "expected copy to preserve payloads larger than the internal copy chunk size")
+
+let test_fstat_continues_to_describe_the_open_file_after_rename = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let original = Kernel.Path.(tempdir / "original.txt") in
+      let moved = Kernel.Path.(tempdir / "moved.txt") in
+      let* file = lift (Kernel.Fs.File.open_write original) in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "rename")) in
+            if written != 6 then
+              Error "expected rename fixture write to make progress"
+            else
+              let* before = lift (Kernel.Fs.File.fstat file) in
+              let* () = lift (Kernel.Fs.File.rename ~src:original ~dst:moved) in
+              let* after = lift (Kernel.Fs.File.fstat file) in
+              let* by_path = lift (Kernel.Fs.File.metadata moved) in
+              Ok (before, after, by_path))
+      in
+      match actual with
+      | (before, after, by_path) ->
+          if
+            Kernel.Fs.File.Metadata.dev before = Kernel.Fs.File.Metadata.dev after
+            && Kernel.Fs.File.Metadata.dev after = Kernel.Fs.File.Metadata.dev by_path
+            && Kernel.Fs.File.Metadata.ino before = Kernel.Fs.File.Metadata.ino after
+            && Kernel.Fs.File.Metadata.ino after = Kernel.Fs.File.Metadata.ino by_path
+          then
+            Ok ()
+          else
+            Error "expected fstat to keep describing the same open file across a path rename")
+
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
@@ -1013,6 +1412,25 @@ let tests = [
   Test.case "Fs.File vectored partial io slice matrix roundtrips" test_vectored_partial_io_slice_matrix_roundtrips;
   Test.case "Fs.File canonicalize rejects symlink loops" test_canonicalize_rejects_symlink_loops;
   Test.case "Fs.File read_dir_names handles larger snapshots with renames and removes" test_read_dir_names_handles_larger_snapshots_with_renames_and_removes;
+  Test.case "Fs.File close on the same handle twice reports bad_file_descriptor" test_close_twice_reports_bad_file_descriptor;
+  Test.case "Fs.File open_write without create rejects missing paths" test_open_write_without_create_rejects_missing_paths;
+  Test.case "Fs.File append mode preserves existing bytes" test_open_write_append_preserves_existing_bytes;
+  Test.case "Fs.File read len=0 is a no-op" test_read_len_zero_is_a_no_op;
+  Test.case "Fs.File write len=0 is a no-op" test_write_len_zero_is_a_no_op;
+  Test.case "Fs.File read rejects a negative pos" test_read_rejects_negative_pos;
+  Test.case "Fs.File write rejects a negative len" test_write_rejects_negative_len;
+  Test.case "Fs.File read rejects slices past the buffer end" test_read_rejects_slices_past_the_buffer_end;
+  Test.case "Fs.File write rejects slices past the buffer end" test_write_rejects_slices_past_the_buffer_end;
+  Test.case "Fs.File read_vectored ignores zero-length segments" test_read_vectored_ignores_zero_length_segments;
+  Test.case "Fs.File write_vectored zero total length is a no-op" test_write_vectored_zero_total_length_is_a_no_op;
+  Test.case "Fs.File create_dir on an existing directory reports already_exists" test_create_dir_on_existing_directory_reports_already_exists;
+  Test.case "Fs.File remove_dir on a regular file reports not_directory" test_remove_dir_on_regular_file_reports_not_directory;
+  Test.case "Fs.File remove_file on a directory reports a directory-related error" test_remove_file_on_directory_reports_a_directory_error;
+  Test.case "Fs.File read_link on a non-symlink reports invalid_argument" test_read_link_on_non_symlink_reports_invalid_argument;
+  Test.case "Fs.File is_directory reports false for dangling symlinks" test_is_directory_reports_false_for_dangling_symlinks;
+  Test.case "Fs.File copy overwrites existing destination bytes" test_copy_overwrites_existing_destination_bytes;
+  Test.case "Fs.File copy preserves payloads larger than the internal chunk size" test_copy_preserves_large_payloads_beyond_the_internal_chunk_size;
+  Test.case "Fs.File fstat continues to describe the open file after rename" test_fstat_continues_to_describe_the_open_file_after_rename;
   Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 

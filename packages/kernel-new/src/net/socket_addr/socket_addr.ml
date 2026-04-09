@@ -38,5 +38,20 @@ let port = fun value -> value.port
 
 let to_parts = fun value -> (value.ip, value.port)
 
+let has_colon = fun value ->
+  let rec loop index =
+    if index = String.length value then
+      false
+    else if String.get value index = ':' then
+      true
+    else
+      loop (index + 1)
+  in
+  loop 0
+
 let to_string = fun value ->
-  String.concat "" [ Ip_addr.to_string value.ip; ":"; Int.to_string value.port ]
+  let ip = Ip_addr.to_string value.ip in
+  if has_colon ip then
+    String.concat "" [ "["; ip; "]:"; Int.to_string value.port ]
+  else
+    String.concat "" [ ip; ":"; Int.to_string value.port ]

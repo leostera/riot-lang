@@ -270,6 +270,28 @@ let recv_udp = fun poll ~token socket buffer ->
   in
   loop ()
 
+let with_udp_pair_at = fun bind_addr fn ->
+  with_poll
+    (fun poll ->
+      let* server = lift_udp (Kernel.Net.UdpSocket.bind bind_addr) in
+      protect ~finally:(fun () -> close_udp server)
+        (fun () ->
+          let* client = lift_udp (Kernel.Net.UdpSocket.bind bind_addr) in
+          protect ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+              let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
+              fn ~poll ~server ~server_addr ~client ~client_addr)))
+
+let with_udp_pair = fun fn -> with_udp_pair_at (Kernel.Net.SocketAddr.loopback_v4 ~port:0) fn
+
+let with_connected_udp_pair = fun fn ->
+  with_udp_pair
+    (fun ~poll ~server ~server_addr ~client ~client_addr ->
+      let* () = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
+      let* () = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
+      fn ~poll ~server ~server_addr ~client ~client_addr)
+
 let test_ip_addr_validates_ipv4_and_ipv6 = fun _ctx ->
   match (
     Kernel.Net.IpAddr.of_string "127.0.0.1",
@@ -1495,13 +1517,221 @@ let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
       close_listener listener;
       Error "expected invalid backlog to be rejected before binding"
 
+let test_socket_addr_rejects_negative_ports = fun _ctx ->
+  match Kernel.Net.IpAddr.of_string "127.0.0.1" with
+  | Kernel.Result.Ok ip -> (
+      match Kernel.Net.SocketAddr.make ~ip ~port:(-1) with
+      | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port=(-1) }) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Net.SocketAddr.error_to_string error)
+      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject negative ports"
+    )
+  | Kernel.Result.Error error -> Error (Kernel.Net.IpAddr.error_to_string error)
+
+let test_socket_addr_rejects_ports_past_65535 = fun _ctx ->
+  match Kernel.Net.IpAddr.of_string "127.0.0.1" with
+  | Kernel.Result.Ok ip -> (
+      match Kernel.Net.SocketAddr.make ~ip ~port:65_536 with
+      | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port=65_536 }) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Net.SocketAddr.error_to_string error)
+      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject ports above 65535"
+    )
+  | Kernel.Result.Error error -> Error (Kernel.Net.IpAddr.error_to_string error)
+
+let test_socket_addr_ipv6_to_string_is_bracketed = fun _ctx ->
+  let rendered = Kernel.Net.SocketAddr.to_string (Kernel.Net.SocketAddr.loopback_v6 ~port:80) in
+  if rendered = "[::1]:80" then
+    Ok ()
+  else
+    Error "expected SocketAddr.to_string to render IPv6 addresses with brackets"
+
+let test_tcp_listener_close_twice_reports_bad_file_descriptor = fun _ctx ->
+  let* listener = lift_tcp_listener
+    (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+  let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
+  match Kernel.Net.TcpListener.close listener with
+  | Kernel.Result.Error (Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor) -> Ok ()
+  | Kernel.Result.Error error -> Error (string_of_tcp_listener_error error)
+  | Kernel.Result.Ok () -> Error "expected closing the same tcp listener twice to report bad_file_descriptor"
+
+let test_tcp_stream_read_len_zero_is_a_no_op = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let buffer = Kernel.Bytes.of_string "unchanged" in
+      match Kernel.Net.TcpStream.read client ~pos:2 ~len:0 buffer with
+      | Kernel.Result.Ok 0 when Kernel.Bytes.to_string buffer = "unchanged" -> Ok ()
+      | Kernel.Result.Ok _ -> Error "expected TcpStream.read ~len:0 to leave the buffer unchanged"
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error))
+
+let test_tcp_stream_write_len_zero_sends_nothing = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
+      let source = Kernel.Net.TcpStream.to_source server in
+      let token = Kernel.Async.Token.make "tcp-write-zero" in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          match Kernel.Net.TcpStream.write client ~pos:1 ~len:0 (Kernel.Bytes.of_string "riot") with
+          | Kernel.Result.Ok 0 ->
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+              if has_readable_token token events then
+                Error "expected TcpStream.write ~len:0 to leave the peer unreadable"
+              else
+                Ok ()
+          | Kernel.Result.Ok _ ->
+              Error "expected TcpStream.write ~len:0 to report zero bytes written"
+          | Kernel.Result.Error error ->
+              Error (string_of_tcp_stream_error error)))
+
+let test_tcp_stream_read_rejects_invalid_slices = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      match Kernel.Net.TcpStream.read client ~pos:(-1) (Kernel.Bytes.create 4) with
+      | Kernel.Result.Error (Kernel.Net.TcpStream.InvalidSlice { pos=(-1); _ }) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
+      | Kernel.Result.Ok _ -> Error "expected TcpStream.read to reject invalid slices")
+
+let test_tcp_stream_write_rejects_invalid_slices = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      match Kernel.Net.TcpStream.write client ~pos:2 ~len:3 (Kernel.Bytes.create 4) with
+      | Kernel.Result.Error (Kernel.Net.TcpStream.InvalidSlice { pos=2; len=3; buffer_len=4 }) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
+      | Kernel.Result.Ok _ -> Error "expected TcpStream.write to reject invalid slices")
+
+let test_tcp_stream_close_twice_reports_bad_file_descriptor = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
+      match Kernel.Net.TcpStream.close client with
+      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
+      | Kernel.Result.Ok () -> Error "expected closing the same tcp stream twice to report bad_file_descriptor")
+
+let test_finish_connect_after_close_reports_bad_file_descriptor = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
+      match Kernel.Net.TcpStream.finish_connect client with
+      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
+      | Kernel.Result.Ok () -> Error "expected finish_connect after close to report bad_file_descriptor")
+
+let test_local_and_peer_addr_after_close_report_bad_file_descriptor = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
+      match (Kernel.Net.TcpStream.local_addr client, Kernel.Net.TcpStream.peer_addr client) with
+      | (Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor), Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor)) -> Ok ()
+      | (Kernel.Result.Error local_error, Kernel.Result.Error peer_error) -> Error (Kernel.String.concat
+        " | "
+        [
+          Kernel.String.append
+            "unexpected local_addr error: "
+            (string_of_tcp_stream_error local_error);
+          Kernel.String.append "unexpected peer_addr error: " (string_of_tcp_stream_error peer_error);
+        ])
+      | _ -> Error "expected local_addr and peer_addr after close to report bad_file_descriptor")
+
+let test_shutdown_write_is_idempotent = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
+      Ok ())
+
+let test_udp_recv_on_unconnected_socket_accepts_any_peer = fun _ctx ->
+  with_udp_pair
+    (fun ~poll ~server ~server_addr ~client ~client_addr:_ ->
+      let* sent = lift_udp
+        (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping")) in
+      if sent != 4 then
+        Error "expected udp send_to to write a single datagram"
+      else
+        let buffer = Kernel.Bytes.create 16 in
+        let* read = recv_udp poll ~token:(Kernel.Async.Token.make 925) server buffer in
+        if read = 4 && Kernel.Bytes.sub_string buffer 0 read = "ping" then
+          Ok ()
+        else
+          Error "expected recv on an unconnected udp socket to accept peer traffic")
+
+let test_udp_send_and_recv_reject_invalid_slices = fun _ctx ->
+  with_connected_udp_pair
+    (fun ~poll:_ ~server ~server_addr:_ ~client ~client_addr:_ ->
+      match (
+        Kernel.Net.UdpSocket.send client ~pos:2 ~len:3 (Kernel.Bytes.create 4),
+        Kernel.Net.UdpSocket.recv server ~pos:(-1) (Kernel.Bytes.create 4)
+      ) with
+      | (Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos=2; len=3; buffer_len=4 }), Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice {
+        pos=(-1);
+        _
+      })) -> Ok ()
+      | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) -> Error (Kernel.String.concat
+        " | "
+        [
+          Kernel.String.append
+            "unexpected udp send invalid-slice error: "
+            (string_of_udp_error send_error);
+          Kernel.String.append
+            "unexpected udp recv invalid-slice error: "
+            (string_of_udp_error recv_error);
+        ])
+      | _ -> Error "expected udp send and recv to reject invalid slices before doing I/O")
+
+let test_udp_connect_after_close_reports_bad_file_descriptor = fun _ctx ->
+  with_udp_pair
+    (fun ~poll:_ ~server ~server_addr:_ ~client:_ ~client_addr ->
+      let* () = lift_udp (Kernel.Net.UdpSocket.close server) in
+      match Kernel.Net.UdpSocket.connect server client_addr with
+      | Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_udp_error error)
+      | Kernel.Result.Ok () -> Error "expected UdpSocket.connect after close to report bad_file_descriptor")
+
+let test_udp_zero_length_datagrams_have_a_stable_contract = fun _ctx ->
+  with_connected_udp_pair
+    (fun ~poll ~server ~server_addr:_ ~client ~client_addr:_ ->
+      let* sent = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "")) in
+      if sent != 0 then
+        Error "expected sending a zero-length udp datagram to report zero bytes"
+      else
+        let buffer = Kernel.Bytes.create 1 in
+        let* read = recv_udp poll ~token:(Kernel.Async.Token.make 926) server buffer in
+        if read = 0 then
+          Ok ()
+        else
+          Error "expected the peer to observe an empty udp datagram")
+
+let test_oversized_udp_datagrams_are_rejected_cleanly = fun _ctx ->
+  with_udp_pair
+    (fun ~poll:_ ~server:_ ~server_addr ~client ~client_addr:_ ->
+      let payload = Kernel.Bytes.create 70_000 in
+      Kernel.Bytes.fill payload 0 (Kernel.Bytes.length payload) 'x';
+      match Kernel.Net.UdpSocket.send_to client server_addr payload with
+      | Kernel.Result.Error Kernel.Net.UdpSocket.MessageTooLong -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_udp_error error)
+      | Kernel.Result.Ok _ -> Error "expected oversized udp datagrams to be rejected with message_too_long")
+
 let tests = [
+  Test.case "Net.SocketAddr rejects negative ports" test_socket_addr_rejects_negative_ports;
+  Test.case "Net.SocketAddr rejects ports above 65535" test_socket_addr_rejects_ports_past_65535;
+  Test.case "Net.SocketAddr renders IPv6 with brackets" test_socket_addr_ipv6_to_string_is_bracketed;
   Test.case "Net.IpAddr validates ipv4 and ipv6" test_ip_addr_validates_ipv4_and_ipv6;
   Test.case "Net.TcpListener and TcpStream roundtrip over loopback" test_tcp_listener_and_stream_roundtrip;
+  Test.case "Net.TcpListener close on the same listener twice reports bad_file_descriptor" test_tcp_listener_close_twice_reports_bad_file_descriptor;
   Test.case "Net.TcpStream vectored burst roundtrip preserves order" test_tcp_vectored_burst_roundtrip_preserves_order;
+  Test.case "Net.TcpStream read len=0 is a no-op" test_tcp_stream_read_len_zero_is_a_no_op;
+  Test.case "Net.TcpStream write len=0 sends nothing" test_tcp_stream_write_len_zero_sends_nothing;
+  Test.case "Net.TcpStream read rejects invalid slices" test_tcp_stream_read_rejects_invalid_slices;
+  Test.case "Net.TcpStream write rejects invalid slices" test_tcp_stream_write_rejects_invalid_slices;
+  Test.case "Net.TcpStream close on the same stream twice reports bad_file_descriptor" test_tcp_stream_close_twice_reports_bad_file_descriptor;
   Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
   Test.case "Net.TcpStream write shutdown reports eof to the peer" test_tcp_stream_shutdown_write_reports_eof_to_peer;
   Test.case "Net.TcpStream write shutdown rejects further writes" test_tcp_stream_shutdown_write_rejects_further_writes;
+  Test.case "Net.TcpStream shutdown Write is idempotent" test_shutdown_write_is_idempotent;
   Test.case "Net.TcpStream read shutdown preserves the write half" test_tcp_stream_shutdown_read_preserves_write_half;
   Test.case "Net.TcpStream read-write shutdown disables both halves" test_tcp_stream_shutdown_read_write_disables_both_halves;
   Test.case "Net.TcpStream peer write shutdown preserves the local write half" test_tcp_stream_peer_write_shutdown_preserves_local_write_half;
@@ -1514,8 +1744,11 @@ let tests = [
   Test.case "Net.TcpListener source deregister after close is harmless" test_tcp_listener_source_deregister_after_close_is_harmless;
   Test.case "Net.TcpListener accepts many clients in one burst" test_tcp_listener_accepts_many_clients_in_one_burst;
   Test.case "Net.TcpStream finish_connect is idempotent after success" test_tcp_stream_finish_connect_is_idempotent_after_success;
+  Test.case "Net.TcpStream finish_connect after close reports bad_file_descriptor" test_finish_connect_after_close_reports_bad_file_descriptor;
   Test.case "Net.TcpStream finish_connect reports connection refused" test_tcp_stream_finish_connect_reports_connection_refused;
+  Test.case "Net.TcpStream local_addr and peer_addr after close report bad_file_descriptor" test_local_and_peer_addr_after_close_report_bad_file_descriptor;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
+  Test.case "Net.UdpSocket recv on an unconnected socket accepts any peer" test_udp_recv_on_unconnected_socket_accepts_any_peer;
   Test.case "Net.UdpSocket ipv6 send_to and recv_from roundtrip over loopback" test_udp_socket_ipv6_send_to_and_recv_from;
   Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
   Test.case "Net.UdpSocket connected socket delivers its peer after filtering foreign datagrams" test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_datagrams;
@@ -1532,6 +1765,10 @@ let tests = [
   Test.case ~size:Test.Large "Net.UdpSocket repeated bind and close stays healthy" test_udp_socket_repeated_bind_and_close_stays_healthy;
   Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
+  Test.case "Net.UdpSocket send and recv reject invalid slices" test_udp_send_and_recv_reject_invalid_slices;
+  Test.case "Net.UdpSocket connect after close reports bad_file_descriptor" test_udp_connect_after_close_reports_bad_file_descriptor;
+  Test.case "Net.UdpSocket zero-length datagrams have a stable contract" test_udp_zero_length_datagrams_have_a_stable_contract;
+  Test.case "Net.UdpSocket oversized datagrams are rejected cleanly" test_oversized_udp_datagrams_are_rejected_cleanly;
   Test.case "Net.UdpSocket send and recv after close report bad file descriptor" test_udp_send_and_recv_after_close_report_bad_file_descriptor;
 ]
 

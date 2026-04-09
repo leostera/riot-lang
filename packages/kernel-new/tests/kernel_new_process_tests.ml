@@ -180,6 +180,24 @@ let wait_for_priority_token = fun poll ~token ->
   in
   loop 8
 
+let send_signal_command = fun ~signal process ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* helper = lift_process
+    (Kernel.Process.spawn
+      ~program:"/bin/kill"
+      ~args:[|signal; Kernel.Int.to_string (Kernel.Process.pid process)|]
+      ~stdio
+      ()) in
+  with_process helper
+    (fun helper ->
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make ("kill-helper", signal)) helper in
+          if status = Kernel.Process.Exited 0 then
+            Ok ()
+          else
+            Error "expected /bin/kill to deliver the requested signal cleanly"))
+
 let test_current_pid_is_positive = fun _ctx ->
   if Kernel.Process.current_pid () > 0 then
     Ok ()
@@ -966,8 +984,346 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
           let* () = poll_until 16 in
           verify processes))
 
+let test_default_stdio_is_all_inherit = fun _ctx ->
+  match Kernel.Process.default_stdio with
+  | Kernel.Process.{ stdin=Stdin.Inherit; stdout=Stdout.Inherit; stderr=Stderr.Inherit } -> Ok ()
+  | _ -> Error "expected Process.default_stdio to inherit all three stdio streams"
+
+let test_process_pid_is_positive_and_stable_before_and_after_exit = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      let before = Kernel.Process.pid process in
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 910) process in
+          let after = Kernel.Process.pid process in
+          if before > 0 && before = after && status = Kernel.Process.Exited 0 then
+            Ok ()
+          else
+            Error "expected Process.pid to be positive and stable across exit observation"))
+
+let test_all_null_stdio_creates_no_owned_pipes = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 911) process in
+          if
+            status = Kernel.Process.Exited 0
+            && Kernel.Process.stdin process = None
+            && Kernel.Process.stdout process = None
+            && Kernel.Process.stderr process = None
+          then
+            Ok ()
+          else
+            Error "expected all-null stdio to create no owned kernel pipes"))
+
+let test_stdin_null_delivers_immediate_eof_to_the_child = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn
+      ~program:"/bin/sh"
+      ~args:[|"-c"; "if IFS= read -r line; then exit 1; else exit 0; fi"|]
+      ~stdio
+      ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 912) process in
+          if status = Kernel.Process.Exited 0 then
+            Ok ()
+          else
+            Error "expected Stdin.Null to present immediate eof to the child"))
+
+let test_stdout_null_discards_stdout_without_creating_a_pipe = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Pipe } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "printf out; printf err >&2"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      match (Kernel.Process.stdout process, Kernel.Process.stderr process) with
+      | (None, Some stderr) ->
+          with_poll
+            (fun poll ->
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 913) process in
+              let* payload = read_all poll ~token:(Kernel.Async.Token.make 914) stderr in
+              if status = Kernel.Process.Exited 0 && payload = "err" then
+                Ok ()
+              else
+                Error "expected Stdout.Null to discard stdout while leaving stderr capture intact")
+      | _ -> Error "expected Stdout.Null to avoid creating a stdout pipe")
+
+let test_stderr_null_discards_stderr_without_creating_a_pipe = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "printf out; printf err >&2"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      match (Kernel.Process.stdout process, Kernel.Process.stderr process) with
+      | (Some stdout, None) ->
+          with_poll
+            (fun poll ->
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 915) process in
+              let* payload = read_all poll ~token:(Kernel.Async.Token.make 916) stdout in
+              if status = Kernel.Process.Exited 0 && payload = "out" then
+                Ok ()
+              else
+                Error "expected Stderr.Null to discard stderr while leaving stdout capture intact")
+      | _ -> Error "expected Stderr.Null to avoid creating a stderr pipe")
+
+let test_spawn_with_empty_env_still_inherits_unrelated_parent_vars = fun _ctx ->
+  let name = "RIOT_KERNEL_NEW_PROCESS_PARENT_VAR" in
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let _ = Kernel.Env.remove_var ~name in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Env.remove_var ~name in
+      ())
+    (fun () ->
+      match Kernel.Env.set_var ~name ~value:"present" with
+      | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
+      | Kernel.Result.Ok () ->
+          let* process = lift_process
+            (Kernel.Process.spawn
+              ~program:"/bin/sh"
+              ~args:[|"-c"; "test \"$RIOT_KERNEL_NEW_PROCESS_PARENT_VAR\" = present"|]
+              ~env:[||]
+              ~stdio
+              ()) in
+          with_process process
+            (fun process ->
+              with_poll
+                (fun poll ->
+                  let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 917) process in
+                  if status = Kernel.Process.Exited 0 then
+                    Ok ()
+                  else
+                    Error "expected env:[||] to keep unrelated parent variables visible")))
+
+let test_spawn_env_override_leaves_unrelated_parent_vars_intact = fun _ctx ->
+  let preserved = "RIOT_KERNEL_NEW_PROCESS_KEEP" in
+  let replaced = "RIOT_KERNEL_NEW_PROCESS_REPLACE" in
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let _ = Kernel.Env.remove_var ~name:preserved in
+  let _ = Kernel.Env.remove_var ~name:replaced in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Env.remove_var ~name:preserved in
+      let _ = Kernel.Env.remove_var ~name:replaced in
+      ())
+    (fun () ->
+      match (
+        Kernel.Env.set_var ~name:preserved ~value:"keep",
+        Kernel.Env.set_var ~name:replaced ~value:"before"
+      ) with
+      | (Kernel.Result.Ok (), Kernel.Result.Ok ()) ->
+          let* process = lift_process
+            (Kernel.Process.spawn
+              ~program:"/bin/sh"
+              ~args:[|
+                "-c";
+                "test \"$RIOT_KERNEL_NEW_PROCESS_REPLACE\" = after && test \"$RIOT_KERNEL_NEW_PROCESS_KEEP\" = keep"
+              |]
+              ~env:[|(replaced, "after")|]
+              ~stdio
+              ()) in
+          with_process process
+            (fun process ->
+              with_poll
+                (fun poll ->
+                  let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 918) process in
+                  if status = Kernel.Process.Exited 0 then
+                    Ok ()
+                  else
+                    Error "expected env overrides to leave unrelated parent vars intact"))
+      | (Kernel.Result.Error error, _) ->
+          Error (Kernel.Env.error_to_string error)
+      | (_, Kernel.Result.Error error) ->
+          Error (Kernel.Env.error_to_string error))
+
+let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
+  with_tempdir "kernel_new_process"
+    (fun tempdir ->
+      let input_path = Kernel.Path.(tempdir / "stdin.txt") in
+      let* input_file = lift_file (Kernel.Fs.File.open_write input_path) in
+      let* () =
+        with_file input_file
+          (fun () ->
+            let* written = lift_file
+              (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "012345")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected stdin offset fixture write to make progress")
+      in
+      let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close stdin_file in
+          ())
+        (fun () ->
+          let scratch = Kernel.Bytes.create 2 in
+          let* consumed = lift_file (Kernel.Fs.File.read stdin_file scratch) in
+          if consumed != 2 then
+            Error "expected to advance the file-backed stdin handle before spawning"
+          else
+            let stdio =
+              Kernel.Process.{
+                stdin = Stdin.File stdin_file;
+                stdout = Stdout.Pipe;
+                stderr = Stderr.Null
+              } in
+            let* process = lift_process
+              (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+            with_process process
+              (fun process ->
+                match Kernel.Process.stdout process with
+                | None -> Error "expected stdout pipe for file-backed stdin offset test"
+                | Some stdout ->
+                    with_poll
+                      (fun poll ->
+                        let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 919) process in
+                        let* payload = read_all poll ~token:(Kernel.Async.Token.make 920) stdout in
+                        if status = Kernel.Process.Exited 0 && payload = "2345" then
+                          Ok ()
+                        else
+                          Error "expected file-backed stdin to honor the current file offset"))))
+
+let test_try_wait_observes_stopped_processes = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "while :; do sleep 1; done"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let token = Kernel.Async.Token.make 921 in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Async.Poll.deregister poll source in
+              let _ = Kernel.Process.kill process ~signal:9 in
+              ())
+            (fun () ->
+              let* () = send_signal_command ~signal:"-STOP" process in
+              let rec wait_for_stop attempts =
+                if attempts = 0 then
+                  Error "expected try_wait to observe a stopped process"
+                else
+                  let* status = lift_process (Kernel.Process.try_wait process) in
+                  match status with
+                  | Some (Kernel.Process.Stopped _) ->
+                      Ok ()
+                  | Some _ ->
+                      Error "expected a temporary stopped status before the final exit"
+                  | None ->
+                      let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+                      wait_for_stop (attempts - 1)
+              in
+              wait_for_stop 8)))
+
+let test_stopped_then_continued_process_eventually_reports_final_exit = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "kill -STOP $$; exit 0"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let token = Kernel.Async.Token.make 923 in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Async.Poll.deregister poll source in
+              let _ = Kernel.Process.kill process ~signal:9 in
+              ())
+            (fun () ->
+              let rec wait_for_stop attempts =
+                if attempts = 0 then
+                  Error "expected the self-stopping process to report a Stopped status first"
+                else
+                  let* status = lift_process (Kernel.Process.try_wait process) in
+                  match status with
+                  | Some (Kernel.Process.Stopped _) ->
+                      Ok ()
+                  | Some _ ->
+                      Error "expected a stopped status before continuing the process"
+                  | None ->
+                      let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+                      wait_for_stop (attempts - 1)
+              in
+              let* () = wait_for_stop 8 in
+              let* () = send_signal_command ~signal:"-CONT" process in
+              match wait_for_exit poll ~token:(Kernel.Async.Token.make 924) process with
+              | Ok (Kernel.Process.Exited 0) -> Ok ()
+              | Ok _ -> Error "expected SIGCONT to let the stopped child reach its final Exited 0 state"
+              | Error error -> Error error)))
+
+let test_kill_rejects_invalid_signal_numbers = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      match Kernel.Process.kill process ~signal:(-1) with
+      | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.InvalidArgument) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected Process.kill to reject an invalid signal number")
+
+let test_spawn_missing_current_dir_reports_no_such_file = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  match Kernel.Process.spawn
+    ~program:"/usr/bin/true"
+    ~args:[||]
+    ~current_dir:(Kernel.Path.of_string "/definitely/missing/kernel-new-process-dir")
+    ~stdio
+    () with
+  | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory) ->
+      Ok ()
+  | Kernel.Result.Error error ->
+      Error (Kernel.Process.error_to_string error)
+  | Kernel.Result.Ok process ->
+      let _ = Kernel.Process.close process in
+      Error "expected spawn with a missing current_dir to fail"
+
+let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
+  with_tempdir "kernel_new_process"
+    (fun tempdir ->
+      let file_path = Kernel.Path.(tempdir / "plain.txt") in
+      let* file = lift_file (Kernel.Fs.File.open_write file_path) in
+      let* _ =
+        with_file
+          file
+          (fun () -> lift_file (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+      in
+      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+      match Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~current_dir:file_path ~stdio () with
+      | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NotDirectory) ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (Kernel.Process.error_to_string error)
+      | Kernel.Result.Ok process ->
+          let _ = Kernel.Process.close process in
+          Error "expected spawn with a regular-file current_dir to report not_directory")
+
 let tests = [
+  Test.case "Process default_stdio is all Inherit" test_default_stdio_is_all_inherit;
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
+  Test.case "Process pid is positive and stable before and after exit" test_process_pid_is_positive_and_stable_before_and_after_exit;
+  Test.case "Process all-null stdio creates no owned pipes" test_all_null_stdio_creates_no_owned_pipes;
+  Test.case "Process Stdin.Null gives the child immediate eof" test_stdin_null_delivers_immediate_eof_to_the_child;
+  Test.case "Process Stdout.Null discards stdout without creating a pipe" test_stdout_null_discards_stdout_without_creating_a_pipe;
+  Test.case "Process Stderr.Null discards stderr without creating a pipe" test_stderr_null_discards_stderr_without_creating_a_pipe;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
   Test.case "Process stdin and stdout pipes roundtrip" test_stdin_and_stdout_pipes_roundtrip;
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
@@ -984,13 +1340,21 @@ let tests = [
   Test.case "Process close then kill preserves signaled status" test_close_then_kill_preserves_signaled_status;
   Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;
   Test.case "Process spawn applies custom environment" test_spawn_applies_custom_environment;
+  Test.case "Process spawn with env:[||] still inherits unrelated parent vars" test_spawn_with_empty_env_still_inherits_unrelated_parent_vars;
+  Test.case "Process spawn env overrides leave unrelated parent vars intact" test_spawn_env_override_leaves_unrelated_parent_vars_intact;
   Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
+  Test.case "Process spawn with a missing current_dir reports no-such-file" test_spawn_missing_current_dir_reports_no_such_file;
+  Test.case "Process spawn with a regular-file current_dir reports not_directory" test_spawn_regular_file_current_dir_reports_not_directory;
   Test.case "Process file-backed stdio roundtrips" test_file_backed_stdio_roundtrips;
+  Test.case "Process file-backed stdin honors the current file offset" test_file_backed_stdin_honors_the_current_file_offset;
   Test.case "Process file-backed stdio uses no kernel pipes" test_file_backed_stdio_uses_no_kernel_pipes;
   Test.case "Process inherited stdio uses no kernel pipes" test_inherited_stdio_uses_no_kernel_pipes;
   Test.case "Process requested pipe ownership matches stdio" test_requested_pipe_ownership_matches_stdio;
   Test.case "Process spawn missing program reports no-such-file" test_spawn_missing_program_reports_no_such_file;
   Test.case "Process close tolerates preclosed pipe handles" test_process_close_tolerates_preclosed_pipe_handles;
+  Test.case "Process try_wait observes stopped processes" test_try_wait_observes_stopped_processes;
+  Test.case "Process Stopped then SIGCONT eventually reports final exit" test_stopped_then_continued_process_eventually_reports_final_exit;
+  Test.case "Process kill rejects invalid signal numbers" test_kill_rejects_invalid_signal_numbers;
   Test.case "Process try_wait is stable after exit" test_try_wait_is_stable_after_exit;
   Test.case "Process kill after exit reports no-such-process" test_kill_after_exit_reports_no_such_process;
   Test.case "Process close is idempotent" test_process_close_is_idempotent;

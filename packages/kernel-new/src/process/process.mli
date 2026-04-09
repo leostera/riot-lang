@@ -71,7 +71,8 @@ val stderr: t -> Fs.File.t option
 
 (** Use `try_wait process` to observe exit state without blocking.
 
-    Once it returns `Some status`, repeated calls keep returning the same status. *)
+    Final `Exited _` and `Signaled _` results stay stable once observed. `Stopped _` is transient:
+    a later `SIGCONT` plus final exit may replace it on subsequent calls. *)
 val try_wait: t -> (status option, error) Result.t
 
 (** Use `to_source process` when you want readiness for `try_wait`.

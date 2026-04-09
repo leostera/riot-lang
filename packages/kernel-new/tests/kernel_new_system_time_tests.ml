@@ -457,6 +457,125 @@ let test_timer_after_ns_elapsed_time_is_reasonable = fun _ctx ->
           else
             Error "expected one-shot timer latency to stay within a reasonable tolerance"))
 
+let test_system_time_rejects_negative_nanoseconds = fun _ctx ->
+  match Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:(-1) with
+  | Kernel.Result.Error (Kernel.Time.SystemTime.InvalidNanoseconds { nanos=(-1) }) -> Ok ()
+  | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
+  | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to reject negative nanoseconds"
+
+let test_system_time_rejects_upper_bound_nanoseconds = fun _ctx ->
+  match Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:1_000_000_000 with
+  | Kernel.Result.Error (Kernel.Time.SystemTime.InvalidNanoseconds { nanos=1_000_000_000 }) -> Ok ()
+  | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
+  | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to keep the nanosecond upper bound exclusive"
+
+let test_system_time_accessors_match_the_constructor = fun _ctx ->
+  let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:17 ~nanos:123_456_789) in
+  let secs, nanos = Kernel.Time.SystemTime.to_parts value in
+  if
+    secs = 17
+    && nanos = 123_456_789
+    && Kernel.Time.SystemTime.secs value = 17
+    && Kernel.Time.SystemTime.subsec_nanos value = 123_456_789
+  then
+    Ok ()
+  else
+    Error "expected SystemTime accessors to preserve constructor inputs exactly"
+
+let test_system_time_compare_and_equal_are_antisymmetric = fun _ctx ->
+  let* earlier = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:5) in
+  let* same = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:5) in
+  let* later = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:6) in
+  if
+    Kernel.Time.SystemTime.equal earlier same
+    && Kernel.Time.SystemTime.compare earlier same = 0
+    && Kernel.Time.SystemTime.compare earlier later < 0
+    && Kernel.Time.SystemTime.compare later earlier > 0
+  then
+    Ok ()
+  else
+    Error "expected SystemTime compare and equal to preserve antisymmetric ordering"
+
+let test_system_time_diff_ns_is_antisymmetric = fun _ctx ->
+  let* left = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:10 ~nanos:5) in
+  let* right = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:7 ~nanos:10) in
+  if
+    Kernel.Time.SystemTime.diff_ns left right = Int64.neg (Kernel.Time.SystemTime.diff_ns right left)
+  then
+    Ok ()
+  else
+    Error "expected SystemTime.diff_ns to be antisymmetric"
+
+let test_monotonic_accessors_are_consistent_on_now = fun _ctx ->
+  let* now = lift_monotonic (Kernel.Time.Monotonic.now ()) in
+  let secs, nanos = Kernel.Time.Monotonic.to_parts now in
+  if secs = Kernel.Time.Monotonic.secs now && nanos = Kernel.Time.Monotonic.subsec_nanos now then
+    Ok ()
+  else
+    Error "expected Monotonic accessors to agree with to_parts"
+
+let test_timer_accessors_report_timeout_and_repeat_flag = fun _ctx ->
+  let* one_shot = lift_timer (Kernel.Time.Timer.after_ns 7L) in
+  let* repeating = lift_timer (Kernel.Time.Timer.every_ns 11L) in
+  if
+    Kernel.Time.Timer.timeout_ns one_shot = 7L
+    && not (Kernel.Time.Timer.repeats one_shot)
+    && Kernel.Time.Timer.timeout_ns repeating = 11L
+    && Kernel.Time.Timer.repeats repeating
+  then
+    Ok ()
+  else
+    Error "expected Timer accessors to preserve the configured timeout and repeat flag"
+
+let test_one_shot_timer_stays_quiet_before_deadline = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 20_000_000L) in
+      let token = Kernel.Async.Token.make 15 in
+      let source = Kernel.Time.Timer.to_source timer in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+          if has_readable_token token events then
+            Error "expected a one-shot timer to stay quiet before its deadline"
+          else
+            Ok ()))
+
+let test_reregistering_one_shot_before_fire_resets_the_deadline = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 25_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 16 in
+      let replacement = Kernel.Async.Token.make 17 in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* quiet_before = lift_async (Kernel.Async.Poll.poll ~timeout:15_000_000L poll) in
+          if has_readable_token token quiet_before then
+            Error "expected the original timer deadline to still be in the future"
+          else
+            let* () = lift_async
+              (Kernel.Async.Poll.reregister poll replacement Kernel.Async.Interest.readable source) in
+            let* quiet_after = lift_async (Kernel.Async.Poll.poll ~timeout:15_000_000L poll) in
+            if has_readable_token replacement quiet_after then
+              Error "expected reregister to reset the one-shot deadline from the new call site"
+            else
+              let* ready = lift_async (Kernel.Async.Poll.poll ~timeout:40_000_000L poll) in
+              if has_readable_token replacement ready then
+                Ok ()
+              else
+                Error "expected the rearmed one-shot timer to fire after the reset deadline"))
+
 let tests = [
   Test.case "Time.SystemTime of_parts roundtrips" test_of_parts_roundtrips;
   Test.case "Time.SystemTime now is at or after epoch" test_now_is_at_or_after_epoch;
@@ -479,6 +598,15 @@ let tests = [
   Test.case "Time.Timer deregister after after_ns fire is harmless" test_timer_deregister_after_after_ns_fire_is_harmless;
   Test.case "Time.Timer every_ns spacing stays within a reasonable tolerance" test_timer_every_ns_spacing_is_reasonable;
   Test.case "Time.Timer after_ns latency stays within a reasonable tolerance" test_timer_after_ns_elapsed_time_is_reasonable;
+  Test.case "SystemTime.of_parts rejects negative nanoseconds" test_system_time_rejects_negative_nanoseconds;
+  Test.case "SystemTime.of_parts rejects the exclusive upper nanosecond bound" test_system_time_rejects_upper_bound_nanoseconds;
+  Test.case "SystemTime accessors match the constructor" test_system_time_accessors_match_the_constructor;
+  Test.case "SystemTime compare and equal are antisymmetric" test_system_time_compare_and_equal_are_antisymmetric;
+  Test.case "SystemTime.diff_ns is antisymmetric" test_system_time_diff_ns_is_antisymmetric;
+  Test.case "Monotonic accessors are consistent on now" test_monotonic_accessors_are_consistent_on_now;
+  Test.case "Timer accessors report timeout and repeat flag" test_timer_accessors_report_timeout_and_repeat_flag;
+  Test.case "One-shot timers stay quiet before their deadline" test_one_shot_timer_stays_quiet_before_deadline;
+  Test.case "Reregistering a one-shot before fire resets the deadline" test_reregistering_one_shot_before_fire_resets_the_deadline;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args

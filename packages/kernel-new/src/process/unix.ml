@@ -83,6 +83,8 @@ let status_signaled = 1
 
 let status_stopped = 2
 
+let status_continued = 3
+
 module FFI = struct
   external spawn:
     string ->
@@ -179,14 +181,23 @@ let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
 let try_wait = fun process ->
   match process.status with
   | Exited _
-  | Signaled _
-  | Stopped _ -> Result.Ok (Some process.status)
-  | Running ->
+  | Signaled _ -> Result.Ok (Some process.status)
+  | Running
+  | Stopped _ ->
       let* status =
         Result.map_error (fun code -> System (System_error.of_code code)) (FFI.try_wait process.pid)
       in
       match status with
-      | None -> Result.Ok None
+      | None -> (
+          match process.status with
+          | Stopped _ -> Result.Ok (Some process.status)
+          | Running -> Result.Ok None
+          | Exited _
+          | Signaled _ -> Result.Ok None
+        )
+      | Some (tag, code) when tag = status_continued ->
+          process.status <- Running;
+          Result.Ok None
       | Some (tag, code) ->
           let* status = status_of_raw tag code in
           process.status <- status;
