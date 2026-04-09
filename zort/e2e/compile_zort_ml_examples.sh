@@ -207,6 +207,11 @@ compile_fatal_case \
   "min_pure_startup.ml" \
   "$SCRIPT_DIR/ml/min_pure_startup_after_shutdown_fatal_main.c"
 
+compile_fatal_case \
+  "min_pure_shutdown_without_startup_fatal" \
+  "min_pure_startup.ml" \
+  "$SCRIPT_DIR/ml/min_pure_shutdown_without_startup_fatal_main.c"
+
 compile_success_case \
   "min_external_startup" \
   "min_external_startup.ml" \

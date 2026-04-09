@@ -25,7 +25,7 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` now runs three intentionally narrow fixtures against
+- `zig build e2e-ml-zort` now runs four intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
 - the compiler-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
@@ -38,6 +38,8 @@ Current status:
   - nested `caml_startup` calls are ignored apart from the ownership count
   - `caml_shutdown` only tears metadata down on the final matching call
   - calling `caml_startup` after a matched `caml_shutdown` now emits a
+    deterministic OCaml-style fatal stderr line and aborts
+  - calling `caml_shutdown` without a matching `caml_startup` now emits a
     deterministic OCaml-style fatal stderr line and aborts
 - each zort-linked fixture now carries:
   - expected stdout
@@ -61,6 +63,9 @@ Current cases:
 - `min_pure_startup_after_shutdown_fatal`: the same pure-startup object under a
   C host that calls `caml_startup`, `caml_shutdown`, and then `caml_startup`
   again to lock the forbidden restart-after-shutdown fatal path
+- `min_pure_shutdown_without_startup_fatal`: the same pure-startup object under
+  a C host that calls `caml_shutdown` before any `caml_startup` to lock the
+  unmatched-shutdown fatal path
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -97,6 +102,9 @@ The current `zort`-linked fixtures are intentionally narrow:
 - `min_pure_startup_after_shutdown_fatal` keeps the same pure-startup object
   but proves the shutdown latch is permanent for embedders that attempt a
   forbidden restart
+- `min_pure_shutdown_without_startup_fatal` keeps the same pure-startup object
+  but proves embedders get a deterministic fatal before any startup-owned
+  metadata or depth changes when they over-release the lifecycle
 - `min_external_startup.ml` adds one top-level external primitive on the same
   startup path
 
