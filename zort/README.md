@@ -231,10 +231,12 @@ for values that should become unreachable.
 Loop and rollout notes are in [`LOOP.md`](./LOOP.md).
 Behavior notes and compatibility references for OCaml comparison are in [`spec/`](./spec/).
 Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+Standalone runtime-linked smoke programs live in [`e2e/`](./e2e/README.md).
 
 ## Running
 
 - `cd zort && zig build test`
+- `cd zort && zig build e2e`
 - `cd zort && zig build test -Dcompat-shim=false`
 - `cd zort && zig build test -Ddisable-posix-signals -Ddisable-native-plugin-loading`
 - `cd zort && zig build compat`

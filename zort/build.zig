@@ -1,5 +1,15 @@
 const std = @import("std");
 
+const E2eCase = struct {
+    name: []const u8,
+    path: []const u8,
+};
+
+const e2e_cases = [_]E2eCase{
+    .{ .name = "zort-e2e-alloc-gc-smoke", .path = "e2e/alloc_gc_smoke.zig" },
+    .{ .name = "zort-e2e-effects-roundtrip-smoke", .path = "e2e/effects_roundtrip_smoke.zig" },
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -91,6 +101,23 @@ pub fn build(b: *std.Build) void {
     }
     const bench_step = b.step("bench", "Run zort benchmarks");
     bench_step.dependOn(&run_bench.step);
+
+    const e2e_step = b.step("e2e", "Run zort end-to-end smoke programs");
+    for (e2e_cases) |case| {
+        const case_module = b.createModule(.{
+            .root_source_file = b.path(case.path),
+            .target = target,
+            .optimize = optimize,
+        });
+        case_module.addImport("zort", lib_module);
+        const exe = b.addExecutable(.{
+            .name = case.name,
+            .root_module = case_module,
+        });
+        const run_case = b.addRunArtifact(exe);
+        e2e_step.dependOn(&run_case.step);
+        test_step.dependOn(&run_case.step);
+    }
 
     const installed_module = b.addModule("zort", .{
         .root_source_file = b.path("src/lib.zig"),
