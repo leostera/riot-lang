@@ -23,6 +23,7 @@ what to shim, and what to drop.
 - [`effects-and-continuations.md`](./effects-and-continuations.md): fiber stacks, continuation linearity, `perform`/`reperform`/`resume`, callback boundaries, and effect-visible backtraces.
 - [`allocator-policy.md`](./allocator-policy.md): heap allocation paths, string/block initialization, external memory, and static allocator services.
 - [`primitive-boundary-and-native-dynlink.md`](./primitive-boundary-and-native-dynlink.md): primitive tables, named values, native plugin loading, and metadata registration.
+- [`compiler-runtime-integration.md`](./compiler-runtime-integration.md): native compiler/runtime seam, startup and metadata expectations, and the minimum compatibility surface needed to link compiler-emitted code against zort.
 - [`gc-roots.md`](./gc-roots.md): local/global roots, root scanning, remembered sets, write barriers, and atomic field helpers.
 - [`gc-strategy.md`](./gc-strategy.md): minor/major GC structure, promotion, phase machine, and domain interaction.
 - [`gc-control-and-stats.md`](./gc-control-and-stats.md): `Gc.get/set/stat`, explicit collection operations, runtime parameter rendering, and tweak knobs.
