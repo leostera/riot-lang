@@ -17,12 +17,14 @@ Current cases:
   continuation resume, and control-flow trace counters.
 - `ml/*.ml`: compiler-emitted native smoke fixtures built with `ocamlopt.opt`
   in `-output-obj` mode and linked today against vendor `libasmrun` as the
-  baseline runtime.
+  baseline runtime, with one narrow `zort`-linked exception for compiler-compat
+  bring-up.
 
 Run them with:
 
 - `zig build e2e`
 - `zig build e2e-ml`
+- `zig build e2e-ml-zort`
 
 They also run as part of:
 

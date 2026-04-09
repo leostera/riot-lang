@@ -142,6 +142,15 @@ Recommended first target:
 - no external plugins,
 - no callback into foreign code except explicitly chosen smoke primitives.
 
+Current locked target:
+
+- `aarch64-apple-darwin`
+- existing compiler path:
+  `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
+- compatibility artifact: `libzort-compiler-compat.dylib`
+- current proven scope: one strict `-nostdlib -nopervasives` top-level external
+  program links and runs under `zort`
+
 ### Milestone 0: linkable startup
 
 Goal:
@@ -152,6 +161,19 @@ Goal:
 - returns without crashing.
 
 This milestone does not need effects, dynlink, or broad primitive coverage.
+
+Current status:
+
+- achieved for a single narrow smoke on `aarch64-apple-darwin`
+- the successful fixture is `e2e/ml/min_external_startup.ml`
+- the current shim covers only:
+  - startup entrypoints
+  - `caml_program` handoff
+  - `caml_c_call`
+  - `caml_call_realloc_stack` stubbed for the non-growing case
+  - a single top-level external symbol
+- it does not yet cover stdlib startup, allocation, frame-descriptor ingestion,
+  or general callback registration
 
 ### Milestone 1: no-allocation control smoke
 
@@ -166,6 +188,13 @@ This proves:
 - native symbol linkage,
 - exception path basics if used,
 - compiler/runtime control handoff.
+
+Current status:
+
+- partially achieved through a top-level external primitive rather than pure
+  arithmetic/branching
+- the next useful no-allocation step is a pure emitted program or a slightly
+  richer external/control case that still avoids heap allocation
 
 ### Milestone 2: allocation smoke
 
