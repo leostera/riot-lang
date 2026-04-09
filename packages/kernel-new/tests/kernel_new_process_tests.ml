@@ -707,15 +707,14 @@ let test_repeated_spawn_and_poll_exit_stays_healthy = fun _ctx ->
       loop 32)
 
 let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
-  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Null; stderr = Stderr.Null } in
   with_poll
     (fun poll ->
       let rec spawn_many remaining acc =
         if remaining = 0 then
           Ok (List.rev acc)
         else
-          let* process = lift_process
-            (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.03"|] ~stdio ()) in
+          let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
           spawn_many (remaining - 1) (process :: acc)
       in
       let* processes = spawn_many 12 [] in
@@ -731,6 +730,16 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           deregister_all sources;
           close_processes processes)
         (fun () ->
+          let rec trigger_exit_burst = function
+            | [] -> Ok ()
+            | process :: rest -> (
+                match Kernel.Process.stdin process with
+                | None -> Error "expected burst-exit process to own a stdin pipe"
+                | Some stdin ->
+                    let* () = lift_file (Kernel.Fs.File.close stdin) in
+                    trigger_exit_burst rest
+              )
+          in
           let rec register index = function
             | [] -> Ok ()
             | process :: rest ->
@@ -798,6 +807,7 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                 | _ -> Error "expected burst-exit processes to stay observable through repeated try_wait"
           in
           let* () = register 0 processes in
+          let* () = trigger_exit_burst processes in
           let* () = poll_until 16 in
           verify processes))
 
