@@ -181,9 +181,19 @@
   - frame records carry a site id plus frame-owned roots,
   - stack limits are explicit runtime policy through `StackLimits`,
   - overflow is reported as a typed `StackOverflow` error instead of silently growing forever.
+- Suspended continuations now store an explicit `SuspendedStack` payload:
+  - owner domain
+  - capture site id
+  - captured frame count
+  - captured root count
+  - the managed stack frames themselves
 - Suspended continuations expose their captured values to the collector through the generic `RootProvider` interface instead of special GC-only hooks.
 - Capturing a continuation transfers the managed stack out of the active fiber into the continuation state.
 - Resuming a continuation restores that managed stack to the resumed fiber, so the continuation stops providing those roots only because ownership moved back to the active stack.
+- Resuming a continuation may now migrate the resumed fiber into a different domain:
+  - the resumed fiber adopts the active domain of the resumer,
+  - the suspended stack payload is the migration unit,
+  - zort therefore treats resume as the future cross-domain handoff point rather than forcing same-domain resumes forever.
 - `perform` now walks the current fiber's handler stack and then the parent-fiber chain to find the nearest matching handler.
 - `resumeContinuation` consumes a continuation once:
   - the first resume reactivates the captured fiber,
@@ -211,7 +221,8 @@
 - Bench runs can surface those events with `--trace-effects`.
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
-  - richer resume ownership rules,
+  - per-domain fiber scheduling and parked-run-queue ownership,
   - deeper callback-boundary behavior at FFI/native entrypoints,
+  - stop-the-world/safepoint coordination between domains and suspended stacks,
   - richer backtrace integration beyond managed-frame walking,
   - lower-level stack/runtime switching mechanics if zort chooses to model them explicitly.

@@ -8,6 +8,9 @@ pub const Error = @import("runtime.zig").Error;
 pub const Collector = @import("runtime.zig").Collector;
 pub const ContinuationHandle = @import("runtime.zig").ContinuationHandle;
 pub const ControlKernel = @import("runtime.zig").ControlKernel;
+pub const DomainHandle = @import("runtime.zig").DomainHandle;
+pub const DomainRegistry = @import("runtime.zig").DomainRegistry;
+pub const DomainStatus = @import("runtime.zig").DomainStatus;
 pub const EphemeronHandle = @import("runtime.zig").EphemeronHandle;
 pub const Event = @import("runtime.zig").Event;
 pub const EventCounters = @import("runtime.zig").EventCounters;
@@ -47,6 +50,7 @@ test {
     std.testing.refAllDecls(@import("collector.zig"));
     std.testing.refAllDecls(@import("compat.zig"));
     std.testing.refAllDecls(@import("control_kernel.zig"));
+    std.testing.refAllDecls(@import("domain_registry.zig"));
     std.testing.refAllDecls(@import("event_sink.zig"));
     std.testing.refAllDecls(@import("heap_store.zig"));
     std.testing.refAllDecls(@import("liveness.zig"));

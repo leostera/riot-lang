@@ -1,8 +1,10 @@
 const std = @import("std");
+const domain_registry_mod = @import("domain_registry.zig");
 const event_sink_mod = @import("event_sink.zig");
 const root_provider = @import("root_provider.zig");
 const value = @import("value.zig");
 
+pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const EventSink = event_sink_mod.EventSink;
 pub const RootProvider = root_provider.RootProvider;
 pub const RootVisitor = root_provider.RootVisitor;
@@ -110,6 +112,47 @@ pub const ManagedStack = struct {
     }
 };
 
+pub const SuspendedStack = struct {
+    owner_domain: DomainHandle = .{ .index = 0, .generation = 0 },
+    capture_site_id: u32 = 0,
+    frame_count: usize = 0,
+    root_count: usize = 0,
+    stack: ManagedStack = .{},
+
+    fn fromManagedStack(owner_domain: DomainHandle, capture_site_id: u32, stack: ManagedStack) SuspendedStack {
+        return .{
+            .owner_domain = owner_domain,
+            .capture_site_id = capture_site_id,
+            .frame_count = stack.frameCount(),
+            .root_count = stack.countRoots(),
+            .stack = stack,
+        };
+    }
+
+    fn deinit(self: *SuspendedStack, allocator: std.mem.Allocator) void {
+        self.stack.deinit(allocator);
+        self.* = .{};
+    }
+
+    fn take(self: *SuspendedStack) ManagedStack {
+        const taken = self.stack.take();
+        self.* = .{};
+        return taken;
+    }
+
+    fn countRoots(self: *const SuspendedStack) usize {
+        return self.root_count;
+    }
+
+    fn countValueRoots(self: *const SuspendedStack, needle: Value) usize {
+        return self.stack.countValueRoots(needle);
+    }
+
+    fn visitRoots(self: *const SuspendedStack, visitor: RootVisitor) void {
+        self.stack.visitRoots(visitor);
+    }
+};
+
 pub const BacktraceFrame = struct {
     fiber: FiberHandle,
     site_id: u32,
@@ -131,6 +174,7 @@ pub const HandlerFrame = struct {
 
 pub const FiberState = struct {
     status: FiberStatus,
+    domain: DomainHandle,
     parent: ?FiberHandle,
     handlers: std.ArrayListUnmanaged(HandlerFrame) = .{},
     stack: ManagedStack = .{},
@@ -139,6 +183,7 @@ pub const FiberState = struct {
     fn empty() FiberState {
         return .{
             .status = .completed,
+            .domain = .{ .index = 0, .generation = 0 },
             .parent = null,
             .handlers = .{},
             .stack = .{},
@@ -146,9 +191,10 @@ pub const FiberState = struct {
         };
     }
 
-    fn init(parent: ?FiberHandle, status: FiberStatus) FiberState {
+    fn init(parent: ?FiberHandle, status: FiberStatus, domain: DomainHandle) FiberState {
         return .{
             .status = status,
+            .domain = domain,
             .parent = parent,
             .handlers = .{},
         };
@@ -170,6 +216,7 @@ pub const ContinuationStatus = enum {
 
 pub const ContinuationState = struct {
     fiber: FiberHandle,
+    domain: DomainHandle,
     parent: ?FiberHandle,
     handler_fiber: FiberHandle,
     handler_index: usize,
@@ -177,11 +224,12 @@ pub const ContinuationState = struct {
     payload: Value,
     status: ContinuationStatus = .suspended,
     captured_roots: std.ArrayListUnmanaged(Value) = .{},
-    stack: ManagedStack = .{},
+    suspended_stack: SuspendedStack = .{},
 
     fn empty() ContinuationState {
         return .{
             .fiber = .{ .index = 0, .generation = 0 },
+            .domain = .{ .index = 0, .generation = 0 },
             .parent = null,
             .handler_fiber = .{ .index = 0, .generation = 0 },
             .handler_index = 0,
@@ -189,13 +237,13 @@ pub const ContinuationState = struct {
             .payload = value.Unit,
             .status = .dropped,
             .captured_roots = .{},
-            .stack = .{},
+            .suspended_stack = .{},
         };
     }
 
     fn deinit(self: *ContinuationState, allocator: std.mem.Allocator) void {
         self.captured_roots.deinit(allocator);
-        self.stack.deinit(allocator);
+        self.suspended_stack.deinit(allocator);
         self.* = ContinuationState.empty();
     }
 };
@@ -216,6 +264,7 @@ pub const ControlKernel = struct {
     pub const Config = struct {
         event_sink: EventSink = EventSink.noop(),
         stack_limits: StackLimits = .{},
+        initial_domain: DomainHandle = .{ .index = 0, .generation = 1 },
     };
 
     allocator: std.mem.Allocator,
@@ -244,7 +293,7 @@ pub const ControlKernel = struct {
             .stack_limits = config.stack_limits,
             .current_fiber = .{ .index = 0, .generation = 0 },
         };
-        kernel.current_fiber = kernel.addFiber(FiberState.init(null, .active)) catch {
+        kernel.current_fiber = kernel.addFiber(FiberState.init(null, .active, config.initial_domain)) catch {
             @panic("zort: out of memory while creating main fiber");
         };
         return kernel;
@@ -284,6 +333,7 @@ pub const ControlKernel = struct {
             for (slot.continuation.captured_roots.items) |rooted| {
                 if (std.meta.eql(rooted, needle)) count += 1;
             }
+            count += slot.continuation.suspended_stack.countValueRoots(needle);
         }
         return count;
     }
@@ -357,7 +407,7 @@ pub const ControlKernel = struct {
             for (slot.continuation.captured_roots.items) |rooted| {
                 if (rooted.isBlock() and !is_valid_value(context, rooted)) return error.InvalidContinuationValue;
             }
-            for (slot.continuation.stack.frames.items) |frame| {
+            for (slot.continuation.suspended_stack.stack.frames.items) |frame| {
                 for (frame.roots.items) |rooted| {
                     if (rooted.isBlock() and !is_valid_value(context, rooted)) return error.InvalidContinuationValue;
                 }
@@ -367,6 +417,10 @@ pub const ControlKernel = struct {
 
     pub fn currentFiber(self: *const ControlKernel) FiberHandle {
         return self.current_fiber;
+    }
+
+    pub fn currentDomain(self: *const ControlKernel) DomainHandle {
+        return self.fiber(self.current_fiber).?.domain;
     }
 
     pub fn fiber(self: *const ControlKernel, handle: FiberHandle) ?*const FiberState {
@@ -391,7 +445,18 @@ pub const ControlKernel = struct {
     }
 
     pub fn createFiber(self: *ControlKernel, parent: ?FiberHandle) !FiberHandle {
-        return self.addFiber(FiberState.init(parent, .suspended));
+        const domain = if (parent) |parent_handle|
+            (self.fiber(parent_handle) orelse return error.InvalidFiber).domain
+        else
+            self.currentDomain();
+        return self.createFiberInDomain(parent, domain);
+    }
+
+    pub fn createFiberInDomain(self: *ControlKernel, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
+        if (parent) |parent_handle| {
+            if (self.fiber(parent_handle) == null) return error.InvalidFiber;
+        }
+        return self.addFiber(FiberState.init(parent, .suspended, domain));
     }
 
     pub fn activateFiber(self: *ControlKernel, handle: FiberHandle) !void {
@@ -499,10 +564,10 @@ pub const ControlKernel = struct {
         var frames = std.ArrayListUnmanaged(BacktraceFrame){};
         errdefer frames.deinit(allocator);
 
-        var i = continuation_state.stack.frames.items.len;
+        var i = continuation_state.suspended_stack.stack.frames.items.len;
         while (i > 0) {
             i -= 1;
-            const frame = continuation_state.stack.frames.items[i];
+            const frame = continuation_state.suspended_stack.stack.frames.items[i];
             try frames.append(allocator, .{
                 .fiber = continuation_state.fiber,
                 .site_id = frame.site_id,
@@ -541,12 +606,13 @@ pub const ControlKernel = struct {
 
         var captured = ContinuationState{
             .fiber = fiber_handle,
+            .domain = fiber_state.domain,
             .parent = fiber_state.parent,
             .handler_fiber = fiber_handle,
             .handler_index = fiber_state.handlers.items.len,
             .effect = effect,
             .payload = payload,
-            .stack = fiber_state.stack.take(),
+            .suspended_stack = SuspendedStack.fromManagedStack(fiber_state.domain, 0, fiber_state.stack.take()),
         };
         try captured.captured_roots.appendSlice(self.allocator, captured_roots);
         const handle = try self.addContinuation(captured);
@@ -663,7 +729,8 @@ pub const ControlKernel = struct {
             .suspended => {},
             .resumed, .dropped => return error.AlreadyResumed,
         }
-        const captured_stack = slot.continuation.stack.take();
+        const target_domain = self.currentDomain();
+        const captured_stack = slot.continuation.suspended_stack.take();
         const fiber_handle = slot.continuation.fiber;
         const effect = slot.continuation.effect;
         const handler_fiber = slot.continuation.handler_fiber;
@@ -672,6 +739,7 @@ pub const ControlKernel = struct {
         const fiber_state = self.fiberMut(fiber_handle) orelse return error.InvalidFiber;
         fiber_state.stack.deinit(self.allocator);
         fiber_state.stack = captured_stack;
+        fiber_state.domain = target_domain;
         try self.activateFiber(fiber_handle);
         self.event_sink.emit(.{ .control = .{
             .action = .continuation_resume,
@@ -800,12 +868,13 @@ pub const ControlKernel = struct {
 
         var captured = ContinuationState{
             .fiber = fiber_handle,
+            .domain = fiber_state.domain,
             .parent = fiber_state.parent,
             .handler_fiber = match.fiber,
             .handler_index = match.index,
             .effect = effect,
             .payload = payload,
-            .stack = fiber_state.stack.take(),
+            .suspended_stack = SuspendedStack.fromManagedStack(fiber_state.domain, site_id, fiber_state.stack.take()),
         };
         try captured.captured_roots.appendSlice(self.allocator, captured_roots);
         const handle = try self.addContinuation(captured);
@@ -850,7 +919,7 @@ pub const ControlKernel = struct {
         for (self.continuations.items) |slot| {
             if (!slot.alive) continue;
             if (slot.continuation.status != .suspended) continue;
-            count += 1 + slot.continuation.captured_roots.items.len + slot.continuation.stack.countRoots();
+            count += 1 + slot.continuation.captured_roots.items.len + slot.continuation.suspended_stack.countRoots();
         }
         return count;
     }
@@ -869,7 +938,7 @@ pub const ControlKernel = struct {
             for (slot.continuation.captured_roots.items) |rooted| {
                 visitor.visit(rooted);
             }
-            slot.continuation.stack.visitRoots(visitor);
+            slot.continuation.suspended_stack.visitRoots(visitor);
         }
     }
 
@@ -914,6 +983,7 @@ test "control_kernel: child fibers preserve parent links and handler stacks" {
     defer kernel.deinit();
 
     const main = kernel.currentFiber();
+    const main_domain = kernel.currentDomain();
     const child = try kernel.createFiber(main);
     try kernel.pushHandler(main, .{
         .effect = 7,
@@ -928,6 +998,7 @@ test "control_kernel: child fibers preserve parent links and handler stacks" {
 
     const child_state = kernel.fiber(child).?;
     try std.testing.expectEqual(main, child_state.parent.?);
+    try std.testing.expectEqual(main_domain, child_state.domain);
     try std.testing.expectEqual(@as(FiberStatus, .suspended), child_state.status);
     try std.testing.expectEqual(@as(usize, 2), try kernel.handlerCount(main));
 
@@ -997,17 +1068,20 @@ test "control_kernel: perform walks parent handlers and returns continuation" {
     try kernel.pushFrame(child, 77);
     try kernel.pushFrameRoot(child, Value.fromHeapRef(.{ .index = 6, .generation = 1 }));
 
-    const performed = try kernel.perform(11, Value.fromInt(7), &.{Value.fromInt(8)});
+    const performed = try kernel.performAt(77, 11, Value.fromInt(7), &.{Value.fromInt(8)});
     try std.testing.expectEqual(main, performed.handler_fiber);
     try std.testing.expectEqual(@as(usize, 0), performed.handler_index);
     try std.testing.expectEqual(@as(i64, 99), performed.handler.handle_effect.asInt());
 
     const captured = kernel.continuation(performed.continuation).?;
     try std.testing.expectEqual(child, captured.fiber);
+    try std.testing.expectEqual(kernel.fiber(child).?.domain, captured.domain);
     try std.testing.expectEqual(main, captured.handler_fiber);
     try std.testing.expectEqual(@as(usize, 0), captured.handler_index);
     try std.testing.expectEqual(@as(usize, 1), captured.captured_roots.items.len);
-    try std.testing.expectEqual(@as(usize, 1), captured.stack.frameCount());
+    try std.testing.expectEqual(@as(u32, 77), captured.suspended_stack.capture_site_id);
+    try std.testing.expectEqual(@as(usize, 1), captured.suspended_stack.frame_count);
+    try std.testing.expectEqual(@as(usize, 1), captured.suspended_stack.root_count);
     try std.testing.expectEqual(@as(usize, 0), try kernel.frameCount(child));
 }
 
@@ -1055,6 +1129,37 @@ test "control_kernel: resume is one-shot and continuation-owned suspended roots 
     try std.testing.expectEqual(@as(usize, 1), counters.continuation_captures);
     try std.testing.expectEqual(@as(usize, 1), counters.continuation_resumes);
     try std.testing.expect(counters.fiber_activations >= 2);
+}
+
+test "control_kernel: suspended fibers can resume in a different domain" {
+    var kernel = ControlKernel.init(std.testing.allocator);
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 5,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+    try kernel.pushFrame(child, 55);
+    try kernel.pushFrameRoot(child, Value.fromHeapRef(.{ .index = 19, .generation = 1 }));
+
+    const performed = try kernel.performAt(55, 5, Value.fromInt(7), &.{});
+    const suspended = kernel.continuation(performed.continuation).?;
+    try std.testing.expectEqual(kernel.fiber(child).?.domain, suspended.domain);
+    try std.testing.expectEqual(@as(u32, 55), suspended.suspended_stack.capture_site_id);
+
+    const foreign_domain = DomainHandle{ .index = 7, .generation = 3 };
+    const worker = try kernel.createFiberInDomain(null, foreign_domain);
+    try kernel.activateFiber(worker);
+
+    const resumed = try kernel.resumeContinuation(performed.continuation, Value.fromInt(9));
+    try std.testing.expectEqual(child, resumed.fiber);
+    try std.testing.expectEqual(foreign_domain, kernel.currentDomain());
+    try std.testing.expectEqual(foreign_domain, kernel.fiber(child).?.domain);
+    try std.testing.expectEqual(@as(usize, 1), try kernel.frameCount(child));
 }
 
 test "control_kernel: managed stack limits and callback boundaries are explicit" {

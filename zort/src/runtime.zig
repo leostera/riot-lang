@@ -1,5 +1,6 @@
 const std = @import("std");
 const control_kernel_mod = @import("control_kernel.zig");
+const domain_registry_mod = @import("domain_registry.zig");
 const value = @import("value.zig");
 const event_sink_mod = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
@@ -42,6 +43,9 @@ pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
 pub const EffectId = control_kernel_mod.EffectId;
 pub const FiberHandle = control_kernel_mod.FiberHandle;
 pub const HandlerFrame = control_kernel_mod.HandlerFrame;
+pub const DomainHandle = domain_registry_mod.DomainHandle;
+pub const DomainRegistry = domain_registry_mod.DomainRegistry;
+pub const DomainStatus = domain_registry_mod.DomainStatus;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
@@ -120,6 +124,7 @@ pub const Runtime = struct {
 
     allocator: std.mem.Allocator,
     event_sink: EventSink,
+    domains: DomainRegistry,
     control_kernel: ControlKernel,
     heap_store: HeapStore,
     remembered_set: RememberedSet,
@@ -143,7 +148,8 @@ pub const Runtime = struct {
         var runtime = Runtime{
             .allocator = allocator,
             .event_sink = config.eventSink,
-            .control_kernel = ControlKernel.initWithSink(allocator, config.eventSink),
+            .domains = DomainRegistry.init(allocator),
+            .control_kernel = undefined,
             .heap_store = HeapStore.init(allocator),
             .remembered_set = RememberedSet.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
@@ -153,6 +159,10 @@ pub const Runtime = struct {
             .debug_root_checks = config.debugRootChecks,
             .debug_checks = config.debugChecks,
         };
+        runtime.control_kernel = ControlKernel.initWithConfig(allocator, .{
+            .event_sink = config.eventSink,
+            .initial_domain = runtime.domains.mainDomain(),
+        });
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
             runtime.fixed_arena_buffer = buffer;
@@ -198,6 +208,7 @@ pub const Runtime = struct {
         self.remembered_set.deinit();
         self.root_registry.deinit();
         self.control_kernel.deinit();
+        self.domains.deinit();
     }
 
     pub fn objectCount(self: *Runtime) usize {
@@ -243,6 +254,14 @@ pub const Runtime = struct {
         return &self.control_kernel;
     }
 
+    pub fn domainRegistry(self: *Runtime) *DomainRegistry {
+        return &self.domains;
+    }
+
+    pub fn currentDomain(self: *Runtime) DomainHandle {
+        return self.control_kernel.currentDomain();
+    }
+
     pub fn runtimeServices(self: *Runtime) *RuntimeServices {
         return &self.services;
     }
@@ -257,6 +276,24 @@ pub const Runtime = struct {
 
     pub fn rememberedSet(self: *Runtime) *RememberedSet {
         return &self.remembered_set;
+    }
+
+    pub fn createDomain(self: *Runtime) !DomainHandle {
+        return self.domains.createDomain();
+    }
+
+    pub fn attachDomain(self: *Runtime, handle: DomainHandle) !void {
+        try self.domains.attach(handle);
+    }
+
+    pub fn detachDomain(self: *Runtime, handle: DomainHandle) !void {
+        try self.domains.detach(handle);
+    }
+
+    pub fn createFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
+        const state = self.domains.domain(domain) orelse return error.InvalidDomain;
+        if (state.status == .detached) return error.DomainDetached;
+        return self.control_kernel.createFiberInDomain(parent, domain);
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
@@ -468,10 +505,12 @@ pub const Runtime = struct {
 
     pub fn enterBlockingSection(self: *Runtime) void {
         self.services.enterBlockingSection();
+        self.domains.enterBlocking(self.currentDomain()) catch unreachable;
     }
 
     pub fn exitBlockingSection(self: *Runtime) !void {
         try self.services.exitBlockingSection();
+        try self.domains.exitBlocking(self.currentDomain());
     }
 
     pub fn recordSignal(self: *Runtime, signo: u8) !void {
@@ -552,10 +591,11 @@ pub const Runtime = struct {
         };
     }
 
-    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError;
+    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError;
 
     pub fn verifyDebugState(self: *Runtime) VerifyError!void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
+        try self.domains.verify();
         if (self.debug_checks.verify_heap_store) try self.heap_store.verifyInvariants();
         if (self.debug_checks.verify_control_kernel) try self.control_kernel.verify(self, isValidRootedValue);
     }
@@ -1352,6 +1392,36 @@ test "runtime: performed continuations keep heap values alive until resumed" {
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
 }
 
+test "runtime: continuations can migrate across attached domains" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const main_domain = rt.currentDomain();
+    const other_domain = try rt.createDomain();
+    try std.testing.expectError(error.DomainDetached, rt.createFiberInDomain(null, other_domain));
+    try rt.attachDomain(other_domain);
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 6,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try rt.createFiberInDomain(main, main_domain);
+    try rt.controlKernel().activateFiber(child);
+    try rt.controlKernel().pushFrame(child, 606);
+    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+
+    const performed = try rt.controlKernel().performAt(606, 6, Value.fromInt(2), &.{});
+    const worker = try rt.createFiberInDomain(null, other_domain);
+    try rt.controlKernel().activateFiber(worker);
+
+    _ = try rt.controlKernel().resumeContinuation(performed.continuation, Value.fromInt(11));
+
+    try std.testing.expectEqual(other_domain, rt.currentDomain());
+    try std.testing.expectEqual(other_domain, rt.controlKernel().fiber(child).?.domain);
+}
+
 test "runtime: explainValue reports root ownership and last object event" {
     var trace = TraceRecorder.init(std.testing.allocator, .{
         .track_object_events = true,
@@ -1424,11 +1494,13 @@ test "runtime: runtime services track pending signals and blocking sections" {
     defer rt.deinit();
 
     rt.enterBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
     try rt.recordSignal(2);
     try rt.recordSignal(7);
     try std.testing.expectEqual((@as(u64, 1) << 2) | (@as(u64, 1) << 7), rt.takePendingSignals());
     try std.testing.expectEqual(@as(u64, 0), rt.takePendingSignals());
     try rt.exitBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
 }
 
 test "runtime: generational minor collection promotes live nursery objects" {

@@ -70,14 +70,24 @@
 ## zort runtime-services baseline
 
 - `RuntimeServices` now exists as a separate subsystem in `src/runtime_services.zig`.
+- `DomainRegistry` now exists as a separate subsystem in `src/domain_registry.zig`.
 - The current service model includes:
   - reference-counted startup/shutdown state,
   - pending-signal recording,
   - blocking-section depth,
   - string-keyed named values rooted through the collector's `RootProvider` seam,
   - runtime-local signal handlers delivered through explicit callback-boundary entry.
+- The current domain model includes:
+  - a main attached domain created at runtime startup,
+  - explicit domain creation plus attach/detach lifecycle,
+  - per-domain blocking depth and blocked/attached state transitions,
+  - fibers and suspended continuations carrying domain ownership in the control kernel.
 - This is an intentional simplification of OCaml's runtime-global model:
   - services are attached to one `Runtime` instance,
   - named values are runtime-local rather than process-global,
-  - there is no domain registry or stop-the-world coordination yet.
+  - there is still no stop-the-world coordination or per-domain scheduler yet.
+- zort now explicitly allows a suspended fiber to resume in a different attached domain:
+  - the resumed fiber adopts the resumer's active domain,
+  - this is the current migration seam for multicore fibers,
+  - scheduler/work-stealing policy still remains future work.
 - The important architectural change is that startup/signal/native-service state now has a home outside the semantic value and collector core.
