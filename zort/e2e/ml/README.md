@@ -25,12 +25,18 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` now runs two intentionally narrow fixtures against
+- `zig build e2e-ml-zort` now runs three intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
 - the compiler-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
   verifies that `caml_program` lands in a registered code fragment before
   entering `caml_start_program`
+- the compiler-compat startup path is now reference-counted on the locked
+  `aarch64-apple-darwin` path:
+  - the first `caml_startup` performs metadata registration and enters
+    `caml_start_program`
+  - nested `caml_startup` calls are ignored apart from the ownership count
+  - `caml_shutdown` only tears metadata down on the final matching call
 - each zort-linked fixture now carries:
   - expected stdout
   - expected startup-metadata trace output
@@ -46,6 +52,9 @@ Current cases:
 - `min_pure_startup.ml`: strict `-nostdlib -nopervasives` pure startup smoke
   intended to prove the smallest compiler-emitted object can run against the
   `zort` compiler-compatibility shim without depending on externals
+- `min_pure_startup_reentrant`: the same strict pure-startup object under a C
+  host that calls `caml_startup`/`caml_shutdown` twice to prove nested startup
+  ownership and final teardown behavior in the compatibility layer
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -77,6 +86,8 @@ The current `zort`-linked fixtures are intentionally narrow:
 
 - `min_pure_startup.ml` avoids both the standard library and externals so the
   harness can prove bare startup reaches compiler-emitted code
+- `min_pure_startup_reentrant` keeps the same pure-startup object but proves
+  nested startup ownership and final metadata teardown under an embedding host
 - `min_external_startup.ml` adds one top-level external primitive on the same
   startup path
 

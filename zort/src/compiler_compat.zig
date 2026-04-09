@@ -99,6 +99,11 @@ const RawRootSlotVisitor = struct {
 };
 
 const CompilerCompatState = struct {
+    const LifecycleError = error{
+        StartupAfterShutdown,
+        ShutdownWithoutStartup,
+    };
+
     const StartupMetadata = struct {
         frame_tables: std.ArrayListUnmanaged(RegisteredFrameTable) = .{},
         gc_root_tables: std.ArrayListUnmanaged(RegisteredGcRootTable) = .{},
@@ -117,6 +122,8 @@ const CompilerCompatState = struct {
 
     allocator: std.mem.Allocator,
     startup_metadata: ?StartupMetadata = null,
+    startup_depth: usize = 0,
+    shutdown_happened: bool = false,
 
     fn init(allocator: std.mem.Allocator) CompilerCompatState {
         return .{
@@ -192,6 +199,24 @@ const CompilerCompatState = struct {
         self.startup_metadata = metadata;
     }
 
+    fn beginStartup(self: *CompilerCompatState) LifecycleError!bool {
+        if (self.shutdown_happened) return error.StartupAfterShutdown;
+        self.startup_depth +%= 1;
+        return self.startup_depth == 1;
+    }
+
+    fn beginShutdown(self: *CompilerCompatState) LifecycleError!bool {
+        if (self.startup_depth == 0) return error.ShutdownWithoutStartup;
+        self.startup_depth -= 1;
+        if (self.startup_depth > 0) return false;
+        self.shutdown_happened = true;
+        return true;
+    }
+
+    fn startupDepth(self: *const CompilerCompatState) usize {
+        return self.startup_depth;
+    }
+
     fn hasStartupMetadata(self: *const CompilerCompatState) bool {
         return self.startup_metadata != null;
     }
@@ -238,8 +263,12 @@ pub export var caml_globals_inited: usize = 0;
 pub export var @"caml_system$frametable": [1]usize = .{0};
 pub export var zort_last_emitted_int: i64 = -1;
 pub export var zort_startup_calls: usize = 0;
+pub export var zort_shutdown_calls: usize = 0;
 pub export var zort_start_program_calls: usize = 0;
 pub export var zort_last_start_program_result: RawValue = raw_unit;
+pub export var zort_startup_depth: usize = 0;
+pub export var zort_shutdown_happened: usize = 0;
+pub export var zort_metadata_registration_calls: usize = 0;
 pub export var zort_metadata_registered: usize = 0;
 pub export var zort_metadata_frametables: usize = 0;
 pub export var zort_metadata_frame_descriptors: usize = 0;
@@ -288,12 +317,16 @@ fn externSymbolPtr(comptime T: type, comptime name: []const u8) T {
     return @ptrCast(@alignCast(@extern(*const anyopaque, .{ .name = name })));
 }
 
-fn resetObservability() void {
-    compiler_compat_state.reset();
+fn resetObservabilityForFreshStartup() void {
+    caml_globals_inited = 0;
     zort_last_emitted_int = -1;
     zort_startup_calls = 0;
+    zort_shutdown_calls = 0;
     zort_start_program_calls = 0;
     zort_last_start_program_result = raw_unit;
+    zort_startup_depth = 0;
+    zort_shutdown_happened = 0;
+    zort_metadata_registration_calls = 0;
     zort_metadata_registered = 0;
     zort_metadata_frametables = 0;
     zort_metadata_frame_descriptors = 0;
@@ -304,26 +337,46 @@ fn resetObservability() void {
     zort_metadata_program_fragment_registered = 0;
 }
 
+fn syncLifecycleObservability() void {
+    zort_startup_depth = compiler_compat_state.startupDepth();
+    zort_shutdown_happened = @intFromBool(compiler_compat_state.shutdown_happened);
+}
+
+fn syncMetadataObservability() void {
+    const summary = compiler_compat_state.summary();
+    zort_metadata_registered = @intFromBool(compiler_compat_state.hasStartupMetadata());
+    zort_metadata_frametables = summary.frametable_count;
+    zort_metadata_frame_descriptors = summary.frame_descriptor_count;
+    zort_metadata_gc_root_tables = summary.gc_root_table_count;
+    zort_metadata_gc_root_entries = summary.gc_root_entry_count;
+    zort_metadata_code_segments = summary.code_segment_count;
+    zort_metadata_data_segments = summary.data_segment_count;
+    zort_metadata_program_fragment_registered =
+        @intFromBool(compiler_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
+}
+
+fn lifecyclePanic(err: CompilerCompatState.LifecycleError) noreturn {
+    switch (err) {
+        error.StartupAfterShutdown => @panic("zort: caml_startup called after caml_shutdown"),
+        error.ShutdownWithoutStartup => @panic("zort: caml_shutdown called without matching caml_startup"),
+    }
+}
+
 fn startupCommon() RawValue {
-    resetObservability();
-    zort_startup_calls = 1;
+    const should_initialize = compiler_compat_state.beginStartup() catch |err| lifecyclePanic(err);
+    if (should_initialize) resetObservabilityForFreshStartup();
+    zort_startup_calls +%= 1;
+    syncLifecycleObservability();
+
+    if (!should_initialize) return raw_unit;
 
     compiler_compat_state.registerStartupMetadata(MetadataTables.captureExtern()) catch
         @panic("zort: out of memory while registering compiler metadata");
-    zort_metadata_registered = @intFromBool(compiler_compat_state.hasStartupMetadata());
-
-    const metadata = compiler_compat_state.summary();
-    zort_metadata_frametables = metadata.frametable_count;
-    zort_metadata_frame_descriptors = metadata.frame_descriptor_count;
-    zort_metadata_gc_root_tables = metadata.gc_root_table_count;
-    zort_metadata_gc_root_entries = metadata.gc_root_entry_count;
-    zort_metadata_code_segments = metadata.code_segment_count;
-    zort_metadata_data_segments = metadata.data_segment_count;
-    zort_metadata_program_fragment_registered =
-        @intFromBool(compiler_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
+    zort_metadata_registration_calls +%= 1;
+    syncMetadataObservability();
 
     const result = caml_start_program(&fake_domain);
-    zort_start_program_calls = 1;
+    zort_start_program_calls +%= 1;
     zort_last_start_program_result = result;
     return result;
 }
@@ -351,8 +404,14 @@ pub export fn caml_startup_pooled_exn(argv: ?*anyopaque) RawValue {
 }
 
 pub export fn caml_shutdown() void {
-    resetObservability();
-    caml_globals_inited = 0;
+    const should_cleanup = compiler_compat_state.beginShutdown() catch |err| lifecyclePanic(err);
+    zort_shutdown_calls +%= 1;
+    if (should_cleanup) {
+        compiler_compat_state.reset();
+        caml_globals_inited = 0;
+    }
+    syncLifecycleObservability();
+    syncMetadataObservability();
 }
 
 fn decodeImmediateInt(raw: RawValue) i64 {
@@ -502,6 +561,37 @@ test "compiler compat: state reset clears registered startup metadata" {
 
     try std.testing.expect(!state.hasStartupMetadata());
     try std.testing.expectEqual(MetadataSummary{}, state.summary());
+}
+
+test "compiler compat: startup ownership is reference counted until final shutdown" {
+    var state = CompilerCompatState.init(std.testing.allocator);
+    defer state.reset();
+
+    try std.testing.expect(try state.beginStartup());
+    try std.testing.expectEqual(@as(usize, 1), state.startupDepth());
+
+    try std.testing.expect(!(try state.beginStartup()));
+    try std.testing.expectEqual(@as(usize, 2), state.startupDepth());
+
+    try std.testing.expect(!(try state.beginShutdown()));
+    try std.testing.expectEqual(@as(usize, 1), state.startupDepth());
+    try std.testing.expect(!state.shutdown_happened);
+
+    try std.testing.expect(try state.beginShutdown());
+    try std.testing.expectEqual(@as(usize, 0), state.startupDepth());
+    try std.testing.expect(state.shutdown_happened);
+}
+
+test "compiler compat: startup ownership rejects invalid transitions" {
+    var state = CompilerCompatState.init(std.testing.allocator);
+    defer state.reset();
+
+    try std.testing.expectError(CompilerCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
+
+    _ = try state.beginStartup();
+    _ = try state.beginShutdown();
+
+    try std.testing.expectError(CompilerCompatState.LifecycleError.StartupAfterShutdown, state.beginStartup());
 }
 
 test "compiler compat: reregistering startup metadata replaces prior registrations" {

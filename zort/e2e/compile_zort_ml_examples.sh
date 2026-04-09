@@ -130,6 +130,11 @@ compile_case \
   "$SCRIPT_DIR/ml/min_pure_startup_main.c"
 
 compile_case \
+  "min_pure_startup_reentrant" \
+  "min_pure_startup.ml" \
+  "$SCRIPT_DIR/ml/min_pure_startup_reentrant_main.c"
+
+compile_case \
   "min_external_startup" \
   "min_external_startup.ml" \
   "$SCRIPT_DIR/ml/min_external_startup_main.c"
