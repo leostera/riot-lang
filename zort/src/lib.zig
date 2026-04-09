@@ -26,6 +26,7 @@ pub const GcSnapshotEvent = @import("runtime.zig").GcSnapshotEvent;
 pub const ObjectExplain = @import("runtime.zig").ObjectExplain;
 pub const EffectId = @import("runtime.zig").EffectId;
 pub const FiberHandle = @import("runtime.zig").FiberHandle;
+pub const FiberMobility = @import("runtime.zig").FiberMobility;
 pub const FiberScheduler = @import("runtime.zig").FiberScheduler;
 pub const HandlerFrame = @import("runtime.zig").HandlerFrame;
 pub const Language = @import("runtime.zig").Language;

@@ -115,6 +115,8 @@ pub const FiberScheduler = struct {
     pub const Error = error{
         InvalidDomain,
         LaneNotOwned,
+        FiberNotRunnable,
+        FiberAlreadyOwned,
     };
 
     pub const VerifyError = error{
@@ -364,6 +366,40 @@ pub const FiberScheduler = struct {
         self.emit(.fiber_unpark, fiber, domain);
     }
 
+    pub fn transferRunnable(
+        self: *FiberScheduler,
+        source_domain: DomainHandle,
+        target_domain: DomainHandle,
+        fiber: FiberHandle,
+        source_owner_token: u64,
+        target_owner_token: u64,
+    ) Error!bool {
+        if (sameDomain(source_domain, target_domain)) return false;
+
+        const source_lane = self.laneMut(source_domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(source_lane, source_owner_token);
+        const target_lane = self.laneMut(target_domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(target_lane, target_owner_token);
+
+        if (target_lane.current) |active_fiber| {
+            if (sameFiber(active_fiber, fiber)) return error.FiberAlreadyOwned;
+        }
+        if (containsHandle(target_lane.runnable.items, fiber) or
+            containsHandle(target_lane.parked.items, fiber) or
+            containsHandle(target_lane.suspended.items, fiber))
+        {
+            return error.FiberAlreadyOwned;
+        }
+
+        if (!removeHandle(&source_lane.runnable, fiber)) return error.FiberNotRunnable;
+        target_lane.runnable.append(self.allocator, fiber) catch @panic("zort: out of memory while transferring runnable fiber");
+        syncLaneCoordination(source_lane);
+        syncLaneCoordination(target_lane);
+        target_lane.coordination.requestWake();
+        self.emit(.fiber_enqueue, fiber, target_domain);
+        return true;
+    }
+
     pub fn verify(self: *const FiberScheduler) VerifyError!void {
         for (self.lanes.items) |slot| {
             if (!slot.alive) continue;
@@ -444,6 +480,10 @@ fn syncLaneCoordination(lane_state: *Lane) void {
 }
 
 fn sameFiber(lhs: FiberHandle, rhs: FiberHandle) bool {
+    return lhs.index == rhs.index and lhs.generation == rhs.generation;
+}
+
+fn sameDomain(lhs: DomainHandle, rhs: DomainHandle) bool {
     return lhs.index == rhs.index and lhs.generation == rhs.generation;
 }
 
@@ -716,4 +756,48 @@ test "fiber_scheduler: mutable lane paths require claimed ownership" {
     try scheduler.enqueue(main_domain, .{ .index = 1, .generation = 1 }, 7);
     try std.testing.expectError(error.LaneNotOwned, scheduler.switchToNext(main_domain, 8));
     try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.switchToNext(main_domain, 7)).?);
+}
+
+test "fiber_scheduler: runnable transfer moves ownership between claimed lanes" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 0, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const source_domain = DomainHandle{ .index = 0, .generation = 1 };
+    const target_domain = DomainHandle{ .index = 1, .generation = 1 };
+    try scheduler.registerDomain(target_domain);
+    try std.testing.expect(try scheduler.claimLaneOwnership(source_domain, 1));
+    try std.testing.expect(try scheduler.claimLaneOwnership(target_domain, 2));
+
+    const worker = FiberHandle{ .index = 7, .generation = 1 };
+    try scheduler.enqueue(source_domain, worker, 1);
+    try std.testing.expect(try scheduler.transferRunnable(source_domain, target_domain, worker, 1, 2));
+    try std.testing.expectEqual(@as(usize, 0), scheduler.runnableCount(source_domain));
+    try std.testing.expectEqual(@as(usize, 1), scheduler.runnableCount(target_domain));
+    try std.testing.expect((try scheduler.coordinationSnapshot(target_domain)).wake_requested);
+}
+
+test "fiber_scheduler: runnable transfer rejects non-runnable fibers" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 0, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const source_domain = DomainHandle{ .index = 0, .generation = 1 };
+    const target_domain = DomainHandle{ .index = 1, .generation = 1 };
+    try scheduler.registerDomain(target_domain);
+    try std.testing.expect(try scheduler.claimLaneOwnership(source_domain, 1));
+    try std.testing.expect(try scheduler.claimLaneOwnership(target_domain, 2));
+
+    try std.testing.expectError(
+        error.FiberNotRunnable,
+        scheduler.transferRunnable(source_domain, target_domain, .{ .index = 7, .generation = 1 }, 1, 2),
+    );
 }

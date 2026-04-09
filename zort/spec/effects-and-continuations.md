@@ -232,8 +232,15 @@
 - Scheduler lanes now also expose explicit coordination state:
   - atomic queue counters,
   - an atomic current-fiber mirror,
-  - an atomic wake-request flag that future cross-domain scheduling can consume without peeking into queue internals,
+  - an atomic wake-request flag that cross-domain runnable transfer can consume without peeking into queue internals,
   - and an atomic owner token so future worker loops can claim exclusive mutation rights per domain lane.
+- The runtime now exposes cross-domain runnable transfer as an explicit capability:
+  - runnable fibers can be moved between attached domains with running workers,
+  - transfer updates scheduler ownership and the fiber's semantic domain together,
+  - transfer does not choose balancing policy; userland decides when to call it.
+- Fibers now have explicit mobility:
+  - `migratable` fibers may move across domains by continuation resume or runnable transfer,
+  - `pinned` fibers reject those moves with `NonMigratableFiber`.
 - Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
   - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
   - runnable/current fibers use the same ownership seam,
@@ -255,7 +262,7 @@
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
   - deeper callback-boundary behavior at FFI/native entrypoints,
-  - work stealing and explicit cross-domain runnable migration policy,
+  - userland scheduling policy on top of the new transfer capability,
   - real parallel stop-the-world/safepoint handshakes instead of the current single-threaded coordination scaffold,
   - richer backtrace integration beyond managed-frame walking,
   - lower-level stack/runtime switching mechanics if zort chooses to model them explicitly.

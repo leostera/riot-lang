@@ -139,6 +139,10 @@ for values that should become unreachable.
 - Mutable scheduler paths now require an active claimed lane owner:
   - enqueue, activate, suspend, switch, yield, park, and unpark all run through a claimed owner token
   - attached domains without a running worker cannot mutate lane state
+- `Runtime` now exposes explicit multicore fiber capabilities:
+  - `transferRunnableFiber` moves a runnable fiber to another running domain without choosing balancing policy
+  - `spawnPinnedFiberInDomain` and `setFiberMobility` let userland keep domain-affine fibers non-migratable
+  - pinned fibers reject cross-domain runnable transfer and cross-domain continuation resume
 - Bench trace modes:
   - `--trace` prints all recorded events
   - `--trace-gc` prints GC-focused events only
@@ -187,7 +191,7 @@ For benchmark snapshots, capture rows as CSV with columns:
 
 - Keep shrinking `runtime.zig` toward orchestration-only code.
 - Decide which native boundary services belong in zort core versus the outer shim.
-- Harden the new per-domain scheduler with claimed lane ownership, explicit runnable transfer capability, and cross-domain migration support.
+- Harden the new per-domain scheduler with stronger transfer invariants, pinned/domain-affine placement support, and cross-domain migration observability.
 - Drive the new STW request/ack protocol from real worker threads and explicit domain lifecycle management.
 - Use the new scheduler/STW atomic coordination state to drive parallel pause/ack/resume and cross-domain wakeup behavior.
 - Keep zort at the capability layer: domain workers and runnable transfer in the runtime, balancing policy in userland.
