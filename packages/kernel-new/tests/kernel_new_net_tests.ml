@@ -355,6 +355,47 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
         else
           Error "expected tcp loopback roundtrip to preserve scalar and vectored payloads")
 
+let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
+      let parts = [|"a"; "bb"; "ccc"; "dddd"; "eeeee"|] in
+      let outbound = Kernel.IO.Iovec.of_string_array parts in
+      let payload = Kernel.IO.Iovec.into_string outbound in
+      let total = Kernel.IO.Iovec.length outbound in
+      let inbound = Kernel.Bytes.create total in
+      let rec write_many remaining =
+        if remaining = 0 then
+          Ok ()
+        else
+          let* () = write_all_vectored
+            poll
+            ~token:(Kernel.Async.Token.make ("tcp-vburst-write", remaining))
+            client
+            outbound
+            ~pos:0
+            ~len:total in
+          write_many (remaining - 1)
+      in
+      let rec read_many remaining acc =
+        if remaining = 0 then
+          Ok (Kernel.String.concat "" (List.rev acc))
+        else
+          let* () = read_exact_stream
+            poll
+            ~token:(Kernel.Async.Token.make ("tcp-vburst-read", remaining))
+            server
+            inbound
+            ~pos:0
+            ~len:total in
+          read_many (remaining - 1) (Kernel.Bytes.sub_string inbound 0 total :: acc)
+      in
+      let* () = write_many 8 in
+      let* actual = read_many 8 [] in
+      if actual = Kernel.String.concat "" (List.init 8 (fun _ -> payload)) then
+        Ok ()
+      else
+        Error "expected repeated small vectored tcp writes to preserve segment order")
+
 let test_tcp_stream_reports_eof_after_peer_close = fun _ctx ->
   with_tcp_pair
     (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
@@ -558,6 +599,71 @@ let test_tcp_listener_accept_reports_would_block = fun _ctx ->
       | Kernel.Result.Ok (stream, _) ->
           close_stream stream;
           Error "expected nonblocking tcp listener accept to report would_block without a pending peer")
+
+let test_tcp_listener_accept_after_close_reports_bad_file_descriptor = fun _ctx ->
+  let* listener = lift_tcp_listener
+    (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+  let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
+  match Kernel.Net.TcpListener.accept listener with
+  | Kernel.Result.Error (Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor) ->
+      Ok ()
+  | Kernel.Result.Error error ->
+      Error (string_of_tcp_listener_error error)
+  | Kernel.Result.Ok (stream, _) ->
+      close_stream stream;
+      Error "expected closed tcp listener accept to fail with bad file descriptor"
+
+let test_tcp_listener_source_deregister_after_close_is_harmless = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let source = Kernel.Net.TcpListener.to_source listener in
+          let* () = lift_async
+            (Kernel.Async.Poll.register
+              poll
+              (Kernel.Async.Token.make "listener-close-then-deregister")
+              Kernel.Async.Interest.readable
+              source) in
+          let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+          Ok ()))
+
+let test_tcp_listener_accepts_many_clients_in_one_burst = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let* addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let rec connect_many remaining acc =
+            if remaining = 0 then
+              Ok (List.rev acc)
+            else
+              let* client = connect_stream poll addr in
+              connect_many (remaining - 1) (client :: acc)
+          in
+          let* clients = connect_many 16 [] in
+          protect ~finally:(fun () -> close_streams clients)
+            (fun () ->
+              let rec accept_many remaining acc =
+                if remaining = 0 then
+                  Ok acc
+                else
+                  let* (server, _) = accept_stream poll listener in
+                  accept_many (remaining - 1) (server :: acc)
+              in
+              let* servers = accept_many 16 [] in
+              protect ~finally:(fun () -> close_streams servers)
+                (fun () ->
+                  if List.length servers = 16 then
+                    Ok ()
+                  else
+                    Error "expected tcp listener to accept every queued client in the burst"))))
 
 let test_tcp_stream_finish_connect_reports_connection_refused = fun _ctx ->
   with_poll
@@ -1330,6 +1436,40 @@ let test_udp_send_requires_connected_peer = fun _ctx ->
         (string_of_udp_error error))
       | Kernel.Result.Ok _ -> Error "expected udp send to fail for an unconnected socket")
 
+let test_udp_send_and_recv_after_close_report_bad_file_descriptor = fun _ctx ->
+  let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+  protect ~finally:(fun () -> close_udp server)
+    (fun () ->
+      let* peer = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_udp peer)
+        (fun () ->
+          let* peer_addr = lift_udp (Kernel.Net.UdpSocket.local_addr peer) in
+          let* () = lift_udp (Kernel.Net.UdpSocket.connect server peer_addr) in
+          let* () = lift_udp (Kernel.Net.UdpSocket.close server) in
+          let buffer = Kernel.Bytes.create 8 in
+          match (
+            Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "x"),
+            Kernel.Net.UdpSocket.recv server buffer
+          ) with
+          | (Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor), Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor)) -> Ok ()
+          | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) -> Error (Kernel.String.concat
+            " | "
+            [
+              Kernel.String.concat
+                ""
+                [
+                  "expected closed udp send to fail with bad file descriptor but got ";
+                  string_of_udp_error send_error;
+                ];
+              Kernel.String.concat
+                ""
+                [
+                  "expected closed udp recv to fail with bad file descriptor but got ";
+                  string_of_udp_error recv_error;
+                ];
+            ])
+          | _ -> Error "expected closed udp socket to reject both send and recv"))
+
 let test_udp_bind_rejects_in_use_address = fun _ctx ->
   let addr = Kernel.Net.SocketAddr.loopback_v4 ~port:0 in
   let* first = lift_udp (Kernel.Net.UdpSocket.bind addr) in
@@ -1358,6 +1498,7 @@ let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
 let tests = [
   Test.case "Net.IpAddr validates ipv4 and ipv6" test_ip_addr_validates_ipv4_and_ipv6;
   Test.case "Net.TcpListener and TcpStream roundtrip over loopback" test_tcp_listener_and_stream_roundtrip;
+  Test.case "Net.TcpStream vectored burst roundtrip preserves order" test_tcp_vectored_burst_roundtrip_preserves_order;
   Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
   Test.case "Net.TcpStream write shutdown reports eof to the peer" test_tcp_stream_shutdown_write_reports_eof_to_peer;
   Test.case "Net.TcpStream write shutdown rejects further writes" test_tcp_stream_shutdown_write_rejects_further_writes;
@@ -1369,6 +1510,9 @@ let tests = [
   Test.case "Net.TcpListener bind rejects invalid backlog" test_tcp_listener_bind_rejects_invalid_backlog;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.TcpListener accept reports would_block without pending peers" test_tcp_listener_accept_reports_would_block;
+  Test.case "Net.TcpListener accept after close reports bad file descriptor" test_tcp_listener_accept_after_close_reports_bad_file_descriptor;
+  Test.case "Net.TcpListener source deregister after close is harmless" test_tcp_listener_source_deregister_after_close_is_harmless;
+  Test.case "Net.TcpListener accepts many clients in one burst" test_tcp_listener_accepts_many_clients_in_one_burst;
   Test.case "Net.TcpStream finish_connect is idempotent after success" test_tcp_stream_finish_connect_is_idempotent_after_success;
   Test.case "Net.TcpStream finish_connect reports connection refused" test_tcp_stream_finish_connect_reports_connection_refused;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
@@ -1388,6 +1532,7 @@ let tests = [
   Test.case ~size:Test.Large "Net.UdpSocket repeated bind and close stays healthy" test_udp_socket_repeated_bind_and_close_stays_healthy;
   Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
+  Test.case "Net.UdpSocket send and recv after close report bad file descriptor" test_udp_send_and_recv_after_close_report_bad_file_descriptor;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_net_tests" ~tests ~args

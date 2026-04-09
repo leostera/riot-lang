@@ -234,6 +234,66 @@ let test_reregister_replaces_interest = fun _ctx ->
           else
             Ok ()))
 
+let test_registering_same_source_twice_updates_token = fun _ctx ->
+  with_pipe
+    (fun _read_end write_end ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Fs.File.to_source write_end in
+          let first = Kernel.Async.Token.make "duplicate-first" in
+          let second = Kernel.Async.Token.make "duplicate-second" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll first Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll second Kernel.Async.Interest.writable source) in
+          let* events = wait_for_event poll in
+          let saw_first =
+            List.exists
+              (fun event ->
+                Kernel.Async.Event.is_writable event
+                && Kernel.Async.Token.equal first (Kernel.Async.Event.token event))
+              events
+          in
+          let saw_second =
+            List.exists
+              (fun event ->
+                Kernel.Async.Event.is_writable event
+                && Kernel.Async.Token.equal second (Kernel.Async.Event.token event))
+              events
+          in
+          if saw_second && not saw_first then
+            Ok ()
+          else
+            Error "expected duplicate register to replace the writable token in place"))
+
+let test_deregister_of_never_registered_source_is_harmless = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Fs.File.to_source read_end in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          let token = Kernel.Async.Token.make "never-registered" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* written = lift_file (Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x")) in
+          if written != 1 then
+            Error "expected pipe write to make progress after noop deregisters"
+          else
+            let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+            let found =
+              List.exists
+                (fun event ->
+                  Kernel.Async.Event.is_readable event
+                  && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+                events
+            in
+            if found then
+              Ok ()
+            else
+              Error "expected noop deregisters to preserve later source registration"))
+
 let test_poll_handles_many_pipe_sources = fun _ctx ->
   with_pipes 64
     (fun pipes ->
@@ -676,6 +736,8 @@ let tests = [
   Test.case "Async deregister removes pipe source" test_deregister_removes_pipe_source;
   Test.case "Async reregister updates pipe token" test_reregister_updates_pipe_token;
   Test.case "Async reregister replaces writable interest" test_reregister_replaces_interest;
+  Test.case "Async duplicate register updates the source token" test_registering_same_source_twice_updates_token;
+  Test.case "Async deregister of a never-registered source is harmless" test_deregister_of_never_registered_source_is_harmless;
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
   Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;

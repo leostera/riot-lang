@@ -908,6 +908,79 @@ let test_vectored_partial_io_slice_matrix_roundtrips = fun _ctx ->
       in
       loop 0 cases)
 
+let test_canonicalize_rejects_symlink_loops = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let left = Kernel.Path.(tempdir / "left") in
+      let right = Kernel.Path.(tempdir / "right") in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file left in
+          let _ = Kernel.Fs.File.remove_file right in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:right ~dst:left) in
+          let* () = lift (Kernel.Fs.File.symlink ~src:left ~dst:right) in
+          match Kernel.Fs.File.canonicalize left with
+          | Kernel.Result.Error _ -> Ok ()
+          | Kernel.Result.Ok _ -> Error "expected canonicalize to reject a symlink loop"))
+
+let test_read_dir_names_handles_larger_snapshots_with_renames_and_removes = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let name_for prefix index = String.concat "" [ prefix; "-"; Int.to_string index; ".txt" ] in
+      let path_for prefix index = Kernel.Path.(tempdir / name_for prefix index) in
+      let rec create_many index =
+        if index = 32 then
+          Ok ()
+        else
+          let path = path_for "entry" index in
+          let* file = lift (Kernel.Fs.File.open_write path) in
+          let* () =
+            with_file file
+              (fun () ->
+                let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "x")) in
+                if written = 1 then
+                  Ok ()
+                else
+                  Error "expected larger snapshot fixture write to make progress")
+          in
+          create_many (index + 1)
+      in
+      let rec rename_prefix index =
+        if index = 8 then
+          Ok ()
+        else
+          let* () = lift
+            (Kernel.Fs.File.rename ~src:(path_for "entry" index) ~dst:(path_for "renamed" index)) in
+          rename_prefix (index + 1)
+      in
+      let rec remove_suffix index =
+        if index = 8 then
+          Ok ()
+        else
+          let* () = lift (Kernel.Fs.File.remove_file (path_for "entry" (index + 8))) in
+          remove_suffix (index + 1)
+      in
+      let* () = create_many 0 in
+      let* first = lift (Kernel.Fs.File.read_dir_names tempdir) in
+      let* () = rename_prefix 0 in
+      let* () = remove_suffix 0 in
+      let* second = lift (Kernel.Fs.File.read_dir_names tempdir) in
+      if
+        Kernel.Array.length first = 32
+        && Kernel.Array.length second = 24
+        && array_contains first "entry-0.txt"
+        && array_contains first "entry-31.txt"
+        && array_contains second "renamed-0.txt"
+        && array_contains second "entry-31.txt"
+        && not (array_contains second "entry-0.txt")
+        && not (array_contains second "entry-8.txt")
+      then
+        Ok ()
+      else
+        Error "expected larger read_dir_names snapshots to reflect renames and removals across calls")
+
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
@@ -938,6 +1011,8 @@ let tests = [
   Test.case "Fs.File vectored write subslices roundtrip" test_vectored_write_subslice_roundtrips;
   Test.case "Fs.File scalar partial io slice matrix roundtrips" test_scalar_partial_io_slice_matrix_roundtrips;
   Test.case "Fs.File vectored partial io slice matrix roundtrips" test_vectored_partial_io_slice_matrix_roundtrips;
+  Test.case "Fs.File canonicalize rejects symlink loops" test_canonicalize_rejects_symlink_loops;
+  Test.case "Fs.File read_dir_names handles larger snapshots with renames and removes" test_read_dir_names_handles_larger_snapshots_with_renames_and_removes;
   Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 

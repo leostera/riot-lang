@@ -183,6 +183,31 @@ let bench_read_dir_names = fun () ->
       | Kernel.Result.Ok _ -> ()
       | Kernel.Result.Error error -> panic_file error)
 
+let bench_read_dir_names_large = fun () ->
+  with_tempdir "kernel_new_file_bench"
+    (fun tempdir ->
+      let rec create_many index =
+        if index = 128 then
+          ()
+        else
+          let name = format Format.[ str "entry-"; int index; str ".txt" ] in
+          match Kernel.Fs.File.open_write Kernel.Path.(tempdir / name) with
+          | Kernel.Result.Error error -> panic_file error
+          | Kernel.Result.Ok file ->
+              let _ =
+                with_file file
+                  (fun file ->
+                    match Kernel.Fs.File.write file (Kernel.Bytes.of_string "x") with
+                    | Kernel.Result.Ok _ -> ()
+                    | Kernel.Result.Error error -> panic_file error)
+              in
+              create_many (index + 1)
+      in
+      create_many 0;
+      match Kernel.Fs.File.read_dir_names tempdir with
+      | Kernel.Result.Ok _ -> ()
+      | Kernel.Result.Error error -> panic_file error)
+
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 20; warmup = 5 } "file scalar write: 4KiB" bench_scalar_write;
@@ -193,6 +218,7 @@ let benchmarks =
     with_config ~config:{ iterations = 20; warmup = 5 } "file vectored read: 4 x 1KiB" bench_vectored_read;
     with_config ~config:{ iterations = 20; warmup = 5 } "file metadata: 4KiB" bench_metadata;
     with_config ~config:{ iterations = 20; warmup = 5 } "file read_dir_names: 2 entries" bench_read_dir_names;
+    with_config ~config:{ iterations = 15; warmup = 3 } "file read_dir_names: 128 entries" bench_read_dir_names_large;
   ]
 
 let () =

@@ -828,6 +828,48 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                                 ~len:total;
                               String.sub (Kernel.IO.Iovec.into_string inbound) 0 total = payload)))))
 
+let tcp_vectored_loopback_roundtrips_offset_receive_slices =
+  property "Net.TcpStream loopback roundtrips vectored payloads into offset receive slices" Arbitrary.(array
+    string)
+    (fun values ->
+      let pieces = array_to_list values in
+      assume (List.for_all (fun value -> String.length value > 0) pieces);
+      assume (not (List.is_empty pieces));
+      assume (List.length pieces <= 8);
+      let payload = String.concat "" pieces in
+      let total = String.length payload in
+      assume (total > 0);
+      assume (total <= 96);
+      with_poll
+        (fun poll ->
+          match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+          | Kernel.Result.Error error -> fail
+            (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+          | Kernel.Result.Ok listener ->
+              protect ~finally:(fun () -> close_listener listener)
+                (fun () ->
+                  match Kernel.Net.TcpListener.local_addr listener with
+                  | Kernel.Result.Error error -> fail
+                    (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+                  | Kernel.Result.Ok addr ->
+                      let client = connect_stream poll addr in
+                      protect ~finally:(fun () -> close_stream client)
+                        (fun () ->
+                          let server = accept_stream poll listener in
+                          protect ~finally:(fun () -> close_stream server)
+                            (fun () ->
+                              let outbound = Kernel.IO.Iovec.of_string_array values in
+                              let inbound = Kernel.IO.Iovec.create ~count:3 ~size:(total + 2) () in
+                              let slice = Kernel.IO.Iovec.sub ~pos:1 ~len:total inbound in
+                              write_all_vectored poll ~token:(Kernel.Async.Token.make 808) client outbound;
+                              read_exact_vectored
+                                poll
+                                ~token:(Kernel.Async.Token.make 809)
+                                server
+                                slice
+                                ~len:total;
+                              String.sub (Kernel.IO.Iovec.into_string inbound) 1 total = payload)))))
+
 let udp_loopback_roundtrips_small_payload =
   property "Net.UdpSocket loopback preserves small datagrams" Arbitrary.string
     (fun payload ->
@@ -898,6 +940,7 @@ let tests = [
   file_scalar_and_vectored_partial_reads_agree;
   tcp_loopback_roundtrips_small_payload;
   tcp_vectored_loopback_roundtrips_small_payload;
+  tcp_vectored_loopback_roundtrips_offset_receive_slices;
   udp_loopback_roundtrips_small_payload;
 ]
 

@@ -194,6 +194,60 @@ let test_timer_after_ns_can_be_rearmed_after_fire = fun _ctx ->
             (Kernel.Async.Poll.reregister poll second_token Kernel.Async.Interest.readable source) in
           wait_for_readable_token poll ~token:second_token))
 
+let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let rec create remaining acc =
+        if remaining = 0 then
+          Ok (List.rev acc)
+        else
+          let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+          create (remaining - 1) (timer :: acc)
+      in
+      let* timers = create 12 [] in
+      let rec register index = function
+        | [] -> Ok ()
+        | timer :: rest ->
+            let* () = lift_async
+              (Kernel.Async.Poll.register
+                poll
+                (Kernel.Async.Token.make index)
+                Kernel.Async.Interest.readable
+                (Kernel.Time.Timer.to_source timer)) in
+            register (index + 1) rest
+      in
+      let seen = Kernel.Array.make 12 false in
+      let rec mark = function
+        | [] -> ()
+        | event :: rest ->
+            if Kernel.Async.Event.is_readable event then
+              let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
+              if token >= 0 && token < 12 then
+                Kernel.Array.set seen token true;
+              mark rest
+      in
+      let rec all_seen index =
+        if index = 12 then
+          true
+        else if Kernel.Array.get seen index then
+          all_seen (index + 1)
+        else
+          false
+      in
+      let* () = register 0 timers in
+      let rec poll_until attempts =
+        if attempts = 0 then
+          Error "expected many same-tick timers to wake the poller"
+        else
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+          mark events;
+          if all_seen 0 then
+            Ok ()
+          else
+            poll_until (attempts - 1)
+      in
+      poll_until 8)
+
 let test_timer_every_ns_repeats = fun _ctx ->
   with_poll
     (fun poll ->
@@ -332,6 +386,21 @@ let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
             else
               Ok ()))
 
+let test_timer_deregister_before_first_tick_stays_quiet = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.every_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make "timer-deregister-before-first-tick" in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+      let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+      if has_readable_token token quiet then
+        Error "expected deregistered repeating timer to stay quiet before its first tick"
+      else
+        Ok ())
+
 let test_timer_every_ns_spacing_is_reasonable = fun _ctx ->
   with_poll
     (fun poll ->
@@ -400,9 +469,11 @@ let tests = [
   Test.case "Time.Timer after_ns wakes poll" test_timer_after_ns_wakes_poll;
   Test.case "Time.Timer after_ns fires only once per registration" test_timer_after_ns_fires_only_once_per_registration;
   Test.case "Time.Timer after_ns can be rearmed after fire" test_timer_after_ns_can_be_rearmed_after_fire;
+  Test.case "Time.Timer many same-tick timers wake the poller" test_many_same_tick_timers_wake_the_poller;
   Test.case "Time.Timer every_ns repeats" test_timer_every_ns_repeats;
   Test.case "Time.Timer reregister updates token" test_timer_reregister_updates_token;
   Test.case "Time.Timer deregister after first tick stops future events" test_timer_deregister_after_first_tick_stops_future_events;
+  Test.case "Time.Timer deregister before first tick stays quiet" test_timer_deregister_before_first_tick_stays_quiet;
   Test.case "Time.Timer repeated register, reregister, and deregister stays healthy" test_timer_repeated_register_reregister_and_deregister_stays_healthy;
   Test.case "Time.Timer source can be reused after deregister" test_timer_source_can_be_reused_after_deregister;
   Test.case "Time.Timer deregister after after_ns fire is harmless" test_timer_deregister_after_after_ns_fire_is_harmless;

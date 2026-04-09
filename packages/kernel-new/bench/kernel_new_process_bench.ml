@@ -107,6 +107,25 @@ let read_once = fun poll ~token file ->
   in
   loop ()
 
+let drain_all = fun poll ~token file ->
+  let buffer = Kernel.Bytes.create 4_096 in
+  let rec loop () =
+    match Kernel.Fs.File.read file buffer with
+    | Kernel.Result.Ok 0 ->
+        ()
+    | Kernel.Result.Ok _ ->
+        loop ()
+    | Kernel.Result.Error error ->
+        if is_would_block error then
+          (
+            wait_readable poll ~token (Kernel.Fs.File.to_source file);
+            loop ()
+          )
+        else
+          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  in
+  loop ()
+
 let wait_for_exit = fun poll ~token process ->
   let exit_poll_timeout = 1_000_000L in
   let rec loop () =
@@ -217,6 +236,42 @@ let bench_many_process_exit_sources = fun () ->
           register 0 processes;
           poll_until 16))
 
+let bench_stdout_pipe_drain_small_output = fun () ->
+  with_poll
+    (fun poll ->
+      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let process = lift_process
+        (Kernel.Process.spawn
+          ~program:"/bin/sh"
+          ~args:[|"-c"; "dd if=/dev/zero bs=4096 count=1 2>/dev/null"|]
+          ~stdio
+          ()) in
+      with_process process
+        (fun process ->
+          match Kernel.Process.stdout process with
+          | None -> Kernel.SystemError.panic "expected stdout pipe"
+          | Some stdout ->
+              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 612) process);
+              drain_all poll ~token:(Kernel.Async.Token.make 602) stdout))
+
+let bench_stdout_pipe_drain_medium_output = fun () ->
+  with_poll
+    (fun poll ->
+      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let process = lift_process
+        (Kernel.Process.spawn
+          ~program:"/bin/sh"
+          ~args:[|"-c"; "dd if=/dev/zero bs=65536 count=1 2>/dev/null"|]
+          ~stdio
+          ()) in
+      with_process process
+        (fun process ->
+          match Kernel.Process.stdout process with
+          | None -> Kernel.SystemError.panic "expected stdout pipe"
+          | Some stdout ->
+              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 613) process);
+              drain_all poll ~token:(Kernel.Async.Token.make 603) stdout))
+
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 25; warmup = 5 } "process spawn true and poll exit" bench_spawn_true;
@@ -224,6 +279,14 @@ let benchmarks =
       ~config:{ iterations = 25; warmup = 5 }
       "process spawn echo with stdout pipe and poll exit"
       bench_spawn_echo_with_pipe;
+    with_config
+      ~config:{ iterations = 20; warmup = 5 }
+      "process stdout pipe drain after exit: 4KiB"
+      bench_stdout_pipe_drain_small_output;
+    with_config
+      ~config:{ iterations = 15; warmup = 3 }
+      "process stdout pipe drain after exit: 64KiB"
+      bench_stdout_pipe_drain_medium_output;
     with_config ~config:{ iterations = 15; warmup = 3 } "process many child exit sources" bench_many_process_exit_sources;
   ]
 

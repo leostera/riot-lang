@@ -243,6 +243,27 @@ let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
               else
                 Error "expected redirected stderr to be merged into stdout"))
 
+let test_stdout_and_stderr_pipes_remain_drainable_after_exit = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Pipe } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "printf out; printf err >&2"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      match (Kernel.Process.stdout process, Kernel.Process.stderr process) with
+      | (Some stdout, Some stderr) ->
+          with_poll
+            (fun poll ->
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 536) process in
+              let* stdout_payload = read_all poll ~token:(Kernel.Async.Token.make 509) stdout in
+              let* stderr_payload = read_all poll ~token:(Kernel.Async.Token.make 510) stderr in
+              if
+                status = Kernel.Process.Exited 0 && stdout_payload = "out" && stderr_payload = "err"
+              then
+                Ok ()
+              else
+                Error "expected stdout and stderr pipes to stay drainable after process exit")
+      | _ -> Error "expected stdout and stderr pipes")
+
 let test_try_wait_reports_running_then_exit = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process = lift_process
@@ -401,6 +422,38 @@ let test_sigterm_reports_signaled_status = fun _ctx ->
             Ok ()
           else
             Error "expected sigterm to report the delivered signal number"))
+
+let test_kill_then_close_preserves_signaled_status = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* () = lift_process (Kernel.Process.kill process ~signal:9) in
+          let* () = lift_process (Kernel.Process.close process) in
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 537) process in
+          if status = Kernel.Process.Signaled 9 then
+            Ok ()
+          else
+            Error "expected kill then close to preserve signaled exit observation"))
+
+let test_close_then_kill_preserves_signaled_status = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* () = lift_process (Kernel.Process.close process) in
+          let* () = lift_process (Kernel.Process.kill process ~signal:15) in
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 538) process in
+          if status = Kernel.Process.Signaled 15 then
+            Ok ()
+          else
+            Error "expected close then kill to preserve signaled exit observation"))
 
 let test_non_zero_exit_status_roundtrips = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -811,11 +864,114 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           let* () = poll_until 16 in
           verify processes))
 
+let test_many_process_sources_report_burst_signals = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  with_poll
+    (fun poll ->
+      let rec spawn_many remaining acc =
+        if remaining = 0 then
+          Ok (List.rev acc)
+        else
+          let* process = lift_process
+            (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+          spawn_many (remaining - 1) (process :: acc)
+      in
+      let* processes = spawn_many 12 [] in
+      let sources = List.map Kernel.Process.to_source processes in
+      let rec deregister_all = function
+        | [] -> ()
+        | source :: rest ->
+            let _ = Kernel.Async.Poll.deregister poll source in
+            deregister_all rest
+      in
+      protect
+        ~finally:(fun () ->
+          deregister_all sources;
+          close_processes processes)
+        (fun () ->
+          let rec signal_all = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* () = lift_process (Kernel.Process.kill process ~signal:15) in
+                signal_all rest
+          in
+          let rec register index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.priority
+                    (Kernel.Process.to_source process)) in
+                register (index + 1) rest
+          in
+          let seen = Kernel.Array.make 12 false in
+          let rec mark = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_priority event then
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 12 then
+                    Kernel.Array.set seen token true;
+                  mark rest
+          in
+          let rec all_seen index =
+            if index = 12 then
+              true
+            else if Kernel.Array.get seen index then
+              all_seen (index + 1)
+            else
+              false
+          in
+          let rec mark_observed index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                if Kernel.Array.get seen index then
+                  mark_observed (index + 1) rest
+                else
+                  let* status = lift_process (Kernel.Process.try_wait process) in
+                  match status with
+                  | Some (Kernel.Process.Signaled 15) ->
+                      Kernel.Array.set seen index true;
+                      mark_observed (index + 1) rest
+                  | Some _ ->
+                      Error "expected burst-signaled process sources to preserve a signaled status"
+                  | None ->
+                      mark_observed (index + 1) rest
+          in
+          let rec poll_until attempts =
+            let* () = mark_observed 0 processes in
+            if all_seen 0 then
+              Ok ()
+            else if attempts = 0 then
+              Error "expected many process sources to report signaled readiness after a kill burst"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              mark events;
+              poll_until (attempts - 1)
+          in
+          let rec verify = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* first = lift_process (Kernel.Process.try_wait process) in
+                let* second = lift_process (Kernel.Process.try_wait process) in
+                match (first, second) with
+                | (Some (Kernel.Process.Signaled 15), Some (Kernel.Process.Signaled 15)) -> verify rest
+                | _ -> Error "expected burst-signaled processes to stay observable through repeated try_wait"
+          in
+          let* () = register 0 processes in
+          let* () = signal_all processes in
+          let* () = poll_until 16 in
+          verify processes))
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
   Test.case "Process stdin and stdout pipes roundtrip" test_stdin_and_stdout_pipes_roundtrip;
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
+  Test.case "Process stdout and stderr pipes remain drainable after exit" test_stdout_and_stderr_pipes_remain_drainable_after_exit;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
   Test.case "Process source reports exit readiness" test_process_source_reports_exit_ready;
   Test.case "Process source reregister updates token" test_process_source_reregister_updates_token;
@@ -824,6 +980,8 @@ let tests = [
   Test.case "Process try_wait is stable after priority readiness" test_try_wait_is_stable_after_priority_readiness;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
   Test.case "Process sigterm reports signaled status" test_sigterm_reports_signaled_status;
+  Test.case "Process kill then close preserves signaled status" test_kill_then_close_preserves_signaled_status;
+  Test.case "Process close then kill preserves signaled status" test_close_then_kill_preserves_signaled_status;
   Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;
   Test.case "Process spawn applies custom environment" test_spawn_applies_custom_environment;
   Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
@@ -837,6 +995,7 @@ let tests = [
   Test.case "Process kill after exit reports no-such-process" test_kill_after_exit_reports_no_such_process;
   Test.case "Process close is idempotent" test_process_close_is_idempotent;
   Test.case ~size:Test.Large "Process many sources report burst exit readiness" test_many_process_sources_report_burst_exit_readiness;
+  Test.case ~size:Test.Large "Process many sources report burst signals" test_many_process_sources_report_burst_signals;
   Test.case ~size:Test.Large "Process repeated spawn and poll exit stays healthy" test_repeated_spawn_and_poll_exit_stays_healthy;
 ]
 
