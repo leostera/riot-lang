@@ -95,12 +95,12 @@
   - scheduler lanes and STW coordination now expose shared-memory-safe atomic coordination state,
   - STW pause acknowledgements can arrive independently per registered domain,
   - worker lifecycle is now explicit at the runtime layer,
-  - but scheduler queue mutation is not yet fully enforced through claimed owner tokens.
+  - and scheduler queue mutation now requires a claimed lane owner token on every mutable scheduler path.
 - zort's intended split is now explicit:
   - runtime owns capabilities such as domain workers, lane claims, cross-domain resume, and future runnable-transfer primitives,
   - userland owns balancing policy such as work stealing, fairness, and actor placement.
 - zort now explicitly allows a suspended fiber to resume in a different attached domain:
   - the resumed fiber adopts the resumer's active domain,
   - this is the current migration seam for multicore fibers,
-  - work stealing, cross-domain runnable-queue policy, and backup-thread/STW servicing still remain future work.
+  - explicit runnable transfer capability and backup-thread/STW servicing still remain future work.
 - The important architectural change is that startup/signal/native-service state now has a home outside the semantic value and collector core.

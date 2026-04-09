@@ -136,6 +136,9 @@ for values that should become unreachable.
   - `requestDomainWorkerShutdown`
   - `finishDomainWorkerShutdown`
   - worker shutdown only completes once the scheduler lane is quiescent
+- Mutable scheduler paths now require an active claimed lane owner:
+  - enqueue, activate, suspend, switch, yield, park, and unpark all run through a claimed owner token
+  - attached domains without a running worker cannot mutate lane state
 - Bench trace modes:
   - `--trace` prints all recorded events
   - `--trace-gc` prints GC-focused events only
@@ -184,10 +187,9 @@ For benchmark snapshots, capture rows as CSV with columns:
 
 - Keep shrinking `runtime.zig` toward orchestration-only code.
 - Decide which native boundary services belong in zort core versus the outer shim.
-- Harden the new per-domain scheduler with parked-fiber ownership, work stealing, and cross-domain migration policy.
+- Harden the new per-domain scheduler with claimed lane ownership, explicit runnable transfer capability, and cross-domain migration support.
 - Drive the new STW request/ack protocol from real worker threads and explicit domain lifecycle management.
 - Use the new scheduler/STW atomic coordination state to drive parallel pause/ack/resume and cross-domain wakeup behavior.
-- Enforce claimed scheduler-lane ownership on every mutable queue path before introducing worker threads or userland scheduling policy.
 - Keep zort at the capability layer: domain workers and runnable transfer in the runtime, balancing policy in userland.
 - Keep every live fiber under explicit scheduler ownership and keep continuation payloads/root snapshots separate from fiber-lane ownership.
 - Extend the generational baseline toward a truer nursery/major collector under the new domain/STW control surface.

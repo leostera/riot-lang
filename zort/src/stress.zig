@@ -138,6 +138,7 @@ test "stress: cross-domain continuation resume stays valid while domains attach 
     const resume_domain = try rt.createDomain();
     const churn_domain = try rt.createDomain();
     try rt.attachDomain(resume_domain);
+    try std.testing.expect(try rt.startDomainWorker(resume_domain, 44));
 
     const worker = try rt.spawnFiberInDomain(null, resume_domain);
 

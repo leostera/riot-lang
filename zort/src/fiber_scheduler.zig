@@ -114,6 +114,7 @@ pub const FiberScheduler = struct {
 
     pub const Error = error{
         InvalidDomain,
+        LaneNotOwned,
     };
 
     pub const VerifyError = error{
@@ -132,7 +133,7 @@ pub const FiberScheduler = struct {
             .event_sink = sink,
         };
         scheduler.registerDomain(main_domain) catch @panic("zort: out of memory while creating main scheduler lane");
-        scheduler.setCurrent(main_domain, main_fiber) catch unreachable;
+        scheduler.setCurrentUnchecked(main_domain, main_fiber) catch unreachable;
         return scheduler;
     }
 
@@ -182,8 +183,18 @@ pub const FiberScheduler = struct {
         return lane_state.suspended.items.len;
     }
 
-    pub fn setCurrent(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!void {
+    pub fn setCurrent(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle, owner_token: u64) Error!void {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
+        setCurrentInLane(lane_state, fiber);
+    }
+
+    fn setCurrentUnchecked(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!void {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        setCurrentInLane(lane_state, fiber);
+    }
+
+    fn setCurrentInLane(lane_state: *Lane, fiber: FiberHandle) void {
         _ = removeHandle(&lane_state.runnable, fiber);
         _ = removeHandle(&lane_state.parked, fiber);
         _ = removeHandle(&lane_state.suspended, fiber);
@@ -192,8 +203,9 @@ pub const FiberScheduler = struct {
         lane_state.coordination.clearWake();
     }
 
-    pub fn activate(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) !void {
-        const lane_state = try self.ensureLane(domain);
+    pub fn activate(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle, owner_token: u64) !void {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (lane_state.current) |active_fiber| {
             if (!sameFiber(active_fiber, fiber) and
                 !containsHandle(lane_state.runnable.items, active_fiber) and
@@ -212,8 +224,9 @@ pub const FiberScheduler = struct {
         lane_state.coordination.clearWake();
     }
 
-    pub fn suspendCurrent(self: *FiberScheduler, domain: DomainHandle) !?FiberHandle {
-        const lane_state = try self.ensureLane(domain);
+    pub fn suspendCurrent(self: *FiberScheduler, domain: DomainHandle, owner_token: u64) !?FiberHandle {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         const active_fiber = lane_state.current orelse return null;
         lane_state.current = null;
         if (!containsHandle(lane_state.suspended.items, active_fiber)) {
@@ -224,8 +237,9 @@ pub const FiberScheduler = struct {
         return active_fiber;
     }
 
-    pub fn discardSuspended(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!bool {
+    pub fn discardSuspended(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle, owner_token: u64) Error!bool {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         const removed = removeHandle(&lane_state.suspended, fiber);
         if (removed) syncLaneCoordination(lane_state);
         return removed;
@@ -262,8 +276,9 @@ pub const FiberScheduler = struct {
         }
     }
 
-    pub fn enqueue(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) !void {
-        const lane_state = try self.ensureLane(domain);
+    pub fn enqueue(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle, owner_token: u64) !void {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (lane_state.current) |active_fiber| {
             if (sameFiber(active_fiber, fiber)) return;
         }
@@ -286,8 +301,9 @@ pub const FiberScheduler = struct {
         return lane_state.coordination.takeWake();
     }
 
-    pub fn switchToNext(self: *FiberScheduler, domain: DomainHandle) Error!?FiberHandle {
+    pub fn switchToNext(self: *FiberScheduler, domain: DomainHandle, owner_token: u64) Error!?FiberHandle {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (lane_state.current) |active_fiber| {
             if (!containsHandle(lane_state.runnable.items, active_fiber) and
                 !containsHandle(lane_state.parked.items, active_fiber) and
@@ -303,8 +319,9 @@ pub const FiberScheduler = struct {
         return lane_state.current;
     }
 
-    pub fn yieldCurrent(self: *FiberScheduler, domain: DomainHandle) !?FiberHandle {
-        const lane_state = try self.ensureLane(domain);
+    pub fn yieldCurrent(self: *FiberScheduler, domain: DomainHandle, owner_token: u64) !?FiberHandle {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (lane_state.current) |active_fiber| {
             try lane_state.runnable.append(self.allocator, active_fiber);
             self.emit(.fiber_yield, active_fiber, domain);
@@ -317,8 +334,9 @@ pub const FiberScheduler = struct {
         return next;
     }
 
-    pub fn parkCurrent(self: *FiberScheduler, domain: DomainHandle) !?FiberHandle {
-        const lane_state = try self.ensureLane(domain);
+    pub fn parkCurrent(self: *FiberScheduler, domain: DomainHandle, owner_token: u64) !?FiberHandle {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (lane_state.current) |active_fiber| {
             try lane_state.parked.append(self.allocator, active_fiber);
             self.emit(.fiber_park, active_fiber, domain);
@@ -331,8 +349,9 @@ pub const FiberScheduler = struct {
         return next;
     }
 
-    pub fn unpark(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!void {
+    pub fn unpark(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle, owner_token: u64) Error!void {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        try requireLaneOwnership(lane_state, owner_token);
         if (!removeHandle(&lane_state.parked, fiber)) return;
         if (lane_state.current) |active_fiber| {
             if (sameFiber(active_fiber, fiber)) return;
@@ -410,6 +429,10 @@ pub const FiberScheduler = struct {
         } });
     }
 };
+
+fn requireLaneOwnership(lane_state: *Lane, owner_token: u64) FiberScheduler.Error!void {
+    if (lane_state.coordination.owner_token.load() != owner_token) return error.LaneNotOwned;
+}
 
 fn syncLaneCoordination(lane_state: *Lane) void {
     lane_state.coordination.sync(
@@ -501,13 +524,15 @@ test "fiber_scheduler: per-domain runnable queues are explicit" {
     defer scheduler.deinit();
 
     const domain = DomainHandle{ .index = 1, .generation = 1 };
+    const worker_owner: u64 = 99;
     try scheduler.registerDomain(domain);
-    try scheduler.enqueue(domain, .{ .index = 1, .generation = 1 });
-    try scheduler.enqueue(domain, .{ .index = 2, .generation = 1 });
+    try std.testing.expect(try scheduler.claimLaneOwnership(domain, worker_owner));
+    try scheduler.enqueue(domain, .{ .index = 1, .generation = 1 }, worker_owner);
+    try scheduler.enqueue(domain, .{ .index = 2, .generation = 1 }, worker_owner);
 
     try std.testing.expectEqual(@as(usize, 2), scheduler.runnableCount(domain));
     try std.testing.expectEqual(@as(?FiberHandle, null), scheduler.current(domain));
-    try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.switchToNext(domain)).?);
+    try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.switchToNext(domain, worker_owner)).?);
     try std.testing.expectEqual(@as(usize, 1), scheduler.runnableCount(domain));
 }
 
@@ -521,16 +546,18 @@ test "fiber_scheduler: yielding and parking rotate domain-local work" {
     defer scheduler.deinit();
 
     const main_domain = DomainHandle{ .index = 0, .generation = 1 };
-    try scheduler.enqueue(main_domain, .{ .index = 1, .generation = 1 });
-    try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.yieldCurrent(main_domain)).?);
+    const main_owner: u64 = 1;
+    try std.testing.expect(try scheduler.claimLaneOwnership(main_domain, main_owner));
+    try scheduler.enqueue(main_domain, .{ .index = 1, .generation = 1 }, main_owner);
+    try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.yieldCurrent(main_domain, main_owner)).?);
     try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, scheduler.current(main_domain).?);
 
-    try scheduler.enqueue(main_domain, .{ .index = 2, .generation = 1 });
-    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, (try scheduler.parkCurrent(main_domain)).?);
+    try scheduler.enqueue(main_domain, .{ .index = 2, .generation = 1 }, main_owner);
+    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, (try scheduler.parkCurrent(main_domain, main_owner)).?);
     try std.testing.expectEqual(@as(usize, 1), scheduler.parkedCount(main_domain));
     try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, scheduler.current(main_domain).?);
 
-    try scheduler.unpark(main_domain, .{ .index = 1, .generation = 1 });
+    try scheduler.unpark(main_domain, .{ .index = 1, .generation = 1 }, main_owner);
     try std.testing.expectEqual(@as(usize, 2), scheduler.runnableCount(main_domain));
     try std.testing.expectEqual(@as(usize, 0), scheduler.parkedCount(main_domain));
     try scheduler.verify();
@@ -553,13 +580,17 @@ test "fiber_scheduler: ownership traversal sees current runnable and parked fibe
     const parked = FiberHandle{ .index = 3, .generation = 1 };
     const worker_current = FiberHandle{ .index = 4, .generation = 1 };
     const suspended = FiberHandle{ .index = 5, .generation = 1 };
+    const main_owner: u64 = 1;
+    const worker_owner: u64 = 2;
 
-    try scheduler.enqueue(main_domain, runnable);
-    try scheduler.enqueue(main_domain, parked);
-    _ = try scheduler.parkCurrent(main_domain);
-    try scheduler.setCurrent(worker_domain, worker_current);
-    try scheduler.enqueue(worker_domain, suspended);
-    _ = try scheduler.suspendCurrent(worker_domain);
+    try std.testing.expect(try scheduler.claimLaneOwnership(main_domain, main_owner));
+    try std.testing.expect(try scheduler.claimLaneOwnership(worker_domain, worker_owner));
+    try scheduler.enqueue(main_domain, runnable, main_owner);
+    try scheduler.enqueue(main_domain, parked, main_owner);
+    _ = try scheduler.parkCurrent(main_domain, main_owner);
+    try scheduler.setCurrent(worker_domain, worker_current, worker_owner);
+    try scheduler.enqueue(worker_domain, suspended, worker_owner);
+    _ = try scheduler.suspendCurrent(worker_domain, worker_owner);
 
     var seen = std.ArrayListUnmanaged(FiberHandle){};
     defer seen.deinit(std.testing.allocator);
@@ -599,29 +630,29 @@ test "fiber_scheduler: coordination snapshots mirror queue state and wake reques
     try std.testing.expect(!snapshot.wake_requested);
     try std.testing.expectEqual(@as(?u64, null), snapshot.owner_token);
 
-    try scheduler.enqueue(worker_domain, worker);
+    try std.testing.expect(try scheduler.claimLaneOwnership(worker_domain, 99));
+    try scheduler.enqueue(worker_domain, worker, 99);
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expectEqual(@as(usize, 1), snapshot.runnable_count);
     try std.testing.expectEqual(@as(?FiberHandle, null), snapshot.current);
     try std.testing.expect(snapshot.wake_requested);
-    try std.testing.expectEqual(@as(?u64, null), snapshot.owner_token);
+    try std.testing.expectEqual(@as(?u64, 99), snapshot.owner_token);
 
     try std.testing.expect(try scheduler.takeWakeRequest(worker_domain));
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expect(!snapshot.wake_requested);
 
-    try std.testing.expect(try scheduler.claimLaneOwnership(worker_domain, 99));
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expectEqual(@as(?u64, 99), snapshot.owner_token);
     try std.testing.expect(snapshot.ownership_epoch >= 1);
     try std.testing.expect(!(try scheduler.releaseLaneOwnership(worker_domain, 7)));
-    try std.testing.expect(try scheduler.releaseLaneOwnership(worker_domain, 99));
 
-    try std.testing.expectEqual(worker, (try scheduler.switchToNext(worker_domain)).?);
+    try std.testing.expectEqual(worker, (try scheduler.switchToNext(worker_domain, 99)).?);
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expectEqual(worker, snapshot.current.?);
     try std.testing.expectEqual(@as(usize, 0), snapshot.runnable_count);
     try std.testing.expect(!snapshot.wake_requested);
+    try std.testing.expect(try scheduler.releaseLaneOwnership(worker_domain, 99));
 
     try scheduler.requestWake(worker_domain);
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
@@ -668,4 +699,21 @@ test "fiber_scheduler: lane ownership claims are atomic" {
     try std.testing.expect(results[0] != results[1]);
     const snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expect(snapshot.owner_token == 1 or snapshot.owner_token == 2);
+}
+
+test "fiber_scheduler: mutable lane paths require claimed ownership" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 0, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const main_domain = DomainHandle{ .index = 0, .generation = 1 };
+    try std.testing.expectError(error.LaneNotOwned, scheduler.enqueue(main_domain, .{ .index = 1, .generation = 1 }, 7));
+    try std.testing.expect(try scheduler.claimLaneOwnership(main_domain, 7));
+    try scheduler.enqueue(main_domain, .{ .index = 1, .generation = 1 }, 7);
+    try std.testing.expectError(error.LaneNotOwned, scheduler.switchToNext(main_domain, 8));
+    try std.testing.expectEqual(FiberHandle{ .index = 1, .generation = 1 }, (try scheduler.switchToNext(main_domain, 7)).?);
 }

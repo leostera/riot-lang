@@ -406,11 +406,21 @@ pub const Runtime = struct {
         return self.domains.finishWorkerShutdown(handle, owner_token);
     }
 
+    fn requiredLaneOwnerToken(self: *Runtime, domain: DomainHandle) !u64 {
+        const worker = self.domains.worker(domain) orelse return error.InvalidDomain;
+        if (worker.state == .stopped or worker.owner_token == null) return error.WorkerNotRunning;
+        const token = worker.owner_token.?;
+        const lane = try self.schedulerLaneSnapshot(domain);
+        if (lane.owner_token != token) return error.WorkerNotOwned;
+        return token;
+    }
+
     pub fn createFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
         const state = self.domains.domain(domain) orelse return error.InvalidDomain;
         if (state.status == .detached) return error.DomainDetached;
+        const owner_token = try self.requiredLaneOwnerToken(domain);
         const fiber = try self.control_kernel.createFiberInDomain(parent, domain);
-        try self.fiber_scheduler.enqueue(domain, fiber);
+        try self.fiber_scheduler.enqueue(domain, fiber, owner_token);
         return fiber;
     }
 
@@ -419,30 +429,37 @@ pub const Runtime = struct {
     }
 
     pub fn activateFiberInDomain(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
-        try self.fiber_scheduler.activate(domain, fiber);
+        const owner_token = try self.requiredLaneOwnerToken(domain);
+        try self.fiber_scheduler.activate(domain, fiber, owner_token);
         try self.control_kernel.activateFiber(fiber);
     }
 
     pub fn scheduleNextFiber(self: *Runtime, domain: DomainHandle) !?FiberHandle {
-        const next = try self.fiber_scheduler.switchToNext(domain) orelse return null;
+        const owner_token = try self.requiredLaneOwnerToken(domain);
+        const next = try self.fiber_scheduler.switchToNext(domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
         return next;
     }
 
     pub fn yieldCurrentFiber(self: *Runtime) !?FiberHandle {
-        const next = try self.fiber_scheduler.yieldCurrent(self.currentDomain()) orelse return null;
+        const current_domain = self.currentDomain();
+        const owner_token = try self.requiredLaneOwnerToken(current_domain);
+        const next = try self.fiber_scheduler.yieldCurrent(current_domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
         return next;
     }
 
     pub fn parkCurrentFiber(self: *Runtime) !?FiberHandle {
-        const next = try self.fiber_scheduler.parkCurrent(self.currentDomain()) orelse return null;
+        const current_domain = self.currentDomain();
+        const owner_token = try self.requiredLaneOwnerToken(current_domain);
+        const next = try self.fiber_scheduler.parkCurrent(current_domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
         return next;
     }
 
     pub fn unparkFiber(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
-        try self.fiber_scheduler.unpark(domain, fiber);
+        const owner_token = try self.requiredLaneOwnerToken(domain);
+        try self.fiber_scheduler.unpark(domain, fiber, owner_token);
     }
 
     pub fn pushEffectHandler(self: *Runtime, fiber: FiberHandle, handler: HandlerFrame) !void {
@@ -501,7 +518,8 @@ pub const Runtime = struct {
         const current_domain = self.currentDomain();
         const performed = try self.control_kernel.performAt(site_id, effect, payload, captured_roots);
         if (performed.handler_fiber.index != current_fiber.index or performed.handler_fiber.generation != current_fiber.generation) {
-            _ = try self.fiber_scheduler.suspendCurrent(current_domain);
+            const current_owner = try self.requiredLaneOwnerToken(current_domain);
+            _ = try self.fiber_scheduler.suspendCurrent(current_domain, current_owner);
             const handler_domain = self.control_kernel.fiber(performed.handler_fiber).?.domain;
             try self.activateFiberInDomain(handler_domain, performed.handler_fiber);
         } else {
@@ -530,7 +548,8 @@ pub const Runtime = struct {
         const current_domain = self.currentDomain();
         const performed = try self.control_kernel.reperformAt(site_id, effect, payload, captured_roots);
         if (performed.handler_fiber.index != current_fiber.index or performed.handler_fiber.generation != current_fiber.generation) {
-            _ = try self.fiber_scheduler.suspendCurrent(current_domain);
+            const current_owner = try self.requiredLaneOwnerToken(current_domain);
+            _ = try self.fiber_scheduler.suspendCurrent(current_domain, current_owner);
             const handler_domain = self.control_kernel.fiber(performed.handler_fiber).?.domain;
             try self.activateFiberInDomain(handler_domain, performed.handler_fiber);
         } else {
@@ -544,7 +563,8 @@ pub const Runtime = struct {
         const target_domain = self.currentDomain();
         const resumed = try self.control_kernel.resumeContinuation(handle, value_to_resume);
         if (continuation.handler_fiber.index != continuation.fiber.index or continuation.handler_fiber.generation != continuation.fiber.generation) {
-            _ = try self.fiber_scheduler.discardSuspended(continuation.domain, continuation.fiber);
+            const source_owner = try self.requiredLaneOwnerToken(continuation.domain);
+            _ = try self.fiber_scheduler.discardSuspended(continuation.domain, continuation.fiber, source_owner);
         }
         try self.activateFiberInDomain(target_domain, resumed.fiber);
         return resumed;
@@ -559,7 +579,8 @@ pub const Runtime = struct {
         const dropped = self.control_kernel.dropContinuation(handle);
         if (!dropped) return false;
         if (was_suspended and !self_handled) {
-            _ = self.fiber_scheduler.discardSuspended(fiber_domain, fiber) catch return false;
+            const source_owner = self.requiredLaneOwnerToken(fiber_domain) catch return false;
+            _ = self.fiber_scheduler.discardSuspended(fiber_domain, fiber, source_owner) catch return false;
             self.control_kernel.discardFiber(fiber) catch return false;
         }
         return true;
@@ -1809,6 +1830,8 @@ test "runtime: continuations can migrate across attached domains" {
     const other_domain = try rt.createDomain();
     try std.testing.expectError(error.DomainDetached, rt.createFiberInDomain(null, other_domain));
     try rt.attachDomain(other_domain);
+    try std.testing.expectError(error.WorkerNotRunning, rt.createFiberInDomain(null, other_domain));
+    try std.testing.expect(try rt.startDomainWorker(other_domain, 6));
 
     const main = rt.currentFiber();
     try rt.pushEffectHandler(main, .{
