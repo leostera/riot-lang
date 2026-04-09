@@ -2270,6 +2270,25 @@ and infer_expr = fun (state: state) env expr_id ->
             lower_parameters env parameters
         | BodyArena.EApply (callee_id, arguments) ->
             let callee_ty = infer_expr state env callee_id in
+            let infer_apply_argument_against = fun (argument: BodyArena.apply_argument) lhs ->
+              match (argument.label, argument.implicit) with
+              | (BodyArena.Optional _, true) ->
+                  let forwarded_option_ty = infer_expr state env argument.value_id in
+                  let forwarded_value_ty = fresh_var state in
+                  let () = try_unify
+                    state
+                    ~origin:(origin_of_expr state expr_id)
+                    forwarded_option_ty
+                    (TypeRepr.option forwarded_value_ty) in
+                  let () = try_unify
+                    state
+                    ~origin:(origin_of_expr state expr_id)
+                    forwarded_value_ty
+                    lhs in
+                  infer_expr_against state env argument.value_id (TypeRepr.option lhs)
+              | _ ->
+                  infer_expr_against state env argument.value_id lhs
+            in
             let rec apply_with_known_type current_ty arguments =
               match arguments with
               | [] -> current_ty
@@ -2278,7 +2297,7 @@ and infer_expr = fun (state: state) env expr_id ->
                   | TypeRepr.Arrow { label; lhs; rhs } -> (
                       match take_matching_argument label arguments with
                       | Some ((argument: BodyArena.apply_argument), rest_arguments) ->
-                          let _ = infer_expr_against state env argument.value_id lhs in
+                          let _ = infer_apply_argument_against argument lhs in
                           apply_with_known_type rhs rest_arguments
                       | None -> (
                           match label with
@@ -2303,7 +2322,19 @@ and infer_expr = fun (state: state) env expr_id ->
               match arguments with
               | [] -> current_ty
               | (argument: BodyArena.apply_argument) :: rest ->
-                  let argument_ty = infer_expr state env argument.value_id in
+                  let argument_ty =
+                    match (argument.label, argument.implicit) with
+                    | (BodyArena.Optional _, true) ->
+                        let forwarded_option_ty = infer_expr state env argument.value_id in
+                        let forwarded_value_ty = fresh_var state in
+                        let () = try_unify
+                          state
+                          ~origin:(origin_of_expr state expr_id)
+                          forwarded_option_ty
+                          (TypeRepr.option forwarded_value_ty) in
+                        forwarded_value_ty
+                    | _ -> infer_expr state env argument.value_id
+                  in
                   let result_ty = fresh_var state in
                   let () = try_unify
                     state
@@ -2318,7 +2349,51 @@ and infer_expr = fun (state: state) env expr_id ->
                       })) in
                   apply_with_known_type result_ty rest
             in
-            apply_with_known_type callee_ty arguments
+            (
+              match origin_of_expr state expr_id with
+              | Some origin when String.equal origin.label "constructor_apply_expression" -> (
+                  match SemanticTree.find_expr state.file callee_id with
+                  | Some { desc=BodyArena.EVar constructor; _ } -> (
+                      match resolve_constructor_without_expected env constructor with
+                      | Some constructor_entry ->
+                          let instantiated = instantiate_constructor_entry state constructor_entry in
+                          let constructor_ty =
+                            List.fold_right
+                              (fun argument_ty result_ty ->
+                                make_type
+                                  state
+                                  (TypeRepr.Arrow {
+                                    label = TypeRepr.Nolabel;
+                                    lhs = argument_ty;
+                                    rhs = result_ty
+                                  }))
+                              instantiated.argument_types
+                              instantiated.result_ty
+                          in
+                          (
+                            match (instantiated.inline_record_labels, arguments) with
+                            | (Some labels, [ argument ]) when argument_matches_parameter_label
+                              TypeRepr.Nolabel
+                              argument.label -> (
+                                match SemanticTree.find_expr state.file argument.value_id with
+                                | Some { desc=BodyArena.ERecord { base_id=None; fields }; _ } ->
+                                    let () = infer_inline_record_expr
+                                      state
+                                      env
+                                      argument.value_id
+                                      fields
+                                      labels in
+                                    instantiated.result_ty
+                                | _ -> apply_with_known_type constructor_ty arguments
+                              )
+                            | _ -> apply_with_known_type constructor_ty arguments
+                          )
+                      | None -> apply_with_known_type callee_ty arguments
+                    )
+                  | _ -> apply_with_known_type callee_ty arguments
+                )
+              | _ -> apply_with_known_type callee_ty arguments
+            )
         | BodyArena.ERecord { base_id; fields } ->
             infer_record_expr state env expr_id base_id fields
         | BodyArena.EFieldAccess { receiver_id; label } ->

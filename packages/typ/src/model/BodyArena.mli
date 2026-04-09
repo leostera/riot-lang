@@ -79,6 +79,8 @@ type function_parameter = {
 type apply_argument = {
   (** Calling-convention label preserved from the call site. *)
   label: label;
+  (** Whether this optional argument used implicit forwarding syntax (`?label`). *)
+  implicit: bool;
   (** Lowered argument value expression. *)
   value_id: ExprId.t;
 }

@@ -4183,6 +4183,73 @@ let test_optional_arguments_can_be_omitted_and_reordered = fun _ctx ->
     let () = Test.assert_equal ~expected:(Some "?kind:int -> ?mods:int -> int -> int") ~actual:explicit_callee_type in
     Ok ()
 
+let test_optional_argument_forwarding_preserves_option_wrapper = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+type selector = unit
+
+type ('a, 'e) result =
+  | Ok of 'a
+  | Error of 'e
+
+module Selector = struct
+  type t = selector
+
+  let select : ?timeout:int64 -> ?max_events:int -> t -> (unit, string) result =
+    fun ?timeout:_ ?max_events:_ _ ->
+      Ok ()
+end
+
+let poll = fun ?max_events ?timeout selector ->
+  Selector.select ?timeout ?max_events selector
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "optional_forwarding.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let poll_type = export_scheme snapshot source_id "poll" in
+    if poll_type = Some "?max_events:int -> ?timeout:int64 -> unit -> (unit, string) result" then
+      Ok ()
+    else
+      Error ("unexpected poll type: " ^ show_option poll_type)
+
+let test_inline_record_constructor_payloads_use_constructor_owner = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let source = {ocaml|
+type error =
+  | Invalid_nanoseconds of { nanos: int }
+
+type t = {
+  secs: int;
+  nanos: int;
+}
+
+let make_error = fun nanos -> Invalid_nanoseconds { nanos }
+|ocaml}
+  in
+  let (session, source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "inline_record_constructor_payload.ml")
+    ~text:source in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let make_error_type = export_scheme snapshot source_id "make_error" in
+    if make_error_type = Some "int -> error" then
+      Ok ()
+    else
+      Error ("unexpected make_error type: " ^ show_option make_error_type)
+
 let test_records_flow_through_snapshot_queries = fun _ctx ->
   let expect label expected actual =
     if actual = expected then
@@ -5867,6 +5934,10 @@ let () =
         Test.case "check_source recovers when rooted preparation reports missing module summaries" test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries;
         Test.case "match guards typecheck in pattern scope" test_match_guards_typecheck_in_pattern_scope;
         Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
+        Test.case "optional argument forwarding preserves option wrapper" test_optional_argument_forwarding_preserves_option_wrapper;
+        Test.case
+          "inline record constructor payloads use constructor owner"
+          test_inline_record_constructor_payloads_use_constructor_owner;
         Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
         Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
         Test.case "if branches do not capture trailing sequences" test_if_branches_do_not_capture_trailing_sequences;

@@ -50,6 +50,7 @@ type function_parameter = {
 
 type apply_argument = {
   label: label;
+  implicit: bool;
   value_id: ExprId.t;
 }
 
@@ -190,7 +191,13 @@ let render_function_parameter = fun (parameter: function_parameter) ->
   ^ PatId.to_string parameter.pattern_id
 
 let render_apply_argument = fun (argument: apply_argument) ->
-  render_label argument.label ^ ":" ^ ExprId.to_string argument.value_id
+  render_label argument.label
+  ^ (if argument.implicit then
+      "(implicit)"
+    else
+      "")
+  ^ ":"
+  ^ ExprId.to_string argument.value_id
 
 let render_record_pattern_field = fun (field: record_pattern_field) ->
   field.label ^ "=" ^ PatId.to_string field.pattern_id
@@ -550,6 +557,7 @@ let function_parameter_to_json = fun (parameter: function_parameter) ->
 let apply_argument_to_json = fun (argument: apply_argument) ->
   Data.Json.Object [
     ("label", label_to_json argument.label);
+    ("implicit", Data.Json.Bool argument.implicit);
     ("value_id", Data.Json.Int (ExprId.to_int argument.value_id));
   ]
 

@@ -390,12 +390,42 @@ let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
           matches_required_local_module ~required_module_name candidate_module_name)
         required_local_modules)
 
-let force_base_analysis = fun (slot: analysis_slot) ->
+let cached_local_module_typings_for = fun (snapshot: t) (slot: analysis_slot) ->
+  local_module_names_for snapshot slot
+  |> List.filter_map
+    (fun module_name ->
+      Collections.HashMap.get snapshot.module_result_cache (module_result_cache_key [] module_name)
+      |> Option.map (fun (result: ModulePairing.t) -> (module_name, result.ModulePairing.module_typings)))
+
+let cached_local_ambient_env_for = fun snapshot (slot: analysis_slot) ->
+  cached_local_module_typings_for snapshot slot
+  |> List.map
+    (fun (module_name, typings) ->
+      let type_decls = ModuleTypings.type_decls typings in
+      let exports = ModuleTypings.exports typings in
+      local_module_aliases_of_internal_module_name module_name
+      |> List.map (fun alias -> qualify_exports alias type_decls exports)
+      |> List.flatten)
+  |> List.flatten
+
+let cached_local_ambient_type_decls_for = fun snapshot (slot: analysis_slot) ->
+  cached_local_module_typings_for snapshot slot
+  |> List.map
+    (fun (module_name, typings) ->
+      let type_decls = ModuleTypings.type_decls typings in
+      local_module_aliases_of_internal_module_name module_name
+      |> List.map (fun alias -> qualify_type_decls alias type_decls)
+      |> List.flatten)
+  |> List.flatten
+
+let force_base_analysis = fun (snapshot: t) (slot: analysis_slot) ->
   match slot.base_analysis with
   | Some analysis -> analysis
   | None ->
-      let ambient = loaded_ambient_env_for slot in
-      let ambient_type_decls = loaded_ambient_type_decls_for slot in
+      let ambient = cached_local_ambient_env_for snapshot slot @ loaded_ambient_env_for slot in
+      let ambient_type_decls =
+        cached_local_ambient_type_decls_for snapshot slot @ loaded_ambient_type_decls_for slot
+      in
       let config = slot.config
       |> TypConfig.with_ambient ~ambient
       |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
@@ -549,7 +579,7 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
           (fun (slot: analysis_slot) ->
             let analysis =
               if List.exists (SourceId.equal slot.source_id) visiting then
-                force_base_analysis slot
+                force_base_analysis snapshot slot
               else
                 force_analysis snapshot ~visiting slot
             in

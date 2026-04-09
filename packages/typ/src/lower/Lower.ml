@@ -1575,7 +1575,11 @@ and lower_apply = fun (state: state) expression ->
   let lower_argument = function
     | Cst.Positional argument ->
         (
-          { BodyArena.label = BodyArena.Positional; value_id = lower_expr state argument }:
+          {
+            BodyArena.label = BodyArena.Positional;
+            implicit = false;
+            value_id = lower_expr state argument
+          }:
             BodyArena.apply_argument
         )
     | Cst.Labeled { syntax_node; label_token; value; _ } ->
@@ -1588,7 +1592,11 @@ and lower_apply = fun (state: state) expression ->
             ~label:"implicit_labeled_argument"
             (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
         in
-        { BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token); value_id }
+        {
+          BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token);
+          implicit = Option.is_none value;
+          value_id
+        }
     | Cst.Optional { syntax_node; label_token; value; _ } ->
         let value_id =
           match value with
@@ -1599,7 +1607,11 @@ and lower_apply = fun (state: state) expression ->
             ~label:"implicit_optional_argument"
             (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
         in
-        { BodyArena.label = BodyArena.Optional (Cst.Token.text label_token); value_id }
+        {
+          BodyArena.label = BodyArena.Optional (Cst.Token.text label_token);
+          implicit = Option.is_none value;
+          value_id
+        }
   in
   let rec collect = function
     | Cst.Expression.Apply { callee; argument; _ } ->
@@ -1630,8 +1642,8 @@ and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
     (BodyArena.EApply (
       operator_id,
       [
-        { BodyArena.label = BodyArena.Positional; value_id = left_id };
-        { BodyArena.label = BodyArena.Positional; value_id = right_id };
+        { BodyArena.label = BodyArena.Positional; implicit = false; value_id = left_id };
+        { BodyArena.label = BodyArena.Positional; implicit = false; value_id = right_id };
       ]
     ))
 
@@ -1656,8 +1668,8 @@ and lower_list_expression = fun (state: state) (list_expression: Cst.list_expres
         (BodyArena.EApply (
           cons_id,
           [
-            { BodyArena.label = BodyArena.Positional; value_id = head_id };
-            { BodyArena.label = BodyArena.Positional; value_id = tail_id };
+            { BodyArena.label = BodyArena.Positional; implicit = false; value_id = head_id };
+            { BodyArena.label = BodyArena.Positional; implicit = false; value_id = tail_id };
           ]
         )))
     nil_id
@@ -1707,8 +1719,8 @@ and lower_let_operator_expression = fun (state: state) (let_operator: Cst.let_op
         (BodyArena.EApply (
           operator_id,
           [
-            { BodyArena.label = BodyArena.Positional; value_id = bound_value_id };
-            { BodyArena.label = BodyArena.Positional; value_id = body_fun_id };
+            { BodyArena.label = BodyArena.Positional; implicit = false; value_id = bound_value_id };
+            { BodyArena.label = BodyArena.Positional; implicit = false; value_id = body_fun_id };
           ]
         ))
 
@@ -1737,7 +1749,7 @@ and lower_expr = fun (state: state) expression ->
             ~label:"constructor_apply_expression"
             (BodyArena.EApply (
               callee_id,
-              [ { BodyArena.label = BodyArena.Positional; value_id = payload_id } ]
+              [ { BodyArena.label = BodyArena.Positional; implicit = false; value_id = payload_id } ]
             ))
     )
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
@@ -2017,7 +2029,7 @@ and lower_expr = fun (state: state) expression ->
             ~label:"prefix_expression"
             (BodyArena.EApply (
               operator_id,
-              [ { BodyArena.label = BodyArena.Positional; value_id = operand_id } ]
+              [ { BodyArena.label = BodyArena.Positional; implicit = false; value_id = operand_id } ]
             ))
     )
   | _ ->
