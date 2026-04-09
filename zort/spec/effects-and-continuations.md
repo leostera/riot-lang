@@ -188,6 +188,10 @@
 - `resumeContinuation` consumes a continuation once:
   - the first resume reactivates the captured fiber,
   - the second resume fails with an explicit `AlreadyResumed` error.
+- `reperform` now exists as a distinct search rule:
+  - it skips handlers on the current fiber,
+  - it resumes handler search at the parent-fiber chain,
+  - it still captures the current fiber into a new one-shot continuation.
 - `perform` with no matching handler fails with an explicit `UnhandledEffect` error.
 - Callback boundaries are explicit:
   - entering a callback boundary saves the current parent link,
@@ -195,6 +199,7 @@
   - effect search and backtrace walking both stop at that boundary,
   - the saved parent link is restored when the callback exits.
 - `captureBacktrace` now walks managed frames across the parent-fiber chain instead of only reporting the current fiber.
+- `captureContinuationBacktrace` now inspects a suspended continuation's managed stack plus its parent-fiber chain without resuming it.
 - Control-kernel activity is now observable through typed events carrying:
   - action kind
   - effect id

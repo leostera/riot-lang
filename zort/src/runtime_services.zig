@@ -13,6 +13,7 @@ pub const RuntimeServices = struct {
     pending_signals: u64 = 0,
     blocking_sections: usize = 0,
     named_values: std.ArrayListUnmanaged(NamedValue) = .{},
+    signal_handlers: [64]?Value = [_]?Value{null} ** 64,
 
     pub const Error = error{
         RuntimeAlreadyShutdown,
@@ -51,6 +52,11 @@ pub const RuntimeServices = struct {
         var count: usize = 0;
         for (self.named_values.items) |entry| {
             if (entry.value.isBlock() and std.meta.eql(entry.value, needle)) count += 1;
+        }
+        for (self.signal_handlers) |handler| {
+            if (handler) |value_ref| {
+                if (value_ref.isBlock() and std.meta.eql(value_ref, needle)) count += 1;
+            }
         }
         return count;
     }
@@ -94,6 +100,16 @@ pub const RuntimeServices = struct {
         return pending;
     }
 
+    pub fn registerSignalHandler(self: *RuntimeServices, signo: u8, handler: Value) Error!void {
+        if (signo >= self.signal_handlers.len) return error.UnsupportedSignal;
+        self.signal_handlers[signo] = handler;
+    }
+
+    pub fn lookupSignalHandler(self: *const RuntimeServices, signo: u8) ?Value {
+        if (signo >= self.signal_handlers.len) return null;
+        return self.signal_handlers[signo];
+    }
+
     pub fn registerNamedValue(self: *RuntimeServices, name: []const u8, val: Value) Error!void {
         for (self.named_values.items) |*entry| {
             if (std.mem.eql(u8, entry.name, name)) {
@@ -121,6 +137,11 @@ pub const RuntimeServices = struct {
         for (self.named_values.items) |entry| {
             if (entry.value.isBlock()) count += 1;
         }
+        for (self.signal_handlers) |handler| {
+            if (handler) |rooted| {
+                if (rooted.isBlock()) count += 1;
+            }
+        }
         return count;
     }
 
@@ -128,6 +149,11 @@ pub const RuntimeServices = struct {
         const self: *RuntimeServices = @ptrCast(@alignCast(ctx.?));
         for (self.named_values.items) |entry| {
             if (entry.value.isBlock()) visitor.visit(entry.value);
+        }
+        for (self.signal_handlers) |handler| {
+            if (handler) |rooted| {
+                if (rooted.isBlock()) visitor.visit(rooted);
+            }
         }
     }
 };
@@ -185,4 +211,13 @@ test "runtime_services: pending signals and blocking sections are explicit" {
     try std.testing.expectEqual(@as(u64, 0), services.takePendingSignals());
     try services.exitBlockingSection();
     try std.testing.expectEqual(@as(usize, 0), services.blockingDepth());
+}
+
+test "runtime_services: signal handlers are rooted runtime state" {
+    var services = RuntimeServices.init(std.testing.allocator);
+    defer services.deinit();
+
+    try services.registerSignalHandler(2, Value.fromHeapRef(.{ .index = 8, .generation = 1 }));
+    try std.testing.expectEqual(Value.fromHeapRef(.{ .index = 8, .generation = 1 }), services.lookupSignalHandler(2).?);
+    try std.testing.expectEqual(@as(usize, 1), services.provider().count());
 }

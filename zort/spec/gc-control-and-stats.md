@@ -142,14 +142,26 @@
 - Mutation observability now includes:
   - `barrier` events for remembered-set recording
   - per-case `barrier_records` counters in bench output and profile JSON
+- Sampled memory profiling observability now includes:
+  - `memprof.sampled_alloc`
+  - `memprof.promoted`
+  - `memprof.reclaimed`
+  - per-case `memprof_samples`, `memprof_promotions`, and `memprof_reclaims` counters
 - `Runtime.Config.debugChecks` adds explicit verification modes:
   - `verify_roots`
   - `verify_heap_store`
   - `verify_control_kernel`
   - `verify_after_collect`
 - Bench/profile traces can now show:
-  - provider counts from `RootRegistry`, `ControlKernel`, and `RuntimeServices`
+  - provider counts from `RootRegistry`, `ControlKernel`, `RuntimeServices`, and `ManagedLiveness`
   - phase-by-phase collector timing
   - callback/effect events separately from GC events
+  - memprof lifecycle events separately from GC/effect events
+- `collect.strategy` now distinguishes:
+  - `mark_sweep`
+  - `generational`
+  - `bump`
+- Bench traces are now capped to a fixed number of printed entries per case so `--trace-effects` stays usable on 1000-iteration runs.
+- `--trace-memprof` enables memprof sampling for the bench run and prints only sampled allocation/promotion/reclaim events.
 - These checks are zort-native debug surfaces, not attempts to mirror OCaml's
   environment-variable-based debugging contract.

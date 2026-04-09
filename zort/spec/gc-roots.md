@@ -107,8 +107,17 @@
   - consumed continuations stop contributing those captured roots after `resumeContinuation`.
 - `RuntimeServices` is now the third built-in provider:
   - named values stay live through service-owned roots,
+  - signal handlers stay live through the same provider,
   - signal and blocking-section bookkeeping stays outside the semantic value core.
+- `ManagedLiveness` is now the fourth built-in provider:
+  - registered finalizer callbacks stay live while the registration exists,
+  - queued ready-finalizer callbacks and first-finalizer arguments stay live until delivery drains them,
+  - weak refs and ephemerons do not root their targets/data unconditionally.
+- `MemprofState` is intentionally not a root provider in the current baseline:
+  - sampled records store site ids and object metadata only,
+  - memprof does not keep sampled heap values alive,
+  - any future callback-based memprof surface would need an explicit provider of its own.
 - `Mutator` now exposes the future generational seam explicitly:
-  - block-to-block mutation records remembered-set edges in `src/remembered_set.zig`,
+  - major-to-nursery mutation records remembered-set edges in `src/remembered_set.zig`,
   - barrier events are observable through `src/event_sink.zig`,
-  - the baseline collector does not consume remembered edges yet, but mutation no longer bypasses that boundary.
+  - the `generational` collector baseline now consumes remembered edges during minor collection.

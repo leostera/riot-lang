@@ -10,6 +10,16 @@ pub const ObjectKind = enum {
     custom,
 };
 
+pub const Space = enum {
+    nursery,
+    major,
+};
+
+pub const NurseryConfig = struct {
+    enabled: bool = false,
+    max_object_words: usize = 32,
+};
+
 pub const StringStorage = struct {
     len: usize,
     buffer: []u8,
@@ -170,6 +180,7 @@ pub const Object = struct {
 const HeapSlot = struct {
     generation: u32,
     alive: bool,
+    space: Space,
     object: Object,
 };
 
@@ -178,6 +189,7 @@ pub const HeapStore = struct {
     slots: std.ArrayListUnmanaged(HeapSlot) = .{},
     free_indices: std.ArrayListUnmanaged(u32) = .{},
     object_count: usize = 0,
+    nursery_config: NurseryConfig = .{},
 
     pub fn init(allocator: std.mem.Allocator) HeapStore {
         return .{ .allocator = allocator };
@@ -193,6 +205,18 @@ pub const HeapStore = struct {
         return self.object_count;
     }
 
+    pub fn configureNursery(self: *HeapStore, config: NurseryConfig) void {
+        self.nursery_config = config;
+    }
+
+    pub fn nurseryCount(self: *const HeapStore) usize {
+        var total: usize = 0;
+        for (self.slots.items) |slot| {
+            if (slot.alive and slot.space == .nursery) total += 1;
+        }
+        return total;
+    }
+
     pub fn slotsRef(self: *const HeapStore) []const HeapSlot {
         return self.slots.items;
     }
@@ -202,6 +226,10 @@ pub const HeapStore = struct {
     }
 
     pub fn add(self: *HeapStore, object: Object) !value.HeapRef {
+        return self.addInSpace(object, self.preferredSpace(object));
+    }
+
+    pub fn addInSpace(self: *HeapStore, object: Object, space: Space) !value.HeapRef {
         const slot_index: usize = if (self.free_indices.items.len > 0) blk: {
             const reused = self.free_indices.pop() orelse unreachable;
             break :blk @intCast(reused);
@@ -210,6 +238,7 @@ pub const HeapStore = struct {
         if (slot_index < self.slots.items.len) {
             const slot = &self.slots.items[slot_index];
             slot.alive = true;
+            slot.space = space;
             slot.object = object;
             self.object_count += 1;
             return .{ .index = @intCast(slot_index), .generation = slot.generation };
@@ -218,6 +247,7 @@ pub const HeapStore = struct {
         try self.slots.append(self.allocator, .{
             .generation = 1,
             .alive = true,
+            .space = space,
             .object = object,
         });
         self.object_count += 1;
@@ -246,6 +276,7 @@ pub const HeapStore = struct {
 
         slot.object.deinit(self.allocator, fixed_arena);
         slot.alive = false;
+        slot.space = .major;
         slot.generation +%= 1;
         self.object_count -%= 1;
         self.free_indices.append(self.allocator, @intCast(slot_index)) catch {
@@ -258,6 +289,21 @@ pub const HeapStore = struct {
         while (i < self.slots.items.len) : (i += 1) {
             self.reclaimSlot(i, fixed_arena);
         }
+    }
+
+    pub fn spaceOf(self: *const HeapStore, handle: value.HeapRef) ?Space {
+        if (handle.index >= self.slots.items.len) return null;
+        const slot = &self.slots.items[handle.index];
+        if (!slot.alive or slot.generation != handle.generation) return null;
+        return slot.space;
+    }
+
+    pub fn promote(self: *HeapStore, handle: value.HeapRef) bool {
+        if (handle.index >= self.slots.items.len) return false;
+        const slot = &self.slots.items[handle.index];
+        if (!slot.alive or slot.generation != handle.generation) return false;
+        slot.space = .major;
+        return true;
     }
 
     pub const VerifyError = error{
@@ -285,6 +331,12 @@ pub const HeapStore = struct {
             }
         }
     }
+
+    fn preferredSpace(self: *const HeapStore, object: Object) Space {
+        if (!self.nursery_config.enabled) return .major;
+        if (object.wosize() > self.nursery_config.max_object_words) return .major;
+        return .nursery;
+    }
 };
 
 test "heap_store: add and get object" {
@@ -299,6 +351,7 @@ test "heap_store: add and get object" {
 
     try std.testing.expectEqual(@as(u32, 1), handle.generation);
     try std.testing.expectEqual(@as(usize, 1), store.count());
+    try std.testing.expectEqual(@as(?Space, .major), store.spaceOf(handle));
     try std.testing.expectEqual(@as(?ObjectKind, .tuple), got.kind());
     try std.testing.expectEqual(value.Value.fromInt(7), got.tupleFields().?[0]);
 }
@@ -351,4 +404,20 @@ test "heap_store: verify invariants accepts healthy store" {
     const handle = try store.add(Object.initBoxedI64(42));
     _ = handle;
     try store.verifyInvariants();
+}
+
+test "heap_store: nursery allocation and promotion are explicit" {
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    store.configureNursery(.{
+        .enabled = true,
+        .max_object_words = 4,
+    });
+
+    const small = try store.add(Object.initBoxedI64(42));
+    try std.testing.expectEqual(@as(?Space, .nursery), store.spaceOf(small));
+    try std.testing.expectEqual(@as(usize, 1), store.nurseryCount());
+    try std.testing.expect(store.promote(small));
+    try std.testing.expectEqual(@as(?Space, .major), store.spaceOf(small));
+    try std.testing.expectEqual(@as(usize, 0), store.nurseryCount());
 }

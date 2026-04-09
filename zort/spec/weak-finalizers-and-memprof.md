@@ -52,3 +52,41 @@
 - Weak refs, ephemerons, finalizers, and memprof are not independent features; they all hook deeply into GC phase structure.
 - If zort omits any of them early on, that should be a staged non-goal.
 - If zort implements weak refs before ephemerons or finalizers, it should still reserve room in the collector design for “GC-phase-dependent cleanup”.
+
+## zort managed-liveness baseline
+
+- zort now has a dedicated `ManagedLiveness` subsystem in `src/liveness.zig`.
+- The current semantic surface includes:
+  - `WeakRefHandle` slots whose targets are cleared after the collector's weak phase if the target block is dead,
+  - `EphemeronHandle` slots with explicit key arrays and optional data,
+  - `FinalizerHandle` registrations with explicit `first` / `last` mode.
+- Collector integration is phase-ordered:
+  - normal root/provider marking runs first,
+  - ephemerons may darken their data during the weak phase when all keys are live,
+  - weak refs clear dead targets during the same weak phase,
+  - finalizers queue ready callbacks during the finalizer phase.
+- First-finalizer behavior is explicit:
+  - the target is marked again before sweep,
+  - the ready finalizer queue roots that argument until it is drained.
+- zort still diverges deliberately from OCaml here:
+  - weak refs and ephemerons are runtime-managed handles, not heap blocks,
+  - memprof is a dedicated `src/memprof.zig` subsystem instead of heap/C-table hybrid state,
+  - domain adoption/orphan handling is still deferred until real domain/STW work exists.
+
+## zort memprof baseline
+
+- zort now has a dedicated `MemprofState` subsystem in `src/memprof.zig`.
+- The current memprof surface is intentionally smaller than OCaml's:
+  - samples are keyed by stable `HeapRef`,
+  - sampling is deterministic by allocated word interval instead of probabilistic,
+  - sampled lifecycle transitions are `sampled_alloc`, `promoted`, and `reclaimed`,
+  - sampled records can optionally carry an allocation backtrace as a slice of `site_id`s from the managed control stack.
+- Integration points are explicit:
+  - `Runtime` decides whether a fresh allocation should be sampled,
+  - `Collector` reports promotion and reclaim transitions,
+  - `EventSink` and `TraceRecorder` carry memprof lifecycle events like any other runtime event.
+- The current baseline deliberately does not attempt full OCaml parity:
+  - memprof does not own GC roots because sampled metadata stores site ids, not heap values,
+  - sampling policy is deterministic and single-runtime only,
+  - domain adoption/orphan handling is still deferred,
+  - memprof callbacks are not implemented yet.

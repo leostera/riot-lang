@@ -69,6 +69,9 @@
 ## zort callback and backtrace baseline
 
 - `ControlKernel.enterCallbackBoundary` / `exitCallbackBoundary` now model callback boundaries explicitly in `src/control_kernel.zig`.
+- `Runtime.deliverPendingActions(...)` now uses those callback boundaries when delivering:
+  - pending signal handlers from `RuntimeServices`,
+  - ready finalizer callbacks from `ManagedLiveness`.
 - Entering a callback boundary:
   - saves the current parent-fiber link,
   - clears parent traversal for the duration of the callback,
@@ -79,4 +82,5 @@
 - zort backtrace capture is currently semantic and managed-stack-based:
   - it walks `site_id` frames recorded on fibers,
   - it follows parent-fiber links when they are visible,
+  - it can inspect suspended continuations through `captureContinuationBacktrace`,
   - it does not yet mirror OCaml's native frame-descriptor machinery.

@@ -97,6 +97,9 @@
 - `RuntimeServices` in `src/runtime_services.zig` now owns:
   - pending-signal recording as an explicit bitset,
   - blocking-section depth as explicit runtime service state.
+- Signal handlers are now explicit runtime-local values:
+  - `registerSignalHandler` stores a handler per signal number,
+  - `deliverPendingActions` drains pending bits and delivers those handlers through callback boundaries.
 - `ControlKernel` in `src/control_kernel.zig` now owns managed-stack limits:
   - frame-count overflow,
   - frame-root overflow,

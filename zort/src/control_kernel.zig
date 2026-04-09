@@ -490,6 +490,45 @@ pub const ControlKernel = struct {
         return frames.toOwnedSlice(allocator);
     }
 
+    pub fn captureContinuationBacktrace(
+        self: *const ControlKernel,
+        allocator: std.mem.Allocator,
+        handle: ContinuationHandle,
+    ) ![]BacktraceFrame {
+        const continuation_state = self.continuation(handle) orelse return error.InvalidContinuation;
+        var frames = std.ArrayListUnmanaged(BacktraceFrame){};
+        errdefer frames.deinit(allocator);
+
+        var i = continuation_state.stack.frames.items.len;
+        while (i > 0) {
+            i -= 1;
+            const frame = continuation_state.stack.frames.items[i];
+            try frames.append(allocator, .{
+                .fiber = continuation_state.fiber,
+                .site_id = frame.site_id,
+                .root_count = frame.roots.items.len,
+            });
+        }
+
+        var cursor = continuation_state.parent;
+        while (cursor) |fiber_handle| {
+            const fiber_state = self.fiber(fiber_handle) orelse return error.InvalidFiber;
+            var frame_index = fiber_state.stack.frames.items.len;
+            while (frame_index > 0) {
+                frame_index -= 1;
+                const frame = fiber_state.stack.frames.items[frame_index];
+                try frames.append(allocator, .{
+                    .fiber = fiber_handle,
+                    .site_id = frame.site_id,
+                    .root_count = frame.roots.items.len,
+                });
+            }
+            cursor = fiber_state.parent;
+        }
+
+        return frames.toOwnedSlice(allocator);
+    }
+
     pub fn captureContinuation(
         self: *ControlKernel,
         effect: EffectId,
@@ -552,6 +591,53 @@ pub const ControlKernel = struct {
         captured_roots: []const Value,
     ) !PerformResult {
         const match = self.findHandler(self.current_fiber, effect) orelse {
+            self.event_sink.emit(.{ .control = .{
+                .action = .effect_unhandled,
+                .site_id = site_id,
+                .effect = effect,
+                .fiber = toTraceHandle(self.current_fiber),
+                .parent_depth = self.parentDepth(self.current_fiber),
+            } });
+            return error.UnhandledEffect;
+        };
+
+        const captured_handle = try self.captureMatchedContinuation(site_id, match, effect, payload, captured_roots);
+        return .{
+            .continuation = captured_handle,
+            .handler_fiber = match.fiber,
+            .handler_index = match.index,
+            .handler = match.handler,
+        };
+    }
+
+    pub fn reperform(
+        self: *ControlKernel,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        return self.reperformAt(0, effect, payload, captured_roots);
+    }
+
+    pub fn reperformAt(
+        self: *ControlKernel,
+        site_id: u32,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        const current_state = self.fiber(self.current_fiber) orelse return error.InvalidFiber;
+        const start = current_state.parent orelse {
+            self.event_sink.emit(.{ .control = .{
+                .action = .effect_unhandled,
+                .site_id = site_id,
+                .effect = effect,
+                .fiber = toTraceHandle(self.current_fiber),
+                .parent_depth = self.parentDepth(self.current_fiber),
+            } });
+            return error.UnhandledEffect;
+        };
+        const match = self.findHandler(start, effect) orelse {
             self.event_sink.emit(.{ .control = .{
                 .action = .effect_unhandled,
                 .site_id = site_id,
@@ -1024,4 +1110,54 @@ test "control_kernel: callback boundaries truncate parent backtraces and effect 
 
     const counters = recorder.snapshot();
     try std.testing.expectEqual(@as(usize, 1), counters.unhandled_effects);
+}
+
+test "control_kernel: reperform skips current fiber handlers" {
+    var kernel = ControlKernel.init(std.testing.allocator);
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 88,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+    try kernel.pushHandler(child, .{
+        .effect = 88,
+        .handle_effect = Value.fromInt(2),
+    });
+
+    const handled_here = try kernel.perform(88, Value.fromInt(10), &.{});
+    try std.testing.expectEqual(child, handled_here.handler_fiber);
+    try std.testing.expectEqual(@as(i64, 2), handled_here.handler.handle_effect.asInt());
+
+    const reperformed = try kernel.reperform(88, Value.fromInt(11), &.{});
+    try std.testing.expectEqual(main, reperformed.handler_fiber);
+    try std.testing.expectEqual(@as(i64, 1), reperformed.handler.handle_effect.asInt());
+}
+
+test "control_kernel: continuation backtrace includes suspended frames and parents" {
+    var kernel = ControlKernel.init(std.testing.allocator);
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 12,
+        .handle_effect = Value.fromInt(9),
+    });
+    try kernel.pushFrame(main, 100);
+
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+    try kernel.pushFrame(child, 200);
+
+    const performed = try kernel.perform(12, Value.fromInt(1), &.{});
+    const trace = try kernel.captureContinuationBacktrace(std.testing.allocator, performed.continuation);
+    defer std.testing.allocator.free(trace);
+
+    try std.testing.expectEqual(@as(usize, 2), trace.len);
+    try std.testing.expectEqual(@as(u32, 200), trace[0].site_id);
+    try std.testing.expectEqual(@as(u32, 100), trace[1].site_id);
 }

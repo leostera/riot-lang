@@ -93,6 +93,11 @@
   - traces from registered root providers
   - walks tuple edges transitively
   - reclaims through `HeapStore.reclaimSlot`
+- zort now also has a native `generational` baseline:
+  - small allocations go to a nursery space in `HeapStore`,
+  - `collectMinor` traces root providers plus remembered-set edges,
+  - reachable nursery objects are promoted in place to major space,
+  - unreachable nursery objects are reclaimed without sweeping the whole major heap.
 - Even before a true generational collector exists, zort now has an explicit collection phase seam:
   - `enumerate_roots`
   - `mark`
@@ -104,7 +109,11 @@
 - The experimental `bump` strategy:
   - clears all tracked heap objects regardless of roots
   - resets the fixed arena when one is configured
-- `Mutator` now records remembered-set edges through `src/remembered_set.zig` on block-to-block mutation.
-- The baseline collector still ignores remembered edges for policy decisions, but the write-barrier seam is now explicit and observable instead of being hidden in `Runtime`.
-- This is an intentional divergence from OCaml's phased generational collector.
+- `Mutator` now records major-to-nursery edges through `src/remembered_set.zig`:
+  - on mutate writes,
+  - on initialize writes into already-major blocks.
+- zort's generational baseline still diverges intentionally from OCaml:
+  - promotion preserves stable `HeapRef` identity instead of exposing forwarding-pointer states,
+  - nursery and major live in one slot table instead of separate heaps,
+  - there is no domain/STW coordination yet.
 - Future work must add more root providers, richer object tracing, and stronger policy hooks without collapsing storage and collection back into `Runtime`.

@@ -283,7 +283,7 @@ Status:
 - `ControlKernel` owns typed fibers, continuations, parent links, and handler stacks in `src/control_kernel.zig`.
 - `perform` and `resumeContinuation` now provide the first explicit one-shot effects path with unhandled/resumed failure tests.
 - Fibers now own managed stacks with explicit frame roots and site ids.
-- Callback boundaries and parent-fiber backtrace walking are explicit control-kernel behavior instead of implicit runtime state.
+- Callback boundaries, `reperform`, and parent-fiber/continuation backtrace walking are explicit control-kernel behavior instead of implicit runtime state.
 
 ### 10. Native Boundary Services
 
@@ -306,7 +306,8 @@ Exit criteria:
 
 Status:
 - In progress.
-- `RuntimeServices` in `src/runtime_services.zig` now owns runtime-local startup/shutdown state, pending signals, blocking sections, and named values as a collector-visible provider.
+- `RuntimeServices` in `src/runtime_services.zig` now owns runtime-local startup/shutdown state, pending signals, signal handlers, blocking sections, and named values as a collector-visible provider.
+- `Runtime.deliverPendingActions(...)` now delivers pending signal handlers and ready finalizers through explicit callback-boundary entry.
 - Signal-stack policy, dynlink registration, sync primitives, and domain/STW coordination remain open.
 
 ### 11. Extended Semantic Surface
@@ -326,6 +327,12 @@ Tasks:
 Exit criteria:
 - Every remaining OCaml surface is implemented or explicitly deferred with rationale.
 
+Status:
+- In progress.
+- `ManagedLiveness` in `src/liveness.zig` now provides weak refs, ephemerons, and first/last finalizer queues through collector phase hooks.
+- `MemprofState` in `src/memprof.zig` now provides sampled allocation/promotion/reclaim tracking with optional allocation-site backtraces.
+- Marshal/code identity and generic compare/hash remain deferred or selective non-goals.
+
 ### 12. Alternate Collectors And Policy Experiments
 
 Refs:
@@ -344,9 +351,9 @@ Exit criteria:
 
 Status:
 - Prerequisites are landing before collector replacement work.
-- `Collector` now emits explicit phases and supports weak/finalizer hooks.
-- `Mutator` now records remembered-set edges through `src/remembered_set.zig`.
-- Nursery/promotion/major-heap policy is still deferred.
+- `Collector` now emits explicit phases, supports weak/finalizer hooks, and has a `generational` nursery/major baseline with in-place promotion.
+- `Mutator` now records major-to-nursery edges through `src/remembered_set.zig`.
+- Nursery/promotion policy exists; domain/STW-aware major-heap policy is still deferred.
 
 ## Anti-Goals During Rebuild
 

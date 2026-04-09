@@ -27,7 +27,14 @@ pub const CollectPhase = enum {
 
 pub const CollectStrategy = enum {
     mark_sweep,
+    generational,
     bump,
+};
+
+pub const MemprofAction = enum {
+    sampled_alloc,
+    promoted,
+    reclaimed,
 };
 
 pub const ControlAction = enum {
@@ -116,6 +123,17 @@ pub const ReclaimEvent = struct {
     kind: ObjectKind,
 };
 
+pub const MemprofEvent = struct {
+    action: MemprofAction,
+    handle: HeapRef,
+    sample_ordinal: u64,
+    kind: ObjectKind,
+    size: usize,
+    space: heap_store.Space,
+    promotion_count: usize = 0,
+    backtrace_depth: usize = 0,
+};
+
 pub const RootProviderEvent = struct {
     name: []const u8,
     count: usize,
@@ -159,6 +177,7 @@ pub const Event = union(enum) {
     gc_phase: GcPhaseEvent,
     gc_snapshot: GcSnapshotEvent,
     reclaim: ReclaimEvent,
+    memprof: MemprofEvent,
     control: ControlEvent,
 };
 
@@ -176,6 +195,9 @@ pub const Counters = struct {
     continuation_resumes: usize = 0,
     continuation_drops: usize = 0,
     unhandled_effects: usize = 0,
+    memprof_samples: usize = 0,
+    memprof_promotions: usize = 0,
+    memprof_reclaims: usize = 0,
 
     pub fn diff(after: Counters, before: Counters) Counters {
         return .{
@@ -192,6 +214,9 @@ pub const Counters = struct {
             .continuation_resumes = after.continuation_resumes - before.continuation_resumes,
             .continuation_drops = after.continuation_drops - before.continuation_drops,
             .unhandled_effects = after.unhandled_effects - before.unhandled_effects,
+            .memprof_samples = after.memprof_samples - before.memprof_samples,
+            .memprof_promotions = after.memprof_promotions - before.memprof_promotions,
+            .memprof_reclaims = after.memprof_reclaims - before.memprof_reclaims,
         };
     }
 };
@@ -246,6 +271,11 @@ pub const Recorder = struct {
             .gc_snapshot => |gc_snapshot| self.last_gc_snapshot = gc_snapshot,
             .gc_phase => {},
             .reclaim => self.counters.reclaims +%= 1,
+            .memprof => |memprof_event| switch (memprof_event.action) {
+                .sampled_alloc => self.counters.memprof_samples +%= 1,
+                .promoted => self.counters.memprof_promotions +%= 1,
+                .reclaimed => self.counters.memprof_reclaims +%= 1,
+            },
             .control => |control_event| switch (control_event.action) {
                 .fiber_activate => self.counters.fiber_activations +%= 1,
                 .continuation_capture => self.counters.continuation_captures +%= 1,
@@ -378,6 +408,11 @@ pub const TraceRecorder = struct {
                 self.counters.reclaims +%= 1;
                 self.trackObjectEvent(reclaim_event.handle, .{ .reclaim = reclaim_event });
             },
+            .memprof => |memprof_event| switch (memprof_event.action) {
+                .sampled_alloc => self.counters.memprof_samples +%= 1,
+                .promoted => self.counters.memprof_promotions +%= 1,
+                .reclaimed => self.counters.memprof_reclaims +%= 1,
+            },
             .control => |control_event| switch (control_event.action) {
                 .fiber_activate => self.counters.fiber_activations +%= 1,
                 .continuation_capture => self.counters.continuation_captures +%= 1,
@@ -459,6 +494,35 @@ test "event_sink: recorder tracks counters by event kind" {
         .handle = .{ .index = 1, .generation = 1 },
         .kind = .tuple,
     } });
+    sink.emit(.{ .memprof = .{
+        .action = .sampled_alloc,
+        .handle = .{ .index = 1, .generation = 1 },
+        .sample_ordinal = 1,
+        .kind = .tuple,
+        .size = 2,
+        .space = .nursery,
+        .backtrace_depth = 2,
+    } });
+    sink.emit(.{ .memprof = .{
+        .action = .promoted,
+        .handle = .{ .index = 1, .generation = 1 },
+        .sample_ordinal = 1,
+        .kind = .tuple,
+        .size = 2,
+        .space = .major,
+        .promotion_count = 1,
+        .backtrace_depth = 2,
+    } });
+    sink.emit(.{ .memprof = .{
+        .action = .reclaimed,
+        .handle = .{ .index = 1, .generation = 1 },
+        .sample_ordinal = 1,
+        .kind = .tuple,
+        .size = 2,
+        .space = .major,
+        .promotion_count = 1,
+        .backtrace_depth = 2,
+    } });
     sink.emit(.{ .control = .{
         .action = .continuation_capture,
         .effect = 7,
@@ -486,6 +550,9 @@ test "event_sink: recorder tracks counters by event kind" {
     try std.testing.expectEqual(@as(usize, 1), counters.reclaims);
     try std.testing.expectEqual(@as(usize, 1), counters.collections);
     try std.testing.expectEqual(@as(usize, 1), counters.continuation_captures);
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_samples);
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_promotions);
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_reclaims);
     try std.testing.expectEqualStrings("root_registry", recorder.last_root_providers[0].name);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_root_count);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_reclaimed);
@@ -534,6 +601,15 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .weak_processed = 1,
         .timings = .{ .mark_ns = 7, .total_ns = 44 },
     } });
+    sink.emit(.{ .memprof = .{
+        .action = .sampled_alloc,
+        .handle = handle,
+        .sample_ordinal = 1,
+        .kind = .boxed_i64,
+        .size = 1,
+        .space = .major,
+        .backtrace_depth = 3,
+    } });
     sink.emit(.{ .collect = .{
         .phase = .end,
         .strategy = .mark_sweep,
@@ -541,10 +617,11 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .reclaimed = 0,
     } });
 
-    try std.testing.expectEqual(@as(usize, 8), trace.traceEntries().len);
+    try std.testing.expectEqual(@as(usize, 9), trace.traceEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.rootProviderEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.marked.boxed_i64);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.weak_processed);
+    try std.testing.expectEqual(@as(usize, 1), trace.snapshot().memprof_samples);
     const last = trace.lastObjectEvent(handle).?;
     switch (last) {
         .field_write => |event| try std.testing.expectEqual(@as(usize, 0), event.index),

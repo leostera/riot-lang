@@ -5,6 +5,8 @@ const event_sink_mod = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
 const language_mod = @import("language.zig");
+const liveness_mod = @import("liveness.zig");
+const memprof_mod = @import("memprof.zig");
 const mutator = @import("mutator.zig");
 const remembered_set_mod = @import("remembered_set.zig");
 const root_provider_mod = @import("root_provider.zig");
@@ -22,11 +24,14 @@ pub const GcSnapshotEvent = event_sink_mod.GcSnapshotEvent;
 pub const ObjectExplain = struct {
     handle: HeapRef,
     kind: ObjectKind,
+    space: heap_store.Space,
     size: usize,
     explicit_roots: usize,
     control_roots: usize,
     service_roots: usize,
+    liveness_roots: usize,
     remembered_edges: usize,
+    memprof_sample: ?memprof_mod.SampleView = null,
     last_event: ?event_sink_mod.ObjectLastEvent = null,
 };
 pub const TraceRecorder = event_sink_mod.TraceRecorder;
@@ -40,9 +45,19 @@ pub const HandlerFrame = control_kernel_mod.HandlerFrame;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
+pub const Space = heap_store.Space;
 pub const Collector = collector_mod.Collector;
 pub const Language = language_mod.Language;
 pub const Mutator = mutator.Mutator;
+pub const ManagedLiveness = liveness_mod.ManagedLiveness;
+pub const MemprofConfig = memprof_mod.Config;
+pub const MemprofState = memprof_mod.MemprofState;
+pub const MemprofSample = memprof_mod.SampleView;
+pub const WeakRefHandle = liveness_mod.WeakRefHandle;
+pub const EphemeronHandle = liveness_mod.EphemeronHandle;
+pub const FinalizerHandle = liveness_mod.FinalizerHandle;
+pub const FinalizerMode = liveness_mod.FinalizerMode;
+pub const ReadyFinalizer = liveness_mod.ReadyFinalizer;
 pub const RememberedSet = remembered_set_mod.RememberedSet;
 pub const RootProvider = root_provider_mod.RootProvider;
 pub const RootRegistry = root_registry.RootRegistry;
@@ -60,8 +75,11 @@ pub const Runtime = struct {
         eventSink: EventSink = EventSink.noop(),
         /// Strategy selection for collection:
         /// - .mark_sweep: root-based mark-and-sweep (default, baseline behavior)
+        /// - .generational: nursery/minor baseline with explicit promotion
         /// - .bump: experimental full reset path
         gcStrategy: GcStrategy = .mark_sweep,
+        nurseryObjectWords: usize = 32,
+        memprof: MemprofConfig = .{},
     };
 
     pub const DebugChecks = struct {
@@ -80,6 +98,17 @@ pub const Runtime = struct {
         root_registrations: usize,
         root_unregistrations: usize,
         collect_generations: usize,
+        minor_collect_generations: usize,
+    };
+
+    pub const PendingSignal = struct {
+        signo: u8,
+        handler: Value,
+    };
+
+    pub const PendingAction = union(enum) {
+        signal: PendingSignal,
+        finalizer: ReadyFinalizer,
     };
 
     allocator: std.mem.Allocator,
@@ -89,12 +118,15 @@ pub const Runtime = struct {
     remembered_set: RememberedSet,
     root_registry: RootRegistry,
     services: RuntimeServices,
+    liveness: ManagedLiveness,
+    memprof: MemprofState,
     debug_root_checks: bool = false,
     debug_checks: DebugChecks = .{},
     fixed_arena: ?std.heap.FixedBufferAllocator = null,
     gc_strategy: GcStrategy = .mark_sweep,
     fixed_arena_buffer: ?[]u8 = null,
     collect_generations: usize = 0,
+    minor_collect_generations: usize = 0,
 
     pub fn init(allocator: std.mem.Allocator) Runtime {
         return initWithConfig(allocator, .{});
@@ -109,6 +141,8 @@ pub const Runtime = struct {
             .remembered_set = RememberedSet.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
             .services = RuntimeServices.init(allocator),
+            .liveness = ManagedLiveness.init(allocator),
+            .memprof = MemprofState.init(allocator, config.eventSink, config.memprof),
             .debug_root_checks = config.debugRootChecks,
             .debug_checks = config.debugChecks,
         };
@@ -117,6 +151,10 @@ pub const Runtime = struct {
             runtime.fixed_arena_buffer = buffer;
         }
         runtime.gc_strategy = config.gcStrategy;
+        runtime.heap_store.configureNursery(.{
+            .enabled = config.gcStrategy == .generational,
+            .max_object_words = config.nurseryObjectWords,
+        });
         runtime.services.startup() catch unreachable;
         return runtime;
     }
@@ -134,12 +172,15 @@ pub const Runtime = struct {
             .root_registrations = stats.root_registrations,
             .root_unregistrations = stats.root_unregistrations,
             .collect_generations = self.collect_generations,
+            .minor_collect_generations = self.minor_collect_generations,
         };
     }
 
     pub fn deinit(self: *Runtime) void {
         self.services.shutdown() catch {};
         self.services.deinit();
+        self.liveness.deinit();
+        self.memprof.deinit();
         self.heap_store.deinit(self.fixed_arena_buffer != null);
         self.remembered_set.deinit();
         self.root_registry.deinit();
@@ -150,6 +191,11 @@ pub const Runtime = struct {
         return self.heap_store.count();
     }
 
+    pub fn objectSpace(self: *Runtime, block_value: Value) ?Space {
+        const handle = block_value.asHeapRef() orelse return null;
+        return self.heap_store.spaceOf(handle);
+    }
+
     pub fn objectFromDebug(self: *Runtime, block_value: Value) ?*Object {
         return self.objectFrom(block_value);
     }
@@ -157,12 +203,18 @@ pub const Runtime = struct {
     fn collectorWithProviders(self: *Runtime, root_providers: []const RootProvider) Collector {
         return Collector.init(
             &self.heap_store,
+            &self.remembered_set,
+            &self.memprof,
             root_providers,
             &self.fixed_arena,
             self.fixed_arena_buffer,
             self.gc_strategy,
             self.event_sink,
-            Collector.PhaseHooks.noop(),
+            .{
+                .ctx = &self.liveness,
+                .process_weak_fn = processWeakHook,
+                .process_finalizers_fn = processFinalizersHook,
+            },
         );
     }
 
@@ -182,24 +234,38 @@ pub const Runtime = struct {
         return &self.services;
     }
 
+    pub fn managedLiveness(self: *Runtime) *ManagedLiveness {
+        return &self.liveness;
+    }
+
+    pub fn memprofState(self: *Runtime) *MemprofState {
+        return &self.memprof;
+    }
+
     pub fn rememberedSet(self: *Runtime) *RememberedSet {
         return &self.remembered_set;
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
         var writer = self.mutator();
-        return writer.allocCompat(arity, tag);
+        const allocated = try writer.allocCompat(arity, tag);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocTuple(self: *Runtime, len: usize) !Value {
         var surface = self.language();
-        return surface.allocTuple(len);
+        const allocated = try surface.allocTuple(len);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     /// Allocate a tuple and initialize all fields from `fields`.
     pub fn tuple(self: *Runtime, fields: []const Value) !Value {
         var surface = self.language();
-        return surface.tuple(fields);
+        const allocated = try surface.tuple(fields);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn tupleLength(self: *Runtime, block_value: Value) !usize {
@@ -209,37 +275,51 @@ pub const Runtime = struct {
 
     pub fn allocString(self: *Runtime, bytes: []const u8) !Value {
         var surface = self.language();
-        return surface.allocString(bytes);
+        const allocated = try surface.allocString(bytes);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocStringWithFill(self: *Runtime, len: usize, fill: u8) !Value {
         var surface = self.language();
-        return surface.allocStringWithFill(len, fill);
+        const allocated = try surface.allocStringWithFill(len, fill);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocStringWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
         var surface = self.language();
-        return surface.allocStringWithInit(len, initial_bytes);
+        const allocated = try surface.allocStringWithInit(len, initial_bytes);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocBytes(self: *Runtime, bytes: []const u8) !Value {
         var surface = self.language();
-        return surface.allocBytes(bytes);
+        const allocated = try surface.allocBytes(bytes);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocBytesWithFill(self: *Runtime, len: usize, fill: u8) !Value {
         var surface = self.language();
-        return surface.allocBytesWithFill(len, fill);
+        const allocated = try surface.allocBytesWithFill(len, fill);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocBytesWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
         var surface = self.language();
-        return surface.allocBytesWithInit(len, initial_bytes);
+        const allocated = try surface.allocBytesWithInit(len, initial_bytes);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocI64(self: *Runtime, n: i64) !Value {
         var surface = self.language();
-        return surface.allocI64(n);
+        const allocated = try surface.allocI64(n);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocInt64(self: *Runtime, n: i64) !Value {
@@ -252,12 +332,16 @@ pub const Runtime = struct {
 
     pub fn allocI32(self: *Runtime, n: i32) !Value {
         var surface = self.language();
-        return surface.allocI32(n);
+        const allocated = try surface.allocI32(n);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocF64(self: *Runtime, number: f64) !Value {
         var surface = self.language();
-        return surface.allocF64(number);
+        const allocated = try surface.allocF64(number);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn allocDouble(self: *Runtime, number: f64) !Value {
@@ -326,7 +410,9 @@ pub const Runtime = struct {
 
     pub fn parseF64(self: *Runtime, literal: []const u8) !Value {
         var surface = self.language();
-        return surface.parseF64(literal);
+        const allocated = try surface.parseF64(literal);
+        self.trackAllocationSample(allocated);
+        return allocated;
     }
 
     pub fn formatF64(self: *Runtime, boxed_value: Value, buffer: []u8) ![]const u8 {
@@ -370,17 +456,72 @@ pub const Runtime = struct {
         return self.services.takePendingSignals();
     }
 
+    pub fn registerSignalHandler(self: *Runtime, signo: u8, handler: Value) !void {
+        try self.services.registerSignalHandler(signo, handler);
+    }
+
+    pub fn lookupSignalHandler(self: *Runtime, signo: u8) ?Value {
+        return self.services.lookupSignalHandler(signo);
+    }
+
+    pub fn createWeakRef(self: *Runtime, target: ?Value) !WeakRefHandle {
+        return self.liveness.createWeakRef(target);
+    }
+
+    pub fn weakGet(self: *Runtime, handle: WeakRefHandle) !?Value {
+        return self.liveness.weakGet(handle);
+    }
+
+    pub fn weakSet(self: *Runtime, handle: WeakRefHandle, target: ?Value) !void {
+        try self.liveness.weakSet(handle, target);
+    }
+
+    pub fn createEphemeron(self: *Runtime, keys: []const Value, data: ?Value) !EphemeronHandle {
+        return self.liveness.createEphemeron(keys, data);
+    }
+
+    pub fn ephemeronData(self: *Runtime, handle: EphemeronHandle) !?Value {
+        return self.liveness.ephemeronData(handle);
+    }
+
+    pub fn ephemeronSetData(self: *Runtime, handle: EphemeronHandle, data: ?Value) !void {
+        try self.liveness.ephemeronSetData(handle, data);
+    }
+
+    pub fn registerFinalizer(self: *Runtime, target: Value, callback: Value, mode: FinalizerMode) !FinalizerHandle {
+        return self.liveness.registerFinalizer(target, callback, mode);
+    }
+
+    pub fn drainReadyFinalizers(self: *Runtime, allocator: std.mem.Allocator) ![]ReadyFinalizer {
+        return self.liveness.drainReadyFinalizers(allocator);
+    }
+
+    pub fn captureCurrentBacktrace(self: *Runtime, allocator: std.mem.Allocator) ![]control_kernel_mod.BacktraceFrame {
+        return self.control_kernel.captureBacktrace(allocator, null);
+    }
+
+    pub fn captureContinuationBacktrace(
+        self: *Runtime,
+        allocator: std.mem.Allocator,
+        handle: ContinuationHandle,
+    ) ![]control_kernel_mod.BacktraceFrame {
+        return self.control_kernel.captureContinuationBacktrace(allocator, handle);
+    }
+
     pub fn explainValue(self: *Runtime, block_value: Value, trace: ?*const TraceRecorder) Error!ObjectExplain {
         const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
         const handle = block_value.asHeapRef() orelse return Error.InvalidValue;
         return .{
             .handle = handle,
             .kind = obj.kind().?,
+            .space = self.heap_store.spaceOf(handle).?,
             .size = obj.wosize(),
             .explicit_roots = self.root_registry.ownerCount(block_value),
             .control_roots = self.control_kernel.ownedRootCount(block_value),
             .service_roots = self.services.ownerCount(block_value),
+            .liveness_roots = self.liveness.ownerCount(block_value),
             .remembered_edges = self.remembered_set.ownerCount(handle),
+            .memprof_sample = self.memprof.sampleFor(handle),
             .last_event = if (trace) |recorder| recorder.lastObjectEvent(handle) else null,
         };
     }
@@ -394,15 +535,110 @@ pub const Runtime = struct {
     }
 
     pub fn collect(self: *Runtime) void {
+        if (self.gc_strategy == .generational) {
+            self.collectMinor();
+            return;
+        }
+        self.collectMajor();
+    }
+
+    pub fn collectMinor(self: *Runtime) void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         self.collect_generations +%= 1;
-        var providers_buffer: [3]RootProvider = undefined;
+        self.minor_collect_generations +%= 1;
+        var providers_buffer: [4]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
-        gc.collect();
+        if (self.gc_strategy == .generational) {
+            gc.collectMinor();
+        } else {
+            gc.collect();
+        }
         if (self.debug_checks.verify_after_collect) {
             self.verifyDebugState() catch |err| std.debug.panic("zort: debug verification failed: {s}", .{@errorName(err)});
         }
+    }
+
+    pub fn collectMajor(self: *Runtime) void {
+        if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
+        self.collect_generations +%= 1;
+        var providers_buffer: [4]RootProvider = undefined;
+        const providers = self.fillRootProviders(&providers_buffer);
+        var gc = self.collectorWithProviders(providers);
+        gc.collectMajor();
+        if (self.debug_checks.verify_after_collect) {
+            self.verifyDebugState() catch |err| std.debug.panic("zort: debug verification failed: {s}", .{@errorName(err)});
+        }
+    }
+
+    pub fn deliverPendingActions(
+        self: *Runtime,
+        context: anytype,
+        comptime deliver: fn (@TypeOf(context), PendingAction) anyerror!void,
+    ) !usize {
+        const current = self.control_kernel.currentFiber();
+        var delivered: usize = 0;
+
+        var pending_signals = self.services.takePendingSignals();
+        while (pending_signals != 0) {
+            const bit_index = @ctz(pending_signals);
+            pending_signals &= ~(@as(u64, 1) << @intCast(bit_index));
+            const signo: u8 = @intCast(bit_index);
+            const handler = self.services.lookupSignalHandler(signo) orelse continue;
+            {
+                try self.control_kernel.enterCallbackBoundary(current);
+                defer self.control_kernel.exitCallbackBoundary(current) catch unreachable;
+                try deliver(context, .{ .signal = .{
+                    .signo = signo,
+                    .handler = handler,
+                } });
+            }
+            delivered += 1;
+        }
+
+        const ready_finalizers = try self.liveness.drainReadyFinalizers(self.allocator);
+        defer self.allocator.free(ready_finalizers);
+        for (ready_finalizers) |ready| {
+            {
+                try self.control_kernel.enterCallbackBoundary(current);
+                defer self.control_kernel.exitCallbackBoundary(current) catch unreachable;
+                try deliver(context, .{ .finalizer = ready });
+            }
+            delivered += 1;
+        }
+
+        return delivered;
+    }
+
+    fn trackAllocationSample(self: *Runtime, block_value: Value) void {
+        if (!self.memprof.enabled()) return;
+        const handle = block_value.asHeapRef() orelse return;
+        const obj = self.objectFrom(block_value) orelse return;
+        const sample_ordinal = self.memprof.beginAllocation(obj.wosize()) orelse return;
+        const kind = obj.kind() orelse return;
+        const space = self.heap_store.spaceOf(handle) orelse return;
+
+        if (!self.memprof.capturesBacktraces()) {
+            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            return;
+        }
+
+        const frames = self.control_kernel.captureBacktrace(self.allocator, null) catch {
+            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            return;
+        };
+        defer self.allocator.free(frames);
+
+        const sites = self.allocator.alloc(u32, frames.len) catch {
+            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            return;
+        };
+        defer self.allocator.free(sites);
+
+        for (frames, 0..) |frame, index| {
+            sites[index] = frame.site_id;
+        }
+        self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, sites);
     }
 
     fn objectFrom(self: *Runtime, block_value: Value) ?*Object {
@@ -415,11 +651,12 @@ pub const Runtime = struct {
     }
 
     fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
-        std.debug.assert(buffer.len >= 3);
+        std.debug.assert(buffer.len >= 4);
         buffer[0] = self.root_registry.provider();
         buffer[1] = self.control_kernel.provider();
         buffer[2] = self.services.provider();
-        return buffer[0..3];
+        buffer[3] = self.liveness.provider();
+        return buffer[0..4];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
@@ -431,6 +668,16 @@ pub const Runtime = struct {
 
     fn isValidRootedValue(self: *Runtime, rooted: Value) bool {
         return self.objectFrom(rooted) != null;
+    }
+
+    fn processWeakHook(ctx: ?*anyopaque, collector: *Collector) usize {
+        const liveness: *ManagedLiveness = @ptrCast(@alignCast(ctx.?));
+        return liveness.processWeak(collector);
+    }
+
+    fn processFinalizersHook(ctx: ?*anyopaque, collector: *Collector) usize {
+        const liveness: *ManagedLiveness = @ptrCast(@alignCast(ctx.?));
+        return liveness.processFinalizers(collector);
     }
 };
 
@@ -1085,7 +1332,7 @@ test "runtime: explainValue reports root ownership and last object event" {
 
     const explained_root = try rt.explainValue(rooted, &trace);
     try std.testing.expectEqual(@as(usize, 1), explained_root.explicit_roots);
-    try std.testing.expectEqual(@as(usize, 1), explained_root.remembered_edges);
+    try std.testing.expectEqual(@as(usize, 0), explained_root.remembered_edges);
     try std.testing.expectEqual(@as(?event_sink_mod.ObjectLastEvent, .{ .field_write = .{
         .target = explained_root.handle,
         .index = 0,
@@ -1137,6 +1384,172 @@ test "runtime: runtime services track pending signals and blocking sections" {
     try std.testing.expectEqual((@as(u64, 1) << 2) | (@as(u64, 1) << 7), rt.takePendingSignals());
     try std.testing.expectEqual(@as(u64, 0), rt.takePendingSignals());
     try rt.exitBlockingSection();
+}
+
+test "runtime: generational minor collection promotes live nursery objects" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+    });
+    defer rt.deinit();
+
+    var root = try rt.allocTuple(1);
+    try rt.registerRoot(&root);
+    const child = try rt.allocTuple(0);
+    _ = try rt.allocTuple(0);
+    try rt.setField(root, 0, child);
+
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(child));
+    rt.collectMinor();
+
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(child));
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: remembered edges keep nursery children alive from major parents" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+    });
+    defer rt.deinit();
+
+    var parent = try rt.allocTuple(1);
+    try rt.registerRoot(&parent);
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(parent));
+
+    const child = try rt.allocTuple(0);
+    try rt.setField(parent, 0, child);
+    try std.testing.expectEqual(@as(usize, 1), rt.rememberedSet().count());
+
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(child));
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: weak refs and ephemerons follow collector liveness" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    var key = try rt.allocTuple(0);
+    try rt.registerRoot(&key);
+    const data = try rt.allocTuple(0);
+    const weak = try rt.createWeakRef(data);
+    const ephemeron = try rt.createEphemeron(&.{key}, data);
+
+    rt.collectMajor();
+    try std.testing.expectEqual(data, (try rt.weakGet(weak)).?);
+    try std.testing.expectEqual(data, (try rt.ephemeronData(ephemeron)).?);
+
+    rt.unregisterRoot(&key);
+    rt.collectMajor();
+    try std.testing.expectEqual(@as(?Value, null), try rt.weakGet(weak));
+    try std.testing.expectEqual(@as(?Value, null), try rt.ephemeronData(ephemeron));
+}
+
+test "runtime: pending signal and finalizer delivery runs inside callback boundaries" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{
+        .capture_events = true,
+    });
+    defer trace.deinit();
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+    });
+    defer rt.deinit();
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 55,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try rt.controlKernel().createFiber(main);
+    try rt.controlKernel().activateFiber(child);
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+
+    const finalizer_target = try rt.allocTuple(0);
+    const finalizer_callback = try rt.allocTuple(0);
+    _ = try rt.registerFinalizer(finalizer_target, finalizer_callback, .first);
+    rt.collectMajor();
+
+    const Delivery = struct {
+        rt: *Runtime,
+        actions: std.ArrayListUnmanaged(Runtime.PendingAction) = .{},
+
+        fn visit(self: *@This(), action: Runtime.PendingAction) !void {
+            try self.actions.append(std.testing.allocator, action);
+            try std.testing.expectError(error.UnhandledEffect, self.rt.controlKernel().performAt(8, 55, Value.fromInt(1), &.{}));
+        }
+    };
+
+    var delivery = Delivery{ .rt = &rt };
+    defer delivery.actions.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(usize, 2), try rt.deliverPendingActions(&delivery, Delivery.visit));
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+    try std.testing.expect(delivery.actions.items[0] == .signal);
+    try std.testing.expect(delivery.actions.items[1] == .finalizer);
+    try std.testing.expectEqual(finalizer_callback, delivery.actions.items[1].finalizer.callback);
+    try std.testing.expectEqual(finalizer_target, delivery.actions.items[1].finalizer.argument.?);
+
+    rt.collectMajor();
+    try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
+
+    var callback_entries: usize = 0;
+    for (trace.traceEntries()) |entry| {
+        if (entry.event == .control) {
+            if (entry.event.control.action == .callback_enter or entry.event.control.action == .callback_exit) {
+                callback_entries += 1;
+            }
+        }
+    }
+    try std.testing.expect(callback_entries >= 4);
+}
+
+test "runtime: memprof samples allocation backtraces and lifecycle transitions" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{
+        .capture_events = true,
+    });
+    defer trace.deinit();
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+        .gcStrategy = .generational,
+        .memprof = .{
+            .enabled = true,
+            .sample_interval_words = 1,
+            .capture_backtraces = true,
+        },
+    });
+    defer rt.deinit();
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushFrame(main, 777);
+    defer _ = rt.controlKernel().popFrame(main) catch unreachable;
+
+    const tuple = try rt.allocTuple(1);
+    var rooted = tuple;
+    var root = try rt.scopedRoot(&rooted);
+
+    const explained = try rt.explainValue(tuple, null);
+    try std.testing.expect(explained.memprof_sample != null);
+    try std.testing.expectEqual(@as(u32, 777), explained.memprof_sample.?.backtrace_sites[0]);
+
+    rt.collectMinor();
+    try std.testing.expectEqual(Space.major, rt.objectSpace(tuple).?);
+    try std.testing.expectEqual(@as(usize, 1), trace.snapshot().memprof_promotions);
+
+    rooted = Value.fromInt(0);
+    root.deinit();
+    rt.collectMajor();
+    try std.testing.expect(rt.objectFromDebug(tuple) == null);
+
+    const counters = trace.snapshot();
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_samples);
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_promotions);
+    try std.testing.expectEqual(@as(usize, 1), counters.memprof_reclaims);
 }
 
 test "runtime: debug object layout sizes" {

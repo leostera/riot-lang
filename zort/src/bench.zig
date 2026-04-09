@@ -33,6 +33,7 @@ const TraceMode = enum {
     all,
     gc,
     effects,
+    memprof,
 };
 
 const CaseProfile = struct {
@@ -55,8 +56,11 @@ const Config = struct {
     compare_strategies: bool = false,
 };
 
+const MaxTraceEntries = 128;
+
 const all_strategies = [_]Runtime.GcStrategy{
     .mark_sweep,
+    .generational,
     .bump,
 };
 
@@ -64,6 +68,7 @@ fn parseGcStrategy(raw: []const u8) ?Runtime.GcStrategy {
     if (std.mem.eql(u8, raw, "mark-sweep") or std.mem.eql(u8, raw, "mark_sweep")) {
         return .mark_sweep;
     }
+    if (std.mem.eql(u8, raw, "generational")) return .generational;
     if (std.mem.eql(u8, raw, "bump")) return .bump;
     return null;
 }
@@ -126,6 +131,10 @@ fn parseConfig() Config {
         }
         if (std.mem.eql(u8, arg, "--trace-effects")) {
             trace_mode = .effects;
+            continue;
+        }
+        if (std.mem.eql(u8, arg, "--trace-memprof")) {
+            trace_mode = .memprof;
             continue;
         }
         if (std.mem.startsWith(u8, arg, "--gc-strategy=")) {
@@ -213,6 +222,18 @@ fn runSuite(
             delta.reclaims,
         },
     );
+    if (delta.memprof_samples > 0 or delta.memprof_promotions > 0 or delta.memprof_reclaims > 0) {
+        std.log.info(
+            "{s}:{s}: memprof sampled={d} promoted={d} reclaimed={d}",
+            .{
+                @tagName(strategy),
+                label,
+                delta.memprof_samples,
+                delta.memprof_promotions,
+                delta.memprof_reclaims,
+            },
+        );
+    }
     if (trace_mode != .none) {
         emitTrace(label, strategy, recorder.traceEntries(), trace_mode);
     }
@@ -255,6 +276,11 @@ fn runBenchcases(
     var rt = Runtime.initWithConfig(allocator, .{
         .gcStrategy = gc_strategy,
         .eventSink = recorder.sink(),
+        .memprof = .{
+            .enabled = config.trace_mode == .memprof,
+            .sample_interval_words = 16,
+            .capture_backtraces = true,
+        },
     });
     defer rt.deinit();
     var csv_file: ?std.fs.File = null;
@@ -299,7 +325,7 @@ fn runBenchcases(
     rt.collect();
     const totals = recorder.snapshot();
     std.log.info(
-        "gc-strategy={s} sink={d} totals alloc={d} field={d} bytes={d} barrier={d} root+={d} root-={d} collect={d} reclaim={d}",
+        "gc-strategy={s} sink={d} totals alloc={d} field={d} bytes={d} barrier={d} root+={d} root-={d} collect={d} reclaim={d} memsample={d} mempromote={d} memreclaim={d}",
         .{
             @tagName(gc_strategy),
             bench_sink,
@@ -311,6 +337,9 @@ fn runBenchcases(
             totals.root_unregistrations,
             totals.collections,
             totals.reclaims,
+            totals.memprof_samples,
+            totals.memprof_promotions,
+            totals.memprof_reclaims,
         },
     );
 }
@@ -360,12 +389,22 @@ fn shouldTraceEntry(mode: TraceMode, entry: TraceEntry) bool {
             .control => true,
             else => false,
         },
+        .memprof => switch (entry.event) {
+            .memprof => true,
+            else => false,
+        },
     };
 }
 
 fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const TraceEntry, mode: TraceMode) void {
+    var printed: usize = 0;
+    var suppressed: usize = 0;
     for (entries) |entry| {
         if (!shouldTraceEntry(mode, entry)) continue;
+        if (printed >= MaxTraceEntries) {
+            suppressed += 1;
+            continue;
+        }
         switch (entry.event) {
             .alloc => |event| std.log.info(
                 "trace:{s}:{s}: alloc ts={d} handle={d}:{d} kind={s} size={d}",
@@ -430,6 +469,23 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 "trace:{s}:{s}: reclaim ts={d} handle={d}:{d} kind={s}",
                 .{ @tagName(strategy), label, entry.timestamp_ms, event.handle.index, event.handle.generation, @tagName(event.kind) },
             ),
+            .memprof => |event| std.log.info(
+                "trace:{s}:{s}: memprof ts={d} action={s} handle={d}:{d} sample={d} kind={s} size={d} space={s} promotions={d} depth={d}",
+                .{
+                    @tagName(strategy),
+                    label,
+                    entry.timestamp_ms,
+                    @tagName(event.action),
+                    event.handle.index,
+                    event.handle.generation,
+                    event.sample_ordinal,
+                    @tagName(event.kind),
+                    event.size,
+                    @tagName(event.space),
+                    event.promotion_count,
+                    event.backtrace_depth,
+                },
+            ),
             .control => |event| std.log.info(
                 "trace:{s}:{s}: control ts={d} action={s} site={d} effect={any} fiber={any} cont={any} handler={any}:{any} depth={d}",
                 .{
@@ -447,6 +503,13 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 },
             ),
         }
+        printed += 1;
+    }
+    if (suppressed > 0) {
+        std.log.info(
+            "trace:{s}:{s}: truncated {d} additional events (limit={d})",
+            .{ @tagName(strategy), label, suppressed, MaxTraceEntries },
+        );
     }
 }
 

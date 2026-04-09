@@ -187,9 +187,12 @@ pub const Mutator = struct {
     }
 
     fn recordBarrier(self: *Mutator, target: HeapRef, next: Value, comptime phase: StorePhase) Error!void {
-        if (phase != .mutate) return;
         var recorded = false;
         if (self.remembered_set) |set| {
+            const target_space = self.heap_store.spaceOf(target) orelse return;
+            const next_handle = next.asHeapRef() orelse return;
+            const next_space = self.heap_store.spaceOf(next_handle) orelse return;
+            if (target_space != .major or next_space != .nursery) return;
             recorded = try set.record(target, next);
         }
         if (!recorded) return;
@@ -197,6 +200,7 @@ pub const Mutator = struct {
             .target = target,
             .value_is_block = true,
         } });
+        _ = phase;
     }
 };
 
@@ -263,12 +267,40 @@ test "mutator: mutate writes record remembered edges for block targets" {
     defer remembered.deinit();
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
+    store.configureNursery(.{
+        .enabled = true,
+        .max_object_words = 2,
+    });
     var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
 
-    const target = try mutator.allocTuple(1);
+    const fields = try std.testing.allocator.alloc(Value, 1);
+    fields[0] = Value.fromInt(0);
+    const target = Value.fromHeapRef(try store.addInSpace(Object.initTuple(fields), .major));
     const child = try mutator.allocTuple(0);
     try mutator.writeField(target, 0, child);
     try mutator.writeField(target, 0, Value.fromInt(0));
+
+    try std.testing.expectEqual(@as(usize, 1), remembered.count());
+    try std.testing.expectEqual(@as(usize, 1), recorder.snapshot().barrier_records);
+}
+
+test "mutator: initialize records remembered edges for major-to-nursery fields" {
+    var recorder = event_sink.Recorder{};
+    var remembered = RememberedSet.init(std.testing.allocator);
+    defer remembered.deinit();
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    store.configureNursery(.{
+        .enabled = true,
+        .max_object_words = 2,
+    });
+    var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
+
+    const fields = try std.testing.allocator.alloc(Value, 1);
+    fields[0] = Value.fromInt(0);
+    const target = Value.fromHeapRef(try store.addInSpace(Object.initTuple(fields), .major));
+    const child = try mutator.allocTuple(0);
+    try mutator.initField(target, 0, child);
 
     try std.testing.expectEqual(@as(usize, 1), remembered.count());
     try std.testing.expectEqual(@as(usize, 1), recorder.snapshot().barrier_records);

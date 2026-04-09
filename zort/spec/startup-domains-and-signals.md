@@ -74,7 +74,8 @@
   - reference-counted startup/shutdown state,
   - pending-signal recording,
   - blocking-section depth,
-  - string-keyed named values rooted through the collector's `RootProvider` seam.
+  - string-keyed named values rooted through the collector's `RootProvider` seam,
+  - runtime-local signal handlers delivered through explicit callback-boundary entry.
 - This is an intentional simplification of OCaml's runtime-global model:
   - services are attached to one `Runtime` instance,
   - named values are runtime-local rather than process-global,
