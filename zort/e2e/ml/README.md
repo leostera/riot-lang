@@ -37,10 +37,13 @@ Current status:
     `caml_start_program`
   - nested `caml_startup` calls are ignored apart from the ownership count
   - `caml_shutdown` only tears metadata down on the final matching call
+  - calling `caml_startup` after a matched `caml_shutdown` now emits a
+    deterministic OCaml-style fatal stderr line and aborts
 - each zort-linked fixture now carries:
   - expected stdout
   - expected startup-metadata trace output
   - a recorded `bench_ns_per_run.txt` signal from the harness
+  - fatal fixtures additionally carry expected stderr and exit code
 
 Current cases:
 
@@ -55,6 +58,9 @@ Current cases:
 - `min_pure_startup_reentrant`: the same strict pure-startup object under a C
   host that calls `caml_startup`/`caml_shutdown` twice to prove nested startup
   ownership and final teardown behavior in the compatibility layer
+- `min_pure_startup_after_shutdown_fatal`: the same pure-startup object under a
+  C host that calls `caml_startup`, `caml_shutdown`, and then `caml_startup`
+  again to lock the forbidden restart-after-shutdown fatal path
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -88,6 +94,9 @@ The current `zort`-linked fixtures are intentionally narrow:
   harness can prove bare startup reaches compiler-emitted code
 - `min_pure_startup_reentrant` keeps the same pure-startup object but proves
   nested startup ownership and final metadata teardown under an embedding host
+- `min_pure_startup_after_shutdown_fatal` keeps the same pure-startup object
+  but proves the shutdown latch is permanent for embedders that attempt a
+  forbidden restart
 - `min_external_startup.ml` adds one top-level external primitive on the same
   startup path
 

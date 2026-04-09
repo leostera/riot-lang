@@ -355,15 +355,19 @@ fn syncMetadataObservability() void {
         @intFromBool(compiler_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
 }
 
-fn lifecyclePanic(err: CompilerCompatState.LifecycleError) noreturn {
-    switch (err) {
-        error.StartupAfterShutdown => @panic("zort: caml_startup called after caml_shutdown"),
-        error.ShutdownWithoutStartup => @panic("zort: caml_shutdown called without matching caml_startup"),
-    }
+fn lifecycleFatal(err: CompilerCompatState.LifecycleError) noreturn {
+    const message = switch (err) {
+        error.StartupAfterShutdown => "Fatal error: caml_startup was called after the runtime was shut down with caml_shutdown\n",
+        error.ShutdownWithoutStartup => "Fatal error: a call to caml_shutdown has no corresponding call to caml_startup\n",
+    };
+
+    // Match the OCaml fatal shape without depending on Zig's panic formatting.
+    _ = std.posix.write(std.posix.STDERR_FILENO, message) catch {};
+    std.process.abort();
 }
 
 fn startupCommon() RawValue {
-    const should_initialize = compiler_compat_state.beginStartup() catch |err| lifecyclePanic(err);
+    const should_initialize = compiler_compat_state.beginStartup() catch |err| lifecycleFatal(err);
     if (should_initialize) resetObservabilityForFreshStartup();
     zort_startup_calls +%= 1;
     syncLifecycleObservability();
@@ -404,7 +408,7 @@ pub export fn caml_startup_pooled_exn(argv: ?*anyopaque) RawValue {
 }
 
 pub export fn caml_shutdown() void {
-    const should_cleanup = compiler_compat_state.beginShutdown() catch |err| lifecyclePanic(err);
+    const should_cleanup = compiler_compat_state.beginShutdown() catch |err| lifecycleFatal(err);
     zort_shutdown_calls +%= 1;
     if (should_cleanup) {
         compiler_compat_state.reset();

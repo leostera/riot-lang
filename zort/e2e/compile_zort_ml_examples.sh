@@ -69,7 +69,7 @@ measure_bench_ns_per_run() {
   awk -v seconds="$real_seconds" -v runs="$bench_runs" 'BEGIN { printf "%.0f\n", (seconds * 1000000000) / runs }'
 }
 
-compile_case() {
+compile_fixture() {
   case_name=$1
   ml_source=$2
   host_stub=$3
@@ -99,8 +99,25 @@ compile_case() {
     -Wl,-rpath,"$(dirname "$ZORT_COMPAT_DYLIB")" \
     -lm \
     -o "$exe"
+}
 
-  "$exe" >"$raw_output"
+compile_success_case() {
+  case_name=$1
+  ml_source=$2
+  host_stub=$3
+
+  compile_fixture "$case_name" "$ml_source" "$host_stub"
+
+  case_dir="$OUT_DIR/$case_name"
+  raw_output="$case_dir/raw_output.txt"
+  stdout_file="$case_dir/stdout.txt"
+  trace_file="$case_dir/trace.txt"
+  bench_time_file="$case_dir/bench.time"
+  bench_file="$case_dir/bench_ns_per_run.txt"
+  expected_stdout="$SCRIPT_DIR/ml/$case_name.expected.stdout"
+  expected_trace="$SCRIPT_DIR/ml/$case_name.expected.trace.txt"
+
+  "$case_dir/$case_name.zort" >"$raw_output"
 
   line_count=$(awk 'END { print NR }' "$raw_output")
   if [ "$line_count" -ne 2 ]; then
@@ -124,17 +141,73 @@ compile_case() {
     "$bench_ns_per_run"
 }
 
-compile_case \
+compile_fatal_case() {
+  case_name=$1
+  ml_source=$2
+  host_stub=$3
+
+  compile_fixture "$case_name" "$ml_source" "$host_stub"
+
+  case_dir="$OUT_DIR/$case_name"
+  exe="$case_dir/$case_name.zort"
+  raw_output="$case_dir/raw_output.txt"
+  stdout_file="$case_dir/stdout.txt"
+  trace_file="$case_dir/trace.txt"
+  stderr_file="$case_dir/stderr.txt"
+  exitcode_file="$case_dir/exitcode.txt"
+  expected_stdout="$SCRIPT_DIR/ml/$case_name.expected.stdout"
+  expected_trace="$SCRIPT_DIR/ml/$case_name.expected.trace.txt"
+  expected_stderr="$SCRIPT_DIR/ml/$case_name.expected.stderr"
+  expected_exitcode="$SCRIPT_DIR/ml/$case_name.expected.exitcode"
+
+  if (
+    sh -c 'exec "$1"' sh "$exe" >"$raw_output" 2>"$stderr_file"
+  ) 2>/dev/null; then
+    echo "expected fatal failure from $case_name" >&2
+    exit 1
+  else
+    exit_code=$?
+  fi
+
+  printf '%s\n' "$exit_code" >"$exitcode_file"
+
+  line_count=$(awk 'END { print NR }' "$raw_output")
+  if [ "$line_count" -ne 2 ]; then
+    echo "expected exactly 2 output lines from $case_name before fatal, got $line_count" >&2
+    cat "$raw_output" >&2
+    exit 1
+  fi
+
+  sed -n '1p' "$raw_output" >"$stdout_file"
+  sed -n '2p' "$raw_output" >"$trace_file"
+
+  verify_expected_output "$stdout_file" "$expected_stdout" "stdout"
+  verify_expected_output "$trace_file" "$expected_trace" "trace"
+  verify_expected_output "$stderr_file" "$expected_stderr" "stderr"
+  verify_expected_output "$exitcode_file" "$expected_exitcode" "exit code"
+
+  printf "e2e-ml-zort %s fatal exit=%s %s\n" \
+    "$case_name" \
+    "$exit_code" \
+    "$(cat "$trace_file")"
+}
+
+compile_success_case \
   "min_pure_startup" \
   "min_pure_startup.ml" \
   "$SCRIPT_DIR/ml/min_pure_startup_main.c"
 
-compile_case \
+compile_success_case \
   "min_pure_startup_reentrant" \
   "min_pure_startup.ml" \
   "$SCRIPT_DIR/ml/min_pure_startup_reentrant_main.c"
 
-compile_case \
+compile_fatal_case \
+  "min_pure_startup_after_shutdown_fatal" \
+  "min_pure_startup.ml" \
+  "$SCRIPT_DIR/ml/min_pure_startup_after_shutdown_fatal_main.c"
+
+compile_success_case \
   "min_external_startup" \
   "min_external_startup.ml" \
   "$SCRIPT_DIR/ml/min_external_startup_main.c"
