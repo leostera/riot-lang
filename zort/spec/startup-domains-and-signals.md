@@ -83,7 +83,9 @@ Executable model:
   - pending-signal recording,
   - blocking-section depth,
   - string-keyed named values rooted through the collector's `RootProvider` seam,
-  - runtime-local signal handlers delivered through explicit callback-boundary entry.
+  - runtime-local signal handlers delivered through explicit callback-boundary entry,
+  - native signal-ingress installation claimed by one runtime at a time,
+  - and explicit alternate signal-stack ownership with restore records.
 - Pending actions now drain through explicit runtime checkpoints rather than only through ad hoc manual delivery:
   - scheduler safepoints after current-fiber activation/switch,
   - blocking-section entry before the domain becomes blocked,
@@ -93,6 +95,10 @@ Executable model:
   - pending signals are cleared only after successful delivery,
   - ready finalizers are acknowledged one by one after successful delivery,
   - a failed callback leaves the action pending for retry instead of dropping it silently.
+- zort's mixed pending-action path is now test-locked for blocking transitions:
+  - blocking entry drains both signals and ready finalizers at `.blocking_enter`,
+  - failed mixed delivery leaves both the signal bit and ready finalizer pending,
+  - retry drains each action exactly once.
 - The current domain model includes:
   - a main attached domain created at runtime startup,
   - a main worker bootstrapped at runtime startup with an explicit owner token,
@@ -108,6 +114,7 @@ Executable model:
 - This is an intentional simplification of OCaml's runtime-global model:
   - services are attached to one `Runtime` instance,
   - named values are runtime-local rather than process-global,
+  - named-value and signal-handler mutation is serialized by a runtime-local mutex,
   - scheduler lanes and STW coordination now expose shared-memory-safe atomic coordination state,
   - STW pause acknowledgements can arrive independently per registered domain,
   - worker lifecycle is now explicit at the runtime layer,

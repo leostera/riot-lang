@@ -118,7 +118,8 @@
 - zort now also has a small runtime-services substrate in `src/runtime_services.zig`:
   - named values are stored as explicit service-owned roots,
   - lookup is string-keyed,
-  - service state is runtime-instance-local instead of OCaml-runtime-global.
+  - service state is runtime-instance-local instead of OCaml-runtime-global,
+  - and named-value / signal-handler mutation is serialized by a runtime-local mutex.
 - This is an intentional divergence from OCaml for now:
   - no global mutexed named-value table,
   - no dynlink frame-table / gc-roots / code-fragment registration yet,

@@ -13,15 +13,12 @@ Each item is capability-level and includes:
 
 ## now
 
-- [ ] [P0] Add real signal ingress plus owned alternate signal-stack lifecycle control. Why: zort needs deterministic external-event handling and safe signal-stack ownership for parity-like behavior; What we need: native signal capture, queueing, and delivery to `RuntimeServices`, plus setup/restore/teardown ownership records and coexistence handling with foreign stacks; Cannot do yet: true OS-level signal fidelity and platform-portable signal-stack semantics until we finalize per-platform backends.
-- [ ] [P1] Clarified policy for service-name storage and synchronization (`named` values/handlers). Why: consistency of compatibility state is required before adding plugin, callback, and debugger features; What we need: explicit ownership and synchronization policy documented and test-locked; Cannot do yet: cross-process/global sharing guarantees while runtime instances remain intentionally isolated.
-- [ ] [P1] Blocking-path correctness tests for mixed pending callbacks. Why: this is the safety gate for `now`; What we need: tests asserting one-shot draining, no duplicate execution, and stable ordering; Cannot do yet: comprehensive cross-runtime stress coverage without broader test harness for async external events.
-
-## next
-
 - [ ] [P1] Typed plugin registration contract and required-metadata validation policy. Why: a typed contract enables safe optional dynlink while avoiding raw native-link assumptions; What we need: explicit metadata schema, required symbol checks, and deterministic failure shapes; Cannot do yet: complete binary loader parity until we define supported plugin formats in runtime policy.
 - [ ] [P1] Compatibility GC-control façade for lifecycle operations and policy knobs. Why: user-facing GC control should be explicit without binding semantics to collector internals; What we need: boundary-facing commands mapped to collector hooks and invariants; Cannot do yet: direct OCaml API parity for all undocumented legacy fields.
 - [ ] [P1] Memory-management tuning and runtime-parameter exposure surface. Why: visibility into collector behavior is required for benchmarking and debugging; What we need: stable configuration surface and diagnostics rendering; Cannot do yet: exact numeric compatibility for all vendor/runtime parameters while we intentionally keep knobs subsetted.
+
+## next
+
 - [ ] [P1] Memory-profiling callback pipeline and filtering. Why: callback-based profiling enables low-overhead integration with tooling; What we need: registration lifecycle, payload schema, and filtering strategy by site/category; Cannot do yet: full low-level integration with external profilers until sink formats are standardized.
 - [ ] [P1] Structural compare/hash baseline in compatibility layer. Why: typed comparisons are core language observability and deterministic hashing behavior; What we need: invalid-value matrix, traversal budgets, and traversal interruption strategy; Cannot do yet: exhaustive parity for every custom callback mode and all historical edge-cases.
 - [ ] [P1] Boundary split for runtime-hosted services. Why: keeps core semantic runtime small and maintainable; What we need: explicit module boundary for channels/sync/io-like capabilities and compatibility contract; Cannot do yet: complete host-primitive replacement until feature owners are agreed.

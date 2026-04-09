@@ -53,6 +53,7 @@ pub const RuntimeServices = @import("runtime.zig").RuntimeServices;
 pub const SchedulerLaneSnapshot = @import("runtime.zig").SchedulerLaneSnapshot;
 pub const StopTheWorldCoordinator = @import("runtime.zig").StopTheWorldCoordinator;
 pub const StopTheWorldSnapshot = @import("runtime.zig").StopTheWorldSnapshot;
+pub const SignalIngressSnapshot = @import("runtime.zig").SignalIngressSnapshot;
 pub const StackLimits = @import("runtime.zig").StackLimits;
 pub const SuspendedStack = @import("runtime.zig").SuspendedStack;
 pub const TraceEntry = @import("runtime.zig").TraceEntry;

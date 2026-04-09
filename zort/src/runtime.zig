@@ -83,6 +83,7 @@ pub const RootVisitor = root_provider_mod.RootVisitor;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const RuntimeServices = runtime_services_mod.RuntimeServices;
+pub const SignalIngressSnapshot = runtime_services_mod.SignalIngressSnapshot;
 pub const StopTheWorldCoordinator = stw_coordinator_mod.StopTheWorldCoordinator;
 pub const StopTheWorldSnapshot = stw_coordinator_mod.CoordinationSnapshot;
 pub const Error = language_mod.Error;
@@ -883,8 +884,36 @@ pub const Runtime = struct {
         try self.services.registerSignalHandler(signo, handler);
     }
 
+    pub fn unregisterSignalHandler(self: *Runtime, signo: u8) !void {
+        try self.services.unregisterSignalHandler(signo);
+    }
+
     pub fn lookupSignalHandler(self: *Runtime, signo: u8) ?Value {
         return self.services.lookupSignalHandler(signo);
+    }
+
+    pub fn installSignalIngress(self: *Runtime, signo: u8) !void {
+        try self.services.installSignalIngress(signo);
+    }
+
+    pub fn uninstallSignalIngress(self: *Runtime, signo: u8) !bool {
+        return self.services.uninstallSignalIngress(signo);
+    }
+
+    pub fn enableAlternateSignalStack(self: *Runtime, requested_size: ?usize) !void {
+        try self.services.enableAlternateSignalStack(requested_size);
+    }
+
+    pub fn disableAlternateSignalStack(self: *Runtime) !void {
+        try self.services.disableAlternateSignalStack();
+    }
+
+    pub fn signalIngressSnapshot(self: *Runtime) SignalIngressSnapshot {
+        return self.services.signalIngressSnapshot();
+    }
+
+    pub fn raiseSignal(self: *Runtime, signo: u8) !void {
+        try self.services.raiseSignal(signo);
     }
 
     pub fn createWeakRef(self: *Runtime, target: ?Value) !WeakRefHandle {
@@ -2349,6 +2378,37 @@ test "runtime: runtime services track pending signals and blocking sections" {
     try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
 }
 
+test "runtime: signal ingress wrappers expose runtime service ownership" {
+    if (!runtime_services_mod.supports_native_signal_ingress) return error.SkipZigTest;
+
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const signo: u8 = @intCast(std.posix.SIG.USR1);
+    try rt.enableAlternateSignalStack(null);
+    try rt.installSignalIngress(signo);
+
+    const snapshot = rt.signalIngressSnapshot();
+    try std.testing.expect(snapshot.installed);
+    try std.testing.expect(snapshot.owns_alternate_stack);
+    try std.testing.expect(snapshot.alternate_stack_size > 0);
+    try std.testing.expectEqual((@as(u64, 1) << @intCast(signo)), snapshot.installed_signals);
+
+    try rt.raiseSignal(signo);
+
+    var spins: usize = 0;
+    while (rt.pendingSignalBits() == 0 and spins < 1000) : (spins += 1) {
+        std.Thread.yield() catch {};
+    }
+    try std.testing.expectEqual((@as(u64, 1) << @intCast(signo)), rt.pendingSignalBits());
+
+    try std.testing.expect(try rt.uninstallSignalIngress(signo));
+    try rt.disableAlternateSignalStack();
+    const after = rt.signalIngressSnapshot();
+    try std.testing.expect(!after.installed);
+    try std.testing.expect(!after.owns_alternate_stack);
+}
+
 test "runtime: generational minor collection promotes live nursery objects" {
     var rt = Runtime.initWithConfig(std.testing.allocator, .{
         .gcStrategy = .generational,
@@ -2548,6 +2608,106 @@ test "runtime: blocking transitions drain configured pending actions determinist
     try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
     try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
     try std.testing.expectEqual(PendingActionCheckpoint.blocking_exit, delivery.checkpoints.items[1]);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+}
+
+test "runtime: blocking enter drains mixed signal and finalizer actions once each" {
+    const Delivery = struct {
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+
+    const finalizer_target = try rt.allocTuple(0);
+    const finalizer_callback = try rt.allocTuple(0);
+    _ = try rt.registerFinalizer(finalizer_target, finalizer_callback, .first);
+    rt.collectMajor();
+
+    rt.pending_action_delivery = .{
+        .ctx = &delivery,
+        .deliver_fn = Delivery.deliver,
+    };
+    try std.testing.expectEqual(@as(usize, 2), rt.pendingActionCount());
+    try rt.enterBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+    try std.testing.expectEqual(@as(usize, 2), delivery.checkpoints.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[0]);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[1]);
+    try std.testing.expect(delivery.actions.items[0] == .signal);
+    try std.testing.expect(delivery.actions.items[1] == .finalizer);
+    try std.testing.expectEqual(finalizer_callback, delivery.actions.items[1].finalizer.callback);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+
+    try rt.exitBlockingSection();
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+}
+
+test "runtime: failed mixed blocking delivery keeps signal and finalizer pending" {
+    const Delivery = struct {
+        fail_once: bool = true,
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            if (self.fail_once) {
+                self.fail_once = false;
+                return error.DeliveryFailed;
+            }
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+
+    const finalizer_target = try rt.allocTuple(0);
+    const finalizer_callback = try rt.allocTuple(0);
+    _ = try rt.registerFinalizer(finalizer_target, finalizer_callback, .first);
+    rt.collectMajor();
+
+    rt.pending_action_delivery = .{
+        .ctx = &delivery,
+        .deliver_fn = Delivery.deliver,
+    };
+    try std.testing.expectEqual(@as(usize, 2), rt.pendingActionCount());
+    try std.testing.expectError(error.DeliveryFailed, rt.enterBlockingSection());
+    try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual((@as(u64, 1) << 2), rt.pendingSignalBits());
+    try std.testing.expect(rt.liveness.peekReadyFinalizer() != null);
+    try std.testing.expectEqual(@as(usize, 2), rt.pendingActionCount());
+
+    try rt.enterBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[0]);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[1]);
+    try std.testing.expect(delivery.actions.items[0] == .signal);
+    try std.testing.expect(delivery.actions.items[1] == .finalizer);
     try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
 }
 

@@ -5,7 +5,7 @@ cut across GC, scheduling, callback delivery, and domain coordination.
 
 ## Current Models
 
-- `PendingActionDrain.tla`: deterministic pending-action draining at scheduler safepoints, blocking transitions, and STW pause acknowledgements.
+- `PendingActionDrain.tla`: deterministic pending-action draining for mixed runtime callbacks at scheduler safepoints, blocking transitions, and STW pause acknowledgements.
 - `PendingActionDrain.cfg`: tiny TLC smoke config for the pending-action drain slice.
 
 ## Source Contracts
@@ -25,3 +25,7 @@ timeout 30 java -cp "/Applications/TLA+ Toolbox.app/Contents/Eclipse/tla2tools.j
 ```
 
 The smoke config is intentionally bounded with `TLCGet("level") < 7`.
+
+The model treats pending actions abstractly so it covers both pending signal
+callbacks and ready finalizers without baking callback policy into the state
+machine itself.

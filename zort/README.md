@@ -14,7 +14,7 @@ observability, not full OCaml runtime compatibility.
 - Sampled memprof lifecycle tracking for allocation / promotion / reclaim events
 - Managed fiber stacks with one-shot continuation capture/resume, `reperform`, explicit managed-stack growth policy, and deep-copy continuation stack snapshots for inspection
 - Explicit event sink, trace recorder, and GC/control instrumentation
-- Runtime services for named values, signal handlers, pending signals, and blocking-section state
+- Runtime services for named values, signal handlers, pending signals, blocking-section state, and owned alternate signal-stack lifecycle
 - Small optional compatibility shim (`api.zig`) for legacy `caml_*` entrypoints
 
 ## Current representation
@@ -100,6 +100,13 @@ for values that should become unreachable.
   - runtime-local signal handlers
   - pending signal bitset
   - blocking-section depth
+  - process-global signal-ingress ownership claimed by one runtime at a time
+  - alternate signal-stack setup / restore / teardown ownership
+- `Runtime` now exposes the signal-ingress capability directly:
+  - `installSignalIngress` / `uninstallSignalIngress`
+  - `enableAlternateSignalStack` / `disableAlternateSignalStack`
+  - `signalIngressSnapshot`
+  - `raiseSignal` for local ingress testing
 - `ManagedLiveness` keeps GC-phase-dependent behavior explicit:
   - weak refs
   - ephemerons

@@ -96,16 +96,24 @@
 
 - `RuntimeServices` in `src/runtime_services.zig` now owns:
   - pending-signal recording as an explicit bitset,
-  - blocking-section depth as explicit runtime service state.
+  - blocking-section depth as explicit runtime service state,
+  - a runtime-local signal-handler table rooted through the collector seam,
+  - process-global native signal-ingress installation claimed by one runtime at a time,
+  - and owned alternate signal-stack setup / restore / teardown records.
 - Signal handlers are now explicit runtime-local values:
   - `registerSignalHandler` stores a handler per signal number,
   - `deliverPendingActions` drains pending bits and delivers those handlers through callback boundaries.
+- Native signal ingress is now wired on Unix-like targets:
+  - `installSignalIngress` installs a POSIX handler that records the signal and preserves the runtime's pending-signal bitset semantics,
+  - `enableAlternateSignalStack` installs a runtime-owned `sigaltstack`,
+  - teardown disables zort's alternate stack before attempting to restore a foreign prior stack,
+  - if the prior foreign stack cannot be restored because the platform rejects it, zort leaves signal delivery disabled rather than re-entering undefined behavior.
 - `ControlKernel` in `src/control_kernel.zig` now owns managed-stack limits:
   - frame-count overflow,
   - frame-root overflow,
   - explicit managed-stack growth from configured initial capacities up to configured maxima,
   - typed `StackOverflow` errors once that managed-stack growth policy reaches its configured max.
-- This is only the service/kernel seam, not full signal runtime parity:
-  - alternate signal stacks are not implemented,
-  - OS-signal delivery is not wired into the runtime yet,
+- This is still not full signal/runtime parity:
+  - zort's signal ingress is Unix-first and intentionally bounded,
+  - pending actions still drain at explicit runtime checkpoints instead of trying to run signal callbacks eagerly,
   - native thread-stack overflow recovery remains platform work for later.
