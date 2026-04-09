@@ -83,7 +83,7 @@ let sub = fun ?(pos = 0) ~len segments ->
         in
         let next = make_segment
           ~buffer:segment.buffer
-          ~offset:((segment.offset + start_offset))
+          ~offset:(segment.offset + start_offset)
           ~length:take in
         loop (index + 1) segment_end (next :: acc)
   in

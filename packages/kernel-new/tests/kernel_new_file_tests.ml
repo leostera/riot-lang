@@ -238,6 +238,32 @@ let test_dangling_symlink_still_has_symlink_metadata = fun _ctx ->
           else
             Error "expected dangling symlink_metadata to preserve symlink kind"))
 
+let test_metadata_reports_missing_target_for_dangling_symlink = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "dangling") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            Ok ())
+      in
+      let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.remove_file target) in
+          let* raw = lift (Kernel.Fs.File.symlink_metadata link) in
+          match Kernel.Fs.File.metadata link with
+          | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory) when Kernel.Fs.File.Metadata.is_symlink
+            raw -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected metadata to fail on a dangling symlink while symlink_metadata still succeeds"))
+
 let test_lstat_matches_symlink_metadata = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -643,6 +669,7 @@ let tests = [
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
   Test.case "Fs.File dangling symlink still reports symlink metadata" test_dangling_symlink_still_has_symlink_metadata;
+  Test.case "Fs.File metadata reports missing target for dangling symlink" test_metadata_reports_missing_target_for_dangling_symlink;
   Test.case "Fs.File lstat matches symlink_metadata" test_lstat_matches_symlink_metadata;
   Test.case "Fs.File metadata follows symlink but remove_file only unlinks the symlink" test_metadata_follows_symlink_but_remove_only_unlinks_symlink;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;

@@ -454,6 +454,38 @@ let test_repeated_register_and_deregister_stays_healthy = fun _ctx ->
           in
           loop 256))
 
+let test_repeated_register_reregister_and_deregister_stays_healthy = fun _ctx ->
+  with_pipe
+    (fun _read_end write_end ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Fs.File.to_source write_end in
+          let rec loop remaining =
+            if remaining = 0 then
+              Ok ()
+            else
+              let token = Kernel.Async.Token.make ("cycle", remaining) in
+              let replacement = Kernel.Async.Token.make ("replacement", remaining) in
+              let* () = lift_async
+                (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
+              let* () = lift_async
+                (Kernel.Async.Poll.reregister poll replacement Kernel.Async.Interest.writable source) in
+              let* events = wait_for_event poll in
+              let found =
+                List.exists
+                  (fun event ->
+                    Kernel.Async.Event.is_writable event
+                    && Kernel.Async.Token.equal replacement (Kernel.Async.Event.token event))
+                  events
+              in
+              if not found then
+                Error "expected repeated reregister cycles to preserve the replacement token"
+              else
+                let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+                loop (remaining - 1)
+          in
+          loop 64))
+
 let test_poll_handles_mixed_source_types = fun _ctx ->
   with_pipe
     (fun read_end write_end ->
@@ -652,6 +684,7 @@ let tests = [
   Test.case ~size:Test.Large "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
   Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
   Test.case ~size:Test.Large "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;
+  Test.case ~size:Test.Large "Async repeated register, reregister, and deregister stays healthy" test_repeated_register_reregister_and_deregister_stays_healthy;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_async_tests" ~tests ~args

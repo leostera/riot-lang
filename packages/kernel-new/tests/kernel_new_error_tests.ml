@@ -30,9 +30,31 @@ let test_error_envelope_extracts_nested_process_file_system_errors = fun _ctx ->
   else
     Error "expected process file errors to expose their nested system cause"
 
+let test_error_envelope_reports_stable_module_tags = fun _ctx ->
+  let socket_addr = Kernel.Error.of_net_socket_addr
+    (Kernel.Net.SocketAddr.InvalidPort { port = (-1) }) in
+  let timer = Kernel.Error.of_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = (-1L) }) in
+  if
+    Kernel.String.equal (Kernel.Error.module_name socket_addr) "net.socket_addr"
+    && Kernel.String.equal (Kernel.Error.module_name timer) "time.timer"
+  then
+    Ok ()
+  else
+    Error "expected envelope helpers to report stable module tags"
+
+let test_error_envelope_system_is_none_for_non_system_errors = fun _ctx ->
+  let ip_addr = Kernel.Error.of_net_ip_addr (Kernel.Net.IpAddr.InvalidText { value = "not-an-ip" }) in
+  let timer = Kernel.Error.of_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = 0L }) in
+  if Kernel.Error.system ip_addr = None && Kernel.Error.system timer = None then
+    Ok ()
+  else
+    Error "expected envelope helpers to keep non-system errors distinct"
+
 let tests = [
   Test.case "Error envelope reports module and system context" test_error_envelope_reports_module_and_system;
   Test.case "Error envelope extracts nested process file system errors" test_error_envelope_extracts_nested_process_file_system_errors;
+  Test.case "Error envelope reports stable module tags" test_error_envelope_reports_stable_module_tags;
+  Test.case "Error envelope keeps non-system errors distinct" test_error_envelope_system_is_none_for_non_system_errors;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_error_tests" ~tests ~args

@@ -11,7 +11,7 @@ Current backend status:
 - Unix only
 
 Current public surface:
-- foundational: `Bool`, `Char`, `Int`, `Int32`, `Int64`, `Float`, `String`, `Bytes`, `Array`, `Option`, `Result`, `Error`
+- foundational: `Bool`, `Char`, `Int`, `Int32`, `Int64`, `Float`, `String`, `Bytes`, `Array`, `Option`, `Result`, `SystemError`, `Error`
 - runtime/platform: `Effect`, `Async`, `Path`, `IO.Iovec`, `Fs.File`, `Net`, `Time`, `Env`, `Process`
 
 Not in `kernel-new`:
@@ -33,6 +33,8 @@ Examples:
 [`Kernel_new.Error`](./src/error.mli) wraps those module-local errors into one shared sum type for package boundaries and test helpers. [`Kernel_new.SystemError`](./src/system_error.mli) owns the shared errno-like system cases used by native shims.
 
 `Kernel_new.Error` is only the typed envelope. The invariant-violation escape hatch stays in [`Kernel_new.SystemError.panic`](./src/system_error.mli), not in the package error sum.
+
+`Kernel_new.SystemError` is intentionally symbolic. Numeric error-code bridges stay internal to native-facing modules and do not belong in the portable public contract.
 
 ## Rules
 
@@ -101,6 +103,28 @@ Nonblocking rule of thumb:
 
 - if a capability has a `to_source`, do not add a separate blocking wait helper for it
 - if an operation is exposed as an immediate syscall-shaped primitive, document why it is intentionally synchronous
+
+## Native Entrypoint Audit
+
+Selector-backed readiness paths:
+
+- `Async.Adapter.Unix.FFI.selector_wait` drives readiness polling
+- `Async.Adapter.Unix.FFI.selector_apply` mutates selector interest sets
+- `Async.Adapter.Unix.FFI.selector_register_process` / `selector_reregister_process` / `selector_deregister_process` wire process readiness into the selector
+- `Async.Adapter.Unix.FFI.selector_register_timer` / `selector_reregister_timer` / `selector_deregister_timer` wire timer readiness into the selector
+
+Intentionally synchronous native calls:
+
+- `Time.SystemTime.Unix.FFI.now` and `Time.Monotonic.Unix.FFI.now` are immediate clock reads
+- `Env.Unix.FFI.*` is immediate process-environment state
+- `Fs.File.Unix.FFI.*` covers file-descriptor I/O plus metadata, directory, path, and link syscalls
+- `Process.Unix.FFI.spawn`, `try_wait`, `kill`, and `current_pid` are immediate process syscalls
+- `Net.IpAddr.Unix.FFI.is_valid` is immediate input validation
+- `Net.TcpListener.Unix.FFI.*`, `Net.TcpStream.Unix.FFI.*`, and `Net.UdpSocket.Unix.FFI.*` expose nonblocking socket operations; readiness waiting stays in `Async`
+
+Review rule:
+
+- any new external must be classified here as either readiness-backed or intentionally synchronous
 
 ## Review Checklist
 

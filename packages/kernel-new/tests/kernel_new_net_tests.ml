@@ -217,21 +217,22 @@ let connect_stream = fun poll addr ->
       in
       finish 8
 
-let with_tcp_pair = fun fn ->
+let with_tcp_pair_at = fun listener_addr fn ->
   with_poll
     (fun poll ->
-      let* listener = lift_tcp_listener
-        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let* listener = lift_tcp_listener (Kernel.Net.TcpListener.bind listener_addr) in
       protect ~finally:(fun () -> close_listener listener)
         (fun () ->
-          let* listener_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
-          let* client = connect_stream poll listener_addr in
+          let* bound_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let* client = connect_stream poll bound_addr in
           protect ~finally:(fun () -> close_stream client)
             (fun () ->
               let* (server, peer) = accept_stream poll listener in
               protect
                 ~finally:(fun () -> close_stream server)
-                (fun () -> fn ~poll ~listener ~listener_addr ~client ~server ~peer))))
+                (fun () -> fn ~poll ~listener ~listener_addr:bound_addr ~client ~server ~peer))))
+
+let with_tcp_pair = fun fn -> with_tcp_pair_at (Kernel.Net.SocketAddr.loopback_v4 ~port:0) fn
 
 let wait_udp_readable = fun poll ~token socket ->
   wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket)
@@ -387,6 +388,31 @@ let test_tcp_stream_shutdown_write_rejects_further_writes = fun _ctx ->
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected write-shutdown tcp stream to reject further writes")
 
+let test_tcp_stream_shutdown_read_preserves_write_half = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Read) in
+      let payload = Kernel.Bytes.of_string "ping" in
+      let* () = write_all_stream
+        poll
+        ~token:(Kernel.Async.Token.make 314)
+        client
+        payload
+        ~pos:0
+        ~len:(Kernel.Bytes.length payload) in
+      let buffer = Kernel.Bytes.create 4 in
+      let* () = read_exact_stream
+        poll
+        ~token:(Kernel.Async.Token.make 315)
+        server
+        buffer
+        ~pos:0
+        ~len:4 in
+      if Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 4) "ping" then
+        Ok ()
+      else
+        Error "expected read-shutdown tcp stream to preserve the write half")
+
 let test_tcp_listener_ipv6_local_addr_roundtrips = fun _ctx ->
   let* listener = lift_tcp_listener
     (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
@@ -400,6 +426,41 @@ let test_tcp_listener_ipv6_local_addr_roundtrips = fun _ctx ->
         Ok ()
       else
         Error "expected ipv6 tcp listener to preserve the loopback address")
+
+let test_tcp_listener_and_stream_ipv6_roundtrip = fun _ctx ->
+  with_tcp_pair_at (Kernel.Net.SocketAddr.loopback_v6 ~port:0)
+    (fun ~poll ~listener:_ ~listener_addr ~client ~server ~peer ->
+      let listener_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip listener_addr) in
+      let accepted_peer_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip peer) in
+      let* client_peer = lift_tcp_stream (Kernel.Net.TcpStream.peer_addr client) in
+      let client_peer_ip = Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip client_peer) in
+      if
+        not (Kernel.String.equal listener_ip "::1")
+        || not (Kernel.String.equal accepted_peer_ip "::1")
+        || not (Kernel.String.equal client_peer_ip "::1")
+      then
+        Error "expected ipv6 tcp loopback peers to preserve the loopback address"
+      else
+        let payload = Kernel.Bytes.of_string "ipv6" in
+        let* () = write_all_stream
+          poll
+          ~token:(Kernel.Async.Token.make 316)
+          client
+          payload
+          ~pos:0
+          ~len:(Kernel.Bytes.length payload) in
+        let buffer = Kernel.Bytes.create 4 in
+        let* () = read_exact_stream
+          poll
+          ~token:(Kernel.Async.Token.make 317)
+          server
+          buffer
+          ~pos:0
+          ~len:4 in
+        if Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 4) "ipv6" then
+          Ok ()
+        else
+          Error "expected ipv6 tcp loopback to preserve payload")
 
 let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
   let* listener = lift_tcp_listener
@@ -1023,7 +1084,9 @@ let tests = [
   Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
   Test.case "Net.TcpStream write shutdown reports eof to the peer" test_tcp_stream_shutdown_write_reports_eof_to_peer;
   Test.case "Net.TcpStream write shutdown rejects further writes" test_tcp_stream_shutdown_write_rejects_further_writes;
+  Test.case "Net.TcpStream read shutdown preserves the write half" test_tcp_stream_shutdown_read_preserves_write_half;
   Test.case "Net.TcpListener ipv6 local_addr preserves loopback" test_tcp_listener_ipv6_local_addr_roundtrips;
+  Test.case "Net.TcpListener and TcpStream roundtrip over ipv6 loopback" test_tcp_listener_and_stream_ipv6_roundtrip;
   Test.case "Net.TcpListener bind rejects invalid backlog" test_tcp_listener_bind_rejects_invalid_backlog;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.TcpListener accept reports would_block without pending peers" test_tcp_listener_accept_reports_would_block;

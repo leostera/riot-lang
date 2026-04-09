@@ -154,6 +154,25 @@ let wait_for_exit = fun poll ~token process ->
   in
   loop ()
 
+let wait_for_priority_token = fun poll ~token ->
+  let rec loop attempts =
+    if attempts = 0 then
+      Error "expected process source to report priority readiness"
+    else
+      let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+      if
+        List.exists
+          (fun event ->
+            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+            && Kernel.Async.Event.is_priority event)
+          events
+      then
+        Ok ()
+      else
+        loop (attempts - 1)
+  in
+  loop 8
+
 let test_current_pid_is_positive = fun _ctx ->
   if Kernel.Process.current_pid () > 0 then
     Ok ()
@@ -248,6 +267,56 @@ let test_process_source_reports_exit_ready = fun _ctx ->
             Ok ()
           else
             Error "expected async process source to report a clean exit"))
+
+let test_process_source_reregister_updates_token = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let token_a = Kernel.Async.Token.make "first-process-token" in
+          let token_b = Kernel.Async.Token.make "second-process-token" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.priority source) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Async.Poll.deregister poll source in
+              ())
+            (fun () ->
+              let* () = lift_async
+                (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.priority source) in
+              let* () = wait_for_priority_token poll ~token:token_b in
+              match Kernel.Process.try_wait process with
+              | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) -> Ok ()
+              | Kernel.Result.Ok _ -> Error "expected reregistered process source to preserve exit readiness"
+              | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error))))
+
+let test_process_close_preserves_registered_exit_source = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let token = Kernel.Async.Token.make "closed-process-source" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Async.Poll.deregister poll source in
+              ())
+            (fun () ->
+              let* () = lift_process (Kernel.Process.close process) in
+              let* () = wait_for_priority_token poll ~token in
+              match Kernel.Process.try_wait process with
+              | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) -> Ok ()
+              | Kernel.Result.Ok _ -> Error "expected closed process handles to leave exit readiness intact"
+              | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error))))
 
 let test_kill_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -590,6 +659,8 @@ let tests = [
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
   Test.case "Process source reports exit readiness" test_process_source_reports_exit_ready;
+  Test.case "Process source reregister updates token" test_process_source_reregister_updates_token;
+  Test.case "Process close preserves registered exit source" test_process_close_preserves_registered_exit_source;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
   Test.case "Process sigterm reports signaled status" test_sigterm_reports_signaled_status;
   Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;

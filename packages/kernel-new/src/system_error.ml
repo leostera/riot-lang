@@ -28,60 +28,6 @@ type t =
   | DirectoryNotEmpty
   | Unknown of int
 
-let code_end_of_file = 1
-
-let code_permission_denied = 2
-
-let code_no_such_file_or_directory = 3
-
-let code_interrupted = 4
-
-let code_input_output = 5
-
-let code_bad_file_descriptor = 6
-
-let code_resource_busy = 7
-
-let code_already_exists = 8
-
-let code_invalid_argument = 9
-
-let code_no_space_left = 10
-
-let code_broken_pipe = 11
-
-let code_would_block = 12
-
-let code_not_directory = 13
-
-let code_is_directory = 14
-
-let code_not_supported = 15
-
-let code_address_in_use = 16
-
-let code_address_not_available = 17
-
-let code_connection_refused = 18
-
-let code_connection_reset = 19
-
-let code_timed_out = 20
-
-let code_network_unreachable = 21
-
-let code_destination_address_required = 22
-
-let code_not_connected = 23
-
-let code_connection_aborted = 24
-
-let code_message_too_long = 25
-
-let code_no_such_process = 26
-
-let code_directory_not_empty = 27
-
 let of_code = fun value ->
   match value with
   | 1 -> EndOfFile

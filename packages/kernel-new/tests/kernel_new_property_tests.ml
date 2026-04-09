@@ -217,6 +217,28 @@ let ipv4_text = fun a b c d ->
       Int.to_string (Int.abs d mod 256);
     ]
 
+let hex_group = fun raw ->
+  let digits = "0123456789abcdef" in
+  let value = Int.abs raw mod 65_536 in
+  if value = 0 then
+    "0"
+  else
+    let rec loop remaining acc =
+      if remaining = 0 then
+        acc
+      else
+        let digit = String.make 1 (String.get digits (remaining mod 16)) in
+        loop (remaining / 16) (digit :: acc)
+    in
+    String.concat "" (loop value [])
+
+let ipv6_text = fun raw_groups ->
+  let length = Kernel.Array.length raw_groups in
+  let groups =
+    Kernel.Array.init 8 (fun index -> hex_group (Kernel.Array.get raw_groups (index mod length)))
+  in
+  String.concat ":" (array_to_list groups)
+
 let iovec_into_string_roundtrips =
   property "IO.Iovec of_string_array flattens with preserved order" Arbitrary.(array string)
     (fun values ->
@@ -303,6 +325,18 @@ let ip_addr_ipv4_parse_render_roundtrips =
       | Kernel.Result.Ok parsed -> Kernel.Net.IpAddr.to_string parsed = text
       | Kernel.Result.Error _ -> false)
 
+let ip_addr_ipv6_parse_render_roundtrips =
+  property "Net.IpAddr ipv6 parse/render roundtrips" Arbitrary.(array int)
+    (fun raw_groups ->
+      assume (Kernel.Array.length raw_groups > 0);
+      let text = ipv6_text raw_groups in
+      match Kernel.Net.IpAddr.of_string text with
+      | Kernel.Result.Error _ -> false
+      | Kernel.Result.Ok parsed ->
+          match Kernel.Net.IpAddr.of_string (Kernel.Net.IpAddr.to_string parsed) with
+          | Kernel.Result.Ok reparsed -> Kernel.Net.IpAddr.equal reparsed parsed
+          | Kernel.Result.Error _ -> false)
+
 let socket_addr_roundtrips =
   property "Net.SocketAddr.make roundtrips loopback parts" Arbitrary.(pair bool int)
     (fun (use_v6, raw_port) ->
@@ -325,6 +359,21 @@ let socket_addr_ipv4_roundtrips =
     int)
     (fun (((a, b), (c, d)), raw_port) ->
       let text = ipv4_text a b c d in
+      let port = Int.abs raw_port mod 65_536 in
+      match Kernel.Net.IpAddr.of_string text with
+      | Kernel.Result.Error _ -> false
+      | Kernel.Result.Ok ip ->
+          match Kernel.Net.SocketAddr.make ~ip ~port with
+          | Kernel.Result.Error _ -> false
+          | Kernel.Result.Ok addr ->
+              let addr_ip, addr_port = Kernel.Net.SocketAddr.to_parts addr in
+              Kernel.Net.IpAddr.equal addr_ip ip && addr_port = port)
+
+let socket_addr_ipv6_roundtrips =
+  property "Net.SocketAddr.make roundtrips arbitrary ipv6 parts" Arbitrary.(pair (array int) int)
+    (fun (raw_groups, raw_port) ->
+      assume (Kernel.Array.length raw_groups > 0);
+      let text = ipv6_text raw_groups in
       let port = Int.abs raw_port mod 65_536 in
       match Kernel.Net.IpAddr.of_string text with
       | Kernel.Result.Error _ -> false
@@ -525,8 +574,10 @@ let tests = [
   path_join_is_associative_for_simple_segments;
   ip_addr_loopback_parse_render_roundtrips;
   ip_addr_ipv4_parse_render_roundtrips;
+  ip_addr_ipv6_parse_render_roundtrips;
   socket_addr_roundtrips;
   socket_addr_ipv4_roundtrips;
+  socket_addr_ipv6_roundtrips;
   file_slice_roundtrips;
   file_vectored_roundtrips;
   file_scalar_write_vectored_read_roundtrips;

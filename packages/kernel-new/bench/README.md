@@ -22,6 +22,7 @@ Current baseline medians from the latest validated Unix run:
   - `async reregister pipe source`: `5.96us`
   - `async timer wakeup`: `1.28ms`
   - `async many-source pipe wakeup`: `328.06us`
+  - `async mixed-source wakeup`: `34.09ms`
 - env:
   - `env current_dir`: `15.02us`
   - `env vars snapshot`: `7.15us`

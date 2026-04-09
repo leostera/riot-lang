@@ -145,7 +145,7 @@ module Selector = struct
       | false, true -> [ Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token ]
       | false, false -> []
     in
-    FFI.apply selector (Array.of_list changes) [|System_error.code_broken_pipe|]
+    FFI.apply selector (Array.of_list changes) [|System_error_code.broken_pipe|]
 
   let reregister = fun selector ~fd ~token ~interest ->
     let flags = Libc.(ev_clear lor ev_receipt) in
@@ -168,7 +168,7 @@ module Selector = struct
     FFI.apply
       selector
       changes
-      [|System_error.code_broken_pipe; System_error.code_no_such_file_or_directory|]
+      [|System_error_code.broken_pipe; System_error_code.no_such_file_or_directory|]
 
   let deregister = fun selector ~fd ->
     let flags = Libc.(ev_delete lor ev_receipt) in
@@ -177,7 +177,7 @@ module Selector = struct
       Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
       Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
     |] in
-    FFI.apply selector changes [|System_error.code_no_such_file_or_directory|]
+    FFI.apply selector changes [|System_error_code.no_such_file_or_directory|]
 
   let register_process = fun selector ~pid ~token -> FFI.register_process selector ~pid ~token
 
