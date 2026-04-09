@@ -27,10 +27,13 @@ compile_case() {
   case_dir="$OUT_DIR/$case_name"
   mkdir -p "$case_dir"
 
+  ml_basename=$(basename "$ml_source")
+  ml_copy="$case_dir/$ml_basename"
   ml_object="$case_dir/$case_name.o"
   vendor_exe="$case_dir/$case_name.vendor"
 
-  "$OCAMLOPT" -g -output-obj -o "$ml_object" "$SCRIPT_DIR/ml/$ml_source"
+  cp "$SCRIPT_DIR/ml/$ml_source" "$ml_copy"
+  "$OCAMLOPT" -g -output-obj -o "$ml_object" "$ml_copy"
 
   link_args="$host_stub $ml_object"
   if [ -n "$primitive_stub" ]; then
