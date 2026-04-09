@@ -83,6 +83,29 @@ let bench_scalar_read = fun () ->
               | Kernel.Result.Ok _ -> ()
               | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)))
 
+let bench_vectored_read = fun () ->
+  with_temp_path "kernel_new_file_bench" "readv.bin"
+    (fun path ->
+      let _ =
+        match Kernel.Fs.File.open_write path with
+        | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+        | Kernel.Result.Ok file ->
+            with_file file
+              (fun file ->
+                match Kernel.Fs.File.write file scalar_payload with
+                | Kernel.Result.Ok _ -> ()
+                | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error))
+      in
+      match Kernel.Fs.File.open_read path with
+      | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+      | Kernel.Result.Ok file ->
+          let iov = Kernel.IO.Iovec.create ~count:4 ~size:1_024 () in
+          with_file file
+            (fun file ->
+              match Kernel.Fs.File.read_vectored file iov with
+              | Kernel.Result.Ok _ -> ()
+              | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)))
+
 let bench_metadata = fun () ->
   with_temp_path "kernel_new_file_bench" "metadata.bin"
     (fun path ->
@@ -127,6 +150,7 @@ let benchmarks =
     with_config ~config:{ iterations = 20; warmup = 5 } "file scalar write: 4KiB" bench_scalar_write;
     with_config ~config:{ iterations = 20; warmup = 5 } "file vectored write: 4 x 1KiB" bench_vectored_write;
     with_config ~config:{ iterations = 20; warmup = 5 } "file scalar read: 4KiB" bench_scalar_read;
+    with_config ~config:{ iterations = 20; warmup = 5 } "file vectored read: 4 x 1KiB" bench_vectored_read;
     with_config ~config:{ iterations = 20; warmup = 5 } "file metadata: 4KiB" bench_metadata;
     with_config ~config:{ iterations = 20; warmup = 5 } "file read_dir_names: 2 entries" bench_read_dir_names;
   ]

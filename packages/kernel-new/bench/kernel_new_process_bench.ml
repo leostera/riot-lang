@@ -29,6 +29,14 @@ let protect = fun ~finally fn ->
       finally ();
       raise error
 
+let with_poll = fun fn ->
+  let poll = lift (Kernel.Async.Poll.make ()) in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.close poll in
+      ())
+    (fun () -> fn poll)
+
 let wait_for = fun poll ~token ~interest ~source ~pred ->
   let _ = lift (Kernel.Async.Poll.register poll token interest source) in
   protect
@@ -84,29 +92,30 @@ let bench_spawn_true = fun () ->
       ignore (lift (Kernel.Process.wait process)))
 
 let bench_spawn_echo_with_pipe = fun () ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
-  let stdio = Kernel.Process.{
-    default_stdio with
-    stdin = `Null;
-    stdout = `Pipe;
-    stderr = `Null;
-  } in
-  let process =
-    lift
-      (Kernel.Process.spawn
-         ~program:"/bin/echo"
-         ~args:[| "-n"; "kernel-new" |]
-         ~stdio
-         ())
-  in
-  with_process process
-    (fun process ->
-      match Kernel.Process.stdout process with
-      | None ->
-          Kernel.Error.panic "expected stdout pipe"
-      | Some stdout ->
-          read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
-          ignore (lift (Kernel.Process.wait process)))
+  with_poll
+    (fun poll ->
+      let stdio = Kernel.Process.{
+        default_stdio with
+        stdin = `Null;
+        stdout = `Pipe;
+        stderr = `Null;
+      } in
+      let process =
+        lift
+          (Kernel.Process.spawn
+             ~program:"/bin/echo"
+             ~args:[| "-n"; "kernel-new" |]
+             ~stdio
+             ())
+      in
+      with_process process
+        (fun process ->
+          match Kernel.Process.stdout process with
+          | None ->
+              Kernel.Error.panic "expected stdout pipe"
+          | Some stdout ->
+              read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
+              ignore (lift (Kernel.Process.wait process))))
 
 let benchmarks =
   Bench.[

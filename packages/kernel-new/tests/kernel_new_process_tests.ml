@@ -34,9 +34,20 @@ let with_process = fun process fn ->
       ())
     (fun () -> fn process)
 
+let with_file = fun file fn ->
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Fs.File.close file in
+      ())
+    fn
+
 let with_poll = fun fn ->
   let* poll = lift (Kernel.Async.Poll.make ()) in
-  fn poll
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.close poll in
+      ())
+    (fun () -> fn poll)
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
   let* () =
@@ -292,6 +303,28 @@ let test_kill_reports_signaled_status = fun _ctx ->
       else
         Error "expected killed process to report a signaled status")
 
+let test_non_zero_exit_status_roundtrips = fun _ctx ->
+  let stdio = Kernel.Process.{
+    stdin = `Null;
+    stdout = `Null;
+    stderr = `Null;
+  } in
+  let* process =
+    lift
+      (Kernel.Process.spawn
+         ~program:"/bin/sh"
+         ~args:[| "-c"; "exit 7" |]
+         ~stdio
+         ())
+  in
+  with_process process
+    (fun process ->
+      let* status = lift (Kernel.Process.wait process) in
+      if status = Kernel.Process.Exited 7 then
+        Ok ()
+      else
+        Error "expected process exit status to preserve a non-zero code")
+
 let test_spawn_applies_custom_environment = fun _ctx ->
   let stdio = Kernel.Process.{
     stdin = `Null;
@@ -370,6 +403,61 @@ let test_spawn_applies_current_dir = fun _ctx ->
                   else
                     Error "expected spawned process to run in the configured current_dir")))
 
+let test_file_backed_stdio_roundtrips = fun _ctx ->
+  with_tempdir "kernel_new_process"
+    (fun tempdir ->
+      let input_path = Kernel.Path.(tempdir / "stdin.txt") in
+      let output_path = Kernel.Path.(tempdir / "stdout.txt") in
+      let* input_file = lift (Kernel.Fs.File.open_write input_path) in
+      let* () =
+        with_file input_file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "file-stdio")) in
+            Ok ())
+      in
+      let* stdin_file = lift (Kernel.Fs.File.open_read input_path) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close stdin_file in
+          ())
+        (fun () ->
+          let* stdout_file =
+            lift (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path)
+          in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Fs.File.close stdout_file in
+              ())
+            (fun () ->
+              let stdio = Kernel.Process.{
+                stdin = `File stdin_file;
+                stdout = `File stdout_file;
+                stderr = `Null;
+              } in
+              let* process =
+                lift
+                  (Kernel.Process.spawn
+                     ~program:"/bin/cat"
+                     ~args:[||]
+                     ~stdio
+                     ())
+              in
+              let* status =
+                with_process process (fun process -> lift (Kernel.Process.wait process))
+              in
+              let* output = lift (Kernel.Fs.File.open_read output_path) in
+              let buffer = Kernel.Bytes.create 32 in
+              let* payload =
+                with_file output
+                  (fun () ->
+                    let* count = lift (Kernel.Fs.File.read output buffer) in
+                    Ok (Kernel.Bytes.sub_string buffer 0 count))
+              in
+              if status = Kernel.Process.Exited 0 && payload = "file-stdio" then
+                Ok ()
+              else
+                Error "expected file-backed stdio to roundtrip through the child process")))
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
@@ -377,8 +465,10 @@ let tests = [
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
+  Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;
   Test.case "Process spawn applies custom environment" test_spawn_applies_custom_environment;
   Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
+  Test.case "Process file-backed stdio roundtrips" test_file_backed_stdio_roundtrips;
 ]
 
 let main = fun ~args ->

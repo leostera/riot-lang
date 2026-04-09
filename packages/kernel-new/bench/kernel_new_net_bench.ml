@@ -64,6 +64,14 @@ let close_udp = fun socket ->
   let _ = Kernel.Net.UdpSocket.close socket in
   ()
 
+let with_poll = fun fn ->
+  let poll = lift (Kernel.Async.Poll.make ()) in
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.close poll in
+      ())
+    (fun () -> fn poll)
+
 let connect_stream = fun poll addr ->
   match lift (Kernel.Net.TcpStream.connect addr) with
   | Kernel.Net.TcpStream.Connected stream -> stream
@@ -128,54 +136,55 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
           Kernel.Error.panic (Kernel.Error.to_string error)
 
 let bench_tcp_loopback_roundtrip = fun () ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
-  let listener =
-    lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
-  in
-  protect
-    ~finally:(fun () -> close_listener listener)
-    (fun () ->
-      let addr = lift (Kernel.Net.TcpListener.local_addr listener) in
-      let client = connect_stream poll addr in
+  with_poll
+    (fun poll ->
+      let listener =
+        lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
       protect
-        ~finally:(fun () -> close_stream client)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
-          let server = accept_stream poll listener in
+          let addr = lift (Kernel.Net.TcpListener.local_addr listener) in
+          let client = connect_stream poll addr in
           protect
-            ~finally:(fun () -> close_stream server)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
-              let payload = Kernel.Bytes.of_string "ping" in
-              let reply = Kernel.Bytes.of_string "pong" in
-              let server_buf = Kernel.Bytes.create 4 in
-              let client_buf = Kernel.Bytes.create 4 in
-              write_all_stream
-                poll
-                ~token:(Kernel.Async.Token.make 403)
-                client
-                payload
-                ~pos:0
-                ~len:4;
-              read_exact_stream
-                poll
-                ~token:(Kernel.Async.Token.make 404)
-                server
-                server_buf
-                ~pos:0
-                ~len:4;
-              write_all_stream
-                poll
-                ~token:(Kernel.Async.Token.make 405)
-                server
-                reply
-                ~pos:0
-                ~len:4;
-              read_exact_stream
-                poll
-                ~token:(Kernel.Async.Token.make 406)
-                client
-                client_buf
-                ~pos:0
-                ~len:4)))
+              let server = accept_stream poll listener in
+              protect
+                ~finally:(fun () -> close_stream server)
+                (fun () ->
+                  let payload = Kernel.Bytes.of_string "ping" in
+                  let reply = Kernel.Bytes.of_string "pong" in
+                  let server_buf = Kernel.Bytes.create 4 in
+                  let client_buf = Kernel.Bytes.create 4 in
+                  write_all_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 403)
+                    client
+                    payload
+                    ~pos:0
+                    ~len:4;
+                  read_exact_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 404)
+                    server
+                    server_buf
+                    ~pos:0
+                    ~len:4;
+                  write_all_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 405)
+                    server
+                    reply
+                    ~pos:0
+                    ~len:4;
+                  read_exact_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 406)
+                    client
+                    client_buf
+                    ~pos:0
+                    ~len:4))))
 
 let recv_from_udp = fun poll ~token socket buffer ->
   let rec loop () =
@@ -204,54 +213,56 @@ let recv_udp = fun poll ~token socket buffer ->
   loop ()
 
 let bench_udp_loopback_datagram = fun () ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
-  let server =
-    lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
-  in
-  protect
-    ~finally:(fun () -> close_udp server)
-    (fun () ->
-      let client =
+  with_poll
+    (fun poll ->
+      let server =
         lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () -> close_udp client)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
-          let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
-          let _ =
-            lift (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping"))
+          let client =
+            lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
-          let buffer = Kernel.Bytes.create 32 in
-          ignore (recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer)))
+          protect
+            ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
+              let _ =
+                lift (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping"))
+              in
+              let buffer = Kernel.Bytes.create 32 in
+              ignore (recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer))))
 
 let bench_udp_connected_roundtrip = fun () ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
-  let server =
-    lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
-  in
-  protect
-    ~finally:(fun () -> close_udp server)
-    (fun () ->
-      let client =
+  with_poll
+    (fun poll ->
+      let server =
         lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () -> close_udp client)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
-          let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
-          let client_addr = lift (Kernel.Net.UdpSocket.local_addr client) in
-          let _ = lift (Kernel.Net.UdpSocket.connect server client_addr) in
-          let _ = lift (Kernel.Net.UdpSocket.connect client server_addr) in
-          let _ =
-            lift (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping"))
+          let client =
+            lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
-          let server_buf = Kernel.Bytes.create 32 in
-          ignore (recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf);
-          let _ =
-            lift (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong"))
-          in
-          let client_buf = Kernel.Bytes.create 32 in
-          ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf)))
+          protect
+            ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
+              let client_addr = lift (Kernel.Net.UdpSocket.local_addr client) in
+              let _ = lift (Kernel.Net.UdpSocket.connect server client_addr) in
+              let _ = lift (Kernel.Net.UdpSocket.connect client server_addr) in
+              let _ =
+                lift (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping"))
+              in
+              let server_buf = Kernel.Bytes.create 32 in
+              ignore (recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf);
+              let _ =
+                lift (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong"))
+              in
+              let client_buf = Kernel.Bytes.create 32 in
+              ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf))))
 
 let benchmarks =
   Bench.[

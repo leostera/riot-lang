@@ -143,6 +143,16 @@ CAMLprim value kernel_new_async_unix_selector_create(value unit_val) {
   CAMLreturn(kernel_new_result_ok(Val_int(selector_fd)));
 }
 
+CAMLprim value kernel_new_async_unix_selector_close(value selector_val) {
+  CAMLparam1(selector_val);
+
+  if (close(Int_val(selector_val)) == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
 CAMLprim value kernel_new_async_unix_selector_wait(value max_events_val, value timeout_ns_val, value selector_val) {
   CAMLparam3(max_events_val, timeout_ns_val, selector_val);
   CAMLlocal3(out, result, event_val);
@@ -203,6 +213,7 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
   int selector_fd = Int_val(selector_val);
   int change_count = Wosize_val(changes_val);
   struct kevent *changes = malloc(sizeof(struct kevent) * change_count);
+  int applied_change_count = 0;
 
   if (changes == NULL) {
     caml_raise_out_of_memory();
@@ -217,25 +228,31 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
 
     if ((flags & EV_DELETE) != 0) {
       token_binding *binding = kernel_new_async_find_binding(selector_fd, target_fd, filter);
-      EV_SET(
-        &changes[index],
-        target_fd,
-        filter,
-        flags,
-        0,
-        0,
-        binding == NULL ? NULL : binding->token_root);
+      if (binding != NULL) {
+        EV_SET(
+          &changes[applied_change_count],
+          target_fd,
+          filter,
+          flags,
+          0,
+          0,
+          binding->token_root);
+        applied_change_count += 1;
+      }
     } else {
       token_binding *binding =
         kernel_new_async_store_binding(selector_fd, target_fd, filter, token);
-      EV_SET(&changes[index], target_fd, filter, flags, 0, 0, binding->token_root);
+      EV_SET(&changes[applied_change_count], target_fd, filter, flags, 0, 0, binding->token_root);
+      applied_change_count += 1;
     }
   }
 
-  int syscall_result;
-  caml_enter_blocking_section();
-  syscall_result = kevent(selector_fd, changes, change_count, NULL, 0, NULL);
-  caml_leave_blocking_section();
+  int syscall_result = 0;
+  if (applied_change_count != 0) {
+    caml_enter_blocking_section();
+    syscall_result = kevent(selector_fd, changes, applied_change_count, NULL, 0, NULL);
+    caml_leave_blocking_section();
+  }
 
   free(changes);
 
@@ -246,6 +263,16 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
       CAMLreturn(result);
     }
     CAMLreturn(kernel_new_result_error(code));
+  }
+
+  for (int index = 0; index < change_count; index++) {
+    value event_val = Field(changes_val, index);
+    int target_fd = Int_val(Field(event_val, 0));
+    int filter = Int_val(Field(event_val, 1));
+    int flags = Int_val(Field(event_val, 2));
+    if ((flags & EV_DELETE) != 0) {
+      kernel_new_async_remove_binding(selector_fd, target_fd, filter);
+    }
   }
 
   result = kernel_new_result_ok(Val_unit);

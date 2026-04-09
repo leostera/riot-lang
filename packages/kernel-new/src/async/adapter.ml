@@ -13,6 +13,8 @@ type event = {
 module FFI = struct
   external selector_create: unit -> (selector, int) Result.t = "kernel_new_async_unix_selector_create"
 
+  external selector_close: selector -> (unit, int) Result.t = "kernel_new_async_unix_selector_close"
+
   external selector_wait:
     max_events:int -> timeout_ns:int64 -> selector -> (event array, int) Result.t
     = "kernel_new_async_unix_selector_wait"
@@ -24,6 +26,9 @@ module FFI = struct
 
   let wait = fun ~max_events ~timeout_ns selector ->
     Result.map_error Error.of_code (selector_wait ~max_events ~timeout_ns selector)
+
+  let close = fun selector ->
+    Result.map_error Error.of_code (selector_close selector)
 
   let apply = fun selector changes ignored_errors ->
     Result.map_error Error.of_code (selector_apply selector changes ignored_errors)
@@ -55,6 +60,8 @@ module Selector = struct
   let name = "kqueue"
 
   let make = FFI.create
+
+  let close = FFI.close
 
   let select = fun ?(timeout = 500_000_000L) ?(max_events = 1_024) selector ->
     let* events = FFI.wait ~max_events ~timeout_ns:timeout selector in

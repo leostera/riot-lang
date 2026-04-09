@@ -46,6 +46,8 @@ module Adapter: sig
     type t
     val make: unit -> (t, Error.t) Result.t
 
+    val close: t -> (unit, Error.t) Result.t
+
     val select: ?timeout:int64 -> ?max_events:int -> t -> (Event.t list, Error.t) Result.t
 
     val register: t -> fd:int -> token:Token.t -> interest:Interest.t -> (unit, Error.t) Result.t
@@ -73,6 +75,8 @@ end
 module Poll: sig
   type t
   val make: unit -> (t, Error.t) Result.t
+
+  val close: t -> (unit, Error.t) Result.t
 
   val poll: ?max_events:int -> ?timeout:int64 -> t -> (Event.t list, Error.t) Result.t
 

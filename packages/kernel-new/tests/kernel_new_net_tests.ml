@@ -43,7 +43,11 @@ let with_poll = fun fn ->
   let* poll =
     lift (Kernel.Async.Poll.make ())
   in
-  fn poll
+  protect
+    ~finally:(fun () ->
+      let _ = Kernel.Async.Poll.close poll in
+      ())
+    (fun () -> fn poll)
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
   let* () =
@@ -359,6 +363,40 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
         else
           Error "expected tcp loopback roundtrip to preserve scalar and vectored payloads")
 
+let test_tcp_stream_reports_eof_after_peer_close = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
+      let* () = lift (Kernel.Net.TcpStream.close server) in
+      let* () =
+        wait_readable
+          poll
+          ~token:(Kernel.Async.Token.make 309)
+          (Kernel.Net.TcpStream.to_source client)
+      in
+      let buffer = Kernel.Bytes.create 8 in
+      let* read = lift (Kernel.Net.TcpStream.read client buffer) in
+      if read = 0 then
+        Ok ()
+      else
+        Error "expected tcp stream read to report eof after peer close")
+
+let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
+  let* listener =
+    lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+  in
+  protect
+    ~finally:(fun () -> close_listener listener)
+    (fun () ->
+      let* addr = lift (Kernel.Net.TcpListener.local_addr listener) in
+      match Kernel.Net.TcpListener.bind addr with
+      | Kernel.Result.Ok extra ->
+          let _ = Kernel.Net.TcpListener.close extra in
+          Error "expected second tcp listener bind to fail on the same address"
+      | Kernel.Result.Error Kernel.Error.Address_in_use ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (string_of_error error))
+
 let test_udp_socket_send_to_and_recv_from = fun _ctx ->
   with_poll
     (fun poll ->
@@ -420,10 +458,80 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                   else
                     Error "expected connected udp send and recv to preserve payload")))
 
+let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* server =
+        lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
+      protect
+        ~finally:(fun () -> close_udp server)
+        (fun () ->
+          let* client =
+            lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+          in
+          protect
+            ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let* other =
+                lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+              in
+              protect
+                ~finally:(fun () -> close_udp other)
+                (fun () ->
+                  let* server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
+                  let* client_addr = lift (Kernel.Net.UdpSocket.local_addr client) in
+                  let* () = lift (Kernel.Net.UdpSocket.connect server client_addr) in
+                  let* () = lift (Kernel.Net.UdpSocket.connect client server_addr) in
+                  let token = Kernel.Async.Token.make 310 in
+                  let source = Kernel.Net.UdpSocket.to_source server in
+                  let* () =
+                    lift
+                      (Kernel.Async.Poll.register
+                         poll
+                         token
+                         Kernel.Async.Interest.readable
+                         source)
+                  in
+                  protect
+                    ~finally:(fun () ->
+                      let _ = Kernel.Async.Poll.deregister poll source in
+                      ())
+                    (fun () ->
+                      let* sent =
+                        lift
+                          (Kernel.Net.UdpSocket.send_to
+                             other
+                             server_addr
+                             (Kernel.Bytes.of_string "rogue"))
+                      in
+                      if sent != 5 then
+                        Error "expected udp send_to to send the rogue datagram"
+                      else
+                        let* events = lift (Kernel.Async.Poll.poll ~timeout:1_000_000L poll) in
+                        let server_ready =
+                          List.exists
+                            (fun event ->
+                              Kernel.Async.Event.is_readable event
+                              && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+                            events
+                        in
+                        let buffer = Kernel.Bytes.create 32 in
+                        match Kernel.Net.UdpSocket.recv server buffer with
+                        | Kernel.Result.Error Kernel.Error.Would_block when not server_ready ->
+                            Ok ()
+                        | Kernel.Result.Error error ->
+                            Error (string_of_error error)
+                        | Kernel.Result.Ok _ ->
+                            Error "expected connected udp socket to ignore datagrams from other peers")))))
+
 let tests = [
   Test.case "Net.IpAddr validates ipv4 and ipv6" test_ip_addr_validates_ipv4_and_ipv6;
   Test.case "Net.TcpListener and TcpStream roundtrip over loopback" test_tcp_listener_and_stream_roundtrip;
+  Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
+  Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
+  Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
 ]
 
 let main = fun ~args ->

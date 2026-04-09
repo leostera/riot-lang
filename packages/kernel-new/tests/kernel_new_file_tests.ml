@@ -219,6 +219,57 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       else
         Error "expected copy and rename to preserve payload")
 
+let test_fstat_matches_path_metadata = fun _ctx ->
+  with_temp_path "kernel_new_file" "metadata.bin"
+    (fun path ->
+      let payload = Kernel.Bytes.of_string "metadata" in
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* path_metadata, fd_metadata =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file payload) in
+            let* fd_metadata = lift (Kernel.Fs.File.fstat file) in
+            let* path_metadata = lift (Kernel.Fs.File.metadata path) in
+            Ok (path_metadata, fd_metadata))
+      in
+      if Kernel.Fs.File.Metadata.ino path_metadata = Kernel.Fs.File.Metadata.ino fd_metadata
+         && Kernel.Fs.File.Metadata.len path_metadata = Kernel.Fs.File.Metadata.len fd_metadata
+         && Kernel.Fs.File.Metadata.nlink path_metadata = Kernel.Fs.File.Metadata.nlink fd_metadata
+      then
+        Ok ()
+      else
+        Error "expected fstat metadata to match path metadata for the same file")
+
+let test_hard_link_updates_link_count_and_remove_ops = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source.txt") in
+      let link = Kernel.Path.(tempdir / "linked.txt") in
+      let directory = Kernel.Path.(tempdir / "child") in
+      let* file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "linked")) in
+            Ok ())
+      in
+      let* () = lift (Kernel.Fs.File.hard_link ~src:source ~dst:link) in
+      let* source_metadata = lift (Kernel.Fs.File.metadata source) in
+      let* link_metadata = lift (Kernel.Fs.File.metadata link) in
+      let* () = lift (Kernel.Fs.File.create_dir directory ~perm:0o755) in
+      let* () = lift (Kernel.Fs.File.remove_file link) in
+      let* link_exists = lift (Kernel.Fs.File.exists link) in
+      let* () = lift (Kernel.Fs.File.remove_dir directory) in
+      let* directory_exists = lift (Kernel.Fs.File.exists directory) in
+      if Kernel.Fs.File.Metadata.nlink source_metadata = 2
+         && Kernel.Fs.File.Metadata.ino source_metadata = Kernel.Fs.File.Metadata.ino link_metadata
+         && not link_exists
+         && not directory_exists
+      then
+        Ok ()
+      else
+        Error "expected hard_link to share metadata and remove ops to clean up paths")
+
 let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -243,6 +294,56 @@ let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
       else
         Error "expected exists and is_directory to distinguish directories, files, and missing paths")
 
+let test_read_vectored_roundtrips = fun _ctx ->
+  with_temp_path "kernel_new_file" "readv.bin"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let payload = Kernel.Bytes.of_string "hello vectored read" in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file payload) in
+            if written = Kernel.Bytes.length payload then
+              Ok ()
+            else
+              Error "expected scalar write to seed vectored read fixture")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let iov = Kernel.IO.Iovec.create ~count:3 ~size:(Kernel.Bytes.length payload) () in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read_vectored file iov) in
+            Ok (read, Kernel.IO.Iovec.into_string iov))
+      in
+      let read, contents = actual in
+      let prefix = Kernel.Bytes.sub_string (Kernel.Bytes.of_string contents) 0 read in
+      if read = Kernel.Bytes.length payload && Kernel.String.equal prefix "hello vectored read" then
+        Ok ()
+      else
+        Error "expected read_vectored to preserve payload across iovec segments")
+
+let test_is_tty_is_false_for_files_and_pipes = fun _ctx ->
+  with_temp_path "kernel_new_file" "tty.bin"
+    (fun path ->
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let file_is_tty =
+        with_file file (fun () -> Ok (Kernel.Fs.File.is_tty file))
+      in
+      let* file_is_tty = file_is_tty in
+      let* pipe = lift (Kernel.Fs.File.pipe ()) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.close pipe.read_end in
+          let _ = Kernel.Fs.File.close pipe.write_end in
+          ())
+        (fun () ->
+          let pipe_is_tty = Kernel.Fs.File.is_tty pipe.read_end in
+          if not file_is_tty && not pipe_is_tty then
+            Ok ()
+          else
+            Error "expected regular files and pipes to report non-tty"))
+
 let test_open_read_missing_file_maps_error = fun _ctx ->
   with_temp_path "kernel_new_file" "missing.bin"
     (fun path ->
@@ -260,7 +361,11 @@ let tests = [
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
+  Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
+  Test.case "Fs.File hard_link and remove ops update filesystem state" test_hard_link_updates_link_count_and_remove_ops;
   Test.case "Fs.File exists and is_directory report expected kinds" test_exists_and_is_directory_report_expected_kinds;
+  Test.case "Fs.File read_vectored roundtrips" test_read_vectored_roundtrips;
+  Test.case "Fs.File is_tty is false for files and pipes" test_is_tty_is_false_for_files_and_pipes;
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
 ]
 

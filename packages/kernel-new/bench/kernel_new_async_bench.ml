@@ -22,37 +22,67 @@ let with_pipe = fun fn ->
           ())
         (fun () -> fn pipe)
 
+let rec close_pipes = function
+  | [] -> ()
+  | pipe :: rest ->
+      let _ = Kernel.Fs.File.close pipe.Kernel.Fs.File.read_end in
+      let _ = Kernel.Fs.File.close pipe.Kernel.Fs.File.write_end in
+      close_pipes rest
+
+let with_pipes = fun count fn ->
+  let rec create remaining acc =
+    if remaining = 0 then
+      Ok acc
+    else
+      match Kernel.Fs.File.pipe () with
+      | Error error -> Error error
+      | Ok pipe -> create (remaining - 1) (pipe :: acc)
+  in
+  match create count [] with
+  | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Ok pipes ->
+      protect
+        ~finally:(fun () -> close_pipes pipes)
+        (fun () -> fn (List.rev pipes))
+
+let with_poll = fun fn ->
+  match Kernel.Async.Poll.make () with
+  | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Ok poll ->
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.close poll in
+          ())
+        (fun () -> fn poll)
+
 let bench_register_and_deregister = fun () ->
   with_pipe
     (fun pipe ->
-      match Kernel.Async.Poll.make () with
-      | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
-      | Ok poll ->
+      with_poll
+        (fun poll ->
           let source = Kernel.Fs.File.to_source pipe.read_end in
           let token = Kernel.Async.Token.make 7 in
           let _ = Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source in
           let _ = Kernel.Async.Poll.deregister poll source in
-          ())
+          ()))
 
 let bench_pipe_wakeup = fun () ->
   with_pipe
     (fun pipe ->
-      match Kernel.Async.Poll.make () with
-      | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
-      | Ok poll ->
+      with_poll
+        (fun poll ->
           let source = Kernel.Fs.File.to_source pipe.read_end in
           let token = Kernel.Async.Token.make 9 in
           let _ = Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source in
           let _ = Kernel.Fs.File.write pipe.write_end (Kernel.Bytes.of_string "x") in
           let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L poll in
-          ())
+          ()))
 
 let bench_reregister = fun () ->
   with_pipe
     (fun pipe ->
-      match Kernel.Async.Poll.make () with
-      | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
-      | Ok poll ->
+      with_poll
+        (fun poll ->
           let source = Kernel.Fs.File.to_source pipe.write_end in
           let _ =
             Kernel.Async.Poll.register
@@ -68,13 +98,44 @@ let bench_reregister = fun () ->
               Kernel.Async.Interest.writable
               source
           in
-          ())
+          ()))
+
+let bench_many_source_poll = fun () ->
+  with_pipes 64
+    (fun pipes ->
+      with_poll
+        (fun poll ->
+          let rec register index = function
+            | [] -> ()
+            | pipe :: rest ->
+                let _ =
+                  Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Fs.File.to_source pipe.Kernel.Fs.File.read_end)
+                in
+                register (index + 1) rest
+          in
+          let rec wake = function
+            | [] -> ()
+            | pipe :: rest ->
+                let _ =
+                  Kernel.Fs.File.write pipe.Kernel.Fs.File.write_end (Kernel.Bytes.of_string "x")
+                in
+                wake rest
+          in
+          register 0 pipes;
+          wake pipes;
+          let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll in
+          ()))
 
 let benchmarks =
   Bench.[
     with_config ~config:{ iterations = 50; warmup = 10 } "async register+deregister pipe source" bench_register_and_deregister;
     with_config ~config:{ iterations = 50; warmup = 10 } "async pipe wakeup" bench_pipe_wakeup;
     with_config ~config:{ iterations = 50; warmup = 10 } "async reregister pipe source" bench_reregister;
+    with_config ~config:{ iterations = 25; warmup = 5 } "async many-source pipe wakeup" bench_many_source_poll;
   ]
 
 let () =
