@@ -306,6 +306,29 @@ let iovec_sub_matches_flattened_substring =
       let actual = Kernel.IO.Iovec.into_string (Kernel.IO.Iovec.sub ~pos ~len iov) in
       actual = expected)
 
+let bytes_string_roundtrip =
+  property "Bytes.of_string and Bytes.to_string roundtrip arbitrary strings" Arbitrary.string
+    (fun value ->
+      Kernel.String.equal (Kernel.Bytes.to_string (Kernel.Bytes.of_string value)) value)
+
+let bytes_sub_string_matches_string_sub =
+  property "Bytes.sub_string matches String.sub on valid slices" Arbitrary.(pair
+    string
+    (pair int int))
+    (fun (value, (raw_pos, raw_len)) ->
+      let total = String.length value in
+      assume (total > 0);
+      let pos = Int.abs raw_pos mod total in
+      let remaining = total - pos in
+      let len = Int.abs raw_len mod (remaining + 1) in
+      let bytes = Kernel.Bytes.of_string value in
+      Kernel.String.equal (Kernel.Bytes.sub_string bytes pos len) (String.sub value pos len))
+
+let string_bytes_roundtrip =
+  property "String.to_bytes and String.of_bytes roundtrip arbitrary strings" Arbitrary.string
+    (fun value ->
+      Kernel.String.equal (Kernel.String.of_bytes (Kernel.String.to_bytes value)) value)
+
 let path_join_preserves_segment_order =
   property "Path.join preserves simple segment order" Arbitrary.(pair string string)
     (fun (left, right) ->
@@ -349,6 +372,19 @@ let path_join_is_associative_for_simple_segments =
       let left = Kernel.Path.to_string (Kernel.Path.join (Kernel.Path.join a b) c) in
       let right = Kernel.Path.to_string (Kernel.Path.join a (Kernel.Path.join b c)) in
       left = right)
+
+let path_of_string_roundtrips =
+  property "Path.of_string and Path.to_string roundtrip arbitrary text" Arbitrary.string
+    (fun value ->
+      Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.of_string value)) value)
+
+let path_join_treats_empty_sides_as_identity =
+  property
+    "Path.join treats empty sides as identity"
+    Arbitrary.string
+    (fun value ->
+      Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.join "" value)) value
+      && Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.join value "")) value)
 
 let ip_addr_loopback_parse_render_roundtrips =
   property "Net.IpAddr loopback parse/render roundtrips" Arbitrary.bool
@@ -798,9 +834,14 @@ let udp_loopback_roundtrips_small_payload =
 let tests = [
   iovec_into_string_roundtrips;
   iovec_sub_matches_flattened_substring;
+  bytes_string_roundtrip;
+  bytes_sub_string_matches_string_sub;
+  string_bytes_roundtrip;
   path_join_preserves_segment_order;
   path_fold_join_preserves_many_segment_order;
   path_join_is_associative_for_simple_segments;
+  path_of_string_roundtrips;
+  path_join_treats_empty_sides_as_identity;
   ip_addr_loopback_parse_render_roundtrips;
   ip_addr_ipv4_parse_render_roundtrips;
   ip_addr_ipv6_parse_render_roundtrips;

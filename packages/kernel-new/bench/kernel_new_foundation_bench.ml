@@ -1,0 +1,36 @@
+open Std
+module Kernel = Kernel_new
+
+let string_payload = Kernel.String.make 4_096 'x'
+
+let bytes_payload = Kernel.Bytes.of_string string_payload
+
+let bench_bytes_of_string = fun () ->
+  let _ = Kernel.Bytes.of_string string_payload in
+  ()
+
+let bench_bytes_to_string = fun () ->
+  let _ = Kernel.Bytes.to_string bytes_payload in
+  ()
+
+let bench_string_to_bytes = fun () ->
+  let _ = Kernel.String.to_bytes string_payload in
+  ()
+
+let bench_string_of_bytes = fun () ->
+  let _ = Kernel.String.of_bytes bytes_payload in
+  ()
+
+let benchmarks =
+  Bench.[
+    with_config ~config:{ iterations = 50; warmup = 10 } "foundation bytes of_string: 4KiB" bench_bytes_of_string;
+    with_config ~config:{ iterations = 50; warmup = 10 } "foundation bytes to_string: 4KiB" bench_bytes_to_string;
+    with_config ~config:{ iterations = 50; warmup = 10 } "foundation string to_bytes: 4KiB" bench_string_to_bytes;
+    with_config ~config:{ iterations = 50; warmup = 10 } "foundation string of_bytes: 4KiB" bench_string_of_bytes;
+  ]
+
+let () =
+  Actors.run
+    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_foundation_bench" ~benchmarks ~args)
+    ~args:Env.args
+    ()

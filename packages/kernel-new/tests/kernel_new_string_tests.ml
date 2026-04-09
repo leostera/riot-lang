@@ -20,9 +20,27 @@ let test_to_bytes_copies_input = fun _ctx ->
   else
     Error "expected String.to_bytes to keep the original string immutable"
 
+let test_init_builds_expected_string = fun _ctx ->
+  let built =
+    Kernel.String.init 4 (fun index -> Kernel.Char.of_int (65 + index))
+  in
+  if Kernel.String.equal built "ABCD" then
+    Ok ()
+  else
+    Error "expected String.init to build characters in index order"
+
+let test_concat_preserves_separator_order = fun _ctx ->
+  let value = Kernel.String.concat "/" [ "domains"; "admin"; "users" ] in
+  if Kernel.String.equal value "domains/admin/users" then
+    Ok ()
+  else
+    Error "expected String.concat to preserve value and separator order"
+
 let tests = [
   Test.case "String.of_bytes copies its input" test_of_bytes_copies_input;
   Test.case "String.to_bytes copies its input" test_to_bytes_copies_input;
+  Test.case "String.init builds characters in order" test_init_builds_expected_string;
+  Test.case "String.concat preserves separator order" test_concat_preserves_separator_order;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_string_tests" ~tests ~args

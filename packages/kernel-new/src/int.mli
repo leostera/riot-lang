@@ -19,4 +19,5 @@ val compare: t -> t -> int
 
 val hash: t -> int
 
+(** Use `to_string value` to render `value` in decimal. *)
 val to_string: t -> string

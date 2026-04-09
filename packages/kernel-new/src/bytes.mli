@@ -17,6 +17,9 @@ val of_string: string -> t
 (** Use `to_string value` to copy `value` into a fresh immutable string. *)
 val to_string: t -> string
 
+(** Use `sub value offset len` to copy the selected byte slice into fresh mutable bytes. *)
 val sub: t -> int -> int -> t
 
+(** Use `sub_string value offset len` to copy the selected byte slice into a fresh immutable
+    string. *)
 val sub_string: t -> int -> int -> string
