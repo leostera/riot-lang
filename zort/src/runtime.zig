@@ -47,6 +47,8 @@ pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
 pub const EffectId = control_kernel_mod.EffectId;
 pub const FiberHandle = control_kernel_mod.FiberHandle;
 pub const HandlerFrame = control_kernel_mod.HandlerFrame;
+pub const StackLimits = control_kernel_mod.StackLimits;
+pub const SuspendedStack = control_kernel_mod.SuspendedStack;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const DomainRegistry = domain_registry_mod.DomainRegistry;
 pub const DomainStatus = domain_registry_mod.DomainStatus;
@@ -94,6 +96,7 @@ pub const Runtime = struct {
         nurseryLiveWords: usize = 1024,
         nurseryLiveObjects: usize = 256,
         memprof: MemprofConfig = .{},
+        stackLimits: StackLimits = .{},
     };
 
     pub const DebugChecks = struct {
@@ -173,6 +176,7 @@ pub const Runtime = struct {
         runtime.control_kernel = ControlKernel.initWithConfig(allocator, .{
             .event_sink = config.eventSink,
             .initial_domain = runtime.domains.mainDomain(),
+            .stack_limits = config.stackLimits,
         });
         runtime.fiber_scheduler = FiberScheduler.init(
             allocator,
@@ -738,6 +742,14 @@ pub const Runtime = struct {
         handle: ContinuationHandle,
     ) ![]control_kernel_mod.BacktraceFrame {
         return self.control_kernel.captureContinuationBacktrace(allocator, handle);
+    }
+
+    pub fn snapshotContinuationStack(
+        self: *Runtime,
+        allocator: std.mem.Allocator,
+        handle: ContinuationHandle,
+    ) !SuspendedStack {
+        return self.control_kernel.snapshotContinuationStack(allocator, handle);
     }
 
     pub fn explainValue(self: *Runtime, block_value: Value, trace: ?*const TraceRecorder) Error!ObjectExplain {
@@ -1688,6 +1700,44 @@ test "runtime: continuations can migrate across attached domains" {
 
     try std.testing.expectEqual(other_domain, rt.currentDomain());
     try std.testing.expectEqual(other_domain, rt.controlKernel().fiber(child).?.domain);
+}
+
+test "runtime: stack limits configure managed continuation snapshots" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .stackLimits = .{
+            .initial_frame_capacity = 1,
+            .initial_frame_root_capacity = 1,
+            .max_frames = 4,
+            .max_frame_roots = 4,
+        },
+    });
+    defer rt.deinit();
+
+    try std.testing.expectEqual(@as(usize, 4), rt.controlKernel().stackLimits().max_frames);
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 16,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
+    try rt.controlKernel().pushFrame(child, 1601);
+    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+    try rt.controlKernel().pushFrame(child, 1602);
+    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+
+    const performed = try rt.performEffectAt(1602, 16, Value.fromInt(7), &.{});
+    var snapshot = try rt.snapshotContinuationStack(std.testing.allocator, performed.continuation);
+    defer snapshot.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(u32, 1602), snapshot.capture_site_id);
+    try std.testing.expectEqual(@as(usize, 2), snapshot.frame_count);
+    try std.testing.expectEqual(@as(usize, 2), snapshot.root_count);
+
+    _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(8));
+    try std.testing.expectError(error.AlreadyResumed, rt.snapshotContinuationStack(std.testing.allocator, performed.continuation));
 }
 
 test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {

@@ -12,7 +12,7 @@ observability, not full OCaml runtime compatibility.
 - Baseline mark-sweep GC plus a nursery/major generational baseline
 - Explicit weak refs, ephemerons, and finalizer queues on top of collector phase hooks
 - Sampled memprof lifecycle tracking for allocation / promotion / reclaim events
-- Managed fiber stacks with one-shot continuation capture/resume and `reperform`
+- Managed fiber stacks with one-shot continuation capture/resume, `reperform`, explicit managed-stack growth policy, and deep-copy continuation stack snapshots for inspection
 - Explicit event sink, trace recorder, and GC/control instrumentation
 - Runtime services for named values, signal handlers, pending signals, and blocking-section state
 - Small optional compatibility shim (`api.zig`) for legacy `caml_*` entrypoints
@@ -107,6 +107,7 @@ for values that should become unreachable.
   - optional allocation-site backtrace capture
   - promotion and reclaim lifecycle tracking by `HeapRef`
 - `Mutator` now exposes remembered-set recording through barrier events.
+- `Runtime.snapshotContinuationStack(...)` returns a deep copy of a suspended continuation stack so effects/backtraces can inspect captured managed-stack state without resuming it.
 - Bench trace modes:
   - `--trace` prints all recorded events
   - `--trace-gc` prints GC-focused events only

@@ -23,6 +23,8 @@ pub const ContinuationHandle = struct {
 };
 
 pub const StackLimits = struct {
+    initial_frame_capacity: usize = 8,
+    initial_frame_root_capacity: usize = 8,
     max_frames: usize = 256,
     max_frame_roots: usize = 256,
 };
@@ -41,6 +43,17 @@ pub const StackFrame = struct {
     fn deinit(self: *StackFrame, allocator: std.mem.Allocator) void {
         self.roots.deinit(allocator);
         self.* = StackFrame.empty();
+    }
+
+    fn clone(self: *const StackFrame, allocator: std.mem.Allocator, limits: StackLimits) !StackFrame {
+        var copied = StackFrame{
+            .site_id = self.site_id,
+            .roots = .{},
+        };
+        errdefer copied.deinit(allocator);
+        try ensureRootCapacity(&copied, allocator, limits, self.roots.items.len);
+        for (self.roots.items) |rooted| copied.roots.appendAssumeCapacity(rooted);
+        return copied;
     }
 };
 
@@ -65,8 +78,8 @@ pub const ManagedStack = struct {
     }
 
     pub fn pushFrame(self: *ManagedStack, allocator: std.mem.Allocator, limits: StackLimits, site_id: u32) !void {
-        if (self.frames.items.len >= limits.max_frames) return error.StackOverflow;
-        try self.frames.append(allocator, .{ .site_id = site_id });
+        try self.ensureFrameCapacity(allocator, limits, self.frames.items.len + 1);
+        self.frames.appendAssumeCapacity(.{ .site_id = site_id });
     }
 
     pub fn popFrame(self: *ManagedStack, allocator: std.mem.Allocator) !FrameInfo {
@@ -81,12 +94,23 @@ pub const ManagedStack = struct {
     pub fn pushRoot(self: *ManagedStack, allocator: std.mem.Allocator, limits: StackLimits, rooted: Value) !void {
         if (self.frames.items.len == 0) return error.EmptyFrameStack;
         const frame = &self.frames.items[self.frames.items.len - 1];
-        if (frame.roots.items.len >= limits.max_frame_roots) return error.StackOverflow;
-        try frame.roots.append(allocator, rooted);
+        try ensureRootCapacity(frame, allocator, limits, frame.roots.items.len + 1);
+        frame.roots.appendAssumeCapacity(rooted);
     }
 
     pub fn frameCount(self: *const ManagedStack) usize {
         return self.frames.items.len;
+    }
+
+    pub fn clone(self: *const ManagedStack, allocator: std.mem.Allocator, limits: StackLimits) !ManagedStack {
+        var copied = ManagedStack{};
+        errdefer copied.deinit(allocator);
+
+        try copied.ensureFrameCapacity(allocator, limits, self.frames.items.len);
+        for (self.frames.items) |frame| {
+            copied.frames.appendAssumeCapacity(try frame.clone(allocator, limits));
+        }
+        return copied;
     }
 
     fn countRoots(self: *const ManagedStack) usize {
@@ -110,6 +134,22 @@ pub const ManagedStack = struct {
             for (frame.roots.items) |rooted| visitor.visit(rooted);
         }
     }
+
+    fn ensureFrameCapacity(
+        self: *ManagedStack,
+        allocator: std.mem.Allocator,
+        limits: StackLimits,
+        required_frames: usize,
+    ) !void {
+        if (required_frames <= self.frames.capacity) return;
+        const next_capacity = try nextManagedCapacity(
+            self.frames.capacity,
+            limits.initial_frame_capacity,
+            limits.max_frames,
+            required_frames,
+        );
+        try self.frames.ensureTotalCapacityPrecise(allocator, next_capacity);
+    }
 };
 
 pub const SuspendedStack = struct {
@@ -129,15 +169,31 @@ pub const SuspendedStack = struct {
         };
     }
 
-    fn deinit(self: *SuspendedStack, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *SuspendedStack, allocator: std.mem.Allocator) void {
         self.stack.deinit(allocator);
         self.* = .{};
+    }
+
+    fn snapshot(self: *const SuspendedStack, allocator: std.mem.Allocator, limits: StackLimits) !SuspendedStack {
+        const copied_stack = try self.stack.clone(allocator, limits);
+        return .{
+            .owner_domain = self.owner_domain,
+            .capture_site_id = self.capture_site_id,
+            .frame_count = copied_stack.frameCount(),
+            .root_count = copied_stack.countRoots(),
+            .stack = copied_stack,
+        };
     }
 
     fn take(self: *SuspendedStack) ManagedStack {
         const taken = self.stack.take();
         self.* = .{};
         return taken;
+    }
+
+    fn transferToDomain(self: *SuspendedStack, target_domain: DomainHandle) ManagedStack {
+        self.owner_domain = target_domain;
+        return self.take();
     }
 
     fn countRoots(self: *const SuspendedStack) usize {
@@ -456,6 +512,10 @@ pub const ControlKernel = struct {
         return self.fiber(self.current_fiber).?.domain;
     }
 
+    pub fn stackLimits(self: *const ControlKernel) StackLimits {
+        return self.stack_limits;
+    }
+
     pub fn fiber(self: *const ControlKernel, handle: FiberHandle) ?*const FiberState {
         if (handle.index >= self.fibers.items.len) return null;
         const slot = &self.fibers.items[handle.index];
@@ -640,6 +700,16 @@ pub const ControlKernel = struct {
         return frames.toOwnedSlice(allocator);
     }
 
+    pub fn snapshotContinuationStack(
+        self: *const ControlKernel,
+        allocator: std.mem.Allocator,
+        handle: ContinuationHandle,
+    ) !SuspendedStack {
+        const continuation_state = self.continuation(handle) orelse return error.InvalidContinuation;
+        if (continuation_state.status != .suspended) return error.AlreadyResumed;
+        return continuation_state.suspended_stack.snapshot(allocator, self.stack_limits);
+    }
+
     pub fn captureContinuation(
         self: *ControlKernel,
         effect: EffectId,
@@ -776,7 +846,7 @@ pub const ControlKernel = struct {
             .resumed, .dropped => return error.AlreadyResumed,
         }
         const target_domain = self.currentDomain();
-        const captured_stack = slot.continuation.suspended_stack.take();
+        const captured_stack = slot.continuation.suspended_stack.transferToDomain(target_domain);
         const fiber_handle = slot.continuation.fiber;
         const effect = slot.continuation.effect;
         const handler_fiber = slot.continuation.handler_fiber;
@@ -1036,6 +1106,42 @@ pub const ControlKernel = struct {
     }
 };
 
+fn nextManagedCapacity(
+    current_capacity: usize,
+    initial_capacity: usize,
+    max_items: usize,
+    required_items: usize,
+) !usize {
+    if (required_items > max_items) return error.StackOverflow;
+    if (required_items <= current_capacity) return current_capacity;
+
+    var next_capacity = current_capacity;
+    if (next_capacity == 0) next_capacity = @min(max_items, @max(initial_capacity, @as(usize, 1)));
+    while (next_capacity < required_items) {
+        if (next_capacity >= max_items) break;
+        const doubled = std.math.mul(usize, next_capacity, 2) catch max_items;
+        next_capacity = @min(max_items, doubled);
+    }
+    if (next_capacity < required_items) return error.StackOverflow;
+    return next_capacity;
+}
+
+fn ensureRootCapacity(
+    frame: *StackFrame,
+    allocator: std.mem.Allocator,
+    limits: StackLimits,
+    required_roots: usize,
+) !void {
+    if (required_roots <= frame.roots.capacity) return;
+    const next_capacity = try nextManagedCapacity(
+        frame.roots.capacity,
+        limits.initial_frame_root_capacity,
+        limits.max_frame_roots,
+        required_roots,
+    );
+    try frame.roots.ensureTotalCapacityPrecise(allocator, next_capacity);
+}
+
 test "control_kernel: child fibers preserve parent links and handler stacks" {
     var kernel = ControlKernel.init(std.testing.allocator);
     defer kernel.deinit();
@@ -1220,17 +1326,77 @@ test "control_kernel: suspended fibers can resume in a different domain" {
     try std.testing.expectEqual(@as(usize, 1), try kernel.frameCount(child));
 }
 
-test "control_kernel: managed stack limits and callback boundaries are explicit" {
+test "control_kernel: managed stacks grow explicitly and continuation stack snapshots are deep copies" {
     var kernel = ControlKernel.initWithConfig(std.testing.allocator, .{
-        .stack_limits = .{ .max_frames = 1, .max_frame_roots = 1 },
+        .stack_limits = .{
+            .initial_frame_capacity = 1,
+            .initial_frame_root_capacity = 1,
+            .max_frames = 8,
+            .max_frame_roots = 8,
+        },
+    });
+    defer kernel.deinit();
+
+    const main = kernel.currentFiber();
+    try kernel.pushHandler(main, .{
+        .effect = 3,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try kernel.createFiber(main);
+    try kernel.activateFiber(child);
+    try kernel.pushFrame(child, 10);
+    try kernel.pushFrameRoot(child, Value.fromHeapRef(.{ .index = 11, .generation = 1 }));
+    try kernel.pushFrame(child, 20);
+    try kernel.pushFrameRoot(child, Value.fromHeapRef(.{ .index = 12, .generation = 1 }));
+    try kernel.pushFrameRoot(child, Value.fromHeapRef(.{ .index = 13, .generation = 1 }));
+
+    const before_capture = kernel.fiber(child).?;
+    try std.testing.expect(before_capture.stack.frames.capacity >= 2);
+    try std.testing.expect(before_capture.stack.frames.items[1].roots.capacity >= 2);
+
+    const performed = try kernel.performAt(20, 3, Value.fromInt(5), &.{});
+    var snapshot = try kernel.snapshotContinuationStack(std.testing.allocator, performed.continuation);
+    defer snapshot.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(u32, 20), snapshot.capture_site_id);
+    try std.testing.expectEqual(@as(usize, 2), snapshot.frame_count);
+    try std.testing.expectEqual(@as(usize, 3), snapshot.root_count);
+    try std.testing.expectEqual(@as(usize, 1), snapshot.countValueRoots(Value.fromHeapRef(.{ .index = 11, .generation = 1 })));
+    try std.testing.expectEqual(@as(usize, 1), snapshot.countValueRoots(Value.fromHeapRef(.{ .index = 12, .generation = 1 })));
+    try std.testing.expectEqual(@as(usize, 1), snapshot.countValueRoots(Value.fromHeapRef(.{ .index = 13, .generation = 1 })));
+
+    _ = try kernel.resumeContinuation(performed.continuation, Value.fromInt(7));
+    try kernel.pushFrame(child, 30);
+    try kernel.pushFrameRoot(child, Value.fromInt(9));
+
+    try std.testing.expectEqual(@as(usize, 2), snapshot.frame_count);
+    try std.testing.expectEqual(@as(usize, 3), snapshot.root_count);
+    try std.testing.expectEqual(@as(usize, 1), snapshot.countValueRoots(Value.fromHeapRef(.{ .index = 11, .generation = 1 })));
+    try std.testing.expectEqual(@as(usize, 0), snapshot.countValueRoots(Value.fromInt(9)));
+    try std.testing.expectError(error.AlreadyResumed, kernel.snapshotContinuationStack(std.testing.allocator, performed.continuation));
+}
+
+test "control_kernel: managed stack limits grow until max and callback boundaries are explicit" {
+    var kernel = ControlKernel.initWithConfig(std.testing.allocator, .{
+        .stack_limits = .{
+            .initial_frame_capacity = 1,
+            .initial_frame_root_capacity = 1,
+            .max_frames = 2,
+            .max_frame_roots = 2,
+        },
     });
     defer kernel.deinit();
 
     const main = kernel.currentFiber();
     try kernel.pushFrame(main, 10);
     try kernel.pushFrameRoot(main, Value.fromInt(1));
-    try std.testing.expectError(error.StackOverflow, kernel.pushFrame(main, 11));
-    try std.testing.expectError(error.StackOverflow, kernel.pushFrameRoot(main, Value.fromInt(2)));
+    try kernel.pushFrameRoot(main, Value.fromInt(2));
+    try std.testing.expect(kernel.fiber(main).?.stack.frames.items[0].roots.capacity >= 2);
+    try std.testing.expectError(error.StackOverflow, kernel.pushFrameRoot(main, Value.fromInt(3)));
+    try kernel.pushFrame(main, 11);
+    try std.testing.expect(kernel.fiber(main).?.stack.frames.capacity >= 2);
+    try std.testing.expectError(error.StackOverflow, kernel.pushFrame(main, 12));
 
     const child = try kernel.createFiber(main);
     try kernel.activateFiber(child);

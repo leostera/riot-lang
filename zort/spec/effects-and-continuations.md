@@ -180,19 +180,25 @@
 - Fibers now own explicit managed stacks:
   - frame records carry a site id plus frame-owned roots,
   - stack limits are explicit runtime policy through `StackLimits`,
-  - overflow is reported as a typed `StackOverflow` error instead of silently growing forever.
+  - frame/root storage now grows explicitly from configured initial capacities up to configured maxima instead of depending on container-default growth,
+  - overflow is reported as a typed `StackOverflow` error only once that managed-stack growth policy cannot satisfy the requested frame/root count.
 - Suspended continuations now store an explicit `SuspendedStack` payload:
   - owner domain
   - capture site id
   - captured frame count
   - captured root count
   - the managed stack frames themselves
+- Suspended stacks can now be snapshotted as deep copies for debugging and inspection:
+  - `snapshotContinuationStack` copies the suspended managed-stack payload without resuming it,
+  - the snapshot remains valid even after the original continuation is resumed or dropped,
+  - zort therefore does not need an OCaml-style temporary `use`/`replace` dance just to inspect a suspended continuation.
 - Suspended continuations expose their captured values to the collector through the generic `RootProvider` interface instead of special GC-only hooks.
 - Capturing a continuation transfers the managed stack out of the active fiber into the continuation state.
 - Resuming a continuation restores that managed stack to the resumed fiber, so the continuation stops providing those roots only because ownership moved back to the active stack.
 - Resuming a continuation may now migrate the resumed fiber into a different domain:
   - the resumed fiber adopts the active domain of the resumer,
   - the suspended stack payload is the migration unit,
+  - ownership transfer is explicit at resume time rather than an implicit raw-pointer move,
   - zort therefore treats resume as the future cross-domain handoff point rather than forcing same-domain resumes forever.
 - `perform` now walks the current fiber's handler stack and then the parent-fiber chain to find the nearest matching handler.
 - `resumeContinuation` consumes a continuation once:

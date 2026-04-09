@@ -282,7 +282,8 @@ Status:
 - `Collector` now traces `RootRegistry` and `ControlKernel` through `RootProvider`.
 - `ControlKernel` owns typed fibers, continuations, parent links, and handler stacks in `src/control_kernel.zig`.
 - `perform` and `resumeContinuation` now provide the first explicit one-shot effects path with unhandled/resumed failure tests.
-- Fibers now own managed stacks with explicit frame roots and site ids.
+- Fibers now own managed stacks with explicit frame roots, site ids, and explicit growth limits/policy.
+- Suspended continuations can now be snapshotted as deep-copied managed-stack payloads for inspection without resuming them.
 - Callback boundaries, `reperform`, and parent-fiber/continuation backtrace walking are explicit control-kernel behavior instead of implicit runtime state.
 
 ### 10. Native Boundary Services

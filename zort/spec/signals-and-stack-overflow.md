@@ -103,7 +103,8 @@
 - `ControlKernel` in `src/control_kernel.zig` now owns managed-stack limits:
   - frame-count overflow,
   - frame-root overflow,
-  - typed `StackOverflow` errors for those semantic stack limits.
+  - explicit managed-stack growth from configured initial capacities up to configured maxima,
+  - typed `StackOverflow` errors once that managed-stack growth policy reaches its configured max.
 - This is only the service/kernel seam, not full signal runtime parity:
   - alternate signal stacks are not implemented,
   - OS-signal delivery is not wired into the runtime yet,
