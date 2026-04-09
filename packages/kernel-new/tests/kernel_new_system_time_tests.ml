@@ -61,6 +61,13 @@ let wait_for_timer = fun poll ~token timer ->
       else
         Error "expected timer source to wake the poller")
 
+let has_readable_token = fun token events ->
+  List.exists
+    (fun event ->
+      Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+      && Kernel.Async.Event.is_readable event)
+    events
+
 let test_of_parts_roundtrips = fun _ctx ->
   let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:42 ~nanos:123_456_789) in
   let (secs, nanos) = Kernel.Time.SystemTime.to_parts value in
@@ -168,6 +175,65 @@ let test_timer_every_ns_repeats = fun _ctx ->
           in
           poll_twice 2))
 
+let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.every_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 702 in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* first = lift_async
+            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+          if not (has_readable_token token first) then
+            Error "expected repeating timer to fire before deregistration"
+          else
+            let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+            let* second = lift_async
+              (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+            if has_readable_token token second then
+              Error "expected deregistered timer to stop producing events"
+            else
+              Ok ()))
+
+let test_timer_every_ns_spacing_is_reasonable = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let interval_ns = 20_000_000L in
+      let* timer = lift_timer (Kernel.Time.Timer.every_ns interval_ns) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 703 in
+      let* start = lift_monotonic (Kernel.Time.Monotonic.now ()) in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let rec wait_for_ticks seen =
+            if seen = 3 then
+              let* finish = lift_monotonic (Kernel.Time.Monotonic.now ()) in
+              let elapsed = Kernel.Time.Monotonic.diff_ns finish start in
+              if elapsed >= 10_000_000L && elapsed < 1_000_000_000L then
+                Ok ()
+              else
+                Error "expected repeating timer ticks to stay within a reasonable tolerance"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:200_000_000L ~max_events:8 poll) in
+              if has_readable_token token events then
+                wait_for_ticks (seen + 1)
+              else
+                Error "expected repeating timer to keep producing ticks over time"
+          in
+          wait_for_ticks 0))
+
 let tests = [
   Test.case "Time.SystemTime of_parts roundtrips" test_of_parts_roundtrips;
   Test.case "Time.SystemTime now is at or after epoch" test_now_is_at_or_after_epoch;
@@ -179,6 +245,8 @@ let tests = [
   Test.case "Time.Timer rejects non-positive timeout" test_timer_rejects_non_positive_timeout;
   Test.case "Time.Timer after_ns wakes poll" test_timer_after_ns_wakes_poll;
   Test.case "Time.Timer every_ns repeats" test_timer_every_ns_repeats;
+  Test.case "Time.Timer deregister after first tick stops future events" test_timer_deregister_after_first_tick_stops_future_events;
+  Test.case "Time.Timer every_ns spacing stays within a reasonable tolerance" test_timer_every_ns_spacing_is_reasonable;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args

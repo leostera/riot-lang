@@ -3,17 +3,17 @@ module Kernel = Kernel_new
 
 let lift_process = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic
+  | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_process error))
 
 let lift_async = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic
+  | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_async error))
 
 let lift_file = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic
+  | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let is_would_block = function
@@ -81,7 +81,7 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
           events
       in
       if not found then
-        Kernel.Error.panic "expected readiness event")
+        Kernel.SystemError.panic "expected readiness event")
 
 let wait_readable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
@@ -98,7 +98,7 @@ let read_once = fun poll ~token file ->
             loop ()
           )
         else
-          Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
   in
   loop ()
 
@@ -120,7 +120,7 @@ let wait_for_exit = fun poll ~token process ->
             let _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
             loop ())
     | Kernel.Result.Error error ->
-        Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+        Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
   in
   loop ()
 
@@ -146,7 +146,7 @@ let bench_spawn_echo_with_pipe = fun () ->
       with_process process
         (fun process ->
           match Kernel.Process.stdout process with
-          | None -> Kernel.Error.panic "expected stdout pipe"
+          | None -> Kernel.SystemError.panic "expected stdout pipe"
           | Some stdout ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
               ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 611) process)))
@@ -201,7 +201,7 @@ let bench_many_process_exit_sources = fun () ->
             if all_seen 0 then
               ()
             else if attempts = 0 then
-              Kernel.Error.panic "expected many child processes to report exit readiness"
+              Kernel.SystemError.panic "expected many child processes to report exit readiness"
             else
               let events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in

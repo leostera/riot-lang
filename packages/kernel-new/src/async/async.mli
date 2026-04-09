@@ -52,6 +52,8 @@ module Event: sig
 end
 
 module Adapter: sig
+  (** Backend-facing selector plumbing used by kernel-owned source adapters.
+      Application code should prefer [Poll] plus [to_source] values from public modules. *)
   module Selector: sig
     type t
     val make: unit -> (t, error) Result.t
@@ -93,6 +95,9 @@ module Source: sig
     val deregister: t -> Adapter.Selector.t -> (unit, error) Result.t
   end
 
+  (** Backend-facing source constructor. Public consumers should prefer source
+      values produced by [Fs.File.to_source], [Net.*.to_source], [Process.to_source],
+      and [Time.Timer.to_source]. *)
   val make: (module Intf with type t = 'state) -> 'state -> t
 end
 

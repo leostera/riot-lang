@@ -2,16 +2,16 @@ open Std
 module Kernel = Kernel_new
 
 let panic_async = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
 
 let panic_tcp_listener = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
 
 let panic_tcp_stream = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
 
 let panic_udp = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
 
 let protect = fun ~finally fn ->
   try
@@ -68,7 +68,7 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
           events
       in
       if not found then
-        Kernel.Error.panic "expected readiness event")
+        Kernel.SystemError.panic "expected readiness event")
 
 let wait_readable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
@@ -116,7 +116,7 @@ let connect_stream = fun poll addr ->
       let token = Kernel.Async.Token.make 401 in
       let rec finish attempts =
         if attempts = 0 then
-          Kernel.Error.panic "expected nonblocking tcp connect to eventually complete"
+          Kernel.SystemError.panic "expected nonblocking tcp connect to eventually complete"
         else (
           wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream);
           match Kernel.Net.TcpStream.finish_connect stream with
@@ -150,7 +150,7 @@ let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
     match Kernel.Net.TcpStream.write stream ~pos ~len buffer with
     | Kernel.Result.Ok written ->
         if written <= 0 then
-          Kernel.Error.panic "expected tcp write to make progress";
+          Kernel.SystemError.panic "expected tcp write to make progress";
         write_all_stream poll ~token stream buffer ~pos:((pos + written)) ~len:((len - written))
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
@@ -166,7 +166,7 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
     match Kernel.Net.TcpStream.read stream ~pos ~len buffer with
     | Kernel.Result.Ok read ->
         if read <= 0 then
-          Kernel.Error.panic "expected tcp read to make progress";
+          Kernel.SystemError.panic "expected tcp read to make progress";
         read_exact_stream poll ~token stream buffer ~pos:((pos + read)) ~len:((len - read))
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
@@ -183,7 +183,7 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
     match Kernel.Net.TcpStream.write_vectored stream slice with
     | Kernel.Result.Ok written ->
         if written <= 0 then
-          Kernel.Error.panic "expected tcp vectored write to make progress";
+          Kernel.SystemError.panic "expected tcp vectored write to make progress";
         write_all_vectored poll ~token stream iov ~pos:((pos + written)) ~len:((len - written))
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
@@ -200,7 +200,7 @@ let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
     match Kernel.Net.TcpStream.read_vectored stream slice with
     | Kernel.Result.Ok read ->
         if read <= 0 then
-          Kernel.Error.panic "expected tcp vectored read to make progress";
+          Kernel.SystemError.panic "expected tcp vectored read to make progress";
         read_exact_vectored poll ~token stream iov ~pos:((pos + read)) ~len:((len - read))
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then

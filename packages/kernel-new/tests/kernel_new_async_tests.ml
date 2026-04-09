@@ -12,6 +12,18 @@ let lift_async = function
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error)
 
+let lift_process = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
+
+let lift_timer = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Time.Timer.error_to_string error)
+
+let lift_udp = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Net.UdpSocket.error_to_string error)
+
 let protect = fun ~finally fn ->
   try
     let value = fn () in
@@ -43,6 +55,10 @@ let rec close_processes = function
   | process :: rest ->
       let _ = Kernel.Process.close process in
       close_processes rest
+
+let close_udp = fun socket ->
+  let _ = Kernel.Net.UdpSocket.close socket in
+  ()
 
 let with_pipes = fun count fn ->
   let rec create remaining acc =
@@ -432,6 +448,192 @@ let test_repeated_register_and_deregister_stays_healthy = fun _ctx ->
           in
           loop 256))
 
+let test_poll_handles_mixed_source_types = fun _ctx ->
+  with_pipe
+    (fun read_end write_end ->
+      with_poll
+        (fun poll ->
+          let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+          let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+          let* process = lift_process
+            (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Process.close process in
+              ())
+            (fun () ->
+              let* server = lift_udp
+                (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+              protect
+                ~finally:(fun () -> close_udp server)
+                (fun () ->
+                  let* client = lift_udp
+                    (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+                  protect
+                    ~finally:(fun () -> close_udp client)
+                    (fun () ->
+                      let timer_source = Kernel.Time.Timer.to_source timer in
+                      let process_source = Kernel.Process.to_source process in
+                      let pipe_source = Kernel.Fs.File.to_source read_end in
+                      let udp_source = Kernel.Net.UdpSocket.to_source server in
+                      let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "pipe")
+                          Kernel.Async.Interest.readable
+                          pipe_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "timer")
+                          Kernel.Async.Interest.readable
+                          timer_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "process")
+                          Kernel.Async.Interest.priority
+                          process_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "udp")
+                          Kernel.Async.Interest.readable
+                          udp_source) in
+                      protect
+                        ~finally:(fun () ->
+                          let _ = Kernel.Async.Poll.deregister poll pipe_source in
+                          let _ = Kernel.Async.Poll.deregister poll timer_source in
+                          let _ = Kernel.Async.Poll.deregister poll process_source in
+                          let _ = Kernel.Async.Poll.deregister poll udp_source in
+                          ())
+                        (fun () ->
+                          let* written = lift_file
+                            (Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x")) in
+                          if written != 1 then
+                            Error "expected mixed-source pipe write to write one byte"
+                          else
+                            let* sent = lift_udp
+                              (Kernel.Net.UdpSocket.send_to
+                                client
+                                server_addr
+                                (Kernel.Bytes.of_string "u")) in
+                            if sent != 1 then
+                              Error "expected mixed-source udp send_to to write one byte"
+                            else
+                              let seen_pipe = ref false in
+                              let seen_timer = ref false in
+                              let seen_process = ref false in
+                              let seen_udp = ref false in
+                              let rec mark = function
+                                | [] -> ()
+                                | event :: rest ->
+                                    let token =
+                                      Kernel.Async.Token.unsafe_to_value
+                                        (Kernel.Async.Event.token event) in
+                                    let () =
+                                      if token = "pipe" && Kernel.Async.Event.is_readable event then
+                                        seen_pipe := true
+                                      else if token = "timer" && Kernel.Async.Event.is_readable event then
+                                        seen_timer := true
+                                      else if token = "process" && Kernel.Async.Event.is_priority event then
+                                        seen_process := true
+                                      else if token = "udp" && Kernel.Async.Event.is_readable event then
+                                        seen_udp := true
+                                    in
+                                    mark rest
+                              in
+                              let rec all_seen () =
+                                !seen_pipe && !seen_timer && !seen_process && !seen_udp
+                              in
+                              let rec poll_until attempts =
+                                if all_seen () then
+                                  Ok ()
+                                else if attempts = 0 then
+                                  Error "expected mixed source poll to surface pipe, timer, udp, and process readiness"
+                                else
+                                  let* events = lift_async
+                                    (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:16 poll) in
+                                  let () = mark events in
+                                  poll_until (attempts - 1)
+                              in
+                              poll_until 12))))))
+
+let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
+  with_pipes 8
+    (fun pipes ->
+      with_poll
+        (fun poll ->
+          let rec register index = function
+            | [] -> Ok ()
+            | (read_end, _) :: rest ->
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Fs.File.to_source read_end)) in
+                register (index + 1) rest
+          in
+          let rec close_even index = function
+            | [] -> ()
+            | (read_end, _) :: rest ->
+                if index land 1 = 0 then
+                  let _ = Kernel.Fs.File.close read_end in
+                  ();
+                close_even (index + 1) rest
+          in
+          let rec write_live index = function
+            | [] -> Ok ()
+            | (_, write_end) :: rest ->
+                if index land 1 = 0 then
+                  write_live (index + 1) rest
+                else
+                  let* written = lift_file
+                    (Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x")) in
+                  if written != 1 then
+                    Error "expected pipe write to make progress for live registered sources"
+                  else
+                    write_live (index + 1) rest
+          in
+          let seen = Kernel.Array.make 8 false in
+          let rec mark = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_readable event then
+                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 8 then
+                    Kernel.Array.set seen token true;
+                  mark rest
+          in
+          let rec live_seen index =
+            if index = 8 then
+              true
+            else if index land 1 = 0 then
+              live_seen (index + 1)
+            else if Kernel.Array.get seen index then
+              live_seen (index + 1)
+            else
+              false
+          in
+          let* () = register 0 pipes in
+          let () = close_even 0 pipes in
+          let* () = write_live 0 pipes in
+          let rec poll_until attempts =
+            if attempts = 0 then
+              Error "expected closed registered pipe sources to not poison remaining readiness"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let () = mark events in
+              if live_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
+          in
+          poll_until 8))
+
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;
   Test.case "Async poll reports pipe read closure" test_poll_reports_pipe_read_closed;
@@ -441,6 +643,8 @@ let tests = [
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
   Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;
+  Test.case "Async poll handles mixed pipe, timer, udp, and process sources" test_poll_handles_mixed_source_types;
+  Test.case "Async poll tolerates closed registered pipe sources" test_poll_tolerates_closed_registered_pipe_sources;
   Test.case ~size:Test.Large "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
   Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
   Test.case ~size:Test.Large "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;

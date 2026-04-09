@@ -7,6 +7,8 @@ val make: ip:Ip_addr.t -> port:int -> (t, error) Result.t
 
 val of_parts: ip:Ip_addr.t -> port:int -> (t, error) Result.t
 
+(** Trusted constructor for validated native return values. Prefer [make] or [of_parts]
+    in normal code. *)
 val of_parts_unchecked: ip:Ip_addr.t -> port:int -> t
 
 val loopback_v4: port:int -> t

@@ -1,5 +1,3 @@
-module System = System_error
-
 type t =
   | Async of Async.error
   | Env of Env.error
@@ -38,5 +36,3 @@ val of_time_monotonic: Time.Monotonic.error -> t
 val of_time_timer: Time.Timer.error -> t
 
 val to_string: t -> string
-
-val panic: string -> 'a

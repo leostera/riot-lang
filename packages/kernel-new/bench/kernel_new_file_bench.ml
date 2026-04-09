@@ -2,12 +2,12 @@ open Std
 module Kernel = Kernel_new
 
 let panic_file = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
   | Ok value -> value
-  | Error _ -> Kernel.Error.panic "failed to create temporary directory"
+  | Error _ -> Kernel.SystemError.panic "failed to create temporary directory"
 
 let with_temp_path = fun prefix filename fn ->
   match
@@ -17,7 +17,7 @@ let with_temp_path = fun prefix filename fn ->
         fn path)
   with
   | Ok value -> value
-  | Error _ -> Kernel.Error.panic "failed to create temporary directory"
+  | Error _ -> Kernel.SystemError.panic "failed to create temporary directory"
 
 let with_file = fun file fn ->
   try

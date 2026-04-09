@@ -1,5 +1,3 @@
-module System = System_error
-
 type t =
   | Async of Async.error
   | Env of Env.error
@@ -51,5 +49,3 @@ let to_string = function
   | Time_system_time error -> Time.SystemTime.error_to_string error
   | Time_monotonic error -> Time.Monotonic.error_to_string error
   | Time_timer error -> Time.Timer.error_to_string error
-
-let panic = System_error.panic

@@ -2,10 +2,10 @@ open Std
 module Kernel = Kernel_new
 
 let panic_file = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let panic_async = fun error ->
-  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
 
 let protect = fun ~finally fn ->
   try
@@ -104,7 +104,7 @@ let bench_timer_wakeup = fun () ->
     (fun poll ->
       match Kernel.Time.Timer.after_ns 1_000_000L with
       | Error error ->
-          Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
       | Ok timer ->
           let source = Kernel.Time.Timer.to_source timer in
           let _ = Kernel.Async.Poll.register

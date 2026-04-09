@@ -32,6 +32,8 @@ Examples:
 
 [`Kernel_new.Error`](./src/error.mli) wraps those module-local errors into one shared sum type for package boundaries and test helpers. [`Kernel_new.SystemError`](./src/system_error.mli) owns the shared errno-like system cases used by native shims.
 
+`Kernel_new.Error` is only the typed envelope. The invariant-violation escape hatch stays in [`Kernel_new.SystemError.panic`](./src/system_error.mli), not in the package error sum.
+
 ## Rules
 
 - Do not depend on `Unix.*` or `Stdlib.*` in `kernel-new` implementation code.
@@ -67,6 +69,45 @@ Keep pure modules pure. Do not add backend files where the code is platform-free
 - `Net.SocketAddr`
 
 `Net.IpAddr` currently uses a Riot-owned native validator, so it follows the local backend pattern even though its public surface stays small and pure-looking.
+
+## Public Surface Notes
+
+- Keep public handles abstract. `Fs.File.t`, `Net.TcpStream.t`, `Net.UdpSocket.t`, `Process.t`, and the clock/timer handles should stay opaque.
+- Keep the package error story layered: local module error first, `SystemError.t` for shared native/system failures, and `Kernel_new.Error.t` for package boundaries.
+- `IO` is intentionally small. Its public role is `IO.Iovec`; generic catch-all I/O error aliases do not belong there.
+- `Async.Adapter` and `Async.Source.make` are backend-facing seams used by `kernel-new` itself. Consumers should prefer `Async.Poll` plus `to_source` values from public modules.
+
+## Readiness Audit
+
+Readiness-backed operations:
+
+- `Async.Poll` and the selector-backed source registration path
+- `Fs.File.to_source`
+- `Net.TcpListener.to_source`, `Net.TcpStream.to_source`, and `Net.UdpSocket.to_source`
+- `Process.to_source`
+- `Time.Timer.to_source`
+- `Net.TcpStream.finish_connect`
+
+Immediate syscall-shaped operations that remain synchronous by design:
+
+- `Env.get`, `Env.vars`, `Env.current_dir`, `Env.set_var`, `Env.remove_var`, `Env.set_current_dir`
+- `Time.SystemTime.now` and `Time.Monotonic.now`
+- `Fs.File` metadata, path, directory, link, open, close, and copy helpers
+- `Process.spawn`, `Process.try_wait`, `Process.kill`, and `Process.close`
+- `Net.IpAddr.of_string`, `Net.SocketAddr.make`, and socket address inspection helpers
+- `Net.TcpListener.bind` / `local_addr` and `Net.UdpSocket.bind` / `local_addr`
+
+Nonblocking rule of thumb:
+
+- if a capability has a `to_source`, do not add a separate blocking wait helper for it
+- if an operation is exposed as an immediate syscall-shaped primitive, document why it is intentionally synchronous
+
+## Review Checklist
+
+- no public raw file descriptors, socket handles, timer ids, or process-owned native handles
+- no blocking helper where readiness plus `to_source` already exists
+- local backend modules use `file.ml` or `module.ml` as the public re-export and keep backend code in sibling files like `unix.ml`
+- public errors stay typed and structured; string messages are for `to_string` output, not API contracts
 
 ## For `std`
 

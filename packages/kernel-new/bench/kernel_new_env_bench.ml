@@ -3,7 +3,7 @@ module Kernel = Kernel_new
 
 let lift = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Env.error_to_string error)
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.Env.error_to_string error)
 
 let env_name = "RIOT_KERNEL_NEW_ENV_BENCH"
 

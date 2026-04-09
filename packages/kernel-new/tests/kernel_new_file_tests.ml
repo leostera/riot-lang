@@ -40,6 +40,29 @@ let with_file = fun file fn ->
       ())
     fn
 
+let array_contains = fun values target ->
+  let rec loop index =
+    if index = Kernel.Array.length values then
+      false
+    else if Kernel.String.equal (Kernel.Array.get values index) target then
+      true
+    else
+      loop (index + 1)
+  in
+  loop 0
+
+let array_has_exact_members = fun actual expected ->
+  let rec members_present index =
+    if index = Kernel.Array.length expected then
+      true
+    else if array_contains actual (Kernel.Array.get expected index) then
+      members_present (index + 1)
+    else
+      false
+  in
+  Kernel.Array.length actual = Kernel.Array.length expected
+  && members_present 0
+
 let test_file_scalar_write_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "scalar.bin"
     (fun path ->
@@ -481,6 +504,137 @@ let test_repeated_pipe_open_and_close_stays_healthy = fun _ctx ->
   in
   loop 256
 
+let test_read_dir_names_skips_dot_entries_and_is_order_agnostic = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let nested = Kernel.Path.(tempdir / "nested") in
+      let file_path = Kernel.Path.(tempdir / "note.txt") in
+      let* () = lift (Kernel.Fs.File.create_dir nested ~perm:0o755) in
+      let* file = lift (Kernel.Fs.File.open_write file_path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "x")) in
+            if written = 1 then
+              Ok ()
+            else
+              Error "expected directory fixture file write to make progress")
+      in
+      let* names = lift (Kernel.Fs.File.read_dir_names tempdir) in
+      let expected = [| "nested"; "note.txt" |] in
+      if
+        not (array_contains names ".")
+        && not (array_contains names "..")
+        && array_has_exact_members names expected
+      then
+        Ok ()
+      else
+        Error "expected read_dir_names to skip dot entries and preserve visible contents")
+
+let test_nested_symlink_chain_canonicalizes_cleanly = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "link") in
+      let nested_link = Kernel.Path.(tempdir / "nested-link") in
+      let target_ref = Kernel.Path.v "target.txt" in
+      let link_ref = Kernel.Path.v "link" in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected target file write to make progress")
+      in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file nested_link in
+          let _ = Kernel.Fs.File.remove_file link in
+          let _ = Kernel.Fs.File.remove_file target in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:target_ref ~dst:link) in
+          let* () = lift (Kernel.Fs.File.symlink ~src:link_ref ~dst:nested_link) in
+          let* canonical = lift (Kernel.Fs.File.canonicalize nested_link) in
+          let* canonical_target = lift (Kernel.Fs.File.canonicalize target) in
+          if
+            not (Kernel.String.equal
+              (Kernel.Path.to_string canonical)
+              (Kernel.Path.to_string canonical_target))
+          then
+            Error "expected nested symlink canonicalize to resolve to the final target"
+          else
+            let* target_path = lift (Kernel.Fs.File.read_link nested_link) in
+            if not (Kernel.String.equal (Kernel.Path.to_string target_path) "link") then
+              Error "expected read_link to preserve the immediate nested symlink target"
+            else
+              Ok ()))
+
+let test_hard_link_rename_preserves_remaining_link_count = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let original = Kernel.Path.(tempdir / "original.txt") in
+      let alias = Kernel.Path.(tempdir / "alias.txt") in
+      let moved = Kernel.Path.(tempdir / "moved.txt") in
+      let* file = lift (Kernel.Fs.File.open_write original) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "linked")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected hard-link fixture write to make progress")
+      in
+      let* () = lift (Kernel.Fs.File.hard_link ~src:original ~dst:alias) in
+      let* () = lift (Kernel.Fs.File.rename ~src:original ~dst:moved) in
+      let* moved_stats = lift (Kernel.Fs.File.metadata moved) in
+      let* alias_stats = lift (Kernel.Fs.File.metadata alias) in
+      if
+        Kernel.Fs.File.Metadata.nlink moved_stats != 2
+        || Kernel.Fs.File.Metadata.nlink alias_stats != 2
+      then
+        Error "expected renamed hard links to keep a link count of two"
+      else
+        let* () = lift (Kernel.Fs.File.remove_file alias) in
+        let* remaining = lift (Kernel.Fs.File.metadata moved) in
+        let* original_exists = lift (Kernel.Fs.File.exists original) in
+        if Kernel.Fs.File.Metadata.nlink remaining = 1 && not original_exists then
+          Ok ()
+        else
+          Error "expected removing one hard-link path to leave a single remaining name")
+
+let test_vectored_write_subslice_roundtrips = fun _ctx ->
+  with_temp_path "kernel_new_file" "vectored-subslice.bin"
+    (fun path ->
+      let payload = Kernel.IO.Iovec.of_string_array [| "__"; "hello"; " "; "kernel"; "__" |] in
+      let slice = Kernel.IO.Iovec.sub ~pos:2 ~len:12 payload in
+      let* file = lift (Kernel.Fs.File.open_write path) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write_vectored file slice) in
+            if written = 12 then
+              Ok ()
+            else
+              Error "expected vectored subslice write to write the selected slice only")
+      in
+      let* file = lift (Kernel.Fs.File.open_read path) in
+      let buffer = Kernel.Bytes.create 32 in
+      let* actual =
+        with_file file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer 0 read))
+      in
+      if Kernel.String.equal actual "hello kernel" then
+        Ok ()
+      else
+        Error "expected vectored subslice roundtrip to preserve the selected payload")
+
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
@@ -499,6 +653,10 @@ let tests = [
   Test.case "Fs.File is_tty is false for files and pipes" test_is_tty_is_false_for_files_and_pipes;
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
   Test.case "Fs.File remove missing paths reports no-such-file" test_remove_missing_paths_report_no_such_file;
+  Test.case "Fs.File read_dir_names skips dot entries and is order agnostic" test_read_dir_names_skips_dot_entries_and_is_order_agnostic;
+  Test.case "Fs.File nested symlink chains canonicalize cleanly" test_nested_symlink_chain_canonicalizes_cleanly;
+  Test.case "Fs.File hard-link rename preserves remaining link counts" test_hard_link_rename_preserves_remaining_link_count;
+  Test.case "Fs.File vectored write subslices roundtrip" test_vectored_write_subslice_roundtrips;
   Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 

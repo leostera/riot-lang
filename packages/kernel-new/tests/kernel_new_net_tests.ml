@@ -67,6 +67,12 @@ let close_udp = fun socket ->
   let _ = Kernel.Net.UdpSocket.close socket in
   ()
 
+let rec close_streams = function
+  | [] -> ()
+  | stream :: rest ->
+      close_stream stream;
+      close_streams rest
+
 let with_poll = fun fn ->
   let* poll = lift_async (Kernel.Async.Poll.make ()) in
   protect
@@ -802,6 +808,167 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
           in
           poll_until 8))
 
+let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let* listener_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let rec connect_many remaining acc =
+            if remaining = 0 then
+              Ok acc
+            else
+              let* stream = connect_stream poll listener_addr in
+              connect_many (remaining - 1) (stream :: acc)
+          in
+          let rec accept_many remaining acc =
+            if remaining = 0 then
+              Ok acc
+            else
+              let* (stream, _) = accept_stream poll listener in
+              accept_many (remaining - 1) (stream :: acc)
+          in
+          let* clients = connect_many 8 [] in
+          protect ~finally:(fun () -> close_streams clients)
+            (fun () ->
+              let* servers = accept_many 8 [] in
+              protect ~finally:(fun () -> close_streams servers)
+                (fun () ->
+                  let clients = List.rev clients in
+                  let servers = List.rev servers in
+                  let rec register index = function
+                    | [] -> Ok ()
+                    | stream :: rest ->
+                        let* () = lift_async
+                          (Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make index)
+                            Kernel.Async.Interest.readable
+                            (Kernel.Net.TcpStream.to_source stream)) in
+                        register (index + 1) rest
+                  in
+                  let rec close_even index = function
+                    | [] -> ()
+                    | stream :: rest ->
+                        if index land 1 = 0 then
+                          close_stream stream;
+                        close_even (index + 1) rest
+                  in
+                  let rec write_live index clients servers =
+                    match (clients, servers) with
+                    | ([], []) -> Ok ()
+                    | (client :: client_rest, _server :: server_rest) ->
+                        if index land 1 = 0 then
+                          write_live (index + 1) client_rest server_rest
+                        else
+                          let* written = lift_tcp_stream
+                            (Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x")) in
+                          if written != 1 then
+                            Error "expected tcp write to make progress for live registered streams"
+                          else
+                            write_live (index + 1) client_rest server_rest
+                    | _ -> Error "expected tcp client/server lists to stay aligned"
+                  in
+                  let seen = Kernel.Array.make 8 false in
+                  let rec mark = function
+                    | [] -> ()
+                    | event :: rest ->
+                        if Kernel.Async.Event.is_readable event then
+                          let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                          if token >= 0 && token < 8 then
+                            Kernel.Array.set seen token true;
+                          mark rest
+                  in
+                  let rec live_seen index =
+                    if index = 8 then
+                      true
+                    else if index land 1 = 0 then
+                      live_seen (index + 1)
+                    else if Kernel.Array.get seen index then
+                      live_seen (index + 1)
+                    else
+                      false
+                  in
+                  let* () = register 0 servers in
+                  let () = close_even 0 servers in
+                  let* () = write_live 0 clients servers in
+                  let rec poll_until attempts =
+                    if attempts = 0 then
+                      Error "expected closed registered tcp streams to not poison remaining readiness"
+                    else
+                      let* events = lift_async
+                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                      let () = mark events in
+                      if live_seen 0 then
+                        Ok ()
+                      else
+                        poll_until (attempts - 1)
+                  in
+                  poll_until 8))))
+
+let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
+      protect ~finally:(fun () -> close_udp server)
+        (fun () ->
+          let* client = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
+          protect ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+              let* sent = lift_udp
+                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ipv6")) in
+              if sent != 4 then
+                Error "expected ipv6 udp send_to to send one datagram"
+              else
+                let buffer = Kernel.Bytes.create 32 in
+                let* (read, from) = recv_from_udp poll ~token:(Kernel.Async.Token.make 314) server buffer in
+                if
+                  read = 4
+                  && Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 read) "ipv6"
+                  && Kernel.String.equal
+                    (Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip from))
+                    "::1"
+                then
+                  Ok ()
+                else
+                  Error "expected ipv6 udp loopback to preserve payload and peer address")))
+
+let test_tcp_listener_repeated_bind_and_close_stays_healthy = fun _ctx ->
+  let rec loop remaining =
+    if remaining = 0 then
+      Ok ()
+    else
+      let* listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let* addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+      let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
+      if Kernel.Net.SocketAddr.port addr > 0 then
+        loop (remaining - 1)
+      else
+        Error "expected repeated tcp listener binds to yield an ephemeral port"
+  in
+  loop 64
+
+let test_udp_socket_repeated_bind_and_close_stays_healthy = fun _ctx ->
+  let rec loop remaining =
+    if remaining = 0 then
+      Ok ()
+    else
+      let* socket = lift_udp
+        (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let* addr = lift_udp (Kernel.Net.UdpSocket.local_addr socket) in
+      let* () = lift_udp (Kernel.Net.UdpSocket.close socket) in
+      if Kernel.Net.SocketAddr.port addr > 0 then
+        loop (remaining - 1)
+      else
+        Error "expected repeated udp binds to yield an ephemeral port"
+  in
+  loop 128
+
 let test_udp_send_requires_connected_peer = fun _ctx ->
   let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
   protect ~finally:(fun () -> close_udp socket)
@@ -851,10 +1018,14 @@ let tests = [
   Test.case "Net.TcpListener accept reports would_block without pending peers" test_tcp_listener_accept_reports_would_block;
   Test.case "Net.TcpStream finish_connect reports connection refused" test_tcp_stream_finish_connect_reports_connection_refused;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;
+  Test.case "Net.UdpSocket ipv6 send_to and recv_from roundtrip over loopback" test_udp_socket_ipv6_send_to_and_recv_from;
   Test.case "Net.UdpSocket connected socket ignores other peers" test_udp_connected_socket_ignores_other_peers;
   Test.case "Async poll handles many udp sockets" test_async_poll_handles_many_udp_sockets;
   Test.case ~size:Test.Large "Async poll handles many tcp streams" test_async_poll_handles_many_tcp_streams;
   Test.case "Async poll tolerates closed registered udp sockets" test_async_poll_tolerates_closed_registered_udp_sockets;
+  Test.case "Async poll tolerates closed registered tcp streams" test_async_poll_tolerates_closed_registered_tcp_streams;
+  Test.case ~size:Test.Large "Net.TcpListener repeated bind and close stays healthy" test_tcp_listener_repeated_bind_and_close_stays_healthy;
+  Test.case ~size:Test.Large "Net.UdpSocket repeated bind and close stays healthy" test_udp_socket_repeated_bind_and_close_stays_healthy;
   Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
 ]
