@@ -87,3 +87,20 @@
   - GC roots
   - code-fragment registration
 - A maintainable zort boundary would be better served by typed handles and explicit registration records than by the OCaml runtime's loosely typed primitive table.
+
+## zort compatibility boundary notes
+
+- zort now treats `src/api.zig` as a shim-only boundary.
+- The shim uses an explicit compat codec in `src/compat.zig`:
+  - compat ints use a tagged immediate encoding,
+  - compat atoms use a distinct tagged immediate encoding,
+  - heap values are exported as opaque handles, not raw pointers.
+- Handle slots are rooted explicitly through the runtime so a compat-exported block stays alive until the shim releases the handle.
+- This is an intentional divergence from the OCaml runtime:
+  - zort does not expose raw OCaml heap pointers as boundary values,
+  - zort does not rely on OCaml's exact one-bit immediate encoding internally or at the shim boundary.
+- The first typed primitive boundary lives in `src/primitive_registry.zig`:
+  - string name,
+  - explicit arity,
+  - semantic `Value` arguments/results,
+  - explicit lookup/arity errors.
