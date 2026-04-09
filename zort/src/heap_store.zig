@@ -259,6 +259,32 @@ pub const HeapStore = struct {
             self.reclaimSlot(i, fixed_arena);
         }
     }
+
+    pub const VerifyError = error{
+        ObjectCountMismatch,
+        InvalidGeneration,
+        InvalidFreeSlot,
+        LiveSlotInFreeList,
+        DuplicateFreeSlot,
+    };
+
+    pub fn verifyInvariants(self: *const HeapStore) VerifyError!void {
+        var alive_count: usize = 0;
+        for (self.slots.items) |slot| {
+            if (slot.generation == 0) return error.InvalidGeneration;
+            if (slot.alive) alive_count += 1;
+        }
+        if (alive_count != self.object_count) return error.ObjectCountMismatch;
+
+        for (self.free_indices.items, 0..) |free_index, idx| {
+            if (free_index >= self.slots.items.len) return error.InvalidFreeSlot;
+            if (self.slots.items[free_index].alive) return error.LiveSlotInFreeList;
+            var j: usize = idx + 1;
+            while (j < self.free_indices.items.len) : (j += 1) {
+                if (self.free_indices.items[j] == free_index) return error.DuplicateFreeSlot;
+            }
+        }
+    }
 };
 
 test "heap_store: add and get object" {
@@ -316,4 +342,13 @@ test "heap_store: clear drops all objects" {
     const handle = try store.add(Object.initBoxedI64(42));
     try std.testing.expectEqual(@as(u32, 1), handle.index);
     try std.testing.expectEqual(@as(usize, 1), store.count());
+}
+
+test "heap_store: verify invariants accepts healthy store" {
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+
+    const handle = try store.add(Object.initBoxedI64(42));
+    _ = handle;
+    try store.verifyInvariants();
 }

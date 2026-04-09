@@ -147,10 +147,87 @@ pub const ControlKernel = struct {
 
     pub fn provider(self: *ControlKernel) RootProvider {
         return .{
+            .name = "control_kernel",
             .ctx = self,
             .count_fn = countRoots,
             .visit_fn = visitRoots,
         };
+    }
+
+    pub fn ownedRootCount(self: *const ControlKernel, needle: Value) usize {
+        var count: usize = 0;
+        for (self.fibers.items) |slot| {
+            if (!slot.alive) continue;
+            count += countFiberValueRoots(&slot.fiber, needle);
+        }
+        for (self.continuations.items) |slot| {
+            if (!slot.alive or slot.continuation.status != .suspended) continue;
+            if (std.meta.eql(slot.continuation.payload, needle)) count += 1;
+            for (slot.continuation.captured_roots.items) |rooted| {
+                if (std.meta.eql(rooted, needle)) count += 1;
+            }
+        }
+        return count;
+    }
+
+    pub const VerifyError = error{
+        InvalidCurrentFiber,
+        ActiveFiberCountMismatch,
+        InvalidParentFiber,
+        InvalidHandlerValue,
+        InvalidContinuationFiber,
+        InvalidContinuationParent,
+        InvalidHandlerFiber,
+        InvalidHandlerIndex,
+        InvalidContinuationValue,
+    };
+
+    pub fn verify(
+        self: *const ControlKernel,
+        context: anytype,
+        comptime is_valid_value: fn (@TypeOf(context), Value) bool,
+    ) VerifyError!void {
+        if (self.fiber(self.current_fiber) == null) return error.InvalidCurrentFiber;
+
+        var active_fibers: usize = 0;
+        for (self.fibers.items, 0..) |slot, slot_index| {
+            if (!slot.alive) continue;
+            if (slot.fiber.status == .active) active_fibers += 1;
+            if (slot.fiber.parent) |parent| {
+                if (self.fiber(parent) == null) return error.InvalidParentFiber;
+            }
+            for (slot.fiber.handlers.items) |handler| {
+                if (handler.handle_effect.isBlock() and !is_valid_value(context, handler.handle_effect)) {
+                    return error.InvalidHandlerValue;
+                }
+                if (handler.handle_value) |rooted| {
+                    if (rooted.isBlock() and !is_valid_value(context, rooted)) return error.InvalidHandlerValue;
+                }
+                if (handler.handle_exn) |rooted| {
+                    if (rooted.isBlock() and !is_valid_value(context, rooted)) return error.InvalidHandlerValue;
+                }
+            }
+            _ = slot_index;
+        }
+        if (active_fibers != 1) return error.ActiveFiberCountMismatch;
+
+        for (self.continuations.items) |slot| {
+            if (!slot.alive) continue;
+            if (self.fiber(slot.continuation.fiber) == null) return error.InvalidContinuationFiber;
+            if (slot.continuation.parent) |parent| {
+                if (self.fiber(parent) == null) return error.InvalidContinuationParent;
+            }
+            const handler_fiber = self.fiber(slot.continuation.handler_fiber) orelse return error.InvalidHandlerFiber;
+            if (slot.continuation.handler_index > handler_fiber.handlers.items.len) {
+                return error.InvalidHandlerIndex;
+            }
+            if (slot.continuation.payload.isBlock() and !is_valid_value(context, slot.continuation.payload)) {
+                return error.InvalidContinuationValue;
+            }
+            for (slot.continuation.captured_roots.items) |rooted| {
+                if (rooted.isBlock() and !is_valid_value(context, rooted)) return error.InvalidContinuationValue;
+            }
+        }
     }
 
     pub fn currentFiber(self: *const ControlKernel) FiberHandle {
@@ -192,7 +269,11 @@ pub const ControlKernel = struct {
         const next = self.fiberMut(handle).?;
         next.status = .active;
         self.current_fiber = handle;
-        self.event_sink.emit(.{ .control = .{ .action = .fiber_activate } });
+        self.event_sink.emit(.{ .control = .{
+            .action = .fiber_activate,
+            .fiber = toTraceHandle(handle),
+            .parent_depth = self.parentDepth(handle),
+        } });
     }
 
     pub fn pushHandler(self: *ControlKernel, fiber_handle: FiberHandle, handler: HandlerFrame) !void {
@@ -230,7 +311,15 @@ pub const ControlKernel = struct {
         };
         try captured.captured_roots.appendSlice(self.allocator, captured_roots);
         const handle = try self.addContinuation(captured);
-        self.event_sink.emit(.{ .control = .{ .action = .continuation_capture } });
+        self.event_sink.emit(.{ .control = .{
+            .action = .continuation_capture,
+            .effect = effect,
+            .fiber = toTraceHandle(fiber_handle),
+            .continuation = toTraceHandle(handle),
+            .handler_fiber = toTraceHandle(fiber_handle),
+            .handler_index = fiber_state.handlers.items.len,
+            .parent_depth = self.parentDepth(fiber_handle),
+        } });
         return handle;
     }
 
@@ -252,12 +341,28 @@ pub const ControlKernel = struct {
         payload: Value,
         captured_roots: []const Value,
     ) !PerformResult {
+        return self.performAt(0, effect, payload, captured_roots);
+    }
+
+    pub fn performAt(
+        self: *ControlKernel,
+        site_id: u32,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
         const match = self.findHandler(self.current_fiber, effect) orelse {
-            self.event_sink.emit(.{ .control = .{ .action = .effect_unhandled } });
+            self.event_sink.emit(.{ .control = .{
+                .action = .effect_unhandled,
+                .site_id = site_id,
+                .effect = effect,
+                .fiber = toTraceHandle(self.current_fiber),
+                .parent_depth = self.parentDepth(self.current_fiber),
+            } });
             return error.UnhandledEffect;
         };
 
-        const captured_handle = try self.captureMatchedContinuation(match, effect, payload, captured_roots);
+        const captured_handle = try self.captureMatchedContinuation(site_id, match, effect, payload, captured_roots);
         return .{
             .continuation = captured_handle,
             .handler_fiber = match.fiber,
@@ -274,7 +379,15 @@ pub const ControlKernel = struct {
         }
         slot.continuation.status = .resumed;
         try self.activateFiber(slot.continuation.fiber);
-        self.event_sink.emit(.{ .control = .{ .action = .continuation_resume } });
+        self.event_sink.emit(.{ .control = .{
+            .action = .continuation_resume,
+            .effect = slot.continuation.effect,
+            .fiber = toTraceHandle(slot.continuation.fiber),
+            .continuation = toTraceHandle(handle),
+            .handler_fiber = toTraceHandle(slot.continuation.handler_fiber),
+            .handler_index = slot.continuation.handler_index,
+            .parent_depth = self.parentDepth(slot.continuation.fiber),
+        } });
         return .{
             .fiber = slot.continuation.fiber,
             .value = value_to_resume,
@@ -285,6 +398,15 @@ pub const ControlKernel = struct {
         if (handle.index >= self.continuations.items.len) return false;
         const slot = &self.continuations.items[handle.index];
         if (!slot.alive or slot.generation != handle.generation) return false;
+        self.event_sink.emit(.{ .control = .{
+            .action = .continuation_drop,
+            .effect = slot.continuation.effect,
+            .fiber = toTraceHandle(slot.continuation.fiber),
+            .continuation = toTraceHandle(handle),
+            .handler_fiber = toTraceHandle(slot.continuation.handler_fiber),
+            .handler_index = slot.continuation.handler_index,
+            .parent_depth = self.parentDepth(slot.continuation.fiber),
+        } });
         slot.continuation.deinit(self.allocator);
         slot.alive = false;
         slot.generation +%= 1;
@@ -372,6 +494,7 @@ pub const ControlKernel = struct {
 
     fn captureMatchedContinuation(
         self: *ControlKernel,
+        site_id: u32,
         match: HandlerMatch,
         effect: EffectId,
         payload: Value,
@@ -391,8 +514,34 @@ pub const ControlKernel = struct {
         };
         try captured.captured_roots.appendSlice(self.allocator, captured_roots);
         const handle = try self.addContinuation(captured);
-        self.event_sink.emit(.{ .control = .{ .action = .continuation_capture } });
+        self.event_sink.emit(.{ .control = .{
+            .action = .continuation_capture,
+            .site_id = site_id,
+            .effect = effect,
+            .fiber = toTraceHandle(fiber_handle),
+            .continuation = toTraceHandle(handle),
+            .handler_fiber = toTraceHandle(match.fiber),
+            .handler_index = match.index,
+            .parent_depth = self.parentDepth(fiber_handle),
+        } });
         return handle;
+    }
+
+    fn parentDepth(self: *const ControlKernel, handle: FiberHandle) usize {
+        var depth: usize = 0;
+        var cursor = self.fiber(handle).?.parent;
+        while (cursor) |parent| {
+            depth += 1;
+            cursor = self.fiber(parent).?.parent;
+        }
+        return depth;
+    }
+
+    fn toTraceHandle(handle: anytype) event_sink_mod.HandleRef {
+        return .{
+            .index = handle.index,
+            .generation = handle.generation,
+        };
     }
 
     fn countRoots(ctx: ?*anyopaque) usize {
@@ -434,6 +583,20 @@ pub const ControlKernel = struct {
             count += 1;
             if (handler.handle_value != null) count += 1;
             if (handler.handle_exn != null) count += 1;
+        }
+        return count;
+    }
+
+    fn countFiberValueRoots(fiber_state: *const FiberState, needle: Value) usize {
+        var count: usize = 0;
+        for (fiber_state.handlers.items) |handler| {
+            if (std.meta.eql(handler.handle_effect, needle)) count += 1;
+            if (handler.handle_value) |rooted| {
+                if (std.meta.eql(rooted, needle)) count += 1;
+            }
+            if (handler.handle_exn) |rooted| {
+                if (std.meta.eql(rooted, needle)) count += 1;
+            }
         }
         return count;
     }

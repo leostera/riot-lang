@@ -184,6 +184,15 @@
   - the second resume fails with an explicit `AlreadyResumed` error.
 - `perform` with no matching handler fails with an explicit `UnhandledEffect` error.
 - Resumed continuations stop contributing captured roots to the collector provider view.
+- Control-kernel activity is now observable through typed events carrying:
+  - action kind
+  - effect id
+  - optional site id
+  - fiber handle
+  - continuation handle
+  - handler fiber/index
+  - parent-fiber depth
+- Bench runs can surface those events with `--trace-effects`.
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
   - richer resume ownership rules,

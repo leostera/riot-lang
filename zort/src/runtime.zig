@@ -16,6 +16,18 @@ pub const Event = event_sink_mod.Event;
 pub const EventCounters = event_sink_mod.Counters;
 pub const EventRecorder = event_sink_mod.Recorder;
 pub const EventSink = event_sink_mod.EventSink;
+pub const GcSnapshotEvent = event_sink_mod.GcSnapshotEvent;
+pub const ObjectExplain = struct {
+    handle: HeapRef,
+    kind: ObjectKind,
+    size: usize,
+    explicit_roots: usize,
+    control_roots: usize,
+    last_event: ?event_sink_mod.ObjectLastEvent = null,
+};
+pub const TraceRecorder = event_sink_mod.TraceRecorder;
+pub const TraceEntry = event_sink_mod.TraceEntry;
+pub const RootProviderEvent = event_sink_mod.RootProviderEvent;
 pub const ControlKernel = control_kernel_mod.ControlKernel;
 pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
 pub const EffectId = control_kernel_mod.EffectId;
@@ -37,12 +49,24 @@ pub const Runtime = struct {
 
     pub const Config = struct {
         debugRootChecks: bool = false,
+        debugChecks: DebugChecks = .{},
         fixedArena: ?[]u8 = null,
         eventSink: EventSink = EventSink.noop(),
         /// Strategy selection for collection:
         /// - .mark_sweep: root-based mark-and-sweep (default, baseline behavior)
         /// - .bump: experimental full reset path
         gcStrategy: GcStrategy = .mark_sweep,
+    };
+
+    pub const DebugChecks = struct {
+        verify_roots: bool = false,
+        verify_heap_store: bool = false,
+        verify_control_kernel: bool = false,
+        verify_after_collect: bool = false,
+
+        pub fn any(self: DebugChecks) bool {
+            return self.verify_roots or self.verify_heap_store or self.verify_control_kernel or self.verify_after_collect;
+        }
     };
 
     pub const Stats = struct {
@@ -58,6 +82,7 @@ pub const Runtime = struct {
     heap_store: HeapStore,
     root_registry: RootRegistry,
     debug_root_checks: bool = false,
+    debug_checks: DebugChecks = .{},
     fixed_arena: ?std.heap.FixedBufferAllocator = null,
     gc_strategy: GcStrategy = .mark_sweep,
     fixed_arena_buffer: ?[]u8 = null,
@@ -75,6 +100,7 @@ pub const Runtime = struct {
             .heap_store = HeapStore.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
             .debug_root_checks = config.debugRootChecks,
+            .debug_checks = config.debugChecks,
         };
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
@@ -108,6 +134,10 @@ pub const Runtime = struct {
 
     pub fn objectCount(self: *Runtime) usize {
         return self.heap_store.count();
+    }
+
+    pub fn objectFromDebug(self: *Runtime, block_value: Value) ?*Object {
+        return self.objectFrom(block_value);
     }
 
     fn collectorWithProviders(self: *Runtime, root_providers: []const RootProvider) Collector {
@@ -293,13 +323,37 @@ pub const Runtime = struct {
         self.root_registry.unregister(slot);
     }
 
+    pub fn explainValue(self: *Runtime, block_value: Value, trace: ?*const TraceRecorder) Error!ObjectExplain {
+        const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
+        const handle = block_value.asHeapRef() orelse return Error.InvalidValue;
+        return .{
+            .handle = handle,
+            .kind = obj.kind().?,
+            .size = obj.wosize(),
+            .explicit_roots = self.root_registry.ownerCount(block_value),
+            .control_roots = self.control_kernel.ownedRootCount(block_value),
+            .last_event = if (trace) |recorder| recorder.lastObjectEvent(handle) else null,
+        };
+    }
+
+    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError;
+
+    pub fn verifyDebugState(self: *Runtime) VerifyError!void {
+        if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
+        if (self.debug_checks.verify_heap_store) try self.heap_store.verifyInvariants();
+        if (self.debug_checks.verify_control_kernel) try self.control_kernel.verify(self, isValidRootedValue);
+    }
+
     pub fn collect(self: *Runtime) void {
-        if (self.debug_root_checks) self.verifyRoots();
+        if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         self.collect_generations +%= 1;
         var providers_buffer: [2]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         gc.collect();
+        if (self.debug_checks.verify_after_collect) {
+            self.verifyDebugState() catch |err| std.debug.panic("zort: debug verification failed: {s}", .{@errorName(err)});
+        }
     }
 
     fn objectFrom(self: *Runtime, block_value: Value) ?*Object {
@@ -954,6 +1008,55 @@ test "runtime: performed continuations keep heap values alive until resumed" {
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
+}
+
+test "runtime: explainValue reports root ownership and last object event" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{
+        .track_object_events = true,
+    });
+    defer trace.deinit();
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+    });
+    defer rt.deinit();
+
+    var rooted = try rt.allocTuple(1);
+    try rt.registerRoot(&rooted);
+    try rt.setField(rooted, 0, Value.fromInt(1));
+
+    const child = try rt.allocTuple(0);
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 1,
+        .handle_effect = child,
+    });
+
+    const explained_root = try rt.explainValue(rooted, &trace);
+    try std.testing.expectEqual(@as(usize, 1), explained_root.explicit_roots);
+    try std.testing.expectEqual(@as(?event_sink_mod.ObjectLastEvent, .{ .field_write = .{
+        .target = explained_root.handle,
+        .index = 0,
+        .phase = .mutate,
+    } }), explained_root.last_event);
+
+    const explained_child = try rt.explainValue(child, &trace);
+    try std.testing.expectEqual(@as(usize, 1), explained_child.control_roots);
+}
+
+test "runtime: verifyDebugState accepts healthy runtime" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .debugChecks = .{
+            .verify_roots = true,
+            .verify_heap_store = true,
+            .verify_control_kernel = true,
+        },
+    });
+    defer rt.deinit();
+
+    var rooted = try rt.allocTuple(0);
+    try rt.registerRoot(&rooted);
+    try rt.verifyDebugState();
 }
 
 test "runtime: debug object layout sizes" {

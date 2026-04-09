@@ -88,6 +88,16 @@ pub const HandleTable = struct {
         return active;
     }
 
+    pub fn verify(self: *const HandleTable, runtime: *Runtime) Error!void {
+        for (self.slots.items) |slot| {
+            if (!slot.live) continue;
+            if (slot.value.isBlock()) {
+                const rooted = runtime.objectFromDebug(slot.value) orelse return Error.StaleHandle;
+                _ = rooted;
+            }
+        }
+    }
+
     fn encodeBlockHandle(self: *HandleTable, runtime: *Runtime, value: Value) Error!CompatValue {
         const allocated = try self.allocateSlot();
         errdefer self.rollbackAllocatedSlot(allocated);
@@ -229,4 +239,15 @@ test "compat: stale handles are rejected after release" {
     const raw = try handles.encodeValue(&rt, tuple);
     try handles.releaseHandle(&rt, raw);
     try std.testing.expectError(Error.StaleHandle, handles.decodeValue(raw));
+}
+
+test "compat: verify accepts active rooted handles" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+    var handles = HandleTable.init(std.testing.allocator);
+    defer handles.deinit(&rt);
+
+    const tuple = try rt.allocTuple(0);
+    _ = try handles.encodeValue(&rt, tuple);
+    try handles.verify(&rt);
 }

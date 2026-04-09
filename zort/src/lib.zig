@@ -12,6 +12,8 @@ pub const Event = @import("runtime.zig").Event;
 pub const EventCounters = @import("runtime.zig").EventCounters;
 pub const EventRecorder = @import("runtime.zig").EventRecorder;
 pub const EventSink = @import("runtime.zig").EventSink;
+pub const GcSnapshotEvent = @import("runtime.zig").GcSnapshotEvent;
+pub const ObjectExplain = @import("runtime.zig").ObjectExplain;
 pub const EffectId = @import("runtime.zig").EffectId;
 pub const FiberHandle = @import("runtime.zig").FiberHandle;
 pub const HandlerFrame = @import("runtime.zig").HandlerFrame;
@@ -21,9 +23,12 @@ pub const Object = @import("runtime.zig").Object;
 pub const ObjectKind = @import("runtime.zig").ObjectKind;
 pub const Mutator = @import("runtime.zig").Mutator;
 pub const RootProvider = @import("runtime.zig").RootProvider;
+pub const RootProviderEvent = @import("runtime.zig").RootProviderEvent;
 pub const RootRegistry = @import("runtime.zig").RootRegistry;
 pub const RootHandle = @import("runtime.zig").RootHandle;
 pub const Runtime = @import("runtime.zig").Runtime;
+pub const TraceEntry = @import("runtime.zig").TraceEntry;
+pub const TraceRecorder = @import("runtime.zig").TraceRecorder;
 
 test {
     std.testing.refAllDecls(@import("value.zig"));

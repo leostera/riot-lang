@@ -122,3 +122,26 @@
   - debug/experimental tweak knobs
 - If zort wants compatibility with OCaml-facing APIs, it may need a compatibility layer that preserves tuple shapes and odd placeholder fields without infecting the internal runtime design.
 - The OCaml runtime treats explicit GC calls as real runtime actions that may run pending callbacks and mutate pacing state, not as pure hints.
+
+## zort debug and stats baseline
+
+- zort now emits collector-scoped observability through `src/event_sink.zig` rather
+  than through ad hoc bench-only counters.
+- Each collection can emit:
+  - `collect.start`
+  - one `root_provider` event per provider
+  - `reclaim` events for reclaimed objects
+  - `collect.end`
+  - a `gc_snapshot` containing:
+    - strategy
+    - root count
+    - marked counts by object kind
+    - reclaimed counts by object kind
+    - timings for root enumeration, marking, sweeping, and total collection
+- `Runtime.Config.debugChecks` adds explicit verification modes:
+  - `verify_roots`
+  - `verify_heap_store`
+  - `verify_control_kernel`
+  - `verify_after_collect`
+- These checks are zort-native debug surfaces, not attempts to mirror OCaml's
+  environment-variable-based debugging contract.

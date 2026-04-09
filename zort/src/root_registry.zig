@@ -59,10 +59,19 @@ pub const RootRegistry = struct {
 
     pub fn provider(self: *RootRegistry) RootProvider {
         return .{
+            .name = "root_registry",
             .ctx = self,
             .count_fn = countRoots,
             .visit_fn = visitRoots,
         };
+    }
+
+    pub fn ownerCount(self: *const RootRegistry, needle: Value) usize {
+        var count: usize = 0;
+        for (self.roots.items) |slot| {
+            if (std.meta.eql(slot.*, needle)) count += 1;
+        }
+        return count;
     }
 
     pub fn register(self: *RootRegistry, slot: *const Value) !void {

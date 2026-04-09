@@ -82,14 +82,35 @@ documents OCaml runtime observability surfaces rather than zort-only benchmark n
 ## zort event sink notes
 
 - zort now has an explicit `EventSink` subsystem in `src/event_sink.zig`.
-- `Mutator`, `RootRegistry`, and `Collector` emit typed events instead of burying observability in ad hoc counters or bench-only logic.
+- `Mutator`, `RootRegistry`, `Collector`, and `ControlKernel` emit typed events
+  instead of burying observability in ad hoc counters or bench-only logic.
 - `Runtime` accepts an `eventSink` in `Runtime.Config`; the default remains a no-op sink.
-- Bench runs use `EventRecorder` to capture per-case deltas for:
+- Bench runs now use `TraceRecorder`, which captures per-case deltas for:
   - allocations
   - field writes
   - bytes writes
   - root registrations/unregistrations
   - collections
   - reclaims
+- and can optionally retain:
+  - full event traces
+  - last root-provider counts
+  - last GC snapshot
+  - last object event per heap object
 - `zig build bench -- --csv=notes/benchmarks.csv` appends per-case rows in a lightweight CSV format under `zort/notes/`.
+- `zig build bench -- --trace` prints the full event stream for the selected cases.
+- `zig build bench -- --trace-gc` prints GC-focused events only.
+- `zig build bench -- --trace-effects` prints control-kernel events only.
+- `zig build bench -- --profile-json=<path>` writes per-case JSON including:
+  - strategy
+  - counters
+  - root providers
+  - the last GC snapshot seen for the case
 - Bench argument forwarding now happens through `zort/build.zig`, so `--filter=` reaches the executable as intended.
+- `Runtime.explainValue(value, trace)` uses the trace recorder plus runtime state to
+  answer why a block is interesting right now:
+  - what object kind it is
+  - what heap handle it has
+  - how many explicit roots own it
+  - how many control-kernel roots own it
+  - what the last recorded object event was

@@ -2,8 +2,11 @@ const std = @import("std");
 const runtime = @import("runtime.zig");
 
 const EventCounters = runtime.EventCounters;
-const EventRecorder = runtime.EventRecorder;
+const GcSnapshotEvent = runtime.GcSnapshotEvent;
+const RootProviderEvent = runtime.RootProviderEvent;
 const Runtime = runtime.Runtime;
+const TraceEntry = runtime.TraceEntry;
+const TraceRecorder = runtime.TraceRecorder;
 const Value = runtime.Value;
 
 const DefaultIters = 1_000;
@@ -25,10 +28,29 @@ const BenchCase = struct {
     run: *const fn (*Runtime, usize) anyerror!u64,
 };
 
+const TraceMode = enum {
+    none,
+    all,
+    gc,
+    effects,
+};
+
+const CaseProfile = struct {
+    label: []const u8,
+    strategy: Runtime.GcStrategy,
+    iters: usize,
+    ns_per_op: f64,
+    counters: EventCounters,
+    gc_snapshot: ?GcSnapshotEvent = null,
+    root_providers: []RootProviderEvent = &.{},
+};
+
 const Config = struct {
     iters: usize,
     filter: ?[]const u8 = null,
     csv_path: ?[]const u8 = null,
+    profile_json_path: ?[]const u8 = null,
+    trace_mode: TraceMode = .none,
     gc_strategy: Runtime.GcStrategy = .mark_sweep,
     compare_strategies: bool = false,
 };
@@ -53,6 +75,8 @@ fn parseConfig() Config {
     var iters: usize = DefaultIters;
     var filter: ?[]const u8 = null;
     var csv_path: ?[]const u8 = null;
+    var profile_json_path: ?[]const u8 = null;
+    var trace_mode: TraceMode = .none;
     var next_is_iters = false;
     var gc_strategy: Runtime.GcStrategy = .mark_sweep;
     var compare_strategies = false;
@@ -84,6 +108,26 @@ fn parseConfig() Config {
             csv_path = arg[6..];
             continue;
         }
+        if (std.mem.eql(u8, arg, "--profile-json")) {
+            profile_json_path = "notes/bench-profile.json";
+            continue;
+        }
+        if (std.mem.startsWith(u8, arg, "--profile-json=")) {
+            profile_json_path = arg[15..];
+            continue;
+        }
+        if (std.mem.eql(u8, arg, "--trace")) {
+            trace_mode = .all;
+            continue;
+        }
+        if (std.mem.eql(u8, arg, "--trace-gc")) {
+            trace_mode = .gc;
+            continue;
+        }
+        if (std.mem.eql(u8, arg, "--trace-effects")) {
+            trace_mode = .effects;
+            continue;
+        }
         if (std.mem.startsWith(u8, arg, "--gc-strategy=")) {
             const raw = arg[14..];
             if (std.mem.eql(u8, raw, "both")) {
@@ -113,6 +157,8 @@ fn parseConfig() Config {
         .iters = iters,
         .filter = filter,
         .csv_path = csv_path,
+        .profile_json_path = profile_json_path,
+        .trace_mode = trace_mode,
         .gc_strategy = gc_strategy,
         .compare_strategies = compare_strategies,
     };
@@ -134,14 +180,18 @@ fn consume(value: Value) void {
 }
 
 fn runSuite(
+    allocator: std.mem.Allocator,
     rt: *Runtime,
-    recorder: *EventRecorder,
+    recorder: *TraceRecorder,
     csv_file: ?*std.fs.File,
+    profiles: ?*std.ArrayListUnmanaged(CaseProfile),
     iters: usize,
     label: []const u8,
     strategy: Runtime.GcStrategy,
+    trace_mode: TraceMode,
     f: *const fn (*Runtime, usize) anyerror!u64,
 ) !void {
+    recorder.clearCase();
     const before = recorder.snapshot();
     const elapsed = try f(rt, iters);
     const delta = EventCounters.diff(recorder.snapshot(), before);
@@ -162,28 +212,45 @@ fn runSuite(
             delta.reclaims,
         },
     );
+    if (trace_mode != .none) {
+        emitTrace(label, strategy, recorder.traceEntries(), trace_mode);
+    }
     if (csv_file) |file| {
         try appendCsvRow(file, label, strategy, iters, ns_per_op, delta);
+    }
+    if (profiles) |items| {
+        try appendCaseProfile(allocator, items, label, strategy, iters, ns_per_op, delta, recorder.last_gc_snapshot, recorder.rootProviderEntries());
     }
 }
 
 fn runAllCases(
+    allocator: std.mem.Allocator,
     rt: *Runtime,
-    recorder: *EventRecorder,
+    recorder: *TraceRecorder,
     csv_file: ?*std.fs.File,
+    profiles: ?*std.ArrayListUnmanaged(CaseProfile),
     iters: usize,
     filter: ?[]const u8,
     strategy: Runtime.GcStrategy,
+    trace_mode: TraceMode,
     cases: []const BenchCase,
 ) !void {
     for (cases) |case| {
         if (!shouldRun(case.label, filter)) continue;
-        try runSuite(rt, recorder, csv_file, iters, case.label, strategy, case.run);
+        try runSuite(allocator, rt, recorder, csv_file, profiles, iters, case.label, strategy, trace_mode, case.run);
     }
 }
 
-fn runBenchcases(allocator: std.mem.Allocator, config: Config, gc_strategy: Runtime.GcStrategy) !void {
-    var recorder = EventRecorder{};
+fn runBenchcases(
+    allocator: std.mem.Allocator,
+    config: Config,
+    gc_strategy: Runtime.GcStrategy,
+    profiles: ?*std.ArrayListUnmanaged(CaseProfile),
+) !void {
+    var recorder = TraceRecorder.init(allocator, .{
+        .capture_events = config.trace_mode != .none,
+    });
+    defer recorder.deinit();
     var rt = Runtime.initWithConfig(allocator, .{
         .gcStrategy = gc_strategy,
         .eventSink = recorder.sink(),
@@ -214,7 +281,18 @@ fn runBenchcases(allocator: std.mem.Allocator, config: Config, gc_strategy: Runt
 
     bench_sink = 0;
     std.log.info("gc-strategy={s} iters={d}", .{ @tagName(gc_strategy), config.iters });
-    try runAllCases(&rt, &recorder, if (csv_file) |*file| file else null, config.iters, config.filter, gc_strategy, &cases);
+    try runAllCases(
+        allocator,
+        &rt,
+        &recorder,
+        if (csv_file) |*file| file else null,
+        profiles,
+        config.iters,
+        config.filter,
+        gc_strategy,
+        config.trace_mode,
+        &cases,
+    );
 
     rt.collect();
     const totals = recorder.snapshot();
@@ -232,6 +310,146 @@ fn runBenchcases(allocator: std.mem.Allocator, config: Config, gc_strategy: Runt
             totals.reclaims,
         },
     );
+}
+
+fn appendCaseProfile(
+    allocator: std.mem.Allocator,
+    items: *std.ArrayListUnmanaged(CaseProfile),
+    label: []const u8,
+    strategy: Runtime.GcStrategy,
+    iters: usize,
+    ns_per_op: f64,
+    counters: EventCounters,
+    gc_snapshot: ?GcSnapshotEvent,
+    providers: []const RootProviderEvent,
+) !void {
+    const provider_copy = try allocator.dupe(RootProviderEvent, providers);
+    try items.append(allocator, .{
+        .label = label,
+        .strategy = strategy,
+        .iters = iters,
+        .ns_per_op = ns_per_op,
+        .counters = counters,
+        .gc_snapshot = gc_snapshot,
+        .root_providers = provider_copy,
+    });
+}
+
+fn deinitProfiles(allocator: std.mem.Allocator, profiles: *std.ArrayListUnmanaged(CaseProfile)) void {
+    for (profiles.items) |profile| allocator.free(profile.root_providers);
+    profiles.deinit(allocator);
+}
+
+fn shouldTraceEntry(mode: TraceMode, entry: TraceEntry) bool {
+    return switch (mode) {
+        .none => false,
+        .all => true,
+        .gc => switch (entry.event) {
+            .root_provider,
+            .collect,
+            .gc_snapshot,
+            .reclaim,
+            => true,
+            else => false,
+        },
+        .effects => switch (entry.event) {
+            .control => true,
+            else => false,
+        },
+    };
+}
+
+fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const TraceEntry, mode: TraceMode) void {
+    for (entries) |entry| {
+        if (!shouldTraceEntry(mode, entry)) continue;
+        switch (entry.event) {
+            .alloc => |event| std.log.info(
+                "trace:{s}:{s}: alloc ts={d} handle={d}:{d} kind={s} size={d}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.handle.index, event.handle.generation, @tagName(event.kind), event.size },
+            ),
+            .field_write => |event| std.log.info(
+                "trace:{s}:{s}: field ts={d} target={d}:{d} index={d} phase={s}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.target.index, event.target.generation, event.index, @tagName(event.phase) },
+            ),
+            .bytes_write => |event| std.log.info(
+                "trace:{s}:{s}: bytes ts={d} target={d}:{d} len={d} phase={s}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.target.index, event.target.generation, event.len, @tagName(event.phase) },
+            ),
+            .root => |event| std.log.info(
+                "trace:{s}:{s}: root ts={d} action={s} block={any}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.action), event.is_block },
+            ),
+            .root_provider => |event| std.log.info(
+                "trace:{s}:{s}: root-provider ts={d} name={s} count={d}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.name, event.count },
+            ),
+            .collect => |event| std.log.info(
+                "trace:{s}:{s}: collect ts={d} phase={s} roots={d} reclaimed={d}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.phase), event.root_count, event.reclaimed },
+            ),
+            .gc_snapshot => |event| std.log.info(
+                "trace:{s}:{s}: gc-snapshot ts={d} roots={d} marked={d}/{d}/{d}/{d}/{d} reclaimed={d}/{d}/{d}/{d}/{d} ns={d}/{d}/{d}/{d}",
+                .{
+                    @tagName(strategy),
+                    label,
+                    entry.timestamp_ms,
+                    event.root_count,
+                    event.marked.tuple,
+                    event.marked.string,
+                    event.marked.boxed_i64,
+                    event.marked.boxed_f64,
+                    event.marked.custom,
+                    event.reclaimed.tuple,
+                    event.reclaimed.string,
+                    event.reclaimed.boxed_i64,
+                    event.reclaimed.boxed_f64,
+                    event.reclaimed.custom,
+                    event.timings.root_enumeration_ns,
+                    event.timings.mark_ns,
+                    event.timings.sweep_ns,
+                    event.timings.total_ns,
+                },
+            ),
+            .reclaim => |event| std.log.info(
+                "trace:{s}:{s}: reclaim ts={d} handle={d}:{d} kind={s}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.handle.index, event.handle.generation, @tagName(event.kind) },
+            ),
+            .control => |event| std.log.info(
+                "trace:{s}:{s}: control ts={d} action={s} site={d} effect={any} fiber={any} cont={any} handler={any}:{any} depth={d}",
+                .{
+                    @tagName(strategy),
+                    label,
+                    entry.timestamp_ms,
+                    @tagName(event.action),
+                    event.site_id,
+                    event.effect,
+                    event.fiber,
+                    event.continuation,
+                    event.handler_fiber,
+                    event.handler_index,
+                    event.parent_depth,
+                },
+            ),
+        }
+    }
+}
+
+fn writeProfileJson(path: []const u8, config: Config, profiles: []const CaseProfile) !void {
+    if (std.fs.path.dirname(path)) |dir| {
+        if (dir.len > 0) try std.fs.cwd().makePath(dir);
+    }
+    const file = try std.fs.cwd().createFile(path, .{});
+    defer file.close();
+    var write_buffer: [4096]u8 = undefined;
+    var file_writer = file.writer(&write_buffer);
+    const writer = &file_writer.interface;
+    try std.json.Stringify.value(.{
+        .generated_at_ms = std.time.milliTimestamp(),
+        .iters = config.iters,
+        .trace_mode = @tagName(config.trace_mode),
+        .cases = profiles,
+    }, .{ .whitespace = .indent_2 }, writer);
+    try writer.flush();
 }
 
 fn openCsvAppend(path: []const u8) !std.fs.File {
@@ -524,12 +742,18 @@ pub fn main() !void {
     const config = parseConfig();
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
+    var profiles = std.ArrayListUnmanaged(CaseProfile){};
+    defer deinitProfiles(gpa.allocator(), &profiles);
 
     if (config.compare_strategies) {
         for (all_strategies) |strategy| {
-            try runBenchcases(gpa.allocator(), config, strategy);
+            try runBenchcases(gpa.allocator(), config, strategy, if (config.profile_json_path != null) &profiles else null);
         }
     } else {
-        try runBenchcases(gpa.allocator(), config, config.gc_strategy);
+        try runBenchcases(gpa.allocator(), config, config.gc_strategy, if (config.profile_json_path != null) &profiles else null);
+    }
+
+    if (config.profile_json_path) |path| {
+        try writeProfileJson(path, config, profiles.items);
     }
 }

@@ -12,6 +12,7 @@ pub const RootVisitor = struct {
 };
 
 pub const RootProvider = struct {
+    name: []const u8,
     ctx: ?*anyopaque,
     count_fn: *const fn (?*anyopaque) usize,
     visit_fn: *const fn (?*anyopaque, RootVisitor) void,

@@ -228,7 +228,12 @@ Exit criteria:
 Status:
 - Done.
 - `EventSink` is explicit and defaults to a no-op implementation.
-- Bench runs use `EventRecorder` and can append per-case CSV rows into `notes/benchmarks.csv`.
+- Bench runs use `TraceRecorder`, can append per-case CSV rows into `notes/benchmarks.csv`,
+  can emit focused trace streams, and can write per-case JSON profiles.
+- Runtime debugability now includes:
+  - `Runtime.explainValue(...)` for object-level inspection
+  - GC snapshots with provider/timing counts
+  - explicit debug verification checks for roots, heap-store state, and control-kernel state
 
 ### 8. Minimal Compatibility Layer
 

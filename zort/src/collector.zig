@@ -12,6 +12,9 @@ pub const RootProvider = root_provider.RootProvider;
 pub const RootVisitor = root_provider.RootVisitor;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const EventSink = event_sink.EventSink;
+pub const CollectTimings = event_sink.CollectTimings;
+pub const GcSnapshotEvent = event_sink.GcSnapshotEvent;
+pub const ObjectKindCounts = event_sink.ObjectKindCounts;
 
 pub const GcStrategy = enum {
     mark_sweep,
@@ -45,27 +48,39 @@ pub const Collector = struct {
     }
 
     pub fn collect(self: *Collector) void {
-        const root_count = self.rootCount();
+        var total_timer = std.time.Timer.start() catch unreachable;
+        var root_timer = std.time.Timer.start() catch unreachable;
+        var summary = GcSnapshotEvent{
+            .strategy = self.collectStrategy(),
+            .root_count = 0,
+        };
+        summary.root_count = self.rootCount();
+
         self.event_sink.emit(.{ .collect = .{
             .phase = .start,
             .strategy = self.collectStrategy(),
-            .root_count = root_count,
+            .root_count = summary.root_count,
             .reclaimed = 0,
         } });
+        _ = self.emitRootProviders();
+        summary.timings.root_enumeration_ns = root_timer.read();
         var reclaimed: usize = 0;
         switch (self.gc_strategy) {
-            .mark_sweep => reclaimed = self.collectMarkSweep(),
-            .bump => reclaimed = self.collectBump(),
+            .mark_sweep => reclaimed = self.collectMarkSweep(&summary),
+            .bump => reclaimed = self.collectBump(&summary),
         }
+        summary.timings.total_ns = total_timer.read();
         self.event_sink.emit(.{ .collect = .{
             .phase = .end,
             .strategy = self.collectStrategy(),
-            .root_count = root_count,
+            .root_count = summary.root_count,
             .reclaimed = reclaimed,
         } });
+        self.event_sink.emit(.{ .gc_snapshot = summary });
     }
 
-    fn collectMarkSweep(self: *Collector) usize {
+    fn collectMarkSweep(self: *Collector, summary: *GcSnapshotEvent) usize {
+        var timer = std.time.Timer.start() catch unreachable;
         const visitor = RootVisitor{
             .ctx = self,
             .visit_fn = visitRoot,
@@ -73,31 +88,39 @@ pub const Collector = struct {
         for (self.root_providers) |provider| {
             provider.visit(visitor);
         }
+        summary.timings.mark_ns = timer.read();
 
+        timer = std.time.Timer.start() catch unreachable;
         const fixed_arena = self.fixed_arena_buffer != null;
         const slots = self.heap_store.slotsMut();
         var reclaimed: usize = 0;
         for (slots, 0..) |*slot, slot_index| {
             if (!slot.alive) continue;
             if (!slot.object.marked) {
+                const kind = slot.object.kind().?;
+                summary.reclaimed.bump(kind);
                 self.event_sink.emit(.{ .reclaim = .{
                     .handle = .{
                         .index = @intCast(slot_index),
                         .generation = slot.generation,
                     },
-                    .kind = slot.object.kind().?,
+                    .kind = kind,
                 } });
                 self.heap_store.reclaimSlot(slot_index, fixed_arena);
                 reclaimed += 1;
             } else {
+                summary.marked.bump(slot.object.kind().?);
                 slot.object.marked = false;
             }
         }
+        summary.timings.sweep_ns = timer.read();
         return reclaimed;
     }
 
-    fn collectBump(self: *Collector) usize {
-        const reclaimed = self.emitLiveReclaims();
+    fn collectBump(self: *Collector, summary: *GcSnapshotEvent) usize {
+        var timer = std.time.Timer.start() catch unreachable;
+        const reclaimed = self.emitLiveReclaims(summary);
+        summary.timings.sweep_ns = timer.read();
         if (self.fixed_arena_buffer) |buffer| {
             self.fixed_arena.* = std.heap.FixedBufferAllocator.init(buffer);
             self.heap_store.clear(true);
@@ -125,16 +148,18 @@ pub const Collector = struct {
         }
     }
 
-    fn emitLiveReclaims(self: *Collector) usize {
+    fn emitLiveReclaims(self: *Collector, summary: *GcSnapshotEvent) usize {
         var reclaimed: usize = 0;
         for (self.heap_store.slotsRef(), 0..) |slot, slot_index| {
             if (!slot.alive) continue;
+            const kind = slot.object.kind().?;
+            summary.reclaimed.bump(kind);
             self.event_sink.emit(.{ .reclaim = .{
                 .handle = .{
                     .index = @intCast(slot_index),
                     .generation = slot.generation,
                 },
-                .kind = slot.object.kind().?,
+                .kind = kind,
             } });
             reclaimed += 1;
         }
@@ -152,6 +177,19 @@ pub const Collector = struct {
         var count: usize = 0;
         for (self.root_providers) |provider| {
             count += provider.count();
+        }
+        return count;
+    }
+
+    fn emitRootProviders(self: *Collector) usize {
+        var count: usize = 0;
+        for (self.root_providers) |provider| {
+            const provider_count = provider.count();
+            count += provider_count;
+            self.event_sink.emit(.{ .root_provider = .{
+                .name = provider.name,
+                .count = provider_count,
+            } });
         }
         return count;
     }
