@@ -66,6 +66,7 @@ Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ## Running
 
 - `cd zort && zig build test`
+- `cd zort && zig build test -Dcompat-shim=false`
 - `cd zort && zig build bench`
 - `cd zort && zig build bench -- --iters 1000`
 - `cd zort && zig build bench -- --iters 1000 --gc-strategy=bump`
