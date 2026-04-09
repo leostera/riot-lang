@@ -828,6 +828,10 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
   let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
   let type_constructor_id = register_declared_type_name state type_name in
   let params = type_param_bindings declaration in
+  let lowered_manifest_alias =
+    Cst.TypeDeclaration.manifest_alias declaration
+    |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest))
+  in
   let result_type = TypeRepr.named
     ~head:(TypeRepr.named_head
       ~type_constructor_id
@@ -843,7 +847,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
-          manifest = None;
+          manifest = lowered_manifest_alias;
         }
     | Cst.TypeDefinition.Alias { manifest; _ } ->
         Some {
@@ -887,7 +891,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
                   in
                   constructor);
           labels = [];
-          manifest = None;
+          manifest = lowered_manifest_alias;
         }
     | Cst.TypeDefinition.Record { fields; _ } ->
         Some {
@@ -897,7 +901,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           param_variances = invariant_param_variances params;
           constructors = [];
           labels = List.map (lower_record_label state params) fields;
-          manifest = None;
+          manifest = lowered_manifest_alias;
         }
     | Cst.TypeDefinition.PolyVariant poly_variant ->
         Some {
@@ -907,7 +911,9 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
-          manifest = Some (lower_poly_variant_manifest state params poly_variant);
+          manifest = Option.or_else
+            lowered_manifest_alias
+            (fun () -> Some (lower_poly_variant_manifest state params poly_variant));
         }
     | Cst.TypeDefinition.Extensible _ ->
         Some {
@@ -917,7 +923,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
           param_variances = invariant_param_variances params;
           constructors = [];
           labels = [];
-          manifest = None;
+          manifest = lowered_manifest_alias;
         }
     | _ -> None
   in

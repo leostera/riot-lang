@@ -9,6 +9,7 @@ module Bytes = Bytes
 module Array = Array
 module Option = Option
 module Result = Result
+module SystemError = System_error
 module Error = Error
 module Path = Path
 module Effect = Effect

@@ -1,5 +1,14 @@
 type t
-type error = Error.t
+type error =
+  | Invalid_slice of {
+      pos: int;
+      len: int;
+      buffer_len: int;
+    }
+  | System of System_error.t
+
+val error_to_string: error -> string
+
 type kind =
   | Regular_file
   | Directory

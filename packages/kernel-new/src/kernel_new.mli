@@ -20,6 +20,8 @@ module Option = Option
 
 module Result = Result
 
+module SystemError = System_error
+
 module Error = Error
 
 module Path = Path

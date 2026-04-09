@@ -1,5 +1,9 @@
 type t
-type error = Error.t
+type error =
+  | Invalid_text of { value: string }
+
+val error_to_string: error -> string
+
 val v4_loopback: t
 
 val v6_loopback: t

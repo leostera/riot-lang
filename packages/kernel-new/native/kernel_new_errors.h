@@ -29,6 +29,10 @@
 #define KERNEL_NEW_ERR_CONNECTION_RESET 19
 #define KERNEL_NEW_ERR_TIMED_OUT 20
 #define KERNEL_NEW_ERR_NETWORK_UNREACHABLE 21
+#define KERNEL_NEW_ERR_DESTINATION_ADDRESS_REQUIRED 22
+#define KERNEL_NEW_ERR_NOT_CONNECTED 23
+#define KERNEL_NEW_ERR_CONNECTION_ABORTED 24
+#define KERNEL_NEW_ERR_MESSAGE_TOO_LONG 25
 
 static inline int kernel_new_error_of_errno(int error_number) {
   switch (error_number) {
@@ -61,6 +65,18 @@ static inline int kernel_new_error_of_errno(int error_number) {
     case ECONNRESET: return KERNEL_NEW_ERR_CONNECTION_RESET;
     case ETIMEDOUT: return KERNEL_NEW_ERR_TIMED_OUT;
     case ENETUNREACH: return KERNEL_NEW_ERR_NETWORK_UNREACHABLE;
+#ifdef EDESTADDRREQ
+    case EDESTADDRREQ: return KERNEL_NEW_ERR_DESTINATION_ADDRESS_REQUIRED;
+#endif
+#ifdef ENOTCONN
+    case ENOTCONN: return KERNEL_NEW_ERR_NOT_CONNECTED;
+#endif
+#ifdef ECONNABORTED
+    case ECONNABORTED: return KERNEL_NEW_ERR_CONNECTION_ABORTED;
+#endif
+#ifdef EMSGSIZE
+    case EMSGSIZE: return KERNEL_NEW_ERR_MESSAGE_TOO_LONG;
+#endif
     default: return KERNEL_NEW_ERR_UNKNOWN_BASE + error_number;
   }
 }

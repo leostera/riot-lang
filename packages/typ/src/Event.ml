@@ -49,6 +49,9 @@ type kind =
       parse_diagnostic_count: int;
       lowering_diagnostic_count: int;
       typing_diagnostic_count: int;
+      parse_diagnostics: Syn.Diagnostic.t list;
+      lowering_diagnostics: Diagnostic.t list;
+      typing_diagnostics: Diagnostic.t list;
       export_status: export_status;
       export_count: int;
       type_decl_count: int
@@ -76,6 +79,12 @@ let source_ids_to_json = fun source_ids ->
 
 let strings_to_json = fun values ->
   Data.Json.Array (values |> List.map (fun value -> Data.Json.String value))
+
+let parse_diagnostics_to_json = fun diagnostics ->
+  Data.Json.Array (List.map Syn.Diagnostic.to_json diagnostics)
+
+let diagnostics_to_json = fun diagnostics ->
+  Data.Json.Array (List.map Diagnostic.to_json diagnostics)
 
 let analysis_mode_to_string = function
   | BaseAnalysis -> "base"
@@ -146,6 +155,9 @@ let to_json = fun event ->
     parse_diagnostic_count;
     lowering_diagnostic_count;
     typing_diagnostic_count;
+    parse_diagnostics;
+    lowering_diagnostics;
+    typing_diagnostics;
     export_status;
     export_count;
     type_decl_count
@@ -158,6 +170,9 @@ let to_json = fun event ->
         ("parse_diagnostic_count", Data.Json.Int parse_diagnostic_count);
         ("lowering_diagnostic_count", Data.Json.Int lowering_diagnostic_count);
         ("typing_diagnostic_count", Data.Json.Int typing_diagnostic_count);
+        ("parse_diagnostics", parse_diagnostics_to_json parse_diagnostics);
+        ("lowering_diagnostics", diagnostics_to_json lowering_diagnostics);
+        ("typing_diagnostics", diagnostics_to_json typing_diagnostics);
         ("export_status", Data.Json.String (export_status_to_string export_status));
         ("export_count", Data.Json.Int export_count);
         ("type_decl_count", Data.Json.Int type_decl_count);

@@ -6,7 +6,7 @@ let ( let* ) = Result.and_then
 
 let lift = function
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string error)
+  | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
 
 let protect = fun ~finally fn ->
   try
@@ -349,10 +349,25 @@ let test_open_read_missing_file_maps_error = fun _ctx ->
     (fun path ->
       match Kernel.Fs.File.open_read path with
       | Kernel.Result.Ok _ -> Error "expected opening a missing file to fail"
-      | Kernel.Result.Error Kernel.Error.No_such_file_or_directory -> Ok ()
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.String.append
         "expected no-such-file error, got "
-        (Kernel.Error.to_string error)))
+        (Kernel.Fs.File.error_to_string error)))
+
+let test_remove_missing_paths_report_no_such_file = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let missing_file = Kernel.Path.(tempdir / "missing.txt") in
+      let missing_dir = Kernel.Path.(tempdir / "missing-dir") in
+      match
+        ( Kernel.Fs.File.remove_file missing_file,
+          Kernel.Fs.File.remove_dir missing_dir )
+      with
+      | ( Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory),
+          Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory) ) ->
+          Ok ()
+      | _ ->
+          Error "expected removing missing file and dir to report no-such-file")
 
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
@@ -367,6 +382,7 @@ let tests = [
   Test.case "Fs.File read_vectored roundtrips" test_read_vectored_roundtrips;
   Test.case "Fs.File is_tty is false for files and pipes" test_is_tty_is_false_for_files_and_pipes;
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
+  Test.case "Fs.File remove missing paths reports no-such-file" test_remove_missing_paths_report_no_such_file;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args

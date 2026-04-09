@@ -1,115 +1,51 @@
+module System = System_error
+
 type t =
-  | End_of_file
-  | Permission_denied
-  | No_such_file_or_directory
-  | Interrupted
-  | Input_output
-  | Bad_file_descriptor
-  | Resource_busy
-  | Already_exists
-  | Invalid_argument
-  | No_space_left
-  | Broken_pipe
-  | Would_block
-  | Not_directory
-  | Is_directory
-  | Not_supported
-  | Address_in_use
-  | Address_not_available
-  | Connection_refused
-  | Connection_reset
-  | Timed_out
-  | Network_unreachable
-  | Unknown of int
+  | Async of Async.error
+  | Env of Env.error
+  | Fs_file of Fs.File.error
+  | Net_ip_addr of Net.IpAddr.error
+  | Net_socket_addr of Net.SocketAddr.error
+  | Net_tcp_listener of Net.TcpListener.error
+  | Net_tcp_stream of Net.TcpStream.error
+  | Net_udp_socket of Net.UdpSocket.error
+  | Process of Process.error
+  | Time_system_time of Time.SystemTime.error
+  | Time_monotonic of Time.Monotonic.error
 
-let code_end_of_file = 1
+let of_async = fun error -> Async error
 
-let code_permission_denied = 2
+let of_env = fun error -> Env error
 
-let code_no_such_file_or_directory = 3
+let of_fs_file = fun error -> Fs_file error
 
-let code_interrupted = 4
+let of_net_ip_addr = fun error -> Net_ip_addr error
 
-let code_input_output = 5
+let of_net_socket_addr = fun error -> Net_socket_addr error
 
-let code_bad_file_descriptor = 6
+let of_net_tcp_listener = fun error -> Net_tcp_listener error
 
-let code_resource_busy = 7
+let of_net_tcp_stream = fun error -> Net_tcp_stream error
 
-let code_already_exists = 8
+let of_net_udp_socket = fun error -> Net_udp_socket error
 
-let code_invalid_argument = 9
+let of_process = fun error -> Process error
 
-let code_no_space_left = 10
+let of_time_system_time = fun error -> Time_system_time error
 
-let code_broken_pipe = 11
-
-let code_would_block = 12
-
-let code_not_directory = 13
-
-let code_is_directory = 14
-
-let code_not_supported = 15
-
-let code_address_in_use = 16
-
-let code_address_not_available = 17
-
-let code_connection_refused = 18
-
-let code_connection_reset = 19
-
-let code_timed_out = 20
-
-let code_network_unreachable = 21
-
-let of_code = function
-  | 1 -> End_of_file
-  | 2 -> Permission_denied
-  | 3 -> No_such_file_or_directory
-  | 4 -> Interrupted
-  | 5 -> Input_output
-  | 6 -> Bad_file_descriptor
-  | 7 -> Resource_busy
-  | 8 -> Already_exists
-  | 9 -> Invalid_argument
-  | 10 -> No_space_left
-  | 11 -> Broken_pipe
-  | 12 -> Would_block
-  | 13 -> Not_directory
-  | 14 -> Is_directory
-  | 15 -> Not_supported
-  | 16 -> Address_in_use
-  | 17 -> Address_not_available
-  | 18 -> Connection_refused
-  | 19 -> Connection_reset
-  | 20 -> Timed_out
-  | 21 -> Network_unreachable
-  | code -> Unknown code
+let of_time_monotonic = fun error -> Time_monotonic error
 
 let to_string = function
-  | End_of_file -> "end of file"
-  | Permission_denied -> "permission denied"
-  | No_such_file_or_directory -> "no such file or directory"
-  | Interrupted -> "interrupted system call"
-  | Input_output -> "input/output error"
-  | Bad_file_descriptor -> "bad file descriptor"
-  | Resource_busy -> "resource busy"
-  | Already_exists -> "already exists"
-  | Invalid_argument -> "invalid argument"
-  | No_space_left -> "no space left on device"
-  | Broken_pipe -> "broken pipe"
-  | Would_block -> "operation would block"
-  | Not_directory -> "not a directory"
-  | Is_directory -> "is a directory"
-  | Not_supported -> "operation not supported"
-  | Address_in_use -> "address already in use"
-  | Address_not_available -> "address not available"
-  | Connection_refused -> "connection refused"
-  | Connection_reset -> "connection reset by peer"
-  | Timed_out -> "timed out"
-  | Network_unreachable -> "network unreachable"
-  | Unknown _ -> "unknown kernel error"
+  | Async error -> Async.error_to_string error
+  | Env error -> Env.error_to_string error
+  | Fs_file error -> Fs.File.error_to_string error
+  | Net_ip_addr error -> Net.IpAddr.error_to_string error
+  | Net_socket_addr error -> Net.SocketAddr.error_to_string error
+  | Net_tcp_listener error -> Net.TcpListener.error_to_string error
+  | Net_tcp_stream error -> Net.TcpStream.error_to_string error
+  | Net_udp_socket error -> Net.UdpSocket.error_to_string error
+  | Process error -> Process.error_to_string error
+  | Time_system_time error -> Time.SystemTime.error_to_string error
+  | Time_monotonic error -> Time.Monotonic.error_to_string error
 
-external panic: string -> 'a = "kernel_new_panic"
+let panic = System_error.panic

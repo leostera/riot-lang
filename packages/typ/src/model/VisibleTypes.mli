@@ -22,6 +22,10 @@ val lookup_by_id: t -> TypeConstructorId.t -> FileSummary.type_decl option
 
 val resolve_named_type_head: t -> IdentPath.t -> TypeRepr.named_type_head option
 
+val find_type_expansion: t -> TypeRepr.named_type_head -> FileSummary.type_decl option
+
+val expand_head: t -> TypeRepr.t -> TypeRepr.t
+
 val canonicalize_type: t -> TypeRepr.t -> TypeRepr.t
 
 val canonicalize_scheme: t -> TypeScheme.t -> TypeScheme.t

@@ -1,6 +1,11 @@
 type t
 
-type error = Error.t
+type error =
+  | File of Fs.File.error
+  | Invalid_status of { tag: int }
+  | System of System_error.t
+
+val error_to_string: error -> string
 
 type status =
   | Running

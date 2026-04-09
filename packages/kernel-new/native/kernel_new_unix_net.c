@@ -186,6 +186,32 @@ CAMLprim value kernel_new_net_socket_close(value fd_val) {
   CAMLreturn(kernel_new_result_ok(Val_unit));
 }
 
+CAMLprim value kernel_new_net_tcp_stream_shutdown(value fd_val, value how_val) {
+  CAMLparam2(fd_val, how_val);
+
+  int how;
+  switch (Int_val(how_val)) {
+    case 0:
+      how = SHUT_RD;
+      break;
+    case 1:
+      how = SHUT_WR;
+      break;
+    case 2:
+      how = SHUT_RDWR;
+      break;
+    default:
+      errno = EINVAL;
+      CAMLreturn(kernel_new_result_errno());
+  }
+
+  if (shutdown(Int_val(fd_val), how) == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
 CAMLprim value kernel_new_net_socket_local_addr(value fd_val) {
   CAMLparam1(fd_val);
 

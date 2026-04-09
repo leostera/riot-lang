@@ -14,6 +14,7 @@ path = "src/kernel_new.ml"
 
 [dev-dependencies]
 std = { path = "../std", version = "*" }
+propane = { path = "../propane", version = "*" }
 
 [build-dependencies]
 fixme = { path = "../fixme", version = "*" }

@@ -2,6 +2,7 @@ open Common
 open Prelude
 
 type selector = int
+type error = System of System_error.t
 
 type event = {
   fd: int;
@@ -22,16 +23,16 @@ module FFI = struct
   external selector_apply: selector -> event array -> int array -> (unit, int) Result.t = "kernel_new_async_unix_selector_apply"
 
   let create = fun () ->
-    Result.map_error Error.of_code (selector_create ())
+    Result.map_error (fun code -> System (System_error.of_code code)) (selector_create ())
 
   let wait = fun ~max_events ~timeout_ns selector ->
-    Result.map_error Error.of_code (selector_wait ~max_events ~timeout_ns selector)
+    Result.map_error (fun code -> System (System_error.of_code code)) (selector_wait ~max_events ~timeout_ns selector)
 
   let close = fun selector ->
-    Result.map_error Error.of_code (selector_close selector)
+    Result.map_error (fun code -> System (System_error.of_code code)) (selector_close selector)
 
   let apply = fun selector changes ignored_errors ->
-    Result.map_error Error.of_code (selector_apply selector changes ignored_errors)
+    Result.map_error (fun code -> System (System_error.of_code code)) (selector_apply selector changes ignored_errors)
 end
 
 module Kevent = struct
@@ -85,7 +86,7 @@ module Selector = struct
       | false, true -> [ Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token ]
       | false, false -> []
     in
-    FFI.apply selector (Array.of_list changes) [|Error.code_broken_pipe|]
+    FFI.apply selector (Array.of_list changes) [|System_error.code_broken_pipe|]
 
   let reregister = fun selector ~fd ~token ~interest ->
     let flags = Libc.(ev_clear lor ev_receipt) in
@@ -105,7 +106,7 @@ module Selector = struct
       Kevent.make fd ~filter:Libc.evfilt_write ~flags:write_flags ~token;
       Kevent.make fd ~filter:Libc.evfilt_read ~flags:read_flags ~token;
     |] in
-    FFI.apply selector changes [|Error.code_broken_pipe; Error.code_no_such_file_or_directory|]
+    FFI.apply selector changes [|System_error.code_broken_pipe; System_error.code_no_such_file_or_directory|]
 
   let deregister = fun selector ~fd ->
     let flags = Libc.(ev_delete lor ev_receipt) in
@@ -114,5 +115,5 @@ module Selector = struct
       Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
       Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
     |] in
-    FFI.apply selector changes [|Error.code_no_such_file_or_directory|]
+    FFI.apply selector changes [|System_error.code_no_such_file_or_directory|]
 end

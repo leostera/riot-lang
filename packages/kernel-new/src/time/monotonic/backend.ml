@@ -11,10 +11,8 @@ type t = {
   nanos: int;
 }
 
-let epoch = { secs = 0; nanos = 0 }
-
 module FFI = struct
-  external now: unit -> ((int * int), int) Result.t = "kernel_new_time_system_time_now"
+  external now: unit -> ((int * int), int) Result.t = "kernel_new_time_monotonic_now"
 end
 
 let error_to_string = function
@@ -33,9 +31,6 @@ let validate_parts = fun ~secs:_ ~nanos ->
 let of_parts = fun ~secs ~nanos ->
   let* () = validate_parts ~secs ~nanos in
   Result.Ok { secs; nanos }
-
-let of_parts_unchecked = fun ~secs ~nanos ->
-  { secs; nanos }
 
 let to_parts = fun value -> (value.secs, value.nanos)
 

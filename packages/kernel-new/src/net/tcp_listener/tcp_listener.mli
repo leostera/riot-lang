@@ -1,5 +1,8 @@
 type t
-type error = Error.t
+type error = System of System_error.t
+
+val error_to_string: error -> string
+
 val bind:
   ?reuse_addr:bool -> ?reuse_port:bool -> ?backlog:int -> Socket_addr.t -> (t, error) Result.t
 

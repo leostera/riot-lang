@@ -68,6 +68,11 @@ let resolve_named_type_head_in_index = fun by_path name ->
           (BuiltinTypeConstructors.head_of_path name)
           (fun () -> qualified_external_head))
 
+let resolve_named_type_decl_in_index = fun by_id by_path (head: TypeRepr.named_type_head) ->
+  Option.or_else
+    (Collections.HashMap.get by_id head.type_constructor_id)
+    (fun () -> Collections.HashMap.get by_path head.name)
+
 let substitute_type_vars_with = fun ~make ty mapping ->
   let rec loop ty =
     let ty = TypeRepr.prune ty in
@@ -245,7 +250,10 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
           | None -> head
         in
         (
-          match resolve_named_type_decl head.name with
+          match Option.or_else
+            (resolve_named_type_decl resolved_head)
+            (fun () -> resolve_named_type_decl head)
+          with
           | Some type_decl -> (
               match instantiate_alias_manifest ~make type_decl arguments' with
               | Some manifest -> loop manifest
@@ -319,6 +327,21 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
   in
   loop
 
+let find_type_expansion = fun visible_types head ->
+  resolve_named_type_decl_in_index visible_types.by_id visible_types.by_path head
+
+let expand_head = fun visible_types ->
+  let expand = resolve_type_with
+    ~make:TypeRepr.of_desc
+    ~resolve_named_type_decl:(find_type_expansion visible_types)
+    ~resolve_named_type_head:(resolve_named_type_head_in_index visible_types.by_path) in
+  fun ty ->
+    let ty = TypeRepr.prune ty in
+    match TypeRepr.view ty with
+    | TypeRepr.Named _
+    | TypeRepr.Var { link=Some _; _ } -> expand ty
+    | _ -> ty
+
 let canonicalize_scheme_with = fun canonicalize_type scheme ->
   let quantified, body = TypeScheme.to_explicit scheme in
   let body' = canonicalize_type body in
@@ -348,8 +371,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   let resolve_named_type_head = resolve_named_type_head_in_index by_path in
   let resolve_type =
     resolve_type_with ~make:TypeRepr.of_desc
-      ~resolve_named_type_decl:(fun name ->
-        Collections.HashMap.get by_path name)
+      ~resolve_named_type_decl:(resolve_named_type_decl_in_index by_id by_path)
       ~resolve_named_type_head
   in
   let canonicalize_type_decl (type_decl: FileSummary.type_decl) =
@@ -684,12 +706,9 @@ let exact_poly_variant_alias = fun visible_types bound tags inherited ->
           | _ -> None)
 
 let canonicalize_type = fun visible_types ->
-  let resolve_type = resolve_type_with
-    ~make:TypeRepr.of_desc
-    ~resolve_named_type_decl:(lookup visible_types)
-    ~resolve_named_type_head:(resolve_named_type_head visible_types) in
+  let expand_head = expand_head visible_types in
   let rec loop ty =
-    let ty = resolve_type ty |> TypeRepr.prune in
+    let ty = expand_head ty |> TypeRepr.prune in
     match TypeRepr.view ty with
     | TypeRepr.Int
     | TypeRepr.Float

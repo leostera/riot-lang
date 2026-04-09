@@ -4,9 +4,13 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let lift = function
+let lift_file = function
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string error)
+  | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+
+let lift_async = function
+  | Kernel.Result.Ok value -> Ok value
+  | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error)
 
 let protect = fun ~finally fn ->
   try
@@ -19,7 +23,7 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_pipe = fun fn ->
-  let* pipe = lift (Kernel.Fs.File.pipe ()) in
+  let* pipe = lift_file (Kernel.Fs.File.pipe ()) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Fs.File.close pipe.read_end in
@@ -39,7 +43,7 @@ let with_pipes = fun count fn ->
     if remaining = 0 then
       Ok acc
     else
-      let* pipe = lift (Kernel.Fs.File.pipe ()) in
+      let* pipe = lift_file (Kernel.Fs.File.pipe ()) in
       create (remaining - 1) ((pipe.read_end, pipe.write_end) :: acc)
   in
   let* pipes = create count [] in
@@ -48,7 +52,7 @@ let with_pipes = fun count fn ->
     (fun () -> fn (List.rev pipes))
 
 let with_poll = fun fn ->
-  let* poll = lift (Kernel.Async.Poll.make ()) in
+  let* poll = lift_async (Kernel.Async.Poll.make ()) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.close poll in
@@ -56,7 +60,7 @@ let with_poll = fun fn ->
     (fun () -> fn poll)
 
 let wait_for_event = fun ?(timeout = 100_000_000L) poll ->
-  lift (Kernel.Async.Poll.poll ~timeout poll)
+  lift_async (Kernel.Async.Poll.poll ~timeout poll)
 
 let test_poll_reports_pipe_readability = fun _ctx ->
   with_pipe
@@ -64,18 +68,18 @@ let test_poll_reports_pipe_readability = fun _ctx ->
       with_poll
         (fun poll ->
           let token = Kernel.Async.Token.make 41 in
-          let* () = lift
+          let* () = lift_async
             (Kernel.Async.Poll.register
               poll
               token
               Kernel.Async.Interest.readable
               (Kernel.Fs.File.to_source read_end)) in
           let payload = Kernel.Bytes.of_string "x" in
-          let* written = lift (Kernel.Fs.File.write write_end payload) in
+          let* written = lift_file (Kernel.Fs.File.write write_end payload) in
           if written != 1 then
             Error "expected pipe write to write one byte"
           else
-            let* events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+            let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
             let found =
               List.exists
                 (fun event ->
@@ -96,15 +100,15 @@ let test_poll_reports_pipe_read_closed = fun _ctx ->
           let token = Kernel.Async.Token.make 411 in
           let source = Kernel.Fs.File.to_source read_end in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.register
                  poll
                  token
                  Kernel.Async.Interest.readable
                  source)
           in
-          let* () = lift (Kernel.Fs.File.close write_end) in
-          let* events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+          let* () = lift_file (Kernel.Fs.File.close write_end) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
           let found =
             List.exists
               (fun event ->
@@ -125,20 +129,20 @@ let test_deregister_removes_pipe_source = fun _ctx ->
           let token = Kernel.Async.Token.make 42 in
           let source = Kernel.Fs.File.to_source read_end in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.register
                  poll
                  token
                  Kernel.Async.Interest.readable
                  source)
           in
-          let* () = lift (Kernel.Async.Poll.deregister poll source) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let payload = Kernel.Bytes.of_string "x" in
-          let* written = lift (Kernel.Fs.File.write write_end payload) in
+          let* written = lift_file (Kernel.Fs.File.write write_end payload) in
           if written != 1 then
             Error "expected pipe write to write one byte"
           else
-            let* events = lift (Kernel.Async.Poll.poll ~timeout:0L poll) in
+            let* events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
             let found =
               List.exists
                 (fun event ->
@@ -160,7 +164,7 @@ let test_reregister_updates_pipe_token = fun _ctx ->
           let token_b = Kernel.Async.Token.make "second" in
           let source = Kernel.Fs.File.to_source write_end in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.register
                  poll
                  token_a
@@ -168,7 +172,7 @@ let test_reregister_updates_pipe_token = fun _ctx ->
                  source)
           in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.reregister
                  poll
                  token_b
@@ -198,7 +202,7 @@ let test_reregister_replaces_interest = fun _ctx ->
           let source = Kernel.Fs.File.to_source write_end in
           let token = Kernel.Async.Token.make "replaced-interest" in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.register
                  poll
                  token
@@ -206,14 +210,14 @@ let test_reregister_replaces_interest = fun _ctx ->
                  source)
           in
           let* () =
-            lift
+            lift_async
               (Kernel.Async.Poll.reregister
                  poll
                  token
                  Kernel.Async.Interest.readable
                  source)
           in
-          let* events = lift (Kernel.Async.Poll.poll ~timeout:0L poll) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
           let found =
             List.exists
               (fun event ->
@@ -235,7 +239,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
             | [] -> Ok ()
             | (read_end, _) :: rest ->
                 let* () =
-                  lift
+                  lift_async
                     (Kernel.Async.Poll.register
                        poll
                        (Kernel.Async.Token.make index)
@@ -248,7 +252,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
             | [] -> Ok ()
             | (_, write_end) :: rest ->
                 let* written =
-                  lift (Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x"))
+                  lift_file (Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x"))
                 in
                 if written != 1 then
                   Error "expected pipe write to write one byte"
@@ -257,7 +261,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
           in
           let* () = register 0 pipes in
           let* () = write_all pipes in
-          let* events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll) in
           let seen = Kernel.Array.make 64 false in
           let rec mark = function
             | [] -> ()

@@ -4,15 +4,9 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let string_of_error = function
-  | Kernel.Error.Unknown code ->
-      "unknown kernel error " ^ Int.to_string code
-  | error ->
-      Kernel.Error.to_string error
-
 let lift = function
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (string_of_error error)
+  | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
 
 let protect = fun ~finally fn ->
   try

@@ -232,8 +232,8 @@ let canonicalize_export_result_for_persistence = fun canonicalize_type export_re
   | FileSummary.NoExport -> FileSummary.NoExport
 
 let canonicalize_payload_for_persistence = fun ~export_result ~type_decls ->
-  let by_path = local_type_decl_index type_decls in
-  let canonicalize_type = canonicalize_type_for_persistence by_path in
+  let visible_types = VisibleTypes.of_type_decls type_decls in
+  let canonicalize_type = VisibleTypes.canonicalize_type visible_types in
   (
     canonicalize_export_result_for_persistence canonicalize_type export_result,
     List.map (canonicalize_type_decl_for_persistence canonicalize_type) type_decls

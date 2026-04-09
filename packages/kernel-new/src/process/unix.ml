@@ -1,6 +1,11 @@
 open Prelude
 
-type error = Error.t
+let ( let* ) = Result.and_then
+
+type error =
+  | File of Fs.File.error
+  | Invalid_status of { tag: int }
+  | System of System_error.t
 
 type status =
   | Running
@@ -136,10 +141,18 @@ let raw_stdio_of_config = fun config ->
 
 let status_of_raw = fun tag code ->
   match tag with
-  | 0 -> Exited code
-  | 1 -> Signaled code
-  | 2 -> Stopped code
-  | _ -> Error.panic "invalid process status tag"
+  | 0 -> Result.Ok (Exited code)
+  | 1 -> Result.Ok (Signaled code)
+  | 2 -> Result.Ok (Stopped code)
+  | _ -> Result.Error (Invalid_status { tag })
+
+let error_to_string = function
+  | File error ->
+      Fs.File.error_to_string error
+  | Invalid_status { tag } ->
+      String.concat "" [ "invalid process status tag: "; Int.to_string tag ]
+  | System error ->
+      System_error.to_string error
 
 let pid = fun process -> process.pid
 
@@ -156,7 +169,7 @@ let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
   in
   let raw_stdio = raw_stdio_of_config stdio in
   Result.map_error
-    Error.of_code
+    (fun code -> System (System_error.of_code code))
     (Result.map
        (fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
          {
@@ -174,17 +187,18 @@ let try_wait = fun process ->
   | Signaled _
   | Stopped _ -> Result.Ok (Some process.status)
   | Running ->
-      Result.map_error
-        Error.of_code
-        (Result.map
-           (fun status ->
-             match status with
-             | None -> None
-             | Some (tag, code) ->
-                 let status = status_of_raw tag code in
-                 process.status <- status;
-                 Some status)
-           (FFI.try_wait process.pid))
+      let* status =
+        Result.map_error
+          (fun code -> System (System_error.of_code code))
+          (FFI.try_wait process.pid)
+      in
+      match status with
+      | None ->
+          Result.Ok None
+      | Some (tag, code) ->
+          let* status = status_of_raw tag code in
+          process.status <- status;
+          Result.Ok (Some status)
 
 let wait = fun process ->
   match process.status with
@@ -192,17 +206,17 @@ let wait = fun process ->
   | Signaled _
   | Stopped _ -> Result.Ok process.status
   | Running ->
-      Result.map_error
-        Error.of_code
-        (Result.map
-           (fun (tag, code) ->
-             let status = status_of_raw tag code in
-             process.status <- status;
-             status)
-           (FFI.wait process.pid))
+      let* tag, code =
+        Result.map_error
+          (fun code -> System (System_error.of_code code))
+          (FFI.wait process.pid)
+      in
+      let* status = status_of_raw tag code in
+      process.status <- status;
+      Result.Ok status
 
 let kill = fun process ~signal ->
-  Result.map_error Error.of_code (FFI.kill process.pid signal)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.kill process.pid signal)
 
 let close = fun process ->
   let rec close_all first_error = function
@@ -215,7 +229,7 @@ let close = fun process ->
           match (first_error, Fs.File.close file) with
           | (Some error, _) -> Some error
           | (None, Result.Ok ()) -> None
-          | (None, Result.Error error) -> Some error
+          | (None, Result.Error error) -> Some (File error)
         in
         close_all next_error rest
   in

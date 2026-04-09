@@ -1,6 +1,7 @@
 open Prelude
 
-type error = Error.t
+type error =
+  | Invalid_port of { port: int }
 
 type t = {
   ip: Ip_addr.t;
@@ -9,9 +10,13 @@ type t = {
 
 let ( let* ) = Result.and_then
 
+let error_to_string = function
+  | Invalid_port { port } ->
+      String.concat "" [ "invalid socket port: "; Int.to_string port ]
+
 let validate_port = fun port ->
   if port < 0 || port > 65_535 then
-    Result.Error Error.Invalid_argument
+    Result.Error (Invalid_port { port })
   else
     Result.Ok ()
 

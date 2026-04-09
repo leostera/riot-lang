@@ -1,6 +1,6 @@
 open Prelude
 
-type error = Error.t
+type error = System of System_error.t
 
 external args: string array = "%sys_argv"
 
@@ -32,19 +32,22 @@ end
 
 let get = FFI.get
 
+let error_to_string = function
+  | System error -> System_error.to_string error
+
 let set_var = fun ~name ~value ->
-  Result.map_error Error.of_code (FFI.set_var name value)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.set_var name value)
 
 let remove_var = fun ~name ->
-  Result.map_error Error.of_code (FFI.remove_var name)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.remove_var name)
 
 let vars = FFI.vars
 
 let current_dir = fun () ->
-  Result.map_error Error.of_code (Result.map Path.v (FFI.current_dir ()))
+  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map Path.v (FFI.current_dir ()))
 
 let set_current_dir = fun path ->
-  Result.map_error Error.of_code (FFI.set_current_dir (Path.to_string path))
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.set_current_dir (Path.to_string path))
 
 let home_dir = fun () ->
   Option.map Path.v (get "HOME")

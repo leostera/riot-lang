@@ -10,7 +10,7 @@ type t = segment array
 
 let validate_bounds = fun ~offset ~length ~buffer ->
   if offset < 0 || length < 0 || offset + length > Bytes.length buffer then
-    Error.panic "invalid iovec bounds"
+    System_error.panic "invalid iovec bounds"
 
 let make_segment = fun ~buffer ~offset ~length ->
   validate_bounds ~offset ~length ~buffer;
@@ -18,9 +18,9 @@ let make_segment = fun ~buffer ~offset ~length ->
 
 let create = fun ?(count = 1) ~size () ->
   if count <= 0 then
-    Error.panic "iovec count must be positive";
+    System_error.panic "iovec count must be positive";
   if size < 0 then
-    Error.panic "iovec size must be non-negative";
+    System_error.panic "iovec size must be non-negative";
   let base = size / count in
   let remainder = size mod count in
   Array.init count
@@ -52,7 +52,7 @@ let iter = fun fn segments ->
 
 let sub = fun ?(pos = 0) ~len segments ->
   if pos < 0 || len < 0 then
-    Error.panic "invalid iovec slice";
+    System_error.panic "invalid iovec slice";
   let rec reverse_append left right =
     match left with
     | [] -> right

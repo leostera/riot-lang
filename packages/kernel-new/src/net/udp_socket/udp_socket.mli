@@ -1,5 +1,14 @@
 type t
-type error = Error.t
+type error =
+  | Invalid_slice of {
+      pos: int;
+      len: int;
+      buffer_len: int;
+    }
+  | System of System_error.t
+
+val error_to_string: error -> string
+
 val bind: ?reuse_addr:bool -> ?reuse_port:bool -> Socket_addr.t -> (t, error) Result.t
 
 val connect: t -> Socket_addr.t -> (unit, error) Result.t

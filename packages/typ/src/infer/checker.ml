@@ -3166,7 +3166,7 @@ let infer_file = fun ~config ~(source:Source.t) file ->
                 match SemanticTree.find_binding state.file binding_id with
                 | Some ({ name=Some name; annotation=Some annotation; _ }: BodyArena.binding) -> (
                   name,
-                  canonicalize_scheme_heads_in_env state final_env annotation
+                  canonicalize_scheme_in_env state final_env annotation
                 )
                 :: acc
                 | _ -> acc)

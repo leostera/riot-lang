@@ -107,6 +107,25 @@ let export_definitions = fun analysis ->
             { export_name = IdentPath.to_string binding_ref.path; target }: ModuleTypings.value_definition
           )))
 
+let qualify_type_decls = fun module_name type_decls ->
+  List.map
+    (fun (type_decl: FileSummary.type_decl) ->
+      {
+        FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
+        declaration = type_decl.declaration
+      })
+    type_decls
+
+let ambient_type_decls = fun (config: TypConfig.t) ->
+  let loaded_type_decls =
+    config.loaded_modules
+    |> List.concat_map
+      (fun typings ->
+        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))
+  in
+  VisibleTypes.of_type_decls (config.ambient_type_decls @ loaded_type_decls)
+  |> VisibleTypes.type_decls
+
 let analyze = fun ~config (source: Source.t) ->
   let parsed = source.parse_result in
   let cst = source.cst in
@@ -133,6 +152,7 @@ let analyze = fun ~config (source: Source.t) ->
     else
       FileSummary.errored ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
   in
+  let ambient_type_decls = ambient_type_decls config in
   {
     source;
     parse_diagnostics = parsed.Parser.diagnostics;
@@ -140,7 +160,7 @@ let analyze = fun ~config (source: Source.t) ->
     semantic_tree = Some semantic_tree;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
-    ambient_type_decls = config.ambient_type_decls;
+    ambient_type_decls;
     file_summary;
     export_bindings = inferred.export_bindings;
     type_index;

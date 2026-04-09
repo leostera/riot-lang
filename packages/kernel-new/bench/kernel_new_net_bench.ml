@@ -1,6 +1,22 @@
 open Std
 module Kernel = Kernel_new
 
+let panic_async = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_async error))
+
+let panic_tcp_listener = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+
+let panic_tcp_stream = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+
+let panic_udp = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+
 let protect = fun ~finally fn ->
   try
     let value = fn () in
@@ -10,22 +26,41 @@ let protect = fun ~finally fn ->
     finally ();
     raise error
 
-let lift = function
+let lift_async = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Kernel.Result.Error error -> panic_async error
 
-let is_would_block = function
-  | Kernel.Error.Would_block -> true
+let lift_tcp_listener = function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error -> panic_tcp_listener error
+
+let lift_tcp_stream = function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error -> panic_tcp_stream error
+
+let lift_udp = function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error -> panic_udp error
+
+let is_tcp_listener_would_block = function
+  | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+
+let is_tcp_stream_would_block = function
+  | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
+  | _ -> false
+
+let is_udp_would_block = function
+  | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
-  let _ = lift (Kernel.Async.Poll.register poll token interest source) in
+  let _ = lift_async (Kernel.Async.Poll.register poll token interest source) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.deregister poll source in
       ())
     (fun () ->
-      let events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+      let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
         List.exists
           (fun event ->
@@ -65,7 +100,7 @@ let close_udp = fun socket ->
   ()
 
 let with_poll = fun fn ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
+  let poll = lift_async (Kernel.Async.Poll.make ()) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.close poll in
@@ -73,7 +108,7 @@ let with_poll = fun fn ->
     (fun () -> fn poll)
 
 let connect_stream = fun poll addr ->
-  match lift (Kernel.Net.TcpStream.connect addr) with
+  match lift_tcp_stream (Kernel.Net.TcpStream.connect addr) with
   | Kernel.Net.TcpStream.Connected stream -> stream
   | Kernel.Net.TcpStream.In_progress stream ->
       wait_writable
@@ -86,14 +121,14 @@ let rec accept_stream = fun poll listener ->
   match Kernel.Net.TcpListener.accept listener with
   | Kernel.Result.Ok (stream, _peer) -> stream
   | Kernel.Result.Error error ->
-      if is_would_block error then (
+      if is_tcp_listener_would_block error then (
         wait_readable
           poll
           ~token:(Kernel.Async.Token.make 402)
           (Kernel.Net.TcpListener.to_source listener);
         accept_stream poll listener
       ) else
-        Kernel.Error.panic (Kernel.Error.to_string error)
+        panic_tcp_listener error
 
 let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
   if len != 0 then
@@ -109,11 +144,11 @@ let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
           ~pos:(pos + written)
           ~len:(len - written)
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_tcp_stream_would_block error then (
           wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream);
           write_all_stream poll ~token stream buffer ~pos ~len
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_tcp_stream error
 
 let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
   if len != 0 then
@@ -129,11 +164,11 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
           ~pos:(pos + read)
           ~len:(len - read)
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_tcp_stream_would_block error then (
           wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream);
           read_exact_stream poll ~token stream buffer ~pos ~len
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_tcp_stream error
 
 let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
   if len != 0 then
@@ -144,11 +179,11 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
           Kernel.Error.panic "expected tcp vectored write to make progress";
         write_all_vectored poll ~token stream iov ~pos:(pos + written) ~len:(len - written)
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_tcp_stream_would_block error then (
           wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream);
           write_all_vectored poll ~token stream iov ~pos ~len
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_tcp_stream error
 
 let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
   if len != 0 then
@@ -159,22 +194,22 @@ let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
           Kernel.Error.panic "expected tcp vectored read to make progress";
         read_exact_vectored poll ~token stream iov ~pos:(pos + read) ~len:(len - read)
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_tcp_stream_would_block error then (
           wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream);
           read_exact_vectored poll ~token stream iov ~pos ~len
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_tcp_stream error
 
 let bench_tcp_loopback_roundtrip = fun () ->
   with_poll
     (fun poll ->
       let listener =
-        lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+        lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
         ~finally:(fun () -> close_listener listener)
         (fun () ->
-          let addr = lift (Kernel.Net.TcpListener.local_addr listener) in
+          let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
             ~finally:(fun () -> close_stream client)
@@ -220,12 +255,12 @@ let bench_tcp_vectored_roundtrip = fun () ->
   with_poll
     (fun poll ->
       let listener =
-        lift (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+        lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
         ~finally:(fun () -> close_listener listener)
         (fun () ->
-          let addr = lift (Kernel.Net.TcpListener.local_addr listener) in
+          let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
             ~finally:(fun () -> close_stream client)
@@ -276,11 +311,11 @@ let recv_from_udp = fun poll ~token socket buffer ->
     match Kernel.Net.UdpSocket.recv_from socket buffer with
     | Kernel.Result.Ok value -> value
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_udp_would_block error then (
           wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket);
           loop ()
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_udp error
   in
   loop ()
 
@@ -289,11 +324,11 @@ let recv_udp = fun poll ~token socket buffer ->
     match Kernel.Net.UdpSocket.recv socket buffer with
     | Kernel.Result.Ok value -> value
     | Kernel.Result.Error error ->
-        if is_would_block error then (
+        if is_udp_would_block error then (
           wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket);
           loop ()
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          panic_udp error
   in
   loop ()
 
@@ -301,20 +336,20 @@ let bench_udp_loopback_datagram = fun () ->
   with_poll
     (fun poll ->
       let server =
-        lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
         ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
-            lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+            lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
             ~finally:(fun () -> close_udp client)
             (fun () ->
-              let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
+              let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let _ =
-                lift (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping"))
+                lift_udp (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping"))
               in
               let buffer = Kernel.Bytes.create 32 in
               ignore (recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer))))
@@ -323,28 +358,28 @@ let bench_udp_connected_roundtrip = fun () ->
   with_poll
     (fun poll ->
       let server =
-        lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
         ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
-            lift (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+            lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
             ~finally:(fun () -> close_udp client)
             (fun () ->
-              let server_addr = lift (Kernel.Net.UdpSocket.local_addr server) in
-              let client_addr = lift (Kernel.Net.UdpSocket.local_addr client) in
-              let _ = lift (Kernel.Net.UdpSocket.connect server client_addr) in
-              let _ = lift (Kernel.Net.UdpSocket.connect client server_addr) in
+              let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+              let client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
+              let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
+              let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
               let _ =
-                lift (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping"))
+                lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping"))
               in
               let server_buf = Kernel.Bytes.create 32 in
               ignore (recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf);
               let _ =
-                lift (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong"))
+                lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong"))
               in
               let client_buf = Kernel.Bytes.create 32 in
               ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf))))

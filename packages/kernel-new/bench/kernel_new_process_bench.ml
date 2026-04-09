@@ -1,12 +1,26 @@
 open Std
 module Kernel = Kernel_new
 
-let lift = function
+let lift_process = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Kernel.Result.Error error ->
+      Kernel.Error.panic
+        (Kernel.Error.to_string (Kernel.Error.of_process error))
+
+let lift_async = function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error ->
+      Kernel.Error.panic
+        (Kernel.Error.to_string (Kernel.Error.of_async error))
+
+let lift_file = function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error ->
+      Kernel.Error.panic
+        (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let is_would_block = function
-  | Kernel.Error.Would_block -> true
+  | Kernel.Fs.File.System error -> Kernel.SystemError.is_would_block error
   | _ -> false
 
 let with_process = fun process fn ->
@@ -30,7 +44,7 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_poll = fun fn ->
-  let poll = lift (Kernel.Async.Poll.make ()) in
+  let poll = lift_async (Kernel.Async.Poll.make ()) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.close poll in
@@ -38,13 +52,13 @@ let with_poll = fun fn ->
     (fun () -> fn poll)
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
-  let _ = lift (Kernel.Async.Poll.register poll token interest source) in
+  let _ = lift_async (Kernel.Async.Poll.register poll token interest source) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.deregister poll source in
       ())
     (fun () ->
-      let events = lift (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
+      let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
         List.exists
           (fun event ->
@@ -74,13 +88,14 @@ let read_once = fun poll ~token file ->
           wait_readable poll ~token (Kernel.Fs.File.to_source file);
           loop ()
         ) else
-          Kernel.Error.panic (Kernel.Error.to_string error)
+          Kernel.Error.panic
+            (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
   in
   loop ()
 
 let bench_spawn_true = fun () ->
   let process =
-    lift
+    lift_process
       (Kernel.Process.spawn
          ~program:"/usr/bin/true"
          ~args:[||]
@@ -89,7 +104,7 @@ let bench_spawn_true = fun () ->
   in
   with_process process
     (fun process ->
-      ignore (lift (Kernel.Process.wait process)))
+      ignore (lift_process (Kernel.Process.wait process)))
 
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
@@ -101,7 +116,7 @@ let bench_spawn_echo_with_pipe = fun () ->
         stderr = `Null;
       } in
       let process =
-        lift
+        lift_process
           (Kernel.Process.spawn
              ~program:"/bin/echo"
              ~args:[| "-n"; "kernel-new" |]
@@ -115,7 +130,7 @@ let bench_spawn_echo_with_pipe = fun () ->
               Kernel.Error.panic "expected stdout pipe"
           | Some stdout ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
-              ignore (lift (Kernel.Process.wait process))))
+              ignore (lift_process (Kernel.Process.wait process))))
 
 let benchmarks =
   Bench.[

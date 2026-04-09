@@ -1,6 +1,14 @@
 open Std
 module Kernel = Kernel_new
 
+let panic_file = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+
+let panic_async = fun error ->
+  Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_async error))
+
 let protect = fun ~finally fn ->
   try
     let value = fn () in
@@ -13,7 +21,7 @@ let protect = fun ~finally fn ->
 
 let with_pipe = fun fn ->
   match Kernel.Fs.File.pipe () with
-  | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Error error -> panic_file error
   | Ok pipe ->
       protect
         ~finally:(fun () ->
@@ -39,7 +47,7 @@ let with_pipes = fun count fn ->
       | Ok pipe -> create (remaining - 1) (pipe :: acc)
   in
   match create count [] with
-  | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Error error -> panic_file error
   | Ok pipes ->
       protect
         ~finally:(fun () -> close_pipes pipes)
@@ -47,7 +55,7 @@ let with_pipes = fun count fn ->
 
 let with_poll = fun fn ->
   match Kernel.Async.Poll.make () with
-  | Error error -> Kernel.Error.panic (Kernel.Error.to_string error)
+  | Error error -> panic_async error
   | Ok poll ->
       protect
         ~finally:(fun () ->

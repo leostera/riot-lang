@@ -2,7 +2,8 @@ open Prelude
 
 type t = string
 
-type error = Error.t
+type error =
+  | Invalid_text of { value: string }
 
 module FFI = struct
   external is_valid: string -> bool = "kernel_new_net_ip_addr_is_valid"
@@ -12,11 +13,15 @@ let v4_loopback = "127.0.0.1"
 
 let v6_loopback = "::1"
 
+let error_to_string = function
+  | Invalid_text { value } ->
+      String.concat "" [ "invalid ip address: "; value ]
+
 let of_string = fun value ->
   if FFI.is_valid value then
     Result.Ok value
   else
-    Result.Error Error.Invalid_argument
+    Result.Error (Invalid_text { value })
 
 let to_string = fun value -> value
 

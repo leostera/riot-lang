@@ -1,5 +1,19 @@
 type t
-type error = Error.t
+type shutdown =
+  | Read
+  | Write
+  | Read_write
+
+type error =
+  | Invalid_slice of {
+      pos: int;
+      len: int;
+      buffer_len: int;
+    }
+  | System of System_error.t
+
+val error_to_string: error -> string
+
 type connect_result =
   | Connected of t
   | In_progress of t
@@ -7,6 +21,8 @@ type connect_result =
 val connect: Socket_addr.t -> (connect_result, error) Result.t
 
 val close: t -> (unit, error) Result.t
+
+val shutdown: t -> shutdown -> (unit, error) Result.t
 
 val read: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 

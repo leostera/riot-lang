@@ -52,6 +52,9 @@ type kind =
       parse_diagnostic_count: int;
       lowering_diagnostic_count: int;
       typing_diagnostic_count: int;
+      parse_diagnostics: Syn.Diagnostic.t list;
+      lowering_diagnostics: Diagnostic.t list;
+      typing_diagnostics: Diagnostic.t list;
       export_status: export_status;
       export_count: int;
       type_decl_count: int

@@ -1,8 +1,21 @@
 open Prelude
 
+let ( let* ) = Result.and_then
+
 type t = int
 
-type error = Error.t
+type shutdown =
+  | Read
+  | Write
+  | Read_write
+
+type error =
+  | Invalid_slice of {
+      pos: int;
+      len: int;
+      buffer_len: int;
+    }
+  | System of System_error.t
 
 type connect_result =
   | Connected of t
@@ -12,10 +25,18 @@ let connect_result_connected = 0
 
 let connect_result_in_progress = 1
 
+let shutdown_read = 0
+
+let shutdown_write = 1
+
+let shutdown_read_write = 2
+
 module FFI = struct
   external connect: string -> int -> ((t * int), int) Result.t = "kernel_new_net_tcp_stream_connect"
 
   external close: t -> (unit, int) Result.t = "kernel_new_net_socket_close"
+
+  external shutdown: t -> int -> (unit, int) Result.t = "kernel_new_net_tcp_stream_shutdown"
 
   external read: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_read"
 
@@ -32,17 +53,38 @@ end
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Error.panic "invalid buffer bounds"
+    Result.Error (Invalid_slice { pos; len; buffer_len = Bytes.length buf })
+  else
+    Result.Ok ()
 
 let socket_addr_of_pair = fun (ip, port) ->
   match Ip_addr.of_string ip with
   | Result.Ok ip -> Socket_addr.of_parts_unchecked ~ip ~port
-  | Result.Error _ -> Error.panic "kernel returned an invalid ip address"
+  | Result.Error _ -> System_error.panic "kernel returned an invalid ip address"
+
+let error_to_string = function
+  | Invalid_slice { pos; len; buffer_len } ->
+      String.concat ""
+        [
+          "invalid buffer slice: pos=";
+          Int.to_string pos;
+          ", len=";
+          Int.to_string len;
+          ", buffer_len=";
+          Int.to_string buffer_len;
+        ]
+  | System error ->
+      System_error.to_string error
+
+let shutdown_code = function
+  | Read -> shutdown_read
+  | Write -> shutdown_write
+  | Read_write -> shutdown_read_write
 
 let connect = fun addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  Result.map_error Error.of_code
+  Result.map_error (fun code -> System (System_error.of_code code))
     (
       Result.map
         (fun (fd, state) ->
@@ -54,29 +96,32 @@ let connect = fun addr ->
     )
 
 let close = fun fd ->
-  Result.map_error Error.of_code (FFI.close fd)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close fd)
+
+let shutdown = fun fd how ->
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.shutdown fd (shutdown_code how))
 
 let read = fun fd ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
-  validate_slice buf ~pos ~len;
-  Result.map_error Error.of_code (FFI.read fd buf pos len)
+  let* () = validate_slice buf ~pos ~len in
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.read fd buf pos len)
 
 let write = fun fd ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
-  validate_slice buf ~pos ~len;
-  Result.map_error Error.of_code (FFI.write fd buf pos len)
+  let* () = validate_slice buf ~pos ~len in
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.write fd buf pos len)
 
 let read_vectored = fun fd iov ->
-  Result.map_error Error.of_code (FFI.readv fd iov)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.readv fd iov)
 
 let write_vectored = fun fd iov ->
-  Result.map_error Error.of_code (FFI.writev fd iov)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.writev fd iov)
 
 let local_addr = fun fd ->
-  Result.map_error Error.of_code (Result.map socket_addr_of_pair (FFI.local_addr fd))
+  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map socket_addr_of_pair (FFI.local_addr fd))
 
 let peer_addr = fun fd ->
-  Result.map_error Error.of_code (Result.map socket_addr_of_pair (FFI.peer_addr fd))
+  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map socket_addr_of_pair (FFI.peer_addr fd))
 
 let to_source = fun fd ->
   let module Source = struct
