@@ -13,6 +13,8 @@ pub const RootVisitor = root_provider.RootVisitor;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const EventSink = event_sink.EventSink;
 pub const CollectTimings = event_sink.CollectTimings;
+pub const GcPhase = event_sink.GcPhase;
+pub const GcPhaseEvent = event_sink.GcPhaseEvent;
 pub const GcSnapshotEvent = event_sink.GcSnapshotEvent;
 pub const ObjectKindCounts = event_sink.ObjectKindCounts;
 
@@ -22,12 +24,35 @@ pub const GcStrategy = enum {
 };
 
 pub const Collector = struct {
+    pub const PhaseHooks = struct {
+        ctx: ?*anyopaque = null,
+        process_weak_fn: *const fn (?*anyopaque) usize = noopPhaseHook,
+        process_finalizers_fn: *const fn (?*anyopaque) usize = noopPhaseHook,
+
+        pub fn processWeak(self: PhaseHooks) usize {
+            return self.process_weak_fn(self.ctx);
+        }
+
+        pub fn processFinalizers(self: PhaseHooks) usize {
+            return self.process_finalizers_fn(self.ctx);
+        }
+
+        pub fn noop() PhaseHooks {
+            return .{};
+        }
+
+        fn noopPhaseHook(_: ?*anyopaque) usize {
+            return 0;
+        }
+    };
+
     heap_store: *HeapStore,
     root_providers: []const RootProvider,
     gc_strategy: GcStrategy,
     fixed_arena: *?std.heap.FixedBufferAllocator,
     fixed_arena_buffer: ?[]u8,
     event_sink: EventSink,
+    hooks: PhaseHooks,
 
     pub fn init(
         heap: *HeapStore,
@@ -36,6 +61,7 @@ pub const Collector = struct {
         fixed_arena_buffer: ?[]u8,
         gc_strategy: GcStrategy,
         sink: EventSink,
+        hooks: PhaseHooks,
     ) Collector {
         return .{
             .heap_store = heap,
@@ -44,6 +70,7 @@ pub const Collector = struct {
             .fixed_arena = fixed_arena,
             .fixed_arena_buffer = fixed_arena_buffer,
             .event_sink = sink,
+            .hooks = hooks,
         };
     }
 
@@ -64,12 +91,23 @@ pub const Collector = struct {
         } });
         _ = self.emitRootProviders();
         summary.timings.root_enumeration_ns = root_timer.read();
+        self.emitPhase(.enumerate_roots, summary.timings.root_enumeration_ns);
         var reclaimed: usize = 0;
         switch (self.gc_strategy) {
             .mark_sweep => reclaimed = self.collectMarkSweep(&summary),
             .bump => reclaimed = self.collectBump(&summary),
         }
+        var timer = std.time.Timer.start() catch unreachable;
+        summary.weak_processed = self.hooks.processWeak();
+        summary.timings.weak_ns = timer.read();
+        self.emitPhase(.weak, summary.timings.weak_ns);
+
+        timer = std.time.Timer.start() catch unreachable;
+        summary.finalizers_ready = self.hooks.processFinalizers();
+        summary.timings.finalizers_ns = timer.read();
+        self.emitPhase(.finalizers, summary.timings.finalizers_ns);
         summary.timings.total_ns = total_timer.read();
+        self.emitPhase(.done, summary.timings.total_ns);
         self.event_sink.emit(.{ .collect = .{
             .phase = .end,
             .strategy = self.collectStrategy(),
@@ -89,6 +127,7 @@ pub const Collector = struct {
             provider.visit(visitor);
         }
         summary.timings.mark_ns = timer.read();
+        self.emitPhase(.mark, summary.timings.mark_ns);
 
         timer = std.time.Timer.start() catch unreachable;
         const fixed_arena = self.fixed_arena_buffer != null;
@@ -114,6 +153,7 @@ pub const Collector = struct {
             }
         }
         summary.timings.sweep_ns = timer.read();
+        self.emitPhase(.sweep, summary.timings.sweep_ns);
         return reclaimed;
     }
 
@@ -121,6 +161,8 @@ pub const Collector = struct {
         var timer = std.time.Timer.start() catch unreachable;
         const reclaimed = self.emitLiveReclaims(summary);
         summary.timings.sweep_ns = timer.read();
+        self.emitPhase(.mark, 0);
+        self.emitPhase(.sweep, summary.timings.sweep_ns);
         if (self.fixed_arena_buffer) |buffer| {
             self.fixed_arena.* = std.heap.FixedBufferAllocator.init(buffer);
             self.heap_store.clear(true);
@@ -194,6 +236,14 @@ pub const Collector = struct {
         return count;
     }
 
+    fn emitPhase(self: *Collector, phase: GcPhase, elapsed_ns: u64) void {
+        self.event_sink.emit(.{ .gc_phase = .{
+            .strategy = self.collectStrategy(),
+            .phase = phase,
+            .elapsed_ns = elapsed_ns,
+        } });
+    }
+
     fn visitRoot(ctx: ?*anyopaque, rooted: Value) void {
         const self: *Collector = @ptrCast(@alignCast(ctx.?));
         self.mark(rooted);
@@ -209,7 +259,7 @@ test "collector: mark-sweep keeps rooted graph and reclaims unreachable objects"
     defer roots.deinit();
     var fixed_arena: ?std.heap.FixedBufferAllocator = null;
 
-    var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop());
+    var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop(), null);
     var root = try writer.allocTuple(1);
     const child = try writer.allocTuple(0);
     _ = try writer.allocTuple(0);
@@ -218,13 +268,13 @@ test "collector: mark-sweep keeps rooted graph and reclaims unreachable objects"
     try roots.register(&root);
 
     var providers = [_]RootProvider{roots.provider()};
-    var collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop());
+    var collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop(), Collector.PhaseHooks.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 2), heap.count());
 
     roots.unregister(&root);
     providers[0] = roots.provider();
-    collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop());
+    collector = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, EventSink.noop(), Collector.PhaseHooks.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 0), heap.count());
 }
@@ -240,18 +290,18 @@ test "collector: bump strategy resets fixed arena allocation state" {
     defer roots.deinit();
 
     {
-        var writer = mutator_mod.Mutator.init(fixed_arena.?.allocator(), &heap, EventSink.noop());
+        var writer = mutator_mod.Mutator.init(fixed_arena.?.allocator(), &heap, EventSink.noop(), null);
         _ = try writer.allocTuple(2);
     }
     try std.testing.expectEqual(@as(usize, 1), heap.count());
 
     var providers = [_]RootProvider{roots.provider()};
-    var collector = Collector.init(&heap, providers[0..], &fixed_arena, arena_bytes[0..], .bump, EventSink.noop());
+    var collector = Collector.init(&heap, providers[0..], &fixed_arena, arena_bytes[0..], .bump, EventSink.noop(), Collector.PhaseHooks.noop());
     collector.collect();
     try std.testing.expectEqual(@as(usize, 0), heap.count());
 
     {
-        var writer = mutator_mod.Mutator.init(fixed_arena.?.allocator(), &heap, EventSink.noop());
+        var writer = mutator_mod.Mutator.init(fixed_arena.?.allocator(), &heap, EventSink.noop(), null);
         _ = try writer.allocTuple(2);
     }
     try std.testing.expectEqual(@as(usize, 1), heap.count());
@@ -267,14 +317,61 @@ test "collector: emits collection and reclaim events" {
     defer roots.deinit();
     var fixed_arena: ?std.heap.FixedBufferAllocator = null;
 
-    var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop());
+    var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop(), null);
     _ = try writer.allocTuple(0);
 
     var providers = [_]RootProvider{roots.provider()};
-    var gc = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, recorder.sink());
+    var gc = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, recorder.sink(), Collector.PhaseHooks.noop());
     gc.collect();
 
     const counters = recorder.snapshot();
     try std.testing.expectEqual(@as(usize, 1), counters.collections);
     try std.testing.expectEqual(@as(usize, 1), counters.reclaims);
+}
+
+test "collector: phase hooks run between tracing and completion" {
+    const mutator_mod = @import("mutator.zig");
+
+    const Hooks = struct {
+        var weak_calls: usize = 0;
+        var finalizer_calls: usize = 0;
+
+        fn processWeak(_: ?*anyopaque) usize {
+            weak_calls += 1;
+            return 2;
+        }
+
+        fn processFinalizers(_: ?*anyopaque) usize {
+            finalizer_calls += 1;
+            return 1;
+        }
+    };
+    Hooks.weak_calls = 0;
+    Hooks.finalizer_calls = 0;
+
+    var trace = event_sink.TraceRecorder.init(std.testing.allocator, .{
+        .capture_events = true,
+    });
+    defer trace.deinit();
+    var heap = HeapStore.init(std.testing.allocator);
+    defer heap.deinit(false);
+    var roots = RootRegistry.init(std.testing.allocator, EventSink.noop());
+    defer roots.deinit();
+    var fixed_arena: ?std.heap.FixedBufferAllocator = null;
+
+    var writer = mutator_mod.Mutator.init(std.testing.allocator, &heap, EventSink.noop(), null);
+    var rooted = try writer.allocTuple(0);
+    try roots.register(&rooted);
+
+    var providers = [_]RootProvider{roots.provider()};
+    var gc = Collector.init(&heap, providers[0..], &fixed_arena, null, .mark_sweep, trace.sink(), .{
+        .process_weak_fn = Hooks.processWeak,
+        .process_finalizers_fn = Hooks.processFinalizers,
+    });
+    gc.collect();
+
+    try std.testing.expectEqual(@as(usize, 1), Hooks.weak_calls);
+    try std.testing.expectEqual(@as(usize, 1), Hooks.finalizer_calls);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.weak_processed);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.finalizers_ready);
 }

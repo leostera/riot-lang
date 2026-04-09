@@ -65,3 +65,18 @@
 - A small, maintainable zort runtime should keep “exception value building” separate from “non-local control transfer”.
 - Effects crossing C boundaries are a real semantic issue, not an implementation footnote.
 - If zort wants a typed replacement API, `caml_result` is a better reference point than the older encoded exception convention.
+
+## zort callback and backtrace baseline
+
+- `ControlKernel.enterCallbackBoundary` / `exitCallbackBoundary` now model callback boundaries explicitly in `src/control_kernel.zig`.
+- Entering a callback boundary:
+  - saves the current parent-fiber link,
+  - clears parent traversal for the duration of the callback,
+  - prevents implicit upward effect search past that boundary.
+- Observable consequence:
+  - `perform` inside the callback fails with `UnhandledEffect` if no handler exists inside the callback-owned chain,
+  - `captureBacktrace` only reports managed frames reachable inside that boundary.
+- zort backtrace capture is currently semantic and managed-stack-based:
+  - it walks `site_id` frames recorded on fibers,
+  - it follows parent-fiber links when they are visible,
+  - it does not yet mirror OCaml's native frame-descriptor machinery.

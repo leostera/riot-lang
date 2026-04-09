@@ -1,6 +1,7 @@
 const std = @import("std");
 const event_sink = @import("event_sink.zig");
 const heap_store = @import("heap_store.zig");
+const remembered_set_mod = @import("remembered_set.zig");
 const value = @import("value.zig");
 
 pub const Error = error{
@@ -14,6 +15,7 @@ pub const HeapRef = value.HeapRef;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const EventSink = event_sink.EventSink;
+pub const RememberedSet = remembered_set_mod.RememberedSet;
 
 const StorePhase = enum {
     initialize,
@@ -24,12 +26,14 @@ pub const Mutator = struct {
     allocator: std.mem.Allocator,
     heap_store: *HeapStore,
     event_sink: EventSink,
+    remembered_set: ?*RememberedSet,
 
-    pub fn init(allocator: std.mem.Allocator, store: *HeapStore, sink: EventSink) Mutator {
+    pub fn init(allocator: std.mem.Allocator, store: *HeapStore, sink: EventSink, remembered_set: ?*RememberedSet) Mutator {
         return .{
             .allocator = allocator,
             .heap_store = store,
             .event_sink = sink,
+            .remembered_set = remembered_set,
         };
     }
 
@@ -149,6 +153,7 @@ pub const Mutator = struct {
         // All GC-relevant tuple stores funnel through this one path so future
         // barriers or mutation verification only need to hook here.
         fields[index] = next;
+        try self.recordBarrier(handle, next, phase);
         self.event_sink.emit(.{ .field_write = .{
             .target = handle,
             .index = index,
@@ -180,12 +185,25 @@ pub const Mutator = struct {
             },
         } });
     }
+
+    fn recordBarrier(self: *Mutator, target: HeapRef, next: Value, comptime phase: StorePhase) Error!void {
+        if (phase != .mutate) return;
+        var recorded = false;
+        if (self.remembered_set) |set| {
+            recorded = try set.record(target, next);
+        }
+        if (!recorded) return;
+        self.event_sink.emit(.{ .barrier = .{
+            .target = target,
+            .value_is_block = true,
+        } });
+    }
 };
 
 test "mutator: tuple allocation and field writes use typed store path" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop());
+    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop(), null);
 
     const tuple = try mutator.allocTuple(2);
     try mutator.initField(tuple, 0, Value.fromInt(1));
@@ -200,7 +218,7 @@ test "mutator: tuple allocation and field writes use typed store path" {
 test "mutator: string writes preserve sentinel" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop());
+    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop(), null);
 
     const string = try mutator.allocStringLen(4);
     try mutator.fillString(string, 'x');
@@ -216,7 +234,7 @@ test "mutator: string writes preserve sentinel" {
 test "mutator: field writes reject non-tuples" {
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop());
+    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop(), null);
 
     const number = try mutator.allocBoxedI64(7);
     try std.testing.expectError(Error.InvalidValue, mutator.writeField(number, 0, Value.fromInt(1)));
@@ -226,7 +244,7 @@ test "mutator: emits allocation and mutation events" {
     var recorder = event_sink.Recorder{};
     var store = HeapStore.init(std.testing.allocator);
     defer store.deinit(false);
-    var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink());
+    var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), null);
 
     const tuple = try mutator.allocTuple(1);
     try mutator.initField(tuple, 0, Value.fromInt(1));
@@ -237,4 +255,21 @@ test "mutator: emits allocation and mutation events" {
     try std.testing.expectEqual(@as(usize, 2), counters.allocations);
     try std.testing.expectEqual(@as(usize, 1), counters.field_writes);
     try std.testing.expectEqual(@as(usize, 1), counters.bytes_writes);
+}
+
+test "mutator: mutate writes record remembered edges for block targets" {
+    var recorder = event_sink.Recorder{};
+    var remembered = RememberedSet.init(std.testing.allocator);
+    defer remembered.deinit();
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
+
+    const target = try mutator.allocTuple(1);
+    const child = try mutator.allocTuple(0);
+    try mutator.writeField(target, 0, child);
+    try mutator.writeField(target, 0, Value.fromInt(0));
+
+    try std.testing.expectEqual(@as(usize, 1), remembered.count());
+    try std.testing.expectEqual(@as(usize, 1), recorder.snapshot().barrier_records);
 }

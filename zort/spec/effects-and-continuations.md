@@ -175,15 +175,26 @@
 - zort now has a dedicated `ControlKernel` subsystem in `zort/src/control_kernel.zig`.
 - The current semantic model includes:
   - typed `FiberHandle`s with explicit parent links,
-  - typed `ContinuationHandle`s with owned captured roots,
+  - typed `ContinuationHandle`s with owned captured stack state and roots,
   - per-fiber handler stacks with explicit `handle_effect` / `handle_value` / `handle_exn` fields.
+- Fibers now own explicit managed stacks:
+  - frame records carry a site id plus frame-owned roots,
+  - stack limits are explicit runtime policy through `StackLimits`,
+  - overflow is reported as a typed `StackOverflow` error instead of silently growing forever.
 - Suspended continuations expose their captured values to the collector through the generic `RootProvider` interface instead of special GC-only hooks.
+- Capturing a continuation transfers the managed stack out of the active fiber into the continuation state.
+- Resuming a continuation restores that managed stack to the resumed fiber, so the continuation stops providing those roots only because ownership moved back to the active stack.
 - `perform` now walks the current fiber's handler stack and then the parent-fiber chain to find the nearest matching handler.
 - `resumeContinuation` consumes a continuation once:
   - the first resume reactivates the captured fiber,
   - the second resume fails with an explicit `AlreadyResumed` error.
 - `perform` with no matching handler fails with an explicit `UnhandledEffect` error.
-- Resumed continuations stop contributing captured roots to the collector provider view.
+- Callback boundaries are explicit:
+  - entering a callback boundary saves the current parent link,
+  - parent traversal is cleared while the callback runs,
+  - effect search and backtrace walking both stop at that boundary,
+  - the saved parent link is restored when the callback exits.
+- `captureBacktrace` now walks managed frames across the parent-fiber chain instead of only reporting the current fiber.
 - Control-kernel activity is now observable through typed events carrying:
   - action kind
   - effect id
@@ -196,6 +207,6 @@
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
   - richer resume ownership rules,
-  - callback-boundary behavior,
-  - backtrace integration across parent fibers,
+  - deeper callback-boundary behavior at FFI/native entrypoints,
+  - richer backtrace integration beyond managed-frame walking,
   - lower-level stack/runtime switching mechanics if zort chooses to model them explicitly.

@@ -110,3 +110,11 @@
 - The current exported primitive-call surface is pointer-safe:
   - `(name_ptr, name_len, args...)` at the boundary,
   - semantic decode/dispatch only inside the shim.
+- zort now also has a small runtime-services substrate in `src/runtime_services.zig`:
+  - named values are stored as explicit service-owned roots,
+  - lookup is string-keyed,
+  - service state is runtime-instance-local instead of OCaml-runtime-global.
+- This is an intentional divergence from OCaml for now:
+  - no global mutexed named-value table,
+  - no dynlink frame-table / gc-roots / code-fragment registration yet,
+  - no claim that named values survive across runtime instance boundaries.

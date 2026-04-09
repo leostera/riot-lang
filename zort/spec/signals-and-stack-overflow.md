@@ -91,3 +91,17 @@
   - signal-stack setup/teardown
   - signal recording vs callback execution
   - overflow recovery behavior by platform
+
+## zort baseline status
+
+- `RuntimeServices` in `src/runtime_services.zig` now owns:
+  - pending-signal recording as an explicit bitset,
+  - blocking-section depth as explicit runtime service state.
+- `ControlKernel` in `src/control_kernel.zig` now owns managed-stack limits:
+  - frame-count overflow,
+  - frame-root overflow,
+  - typed `StackOverflow` errors for those semantic stack limits.
+- This is only the service/kernel seam, not full signal runtime parity:
+  - alternate signal stacks are not implemented,
+  - OS-signal delivery is not wired into the runtime yet,
+  - native thread-stack overflow recovery remains platform work for later.

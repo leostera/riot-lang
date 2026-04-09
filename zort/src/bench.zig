@@ -197,7 +197,7 @@ fn runSuite(
     const delta = EventCounters.diff(recorder.snapshot(), before);
     const ns_per_op = runNanos(elapsed, iters);
     std.log.info(
-        "{s}:{s}: iters={d} ns/op={d:.2} alloc={d} field={d} bytes={d} root+={d} root-={d} collect={d} reclaim={d}",
+        "{s}:{s}: iters={d} ns/op={d:.2} alloc={d} field={d} bytes={d} barrier={d} root+={d} root-={d} collect={d} reclaim={d}",
         .{
             @tagName(strategy),
             label,
@@ -206,6 +206,7 @@ fn runSuite(
             delta.allocations,
             delta.field_writes,
             delta.bytes_writes,
+            delta.barrier_records,
             delta.root_registrations,
             delta.root_unregistrations,
             delta.collections,
@@ -276,6 +277,7 @@ fn runBenchcases(
         .{ .label = "gc-chain-unrooted", .run = benchmarkGcNoRoots },
         .{ .label = "root-churn", .run = benchmarkRootChurn },
         .{ .label = "long-lived-sweep", .run = benchmarkLongLivedSweep },
+        .{ .label = "effect-roundtrip", .run = benchmarkEffectRoundtrip },
         .{ .label = "mixed", .run = benchmarkMixed },
     };
 
@@ -297,13 +299,14 @@ fn runBenchcases(
     rt.collect();
     const totals = recorder.snapshot();
     std.log.info(
-        "gc-strategy={s} sink={d} totals alloc={d} field={d} bytes={d} root+={d} root-={d} collect={d} reclaim={d}",
+        "gc-strategy={s} sink={d} totals alloc={d} field={d} bytes={d} barrier={d} root+={d} root-={d} collect={d} reclaim={d}",
         .{
             @tagName(gc_strategy),
             bench_sink,
             totals.allocations,
             totals.field_writes,
             totals.bytes_writes,
+            totals.barrier_records,
             totals.root_registrations,
             totals.root_unregistrations,
             totals.collections,
@@ -347,6 +350,7 @@ fn shouldTraceEntry(mode: TraceMode, entry: TraceEntry) bool {
         .gc => switch (entry.event) {
             .root_provider,
             .collect,
+            .gc_phase,
             .gc_snapshot,
             .reclaim,
             => true,
@@ -375,6 +379,10 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 "trace:{s}:{s}: bytes ts={d} target={d}:{d} len={d} phase={s}",
                 .{ @tagName(strategy), label, entry.timestamp_ms, event.target.index, event.target.generation, event.len, @tagName(event.phase) },
             ),
+            .barrier => |event| std.log.info(
+                "trace:{s}:{s}: barrier ts={d} target={d}:{d} block={any}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, event.target.index, event.target.generation, event.value_is_block },
+            ),
             .root => |event| std.log.info(
                 "trace:{s}:{s}: root ts={d} action={s} block={any}",
                 .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.action), event.is_block },
@@ -387,8 +395,12 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 "trace:{s}:{s}: collect ts={d} phase={s} roots={d} reclaimed={d}",
                 .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.phase), event.root_count, event.reclaimed },
             ),
+            .gc_phase => |event| std.log.info(
+                "trace:{s}:{s}: gc-phase ts={d} phase={s} elapsed_ns={d}",
+                .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.phase), event.elapsed_ns },
+            ),
             .gc_snapshot => |event| std.log.info(
-                "trace:{s}:{s}: gc-snapshot ts={d} roots={d} marked={d}/{d}/{d}/{d}/{d} reclaimed={d}/{d}/{d}/{d}/{d} ns={d}/{d}/{d}/{d}",
+                "trace:{s}:{s}: gc-snapshot ts={d} roots={d} marked={d}/{d}/{d}/{d}/{d} reclaimed={d}/{d}/{d}/{d}/{d} weak={d} finalizers={d} ns={d}/{d}/{d}/{d}/{d}/{d}",
                 .{
                     @tagName(strategy),
                     label,
@@ -404,8 +416,12 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                     event.reclaimed.boxed_i64,
                     event.reclaimed.boxed_f64,
                     event.reclaimed.custom,
+                    event.weak_processed,
+                    event.finalizers_ready,
                     event.timings.root_enumeration_ns,
                     event.timings.mark_ns,
+                    event.timings.weak_ns,
+                    event.timings.finalizers_ns,
                     event.timings.sweep_ns,
                     event.timings.total_ns,
                 },
@@ -464,7 +480,7 @@ fn openCsvAppend(path: []const u8) !std.fs.File {
 
     const stat = try file.stat();
     if (stat.size == 0) {
-        try file.writeAll("timestamp_ms,strategy,label,iters,ns_per_op,allocations,field_writes,bytes_writes,root_registrations,root_unregistrations,collections,reclaims\n");
+        try file.writeAll("timestamp_ms,strategy,label,iters,ns_per_op,allocations,field_writes,bytes_writes,barrier_records,root_registrations,root_unregistrations,collections,reclaims\n");
     }
     try file.seekFromEnd(0);
     return file;
@@ -481,7 +497,7 @@ fn appendCsvRow(
     var buffer: [256]u8 = undefined;
     const row = try std.fmt.bufPrint(
         &buffer,
-        "{d},{s},{s},{d},{d:.2},{d},{d},{d},{d},{d},{d},{d}\n",
+        "{d},{s},{s},{d},{d:.2},{d},{d},{d},{d},{d},{d},{d},{d}\n",
         .{
             std.time.milliTimestamp(),
             @tagName(strategy),
@@ -491,6 +507,7 @@ fn appendCsvRow(
             counters.allocations,
             counters.field_writes,
             counters.bytes_writes,
+            counters.barrier_records,
             counters.root_registrations,
             counters.root_unregistrations,
             counters.collections,
@@ -716,6 +733,34 @@ fn benchmarkLongLivedSweep(rt: *Runtime, iters: usize) !u64 {
             consume(try rt.field(long_lived, 0));
         }
         rt.collect();
+    }
+    return timer.read();
+}
+
+fn benchmarkEffectRoundtrip(rt: *Runtime, iters: usize) !u64 {
+    const effect: runtime.EffectId = 41;
+    const kernel = rt.controlKernel();
+    const main_fiber = kernel.currentFiber();
+    try kernel.pushHandler(main_fiber, .{
+        .effect = effect,
+        .handle_effect = Value.fromInt(1),
+    });
+    defer _ = kernel.popHandler(main_fiber) catch {};
+
+    var i: usize = 0;
+    var timer = try std.time.Timer.start();
+    while (i < iters) : (i += 1) {
+        try kernel.pushFrame(main_fiber, @intCast(i));
+        const payload = try rt.allocTuple(1);
+        try rt.setField(payload, 0, Value.fromInt(@as(i64, @intCast(i))));
+        try kernel.pushFrameRoot(main_fiber, payload);
+
+        const performed = try kernel.performAt(@intCast(i), effect, payload, &.{payload});
+        _ = try kernel.resumeContinuation(performed.continuation, Value.fromInt(@as(i64, @intCast(i))));
+        _ = kernel.dropContinuation(performed.continuation);
+        _ = try kernel.popFrame(main_fiber);
+
+        if ((i & 0x7F) == 0) rt.collect();
     }
     return timer.read();
 }

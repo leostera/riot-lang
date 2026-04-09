@@ -36,6 +36,8 @@ pub const ControlAction = enum {
     continuation_resume,
     continuation_drop,
     effect_unhandled,
+    callback_enter,
+    callback_exit,
 };
 
 pub const ObjectKindCounts = struct {
@@ -59,8 +61,19 @@ pub const ObjectKindCounts = struct {
 pub const CollectTimings = struct {
     root_enumeration_ns: u64 = 0,
     mark_ns: u64 = 0,
+    weak_ns: u64 = 0,
+    finalizers_ns: u64 = 0,
     sweep_ns: u64 = 0,
     total_ns: u64 = 0,
+};
+
+pub const GcPhase = enum {
+    enumerate_roots,
+    mark,
+    weak,
+    finalizers,
+    sweep,
+    done,
 };
 
 pub const AllocEvent = struct {
@@ -79,6 +92,11 @@ pub const BytesWriteEvent = struct {
     target: HeapRef,
     len: usize,
     phase: WritePhase,
+};
+
+pub const BarrierEvent = struct {
+    target: HeapRef,
+    value_is_block: bool,
 };
 
 pub const RootEvent = struct {
@@ -108,7 +126,15 @@ pub const GcSnapshotEvent = struct {
     root_count: usize,
     marked: ObjectKindCounts = .{},
     reclaimed: ObjectKindCounts = .{},
+    weak_processed: usize = 0,
+    finalizers_ready: usize = 0,
     timings: CollectTimings = .{},
+};
+
+pub const GcPhaseEvent = struct {
+    strategy: CollectStrategy,
+    phase: GcPhase,
+    elapsed_ns: u64,
 };
 
 pub const ControlEvent = struct {
@@ -126,9 +152,11 @@ pub const Event = union(enum) {
     alloc: AllocEvent,
     field_write: FieldWriteEvent,
     bytes_write: BytesWriteEvent,
+    barrier: BarrierEvent,
     root: RootEvent,
     root_provider: RootProviderEvent,
     collect: CollectEvent,
+    gc_phase: GcPhaseEvent,
     gc_snapshot: GcSnapshotEvent,
     reclaim: ReclaimEvent,
     control: ControlEvent,
@@ -138,6 +166,7 @@ pub const Counters = struct {
     allocations: usize = 0,
     field_writes: usize = 0,
     bytes_writes: usize = 0,
+    barrier_records: usize = 0,
     root_registrations: usize = 0,
     root_unregistrations: usize = 0,
     collections: usize = 0,
@@ -153,6 +182,7 @@ pub const Counters = struct {
             .allocations = after.allocations - before.allocations,
             .field_writes = after.field_writes - before.field_writes,
             .bytes_writes = after.bytes_writes - before.bytes_writes,
+            .barrier_records = after.barrier_records - before.barrier_records,
             .root_registrations = after.root_registrations - before.root_registrations,
             .root_unregistrations = after.root_unregistrations - before.root_unregistrations,
             .collections = after.collections - before.collections,
@@ -191,6 +221,7 @@ pub const Recorder = struct {
             .alloc => self.counters.allocations +%= 1,
             .field_write => self.counters.field_writes +%= 1,
             .bytes_write => self.counters.bytes_writes +%= 1,
+            .barrier => self.counters.barrier_records +%= 1,
             .root => |root_event| switch (root_event.action) {
                 .register => self.counters.root_registrations +%= 1,
                 .unregister => self.counters.root_unregistrations +%= 1,
@@ -213,6 +244,7 @@ pub const Recorder = struct {
                 }
             },
             .gc_snapshot => |gc_snapshot| self.last_gc_snapshot = gc_snapshot,
+            .gc_phase => {},
             .reclaim => self.counters.reclaims +%= 1,
             .control => |control_event| switch (control_event.action) {
                 .fiber_activate => self.counters.fiber_activations +%= 1,
@@ -220,6 +252,7 @@ pub const Recorder = struct {
                 .continuation_resume => self.counters.continuation_resumes +%= 1,
                 .continuation_drop => self.counters.continuation_drops +%= 1,
                 .effect_unhandled => self.counters.unhandled_effects +%= 1,
+                .callback_enter, .callback_exit => {},
             },
         }
     }
@@ -319,6 +352,7 @@ pub const TraceRecorder = struct {
                 self.counters.bytes_writes +%= 1;
                 self.trackObjectEvent(bytes_event.target, .{ .bytes_write = bytes_event });
             },
+            .barrier => self.counters.barrier_records +%= 1,
             .root => |root_event| switch (root_event.action) {
                 .register => self.counters.root_registrations +%= 1,
                 .unregister => self.counters.root_unregistrations +%= 1,
@@ -338,6 +372,7 @@ pub const TraceRecorder = struct {
                     self.last_collect_reclaimed = collect_event.reclaimed;
                 }
             },
+            .gc_phase => {},
             .gc_snapshot => |gc_snapshot| self.last_gc_snapshot = gc_snapshot,
             .reclaim => |reclaim_event| {
                 self.counters.reclaims +%= 1;
@@ -349,6 +384,7 @@ pub const TraceRecorder = struct {
                 .continuation_resume => self.counters.continuation_resumes +%= 1,
                 .continuation_drop => self.counters.continuation_drops +%= 1,
                 .effect_unhandled => self.counters.unhandled_effects +%= 1,
+                .callback_enter, .callback_exit => {},
             },
         }
     }
@@ -402,11 +438,20 @@ test "event_sink: recorder tracks counters by event kind" {
         .len = 4,
         .phase = .initialize,
     } });
+    sink.emit(.{ .barrier = .{
+        .target = .{ .index = 1, .generation = 1 },
+        .value_is_block = true,
+    } });
     sink.emit(.{ .collect = .{
         .phase = .start,
         .strategy = .mark_sweep,
         .root_count = 1,
         .reclaimed = 0,
+    } });
+    sink.emit(.{ .gc_phase = .{
+        .strategy = .mark_sweep,
+        .phase = .enumerate_roots,
+        .elapsed_ns = 3,
     } });
     sink.emit(.{ .root = .{ .action = .register, .is_block = true } });
     sink.emit(.{ .root_provider = .{ .name = "root_registry", .count = 1 } });
@@ -436,6 +481,7 @@ test "event_sink: recorder tracks counters by event kind" {
     try std.testing.expectEqual(@as(usize, 1), counters.allocations);
     try std.testing.expectEqual(@as(usize, 1), counters.field_writes);
     try std.testing.expectEqual(@as(usize, 1), counters.bytes_writes);
+    try std.testing.expectEqual(@as(usize, 1), counters.barrier_records);
     try std.testing.expectEqual(@as(usize, 1), counters.root_registrations);
     try std.testing.expectEqual(@as(usize, 1), counters.reclaims);
     try std.testing.expectEqual(@as(usize, 1), counters.collections);
@@ -465,18 +511,28 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .index = 0,
         .phase = .mutate,
     } });
+    sink.emit(.{ .barrier = .{
+        .target = handle,
+        .value_is_block = true,
+    } });
     sink.emit(.{ .collect = .{
         .phase = .start,
         .strategy = .mark_sweep,
         .root_count = 2,
         .reclaimed = 0,
     } });
+    sink.emit(.{ .gc_phase = .{
+        .strategy = .mark_sweep,
+        .phase = .mark,
+        .elapsed_ns = 7,
+    } });
     sink.emit(.{ .root_provider = .{ .name = "control_kernel", .count = 2 } });
     sink.emit(.{ .gc_snapshot = .{
         .strategy = .mark_sweep,
         .root_count = 2,
         .marked = .{ .boxed_i64 = 1 },
-        .timings = .{ .total_ns = 44 },
+        .weak_processed = 1,
+        .timings = .{ .mark_ns = 7, .total_ns = 44 },
     } });
     sink.emit(.{ .collect = .{
         .phase = .end,
@@ -485,9 +541,10 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .reclaimed = 0,
     } });
 
-    try std.testing.expectEqual(@as(usize, 6), trace.traceEntries().len);
+    try std.testing.expectEqual(@as(usize, 8), trace.traceEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.rootProviderEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.marked.boxed_i64);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.weak_processed);
     const last = trace.lastObjectEvent(handle).?;
     switch (last) {
         .field_write => |event| try std.testing.expectEqual(@as(usize, 0), event.index),

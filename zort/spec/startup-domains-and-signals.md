@@ -66,3 +66,17 @@
 - A maintainable replacement runtime should treat “startup” as a composition of services, not a single monolith.
 - Domain coordination and signal delivery are core runtime policy, not optional utilities.
 - If zort initially stays single-threaded, it should say so and isolate the future STW/domain surface instead of baking concurrency assumptions into unrelated APIs.
+
+## zort runtime-services baseline
+
+- `RuntimeServices` now exists as a separate subsystem in `src/runtime_services.zig`.
+- The current service model includes:
+  - reference-counted startup/shutdown state,
+  - pending-signal recording,
+  - blocking-section depth,
+  - string-keyed named values rooted through the collector's `RootProvider` seam.
+- This is an intentional simplification of OCaml's runtime-global model:
+  - services are attached to one `Runtime` instance,
+  - named values are runtime-local rather than process-global,
+  - there is no domain registry or stop-the-world coordination yet.
+- The important architectural change is that startup/signal/native-service state now has a home outside the semantic value and collector core.

@@ -102,5 +102,13 @@
 - `ControlKernel` is now the second built-in provider:
   - handler values live as control-owned roots,
   - suspended continuations contribute payload plus captured roots,
+  - managed stack frames contribute frame-owned roots for active fibers and suspended continuations,
   - collection can retain control-state-owned heap values without routing them through `RootRegistry`,
   - consumed continuations stop contributing those captured roots after `resumeContinuation`.
+- `RuntimeServices` is now the third built-in provider:
+  - named values stay live through service-owned roots,
+  - signal and blocking-section bookkeeping stays outside the semantic value core.
+- `Mutator` now exposes the future generational seam explicitly:
+  - block-to-block mutation records remembered-set edges in `src/remembered_set.zig`,
+  - barrier events are observable through `src/event_sink.zig`,
+  - the baseline collector does not consume remembered edges yet, but mutation no longer bypasses that boundary.

@@ -93,8 +93,18 @@
   - traces from registered root providers
   - walks tuple edges transitively
   - reclaims through `HeapStore.reclaimSlot`
+- Even before a true generational collector exists, zort now has an explicit collection phase seam:
+  - `enumerate_roots`
+  - `mark`
+  - `weak`
+  - `finalizers`
+  - `sweep`
+  - `done`
+- `Collector.PhaseHooks` is the placeholder integration point for weak refs, ephemerons, and finalizer work.
 - The experimental `bump` strategy:
   - clears all tracked heap objects regardless of roots
   - resets the fixed arena when one is configured
+- `Mutator` now records remembered-set edges through `src/remembered_set.zig` on block-to-block mutation.
+- The baseline collector still ignores remembered edges for policy decisions, but the write-barrier seam is now explicit and observable instead of being hidden in `Runtime`.
 - This is an intentional divergence from OCaml's phased generational collector.
 - Future work must add more root providers, richer object tracing, and stronger policy hooks without collapsing storage and collection back into `Runtime`.

@@ -130,6 +130,7 @@
 - Each collection can emit:
   - `collect.start`
   - one `root_provider` event per provider
+  - one `gc_phase` event per explicit collector phase
   - `reclaim` events for reclaimed objects
   - `collect.end`
   - a `gc_snapshot` containing:
@@ -137,11 +138,18 @@
     - root count
     - marked counts by object kind
     - reclaimed counts by object kind
-    - timings for root enumeration, marking, sweeping, and total collection
+    - timings for root enumeration, marking, weak processing, finalizer processing, sweeping, and total collection
+- Mutation observability now includes:
+  - `barrier` events for remembered-set recording
+  - per-case `barrier_records` counters in bench output and profile JSON
 - `Runtime.Config.debugChecks` adds explicit verification modes:
   - `verify_roots`
   - `verify_heap_store`
   - `verify_control_kernel`
   - `verify_after_collect`
+- Bench/profile traces can now show:
+  - provider counts from `RootRegistry`, `ControlKernel`, and `RuntimeServices`
+  - phase-by-phase collector timing
+  - callback/effect events separately from GC events
 - These checks are zort-native debug surfaces, not attempts to mirror OCaml's
   environment-variable-based debugging contract.

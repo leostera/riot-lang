@@ -282,6 +282,8 @@ Status:
 - `Collector` now traces `RootRegistry` and `ControlKernel` through `RootProvider`.
 - `ControlKernel` owns typed fibers, continuations, parent links, and handler stacks in `src/control_kernel.zig`.
 - `perform` and `resumeContinuation` now provide the first explicit one-shot effects path with unhandled/resumed failure tests.
+- Fibers now own managed stacks with explicit frame roots and site ids.
+- Callback boundaries and parent-fiber backtrace walking are explicit control-kernel behavior instead of implicit runtime state.
 
 ### 10. Native Boundary Services
 
@@ -301,6 +303,11 @@ Tasks:
 Exit criteria:
 - Boundary behavior is intentional and spec-backed.
 - Core remains understandable without reading boundary layers.
+
+Status:
+- In progress.
+- `RuntimeServices` in `src/runtime_services.zig` now owns runtime-local startup/shutdown state, pending signals, blocking sections, and named values as a collector-visible provider.
+- Signal-stack policy, dynlink registration, sync primitives, and domain/STW coordination remain open.
 
 ### 11. Extended Semantic Surface
 
@@ -334,6 +341,12 @@ Tasks:
 
 Exit criteria:
 - Policy experiments are plug-compatible and do not weaken the core.
+
+Status:
+- Prerequisites are landing before collector replacement work.
+- `Collector` now emits explicit phases and supports weak/finalizer hooks.
+- `Mutator` now records remembered-set edges through `src/remembered_set.zig`.
+- Nursery/promotion/major-heap policy is still deferred.
 
 ## Anti-Goals During Rebuild
 

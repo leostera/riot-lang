@@ -6,8 +6,10 @@ const heap_store = @import("heap_store.zig");
 const collector_mod = @import("collector.zig");
 const language_mod = @import("language.zig");
 const mutator = @import("mutator.zig");
+const remembered_set_mod = @import("remembered_set.zig");
 const root_provider_mod = @import("root_provider.zig");
 const root_registry = @import("root_registry.zig");
+const runtime_services_mod = @import("runtime_services.zig");
 
 pub const Value = value.Value;
 pub const Tag = value.Tag;
@@ -23,6 +25,8 @@ pub const ObjectExplain = struct {
     size: usize,
     explicit_roots: usize,
     control_roots: usize,
+    service_roots: usize,
+    remembered_edges: usize,
     last_event: ?event_sink_mod.ObjectLastEvent = null,
 };
 pub const TraceRecorder = event_sink_mod.TraceRecorder;
@@ -39,9 +43,11 @@ pub const ObjectKind = heap_store.ObjectKind;
 pub const Collector = collector_mod.Collector;
 pub const Language = language_mod.Language;
 pub const Mutator = mutator.Mutator;
+pub const RememberedSet = remembered_set_mod.RememberedSet;
 pub const RootProvider = root_provider_mod.RootProvider;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
+pub const RuntimeServices = runtime_services_mod.RuntimeServices;
 pub const Error = language_mod.Error;
 
 pub const Runtime = struct {
@@ -80,7 +86,9 @@ pub const Runtime = struct {
     event_sink: EventSink,
     control_kernel: ControlKernel,
     heap_store: HeapStore,
+    remembered_set: RememberedSet,
     root_registry: RootRegistry,
+    services: RuntimeServices,
     debug_root_checks: bool = false,
     debug_checks: DebugChecks = .{},
     fixed_arena: ?std.heap.FixedBufferAllocator = null,
@@ -98,7 +106,9 @@ pub const Runtime = struct {
             .event_sink = config.eventSink,
             .control_kernel = ControlKernel.initWithSink(allocator, config.eventSink),
             .heap_store = HeapStore.init(allocator),
+            .remembered_set = RememberedSet.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
+            .services = RuntimeServices.init(allocator),
             .debug_root_checks = config.debugRootChecks,
             .debug_checks = config.debugChecks,
         };
@@ -107,6 +117,7 @@ pub const Runtime = struct {
             runtime.fixed_arena_buffer = buffer;
         }
         runtime.gc_strategy = config.gcStrategy;
+        runtime.services.startup() catch unreachable;
         return runtime;
     }
 
@@ -127,7 +138,10 @@ pub const Runtime = struct {
     }
 
     pub fn deinit(self: *Runtime) void {
+        self.services.shutdown() catch {};
+        self.services.deinit();
         self.heap_store.deinit(self.fixed_arena_buffer != null);
+        self.remembered_set.deinit();
         self.root_registry.deinit();
         self.control_kernel.deinit();
     }
@@ -148,19 +162,28 @@ pub const Runtime = struct {
             self.fixed_arena_buffer,
             self.gc_strategy,
             self.event_sink,
+            Collector.PhaseHooks.noop(),
         );
     }
 
     pub fn mutator(self: *Runtime) Mutator {
-        return Mutator.init(self.currentAllocator(), &self.heap_store, self.event_sink);
+        return Mutator.init(self.currentAllocator(), &self.heap_store, self.event_sink, &self.remembered_set);
     }
 
     pub fn language(self: *Runtime) Language {
-        return Language.init(self.allocator, self.currentAllocator(), &self.heap_store, self.event_sink);
+        return Language.init(self.allocator, self.currentAllocator(), &self.heap_store, self.event_sink, &self.remembered_set);
     }
 
     pub fn controlKernel(self: *Runtime) *ControlKernel {
         return &self.control_kernel;
+    }
+
+    pub fn runtimeServices(self: *Runtime) *RuntimeServices {
+        return &self.services;
+    }
+
+    pub fn rememberedSet(self: *Runtime) *RememberedSet {
+        return &self.remembered_set;
     }
 
     pub fn alloc(self: *Runtime, arity: usize, tag: Tag) !Value {
@@ -323,6 +346,30 @@ pub const Runtime = struct {
         self.root_registry.unregister(slot);
     }
 
+    pub fn registerNamedValue(self: *Runtime, name: []const u8, rooted: Value) !void {
+        try self.services.registerNamedValue(name, rooted);
+    }
+
+    pub fn lookupNamedValue(self: *Runtime, name: []const u8) ?Value {
+        return self.services.lookupNamedValue(name);
+    }
+
+    pub fn enterBlockingSection(self: *Runtime) void {
+        self.services.enterBlockingSection();
+    }
+
+    pub fn exitBlockingSection(self: *Runtime) !void {
+        try self.services.exitBlockingSection();
+    }
+
+    pub fn recordSignal(self: *Runtime, signo: u8) !void {
+        try self.services.recordSignal(signo);
+    }
+
+    pub fn takePendingSignals(self: *Runtime) u64 {
+        return self.services.takePendingSignals();
+    }
+
     pub fn explainValue(self: *Runtime, block_value: Value, trace: ?*const TraceRecorder) Error!ObjectExplain {
         const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
         const handle = block_value.asHeapRef() orelse return Error.InvalidValue;
@@ -332,6 +379,8 @@ pub const Runtime = struct {
             .size = obj.wosize(),
             .explicit_roots = self.root_registry.ownerCount(block_value),
             .control_roots = self.control_kernel.ownedRootCount(block_value),
+            .service_roots = self.services.ownerCount(block_value),
+            .remembered_edges = self.remembered_set.ownerCount(handle),
             .last_event = if (trace) |recorder| recorder.lastObjectEvent(handle) else null,
         };
     }
@@ -347,7 +396,7 @@ pub const Runtime = struct {
     pub fn collect(self: *Runtime) void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         self.collect_generations +%= 1;
-        var providers_buffer: [2]RootProvider = undefined;
+        var providers_buffer: [3]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         gc.collect();
@@ -366,10 +415,11 @@ pub const Runtime = struct {
     }
 
     fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
-        std.debug.assert(buffer.len >= 2);
+        std.debug.assert(buffer.len >= 3);
         buffer[0] = self.root_registry.provider();
         buffer[1] = self.control_kernel.provider();
-        return buffer[0..2];
+        buffer[2] = self.services.provider();
+        return buffer[0..3];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
@@ -1023,9 +1073,10 @@ test "runtime: explainValue reports root ownership and last object event" {
 
     var rooted = try rt.allocTuple(1);
     try rt.registerRoot(&rooted);
-    try rt.setField(rooted, 0, Value.fromInt(1));
-
     const child = try rt.allocTuple(0);
+    try rt.setField(rooted, 0, child);
+    try rt.registerNamedValue("child", child);
+
     const main = rt.controlKernel().currentFiber();
     try rt.controlKernel().pushHandler(main, .{
         .effect = 1,
@@ -1034,6 +1085,7 @@ test "runtime: explainValue reports root ownership and last object event" {
 
     const explained_root = try rt.explainValue(rooted, &trace);
     try std.testing.expectEqual(@as(usize, 1), explained_root.explicit_roots);
+    try std.testing.expectEqual(@as(usize, 1), explained_root.remembered_edges);
     try std.testing.expectEqual(@as(?event_sink_mod.ObjectLastEvent, .{ .field_write = .{
         .target = explained_root.handle,
         .index = 0,
@@ -1042,6 +1094,7 @@ test "runtime: explainValue reports root ownership and last object event" {
 
     const explained_child = try rt.explainValue(child, &trace);
     try std.testing.expectEqual(@as(usize, 1), explained_child.control_roots);
+    try std.testing.expectEqual(@as(usize, 1), explained_child.service_roots);
 }
 
 test "runtime: verifyDebugState accepts healthy runtime" {
@@ -1057,6 +1110,33 @@ test "runtime: verifyDebugState accepts healthy runtime" {
     var rooted = try rt.allocTuple(0);
     try rt.registerRoot(&rooted);
     try rt.verifyDebugState();
+}
+
+test "runtime: runtime services named values keep blocks alive across collection" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const named = try rt.allocTuple(0);
+    try rt.registerNamedValue("persist", named);
+    rt.collect();
+
+    try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
+    try std.testing.expectEqual(named, rt.lookupNamedValue("persist").?);
+
+    const explained = try rt.explainValue(named, null);
+    try std.testing.expectEqual(@as(usize, 1), explained.service_roots);
+}
+
+test "runtime: runtime services track pending signals and blocking sections" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    rt.enterBlockingSection();
+    try rt.recordSignal(2);
+    try rt.recordSignal(7);
+    try std.testing.expectEqual((@as(u64, 1) << 2) | (@as(u64, 1) << 7), rt.takePendingSignals());
+    try std.testing.expectEqual(@as(u64, 0), rt.takePendingSignals());
+    try rt.exitBlockingSection();
 }
 
 test "runtime: debug object layout sizes" {
