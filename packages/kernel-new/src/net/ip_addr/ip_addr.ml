@@ -14,8 +14,7 @@ let v4_loopback = "127.0.0.1"
 let v6_loopback = "::1"
 
 let error_to_string = function
-  | Invalid_text { value } ->
-      String.concat "" [ "invalid ip address: "; value ]
+  | Invalid_text { value } -> String.concat "" [ "invalid ip address: "; value ]
 
 let of_string = fun value ->
   if FFI.is_valid value then

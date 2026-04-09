@@ -61,5 +61,5 @@ let to_string = fun value ->
       Primitives.bytes_set out 0 '-'
     else
       ();
-    fill (width - 1) value;
-    Primitives.bytes_to_string out
+      fill (width - 1) value;
+      Primitives.bytes_to_string out

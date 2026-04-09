@@ -25,7 +25,6 @@ type t =
   | Connection_aborted
   | Message_too_long
   | Unknown of int
-
 val code_end_of_file: int
 
 val code_permission_denied: int

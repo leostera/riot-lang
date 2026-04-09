@@ -2,7 +2,6 @@ type t
 type error =
   | Invalid_nanoseconds of { nanos: int }
   | System of System_error.t
-
 val error_to_string: error -> string
 
 val epoch: t

@@ -2,8 +2,7 @@ open Std
 module Kernel = Kernel_new
 
 let panic_file = fun error ->
-  Kernel.Error.panic
-    (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with

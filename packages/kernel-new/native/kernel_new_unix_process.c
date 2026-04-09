@@ -475,9 +475,7 @@ CAMLprim value kernel_new_process_try_wait(value pid_val) {
 
   int status = 0;
   pid_t result;
-  caml_enter_blocking_section();
   result = waitpid(Int_val(pid_val), &status, WNOHANG | WUNTRACED);
-  caml_leave_blocking_section();
 
   if (result == 0) {
     CAMLreturn(kernel_new_result_ok(Val_int(0)));
@@ -503,44 +501,6 @@ CAMLprim value kernel_new_process_try_wait(value pid_val) {
   }
 
   CAMLreturn(kernel_new_result_ok(Val_int(0)));
-}
-
-CAMLprim value kernel_new_process_wait(value pid_val) {
-  CAMLparam1(pid_val);
-  CAMLlocal1(tuple);
-
-  int status = 0;
-  pid_t result;
-  caml_enter_blocking_section();
-  result = waitpid(Int_val(pid_val), &status, WUNTRACED);
-  caml_leave_blocking_section();
-
-  if (result == -1) {
-    CAMLreturn(kernel_new_result_errno());
-  }
-
-  tuple = caml_alloc_tuple(2);
-
-  if (WIFEXITED(status)) {
-    Store_field(tuple, 0, Val_int(KERNEL_NEW_PROCESS_STATUS_EXITED));
-    Store_field(tuple, 1, Val_int(WEXITSTATUS(status)));
-    CAMLreturn(kernel_new_result_ok(tuple));
-  }
-
-  if (WIFSIGNALED(status)) {
-    Store_field(tuple, 0, Val_int(KERNEL_NEW_PROCESS_STATUS_SIGNALED));
-    Store_field(tuple, 1, Val_int(WTERMSIG(status)));
-    CAMLreturn(kernel_new_result_ok(tuple));
-  }
-
-  if (WIFSTOPPED(status)) {
-    Store_field(tuple, 0, Val_int(KERNEL_NEW_PROCESS_STATUS_STOPPED));
-    Store_field(tuple, 1, Val_int(WSTOPSIG(status)));
-    CAMLreturn(kernel_new_result_ok(tuple));
-  }
-
-  errno = EINVAL;
-  CAMLreturn(kernel_new_result_errno());
 }
 
 CAMLprim value kernel_new_process_kill(value pid_val, value signal_val) {

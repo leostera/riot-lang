@@ -13,11 +13,10 @@ let init = fun length builder ->
   let rec fill index =
     if index >= length then
       out
-    else
-      (
-        Primitives.bytes_set out index (builder index);
-        fill (index + 1)
-      )
+    else (
+      Primitives.bytes_set out index (builder index);
+      fill (index + 1)
+    )
   in
   let _ = fill 0 in
   Primitives.bytes_to_string out

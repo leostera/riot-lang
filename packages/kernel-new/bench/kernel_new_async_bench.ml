@@ -2,12 +2,10 @@ open Std
 module Kernel = Kernel_new
 
 let panic_file = fun error ->
-  Kernel.Error.panic
-    (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let panic_async = fun error ->
-  Kernel.Error.panic
-    (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
 
 let protect = fun ~finally fn ->
   try
@@ -48,10 +46,7 @@ let with_pipes = fun count fn ->
   in
   match create count [] with
   | Error error -> panic_file error
-  | Ok pipes ->
-      protect
-        ~finally:(fun () -> close_pipes pipes)
-        (fun () -> fn (List.rev pipes))
+  | Ok pipes -> protect ~finally:(fun () -> close_pipes pipes) (fun () -> fn (List.rev pipes))
 
 let with_poll = fun fn ->
   match Kernel.Async.Poll.make () with
@@ -92,20 +87,16 @@ let bench_reregister = fun () ->
       with_poll
         (fun poll ->
           let source = Kernel.Fs.File.to_source pipe.write_end in
-          let _ =
-            Kernel.Async.Poll.register
-              poll
-              (Kernel.Async.Token.make 11)
-              Kernel.Async.Interest.writable
-              source
-          in
-          let _ =
-            Kernel.Async.Poll.reregister
-              poll
-              (Kernel.Async.Token.make 12)
-              Kernel.Async.Interest.writable
-              source
-          in
+          let _ = Kernel.Async.Poll.register
+            poll
+            (Kernel.Async.Token.make 11)
+            Kernel.Async.Interest.writable
+            source in
+          let _ = Kernel.Async.Poll.reregister
+            poll
+            (Kernel.Async.Token.make 12)
+            Kernel.Async.Interest.writable
+            source in
           ()))
 
 let bench_many_source_poll = fun () ->
@@ -116,21 +107,19 @@ let bench_many_source_poll = fun () ->
           let rec register index = function
             | [] -> ()
             | pipe :: rest ->
-                let _ =
-                  Kernel.Async.Poll.register
-                    poll
-                    (Kernel.Async.Token.make index)
-                    Kernel.Async.Interest.readable
-                    (Kernel.Fs.File.to_source pipe.Kernel.Fs.File.read_end)
-                in
+                let _ = Kernel.Async.Poll.register
+                  poll
+                  (Kernel.Async.Token.make index)
+                  Kernel.Async.Interest.readable
+                  (Kernel.Fs.File.to_source pipe.Kernel.Fs.File.read_end) in
                 register (index + 1) rest
           in
           let rec wake = function
             | [] -> ()
             | pipe :: rest ->
-                let _ =
-                  Kernel.Fs.File.write pipe.Kernel.Fs.File.write_end (Kernel.Bytes.of_string "x")
-                in
+                let _ = Kernel.Fs.File.write
+                  pipe.Kernel.Fs.File.write_end
+                  (Kernel.Bytes.of_string "x") in
                 wake rest
           in
           register 0 pipes;

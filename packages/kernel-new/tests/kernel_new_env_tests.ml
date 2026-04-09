@@ -13,19 +13,18 @@ let protect = fun ~finally fn ->
     let value = fn () in
     finally ();
     value
-  with error ->
-    finally ();
-    raise error
+  with
+  | error ->
+      finally ();
+      raise error
 
 let vars_contain = fun entries ~name ?value () ->
   Kernel.Array.fold_left
     (fun found (entry_name, entry_value) ->
-      found
-      || (
-        Kernel.String.equal entry_name name
-        && match value with
-           | None -> true
-           | Some value -> Kernel.String.equal entry_value value
+      found || (
+        Kernel.String.equal entry_name name && match value with
+        | None -> true
+        | Some value -> Kernel.String.equal entry_value value
       ))
     false
     entries
@@ -44,26 +43,18 @@ let test_set_get_and_remove_var_roundtrip = fun _ctx ->
       let _ = Kernel.Env.remove_var ~name in
       ())
     (fun () ->
-      let* () =
-        lift (Kernel.Env.set_var ~name ~value:"kernel-new")
-      in
+      let* () = lift (Kernel.Env.set_var ~name ~value:"kernel-new") in
       let value = Kernel.Env.get name in
       let found =
         Kernel.Array.fold_left
           (fun found (entry_name, entry_value) ->
             found
-            || (Kernel.String.equal entry_name name
-                && Kernel.String.equal entry_value "kernel-new"))
+            || (Kernel.String.equal entry_name name && Kernel.String.equal entry_value "kernel-new"))
           false
           (Kernel.Env.vars ())
       in
-      let* () =
-        lift (Kernel.Env.remove_var ~name)
-      in
-      if value = Some "kernel-new"
-         && found
-         && Kernel.Env.get name = None
-      then
+      let* () = lift (Kernel.Env.remove_var ~name) in
+      if value = Some "kernel-new" && found && Kernel.Env.get name = None then
         Ok ()
       else
         Error "expected kernel env variable roundtrip to preserve value and cleanup")
@@ -72,10 +63,7 @@ let test_missing_var_and_home_dir_behave_as_expected = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_MISSING" in
   let _ = Kernel.Env.remove_var ~name in
   let snapshot = Kernel.Env.vars () in
-  let missing =
-    Kernel.Env.get name = None
-    && not (vars_contain snapshot ~name ())
-  in
+  let missing = Kernel.Env.get name = None && not (vars_contain snapshot ~name ()) in
   let home_matches =
     match (Kernel.Env.get "HOME", Kernel.Env.home_dir ()) with
     | (None, None) -> true
@@ -95,57 +83,39 @@ let test_vars_snapshots_are_independent = fun _ctx ->
       let _ = Kernel.Env.remove_var ~name in
       ())
     (fun () ->
-      let* () =
-        lift (Kernel.Env.set_var ~name ~value:"before")
-      in
+      let* () = lift (Kernel.Env.set_var ~name ~value:"before") in
       let before = Kernel.Env.vars () in
-      let* () =
-        lift (Kernel.Env.set_var ~name ~value:"after")
-      in
+      let* () = lift (Kernel.Env.set_var ~name ~value:"after") in
       let after = Kernel.Env.vars () in
-      if vars_contain before ~name ~value:"before" ()
-         && not (vars_contain before ~name ~value:"after" ())
-         && vars_contain after ~name ~value:"after" ()
+      if
+        vars_contain before ~name ~value:"before" ()
+        && not (vars_contain before ~name ~value:"after" ())
+        && vars_contain after ~name ~value:"after" ()
       then
         Ok ()
       else
         Error "expected env snapshots to preserve the values visible at each call site")
 
 let test_current_dir_roundtrips = fun _ctx ->
-  let* original =
-    lift (Kernel.Env.current_dir ())
-  in
-  match Fs.with_tempdir
-          ~prefix:"kernel_new_env"
-          (fun tempdir ->
-            let tempdir = Kernel.Path.v (Path.to_string tempdir) in
-            protect
-              ~finally:(fun () ->
-                let _ = Kernel.Env.set_current_dir original in
-                ())
-              (fun () ->
-                let* () =
-                  lift (Kernel.Env.set_current_dir tempdir)
-                in
-                let* current =
-                  lift (Kernel.Env.current_dir ())
-                in
-                let current =
-                  Path.v (Kernel.Path.to_string current)
-                in
-                let tempdir =
-                  Path.v (Kernel.Path.to_string tempdir)
-                in
-                match (Fs.canonicalize current, Fs.canonicalize tempdir) with
-                | (Ok current, Ok tempdir)
-                  when Path.to_string current = Path.to_string tempdir ->
-                    Ok ()
-                | (Ok _, Ok _) ->
-                    Error "expected kernel current_dir to reflect the changed directory"
-                | (Error err, _)
-                | (_, Error err) ->
-                    Error (IO.error_message err)
-                ))
+  let* original = lift (Kernel.Env.current_dir ()) in
+  match
+    Fs.with_tempdir ~prefix:"kernel_new_env"
+      (fun tempdir ->
+        let tempdir = Kernel.Path.v (Path.to_string tempdir) in
+        protect
+          ~finally:(fun () ->
+            let _ = Kernel.Env.set_current_dir original in
+            ())
+          (fun () ->
+            let* () = lift (Kernel.Env.set_current_dir tempdir) in
+            let* current = lift (Kernel.Env.current_dir ()) in
+            let current = Path.v (Kernel.Path.to_string current) in
+            let tempdir = Path.v (Kernel.Path.to_string tempdir) in
+            match (Fs.canonicalize current, Fs.canonicalize tempdir) with
+            | (Ok current, Ok tempdir) when Path.to_string current = Path.to_string tempdir -> Ok ()
+            | (Ok _, Ok _) -> Error "expected kernel current_dir to reflect the changed directory"
+            | (Error err, _)
+            | (_, Error err) -> Error (IO.error_message err)))
   with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
@@ -158,7 +128,6 @@ let tests = [
   Test.case "Env current_dir and set_current_dir roundtrip" test_current_dir_roundtrips;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~name:"kernel_new_env_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_env_tests" ~tests ~args
 
 let () = Actors.run ~main ~args:Env.args ()

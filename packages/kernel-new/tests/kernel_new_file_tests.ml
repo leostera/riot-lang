@@ -224,7 +224,7 @@ let test_fstat_matches_path_metadata = fun _ctx ->
     (fun path ->
       let payload = Kernel.Bytes.of_string "metadata" in
       let* file = lift (Kernel.Fs.File.open_write path) in
-      let* path_metadata, fd_metadata =
+      let* (path_metadata, fd_metadata) =
         with_file file
           (fun () ->
             let* _ = lift (Kernel.Fs.File.write file payload) in
@@ -232,9 +232,10 @@ let test_fstat_matches_path_metadata = fun _ctx ->
             let* path_metadata = lift (Kernel.Fs.File.metadata path) in
             Ok (path_metadata, fd_metadata))
       in
-      if Kernel.Fs.File.Metadata.ino path_metadata = Kernel.Fs.File.Metadata.ino fd_metadata
-         && Kernel.Fs.File.Metadata.len path_metadata = Kernel.Fs.File.Metadata.len fd_metadata
-         && Kernel.Fs.File.Metadata.nlink path_metadata = Kernel.Fs.File.Metadata.nlink fd_metadata
+      if
+        Kernel.Fs.File.Metadata.ino path_metadata = Kernel.Fs.File.Metadata.ino fd_metadata
+        && Kernel.Fs.File.Metadata.len path_metadata = Kernel.Fs.File.Metadata.len fd_metadata
+        && Kernel.Fs.File.Metadata.nlink path_metadata = Kernel.Fs.File.Metadata.nlink fd_metadata
       then
         Ok ()
       else
@@ -261,10 +262,11 @@ let test_hard_link_updates_link_count_and_remove_ops = fun _ctx ->
       let* link_exists = lift (Kernel.Fs.File.exists link) in
       let* () = lift (Kernel.Fs.File.remove_dir directory) in
       let* directory_exists = lift (Kernel.Fs.File.exists directory) in
-      if Kernel.Fs.File.Metadata.nlink source_metadata = 2
-         && Kernel.Fs.File.Metadata.ino source_metadata = Kernel.Fs.File.Metadata.ino link_metadata
-         && not link_exists
-         && not directory_exists
+      if
+        Kernel.Fs.File.Metadata.nlink source_metadata = 2
+        && Kernel.Fs.File.Metadata.ino source_metadata = Kernel.Fs.File.Metadata.ino link_metadata
+        && not link_exists
+        && not directory_exists
       then
         Ok ()
       else
@@ -289,7 +291,9 @@ let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
       let* missing_exists = lift (Kernel.Fs.File.exists missing) in
       let* dir_is_directory = lift (Kernel.Fs.File.is_directory directory) in
       let* file_is_directory = lift (Kernel.Fs.File.is_directory file_path) in
-      if dir_exists && file_exists && not missing_exists && dir_is_directory && not file_is_directory then
+      if
+        dir_exists && file_exists && not missing_exists && dir_is_directory && not file_is_directory
+      then
         Ok ()
       else
         Error "expected exists and is_directory to distinguish directories, files, and missing paths")
@@ -359,15 +363,9 @@ let test_remove_missing_paths_report_no_such_file = fun _ctx ->
     (fun tempdir ->
       let missing_file = Kernel.Path.(tempdir / "missing.txt") in
       let missing_dir = Kernel.Path.(tempdir / "missing-dir") in
-      match
-        ( Kernel.Fs.File.remove_file missing_file,
-          Kernel.Fs.File.remove_dir missing_dir )
-      with
-      | ( Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory),
-          Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory) ) ->
-          Ok ()
-      | _ ->
-          Error "expected removing missing file and dir to report no-such-file")
+      match (Kernel.Fs.File.remove_file missing_file, Kernel.Fs.File.remove_dir missing_dir) with
+      | (Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory), Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory)) -> Ok ()
+      | _ -> Error "expected removing missing file and dir to report no-such-file")
 
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;

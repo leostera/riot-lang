@@ -12,7 +12,6 @@ type t =
   | Process of Process.error
   | Time_system_time of Time.SystemTime.error
   | Time_monotonic of Time.Monotonic.error
-
 val of_async: Async.error -> t
 
 val of_env: Env.error -> t

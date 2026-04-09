@@ -12,11 +12,10 @@ let init = fun length builder ->
     let rec fill index =
       if index >= length then
         out
-      else
-        (
-          Primitives.array_set out index (builder index);
-          fill (index + 1)
-        )
+      else (
+        Primitives.array_set out index (builder index);
+        fill (index + 1)
+      )
     in
     let _ = fill 1 in
     out
@@ -31,11 +30,10 @@ let iter = fun fn array ->
   let rec loop index =
     if index >= length array then
       ()
-    else
-      (
-        fn (get array index);
-        loop (index + 1)
-      )
+    else (
+      fn (get array index);
+      loop (index + 1)
+    )
   in
   loop 0
 
@@ -48,11 +46,10 @@ let map = fun fn array ->
     let rec fill index =
       if index >= count then
         out
-      else
-        (
-          set out index (fn (get array index));
-          fill (index + 1)
-        )
+      else (
+        set out index (fn (get array index));
+        fill (index + 1)
+      )
     in
     let _ = fill 1 in
     out

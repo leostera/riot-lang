@@ -5,11 +5,7 @@ let ( let* ) = Result.and_then
 type t = int
 
 type error =
-  | Invalid_slice of {
-      pos: int;
-      len: int;
-      buffer_len: int;
-    }
+  | Invalid_slice of { pos: int; len: int; buffer_len: int }
   | System of System_error.t
 
 type kind =
@@ -210,7 +206,9 @@ module FFI = struct
 end
 
 let open_file = fun path flags ~perm ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
 
 let open_read = fun path -> open_file path [ Read_only ] ~perm:0
 
@@ -239,18 +237,17 @@ let close = fun fd ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close fd)
 
 let error_to_string = function
-  | Invalid_slice { pos; len; buffer_len } ->
-      String.concat ""
-        [
-          "invalid buffer slice: pos=";
-          Int.to_string pos;
-          ", len=";
-          Int.to_string len;
-          ", buffer_len=";
-          Int.to_string buffer_len;
-        ]
-  | System error ->
-      System_error.to_string error
+  | Invalid_slice { pos; len; buffer_len } -> String.concat
+    ""
+    [
+      "invalid buffer slice: pos=";
+      Int.to_string pos;
+      ", len=";
+      Int.to_string len;
+      ", buffer_len=";
+      Int.to_string buffer_len;
+    ]
+  | System error -> System_error.to_string error
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
@@ -280,37 +277,57 @@ let pipe = fun () ->
     (Result.map (fun (read_end, write_end) -> { read_end; write_end }) (FFI.pipe ()))
 
 let create_dir = fun path ~perm ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.mkdir (Path.to_string path) perm)
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.mkdir (Path.to_string path) perm)
 
 let remove_dir = fun path ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.rmdir (Path.to_string path))
 
 let remove_file = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.remove (Path.to_string path))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.remove (Path.to_string path))
 
 let rename = fun ~src ~dst ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.rename (Path.to_string src) (Path.to_string dst))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.rename (Path.to_string src) (Path.to_string dst))
 
 let hard_link = fun ~src ~dst ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.link (Path.to_string src) (Path.to_string dst))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.link (Path.to_string src) (Path.to_string dst))
 
 let symlink = fun ~src ~dst ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.symlink (Path.to_string src) (Path.to_string dst))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.symlink (Path.to_string src) (Path.to_string dst))
 
 let read_link = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map Path.v (FFI.readlink (Path.to_string path)))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map Path.v (FFI.readlink (Path.to_string path)))
 
 let canonicalize = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map Path.v (FFI.realpath (Path.to_string path)))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map Path.v (FFI.realpath (Path.to_string path)))
 
 let metadata = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map metadata_of_tuple (FFI.stat (Path.to_string path)))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map metadata_of_tuple (FFI.stat (Path.to_string path)))
 
 let symlink_metadata = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map metadata_of_tuple (FFI.lstat (Path.to_string path)))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map metadata_of_tuple (FFI.lstat (Path.to_string path)))
 
 let fstat = fun fd ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map metadata_of_tuple (FFI.fstat fd))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map metadata_of_tuple (FFI.fstat fd))
 
 let exists = fun path ->
   match metadata path with
@@ -325,10 +342,14 @@ let is_directory = fun path ->
   | Result.Error error -> Result.Error error
 
 let read_dir_names = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.readdir (Path.to_string path))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.readdir (Path.to_string path))
 
 let current_dir = fun () ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map Path.v (FFI.getcwd ()))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map Path.v (FFI.getcwd ()))
 
 let set_current_dir = fun path ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.chdir (Path.to_string path))

@@ -1,7 +1,6 @@
 type t
 type error =
   | Invalid_text of { value: string }
-
 val error_to_string: error -> string
 
 val v4_loopback: t

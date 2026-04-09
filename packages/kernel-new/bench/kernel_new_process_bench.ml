@@ -3,21 +3,18 @@ module Kernel = Kernel_new
 
 let lift_process = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      Kernel.Error.panic
-        (Kernel.Error.to_string (Kernel.Error.of_process error))
+  | Kernel.Result.Error error -> Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_process error))
 
 let lift_async = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      Kernel.Error.panic
-        (Kernel.Error.to_string (Kernel.Error.of_async error))
+  | Kernel.Result.Error error -> Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_async error))
 
 let lift_file = function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      Kernel.Error.panic
-        (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  | Kernel.Result.Error error -> Kernel.Error.panic
+    (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let is_would_block = function
   | Kernel.Fs.File.System error -> Kernel.SystemError.is_would_block error
@@ -61,92 +58,71 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
       let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
         List.exists
-          (fun event ->
-            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-            && pred event)
+          (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
           events
       in
       if not found then
         Kernel.Error.panic "expected readiness event")
 
 let wait_readable = fun poll ~token source ->
-  wait_for
-    poll
-    ~token
-    ~interest:Kernel.Async.Interest.readable
-    ~source
-    ~pred:Kernel.Async.Event.is_readable
+  wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
 
 let read_once = fun poll ~token file ->
   let buffer = Kernel.Bytes.create 128 in
-  let rec loop = fun () ->
+  let rec loop () =
     match Kernel.Fs.File.read file buffer with
-    | Kernel.Result.Ok count ->
-        ignore (Kernel.Bytes.sub_string buffer 0 count)
+    | Kernel.Result.Ok count -> ignore (Kernel.Bytes.sub_string buffer 0 count)
     | Kernel.Result.Error error ->
-        if is_would_block error then (
-          wait_readable poll ~token (Kernel.Fs.File.to_source file);
-          loop ()
-        ) else
-          Kernel.Error.panic
-            (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+        if is_would_block error then
+          (
+            wait_readable poll ~token (Kernel.Fs.File.to_source file);
+            loop ()
+          )
+        else
+          Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
   in
   loop ()
 
+let rec wait_for_exit = fun process ->
+  match Kernel.Process.try_wait process with
+  | Kernel.Result.Ok (Some _status as status) ->
+      status
+  | Kernel.Result.Ok None ->
+      yield ();
+      wait_for_exit process
+  | Kernel.Result.Error error ->
+      Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+
 let bench_spawn_true = fun () ->
-  let process =
-    lift_process
-      (Kernel.Process.spawn
-         ~program:"/usr/bin/true"
-         ~args:[||]
-         ~stdio:Kernel.Process.default_stdio
-         ())
-  in
-  with_process process
-    (fun process ->
-      ignore (lift_process (Kernel.Process.wait process)))
+  let process = lift_process
+    (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio:Kernel.Process.default_stdio ()) in
+  with_process process (fun process -> ignore (wait_for_exit process))
 
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
     (fun poll ->
-      let stdio = Kernel.Process.{
-        default_stdio with
-        stdin = `Null;
-        stdout = `Pipe;
-        stderr = `Null;
-      } in
-      let process =
-        lift_process
-          (Kernel.Process.spawn
-             ~program:"/bin/echo"
-             ~args:[| "-n"; "kernel-new" |]
-             ~stdio
-             ())
-      in
+      let stdio = Kernel.Process.{ stdin = `Null; stdout = `Pipe; stderr = `Null } in
+      let process = lift_process
+        (Kernel.Process.spawn ~program:"/bin/echo" ~args:[|"-n"; "kernel-new"|] ~stdio ()) in
       with_process process
         (fun process ->
           match Kernel.Process.stdout process with
-          | None ->
-              Kernel.Error.panic "expected stdout pipe"
+          | None -> Kernel.Error.panic "expected stdout pipe"
           | Some stdout ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
-              ignore (lift_process (Kernel.Process.wait process))))
+              ignore (wait_for_exit process)))
 
 let benchmarks =
   Bench.[
+    with_config ~config:{ iterations = 25; warmup = 5 } "process spawn true and poll exit" bench_spawn_true;
     with_config
       ~config:{ iterations = 25; warmup = 5 }
-      "process spawn true and wait"
-      bench_spawn_true;
-    with_config
-      ~config:{ iterations = 25; warmup = 5 }
-      "process spawn echo with stdout pipe"
+      "process spawn echo with stdout pipe and poll exit"
       bench_spawn_echo_with_pipe;
   ]
 
 let () =
   Actors.run
-    ~main:(fun ~args ->
-      Bench.Cli.main ~name:"kernel_new_process_bench" ~benchmarks ~args)
+    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_process_bench" ~benchmarks ~args)
     ~args:Env.args
     ()

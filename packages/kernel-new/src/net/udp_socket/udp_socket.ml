@@ -5,11 +5,7 @@ let ( let* ) = Result.and_then
 type t = int
 
 type error =
-  | Invalid_slice of {
-      pos: int;
-      len: int;
-      buffer_len: int;
-    }
+  | Invalid_slice of { pos: int; len: int; buffer_len: int }
   | System of System_error.t
 
 module FFI = struct
@@ -42,23 +38,24 @@ let socket_addr_of_pair = fun (ip, port) ->
   | Result.Error _ -> System_error.panic "kernel returned an invalid ip address"
 
 let error_to_string = function
-  | Invalid_slice { pos; len; buffer_len } ->
-      String.concat ""
-        [
-          "invalid buffer slice: pos=";
-          Int.to_string pos;
-          ", len=";
-          Int.to_string len;
-          ", buffer_len=";
-          Int.to_string buffer_len;
-        ]
-  | System error ->
-      System_error.to_string error
+  | Invalid_slice { pos; len; buffer_len } -> String.concat
+    ""
+    [
+      "invalid buffer slice: pos=";
+      Int.to_string pos;
+      ", len=";
+      Int.to_string len;
+      ", buffer_len=";
+      Int.to_string buffer_len;
+    ]
+  | System error -> System_error.to_string error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.bind ip port reuse_addr reuse_port)
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.bind ip port reuse_addr reuse_port)
 
 let connect = fun socket addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
@@ -69,7 +66,9 @@ let close = fun socket ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close socket)
 
 let local_addr = fun socket ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (Result.map socket_addr_of_pair (FFI.local_addr socket))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (Result.map socket_addr_of_pair (FFI.local_addr socket))
 
 let recv = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
@@ -95,7 +94,9 @@ let send_to = fun socket addr ?(pos = 0) ?len buf ->
   let* () = validate_slice buf ~pos ~len in
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.send_to socket ip port buf (pos, len))
+  Result.map_error
+    (fun code -> System (System_error.of_code code))
+    (FFI.send_to socket ip port buf (pos, len))
 
 let to_source = fun fd ->
   let module Source = struct

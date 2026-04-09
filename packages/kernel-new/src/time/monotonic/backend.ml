@@ -16,11 +16,10 @@ module FFI = struct
 end
 
 let error_to_string = function
-  | Invalid_nanoseconds { nanos } ->
-      String.concat ""
-        [ "invalid nanoseconds component: "; Int.to_string nanos ]
-  | System error ->
-      System_error.to_string error
+  | Invalid_nanoseconds { nanos } -> String.concat
+    ""
+    [ "invalid nanoseconds component: "; Int.to_string nanos ]
+  | System error -> System_error.to_string error
 
 let validate_parts = fun ~secs:_ ~nanos ->
   if nanos < 0 || nanos >= 1_000_000_000 then
@@ -39,10 +38,8 @@ let secs = fun value -> value.secs
 let subsec_nanos = fun value -> value.nanos
 
 let now = fun () ->
-  let* secs, nanos =
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.now ())
+  let* (secs, nanos) =
+    Result.map_error (fun code -> System (System_error.of_code code)) (FFI.now ())
   in
   of_parts ~secs ~nanos
 

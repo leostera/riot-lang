@@ -6,19 +6,15 @@ let ( let* ) = Result.and_then
 
 let lift_system_time = function
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error ->
-      Error (Kernel.Error.to_string (Kernel.Error.of_time_system_time error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string
+    (Kernel.Error.of_time_system_time error))
 
 let lift_monotonic = function
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error ->
-      Error (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
 
 let test_of_parts_roundtrips = fun _ctx ->
-  let* value =
-    lift_system_time
-      (Kernel.Time.SystemTime.of_parts ~secs:42 ~nanos:123_456_789)
-  in
+  let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:42 ~nanos:123_456_789) in
   let (secs, nanos) = Kernel.Time.SystemTime.to_parts value in
   if secs = 42 && nanos = 123_456_789 then
     Ok ()

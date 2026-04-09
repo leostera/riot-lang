@@ -11,8 +11,7 @@ type t = {
 let ( let* ) = Result.and_then
 
 let error_to_string = function
-  | Invalid_port { port } ->
-      String.concat "" [ "invalid socket port: "; Int.to_string port ]
+  | Invalid_port { port } -> String.concat "" [ "invalid socket port: "; Int.to_string port ]
 
 let validate_port = fun port ->
   if port < 0 || port > 65_535 then
