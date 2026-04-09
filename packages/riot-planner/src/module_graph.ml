@@ -229,15 +229,15 @@ and handle_ocaml_module = fun ~t ~ctx path ->
   (
     match Module.kind mod_ with
     | `implementation -> (
-        let mod_name = Module.module_name mod_ |> Module_name.to_string in
+        let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
         try
-          let node_ids = Module_registry.get_by_name t.registry mod_name in
+          let node_ids = Module_registry.get_by_qualified_name t.registry qualified_name in
           List.iter
             (fun intf_node_id ->
               match G.get_node t.graph intf_node_id with
               | Some intf_node -> (
                   match intf_node.value.kind with
-                  | MLI intf_mod when Module.module_name intf_mod |> Module_name.to_string = mod_name -> G.add_edge
+                  | MLI intf_mod when Module.module_name intf_mod |> Module_name.qualified_name = qualified_name -> G.add_edge
                     node
                     ~depends_on:intf_node
                   | _ -> ()
@@ -361,8 +361,8 @@ and handle_library = fun ~t ~ctx dir name children ->
     List.iter
       (fun child_mod ->
         try
-          let child_node_ids = Module_registry.get_by_name t.registry
-            (Module.module_name child_mod |> Module_name.to_string)
+          let child_node_ids = Module_registry.get_by_qualified_name t.registry
+            (Module.module_name child_mod |> Module_name.qualified_name)
           in
           List.iter
             (fun child_node_id ->
@@ -421,6 +421,22 @@ let create = fun config ->
       order *)
 let wire_dependencies = fun t ->
   let () = HashMap.clear t.analyzed_modules in
+  let rec strip_last_namespace = function
+    | [] -> []
+    | [ _ ] -> []
+    | component :: rest -> component :: strip_last_namespace rest
+  in
+  let rec qualified_dependency_names = fun simple_name namespace_parts ->
+    match namespace_parts with
+    | [] -> [ simple_name ]
+    | _ ->
+        let qualified_name =
+          Namespace.of_list namespace_parts
+          |> fun ns -> Namespace.append ns simple_name
+          |> Namespace.to_string
+        in
+        qualified_name :: qualified_dependency_names simple_name (strip_last_namespace namespace_parts)
+  in
   let implicit_open_modules (open_modules: Module_node.t G.node list) =
     open_modules
     |> List.filter_map
@@ -455,6 +471,20 @@ let wire_dependencies = fun t ->
         resolved_nodes
     else
       resolved_nodes
+  in
+  let resolve_dependency_node_ids = fun dep_mod_name ->
+    let simple_name = Module_name.to_string dep_mod_name in
+    let namespace_parts = Module_name.namespace dep_mod_name |> Namespace.to_list in
+    let candidate_names = qualified_dependency_names simple_name namespace_parts in
+    let rec try_candidates = function
+      | [] -> raise Not_found
+      | candidate_name :: rest -> (
+          try Module_registry.get_by_qualified_name t.registry candidate_name
+          with
+          | Not_found -> try_candidates rest
+        )
+    in
+    try_candidates candidate_names
   in
   let all_nodes =
     G.map t.graph ~fn:(fun ((node_id, node)) -> (node_id, node))
@@ -620,9 +650,8 @@ let wire_dependencies = fun t ->
         (fun (((node: Module_node.t G.node), module_deps)) ->
           List.iter
             (fun dep_mod_name ->
-              let dep_name = Module_name.to_string dep_mod_name in
               try
-                let dep_node_ids = Module_registry.get_by_name t.registry dep_name in
+                let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
                 List.iter
                   (fun (dep_node_id, dep_node) ->
                     (* Skip self-references: a module can't depend on itself.
