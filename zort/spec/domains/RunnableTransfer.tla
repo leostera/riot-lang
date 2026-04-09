@@ -4,6 +4,16 @@ EXTENDS Naturals, FiniteSets, TLC
 \* Bounded semantic model for zort's explicit cross-domain runnable transfer
 \* capability.  This models claimed scheduler lanes and ownership-preserving
 \* transfer, but not balancing or work-stealing policy.
+\*
+\* Source contracts:
+\* - zort/spec/startup-domains-and-signals.md
+\* - zort/spec/effects-and-continuations.md
+\*
+\* How to read this model:
+\* - each domain has one abstract scheduler lane;
+\* - lane mutation is only legal while some worker claims that lane;
+\* - runnable transfer is an explicit capability, not a balancing decision;
+\* - userland policy such as work stealing is intentionally out of scope.
 
 CONSTANTS
   Domains,
@@ -18,6 +28,14 @@ ASSUME Workers # {}
 ASSUME NoFiber \notin Fibers
 ASSUME NoWorker \notin Workers
 
+\* Machine state:
+\* - laneOwner[d]: which worker currently holds the mutation claim for domain d.
+\* - current[d]: the actively running fiber for domain d.
+\* - runnable[d], parked[d], suspended[d]: the remaining scheduler-owned fiber
+\*   states for domain d.
+\* - fiberDomain[f]: the semantic domain ownership recorded for fiber f.
+\* - lastMutationClaimed: a simple history bit used to assert that every
+\*   mutating step modeled here happened under a valid claim.
 VARIABLES
   laneOwner,
   current,
@@ -36,6 +54,8 @@ vars ==
      fiberDomain,
      lastMutationClaimed >>
 
+\* The set of fibers currently owned by one domain lane, across all scheduler
+\* states that matter for transfer and liveness.
 OwnedByDomain(d) ==
   runnable[d]
   \cup parked[d]
@@ -45,6 +65,7 @@ OwnedByDomain(d) ==
 OwnershipCount(f) ==
   Cardinality({ d \in Domains : f \in OwnedByDomain(d) })
 
+\* Type/bounds invariants.
 TypeOK ==
   /\ laneOwner \in [Domains -> (Workers \cup {NoWorker})]
   /\ current \in [Domains -> (Fibers \cup {NoFiber})]
@@ -54,13 +75,19 @@ TypeOK ==
   /\ fiberDomain \in [Fibers -> Domains]
   /\ lastMutationClaimed \in BOOLEAN
 
+\* Semantic invariants.
+\*
+\* A fiber may be owned by at most one scheduler lane at a time.
 FibersHaveExclusiveLaneOwnership ==
   \A f \in Fibers : OwnershipCount(f) <= 1
 
+\* The semantic domain recorded on a fiber must match whichever lane currently
+\* owns it.
 LaneContentsMatchFiberDomain ==
   \A d \in Domains :
     \A f \in OwnedByDomain(d) : fiberDomain[f] = d
 
+\* A fiber cannot be current and still sit in one of the queue-like lane sets.
 CurrentFibersAreNotQueued ==
   \A d \in Domains :
     current[d] = NoFiber
@@ -68,12 +95,16 @@ CurrentFibersAreNotQueued ==
        /\ current[d] \notin parked[d]
        /\ current[d] \notin suspended[d]
 
+\* Every modeled mutating step is supposed to occur under an active lane claim.
+\* Because the actions below encode the claim precondition directly, this
+\* history flag stays true unless we accidentally add an unchecked mutator path.
 LaneMutationsUseClaims ==
   lastMutationClaimed
 
 SmokeDepthBound ==
   TLCGet("level") < 7
 
+\* Initial state: no claimed lanes and no owned fibers.
 Init ==
   /\ laneOwner = [d \in Domains |-> NoWorker]
   /\ current = [d \in Domains |-> NoFiber]
@@ -83,6 +114,7 @@ Init ==
   /\ fiberDomain = [f \in Fibers |-> CHOOSE d \in Domains : TRUE]
   /\ lastMutationClaimed = TRUE
 
+\* Worker lifecycle at the scheduler-lane level.
 ClaimLane(worker, d) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -97,6 +129,7 @@ ReleaseLane(worker, d) ==
   /\ laneOwner' = [laneOwner EXCEPT ![d] = NoWorker]
   /\ UNCHANGED << current, runnable, parked, suspended, fiberDomain, lastMutationClaimed >>
 
+\* A claimed worker inserts a currently-unowned fiber into its runnable set.
 EnqueueRunnable(worker, d, f) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -108,6 +141,7 @@ EnqueueRunnable(worker, d, f) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, current, parked, suspended >>
 
+\* Scheduler pick-next transition.
 ScheduleRunnable(worker, d, f) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -119,6 +153,7 @@ ScheduleRunnable(worker, d, f) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, parked, suspended, fiberDomain >>
 
+\* Cooperative yield back into the runnable set.
 YieldCurrent(worker, d) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -129,6 +164,7 @@ YieldCurrent(worker, d) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, parked, suspended, fiberDomain >>
 
+\* Explicit park operation; wakeup policy itself is out of scope.
 ParkCurrent(worker, d) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -139,6 +175,9 @@ ParkCurrent(worker, d) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, runnable, suspended, fiberDomain >>
 
+\* Current fiber becomes scheduler-owned suspended state, e.g. after effect
+\* capture.  The policy for when this happens lives elsewhere; this model only
+\* tracks the ownership shape.
 SuspendCurrent(worker, d) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -149,6 +188,7 @@ SuspendCurrent(worker, d) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, runnable, parked, fiberDomain >>
 
+\* Wakeup from parked back to runnable.
 UnparkFiber(worker, d, f) ==
   /\ worker \in Workers
   /\ d \in Domains
@@ -159,6 +199,14 @@ UnparkFiber(worker, d, f) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, current, suspended, fiberDomain >>
 
+\* Cross-domain runnable transfer capability:
+\* - both source and target lanes must already be claimed,
+\* - the fiber must leave the source runnable set before it appears in the
+\*   target runnable set,
+\* - the fiber's semantic domain changes with scheduler ownership.
+\*
+\* This is the runtime capability.  It intentionally does not decide *when* to
+\* transfer; userland policy does that.
 TransferRunnable(workerSrc, workerDst, src, dst, f) ==
   /\ workerSrc \in Workers
   /\ workerDst \in Workers
@@ -176,6 +224,7 @@ TransferRunnable(workerSrc, workerDst, src, dst, f) ==
   /\ lastMutationClaimed' = TRUE
   /\ UNCHANGED << laneOwner, current, parked, suspended >>
 
+\* Full transition relation.
 Next ==
   \/ \E worker \in Workers, d \in Domains : ClaimLane(worker, d)
   \/ \E worker \in Workers, d \in Domains : ReleaseLane(worker, d)
@@ -189,6 +238,7 @@ Next ==
        src \in Domains, dst \in Domains, f \in Fibers :
        TransferRunnable(workerSrc, workerDst, src, dst, f)
 
+\* Standard safety spec.
 Spec ==
   Init /\ [][Next]_vars
 
