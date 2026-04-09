@@ -662,19 +662,269 @@ let test_vectored_write_subslice_roundtrips = fun _ctx ->
       else
         Error "expected vectored subslice roundtrip to preserve the selected payload")
 
+let test_metadata_and_lstat_are_explicit_for_symlinked_directory = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target_dir = Kernel.Path.(tempdir / "dir-target") in
+      let link = Kernel.Path.(tempdir / "dir-link") in
+      let* () = lift (Kernel.Fs.File.create_dir target_dir ~perm:0o755) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          let _ = Kernel.Fs.File.remove_dir target_dir in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:target_dir ~dst:link) in
+          let* followed = lift (Kernel.Fs.File.metadata link) in
+          let* raw = lift (Kernel.Fs.File.lstat link) in
+          let* by_alias = lift (Kernel.Fs.File.symlink_metadata link) in
+          if
+            Kernel.Fs.File.Metadata.is_dir followed
+            && Kernel.Fs.File.Metadata.is_symlink raw
+            && Kernel.Fs.File.Metadata.is_symlink by_alias
+          then
+            Ok ()
+          else
+            Error "expected metadata to follow symlink targets while lstat inspects the link itself"))
+
+let test_read_dir_names_returns_fresh_snapshots = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let alpha = Kernel.Path.(tempdir / "alpha.txt") in
+      let beta = Kernel.Path.(tempdir / "beta.txt") in
+      let gamma = Kernel.Path.(tempdir / "gamma.txt") in
+      let* alpha_file = lift (Kernel.Fs.File.open_write alpha) in
+      let* () =
+        with_file alpha_file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write alpha_file (Kernel.Bytes.of_string "a")) in
+            if written = 1 then
+              Ok ()
+            else
+              Error "expected alpha fixture write to make progress")
+      in
+      let* beta_file = lift (Kernel.Fs.File.open_write beta) in
+      let* () =
+        with_file beta_file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write beta_file (Kernel.Bytes.of_string "b")) in
+            if written = 1 then
+              Ok ()
+            else
+              Error "expected beta fixture write to make progress")
+      in
+      let* first = lift (Kernel.Fs.File.read_dir_names tempdir) in
+      let* () = lift (Kernel.Fs.File.rename ~src:alpha ~dst:gamma) in
+      let* () = lift (Kernel.Fs.File.remove_file beta) in
+      let* second = lift (Kernel.Fs.File.read_dir_names tempdir) in
+      if
+        array_has_exact_members first [|"alpha.txt"; "beta.txt"|]
+        && array_has_exact_members second [|"gamma.txt"|]
+      then
+        Ok ()
+      else
+        Error "expected read_dir_names to return fresh snapshots across repeated calls")
+
+let test_renamed_target_turns_symlink_into_dangling_path = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let moved = Kernel.Path.(tempdir / "moved.txt") in
+      let link = Kernel.Path.(tempdir / "alias.txt") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected symlink target fixture write to make progress")
+      in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          let _ = Kernel.Fs.File.remove_file moved in
+          let _ = Kernel.Fs.File.remove_file target in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+          let* () = lift (Kernel.Fs.File.rename ~src:target ~dst:moved) in
+          let* raw = lift (Kernel.Fs.File.symlink_metadata link) in
+          match Kernel.Fs.File.metadata link with
+          | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory) when Kernel.Fs.File.Metadata.is_symlink
+            raw -> Ok ()
+          | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok _ -> Error "expected moved symlink target to leave a dangling link behind"))
+
+let test_renaming_broken_symlink_preserves_the_link_itself = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "alias.txt") in
+      let moved_link = Kernel.Path.(tempdir / "renamed-alias.txt") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected broken symlink fixture write to make progress")
+      in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file moved_link in
+          let _ = Kernel.Fs.File.remove_file link in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+          let* () = lift (Kernel.Fs.File.remove_file target) in
+          let* () = lift (Kernel.Fs.File.rename ~src:link ~dst:moved_link) in
+          let* raw = lift (Kernel.Fs.File.symlink_metadata moved_link) in
+          let* link_target = lift (Kernel.Fs.File.read_link moved_link) in
+          if
+            Kernel.Fs.File.Metadata.is_symlink raw
+            && Kernel.String.equal (Kernel.Path.to_string link_target) (Kernel.Path.to_string target)
+          then
+            Ok ()
+          else
+            Error "expected renaming a broken symlink to preserve the link itself and its target text"))
+
+let test_hard_link_remove_original_preserves_alias_and_decrements_link_count = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let original = Kernel.Path.(tempdir / "original.txt") in
+      let alias = Kernel.Path.(tempdir / "alias.txt") in
+      let* file = lift (Kernel.Fs.File.open_write original) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "linked")) in
+            if written = 6 then
+              Ok ()
+            else
+              Error "expected hard-link alias fixture write to make progress")
+      in
+      let* () = lift (Kernel.Fs.File.hard_link ~src:original ~dst:alias) in
+      let* () = lift (Kernel.Fs.File.remove_file original) in
+      let* alias_metadata = lift (Kernel.Fs.File.metadata alias) in
+      let* alias_file = lift (Kernel.Fs.File.open_read alias) in
+      let buffer = Kernel.Bytes.create 16 in
+      let* payload =
+        with_file alias_file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read alias_file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer 0 read))
+      in
+      let* original_exists = lift (Kernel.Fs.File.exists original) in
+      let* alias_exists = lift (Kernel.Fs.File.exists alias) in
+      if
+        not original_exists
+        && alias_exists
+        && Kernel.Fs.File.Metadata.nlink alias_metadata = 1
+        && Kernel.String.equal payload "linked"
+      then
+        Ok ()
+      else
+        Error "expected removing the original hard-link path to leave one remaining alias")
+
+let test_scalar_partial_io_slice_matrix_roundtrips = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let payload = Kernel.Bytes.of_string "0123456789abcdef" in
+      let cases = [ (0, 1); (0, 4); (2, 5); (4, 8); (12, 4) ] in
+      let rec loop index cases =
+        match cases with
+        | [] -> Ok ()
+        | (pos, len) :: rest ->
+            let path = Kernel.Path.(tempdir
+            / String.concat "" [ "scalar-slice-"; Int.to_string index; ".bin" ]) in
+            let* file = lift (Kernel.Fs.File.open_write path) in
+            let* () =
+              with_file file
+                (fun () ->
+                  let* written = lift (Kernel.Fs.File.write file ~pos ~len payload) in
+                  if written = len then
+                    Ok ()
+                  else
+                    Error "expected scalar slice write matrix to write the requested length")
+            in
+            let* file = lift (Kernel.Fs.File.open_read path) in
+            let buffer = Kernel.Bytes.create 32 in
+            let* actual =
+              with_file file
+                (fun () ->
+                  let* read = lift (Kernel.Fs.File.read file buffer) in
+                  Ok (read, Kernel.Bytes.sub_string buffer 0 read))
+            in
+            let read, contents = actual in
+            let expected = Kernel.Bytes.sub_string payload pos len in
+            if read != len || not (Kernel.String.equal contents expected) then
+              Error "expected scalar partial file io matrix to preserve each selected slice"
+            else
+              loop (index + 1) rest
+      in
+      loop 0 cases)
+
+let test_vectored_partial_io_slice_matrix_roundtrips = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let payload = Kernel.IO.Iovec.of_string_array [|"__"; "alpha"; "-"; "beta"; "__"|] in
+      let flattened = Kernel.IO.Iovec.into_string payload in
+      let cases = [ (2, 5); (2, 10); (4, 4); (7, 4); (2, 12) ] in
+      let rec loop index cases =
+        match cases with
+        | [] -> Ok ()
+        | (pos, len) :: rest ->
+            let path = Kernel.Path.(tempdir
+            / String.concat "" [ "vectored-slice-"; Int.to_string index; ".bin" ]) in
+            let slice = Kernel.IO.Iovec.sub ~pos ~len payload in
+            let* file = lift (Kernel.Fs.File.open_write path) in
+            let* () =
+              with_file file
+                (fun () ->
+                  let* written = lift (Kernel.Fs.File.write_vectored file slice) in
+                  if written = len then
+                    Ok ()
+                  else
+                    Error "expected vectored slice write matrix to write the requested length")
+            in
+            let* file = lift (Kernel.Fs.File.open_read path) in
+            let buffer = Kernel.Bytes.create 32 in
+            let* actual =
+              with_file file
+                (fun () ->
+                  let* read = lift (Kernel.Fs.File.read file buffer) in
+                  Ok (read, Kernel.Bytes.sub_string buffer 0 read))
+            in
+            let read, contents = actual in
+            let expected = String.sub flattened pos len in
+            if read != len || not (Kernel.String.equal contents expected) then
+              Error "expected vectored partial file io matrix to preserve each selected slice"
+            else
+              loop (index + 1) rest
+      in
+      loop 0 cases)
+
 let tests = [
   Test.case "Fs.File scalar write roundtrips" test_file_scalar_write_roundtrips;
   Test.case "Fs.File vectored write roundtrips" test_file_vectored_write_roundtrips;
   Test.case "Fs.File read and write respect pos and len" test_file_read_and_write_respect_pos_and_len;
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
+  Test.case "Fs.File metadata and lstat stay explicit for symlinked directories" test_metadata_and_lstat_are_explicit_for_symlinked_directory;
   Test.case "Fs.File dangling symlink still reports symlink metadata" test_dangling_symlink_still_has_symlink_metadata;
   Test.case "Fs.File metadata reports missing target for dangling symlink" test_metadata_reports_missing_target_for_dangling_symlink;
   Test.case "Fs.File lstat matches symlink_metadata" test_lstat_matches_symlink_metadata;
   Test.case "Fs.File metadata follows symlink but remove_file only unlinks the symlink" test_metadata_follows_symlink_but_remove_only_unlinks_symlink;
+  Test.case "Fs.File renamed symlink targets leave dangling links behind" test_renamed_target_turns_symlink_into_dangling_path;
+  Test.case "Fs.File renaming broken symlinks preserves the link itself" test_renaming_broken_symlink_preserves_the_link_itself;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
   Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
   Test.case "Fs.File hard_link and remove ops update filesystem state" test_hard_link_updates_link_count_and_remove_ops;
+  Test.case "Fs.File removing originals preserves hard-link aliases and decrements link count" test_hard_link_remove_original_preserves_alias_and_decrements_link_count;
   Test.case "Fs.File remove non-empty dir reports an error" test_remove_nonempty_dir_reports_resource_busy;
   Test.case "Fs.File exists and is_directory report expected kinds" test_exists_and_is_directory_report_expected_kinds;
   Test.case "Fs.File read_vectored roundtrips" test_read_vectored_roundtrips;
@@ -682,9 +932,12 @@ let tests = [
   Test.case "Fs.File missing read maps kernel error" test_open_read_missing_file_maps_error;
   Test.case "Fs.File remove missing paths reports no-such-file" test_remove_missing_paths_report_no_such_file;
   Test.case "Fs.File read_dir_names skips dot entries and is order agnostic" test_read_dir_names_skips_dot_entries_and_is_order_agnostic;
+  Test.case "Fs.File read_dir_names returns fresh snapshots across repeated calls" test_read_dir_names_returns_fresh_snapshots;
   Test.case "Fs.File nested symlink chains canonicalize cleanly" test_nested_symlink_chain_canonicalizes_cleanly;
   Test.case "Fs.File hard-link rename preserves remaining link counts" test_hard_link_rename_preserves_remaining_link_count;
   Test.case "Fs.File vectored write subslices roundtrip" test_vectored_write_subslice_roundtrips;
+  Test.case "Fs.File scalar partial io slice matrix roundtrips" test_scalar_partial_io_slice_matrix_roundtrips;
+  Test.case "Fs.File vectored partial io slice matrix roundtrips" test_vectored_partial_io_slice_matrix_roundtrips;
   Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 

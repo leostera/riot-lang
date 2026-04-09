@@ -551,6 +551,137 @@ let file_scalar_write_vectored_read_roundtrips =
                   let _ = Kernel.Fs.File.close file in
                   raise error))
 
+let file_scalar_and_vectored_partial_writes_agree =
+  property "Fs.File scalar and vectored partial writes agree on the selected slice" Arbitrary.(pair
+    (array string)
+    (pair int int))
+    (fun (values, (raw_pos, raw_len)) ->
+      let iov = Kernel.IO.Iovec.of_string_array values in
+      let payload = Kernel.IO.Iovec.into_string iov in
+      let total = String.length payload in
+      assume (total > 0);
+      assume (total <= 256);
+      let bytes = Kernel.Bytes.of_string payload in
+      let pos = Int.abs raw_pos mod total in
+      let remaining = total - pos in
+      let len = (Int.abs raw_len mod remaining) + 1 in
+      let expected = String.sub payload pos len in
+      let scalar_matches =
+        with_temp_path "kernel_new_property" "scalar-partial-equivalence.bin"
+          (fun path ->
+            match Kernel.Fs.File.open_write path with
+            | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+            | Kernel.Result.Ok file ->
+                try
+                  match Kernel.Fs.File.write file ~pos ~len bytes with
+                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                  | Kernel.Result.Ok written ->
+                      let _ = Kernel.Fs.File.close file in
+                      if written != len then
+                        false
+                      else
+                        match Kernel.Fs.File.open_read path with
+                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                        | Kernel.Result.Ok input ->
+                            let buffer = Kernel.Bytes.create len in
+                            match Kernel.Fs.File.read input buffer with
+                            | Kernel.Result.Error error -> fail
+                              (Kernel.Fs.File.error_to_string error)
+                            | Kernel.Result.Ok read ->
+                                let _ = Kernel.Fs.File.close input in
+                                read = len && Kernel.Bytes.sub_string buffer 0 read = expected
+                with
+                | error ->
+                    let _ = Kernel.Fs.File.close file in
+                    raise error)
+      in
+      let vectored_matches =
+        with_temp_path "kernel_new_property" "vectored-partial-equivalence.bin"
+          (fun path ->
+            match Kernel.Fs.File.open_write path with
+            | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+            | Kernel.Result.Ok file ->
+                try
+                  let slice = Kernel.IO.Iovec.sub ~pos ~len iov in
+                  match Kernel.Fs.File.write_vectored file slice with
+                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                  | Kernel.Result.Ok written ->
+                      let _ = Kernel.Fs.File.close file in
+                      if written != len then
+                        false
+                      else
+                        match Kernel.Fs.File.open_read path with
+                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                        | Kernel.Result.Ok input ->
+                            let buffer = Kernel.Bytes.create len in
+                            match Kernel.Fs.File.read input buffer with
+                            | Kernel.Result.Error error -> fail
+                              (Kernel.Fs.File.error_to_string error)
+                            | Kernel.Result.Ok read ->
+                                let _ = Kernel.Fs.File.close input in
+                                read = len && Kernel.Bytes.sub_string buffer 0 read = expected
+                with
+                | error ->
+                    let _ = Kernel.Fs.File.close file in
+                    raise error)
+      in
+      scalar_matches && vectored_matches)
+
+let file_scalar_and_vectored_partial_reads_agree =
+  property "Fs.File scalar and vectored partial reads agree on the selected prefix" Arbitrary.(pair
+    string
+    int)
+    (fun (payload, raw_len) ->
+      assume (String.length payload > 0);
+      assume (String.length payload <= 256);
+      let total = String.length payload in
+      let len = (Int.abs raw_len mod total) + 1 in
+      let expected = String.sub payload 0 len in
+      with_temp_path "kernel_new_property" "partial-read-equivalence.bin"
+        (fun path ->
+          let bytes = Kernel.Bytes.of_string payload in
+          match Kernel.Fs.File.open_write path with
+          | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+          | Kernel.Result.Ok file ->
+              try
+                match Kernel.Fs.File.write file bytes with
+                | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                | Kernel.Result.Ok written ->
+                    let _ = Kernel.Fs.File.close file in
+                    if written != total then
+                      false
+                    else
+                      let scalar_result =
+                        match Kernel.Fs.File.open_read path with
+                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                        | Kernel.Result.Ok input ->
+                            let buffer = Kernel.Bytes.create (len + 2) in
+                            match Kernel.Fs.File.read input ~pos:1 ~len buffer with
+                            | Kernel.Result.Error error -> fail
+                              (Kernel.Fs.File.error_to_string error)
+                            | Kernel.Result.Ok read ->
+                                let _ = Kernel.Fs.File.close input in
+                                read = len && Kernel.Bytes.sub_string buffer 1 len = expected
+                      in
+                      let vectored_result =
+                        match Kernel.Fs.File.open_read path with
+                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                        | Kernel.Result.Ok input ->
+                            let iov = Kernel.IO.Iovec.create ~count:3 ~size:(len + 2) () in
+                            let slice = Kernel.IO.Iovec.sub ~pos:1 ~len iov in
+                            match Kernel.Fs.File.read_vectored input slice with
+                            | Kernel.Result.Error error -> fail
+                              (Kernel.Fs.File.error_to_string error)
+                            | Kernel.Result.Ok read ->
+                                let _ = Kernel.Fs.File.close input in
+                                read = len && String.sub (Kernel.IO.Iovec.into_string iov) 1 len = expected
+                      in
+                      scalar_result && vectored_result
+              with
+              | error ->
+                  let _ = Kernel.Fs.File.close file in
+                  raise error))
+
 let tcp_loopback_roundtrips_small_payload =
   property "Net.TcpStream loopback roundtrips small payloads" Arbitrary.string
     (fun payload ->
@@ -680,6 +811,8 @@ let tests = [
   file_slice_roundtrips;
   file_vectored_roundtrips;
   file_scalar_write_vectored_read_roundtrips;
+  file_scalar_and_vectored_partial_writes_agree;
+  file_scalar_and_vectored_partial_reads_agree;
   tcp_loopback_roundtrips_small_payload;
   tcp_vectored_loopback_roundtrips_small_payload;
   udp_loopback_roundtrips_small_payload;

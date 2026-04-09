@@ -155,6 +155,45 @@ let test_timer_after_ns_wakes_poll = fun _ctx ->
       let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
       wait_for_timer poll ~token:(Kernel.Async.Token.make 700) timer)
 
+let test_timer_after_ns_fires_only_once_per_registration = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 704 in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* () = wait_for_readable_token poll ~token in
+          let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+          if has_readable_token token quiet then
+            Error "expected one-shot timer to stay quiet after its first event"
+          else
+            Ok ()))
+
+let test_timer_after_ns_can_be_rearmed_after_fire = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let first_token = Kernel.Async.Token.make "first-after-ns" in
+      let second_token = Kernel.Async.Token.make "second-after-ns" in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* () = wait_for_readable_token poll ~token:first_token in
+          let* () = lift_async
+            (Kernel.Async.Poll.reregister poll second_token Kernel.Async.Interest.readable source) in
+          wait_for_readable_token poll ~token:second_token))
+
 let test_timer_every_ns_repeats = fun _ctx ->
   with_poll
     (fun poll ->
@@ -253,6 +292,22 @@ let test_timer_source_can_be_reused_after_deregister = fun _ctx ->
             ())
           (fun () -> wait_for_readable_token poll ~token:second_token))
 
+let test_timer_deregister_after_after_ns_fire_is_harmless = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make "after-ns-deregistered" in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      let* () = wait_for_readable_token poll ~token in
+      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+      let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+      if has_readable_token token quiet then
+        Error "expected deregistered one-shot timer to stay quiet after firing"
+      else
+        Ok ())
+
 let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
   with_poll
     (fun poll ->
@@ -310,6 +365,29 @@ let test_timer_every_ns_spacing_is_reasonable = fun _ctx ->
           in
           wait_for_ticks 0))
 
+let test_timer_after_ns_elapsed_time_is_reasonable = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let interval_ns = 20_000_000L in
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns interval_ns) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let token = Kernel.Async.Token.make 705 in
+      let* start = lift_monotonic (Kernel.Time.Monotonic.now ()) in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Async.Poll.deregister poll source in
+          ())
+        (fun () ->
+          let* () = wait_for_readable_token poll ~token in
+          let* finish = lift_monotonic (Kernel.Time.Monotonic.now ()) in
+          let elapsed = Kernel.Time.Monotonic.diff_ns finish start in
+          if elapsed >= 10_000_000L && elapsed < 1_000_000_000L then
+            Ok ()
+          else
+            Error "expected one-shot timer latency to stay within a reasonable tolerance"))
+
 let tests = [
   Test.case "Time.SystemTime of_parts roundtrips" test_of_parts_roundtrips;
   Test.case "Time.SystemTime now is at or after epoch" test_now_is_at_or_after_epoch;
@@ -320,12 +398,16 @@ let tests = [
   Test.case "Time.Monotonic diff_ns matches raw parts" test_monotonic_diff_ns_matches_parts;
   Test.case "Time.Timer rejects non-positive timeout" test_timer_rejects_non_positive_timeout;
   Test.case "Time.Timer after_ns wakes poll" test_timer_after_ns_wakes_poll;
+  Test.case "Time.Timer after_ns fires only once per registration" test_timer_after_ns_fires_only_once_per_registration;
+  Test.case "Time.Timer after_ns can be rearmed after fire" test_timer_after_ns_can_be_rearmed_after_fire;
   Test.case "Time.Timer every_ns repeats" test_timer_every_ns_repeats;
   Test.case "Time.Timer reregister updates token" test_timer_reregister_updates_token;
   Test.case "Time.Timer deregister after first tick stops future events" test_timer_deregister_after_first_tick_stops_future_events;
   Test.case "Time.Timer repeated register, reregister, and deregister stays healthy" test_timer_repeated_register_reregister_and_deregister_stays_healthy;
   Test.case "Time.Timer source can be reused after deregister" test_timer_source_can_be_reused_after_deregister;
+  Test.case "Time.Timer deregister after after_ns fire is harmless" test_timer_deregister_after_after_ns_fire_is_harmless;
   Test.case "Time.Timer every_ns spacing stays within a reasonable tolerance" test_timer_every_ns_spacing_is_reasonable;
+  Test.case "Time.Timer after_ns latency stays within a reasonable tolerance" test_timer_after_ns_elapsed_time_is_reasonable;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args

@@ -95,10 +95,16 @@ val read_link: Path.t -> (Path.t, error) Result.t
 
 val canonicalize: Path.t -> (Path.t, error) Result.t
 
+(** [metadata path] follows symbolic links.
+
+    For a symlink, the returned metadata describes the final target. Dangling symlinks report
+    [NoSuchFileOrDirectory]. *)
 val metadata: Path.t -> (Metadata.t, error) Result.t
 
+(** [lstat path] inspects the path itself without following a symbolic link. *)
 val lstat: Path.t -> (Metadata.t, error) Result.t
 
+(** [symlink_metadata path] is an alias for [lstat]. *)
 val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
 
 val fstat: t -> (Metadata.t, error) Result.t
@@ -107,6 +113,9 @@ val exists: Path.t -> (bool, error) Result.t
 
 val is_directory: Path.t -> (bool, error) Result.t
 
+(** [read_dir_names path] returns a snapshot of the directory entries visible for that call.
+
+    The result excludes [.] and [..]. Ordering is not part of the contract. *)
 val read_dir_names: Path.t -> (string array, error) Result.t
 
 val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
