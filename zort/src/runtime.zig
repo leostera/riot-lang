@@ -52,6 +52,7 @@ pub const Mutator = mutator.Mutator;
 pub const ManagedLiveness = liveness_mod.ManagedLiveness;
 pub const MemprofConfig = memprof_mod.Config;
 pub const MemprofState = memprof_mod.MemprofState;
+pub const MemprofSampling = memprof_mod.SamplingMode;
 pub const MemprofSample = memprof_mod.SampleView;
 pub const WeakRefHandle = liveness_mod.WeakRefHandle;
 pub const EphemeronHandle = liveness_mod.EphemeronHandle;

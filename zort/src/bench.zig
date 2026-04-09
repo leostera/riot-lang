@@ -280,6 +280,8 @@ fn runBenchcases(
             .enabled = config.trace_mode == .memprof,
             .sample_interval_words = 16,
             .capture_backtraces = true,
+            .sampling = .probabilistic_words,
+            .seed = 7,
         },
     });
     defer rt.deinit();

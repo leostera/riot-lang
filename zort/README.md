@@ -102,7 +102,8 @@ for values that should become unreachable.
   - ephemerons
   - first/last finalizers
 - `MemprofState` keeps sampled lifecycle profiling explicit:
-  - deterministic word-interval sampling
+  - probabilistic word-based sampling by default
+  - deterministic interval sampling as an explicit test/debug mode
   - optional allocation-site backtrace capture
   - promotion and reclaim lifecycle tracking by `HeapRef`
 - `Mutator` now exposes remembered-set recording through barrier events.

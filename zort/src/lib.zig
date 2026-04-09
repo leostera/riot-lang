@@ -29,6 +29,7 @@ pub const RememberedSet = @import("runtime.zig").RememberedSet;
 pub const ManagedLiveness = @import("runtime.zig").ManagedLiveness;
 pub const MemprofConfig = @import("runtime.zig").MemprofConfig;
 pub const MemprofSample = @import("runtime.zig").MemprofSample;
+pub const MemprofSampling = @import("runtime.zig").MemprofSampling;
 pub const MemprofState = @import("runtime.zig").MemprofState;
 pub const ReadyFinalizer = @import("runtime.zig").ReadyFinalizer;
 pub const RootProvider = @import("runtime.zig").RootProvider;

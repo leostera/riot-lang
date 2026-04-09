@@ -78,7 +78,8 @@
 - zort now has a dedicated `MemprofState` subsystem in `src/memprof.zig`.
 - The current memprof surface is intentionally smaller than OCaml's:
   - samples are keyed by stable `HeapRef`,
-  - sampling is deterministic by allocated word interval instead of probabilistic,
+  - sampling is probabilistic by allocated word count by default,
+  - deterministic interval sampling is kept only as an explicit test/debug mode,
   - sampled lifecycle transitions are `sampled_alloc`, `promoted`, and `reclaimed`,
   - sampled records can optionally carry an allocation backtrace as a slice of `site_id`s from the managed control stack.
 - Integration points are explicit:
@@ -87,6 +88,6 @@
   - `EventSink` and `TraceRecorder` carry memprof lifecycle events like any other runtime event.
 - The current baseline deliberately does not attempt full OCaml parity:
   - memprof does not own GC roots because sampled metadata stores site ids, not heap values,
-  - sampling policy is deterministic and single-runtime only,
+  - sampling policy is single-runtime only,
   - domain adoption/orphan handling is still deferred,
   - memprof callbacks are not implemented yet.

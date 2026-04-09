@@ -8,10 +8,17 @@ pub const ObjectKind = heap_store.ObjectKind;
 pub const Space = heap_store.Space;
 pub const EventSink = event_sink.EventSink;
 
+pub const SamplingMode = enum {
+    probabilistic_words,
+    deterministic_interval,
+};
+
 pub const Config = struct {
     enabled: bool = false,
     sample_interval_words: usize = 64,
     capture_backtraces: bool = false,
+    sampling: SamplingMode = .probabilistic_words,
+    seed: ?u64 = null,
 };
 
 pub const SampleView = struct {
@@ -36,18 +43,20 @@ pub const MemprofState = struct {
     allocator: std.mem.Allocator,
     event_sink: EventSink,
     config: Config,
-    allocated_words: usize = 0,
-    next_sample_words: usize = 1,
+    words_until_next_sample: usize = 1,
     sample_sequence: u64 = 0,
+    rng_state: u64 = 0,
     samples: std.AutoHashMapUnmanaged(u64, Sample) = .{},
 
     pub fn init(allocator: std.mem.Allocator, sink: EventSink, config: Config) MemprofState {
-        return .{
+        var state = MemprofState{
             .allocator = allocator,
             .event_sink = sink,
             .config = config,
-            .next_sample_words = if (config.sample_interval_words == 0) 1 else config.sample_interval_words,
+            .rng_state = config.seed orelse defaultSeed(),
         };
+        state.words_until_next_sample = state.drawNextGap();
+        return state;
     }
 
     pub fn deinit(self: *MemprofState) void {
@@ -74,12 +83,20 @@ pub const MemprofState = struct {
         if (!self.enabled()) return null;
 
         const effective_words = @max(object_words, 1);
-        self.allocated_words +%= effective_words;
-        if (self.allocated_words < self.next_sample_words) return null;
+        if (effective_words < self.words_until_next_sample) {
+            self.words_until_next_sample -= effective_words;
+            return null;
+        }
 
         self.sample_sequence +%= 1;
-        while (self.next_sample_words <= self.allocated_words) {
-            self.next_sample_words +%= self.config.sample_interval_words;
+        const leftover_words = effective_words - self.words_until_next_sample;
+        self.words_until_next_sample = self.drawNextGap();
+        if (leftover_words > 0) {
+            if (leftover_words >= self.words_until_next_sample) {
+                self.words_until_next_sample = 1;
+            } else {
+                self.words_until_next_sample -= leftover_words;
+            }
         }
         return self.sample_sequence;
     }
@@ -187,14 +204,53 @@ pub const MemprofState = struct {
     fn handleKey(handle: HeapRef) u64 {
         return (@as(u64, handle.index) << 32) | @as(u64, handle.generation);
     }
+
+    fn drawNextGap(self: *MemprofState) usize {
+        const interval = @max(self.config.sample_interval_words, 1);
+        return switch (self.config.sampling) {
+            .deterministic_interval => interval,
+            .probabilistic_words => self.drawProbabilisticGap(interval),
+        };
+    }
+
+    fn drawProbabilisticGap(self: *MemprofState, interval: usize) usize {
+        if (interval <= 1) return 1;
+
+        const p = 1.0 / @as(f64, @floatFromInt(interval));
+        const u = self.nextUnitF64();
+        const numerator = std.math.log1p(-u);
+        const denominator = std.math.log1p(-p);
+        const gap = @as(usize, @intFromFloat(@floor(numerator / denominator))) + 1;
+        return @max(gap, 1);
+    }
+
+    fn nextUnitF64(self: *MemprofState) f64 {
+        const bits = self.nextRandomU64() >> 11;
+        const denom = 9007199254740992.0;
+        return (@as(f64, @floatFromInt(bits)) + 0.5) / denom;
+    }
+
+    fn nextRandomU64(self: *MemprofState) u64 {
+        self.rng_state +%= 0x9e3779b97f4a7c15;
+        var z = self.rng_state;
+        z = (z ^ (z >> 30)) *% 0xbf58476d1ce4e5b9;
+        z = (z ^ (z >> 27)) *% 0x94d049bb133111eb;
+        return z ^ (z >> 31);
+    }
+
+    fn defaultSeed() u64 {
+        const ns: u128 = @intCast(std.time.nanoTimestamp());
+        return @truncate(ns);
+    }
 };
 
-test "memprof: samples allocations and lifecycle transitions" {
+test "memprof: deterministic sampling preserves simple lifecycle tests" {
     var recorder = event_sink.Recorder{};
     var memprof = MemprofState.init(std.testing.allocator, recorder.sink(), .{
         .enabled = true,
         .sample_interval_words = 2,
         .capture_backtraces = true,
+        .sampling = .deterministic_interval,
     });
     defer memprof.deinit();
 
@@ -227,4 +283,27 @@ test "memprof: disabled state never samples" {
 
     try std.testing.expect(memprof.beginAllocation(64) == null);
     try std.testing.expectEqual(@as(usize, 0), memprof.trackedSampleCount());
+}
+
+test "memprof: probabilistic sampling is reproducible with a fixed seed" {
+    var left = MemprofState.init(std.testing.allocator, EventSink.noop(), .{
+        .enabled = true,
+        .sample_interval_words = 8,
+        .sampling = .probabilistic_words,
+        .seed = 42,
+    });
+    defer left.deinit();
+
+    var right = MemprofState.init(std.testing.allocator, EventSink.noop(), .{
+        .enabled = true,
+        .sample_interval_words = 8,
+        .sampling = .probabilistic_words,
+        .seed = 42,
+    });
+    defer right.deinit();
+
+    const pattern = [_]usize{ 1, 3, 2, 5, 1, 4, 2, 8, 1, 1, 6, 2, 7, 3, 1, 4 };
+    for (pattern) |words| {
+        try std.testing.expectEqual(left.beginAllocation(words), right.beginAllocation(words));
+    }
 }
