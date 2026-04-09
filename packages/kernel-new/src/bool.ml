@@ -1,3 +1,5 @@
+open Prelude
+
 type t = bool
 
 let true_ = true

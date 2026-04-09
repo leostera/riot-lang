@@ -1,3 +1,5 @@
+open Prelude
+
 type t =
   | Async of Async.error
   | Env of Env.error

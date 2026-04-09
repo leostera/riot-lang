@@ -1,3 +1,4 @@
+(** `Error.t` is the package-wide typed envelope over module-local errors. *)
 type t =
   | Async of Async.error
   | Env of Env.error
@@ -39,7 +40,7 @@ val of_time_timer: Time.Timer.error -> t
 val module_name: t -> string
 
 (** Extract the shared system error when the wrapped module error is rooted in a
-    [SystemError.t]. *)
+    `SystemError.t`. *)
 val system: t -> System_error.t option
 
 val to_string: t -> string
