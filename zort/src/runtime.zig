@@ -53,7 +53,6 @@ pub const HandlerFrame = control_kernel_mod.HandlerFrame;
 pub const FrameInfo = control_kernel_mod.ManagedStack.FrameInfo;
 pub const StackLimits = control_kernel_mod.StackLimits;
 pub const SuspendedStack = control_kernel_mod.SuspendedStack;
-pub const FiberMobility = control_kernel_mod.FiberMobility;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const DomainRegistry = domain_registry_mod.DomainRegistry;
 pub const DomainWorker = domain_registry_mod.DomainWorker;
@@ -340,14 +339,6 @@ pub const Runtime = struct {
         return self.control_kernel.currentFiber();
     }
 
-    pub fn fiberMobility(self: *Runtime, fiber: FiberHandle) !FiberMobility {
-        return self.control_kernel.fiberMobility(fiber);
-    }
-
-    pub fn setFiberMobility(self: *Runtime, fiber: FiberHandle, mobility: FiberMobility) !void {
-        try self.control_kernel.setFiberMobility(fiber, mobility);
-    }
-
     pub fn stackLimits(self: *Runtime) StackLimits {
         return self.control_kernel.stackLimits();
     }
@@ -437,12 +428,6 @@ pub const Runtime = struct {
         return self.createFiberInDomain(parent, domain);
     }
 
-    pub fn spawnPinnedFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
-        const fiber = try self.createFiberInDomain(parent, domain);
-        try self.setFiberMobility(fiber, .pinned);
-        return fiber;
-    }
-
     pub fn activateFiberInDomain(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
         const owner_token = try self.requiredLaneOwnerToken(domain);
         try self.fiber_scheduler.activate(domain, fiber, owner_token);
@@ -481,11 +466,6 @@ pub const Runtime = struct {
         const fiber_state = self.control_kernel.fiber(fiber) orelse return error.InvalidFiber;
         if (fiber_state.domain.index != source_domain.index or fiber_state.domain.generation != source_domain.generation) {
             return error.FiberDomainMismatch;
-        }
-        if (fiber_state.mobility == .pinned and
-            (target_domain.index != source_domain.index or target_domain.generation != source_domain.generation))
-        {
-            return error.NonMigratableFiber;
         }
         if (target_domain.index == source_domain.index and target_domain.generation == source_domain.generation) return false;
 
@@ -2003,25 +1983,7 @@ test "runtime: runnable fibers can transfer across running domains" {
     try rt.verifyDebugState();
 }
 
-test "runtime: pinned fibers reject cross-domain runnable transfer" {
-    var rt = Runtime.init(std.testing.allocator);
-    defer rt.deinit();
-
-    const source_domain = rt.currentDomain();
-    const target_domain = try rt.createDomain();
-    try rt.attachDomain(target_domain);
-    try std.testing.expect(try rt.startDomainWorker(target_domain, 44));
-
-    const worker = try rt.spawnPinnedFiberInDomain(null, source_domain);
-    try std.testing.expectEqual(FiberMobility.pinned, try rt.fiberMobility(worker));
-    try std.testing.expectError(error.NonMigratableFiber, rt.transferRunnableFiber(source_domain, target_domain, worker));
-    try std.testing.expectEqual(source_domain, rt.controlKernel().fiber(worker).?.domain);
-    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(source_domain));
-    try std.testing.expectEqual(@as(usize, 0), rt.fiberScheduler().runnableCount(target_domain));
-    try rt.verifyDebugState();
-}
-
-test "runtime: pinned continuations cannot resume in a different domain" {
+test "runtime: continuations remain migratable across attached domains" {
     var rt = Runtime.init(std.testing.allocator);
     defer rt.deinit();
 
@@ -2038,7 +2000,7 @@ test "runtime: pinned continuations cannot resume in a different domain" {
     });
     defer _ = rt.popEffectHandler(main) catch {};
 
-    const child = try rt.spawnPinnedFiberInDomain(main, main_domain);
+    const child = try rt.spawnFiberInDomain(main, main_domain);
     try rt.activateFiberInDomain(main_domain, child);
     try rt.pushFiberFrame(child, 2101);
 
@@ -2046,9 +2008,8 @@ test "runtime: pinned continuations cannot resume in a different domain" {
     const worker = try rt.createFiberInDomain(null, other_domain);
     try rt.activateFiberInDomain(other_domain, worker);
 
-    try std.testing.expectError(error.NonMigratableFiber, rt.resumeContinuation(performed.continuation, Value.fromInt(10)));
-    try std.testing.expectEqual(main_domain, rt.controlKernel().fiber(child).?.domain);
-    try std.testing.expectEqual(main_domain, rt.controlKernel().continuation(performed.continuation).?.domain);
+    _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(10));
+    try std.testing.expectEqual(other_domain, rt.controlKernel().fiber(child).?.domain);
     try std.testing.expect(rt.dropContinuation(performed.continuation));
     try rt.verifyDebugState();
 }

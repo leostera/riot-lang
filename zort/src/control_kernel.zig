@@ -221,11 +221,6 @@ pub const FiberStatus = enum {
     completed,
 };
 
-pub const FiberMobility = enum {
-    migratable,
-    pinned,
-};
-
 pub const HandlerFrame = struct {
     effect: EffectId,
     handle_effect: Value,
@@ -236,7 +231,6 @@ pub const HandlerFrame = struct {
 pub const FiberState = struct {
     status: FiberStatus,
     domain: DomainHandle,
-    mobility: FiberMobility,
     parent: ?FiberHandle,
     handlers: std.ArrayListUnmanaged(HandlerFrame) = .{},
     stack: ManagedStack = .{},
@@ -246,7 +240,6 @@ pub const FiberState = struct {
         return .{
             .status = .completed,
             .domain = .{ .index = 0, .generation = 0 },
-            .mobility = .migratable,
             .parent = null,
             .handlers = .{},
             .stack = .{},
@@ -258,7 +251,6 @@ pub const FiberState = struct {
         return .{
             .status = status,
             .domain = domain,
-            .mobility = .migratable,
             .parent = parent,
             .handlers = .{},
         };
@@ -605,20 +597,9 @@ pub const ControlKernel = struct {
         return fiber_state.handlers.items.len;
     }
 
-    pub fn fiberMobility(self: *const ControlKernel, fiber_handle: FiberHandle) !FiberMobility {
-        const fiber_state = self.fiber(fiber_handle) orelse return error.InvalidFiber;
-        return fiber_state.mobility;
-    }
-
-    pub fn setFiberMobility(self: *ControlKernel, fiber_handle: FiberHandle, mobility: FiberMobility) !void {
-        const fiber_state = self.fiberMut(fiber_handle) orelse return error.InvalidFiber;
-        fiber_state.mobility = mobility;
-    }
-
     pub fn assignFiberDomain(self: *ControlKernel, fiber_handle: FiberHandle, target_domain: DomainHandle) !bool {
         const fiber_state = self.fiberMut(fiber_handle) orelse return error.InvalidFiber;
         if (sameDomain(fiber_state.domain, target_domain)) return false;
-        if (fiber_state.mobility == .pinned) return error.NonMigratableFiber;
         fiber_state.domain = target_domain;
         return true;
     }
@@ -877,9 +858,6 @@ pub const ControlKernel = struct {
         const handler_fiber = slot.continuation.handler_fiber;
         const handler_index = slot.continuation.handler_index;
         const fiber_state = self.fiberMut(fiber_handle) orelse return error.InvalidFiber;
-        if (!sameDomain(fiber_state.domain, target_domain) and fiber_state.mobility == .pinned) {
-            return error.NonMigratableFiber;
-        }
         const captured_stack = slot.continuation.suspended_stack.transferToDomain(target_domain);
         slot.continuation.status = .resumed;
         fiber_state.stack.deinit(self.allocator);

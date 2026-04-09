@@ -238,9 +238,10 @@
   - runnable fibers can be moved between attached domains with running workers,
   - transfer updates scheduler ownership and the fiber's semantic domain together,
   - transfer does not choose balancing policy; userland decides when to call it.
-- Fibers now have explicit mobility:
-  - `migratable` fibers may move across domains by continuation resume or runnable transfer,
-  - `pinned` fibers reject those moves with `NonMigratableFiber`.
+- Fibers are migratable by default at the runtime layer:
+  - continuation resume may rebind a suspended fiber to a new domain,
+  - runnable transfer may move a queued fiber to a new domain lane,
+  - any pinned or domain-affine policy belongs in userland rather than the core runtime contract.
 - Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
   - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
   - runnable/current fibers use the same ownership seam,

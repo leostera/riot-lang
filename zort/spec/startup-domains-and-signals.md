@@ -97,11 +97,12 @@
   - worker lifecycle is now explicit at the runtime layer,
   - and scheduler queue mutation now requires a claimed lane owner token on every mutable scheduler path.
 - zort's intended split is now explicit:
-  - runtime owns capabilities such as domain workers, lane claims, cross-domain resume, runnable transfer, and fiber mobility/pinning,
+  - runtime owns capabilities such as domain workers, lane claims, cross-domain resume, and runnable transfer,
   - userland owns balancing policy such as work stealing, fairness, and actor placement.
 - zort now explicitly allows a suspended fiber to resume in a different attached domain:
   - the resumed fiber adopts the resumer's active domain,
   - this is the current migration seam for multicore fibers,
-  - pinned fibers reject cross-domain resume and runnable transfer with an explicit `NonMigratableFiber` failure,
+  - fibers are migratable by default at the runtime layer,
+  - any domain-affine or pinned placement semantics are now userland policy rather than core runtime behavior,
   - backup-thread/STW servicing still remain future work.
 - The important architectural change is that startup/signal/native-service state now has a home outside the semantic value and collector core.
