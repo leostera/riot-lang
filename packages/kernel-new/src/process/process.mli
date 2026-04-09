@@ -66,12 +66,21 @@ val stdout: t -> Fs.File.t option
 
 val stderr: t -> Fs.File.t option
 
+(** [try_wait process] is stable after readiness and after exit.
+
+    Once it returns [Some status], repeated calls keep returning the same status. *)
 val try_wait: t -> (status option, error) Result.t
 
+(** [to_source process] becomes ready when [try_wait] can observe an exit status.
+
+    Exit observation remains valid even if owned stdio handles are closed before the process is
+    reaped. *)
 val to_source: t -> Async.Source.t
 
 val kill: t -> signal:int -> (unit, error) Result.t
 
+(** [close process] closes owned pipe handles but does not discard exit observation through
+    [try_wait] or [to_source]. *)
 val close: t -> (unit, error) Result.t
 
 val current_pid: unit -> int

@@ -46,6 +46,13 @@ let with_process = fun process fn ->
       ())
     (fun () -> fn process)
 
+let rec close_processes = fun processes ->
+  match processes with
+  | [] -> ()
+  | process :: rest ->
+      let _ = Kernel.Process.close process in
+      close_processes rest
+
 let with_file = fun file fn ->
   protect
     ~finally:(fun () ->
@@ -317,6 +324,53 @@ let test_process_close_preserves_registered_exit_source = fun _ctx ->
               | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) -> Ok ()
               | Kernel.Result.Ok _ -> Error "expected closed process handles to leave exit readiness intact"
               | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error))))
+
+let test_process_source_deregister_before_close_is_harmless = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let* () = lift_async
+            (Kernel.Async.Poll.register
+              poll
+              (Kernel.Async.Token.make "process-deregister-then-close")
+              Kernel.Async.Interest.priority
+              source) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          let* () = lift_process (Kernel.Process.close process) in
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 533) process in
+          if status = Kernel.Process.Exited 0 then
+            Ok ()
+          else
+            Error "expected deregister-before-close process ownership to preserve exit observation"))
+
+let test_try_wait_is_stable_after_priority_readiness = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let source = Kernel.Process.to_source process in
+          let token = Kernel.Async.Token.make "process-priority-then-try-wait" in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          protect
+            ~finally:(fun () ->
+              let _ = Kernel.Async.Poll.deregister poll source in
+              ())
+            (fun () ->
+              let* () = wait_for_priority_token poll ~token in
+              let* first = lift_process (Kernel.Process.try_wait process) in
+              let* second = lift_process (Kernel.Process.try_wait process) in
+              match (first, second) with
+              | (Some (Kernel.Process.Exited 0), Some (Kernel.Process.Exited 0)) -> Ok ()
+              | _ -> Error "expected try_wait to stay stable after process priority readiness")))
 
 let test_kill_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -652,6 +706,85 @@ let test_repeated_spawn_and_poll_exit_stays_healthy = fun _ctx ->
       in
       loop 32)
 
+let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+  with_poll
+    (fun poll ->
+      let rec spawn_many remaining acc =
+        if remaining = 0 then
+          Ok (List.rev acc)
+        else
+          let* process = lift_process
+            (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.03"|] ~stdio ()) in
+          spawn_many (remaining - 1) (process :: acc)
+      in
+      let* processes = spawn_many 12 [] in
+      let sources = List.map Kernel.Process.to_source processes in
+      let rec deregister_all = function
+        | [] -> ()
+        | source :: rest ->
+            let _ = Kernel.Async.Poll.deregister poll source in
+            deregister_all rest
+      in
+      protect
+        ~finally:(fun () ->
+          deregister_all sources;
+          close_processes processes)
+        (fun () ->
+          let rec register index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.priority
+                    (Kernel.Process.to_source process)) in
+                register (index + 1) rest
+          in
+          let seen = Kernel.Array.make 12 false in
+          let rec mark = function
+            | [] -> ()
+            | event :: rest ->
+                if Kernel.Async.Event.is_priority event then
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
+                  if token >= 0 && token < 12 then
+                    Kernel.Array.set seen token true;
+                  mark rest
+          in
+          let rec all_seen index =
+            if index = 12 then
+              true
+            else if Kernel.Array.get seen index then
+              all_seen (index + 1)
+            else
+              false
+          in
+          let rec poll_until attempts =
+            if attempts = 0 then
+              Error "expected many process sources to report exit readiness after a burst exit"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              mark events;
+              if all_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
+          in
+          let rec verify = function
+            | [] -> Ok ()
+            | process :: rest ->
+                let* first = lift_process (Kernel.Process.try_wait process) in
+                let* second = lift_process (Kernel.Process.try_wait process) in
+                match (first, second) with
+                | (Some (Kernel.Process.Exited 0), Some (Kernel.Process.Exited 0)) -> verify rest
+                | _ -> Error "expected burst-exit processes to stay observable through repeated try_wait"
+          in
+          let* () = register 0 processes in
+          let* () = poll_until 16 in
+          verify processes))
+
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
   Test.case "Process stdout pipe roundtrips" test_stdout_pipe_roundtrips;
@@ -661,6 +794,8 @@ let tests = [
   Test.case "Process source reports exit readiness" test_process_source_reports_exit_ready;
   Test.case "Process source reregister updates token" test_process_source_reregister_updates_token;
   Test.case "Process close preserves registered exit source" test_process_close_preserves_registered_exit_source;
+  Test.case "Process source deregister before close is harmless" test_process_source_deregister_before_close_is_harmless;
+  Test.case "Process try_wait is stable after priority readiness" test_try_wait_is_stable_after_priority_readiness;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
   Test.case "Process sigterm reports signaled status" test_sigterm_reports_signaled_status;
   Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;
@@ -675,6 +810,7 @@ let tests = [
   Test.case "Process try_wait is stable after exit" test_try_wait_is_stable_after_exit;
   Test.case "Process kill after exit reports no-such-process" test_kill_after_exit_reports_no_such_process;
   Test.case "Process close is idempotent" test_process_close_is_idempotent;
+  Test.case ~size:Test.Large "Process many sources report burst exit readiness" test_many_process_sources_report_burst_exit_readiness;
   Test.case ~size:Test.Large "Process repeated spawn and poll exit stays healthy" test_repeated_spawn_and_poll_exit_stays_healthy;
 ]
 

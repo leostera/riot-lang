@@ -97,7 +97,7 @@ Immediate syscall-shaped operations that remain synchronous by design:
 - `Fs.File` metadata, path, directory, link, open, close, and copy helpers
 - `Process.spawn`, `Process.try_wait`, `Process.kill`, and `Process.close`
 - `Net.IpAddr.of_string`, `Net.SocketAddr.make`, and socket address inspection helpers
-- `Net.TcpListener.bind` / `local_addr` and `Net.UdpSocket.bind` / `local_addr`
+- `Net.TcpListener.bind` / `local_addr`, `Net.TcpStream.connect` / `shutdown`, and `Net.UdpSocket.bind` / `local_addr` / `connect`
 
 Nonblocking rule of thumb:
 

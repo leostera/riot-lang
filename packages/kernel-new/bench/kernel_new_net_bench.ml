@@ -344,6 +344,20 @@ let recv_udp = fun poll ~token socket buffer ->
   in
   loop ()
 
+let bench_tcp_connect_accept_loopback = fun () ->
+  with_poll
+    (fun poll ->
+      let listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let client = connect_stream poll addr in
+          protect ~finally:(fun () -> close_stream client)
+            (fun () ->
+              let server = accept_stream poll listener in
+              protect ~finally:(fun () -> close_stream server) (fun () -> ()))))
+
 let bench_udp_loopback_datagram = fun () ->
   with_poll
     (fun poll ->
@@ -380,6 +394,93 @@ let bench_udp_connected_roundtrip = fun () ->
               let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong")) in
               let client_buf = Kernel.Bytes.create 32 in
               ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf))))
+
+let bulk_payload = Kernel.Bytes.of_string (String.make 65_536 'x')
+
+let bulk_reply = Kernel.Bytes.of_string (String.make 65_536 'y')
+
+let bulk_len = Kernel.Bytes.length bulk_payload
+
+let bench_tcp_bulk_roundtrip = fun () ->
+  with_poll
+    (fun poll ->
+      let listener = lift_tcp_listener
+        (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_listener listener)
+        (fun () ->
+          let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
+          let client = connect_stream poll addr in
+          protect ~finally:(fun () -> close_stream client)
+            (fun () ->
+              let server = accept_stream poll listener in
+              protect ~finally:(fun () -> close_stream server)
+                (fun () ->
+                  let server_buf = Kernel.Bytes.create bulk_len in
+                  let client_buf = Kernel.Bytes.create bulk_len in
+                  write_all_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 420)
+                    client
+                    bulk_payload
+                    ~pos:0
+                    ~len:bulk_len;
+                  read_exact_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 421)
+                    server
+                    server_buf
+                    ~pos:0
+                    ~len:bulk_len;
+                  write_all_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 422)
+                    server
+                    bulk_reply
+                    ~pos:0
+                    ~len:bulk_len;
+                  read_exact_stream
+                    poll
+                    ~token:(Kernel.Async.Token.make 423)
+                    client
+                    client_buf
+                    ~pos:0
+                    ~len:bulk_len))))
+
+let bench_udp_connected_peer_filtered_roundtrip = fun () ->
+  with_poll
+    (fun poll ->
+      let server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      protect ~finally:(fun () -> close_udp server)
+        (fun () ->
+          let client = lift_udp
+            (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+          protect ~finally:(fun () -> close_udp client)
+            (fun () ->
+              let other = lift_udp
+                (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+              protect ~finally:(fun () -> close_udp other)
+                (fun () ->
+                  let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
+                  let client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
+                  let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
+                  let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
+                  let _ = lift_udp
+                    (Kernel.Net.UdpSocket.send_to other server_addr (Kernel.Bytes.of_string "rogue")) in
+                  let ignored = Kernel.Bytes.create 32 in
+                  (
+                    match Kernel.Net.UdpSocket.recv server ignored with
+                    | Kernel.Result.Error error ->
+                        if not (is_udp_would_block error) then
+                          panic_udp error
+                    | Kernel.Result.Ok _ -> Kernel.SystemError.panic "expected connected udp bench to ignore foreign datagrams"
+                  );
+                  let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping")) in
+                  let server_buf = Kernel.Bytes.create 32 in
+                  ignore (recv_udp poll ~token:(Kernel.Async.Token.make 424) server server_buf);
+                  let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong")) in
+                  let client_buf = Kernel.Bytes.create 32 in
+                  ignore (recv_udp poll ~token:(Kernel.Async.Token.make 425) client client_buf);
+                  ()))))
 
 let bench_udp_many_source_readiness = fun () ->
   with_poll
@@ -474,10 +575,13 @@ let bench_tcp_many_stream_readiness = fun () ->
 
 let benchmarks =
   Bench.[
+    with_config ~config:{ iterations = 25; warmup = 5 } "net tcp connect+accept loopback" bench_tcp_connect_accept_loopback;
     with_config ~config:{ iterations = 25; warmup = 5 } "net tcp loopback roundtrip" bench_tcp_loopback_roundtrip;
     with_config ~config:{ iterations = 25; warmup = 5 } "net tcp vectored roundtrip" bench_tcp_vectored_roundtrip;
+    with_config ~config:{ iterations = 15; warmup = 3 } "net tcp bulk roundtrip: 64KiB" bench_tcp_bulk_roundtrip;
     with_config ~config:{ iterations = 25; warmup = 5 } "net udp loopback datagram" bench_udp_loopback_datagram;
     with_config ~config:{ iterations = 25; warmup = 5 } "net udp connected roundtrip" bench_udp_connected_roundtrip;
+    with_config ~config:{ iterations = 25; warmup = 5 } "net udp connected peer-filtered roundtrip" bench_udp_connected_peer_filtered_roundtrip;
     with_config ~config:{ iterations = 20; warmup = 5 } "net udp many-source readiness" bench_udp_many_source_readiness;
     with_config ~config:{ iterations = 20; warmup = 5 } "net tcp many-stream readiness" bench_tcp_many_stream_readiness;
   ]

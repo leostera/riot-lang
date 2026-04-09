@@ -231,6 +231,28 @@ let test_timer_repeated_register_reregister_and_deregister_stays_healthy = fun _
       in
       loop 16)
 
+let test_timer_source_can_be_reused_after_deregister = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      let source = Kernel.Time.Timer.to_source timer in
+      let first_token = Kernel.Async.Token.make "first-timer-registration" in
+      let second_token = Kernel.Async.Token.make "second-timer-registration" in
+      let* () = lift_async
+        (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source) in
+      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+      let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+      if has_readable_token first_token quiet then
+        Error "expected deregistered timer source to stay quiet before reuse"
+      else
+        let* () = lift_async
+          (Kernel.Async.Poll.register poll second_token Kernel.Async.Interest.readable source) in
+        protect
+          ~finally:(fun () ->
+            let _ = Kernel.Async.Poll.deregister poll source in
+            ())
+          (fun () -> wait_for_readable_token poll ~token:second_token))
+
 let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
   with_poll
     (fun poll ->
@@ -302,6 +324,7 @@ let tests = [
   Test.case "Time.Timer reregister updates token" test_timer_reregister_updates_token;
   Test.case "Time.Timer deregister after first tick stops future events" test_timer_deregister_after_first_tick_stops_future_events;
   Test.case "Time.Timer repeated register, reregister, and deregister stays healthy" test_timer_repeated_register_reregister_and_deregister_stays_healthy;
+  Test.case "Time.Timer source can be reused after deregister" test_timer_source_can_be_reused_after_deregister;
   Test.case "Time.Timer every_ns spacing stays within a reasonable tolerance" test_timer_every_ns_spacing_is_reasonable;
 ]
 

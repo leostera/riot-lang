@@ -170,6 +170,29 @@ let write_all_stream = fun poll ~token stream buffer ->
   in
   loop 0 (Kernel.Bytes.length buffer)
 
+let write_all_vectored = fun poll ~token stream iov ->
+  let rec loop pos len =
+    if len = 0 then
+      ()
+    else
+      let slice = Kernel.IO.Iovec.sub ~pos ~len iov in
+      match Kernel.Net.TcpStream.write_vectored stream slice with
+      | Kernel.Result.Ok written ->
+          if written <= 0 then
+            fail "expected property tcp vectored write to make progress"
+          else
+            loop (pos + written) (len - written)
+      | Kernel.Result.Error error ->
+          if is_tcp_stream_would_block error then
+            if wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) then
+              loop pos len
+            else
+              fail "expected property tcp vectored write to become writable"
+          else
+            fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  in
+  loop 0 (Kernel.IO.Iovec.length iov)
+
 let read_exact_stream = fun poll ~token stream buffer ->
   let rec loop pos len =
     if len = 0 then
@@ -191,6 +214,29 @@ let read_exact_stream = fun poll ~token stream buffer ->
             fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
   in
   loop 0 (Kernel.Bytes.length buffer)
+
+let read_exact_vectored = fun poll ~token stream iov ~len ->
+  let rec loop pos remaining =
+    if remaining = 0 then
+      ()
+    else
+      let slice = Kernel.IO.Iovec.sub ~pos ~len:remaining iov in
+      match Kernel.Net.TcpStream.read_vectored stream slice with
+      | Kernel.Result.Ok read ->
+          if read <= 0 then
+            fail "expected property tcp vectored read to make progress"
+          else
+            loop (pos + read) (remaining - read)
+      | Kernel.Result.Error error ->
+          if is_tcp_stream_would_block error then
+            if wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream) then
+              loop pos remaining
+            else
+              fail "expected property tcp vectored read to become readable"
+          else
+            fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  in
+  loop 0 len
 
 let recv_from_udp = fun poll ~token socket buffer ->
   let rec loop () =
@@ -384,6 +430,14 @@ let socket_addr_ipv6_roundtrips =
               let addr_ip, addr_port = Kernel.Net.SocketAddr.to_parts addr in
               Kernel.Net.IpAddr.equal addr_ip ip && addr_port = port)
 
+let socket_addr_loopback_v6_preserves_parts =
+  property "Net.SocketAddr.loopback_v6 preserves loopback parts" Arbitrary.int
+    (fun raw_port ->
+      let port = Int.abs raw_port mod 65_536 in
+      let addr = Kernel.Net.SocketAddr.loopback_v6 ~port in
+      let addr_ip, addr_port = Kernel.Net.SocketAddr.to_parts addr in
+      Kernel.Net.IpAddr.equal addr_ip Kernel.Net.IpAddr.v6_loopback && addr_port = port)
+
 let file_slice_roundtrips =
   property "Fs.File partial write and read preserve the selected slice" Arbitrary.(pair
     string
@@ -526,6 +580,50 @@ let tcp_loopback_roundtrips_small_payload =
                               read_exact_stream poll ~token:(Kernel.Async.Token.make 804) server buffer;
                               Kernel.Bytes.sub_string buffer 0 (String.length payload) = payload)))))
 
+let tcp_vectored_loopback_roundtrips_small_payload =
+  property "Net.TcpStream loopback roundtrips small vectored payloads" Arbitrary.(array string)
+    (fun values ->
+      let pieces = array_to_list values in
+      assume (List.for_all (fun value -> String.length value > 0) pieces);
+      let payload = String.concat "" pieces in
+      let total = String.length payload in
+      assume (total > 0);
+      assume (total <= 64);
+      with_poll
+        (fun poll ->
+          match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
+          | Kernel.Result.Error error -> fail
+            (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+          | Kernel.Result.Ok listener ->
+              protect ~finally:(fun () -> close_listener listener)
+                (fun () ->
+                  match Kernel.Net.TcpListener.local_addr listener with
+                  | Kernel.Result.Error error -> fail
+                    (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+                  | Kernel.Result.Ok addr ->
+                      let client = connect_stream poll addr in
+                      protect ~finally:(fun () -> close_stream client)
+                        (fun () ->
+                          let server = accept_stream poll listener in
+                          protect ~finally:(fun () -> close_stream server)
+                            (fun () ->
+                              let count =
+                                if total < 4 then
+                                  total
+                                else
+                                  4
+                              in
+                              let outbound = Kernel.IO.Iovec.of_string_array values in
+                              let inbound = Kernel.IO.Iovec.create ~count ~size:total () in
+                              write_all_vectored poll ~token:(Kernel.Async.Token.make 806) client outbound;
+                              read_exact_vectored
+                                poll
+                                ~token:(Kernel.Async.Token.make 807)
+                                server
+                                inbound
+                                ~len:total;
+                              String.sub (Kernel.IO.Iovec.into_string inbound) 0 total = payload)))))
+
 let udp_loopback_roundtrips_small_payload =
   property "Net.UdpSocket loopback preserves small datagrams" Arbitrary.string
     (fun payload ->
@@ -578,10 +676,12 @@ let tests = [
   socket_addr_roundtrips;
   socket_addr_ipv4_roundtrips;
   socket_addr_ipv6_roundtrips;
+  socket_addr_loopback_v6_preserves_parts;
   file_slice_roundtrips;
   file_vectored_roundtrips;
   file_scalar_write_vectored_read_roundtrips;
   tcp_loopback_roundtrips_small_payload;
+  tcp_vectored_loopback_roundtrips_small_payload;
   udp_loopback_roundtrips_small_payload;
 ]
 
