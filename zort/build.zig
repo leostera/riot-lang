@@ -119,6 +119,11 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_case.step);
     }
 
+    const e2e_ml_step = b.step("e2e-ml", "Compile and run compiler-emitted OCaml smoke programs");
+    const e2e_ml_script = b.addSystemCommand(&.{ "sh", "e2e/compile_ml_examples.sh" });
+    e2e_ml_script.setCwd(b.path("."));
+    e2e_ml_step.dependOn(&e2e_ml_script.step);
+
     const installed_module = b.addModule("zort", .{
         .root_source_file = b.path("src/lib.zig"),
     });

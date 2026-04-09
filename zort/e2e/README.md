@@ -15,10 +15,14 @@ Current cases:
   trace counters.
 - `effects_roundtrip_smoke.zig`: effect capture, suspended-stack inspection,
   continuation resume, and control-flow trace counters.
+- `ml/*.ml`: compiler-emitted native smoke fixtures built with `ocamlopt.opt`
+  in `-output-obj` mode and linked today against vendor `libasmrun` as the
+  baseline runtime.
 
 Run them with:
 
 - `zig build e2e`
+- `zig build e2e-ml`
 
 They also run as part of:
 
