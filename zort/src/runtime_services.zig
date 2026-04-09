@@ -1,26 +1,18 @@
-const builtin = @import("builtin");
 const std = @import("std");
+const platform_caps_mod = @import("platform_caps.zig");
 const root_provider = @import("root_provider.zig");
 const value = @import("value.zig");
 
+pub const PlatformCaps = platform_caps_mod.PlatformCaps;
+pub const RuntimePermissions = platform_caps_mod.RuntimePermissions;
+pub const HostAccess = platform_caps_mod.HostAccess;
 pub const RootProvider = root_provider.RootProvider;
 pub const RootVisitor = root_provider.RootVisitor;
 pub const Value = value.Value;
 
-pub const supports_native_signal_ingress = switch (builtin.os.tag) {
-    .linux,
-    .macos,
-    .ios,
-    .tvos,
-    .watchos,
-    .visionos,
-    .freebsd,
-    .netbsd,
-    .openbsd,
-    .dragonfly,
-    => true,
-    else => false,
-};
+const compiled_platform_caps = PlatformCaps.detect();
+
+pub const supports_native_signal_ingress = compiled_platform_caps.posix_signals;
 
 pub const SignalIngressSnapshot = struct {
     installed: bool,
@@ -32,66 +24,78 @@ pub const SignalIngressSnapshot = struct {
     registered_signal_handlers: usize,
 };
 
-const GlobalSignalBridge = struct {
-    mutex: std.Thread.Mutex = .{},
-    signal_owner: ?*RuntimeServices = null,
-    installed_mask: u64 = 0,
-    previous_actions: [64]?std.posix.Sigaction = [_]?std.posix.Sigaction{null} ** 64,
-    alt_stack_owner: ?*RuntimeServices = null,
-    alt_stack_previous: ?std.posix.stack_t = null,
-    alt_stack_memory: ?[]u8 = null,
-    restored_foreign_stack: bool = false,
-};
-
-var global_signal_bridge: GlobalSignalBridge = .{};
-var global_signal_owner_ptr = std.atomic.Value(usize).init(0);
-
-fn signalIngressHandler(sig: i32) callconv(.c) void {
-    if (sig < 0 or sig >= 64) return;
-    const raw_owner = global_signal_owner_ptr.load(.acquire);
-    if (raw_owner == 0) return;
-    const owner: *RuntimeServices = @ptrFromInt(raw_owner);
-    owner.recordSignalFromHandler(@intCast(sig));
-}
-
-fn runtimeSignalAction(use_onstack: bool) std.posix.Sigaction {
-    var action: std.posix.Sigaction = .{
-        .handler = .{ .handler = signalIngressHandler },
-        .mask = std.posix.sigemptyset(),
-        .flags = std.posix.SA.RESTART,
+const PosixSignalRuntime = if (compiled_platform_caps.posix_signals) struct {
+    const GlobalSignalBridge = struct {
+        mutex: std.Thread.Mutex = .{},
+        signal_owner: ?*RuntimeServices = null,
+        installed_mask: u64 = 0,
+        previous_actions: [64]?std.posix.Sigaction = [_]?std.posix.Sigaction{null} ** 64,
+        alt_stack_owner: ?*RuntimeServices = null,
+        alt_stack_previous: ?std.posix.stack_t = null,
+        alt_stack_memory: ?[]u8 = null,
+        restored_foreign_stack: bool = false,
     };
-    if (use_onstack) action.flags |= std.posix.SA.ONSTACK;
-    return action;
-}
 
-fn defaultSignalStackSize() usize {
-    const preferred = std.math.cast(usize, std.c.SIGSTKSZ) orelse 8192;
-    const minimum = std.math.cast(usize, std.c.MINSIGSTKSZ) orelse preferred;
-    return @max(preferred, minimum);
-}
+    var global_signal_bridge: GlobalSignalBridge = .{};
+    var global_signal_owner_ptr = std.atomic.Value(usize).init(0);
 
-fn disabledAltStack() std.posix.stack_t {
-    var stack: std.posix.stack_t = undefined;
-    @field(stack, "sp") = @ptrFromInt(@as(usize, 1));
-    @field(stack, "size") = @as(@TypeOf(@field(stack, "size")), @intCast(defaultSignalStackSize()));
-    @field(stack, "flags") = std.c.SS.DISABLE;
-    return stack;
-}
+    fn signalIngressHandler(sig: i32) callconv(.c) void {
+        if (sig < 0 or sig >= 64) return;
+        const raw_owner = global_signal_owner_ptr.load(.acquire);
+        if (raw_owner == 0) return;
+        const owner: *RuntimeServices = @ptrFromInt(raw_owner);
+        owner.recordSignalFromHandler(@intCast(sig));
+    }
 
-fn enabledAltStack(memory: []u8) std.posix.stack_t {
-    var stack: std.posix.stack_t = undefined;
-    @field(stack, "sp") = memory.ptr;
-    @field(stack, "size") = @as(@TypeOf(@field(stack, "size")), @intCast(memory.len));
-    @field(stack, "flags") = 0;
-    return stack;
-}
+    fn runtimeSignalAction(use_onstack: bool) std.posix.Sigaction {
+        var action: std.posix.Sigaction = .{
+            .handler = .{ .handler = signalIngressHandler },
+            .mask = std.posix.sigemptyset(),
+            .flags = std.posix.SA.RESTART,
+        };
+        if (use_onstack) action.flags |= std.posix.SA.ONSTACK;
+        return action;
+    }
 
-fn altStackWasEnabled(stack: std.posix.stack_t) bool {
-    return (@field(stack, "flags") & std.c.SS.DISABLE) == 0 and @field(stack, "size") != 0;
+    fn defaultSignalStackSize() usize {
+        const preferred = std.math.cast(usize, std.c.SIGSTKSZ) orelse 8192;
+        const minimum = std.math.cast(usize, std.c.MINSIGSTKSZ) orelse preferred;
+        return @max(preferred, minimum);
+    }
+
+    fn disabledAltStack() std.posix.stack_t {
+        var stack: std.posix.stack_t = undefined;
+        @field(stack, "sp") = @ptrFromInt(@as(usize, 1));
+        @field(stack, "size") = @as(@TypeOf(@field(stack, "size")), @intCast(defaultSignalStackSize()));
+        @field(stack, "flags") = std.c.SS.DISABLE;
+        return stack;
+    }
+
+    fn enabledAltStack(memory: []u8) std.posix.stack_t {
+        var stack: std.posix.stack_t = undefined;
+        @field(stack, "sp") = memory.ptr;
+        @field(stack, "size") = @as(@TypeOf(@field(stack, "size")), @intCast(memory.len));
+        @field(stack, "flags") = 0;
+        return stack;
+    }
+
+    fn altStackWasEnabled(stack: std.posix.stack_t) bool {
+        return (@field(stack, "flags") & std.c.SS.DISABLE) == 0 and @field(stack, "size") != 0;
+    }
+} else struct {};
+
+fn platformDefaultSignalStackSize() usize {
+    if (comptime compiled_platform_caps.alternate_signal_stack) {
+        return PosixSignalRuntime.defaultSignalStackSize();
+    }
+    return 0;
 }
 
 pub const RuntimeServices = struct {
     allocator: std.mem.Allocator,
+    compiled_caps: PlatformCaps,
+    runtime_permissions: RuntimePermissions,
+    host_access: HostAccess,
     state_lock: std.Thread.Mutex = .{},
     startup_depth: usize = 0,
     was_shutdown: bool = false,
@@ -118,10 +122,25 @@ pub const RuntimeServices = struct {
         value: Value,
     };
 
-    pub fn init(allocator: std.mem.Allocator) RuntimeServices {
+    pub fn init(allocator: std.mem.Allocator, compiled_caps: PlatformCaps, runtime_permissions: RuntimePermissions) RuntimeServices {
         return .{
             .allocator = allocator,
+            .compiled_caps = compiled_caps,
+            .runtime_permissions = runtime_permissions.normalized(),
+            .host_access = HostAccess.from(compiled_caps, runtime_permissions),
         };
+    }
+
+    pub fn platformCaps(self: *const RuntimeServices) PlatformCaps {
+        return self.compiled_caps;
+    }
+
+    pub fn permissions(self: *const RuntimeServices) RuntimePermissions {
+        return self.runtime_permissions;
+    }
+
+    pub fn hostAccess(self: *const RuntimeServices) HostAccess {
+        return self.host_access;
     }
 
     pub fn deinit(self: *RuntimeServices) void {
@@ -287,145 +306,165 @@ pub const RuntimeServices = struct {
     }
 
     pub fn installSignalIngress(self: *RuntimeServices, signo: u8) Error!void {
-        if (!supports_native_signal_ingress) return error.UnsupportedPlatform;
-        if (signo >= 64) return error.UnsupportedSignal;
+        if (comptime compiled_platform_caps.posix_signals) {
+            if (!self.compiled_caps.posix_signals) return error.UnsupportedPlatform;
+            if (signo >= 64) return error.UnsupportedSignal;
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+            PosixSignalRuntime.global_signal_bridge.mutex.lock();
+            defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
 
-        if (global_signal_bridge.signal_owner) |owner| {
-            if (owner != self) return error.SignalIngressBusy;
+            if (PosixSignalRuntime.global_signal_bridge.signal_owner) |owner| {
+                if (owner != self) return error.SignalIngressBusy;
+            } else {
+                PosixSignalRuntime.global_signal_bridge.signal_owner = self;
+                PosixSignalRuntime.global_signal_owner_ptr.store(@intFromPtr(self), .release);
+            }
+
+            const bit = (@as(u64, 1) << @intCast(signo));
+            if ((PosixSignalRuntime.global_signal_bridge.installed_mask & bit) != 0) return;
+
+            const act = PosixSignalRuntime.runtimeSignalAction(PosixSignalRuntime.global_signal_bridge.alt_stack_owner == self);
+            var previous: std.posix.Sigaction = undefined;
+            std.posix.sigaction(signo, &act, &previous);
+            PosixSignalRuntime.global_signal_bridge.previous_actions[signo] = previous;
+            PosixSignalRuntime.global_signal_bridge.installed_mask |= bit;
         } else {
-            global_signal_bridge.signal_owner = self;
-            global_signal_owner_ptr.store(@intFromPtr(self), .release);
+            return error.UnsupportedPlatform;
         }
-
-        const bit = (@as(u64, 1) << @intCast(signo));
-        if ((global_signal_bridge.installed_mask & bit) != 0) return;
-
-        const act = runtimeSignalAction(global_signal_bridge.alt_stack_owner == self);
-        var previous: std.posix.Sigaction = undefined;
-        std.posix.sigaction(signo, &act, &previous);
-        global_signal_bridge.previous_actions[signo] = previous;
-        global_signal_bridge.installed_mask |= bit;
     }
 
     pub fn uninstallSignalIngress(self: *RuntimeServices, signo: u8) Error!bool {
-        if (!supports_native_signal_ingress) return error.UnsupportedPlatform;
-        if (signo >= 64) return error.UnsupportedSignal;
+        if (comptime compiled_platform_caps.posix_signals) {
+            if (!self.compiled_caps.posix_signals) return error.UnsupportedPlatform;
+            if (signo >= 64) return error.UnsupportedSignal;
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+            PosixSignalRuntime.global_signal_bridge.mutex.lock();
+            defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
 
-        if (global_signal_bridge.signal_owner != self) return error.SignalIngressNotInstalled;
+            if (PosixSignalRuntime.global_signal_bridge.signal_owner != self) return error.SignalIngressNotInstalled;
 
-        const bit = (@as(u64, 1) << @intCast(signo));
-        if ((global_signal_bridge.installed_mask & bit) == 0) return false;
+            const bit = (@as(u64, 1) << @intCast(signo));
+            if ((PosixSignalRuntime.global_signal_bridge.installed_mask & bit) == 0) return false;
 
-        if (global_signal_bridge.previous_actions[signo]) |previous| {
-            std.posix.sigaction(signo, &previous, null);
+            if (PosixSignalRuntime.global_signal_bridge.previous_actions[signo]) |previous| {
+                std.posix.sigaction(signo, &previous, null);
+            }
+            PosixSignalRuntime.global_signal_bridge.previous_actions[signo] = null;
+            PosixSignalRuntime.global_signal_bridge.installed_mask &= ~bit;
+
+            if (PosixSignalRuntime.global_signal_bridge.installed_mask == 0) {
+                PosixSignalRuntime.global_signal_bridge.signal_owner = null;
+                PosixSignalRuntime.global_signal_owner_ptr.store(0, .release);
+            }
+            return true;
+        } else {
+            return error.UnsupportedPlatform;
         }
-        global_signal_bridge.previous_actions[signo] = null;
-        global_signal_bridge.installed_mask &= ~bit;
-
-        if (global_signal_bridge.installed_mask == 0) {
-            global_signal_bridge.signal_owner = null;
-            global_signal_owner_ptr.store(0, .release);
-        }
-        return true;
     }
 
     pub fn disableAllSignalIngress(self: *RuntimeServices) Error!void {
-        if (!supports_native_signal_ingress) return;
+        if (comptime compiled_platform_caps.posix_signals) {
+            if (!self.compiled_caps.posix_signals) return;
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+            PosixSignalRuntime.global_signal_bridge.mutex.lock();
+            defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
 
-        if (global_signal_bridge.signal_owner != self) return;
+            if (PosixSignalRuntime.global_signal_bridge.signal_owner != self) return;
 
-        for (0..64) |signo| {
-            const bit = (@as(u64, 1) << @intCast(signo));
-            if ((global_signal_bridge.installed_mask & bit) == 0) continue;
-            if (global_signal_bridge.previous_actions[signo]) |previous| {
-                std.posix.sigaction(@intCast(signo), &previous, null);
+            for (0..64) |signo| {
+                const bit = (@as(u64, 1) << @intCast(signo));
+                if ((PosixSignalRuntime.global_signal_bridge.installed_mask & bit) == 0) continue;
+                if (PosixSignalRuntime.global_signal_bridge.previous_actions[signo]) |previous| {
+                    std.posix.sigaction(@intCast(signo), &previous, null);
+                }
+                PosixSignalRuntime.global_signal_bridge.previous_actions[signo] = null;
             }
-            global_signal_bridge.previous_actions[signo] = null;
+            PosixSignalRuntime.global_signal_bridge.installed_mask = 0;
+            PosixSignalRuntime.global_signal_bridge.signal_owner = null;
+            PosixSignalRuntime.global_signal_owner_ptr.store(0, .release);
+        } else {
+            return;
         }
-        global_signal_bridge.installed_mask = 0;
-        global_signal_bridge.signal_owner = null;
-        global_signal_owner_ptr.store(0, .release);
     }
 
     pub fn enableAlternateSignalStack(self: *RuntimeServices, requested_size: ?usize) Error!void {
-        if (!supports_native_signal_ingress) return error.UnsupportedPlatform;
+        if (comptime compiled_platform_caps.alternate_signal_stack) {
+            if (!self.compiled_caps.alternate_signal_stack) return error.UnsupportedPlatform;
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+            PosixSignalRuntime.global_signal_bridge.mutex.lock();
+            defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
 
-        if (global_signal_bridge.alt_stack_owner) |owner| {
-            if (owner != self) return error.AlternateSignalStackBusy;
-            return;
-        }
-
-        const size = requested_size orelse defaultSignalStackSize();
-        const memory = try self.allocator.alloc(u8, size);
-        errdefer self.allocator.free(memory);
-
-        var previous: std.posix.stack_t = undefined;
-        try std.posix.sigaltstack(null, &previous);
-        var next = enabledAltStack(memory);
-        try std.posix.sigaltstack(&next, null);
-
-        global_signal_bridge.alt_stack_owner = self;
-        global_signal_bridge.alt_stack_previous = previous;
-        global_signal_bridge.alt_stack_memory = memory;
-        global_signal_bridge.restored_foreign_stack = altStackWasEnabled(previous);
-
-        if (global_signal_bridge.signal_owner == self and global_signal_bridge.installed_mask != 0) {
-            for (0..64) |signo| {
-                const bit = (@as(u64, 1) << @intCast(signo));
-                if ((global_signal_bridge.installed_mask & bit) == 0) continue;
-                const act = runtimeSignalAction(true);
-                std.posix.sigaction(@intCast(signo), &act, null);
+            if (PosixSignalRuntime.global_signal_bridge.alt_stack_owner) |owner| {
+                if (owner != self) return error.AlternateSignalStackBusy;
+                return;
             }
+
+            const size = requested_size orelse platformDefaultSignalStackSize();
+            const memory = try self.allocator.alloc(u8, size);
+            errdefer self.allocator.free(memory);
+
+            var previous: std.posix.stack_t = undefined;
+            try std.posix.sigaltstack(null, &previous);
+            var next = PosixSignalRuntime.enabledAltStack(memory);
+            try std.posix.sigaltstack(&next, null);
+
+            PosixSignalRuntime.global_signal_bridge.alt_stack_owner = self;
+            PosixSignalRuntime.global_signal_bridge.alt_stack_previous = previous;
+            PosixSignalRuntime.global_signal_bridge.alt_stack_memory = memory;
+            PosixSignalRuntime.global_signal_bridge.restored_foreign_stack = PosixSignalRuntime.altStackWasEnabled(previous);
+
+            if (PosixSignalRuntime.global_signal_bridge.signal_owner == self and PosixSignalRuntime.global_signal_bridge.installed_mask != 0) {
+                for (0..64) |signo| {
+                    const bit = (@as(u64, 1) << @intCast(signo));
+                    if ((PosixSignalRuntime.global_signal_bridge.installed_mask & bit) == 0) continue;
+                    const act = PosixSignalRuntime.runtimeSignalAction(true);
+                    std.posix.sigaction(@intCast(signo), &act, null);
+                }
+            }
+        } else {
+            return error.UnsupportedPlatform;
         }
     }
 
     pub fn disableAlternateSignalStack(self: *RuntimeServices) Error!void {
-        if (!supports_native_signal_ingress) return;
+        if (comptime compiled_platform_caps.alternate_signal_stack) {
+            if (!self.compiled_caps.alternate_signal_stack) return;
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+            PosixSignalRuntime.global_signal_bridge.mutex.lock();
+            defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
 
-        if (global_signal_bridge.alt_stack_owner != self) return;
+            if (PosixSignalRuntime.global_signal_bridge.alt_stack_owner != self) return;
 
-        if (global_signal_bridge.signal_owner == self and global_signal_bridge.installed_mask != 0) {
-            for (0..64) |signo| {
-                const bit = (@as(u64, 1) << @intCast(signo));
-                if ((global_signal_bridge.installed_mask & bit) == 0) continue;
-                const act = runtimeSignalAction(false);
-                std.posix.sigaction(@intCast(signo), &act, null);
+            if (PosixSignalRuntime.global_signal_bridge.signal_owner == self and PosixSignalRuntime.global_signal_bridge.installed_mask != 0) {
+                for (0..64) |signo| {
+                    const bit = (@as(u64, 1) << @intCast(signo));
+                    if ((PosixSignalRuntime.global_signal_bridge.installed_mask & bit) == 0) continue;
+                    const act = PosixSignalRuntime.runtimeSignalAction(false);
+                    std.posix.sigaction(@intCast(signo), &act, null);
+                }
             }
-        }
 
-        var disabled = disabledAltStack();
-        try std.posix.sigaltstack(&disabled, null);
+            var disabled = PosixSignalRuntime.disabledAltStack();
+            try std.posix.sigaltstack(&disabled, null);
 
-        if (global_signal_bridge.alt_stack_previous) |previous| {
-            if (altStackWasEnabled(previous)) {
-                var restore_copy = previous;
-                std.posix.sigaltstack(&restore_copy, null) catch |err| switch (err) {
-                    error.SizeTooSmall => {},
-                    else => return err,
-                };
+            if (PosixSignalRuntime.global_signal_bridge.alt_stack_previous) |previous| {
+                if (PosixSignalRuntime.altStackWasEnabled(previous)) {
+                    var restore_copy = previous;
+                    std.posix.sigaltstack(&restore_copy, null) catch |err| switch (err) {
+                        error.SizeTooSmall => {},
+                        else => return err,
+                    };
+                }
             }
-        }
 
-        if (global_signal_bridge.alt_stack_memory) |memory| self.allocator.free(memory);
-        global_signal_bridge.alt_stack_owner = null;
-        global_signal_bridge.alt_stack_previous = null;
-        global_signal_bridge.alt_stack_memory = null;
-        global_signal_bridge.restored_foreign_stack = false;
+            if (PosixSignalRuntime.global_signal_bridge.alt_stack_memory) |memory| self.allocator.free(memory);
+            PosixSignalRuntime.global_signal_bridge.alt_stack_owner = null;
+            PosixSignalRuntime.global_signal_bridge.alt_stack_previous = null;
+            PosixSignalRuntime.global_signal_bridge.alt_stack_memory = null;
+            PosixSignalRuntime.global_signal_bridge.restored_foreign_stack = false;
+        } else {
+            return;
+        }
     }
 
     pub fn signalIngressSnapshot(self: *const RuntimeServices) SignalIngressSnapshot {
@@ -435,27 +474,42 @@ pub const RuntimeServices = struct {
         const registered_signal_handlers = mutable.countRegisteredSignalHandlersLocked();
         mutable.state_lock.unlock();
 
-        global_signal_bridge.mutex.lock();
-        defer global_signal_bridge.mutex.unlock();
+        if (comptime !compiled_platform_caps.posix_signals) {
+            return .{
+                .installed = false,
+                .installed_signals = 0,
+                .owns_alternate_stack = false,
+                .alternate_stack_size = 0,
+                .restored_foreign_stack = false,
+                .named_value_count = named_value_count,
+                .registered_signal_handlers = registered_signal_handlers,
+            };
+        }
+
+        PosixSignalRuntime.global_signal_bridge.mutex.lock();
+        defer PosixSignalRuntime.global_signal_bridge.mutex.unlock();
         return .{
-            .installed = global_signal_bridge.signal_owner == self,
-            .installed_signals = if (global_signal_bridge.signal_owner == self) global_signal_bridge.installed_mask else 0,
-            .owns_alternate_stack = global_signal_bridge.alt_stack_owner == self,
-            .alternate_stack_size = if (global_signal_bridge.alt_stack_owner == self and global_signal_bridge.alt_stack_memory != null)
-                global_signal_bridge.alt_stack_memory.?.len
+            .installed = PosixSignalRuntime.global_signal_bridge.signal_owner == self,
+            .installed_signals = if (PosixSignalRuntime.global_signal_bridge.signal_owner == self) PosixSignalRuntime.global_signal_bridge.installed_mask else 0,
+            .owns_alternate_stack = PosixSignalRuntime.global_signal_bridge.alt_stack_owner == self,
+            .alternate_stack_size = if (PosixSignalRuntime.global_signal_bridge.alt_stack_owner == self and PosixSignalRuntime.global_signal_bridge.alt_stack_memory != null)
+                PosixSignalRuntime.global_signal_bridge.alt_stack_memory.?.len
             else
                 0,
-            .restored_foreign_stack = global_signal_bridge.alt_stack_owner == self and global_signal_bridge.restored_foreign_stack,
+            .restored_foreign_stack = PosixSignalRuntime.global_signal_bridge.alt_stack_owner == self and PosixSignalRuntime.global_signal_bridge.restored_foreign_stack,
             .named_value_count = named_value_count,
             .registered_signal_handlers = registered_signal_handlers,
         };
     }
 
     pub fn raiseSignal(self: *RuntimeServices, signo: u8) Error!void {
-        _ = self;
-        if (!supports_native_signal_ingress) return error.UnsupportedPlatform;
-        if (signo >= 64) return error.UnsupportedSignal;
-        try std.posix.raise(signo);
+        if (comptime compiled_platform_caps.posix_signals) {
+            if (!self.compiled_caps.posix_signals) return error.UnsupportedPlatform;
+            if (signo >= 64) return error.UnsupportedSignal;
+            try std.posix.raise(signo);
+        } else {
+            return error.UnsupportedPlatform;
+        }
     }
 
     fn countRegisteredSignalHandlersLocked(self: *const RuntimeServices) usize {
@@ -505,7 +559,7 @@ pub const RuntimeServices = struct {
 };
 
 test "runtime_services: startup and shutdown are reference-counted" {
-    var services = RuntimeServices.init(std.testing.allocator);
+    var services = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer services.deinit();
 
     try services.startup();
@@ -519,7 +573,7 @@ test "runtime_services: startup and shutdown are reference-counted" {
 }
 
 test "runtime_services: named values are rooted through provider" {
-    var services = RuntimeServices.init(std.testing.allocator);
+    var services = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer services.deinit();
 
     try services.registerNamedValue("unit", Value.fromInt(0));
@@ -546,7 +600,7 @@ test "runtime_services: named values are rooted through provider" {
 }
 
 test "runtime_services: pending signals and blocking sections are explicit" {
-    var services = RuntimeServices.init(std.testing.allocator);
+    var services = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer services.deinit();
 
     services.enterBlockingSection();
@@ -565,7 +619,7 @@ test "runtime_services: pending signals and blocking sections are explicit" {
 }
 
 test "runtime_services: signal handlers are rooted runtime state" {
-    var services = RuntimeServices.init(std.testing.allocator);
+    var services = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer services.deinit();
 
     try services.registerSignalHandler(2, Value.fromHeapRef(.{ .index = 8, .generation = 1 }));
@@ -576,7 +630,7 @@ test "runtime_services: signal handlers are rooted runtime state" {
 test "runtime_services: real signal ingress owns alternate stack and restores process handlers" {
     if (!supports_native_signal_ingress) return error.SkipZigTest;
 
-    var services = RuntimeServices.init(std.testing.allocator);
+    var services = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer services.deinit();
 
     const signo: u8 = @intCast(std.posix.SIG.USR1);
@@ -586,7 +640,7 @@ test "runtime_services: real signal ingress owns alternate stack and restores pr
     const snapshot = services.signalIngressSnapshot();
     try std.testing.expect(snapshot.installed);
     try std.testing.expect(snapshot.owns_alternate_stack);
-    try std.testing.expect(snapshot.alternate_stack_size >= defaultSignalStackSize());
+    try std.testing.expect(snapshot.alternate_stack_size >= platformDefaultSignalStackSize());
     try std.testing.expectEqual((@as(u64, 1) << @intCast(signo)), snapshot.installed_signals);
 
     try services.raiseSignal(signo);
@@ -604,9 +658,9 @@ test "runtime_services: real signal ingress owns alternate stack and restores pr
 }
 
 test "runtime_services: service state is synchronized and runtime-local" {
-    var left = RuntimeServices.init(std.testing.allocator);
+    var left = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer left.deinit();
-    var right = RuntimeServices.init(std.testing.allocator);
+    var right = RuntimeServices.init(std.testing.allocator, compiled_platform_caps, .{});
     defer right.deinit();
 
     try left.registerNamedValue("shared", Value.fromInt(1));
@@ -638,4 +692,35 @@ test "runtime_services: service state is synchronized and runtime-local" {
     try std.testing.expect(left.lookupSignalHandler(2) != null);
     try std.testing.expect(right.lookupNamedValue("counter") == null);
     try std.testing.expect(right.lookupSignalHandler(2) == null);
+}
+
+test "runtime_services: host access is the intersection of compiled caps and runtime permissions" {
+    const caps = PlatformCaps{
+        .os = .wasi,
+        .threads = false,
+        .stop_the_world = false,
+        .monotonic_clock = true,
+        .filesystem = true,
+        .network = false,
+        .environment = false,
+        .subprocesses = false,
+        .blocking_syscalls = false,
+        .posix_signals = false,
+        .alternate_signal_stack = false,
+        .native_plugin_loading = false,
+    };
+
+    var services = RuntimeServices.init(std.testing.allocator, caps, .{
+        .allow_all = true,
+    });
+    defer services.deinit();
+
+    const access = services.hostAccess();
+    try std.testing.expect(access.read);
+    try std.testing.expect(access.write);
+    try std.testing.expect(!access.net);
+    try std.testing.expect(!access.env);
+    try std.testing.expect(!access.run);
+    try std.testing.expect(!access.ffi);
+    try std.testing.expect(access.hrtime);
 }

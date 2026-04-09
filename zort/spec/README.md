@@ -27,6 +27,7 @@ what to shim, and what to drop.
 - [`gc-strategy.md`](./gc-strategy.md): minor/major GC structure, promotion, phase machine, and domain interaction.
 - [`gc-control-and-stats.md`](./gc-control-and-stats.md): `Gc.get/set/stat`, explicit collection operations, runtime parameter rendering, and tweak knobs.
 - [`signals-and-stack-overflow.md`](./signals-and-stack-overflow.md): alternate signal stacks, native poll/raise paths, and platform stack-overflow handling.
+- [`platform-capabilities.md`](./platform-capabilities.md): target capabilities, build-time capability reduction, runtime permissions, and the host-substrate split.
 - [`sync-primitives.md`](./sync-primitives.md): runtime-owned mutex/condition behavior and OS-error mapping.
 - [`string-semantics.md`](./string-semantics.md): strings, bytes, arrays, float arrays, and element access rules.
 - [`numeric-primitives.md`](./numeric-primitives.md): integer/float parsing and formatting, string/bytes primitives, and array/float-array operations.

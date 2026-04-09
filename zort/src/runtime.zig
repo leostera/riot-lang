@@ -11,6 +11,7 @@ const language_mod = @import("language.zig");
 const liveness_mod = @import("liveness.zig");
 const memprof_mod = @import("memprof.zig");
 const mutator = @import("mutator.zig");
+const platform_caps_mod = @import("platform_caps.zig");
 const remembered_set_mod = @import("remembered_set.zig");
 const root_provider_mod = @import("root_provider.zig");
 const root_registry = @import("root_registry.zig");
@@ -72,6 +73,10 @@ pub const MemprofConfig = memprof_mod.Config;
 pub const MemprofState = memprof_mod.MemprofState;
 pub const MemprofSampling = memprof_mod.SamplingMode;
 pub const MemprofSample = memprof_mod.SampleView;
+pub const PlatformCaps = platform_caps_mod.PlatformCaps;
+pub const BuildCaps = platform_caps_mod.BuildCaps;
+pub const RuntimePermissions = platform_caps_mod.RuntimePermissions;
+pub const HostAccess = platform_caps_mod.HostAccess;
 pub const WeakRefHandle = liveness_mod.WeakRefHandle;
 pub const EphemeronHandle = liveness_mod.EphemeronHandle;
 pub const FinalizerHandle = liveness_mod.FinalizerHandle;
@@ -134,6 +139,7 @@ pub const Runtime = struct {
         memprof: MemprofConfig = .{},
         stackLimits: StackLimits = .{},
         pendingActionDelivery: PendingActionDelivery = .{},
+        permissions: RuntimePermissions = .{},
     };
 
     pub const DebugChecks = struct {
@@ -161,6 +167,9 @@ pub const Runtime = struct {
 
     allocator: std.mem.Allocator,
     event_sink: EventSink,
+    compiled_caps: PlatformCaps,
+    runtime_permissions: RuntimePermissions,
+    host_access: HostAccess,
     domains: DomainRegistry,
     control_kernel: ControlKernel,
     fiber_scheduler: FiberScheduler,
@@ -187,9 +196,14 @@ pub const Runtime = struct {
     }
 
     pub fn initWithConfig(allocator: std.mem.Allocator, config: Config) Runtime {
+        const compiled_caps = PlatformCaps.detect();
+        const runtime_permissions = config.permissions.normalized();
         var runtime = Runtime{
             .allocator = allocator,
             .event_sink = config.eventSink,
+            .compiled_caps = compiled_caps,
+            .runtime_permissions = runtime_permissions,
+            .host_access = HostAccess.from(compiled_caps, runtime_permissions),
             .domains = DomainRegistry.init(allocator),
             .control_kernel = undefined,
             .fiber_scheduler = undefined,
@@ -197,7 +211,7 @@ pub const Runtime = struct {
             .heap_store = HeapStore.init(allocator),
             .remembered_set = RememberedSet.init(allocator),
             .root_registry = RootRegistry.init(allocator, config.eventSink),
-            .services = RuntimeServices.init(allocator),
+            .services = RuntimeServices.init(allocator, compiled_caps, runtime_permissions),
             .liveness = ManagedLiveness.init(allocator),
             .memprof = MemprofState.init(allocator, config.eventSink, config.memprof),
             .debug_root_checks = config.debugRootChecks,
@@ -254,6 +268,18 @@ pub const Runtime = struct {
             .major_objects = self.heap_store.spaceStats(.major).objects,
             .major_words = self.heap_store.spaceStats(.major).words,
         };
+    }
+
+    pub fn platformCaps(self: *const Runtime) PlatformCaps {
+        return self.compiled_caps;
+    }
+
+    pub fn permissions(self: *const Runtime) RuntimePermissions {
+        return self.runtime_permissions;
+    }
+
+    pub fn hostAccess(self: *const Runtime) HostAccess {
+        return self.host_access;
     }
 
     pub fn deinit(self: *Runtime) void {
@@ -2376,6 +2402,29 @@ test "runtime: runtime services track pending signals and blocking sections" {
     try std.testing.expectEqual(@as(u64, 0), rt.takePendingSignals());
     try rt.exitBlockingSection();
     try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+}
+
+test "runtime: compiled platform caps and runtime permissions are explicit" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .permissions = .{
+            .allow_read = true,
+            .allow_write = true,
+            .allow_hrtime = true,
+        },
+    });
+    defer rt.deinit();
+
+    const caps = rt.platformCaps();
+    const permissions = rt.permissions();
+    const access = rt.hostAccess();
+
+    try std.testing.expectEqual(permissions.allow_read, true);
+    try std.testing.expectEqual(permissions.allow_write, true);
+    try std.testing.expectEqual(permissions.allow_hrtime, true);
+    try std.testing.expectEqual(access.read, caps.filesystem and permissions.allow_read);
+    try std.testing.expectEqual(access.write, caps.filesystem and permissions.allow_write);
+    try std.testing.expectEqual(access.net, caps.network and permissions.allow_net);
+    try std.testing.expectEqual(access.ffi, caps.native_plugin_loading and permissions.allow_ffi);
 }
 
 test "runtime: signal ingress wrappers expose runtime service ownership" {

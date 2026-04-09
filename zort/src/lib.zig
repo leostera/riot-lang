@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const build_options = @import("build_options");
+
 pub const Value = @import("value.zig").Value;
 pub const Tag = @import("value.zig").Tag;
 pub const HeapRef = @import("value.zig").HeapRef;
@@ -36,6 +38,10 @@ pub const PendingAction = @import("runtime.zig").PendingAction;
 pub const PendingActionCheckpoint = @import("runtime.zig").PendingActionCheckpoint;
 pub const PendingActionDelivery = @import("runtime.zig").PendingActionDelivery;
 pub const PendingSignal = @import("runtime.zig").PendingSignal;
+pub const PlatformCaps = @import("runtime.zig").PlatformCaps;
+pub const BuildCaps = @import("runtime.zig").BuildCaps;
+pub const RuntimePermissions = @import("runtime.zig").RuntimePermissions;
+pub const HostAccess = @import("runtime.zig").HostAccess;
 pub const Mutator = @import("runtime.zig").Mutator;
 pub const RememberedSet = @import("runtime.zig").RememberedSet;
 pub const ManagedLiveness = @import("runtime.zig").ManagedLiveness;
@@ -74,6 +80,7 @@ test {
     std.testing.refAllDecls(@import("language.zig"));
     std.testing.refAllDecls(@import("memprof.zig"));
     std.testing.refAllDecls(@import("mutator.zig"));
+    std.testing.refAllDecls(@import("platform_caps.zig"));
     std.testing.refAllDecls(@import("primitive_registry.zig"));
     std.testing.refAllDecls(@import("remembered_set.zig"));
     std.testing.refAllDecls(@import("root_provider.zig"));

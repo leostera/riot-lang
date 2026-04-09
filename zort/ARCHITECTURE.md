@@ -176,6 +176,23 @@ The compatibility layer owns all OCaml-shaped behavior we choose to support:
 If the compatibility layer disappears, the internal runtime should still make
 sense.
 
+### `HostSubstrate`
+
+The runtime needs one explicit platform boundary below the semantic kernel.
+
+`HostSubstrate` owns:
+
+- domain worker threads
+- stop-the-world wake/pause plumbing
+- signal ingress
+- alternate signal-stack setup/restore
+- plugin loading
+- clocks and timers
+- blocking syscall boundaries
+
+The semantic kernel must not embed target-specific assumptions such as
+`std.posix` signal handling or `LoadLibrary` behavior directly.
+
 ### `EventSink`
 
 Observability should be explicit.
@@ -188,6 +205,92 @@ Observability should be explicit.
 - benchmark hooks
 
 This avoids scattering logging and stats accounting across unrelated code paths.
+
+## Capability Gating
+
+Cross-platform support should be expressed as a three-layer intersection:
+
+1. `TargetCaps`
+2. `BuildCaps`
+3. `RuntimePermissions`
+
+### `TargetCaps`
+
+`TargetCaps` are compile-time facts derived from the Zig target.
+
+Examples:
+
+- WASI may have no native signals, no alternate signal stack, and no native
+  plugin loading.
+- Unix-native targets may support POSIX signals and alternate signal stacks.
+- Windows may support threads and plugin loading but require different signal
+  and overflow backends.
+
+Unsupported target features should not compile into the binary.
+
+### `BuildCaps`
+
+`BuildCaps` are compile-time reductions chosen by the build.
+
+Examples:
+
+- `-Ddisable-threads`
+- `-Ddisable-posix-signals`
+- `-Ddisable-native-plugin-loading`
+
+These flags may only subtract capability from the target. They must never
+invent support that the target does not have.
+
+### `RuntimePermissions`
+
+`RuntimePermissions` are userland policy.
+They should feel like Deno-style access flags:
+
+- `allow-read`
+- `allow-write`
+- `allow-net`
+- `allow-env`
+- `allow-run`
+- `allow-ffi`
+- `allow-hrtime`
+
+Permissions only narrow what an already-supported build may do.
+They must never widen a compile-time capability boundary.
+
+### Effective Host Access
+
+The runtime should behave as:
+
+```zig
+effective_access = TargetCaps ∩ BuildCaps ∩ RuntimePermissions
+```
+
+That gives us the intended behavior:
+
+- unsupported subsystems do not compile into a target build
+- product/distribution builds can intentionally reduce capability
+- userland can still choose a stricter runtime policy at startup
+
+This split is what keeps zort portable without turning the semantic runtime into
+a pile of platform checks.
+
+The intended implementation shape is compile-time backend selection first,
+runtime permission checks second:
+
+```zig
+const target_caps = PlatformCaps.target();
+const build_caps = BuildCaps.fromRoot();
+const compiled_caps = target_caps.applyBuildCaps(build_caps);
+
+const signal_backend = if (compiled_caps.posix_signals)
+    @import("host/signals_posix.zig")
+else
+    @import("host/signals_none.zig");
+```
+
+That means a target like WASI should not carry POSIX signal code in the binary
+at all, while a Unix-native build can still compile the backend in and later
+disable access through runtime permissions.
 
 ## Data Flow
 

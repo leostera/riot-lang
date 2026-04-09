@@ -16,6 +16,7 @@ observability, not full OCaml runtime compatibility.
 - Explicit event sink, trace recorder, and GC/control instrumentation
 - Runtime services for named values, signal handlers, pending signals, blocking-section state, and owned alternate signal-stack lifecycle
 - Small optional compatibility shim (`api.zig`) for legacy `caml_*` entrypoints
+- Compile-time platform capabilities plus runtime permissions for Deno-style host access narrowing
 
 ## Current representation
 
@@ -34,6 +35,74 @@ observability, not full OCaml runtime compatibility.
 - External primitive dispatch now goes through `PrimitiveRegistry.callWithBoundary(...)`, so shim-driven primitive calls use the same callback-boundary isolation as pending signal/finalizer delivery.
 - Mutable effect/fiber control-state setup now goes through `Runtime` helpers such as `pushEffectHandler`, `pushFiberFrame`, `pushFiberFrameRoot`, and `enterCallbackBoundary`.
 - `Runtime.controlKernel()` is now the read-only inspection seam for control state rather than the default mutation path.
+
+## Portability model
+
+zort now treats host-facing behavior as the intersection of:
+
+- compile-time target capabilities,
+- compile-time build capability reductions,
+- runtime permissions.
+
+The effective rule is:
+
+`effective_access = TargetCaps ∩ BuildCaps ∩ RuntimePermissions`
+
+In practice:
+
+- unsupported target features should not compile into the binary,
+- `build.zig` flags like `-Ddisable-threads` or `-Ddisable-posix-signals` can intentionally remove support from a capable target,
+- `Runtime.Config.permissions` can narrow host access at runtime with Deno-like flags such as:
+  - `allow_read`
+  - `allow_write`
+  - `allow_net`
+  - `allow_env`
+  - `allow_run`
+  - `allow_ffi`
+  - `allow_hrtime`
+
+The important rule is that runtime permissions never widen compile-time
+capabilities.
+
+### Capability examples
+
+- A `wasm32-wasi` build should compile without native signal ingress, alternate
+  signal stacks, native plugin loading, or host-thread domain workers even if
+  userland later asks for broad permissions.
+- A macOS or Linux build may compile those capabilities in, but
+  `-Ddisable-posix-signals` and `-Ddisable-native-plugin-loading` should remove
+  them from that build profile entirely.
+- `Runtime.Config.permissions = .{ .allow_all = true }` should only enable the
+  host access that the compiled build already supports.
+
+### Host access configuration
+
+`Runtime` now exposes the three layers directly:
+
+- `platformCaps()`
+- `permissions()`
+- `hostAccess()`
+
+Example:
+
+```zig
+var rt = Runtime.initWithConfig(std.heap.page_allocator, .{
+    .permissions = .{
+        .allow_read = true,
+        .allow_write = true,
+        .allow_hrtime = true,
+    },
+});
+defer rt.deinit();
+
+const compiled = rt.platformCaps();
+const requested = rt.permissions();
+const access = rt.hostAccess();
+
+_ = compiled;
+_ = requested;
+_ = access;
+```
 
 ## Typical constructors
 
@@ -167,7 +236,10 @@ Target runtime architecture notes are in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 - `cd zort && zig build test`
 - `cd zort && zig build test -Dcompat-shim=false`
+- `cd zort && zig build test -Ddisable-posix-signals -Ddisable-native-plugin-loading`
 - `cd zort && zig build compat`
+- `cd zort && zig build -Dtarget=wasm32-wasi`
+- `cd zort && zig build -Dtarget=x86_64-windows-gnu`
 - `cd zort && zig build bench`
 - `cd zort && zig build bench -- --iters 1000`
 - `cd zort && zig build bench -- --iters 1000 --gc-strategy=bump`
