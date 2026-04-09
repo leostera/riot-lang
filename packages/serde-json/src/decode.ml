@@ -1983,9 +1983,4 @@ let of_input = fun decode input ->
 
 let of_string = fun decode input -> of_input decode (Input.of_string input)
 
-let of_reader = fun decode reader ->
-  match IO.Reader.direct_string reader with
-  | Some input ->
-      of_string decode input
-  | None ->
-      of_input decode (Input.of_reader reader)
+let of_reader = fun decode reader -> of_input decode (Input.of_reader reader)
