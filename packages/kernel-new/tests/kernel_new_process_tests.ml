@@ -760,17 +760,33 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
             else
               false
           in
+          let rec mark_observed index = function
+            | [] -> Ok ()
+            | process :: rest ->
+                if Kernel.Array.get seen index then
+                  mark_observed (index + 1) rest
+                else
+                  let* status = lift_process (Kernel.Process.try_wait process) in
+                  match status with
+                  | Some (Kernel.Process.Exited 0) ->
+                      Kernel.Array.set seen index true;
+                      mark_observed (index + 1) rest
+                  | Some _ ->
+                      Error "expected burst-exit process sources to preserve a clean exit status"
+                  | None ->
+                      mark_observed (index + 1) rest
+          in
           let rec poll_until attempts =
-            if attempts = 0 then
+            let* () = mark_observed 0 processes in
+            if all_seen 0 then
+              Ok ()
+            else if attempts = 0 then
               Error "expected many process sources to report exit readiness after a burst exit"
             else
               let* events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
               mark events;
-              if all_seen 0 then
-                Ok ()
-              else
-                poll_until (attempts - 1)
+              poll_until (attempts - 1)
           in
           let rec verify = function
             | [] -> Ok ()

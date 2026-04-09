@@ -3,6 +3,9 @@ open Collections
 
 exception Test_timeout of Time.Duration.t
 
+type Actors.Message.t +=
+  | Test_runner_start
+
 let find_segment_index = fun segments needle ->
   let rec loop idx = function
     | [] -> None
@@ -177,11 +180,20 @@ let wait_for_exit = fun pid ?timeout () ->
     ?timeout
     ()
 
+let wait_for_start = fun () ->
+  receive
+    ~selector:(fun (msg: Actors.Message.t) ->
+      match msg with
+      | Test_runner_start -> `select ()
+      | _ -> `skip)
+    ()
+
 let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
   let outcome: ((unit, string) result option) Sync.Atomic.t = Sync.Atomic.make None in
   let child =
     spawn
       (fun () ->
+        wait_for_start ();
         let result =
           match test.fn ctx with
           | Ok () -> Ok ()
@@ -193,6 +205,7 @@ let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
   in
   let monitor_ref = Actors.Process.monitor child in
   let started = Time.Instant.now () in
+  send child Test_runner_start;
   let exit_reason =
     match timeout with
     | None -> wait_for_exit child ()
