@@ -2075,11 +2075,7 @@ let expression_needs_parens_in_apply = function
   | _ -> false
 
 let rec expression_needs_parens_in_labeled_argument = function
-  | Syn.Cst.Expression.Parenthesized {
-    inner=(Syn.Cst.Expression.Fun _ | Syn.Cst.Expression.Function _);
-    _
-  } -> false
-  | Syn.Cst.Expression.Parenthesized { inner; _ } -> expression_needs_parens_in_labeled_argument inner
+  | Syn.Cst.Expression.Parenthesized _ -> false
   | Syn.Cst.Expression.Apply _ -> true
   | Syn.Cst.Expression.PolyVariant { payload=Some _; _ } -> true
   | expression -> expression_needs_parens_in_apply expression

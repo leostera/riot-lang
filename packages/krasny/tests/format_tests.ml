@@ -636,6 +636,12 @@ let optional_fun = fun ?(y = 0) -> y + 1
       in
       assert_idempotent ~source ~msg:"typed/labeled forms should stay stable";
       Ok ());
+  Test.case "format keeps labeled infix arguments singly parenthesized"
+    (fun _ctx ->
+      let source = "let next = foo ~pos:(pos + read)\n" in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"labeled infix arguments should not gain redundant parentheses" in
+      Test.assert_equal ~expected:source ~actual;
+      Ok ());
   Test.case "format keeps structural named parameters with defaults idempotent"
     (fun _ctx ->
       let source = {|let configure ?(timeout : int = 30) ?retry:retries ~point:{ x; y } ~limit:seconds () =
