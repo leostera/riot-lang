@@ -9,6 +9,11 @@ These models focus on the protocol-level rules that are easiest to get wrong:
 - cross-domain resume,
 - and where handler search begins for `perform` versus `reperform`.
 
+The callback-boundary rules modeled here are shared by:
+
+- pending signal/finalizer delivery checkpoints,
+- external primitive/API entrypoints routed through `PrimitiveRegistry.callWithBoundary(...)`.
+
 ## Current Models
 
 - `Continuations.tla`: one-shot resumable continuations, callback boundaries, and cross-domain resume.

@@ -104,6 +104,11 @@
   - explicit arity,
   - semantic `Value` arguments/results,
   - explicit lookup/arity errors.
+- External primitive dispatch is now explicitly callback-mediated:
+  - `PrimitiveRegistry.callWithBoundary(...)` enters a callback boundary around primitive execution,
+  - exported shim entrypoints in `src/api.zig` use that path,
+  - ambient parent-fiber handlers are therefore hidden from primitive-triggered `perform` unless the primitive installs its own local handler chain.
+- Internal runtime-owned dispatch can still use the naked `call(...)` path when callback mediation is not desired.
 - The shim is build-gated:
   - `zig build compat` builds the shim artifact,
   - `zig build test -Dcompat-shim=false` exercises the core runtime without the shim.

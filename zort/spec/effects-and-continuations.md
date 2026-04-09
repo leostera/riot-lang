@@ -229,6 +229,10 @@ Executable model:
   - callers push handlers, frames, frame roots, and callback boundaries through `Runtime`,
   - `Runtime.controlKernel()` is now the read-only inspection seam rather than the default mutation API,
   - raw mutable `ControlKernel` access is reserved for internal/runtime tests and other deliberate escape hatches.
+- External primitive/API entrypoints now use the same callback-boundary rule:
+  - `PrimitiveRegistry.callWithBoundary(...)` enters and exits the callback boundary explicitly,
+  - the compatibility shim routes exported primitive calls through that mediated path,
+  - a primitive that performs an effect therefore sees only handlers installed inside that callback-owned chain.
 - Fibers now also move through explicit per-domain scheduler lanes:
   - one active `current` fiber per domain,
   - a runnable queue,
@@ -267,7 +271,6 @@ Executable model:
 - Bench runs can surface those events with `--trace-effects`.
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
-  - deeper callback-boundary behavior at FFI/native entrypoints,
   - userland scheduling policy on top of the new transfer capability,
   - real parallel stop-the-world/safepoint handshakes instead of the current single-threaded coordination scaffold,
   - richer backtrace integration beyond managed-frame walking,

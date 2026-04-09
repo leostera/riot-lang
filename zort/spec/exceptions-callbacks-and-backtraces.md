@@ -72,6 +72,8 @@
 - `Runtime.deliverPendingActions(...)` now uses those callback boundaries when delivering:
   - pending signal handlers from `RuntimeServices`,
   - ready finalizer callbacks from `ManagedLiveness`.
+- `PrimitiveRegistry.callWithBoundary(...)` now uses the same callback-boundary entry/exit protocol for external primitive dispatch.
+- The compatibility shim in `src/api.zig` routes exported `zort_primitive_call*` entrypoints through that mediated dispatch path instead of calling primitives naked.
 - `Runtime` now also supports configured checkpoint-driven delivery:
   - scheduler safepoints,
   - blocking entry,

@@ -106,15 +106,18 @@ pub fn caml_gc_get_heap_size() usize {
 pub fn caml_gc_init() void {}
 
 fn primitiveCall0(name: []const u8) CompatValue {
-    return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{}) catch oom());
+    const state = stateRef();
+    return encode(state.primitives.callWithBoundary(&state.runtime, name, &.{}) catch oom());
 }
 
 fn primitiveCall1(name: []const u8, arg0: CompatValue) CompatValue {
-    return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{decode(arg0)}) catch oom());
+    const state = stateRef();
+    return encode(state.primitives.callWithBoundary(&state.runtime, name, &.{decode(arg0)}) catch oom());
 }
 
 fn primitiveCall2(name: []const u8, arg0: CompatValue, arg1: CompatValue) CompatValue {
-    return encode(stateRef().primitives.call(&stateRef().runtime, name, &.{ decode(arg0), decode(arg1) }) catch oom());
+    const state = stateRef();
+    return encode(state.primitives.callWithBoundary(&state.runtime, name, &.{ decode(arg0), decode(arg1) }) catch oom());
 }
 
 pub fn zort_primitive_call0(name_ptr: [*]const u8, name_len: usize) CompatValue {
