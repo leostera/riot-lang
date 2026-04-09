@@ -321,6 +321,39 @@ pub const ControlKernel = struct {
         };
     }
 
+    pub fn continuationProvider(self: *ControlKernel) RootProvider {
+        return .{
+            .name = "suspended_continuations",
+            .ctx = self,
+            .count_fn = countContinuationRoots,
+            .visit_fn = visitContinuationRoots,
+        };
+    }
+
+    pub fn fiberRootCount(self: *const ControlKernel, fiber_handle: FiberHandle) usize {
+        const fiber_state = self.fiber(fiber_handle) orelse return 0;
+        return countFiberRoots(fiber_state);
+    }
+
+    pub fn visitFiberRoots(self: *const ControlKernel, fiber_handle: FiberHandle, visitor: RootVisitor) void {
+        const fiber_state = self.fiber(fiber_handle) orelse return;
+        visitFiberRootsOnly(fiber_state, visitor);
+    }
+
+    pub fn visitFibers(
+        self: *const ControlKernel,
+        context: anytype,
+        comptime visit: fn (@TypeOf(context), FiberHandle, *const FiberState) void,
+    ) void {
+        for (self.fibers.items, 0..) |*slot, slot_index| {
+            if (!slot.alive) continue;
+            visit(context, .{
+                .index = @intCast(slot_index),
+                .generation = slot.generation,
+            }, &slot.fiber);
+        }
+    }
+
     pub fn ownedRootCount(self: *const ControlKernel, needle: Value) usize {
         var count: usize = 0;
         for (self.fibers.items) |slot| {
@@ -916,6 +949,13 @@ pub const ControlKernel = struct {
             if (!slot.alive) continue;
             count += countFiberRoots(&slot.fiber);
         }
+        count += countContinuationRoots(ctx);
+        return count;
+    }
+
+    fn countContinuationRoots(ctx: ?*anyopaque) usize {
+        const self: *ControlKernel = @ptrCast(@alignCast(ctx.?));
+        var count: usize = 0;
         for (self.continuations.items) |slot| {
             if (!slot.alive) continue;
             if (slot.continuation.status != .suspended) continue;
@@ -929,8 +969,13 @@ pub const ControlKernel = struct {
 
         for (self.fibers.items) |slot| {
             if (!slot.alive) continue;
-            visitFiberRoots(&slot.fiber, visitor);
+            visitFiberRootsOnly(&slot.fiber, visitor);
         }
+        visitContinuationRoots(ctx, visitor);
+    }
+
+    fn visitContinuationRoots(ctx: ?*anyopaque, visitor: RootVisitor) void {
+        const self: *ControlKernel = @ptrCast(@alignCast(ctx.?));
         for (self.continuations.items) |slot| {
             if (!slot.alive) continue;
             if (slot.continuation.status != .suspended) continue;
@@ -968,7 +1013,7 @@ pub const ControlKernel = struct {
         return count;
     }
 
-    fn visitFiberRoots(fiber_state: *const FiberState, visitor: RootVisitor) void {
+    fn visitFiberRootsOnly(fiber_state: *const FiberState, visitor: RootVisitor) void {
         for (fiber_state.handlers.items) |handler| {
             visitor.visit(handler.handle_effect);
             if (handler.handle_value) |rooted| visitor.visit(rooted);

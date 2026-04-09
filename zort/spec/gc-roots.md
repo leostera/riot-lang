@@ -99,17 +99,19 @@
 - `Runtime` now builds the collector's root set from providers instead of hard-coding explicit-root slices.
 - Scoped root handles are an ownership tool only; they do not yet model stack roots, callback roots, or effect-parent roots.
 - This is the seam zort will use for suspended fibers, continuations, callback-owned roots, and other non-registry liveness owners.
-- `ControlKernel` is now the second built-in provider:
-  - handler values live as control-owned roots,
-  - suspended continuations contribute payload plus captured roots,
-  - managed stack frames contribute frame-owned roots for active fibers and suspended continuations,
-  - collection can retain control-state-owned heap values without routing them through `RootRegistry`,
-  - consumed continuations stop contributing those captured roots after `resumeContinuation`.
-- `RuntimeServices` is now the third built-in provider:
+- Runtime root ownership is now split across explicit control-state providers instead of one opaque `control_kernel` bucket:
+  - `fiber_scheduler` visits the active, runnable, and parked fibers currently owned by per-domain scheduler lanes,
+  - `suspended_continuations` visits continuation payloads, captured roots, and managed suspended-stack frames,
+  - `orphan_fibers` is a transitional fallback for live fibers that exist in the control kernel but are not yet scheduler-owned.
+- This means collection now answers liveness questions more explicitly:
+  - domain-owned parked fibers stay collector-visible through the scheduler provider,
+  - suspended continuations stay collector-visible without reusing fiber-lane ownership,
+  - direct low-level control-kernel usage does not silently lose roots while the runtime is still migrating toward full scheduler ownership.
+- `RuntimeServices` is now the next built-in provider:
   - named values stay live through service-owned roots,
   - signal handlers stay live through the same provider,
   - signal and blocking-section bookkeeping stays outside the semantic value core.
-- `ManagedLiveness` is now the fourth built-in provider:
+- `ManagedLiveness` is now the next built-in provider:
   - registered finalizer callbacks stay live while the registration exists,
   - queued ready-finalizer callbacks and first-finalizer arguments stay live until delivery drains them,
   - weak refs and ephemerons do not root their targets/data unconditionally.

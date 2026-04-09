@@ -68,6 +68,7 @@ pub const FinalizerMode = liveness_mod.FinalizerMode;
 pub const ReadyFinalizer = liveness_mod.ReadyFinalizer;
 pub const RememberedSet = remembered_set_mod.RememberedSet;
 pub const RootProvider = root_provider_mod.RootProvider;
+pub const RootVisitor = root_provider_mod.RootVisitor;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const RuntimeServices = runtime_services_mod.RuntimeServices;
@@ -672,13 +673,17 @@ pub const Runtime = struct {
         };
     }
 
-    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError || fiber_scheduler_mod.FiberScheduler.VerifyError || stw_coordinator_mod.StopTheWorldCoordinator.VerifyError;
+    pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError || fiber_scheduler_mod.FiberScheduler.VerifyError || stw_coordinator_mod.StopTheWorldCoordinator.VerifyError || error{
+        InvalidScheduledFiber,
+        ScheduledFiberDomainMismatch,
+    };
 
     pub fn verifyDebugState(self: *Runtime) VerifyError!void {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         try self.domains.verify();
         try self.fiber_scheduler.verify();
         try self.stw.verify();
+        try self.verifyScheduledFiberOwnership();
         if (self.debug_checks.verify_heap_store) try self.heap_store.verifyInvariants();
         if (self.debug_checks.verify_control_kernel) try self.control_kernel.verify(self, isValidRootedValue);
     }
@@ -697,7 +702,7 @@ pub const Runtime = struct {
         defer self.resumeTheWorld();
         self.collect_generations +%= 1;
         self.minor_collect_generations +%= 1;
-        var providers_buffer: [4]RootProvider = undefined;
+        var providers_buffer: [6]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         if (self.gc_strategy == .generational) {
@@ -715,7 +720,7 @@ pub const Runtime = struct {
         _ = self.requestStopTheWorld() catch unreachable;
         defer self.resumeTheWorld();
         self.collect_generations +%= 1;
-        var providers_buffer: [4]RootProvider = undefined;
+        var providers_buffer: [6]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         gc.collectMajor();
@@ -823,12 +828,14 @@ pub const Runtime = struct {
     }
 
     fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
-        std.debug.assert(buffer.len >= 4);
+        std.debug.assert(buffer.len >= 6);
         buffer[0] = self.root_registry.provider();
-        buffer[1] = self.control_kernel.provider();
-        buffer[2] = self.services.provider();
-        buffer[3] = self.liveness.provider();
-        return buffer[0..4];
+        buffer[1] = self.schedulerFiberProvider();
+        buffer[2] = self.orphanFiberProvider();
+        buffer[3] = self.control_kernel.continuationProvider();
+        buffer[4] = self.services.provider();
+        buffer[5] = self.liveness.provider();
+        return buffer[0..6];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
@@ -838,8 +845,120 @@ pub const Runtime = struct {
         return self.allocator;
     }
 
+    fn schedulerFiberProvider(self: *Runtime) RootProvider {
+        return .{
+            .name = "fiber_scheduler",
+            .ctx = self,
+            .count_fn = countSchedulerFiberRoots,
+            .visit_fn = visitSchedulerFiberRoots,
+        };
+    }
+
+    fn orphanFiberProvider(self: *Runtime) RootProvider {
+        return .{
+            .name = "orphan_fibers",
+            .ctx = self,
+            .count_fn = countOrphanFiberRoots,
+            .visit_fn = visitOrphanFiberRoots,
+        };
+    }
+
     fn isValidRootedValue(self: *Runtime, rooted: Value) bool {
         return self.objectFrom(rooted) != null;
+    }
+
+    fn countSchedulerFiberRoots(ctx: ?*anyopaque) usize {
+        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
+        const Count = struct {
+            runtime: *Runtime,
+            total: usize = 0,
+
+            fn visit(context: *@This(), _: DomainHandle, fiber: FiberHandle) void {
+                context.total += context.runtime.control_kernel.fiberRootCount(fiber);
+            }
+        };
+
+        var count = Count{ .runtime = self };
+        self.fiber_scheduler.visitOwnedFibers(&count, Count.visit);
+        return count.total;
+    }
+
+    fn visitSchedulerFiberRoots(ctx: ?*anyopaque, visitor: RootVisitor) void {
+        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
+        const Visit = struct {
+            runtime: *Runtime,
+            visitor: RootVisitor,
+
+            fn visit(context: *@This(), _: DomainHandle, fiber: FiberHandle) void {
+                context.runtime.control_kernel.visitFiberRoots(fiber, context.visitor);
+            }
+        };
+
+        var visit_ctx = Visit{
+            .runtime = self,
+            .visitor = visitor,
+        };
+        self.fiber_scheduler.visitOwnedFibers(&visit_ctx, Visit.visit);
+    }
+
+    fn countOrphanFiberRoots(ctx: ?*anyopaque) usize {
+        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
+        const Count = struct {
+            runtime: *Runtime,
+            total: usize = 0,
+
+            fn visit(context: *@This(), fiber: FiberHandle, fiber_state: *const control_kernel_mod.FiberState) void {
+                if (fiber_state.status == .completed) return;
+                if (context.runtime.fiber_scheduler.ownsFiber(fiber)) return;
+                context.total += context.runtime.control_kernel.fiberRootCount(fiber);
+            }
+        };
+
+        var count = Count{ .runtime = self };
+        self.control_kernel.visitFibers(&count, Count.visit);
+        return count.total;
+    }
+
+    fn visitOrphanFiberRoots(ctx: ?*anyopaque, visitor: RootVisitor) void {
+        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
+        const Visit = struct {
+            runtime: *Runtime,
+            visitor: RootVisitor,
+
+            fn visit(context: *@This(), fiber: FiberHandle, fiber_state: *const control_kernel_mod.FiberState) void {
+                if (fiber_state.status == .completed) return;
+                if (context.runtime.fiber_scheduler.ownsFiber(fiber)) return;
+                context.runtime.control_kernel.visitFiberRoots(fiber, context.visitor);
+            }
+        };
+
+        var visit_ctx = Visit{
+            .runtime = self,
+            .visitor = visitor,
+        };
+        self.control_kernel.visitFibers(&visit_ctx, Visit.visit);
+    }
+
+    fn verifyScheduledFiberOwnership(self: *Runtime) VerifyError!void {
+        const Verify = struct {
+            runtime: *Runtime,
+            error_state: ?VerifyError = null,
+
+            fn visit(context: *@This(), domain: DomainHandle, fiber: FiberHandle) void {
+                if (context.error_state != null) return;
+                const fiber_state = context.runtime.control_kernel.fiber(fiber) orelse {
+                    context.error_state = error.InvalidScheduledFiber;
+                    return;
+                };
+                if (fiber_state.domain.index != domain.index or fiber_state.domain.generation != domain.generation) {
+                    context.error_state = error.ScheduledFiberDomainMismatch;
+                }
+            }
+        };
+
+        var verify = Verify{ .runtime = self };
+        self.fiber_scheduler.visitOwnedFibers(&verify, Verify.visit);
+        if (verify.error_state) |err| return err;
     }
 
     fn processWeakHook(ctx: ?*anyopaque, collector: *Collector) usize {
@@ -1532,6 +1651,79 @@ test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {
     try rt.unparkFiber(main_domain, second);
     try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(main_domain));
     try rt.verifyDebugState();
+}
+
+test "runtime: parked fibers stay live through scheduler-owned root providers" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{});
+    defer trace.deinit();
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+    });
+    defer rt.deinit();
+
+    const main_domain = rt.currentDomain();
+    const parked = try rt.spawnFiberInDomain(null, main_domain);
+    const replacement = try rt.spawnFiberInDomain(null, main_domain);
+
+    try std.testing.expectEqual(parked, (try rt.scheduleNextFiber(main_domain)).?);
+    try rt.controlKernel().pushFrame(parked, 701);
+    try rt.controlKernel().pushFrameRoot(parked, try rt.allocTuple(0));
+
+    try std.testing.expectEqual(replacement, (try rt.parkCurrentFiber()).?);
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
+
+    const providers = trace.rootProviderEntries();
+    const Find = struct {
+        fn count(entries: []const RootProviderEvent, name: []const u8) usize {
+            for (entries) |entry| {
+                if (std.mem.eql(u8, entry.name, name)) return entry.count;
+            }
+            return 0;
+        }
+    };
+    try std.testing.expect(Find.count(providers, "fiber_scheduler") > 0);
+    try std.testing.expectEqual(@as(usize, 0), Find.count(providers, "orphan_fibers"));
+}
+
+test "runtime: suspended continuations use dedicated root providers" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{});
+    defer trace.deinit();
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+    });
+    defer rt.deinit();
+
+    const main = rt.controlKernel().currentFiber();
+    try rt.controlKernel().pushHandler(main, .{
+        .effect = 9,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
+    try rt.controlKernel().pushFrame(child, 909);
+    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+    const payload = try rt.allocTuple(0);
+
+    _ = try rt.controlKernel().performAt(909, 9, payload, &.{});
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+
+    const providers = trace.rootProviderEntries();
+    const Find = struct {
+        fn count(entries: []const RootProviderEvent, name: []const u8) usize {
+            for (entries) |entry| {
+                if (std.mem.eql(u8, entry.name, name)) return entry.count;
+            }
+            return 0;
+        }
+    };
+    try std.testing.expect(Find.count(providers, "suspended_continuations") > 0);
 }
 
 test "runtime: stop-the-world hooks pause attached domains in the single-threaded model" {

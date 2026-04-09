@@ -214,6 +214,10 @@
   - one active `current` fiber per domain,
   - a runnable queue,
   - and a parked queue used for explicit suspension/wakeup policy.
+- Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
+  - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
+  - runnable/current fibers use the same ownership seam,
+  - suspended continuations remain separate through the `suspended_continuations` provider instead of being conflated with lane ownership.
 - The runtime now exposes explicit stop-the-world hooks around collection:
   - STW requests,
   - per-domain safepoint pauses,
@@ -230,7 +234,6 @@
 - This is intentionally a semantic control-state model, not a direct mirror of OCaml's raw stack chunk and assembly-switching implementation.
 - The remaining control-kernel work is behavioral:
   - deeper callback-boundary behavior at FFI/native entrypoints,
-  - domain-owned root-provider integration for parked fibers and suspended stacks,
   - work stealing and explicit cross-domain runnable migration policy,
   - real parallel stop-the-world/safepoint handshakes instead of the current single-threaded coordination scaffold,
   - richer backtrace integration beyond managed-frame walking,

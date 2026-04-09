@@ -156,6 +156,7 @@ For benchmark snapshots, capture rows as CSV with columns:
 - Keep shrinking `runtime.zig` toward orchestration-only code.
 - Decide which native boundary services belong in zort core versus the outer shim.
 - Harden the new per-domain scheduler with parked-fiber ownership, work stealing, and cross-domain migration policy.
+- Retire the temporary `orphan_fibers` GC fallback by routing every live fiber through explicit scheduler ownership.
 - Replace the current single-threaded STW coordinator with real parallel safepoint handshakes.
 - Make parked fibers and suspended continuations explicit domain-owned root providers for GC.
 - Extend the generational baseline toward a truer nursery/major collector under the new domain/STW control surface.

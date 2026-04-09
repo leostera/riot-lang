@@ -39,6 +39,7 @@ pub const FiberScheduler = struct {
         DuplicateParkedFiber,
         CurrentFiberAlsoRunnable,
         CurrentFiberAlsoParked,
+        FiberOwnedMultipleTimes,
     };
 
     pub fn init(allocator: std.mem.Allocator, sink: EventSink, main_domain: DomainHandle, main_fiber: FiberHandle) FiberScheduler {
@@ -82,6 +83,35 @@ pub const FiberScheduler = struct {
         _ = removeHandle(&lane_state.runnable, fiber);
         _ = removeHandle(&lane_state.parked, fiber);
         lane_state.current = fiber;
+    }
+
+    pub fn ownsFiber(self: *const FiberScheduler, needle: FiberHandle) bool {
+        for (self.lanes.items) |slot| {
+            if (!slot.alive) continue;
+            if (slot.lane.current) |active_fiber| {
+                if (sameFiber(active_fiber, needle)) return true;
+            }
+            if (containsHandle(slot.lane.runnable.items, needle)) return true;
+            if (containsHandle(slot.lane.parked.items, needle)) return true;
+        }
+        return false;
+    }
+
+    pub fn visitOwnedFibers(
+        self: *const FiberScheduler,
+        context: anytype,
+        comptime visit: fn (@TypeOf(context), DomainHandle, FiberHandle) void,
+    ) void {
+        for (self.lanes.items, 0..) |slot, slot_index| {
+            if (!slot.alive) continue;
+            const domain = DomainHandle{
+                .index = @intCast(slot_index),
+                .generation = slot.generation,
+            };
+            if (slot.lane.current) |fiber| visit(context, domain, fiber);
+            for (slot.lane.runnable.items) |fiber| visit(context, domain, fiber);
+            for (slot.lane.parked.items) |fiber| visit(context, domain, fiber);
+        }
     }
 
     pub fn enqueue(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) !void {
@@ -147,6 +177,7 @@ pub const FiberScheduler = struct {
             if (hasDuplicates(slot.lane.runnable.items)) return error.DuplicateRunnableFiber;
             if (hasDuplicates(slot.lane.parked.items)) return error.DuplicateParkedFiber;
         }
+        if (hasDuplicateOwnedFiber(self)) return error.FiberOwnedMultipleTimes;
     }
 
     fn lane(self: *const FiberScheduler, domain: DomainHandle) ?*const Lane {
@@ -239,6 +270,38 @@ fn hasDuplicates(items: []const FiberHandle) bool {
     return false;
 }
 
+fn hasDuplicateOwnedFiber(self: *const FiberScheduler) bool {
+    const Outer = struct {
+        scheduler: *const FiberScheduler,
+        duplicate: bool = false,
+
+        fn visitOuter(ctx: *@This(), _: DomainHandle, fiber: FiberHandle) void {
+            if (ctx.duplicate) return;
+            const Inner = struct {
+                fn visitInner(inner_ctx: *@This(), _: DomainHandle, candidate: FiberHandle) void {
+                    if (!sameFiber(inner_ctx.fiber, candidate)) return;
+                    inner_ctx.seen += 1;
+                    if (inner_ctx.seen > 1) inner_ctx.duplicate.* = true;
+                }
+
+                fiber: FiberHandle,
+                seen: usize,
+                duplicate: *bool,
+            };
+            var inner = Inner{
+                .fiber = fiber,
+                .seen = 0,
+                .duplicate = &ctx.duplicate,
+            };
+            ctx.scheduler.visitOwnedFibers(&inner, Inner.visitInner);
+        }
+    };
+
+    var outer = Outer{ .scheduler = self };
+    self.visitOwnedFibers(&outer, Outer.visitOuter);
+    return outer.duplicate;
+}
+
 test "fiber_scheduler: per-domain runnable queues are explicit" {
     var scheduler = FiberScheduler.init(
         std.testing.allocator,
@@ -282,4 +345,43 @@ test "fiber_scheduler: yielding and parking rotate domain-local work" {
     try std.testing.expectEqual(@as(usize, 2), scheduler.runnableCount(main_domain));
     try std.testing.expectEqual(@as(usize, 0), scheduler.parkedCount(main_domain));
     try scheduler.verify();
+}
+
+test "fiber_scheduler: ownership traversal sees current runnable and parked fibers" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 1, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const main_domain = DomainHandle{ .index = 0, .generation = 1 };
+    const worker_domain = DomainHandle{ .index = 1, .generation = 1 };
+    try scheduler.registerDomain(worker_domain);
+
+    const runnable = FiberHandle{ .index = 2, .generation = 1 };
+    const parked = FiberHandle{ .index = 3, .generation = 1 };
+    const worker_current = FiberHandle{ .index = 4, .generation = 1 };
+
+    try scheduler.enqueue(main_domain, runnable);
+    try scheduler.enqueue(main_domain, parked);
+    _ = try scheduler.parkCurrent(main_domain);
+    try scheduler.setCurrent(worker_domain, worker_current);
+
+    var seen = std.ArrayListUnmanaged(FiberHandle){};
+    defer seen.deinit(std.testing.allocator);
+
+    const Collect = struct {
+        fn visit(ctx: *std.ArrayListUnmanaged(FiberHandle), _: DomainHandle, fiber: FiberHandle) void {
+            ctx.append(std.testing.allocator, fiber) catch unreachable;
+        }
+    };
+
+    scheduler.visitOwnedFibers(&seen, Collect.visit);
+    try std.testing.expectEqual(@as(usize, 4), seen.items.len);
+    try std.testing.expect(scheduler.ownsFiber(.{ .index = 1, .generation = 1 }));
+    try std.testing.expect(scheduler.ownsFiber(runnable));
+    try std.testing.expect(scheduler.ownsFiber(parked));
+    try std.testing.expect(scheduler.ownsFiber(worker_current));
 }
