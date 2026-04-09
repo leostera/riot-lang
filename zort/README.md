@@ -31,6 +31,8 @@ observability, not full OCaml runtime compatibility.
 
 - Main library surface: `src/lib.zig`
 - Optional compatibility layer: `src/api.zig`
+- Mutable effect/fiber control-state setup now goes through `Runtime` helpers such as `pushEffectHandler`, `pushFiberFrame`, `pushFiberFrameRoot`, and `enterCallbackBoundary`.
+- `Runtime.controlKernel()` is now the read-only inspection seam for control state rather than the default mutation path.
 
 ## Typical constructors
 

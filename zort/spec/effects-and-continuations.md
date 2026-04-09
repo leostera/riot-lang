@@ -216,6 +216,10 @@
   - the saved parent link is restored when the callback exits.
 - `captureBacktrace` now walks managed frames across the parent-fiber chain instead of only reporting the current fiber.
 - `captureContinuationBacktrace` now inspects a suspended continuation's managed stack plus its parent-fiber chain without resuming it.
+- Runtime-owned control-state setup is now explicit:
+  - callers push handlers, frames, frame roots, and callback boundaries through `Runtime`,
+  - `Runtime.controlKernel()` is now the read-only inspection seam rather than the default mutation API,
+  - raw mutable `ControlKernel` access is reserved for internal/runtime tests and other deliberate escape hatches.
 - Fibers now also move through explicit per-domain scheduler lanes:
   - one active `current` fiber per domain,
   - a runnable queue,

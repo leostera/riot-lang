@@ -47,6 +47,7 @@ pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
 pub const EffectId = control_kernel_mod.EffectId;
 pub const FiberHandle = control_kernel_mod.FiberHandle;
 pub const HandlerFrame = control_kernel_mod.HandlerFrame;
+pub const FrameInfo = control_kernel_mod.ManagedStack.FrameInfo;
 pub const StackLimits = control_kernel_mod.StackLimits;
 pub const SuspendedStack = control_kernel_mod.SuspendedStack;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
@@ -273,7 +274,7 @@ pub const Runtime = struct {
         return Language.init(self.allocator, self.currentAllocator(), &self.heap_store, self.event_sink, &self.remembered_set);
     }
 
-    pub fn controlKernel(self: *Runtime) *ControlKernel {
+    pub fn controlKernel(self: *Runtime) *const ControlKernel {
         return &self.control_kernel;
     }
 
@@ -291,6 +292,14 @@ pub const Runtime = struct {
 
     pub fn currentDomain(self: *Runtime) DomainHandle {
         return self.control_kernel.currentDomain();
+    }
+
+    pub fn currentFiber(self: *Runtime) FiberHandle {
+        return self.control_kernel.currentFiber();
+    }
+
+    pub fn stackLimits(self: *Runtime) StackLimits {
+        return self.control_kernel.stackLimits();
     }
 
     pub fn runtimeServices(self: *Runtime) *RuntimeServices {
@@ -360,6 +369,42 @@ pub const Runtime = struct {
 
     pub fn unparkFiber(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
         try self.fiber_scheduler.unpark(domain, fiber);
+    }
+
+    pub fn pushEffectHandler(self: *Runtime, fiber: FiberHandle, handler: HandlerFrame) !void {
+        try self.control_kernel.pushHandler(fiber, handler);
+    }
+
+    pub fn popEffectHandler(self: *Runtime, fiber: FiberHandle) !HandlerFrame {
+        return self.control_kernel.popHandler(fiber);
+    }
+
+    pub fn handlerCount(self: *Runtime, fiber: FiberHandle) !usize {
+        return self.control_kernel.handlerCount(fiber);
+    }
+
+    pub fn pushFiberFrame(self: *Runtime, fiber: FiberHandle, site_id: u32) !void {
+        try self.control_kernel.pushFrame(fiber, site_id);
+    }
+
+    pub fn popFiberFrame(self: *Runtime, fiber: FiberHandle) !FrameInfo {
+        return self.control_kernel.popFrame(fiber);
+    }
+
+    pub fn pushFiberFrameRoot(self: *Runtime, fiber: FiberHandle, rooted: Value) !void {
+        try self.control_kernel.pushFrameRoot(fiber, rooted);
+    }
+
+    pub fn frameCount(self: *Runtime, fiber: FiberHandle) !usize {
+        return self.control_kernel.frameCount(fiber);
+    }
+
+    pub fn enterCallbackBoundary(self: *Runtime, fiber: FiberHandle) !void {
+        try self.control_kernel.enterCallbackBoundary(fiber);
+    }
+
+    pub fn exitCallbackBoundary(self: *Runtime, fiber: FiberHandle) !void {
+        try self.control_kernel.exitCallbackBoundary(fiber);
     }
 
     pub fn performEffect(
@@ -1652,8 +1697,8 @@ test "runtime: performed continuations keep heap values alive until resumed" {
     const handler_value = try rt.allocTuple(0);
     const captured_value = try rt.allocTuple(0);
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 1,
         .handle_effect = handler_value,
     });
@@ -1665,7 +1710,7 @@ test "runtime: performed continuations keep heap values alive until resumed" {
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
-    _ = try rt.controlKernel().popHandler(main);
+    _ = try rt.popEffectHandler(main);
     _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(123));
 
     rt.collect();
@@ -1681,16 +1726,16 @@ test "runtime: continuations can migrate across attached domains" {
     try std.testing.expectError(error.DomainDetached, rt.createFiberInDomain(null, other_domain));
     try rt.attachDomain(other_domain);
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 6,
         .handle_effect = Value.fromInt(1),
     });
 
     const child = try rt.createFiberInDomain(main, main_domain);
     try rt.activateFiberInDomain(main_domain, child);
-    try rt.controlKernel().pushFrame(child, 606);
-    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+    try rt.pushFiberFrame(child, 606);
+    try rt.pushFiberFrameRoot(child, try rt.allocTuple(0));
 
     const performed = try rt.performEffectAt(606, 6, Value.fromInt(2), &.{});
     const worker = try rt.createFiberInDomain(null, other_domain);
@@ -1713,20 +1758,20 @@ test "runtime: stack limits configure managed continuation snapshots" {
     });
     defer rt.deinit();
 
-    try std.testing.expectEqual(@as(usize, 4), rt.controlKernel().stackLimits().max_frames);
+    try std.testing.expectEqual(@as(usize, 4), rt.stackLimits().max_frames);
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 16,
         .handle_effect = Value.fromInt(1),
     });
 
     const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
     try rt.activateFiberInDomain(rt.currentDomain(), child);
-    try rt.controlKernel().pushFrame(child, 1601);
-    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
-    try rt.controlKernel().pushFrame(child, 1602);
-    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+    try rt.pushFiberFrame(child, 1601);
+    try rt.pushFiberFrameRoot(child, try rt.allocTuple(0));
+    try rt.pushFiberFrame(child, 1602);
+    try rt.pushFiberFrameRoot(child, try rt.allocTuple(0));
 
     const performed = try rt.performEffectAt(1602, 16, Value.fromInt(7), &.{});
     var snapshot = try rt.snapshotContinuationStack(std.testing.allocator, performed.continuation);
@@ -1750,16 +1795,16 @@ test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {
 
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
     try std.testing.expectEqual(first, (try rt.scheduleNextFiber(main_domain)).?);
-    try std.testing.expectEqual(first, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(first, rt.currentFiber());
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
 
     try std.testing.expectEqual(second, (try rt.yieldCurrentFiber()).?);
-    try std.testing.expectEqual(second, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(second, rt.currentFiber());
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
 
     try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, (try rt.parkCurrentFiber()).?);
     try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().parkedCount(main_domain));
-    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, rt.currentFiber());
 
     try rt.unparkFiber(main_domain, second);
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
@@ -1780,8 +1825,8 @@ test "runtime: parked fibers stay live through scheduler-owned root providers" {
     const replacement = try rt.spawnFiberInDomain(null, main_domain);
 
     try std.testing.expectEqual(parked, (try rt.scheduleNextFiber(main_domain)).?);
-    try rt.controlKernel().pushFrame(parked, 701);
-    try rt.controlKernel().pushFrameRoot(parked, try rt.allocTuple(0));
+    try rt.pushFiberFrame(parked, 701);
+    try rt.pushFiberFrameRoot(parked, try rt.allocTuple(0));
 
     try std.testing.expectEqual(replacement, (try rt.parkCurrentFiber()).?);
 
@@ -1810,16 +1855,16 @@ test "runtime: suspended continuations use dedicated root providers" {
     });
     defer rt.deinit();
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 9,
         .handle_effect = Value.fromInt(1),
     });
 
     const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
     try rt.activateFiberInDomain(rt.currentDomain(), child);
-    try rt.controlKernel().pushFrame(child, 909);
-    try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
+    try rt.pushFiberFrame(child, 909);
+    try rt.pushFiberFrameRoot(child, try rt.allocTuple(0));
     const payload = try rt.allocTuple(0);
 
     _ = try rt.performEffectAt(909, 9, payload, &.{});
@@ -1875,8 +1920,8 @@ test "runtime: explainValue reports root ownership and last object event" {
     try rt.setField(rooted, 0, child);
     try rt.registerNamedValue("child", child);
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 1,
         .handle_effect = child,
     });
@@ -1914,8 +1959,8 @@ test "runtime: direct unscheduled fibers fail strict ownership checks" {
     var rt = Runtime.init(std.testing.allocator);
     defer rt.deinit();
 
-    const main = rt.controlKernel().currentFiber();
-    _ = try rt.controlKernel().createFiber(main);
+    const main = rt.currentFiber();
+    _ = try rt.control_kernel.createFiber(main);
     try std.testing.expectError(error.OrphanFiber, rt.verifyDebugState());
 }
 
@@ -2046,8 +2091,8 @@ test "runtime: pending signal and finalizer delivery runs inside callback bounda
     });
     defer rt.deinit();
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushHandler(main, .{
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
         .effect = 55,
         .handle_effect = Value.fromInt(1),
     });
@@ -2113,9 +2158,9 @@ test "runtime: memprof samples allocation backtraces and lifecycle transitions" 
     });
     defer rt.deinit();
 
-    const main = rt.controlKernel().currentFiber();
-    try rt.controlKernel().pushFrame(main, 777);
-    defer _ = rt.controlKernel().popFrame(main) catch unreachable;
+    const main = rt.currentFiber();
+    try rt.pushFiberFrame(main, 777);
+    defer _ = rt.popFiberFrame(main) catch unreachable;
 
     const tuple = try rt.allocTuple(1);
     var rooted = tuple;

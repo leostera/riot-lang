@@ -814,26 +814,25 @@ fn benchmarkLongLivedSweep(rt: *Runtime, iters: usize) !u64 {
 
 fn benchmarkEffectRoundtrip(rt: *Runtime, iters: usize) !u64 {
     const effect: runtime.EffectId = 41;
-    const kernel = rt.controlKernel();
-    const main_fiber = kernel.currentFiber();
-    try kernel.pushHandler(main_fiber, .{
+    const main_fiber = rt.currentFiber();
+    try rt.pushEffectHandler(main_fiber, .{
         .effect = effect,
         .handle_effect = Value.fromInt(1),
     });
-    defer _ = kernel.popHandler(main_fiber) catch {};
+    defer _ = rt.popEffectHandler(main_fiber) catch {};
 
     var i: usize = 0;
     var timer = try std.time.Timer.start();
     while (i < iters) : (i += 1) {
-        try kernel.pushFrame(main_fiber, @intCast(i));
+        try rt.pushFiberFrame(main_fiber, @intCast(i));
         const payload = try rt.allocTuple(1);
         try rt.setField(payload, 0, Value.fromInt(@as(i64, @intCast(i))));
-        try kernel.pushFrameRoot(main_fiber, payload);
+        try rt.pushFiberFrameRoot(main_fiber, payload);
 
         const performed = try rt.performEffectAt(@intCast(i), effect, payload, &.{payload});
         _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(@as(i64, @intCast(i))));
         _ = rt.dropContinuation(performed.continuation);
-        _ = try kernel.popFrame(main_fiber);
+        _ = try rt.popFiberFrame(main_fiber);
 
         if ((i & 0x7F) == 0) rt.collect();
     }
