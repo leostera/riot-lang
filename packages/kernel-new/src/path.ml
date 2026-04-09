@@ -2,9 +2,7 @@ open Prelude
 
 type t = string
 
-let v = fun path -> path
-
-let of_string = fun path -> Result.Ok path
+let of_string = fun path -> path
 
 let to_string = fun path -> path
 

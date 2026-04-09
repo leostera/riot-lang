@@ -28,11 +28,12 @@ let with_pipe = fun fn ->
           ())
         (fun () -> fn pipe)
 
-let rec close_pipes = function
+let rec close_pipes pipes =
+  match pipes with
   | [] -> ()
-  | pipe :: rest ->
-      let _ = Kernel.Fs.File.close pipe.Kernel.Fs.File.read_end in
-      let _ = Kernel.Fs.File.close pipe.Kernel.Fs.File.write_end in
+  | Kernel.Fs.File.{ read_end; write_end } :: rest ->
+      let _ = Kernel.Fs.File.close read_end in
+      let _ = Kernel.Fs.File.close write_end in
       close_pipes rest
 
 let with_pipes = fun count fn ->
@@ -103,8 +104,8 @@ let bench_timer_wakeup = fun () ->
   with_poll
     (fun poll ->
       match Kernel.Time.Timer.after_ns 1_000_000L with
-      | Error error ->
-          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+      | Error error -> Kernel.SystemError.panic
+        (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
       | Ok timer ->
           let source = Kernel.Time.Timer.to_source timer in
           let _ = Kernel.Async.Poll.register
@@ -123,20 +124,18 @@ let bench_many_source_poll = fun () ->
         (fun poll ->
           let rec register index = function
             | [] -> ()
-            | pipe :: rest ->
+            | Kernel.Fs.File.{ read_end; _ } :: rest ->
                 let _ = Kernel.Async.Poll.register
                   poll
                   (Kernel.Async.Token.make index)
                   Kernel.Async.Interest.readable
-                  (Kernel.Fs.File.to_source pipe.Kernel.Fs.File.read_end) in
+                  (Kernel.Fs.File.to_source read_end) in
                 register (index + 1) rest
           in
           let rec wake = function
             | [] -> ()
-            | pipe :: rest ->
-                let _ = Kernel.Fs.File.write
-                  pipe.Kernel.Fs.File.write_end
-                  (Kernel.Bytes.of_string "x") in
+            | Kernel.Fs.File.{ write_end; _ } :: rest ->
+                let _ = Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x") in
                 wake rest
           in
           register 0 pipes;

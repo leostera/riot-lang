@@ -1,6 +1,6 @@
 open Prelude
 
-type 'a t = 'a array
+type 'value t = 'value array
 
 let make = Caml_runtime.array_make
 
@@ -63,7 +63,8 @@ let fold_left = fun fn init array ->
   in
   loop 0 init
 
-let of_list = function
+let of_list = fun value ->
+  match value with
   | [] -> [||]
   | head :: tail ->
       let rec list_length acc = function

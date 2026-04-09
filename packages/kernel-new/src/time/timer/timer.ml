@@ -1,7 +1,7 @@
 open Prelude
 
 type error =
-  | Invalid_timeout_ns of { timeout_ns: int64 }
+  | InvalidTimeoutNs of { timeout_ns: int64 }
 
 type t = {
   id: int;
@@ -17,8 +17,9 @@ type next_id = {
 
 let next_id = { value = 0 }
 
-let error_to_string = function
-  | Invalid_timeout_ns { timeout_ns=_ } -> "invalid timer timeout"
+let error_to_string error =
+  match error with
+  | InvalidTimeoutNs { timeout_ns=_ } -> "invalid timer timeout"
 
 let fresh_id = fun () ->
   next_id.value <- next_id.value + 1;
@@ -26,7 +27,7 @@ let fresh_id = fun () ->
 
 let make = fun ~repeat timeout_ns ->
   if timeout_ns <= 0L then
-    Result.Error (Invalid_timeout_ns { timeout_ns })
+    Result.Error (InvalidTimeoutNs { timeout_ns })
   else
     let timeout_secs, timeout_nanos = Common.split_ns timeout_ns in
     Result.Ok {

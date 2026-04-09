@@ -4,7 +4,7 @@ let ( let* ) = Result.and_then
 
 type error =
   | File of Fs.File.error
-  | Invalid_status of { tag: int }
+  | InvalidStatus of { tag: int }
   | System of System_error.t
 
 type status =
@@ -13,30 +13,36 @@ type status =
   | Signaled of int
   | Stopped of int
 
-type input_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `File of Fs.File.t
-]
+module Stdin = struct
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | File of Fs.File.t
+end
 
-type output_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `File of Fs.File.t
-]
+module Stdout = struct
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | File of Fs.File.t
+end
 
-type error_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `Redirect_to_stdout
-  | `File of Fs.File.t
-]
+module Stderr = struct
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | RedirectToStdout
+    | File of Fs.File.t
+end
+
+type input_stdio = Stdin.t
+
+type output_stdio = Stdout.t
+
+type error_stdio = Stderr.t
 
 type stdio_config = {
   stdin: input_stdio;
@@ -94,26 +100,29 @@ module FFI = struct
   external current_pid: unit -> int = "kernel_new_process_current_pid"
 end
 
-let default_stdio = { stdin = `Inherit; stdout = `Inherit; stderr = `Inherit }
+let default_stdio = { stdin = Stdin.Inherit; stdout = Stdout.Inherit; stderr = Stderr.Inherit }
 
-let encode_input_stdio = function
-  | `Null -> (stdio_null, None)
-  | `Pipe -> (stdio_pipe, None)
-  | `Inherit -> (stdio_inherit, None)
-  | `File file -> (stdio_file, Some file)
+let encode_input_stdio = fun value ->
+  match value with
+  | Stdin.Null -> (stdio_null, None)
+  | Stdin.Pipe -> (stdio_pipe, None)
+  | Stdin.Inherit -> (stdio_inherit, None)
+  | Stdin.File file -> (stdio_file, Some file)
 
-let encode_output_stdio = function
-  | `Null -> (stdio_null, None)
-  | `Pipe -> (stdio_pipe, None)
-  | `Inherit -> (stdio_inherit, None)
-  | `File file -> (stdio_file, Some file)
+let encode_output_stdio = fun value ->
+  match value with
+  | Stdout.Null -> (stdio_null, None)
+  | Stdout.Pipe -> (stdio_pipe, None)
+  | Stdout.Inherit -> (stdio_inherit, None)
+  | Stdout.File file -> (stdio_file, Some file)
 
-let encode_error_stdio = function
-  | `Null -> (stdio_null, None)
-  | `Pipe -> (stdio_pipe, None)
-  | `Inherit -> (stdio_inherit, None)
-  | `Redirect_to_stdout -> (stdio_redirect_to_stdout, None)
-  | `File file -> (stdio_file, Some file)
+let encode_error_stdio = fun value ->
+  match value with
+  | Stderr.Null -> (stdio_null, None)
+  | Stderr.Pipe -> (stdio_pipe, None)
+  | Stderr.Inherit -> (stdio_inherit, None)
+  | Stderr.RedirectToStdout -> (stdio_redirect_to_stdout, None)
+  | Stderr.File file -> (stdio_file, Some file)
 
 let raw_stdio_of_config = fun config ->
   let stdin_mode, stdin_file = encode_input_stdio config.stdin in
@@ -133,11 +142,12 @@ let status_of_raw = fun tag code ->
   | 0 -> Result.Ok (Exited code)
   | 1 -> Result.Ok (Signaled code)
   | 2 -> Result.Ok (Stopped code)
-  | _ -> Result.Error (Invalid_status { tag })
+  | _ -> Result.Error (InvalidStatus { tag })
 
-let error_to_string = function
+let error_to_string = fun value ->
+  match value with
   | File error -> Fs.File.error_to_string error
-  | Invalid_status { tag } -> String.concat "" [ "invalid process status tag: "; Int.to_string tag ]
+  | InvalidStatus { tag } -> String.concat "" [ "invalid process status tag: "; Int.to_string tag ]
   | System error -> System_error.to_string error
 
 let pid = fun process -> process.pid
@@ -212,7 +222,7 @@ let close = fun process ->
           match (first_error, Fs.File.close file) with
           | (Some error, _) -> Some error
           | (None, Result.Ok ()) -> None
-          | (None, Result.Error (Fs.File.System System_error.Bad_file_descriptor)) -> None
+          | (None, Result.Error (Fs.File.System System_error.BadFileDescriptor)) -> None
           | (None, Result.Error error) -> Some (File error)
         in
         close_all next_error rest

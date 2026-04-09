@@ -4,7 +4,8 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let lift = function
+let lift result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
 
@@ -101,7 +102,7 @@ let test_current_dir_roundtrips = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"kernel_new_env"
       (fun tempdir ->
-        let tempdir = Kernel.Path.v (Path.to_string tempdir) in
+        let tempdir = Kernel.Path.of_string (Path.to_string tempdir) in
         protect
           ~finally:(fun () ->
             let _ = Kernel.Env.set_current_dir original in
@@ -122,7 +123,7 @@ let test_current_dir_roundtrips = fun _ctx ->
 
 let test_invalid_var_name_is_rejected = fun _ctx ->
   match (Kernel.Env.set_var ~name:"bad=name" ~value:"x", Kernel.Env.remove_var ~name:"") with
-  | (Kernel.Result.Error (Kernel.Env.Invalid_var_name { name="bad=name" }), Kernel.Result.Error (Kernel.Env.Invalid_var_name {
+  | (Kernel.Result.Error (Kernel.Env.InvalidVarName { name="bad=name" }), Kernel.Result.Error (Kernel.Env.InvalidVarName {
     name=""
   })) -> Ok ()
   | (Kernel.Result.Error error, _) -> Error (Kernel.Env.error_to_string error)

@@ -1,31 +1,31 @@
 type t =
-  | End_of_file
-  | Permission_denied
-  | No_such_file_or_directory
+  | EndOfFile
+  | PermissionDenied
+  | NoSuchFileOrDirectory
   | Interrupted
-  | Input_output
-  | Bad_file_descriptor
-  | Resource_busy
-  | Already_exists
-  | Invalid_argument
-  | No_space_left
-  | Broken_pipe
-  | Would_block
-  | Not_directory
-  | Is_directory
-  | Not_supported
-  | Address_in_use
-  | Address_not_available
-  | Connection_refused
-  | Connection_reset
-  | Timed_out
-  | Network_unreachable
-  | Destination_address_required
-  | Not_connected
-  | Connection_aborted
-  | Message_too_long
-  | No_such_process
-  | Directory_not_empty
+  | InputOutput
+  | BadFileDescriptor
+  | ResourceBusy
+  | AlreadyExists
+  | InvalidArgument
+  | NoSpaceLeft
+  | BrokenPipe
+  | WouldBlock
+  | NotDirectory
+  | IsDirectory
+  | NotSupported
+  | AddressInUse
+  | AddressNotAvailable
+  | ConnectionRefused
+  | ConnectionReset
+  | TimedOut
+  | NetworkUnreachable
+  | DestinationAddressRequired
+  | NotConnected
+  | ConnectionAborted
+  | MessageTooLong
+  | NoSuchProcess
+  | DirectoryNotEmpty
   | Unknown of int
 
 let code_end_of_file = 1
@@ -82,68 +82,71 @@ let code_no_such_process = 26
 
 let code_directory_not_empty = 27
 
-let of_code = function
-  | 1 -> End_of_file
-  | 2 -> Permission_denied
-  | 3 -> No_such_file_or_directory
+let of_code = fun value ->
+  match value with
+  | 1 -> EndOfFile
+  | 2 -> PermissionDenied
+  | 3 -> NoSuchFileOrDirectory
   | 4 -> Interrupted
-  | 5 -> Input_output
-  | 6 -> Bad_file_descriptor
-  | 7 -> Resource_busy
-  | 8 -> Already_exists
-  | 9 -> Invalid_argument
-  | 10 -> No_space_left
-  | 11 -> Broken_pipe
-  | 12 -> Would_block
-  | 13 -> Not_directory
-  | 14 -> Is_directory
-  | 15 -> Not_supported
-  | 16 -> Address_in_use
-  | 17 -> Address_not_available
-  | 18 -> Connection_refused
-  | 19 -> Connection_reset
-  | 20 -> Timed_out
-  | 21 -> Network_unreachable
-  | 22 -> Destination_address_required
-  | 23 -> Not_connected
-  | 24 -> Connection_aborted
-  | 25 -> Message_too_long
-  | 26 -> No_such_process
-  | 27 -> Directory_not_empty
+  | 5 -> InputOutput
+  | 6 -> BadFileDescriptor
+  | 7 -> ResourceBusy
+  | 8 -> AlreadyExists
+  | 9 -> InvalidArgument
+  | 10 -> NoSpaceLeft
+  | 11 -> BrokenPipe
+  | 12 -> WouldBlock
+  | 13 -> NotDirectory
+  | 14 -> IsDirectory
+  | 15 -> NotSupported
+  | 16 -> AddressInUse
+  | 17 -> AddressNotAvailable
+  | 18 -> ConnectionRefused
+  | 19 -> ConnectionReset
+  | 20 -> TimedOut
+  | 21 -> NetworkUnreachable
+  | 22 -> DestinationAddressRequired
+  | 23 -> NotConnected
+  | 24 -> ConnectionAborted
+  | 25 -> MessageTooLong
+  | 26 -> NoSuchProcess
+  | 27 -> DirectoryNotEmpty
   | code -> Unknown code
 
-let to_string = function
-  | End_of_file -> "end of file"
-  | Permission_denied -> "permission denied"
-  | No_such_file_or_directory -> "no such file or directory"
+let to_string = fun value ->
+  match value with
+  | EndOfFile -> "end of file"
+  | PermissionDenied -> "permission denied"
+  | NoSuchFileOrDirectory -> "no such file or directory"
   | Interrupted -> "interrupted system call"
-  | Input_output -> "input/output error"
-  | Bad_file_descriptor -> "bad file descriptor"
-  | Resource_busy -> "resource busy"
-  | Already_exists -> "already exists"
-  | Invalid_argument -> "invalid argument"
-  | No_space_left -> "no space left on device"
-  | Broken_pipe -> "broken pipe"
-  | Would_block -> "operation would block"
-  | Not_directory -> "not a directory"
-  | Is_directory -> "is a directory"
-  | Not_supported -> "operation not supported"
-  | Address_in_use -> "address already in use"
-  | Address_not_available -> "address not available"
-  | Connection_refused -> "connection refused"
-  | Connection_reset -> "connection reset by peer"
-  | Timed_out -> "timed out"
-  | Network_unreachable -> "network unreachable"
-  | Destination_address_required -> "destination address required"
-  | Not_connected -> "socket is not connected"
-  | Connection_aborted -> "connection aborted"
-  | Message_too_long -> "message too long"
-  | No_such_process -> "no such process"
-  | Directory_not_empty -> "directory not empty"
+  | InputOutput -> "input/output error"
+  | BadFileDescriptor -> "bad file descriptor"
+  | ResourceBusy -> "resource busy"
+  | AlreadyExists -> "already exists"
+  | InvalidArgument -> "invalid argument"
+  | NoSpaceLeft -> "no space left on device"
+  | BrokenPipe -> "broken pipe"
+  | WouldBlock -> "operation would block"
+  | NotDirectory -> "not a directory"
+  | IsDirectory -> "is a directory"
+  | NotSupported -> "operation not supported"
+  | AddressInUse -> "address already in use"
+  | AddressNotAvailable -> "address not available"
+  | ConnectionRefused -> "connection refused"
+  | ConnectionReset -> "connection reset by peer"
+  | TimedOut -> "timed out"
+  | NetworkUnreachable -> "network unreachable"
+  | DestinationAddressRequired -> "destination address required"
+  | NotConnected -> "socket is not connected"
+  | ConnectionAborted -> "connection aborted"
+  | MessageTooLong -> "message too long"
+  | NoSuchProcess -> "no such process"
+  | DirectoryNotEmpty -> "directory not empty"
   | Unknown _ -> "unknown kernel error"
 
-let is_would_block = function
-  | Would_block -> true
+let is_would_block = fun value ->
+  match value with
+  | WouldBlock -> true
   | _ -> false
 
 external panic: string -> 'a = "kernel_new_panic"

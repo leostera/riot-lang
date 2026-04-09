@@ -10,7 +10,7 @@ let contains_slash = fun value ->
     else if String.get value index = '/' then
       true
     else
-  loop (index + 1)
+      loop (index + 1)
   in
   loop 0
 
@@ -51,28 +51,29 @@ let with_poll = fun fn ->
           let _ = Kernel.Async.Poll.close poll in
           ())
         (fun () -> fn poll)
-  | Kernel.Result.Error error ->
-      fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+  | Kernel.Result.Error error -> fail (Kernel.Error.to_string (Kernel.Error.of_async error))
 
-let is_tcp_listener_would_block = function
-  | Kernel.Net.TcpListener.Would_block -> true
-  | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_listener_would_block error =
+  match error with
+  | Kernel.Net.TcpListener.WouldBlock -> true
+  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_tcp_stream_would_block = function
-  | Kernel.Net.TcpStream.Would_block -> true
-  | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_stream_would_block error =
+  match error with
+  | Kernel.Net.TcpStream.WouldBlock -> true
+  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_udp_would_block = function
-  | Kernel.Net.UdpSocket.Would_block -> true
-  | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
+let is_udp_would_block error =
+  match error with
+  | Kernel.Net.UdpSocket.WouldBlock -> true
+  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
   match Kernel.Async.Poll.register poll token interest source with
-  | Kernel.Result.Error error ->
-      fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+  | Kernel.Result.Error error -> fail (Kernel.Error.to_string (Kernel.Error.of_async error))
   | Kernel.Result.Ok () ->
       protect
         ~finally:(fun () ->
@@ -80,14 +81,10 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
           ())
         (fun () ->
           match Kernel.Async.Poll.poll ~timeout:100_000_000L poll with
-          | Kernel.Result.Error error ->
-              fail (Kernel.Error.to_string (Kernel.Error.of_async error))
-          | Kernel.Result.Ok events ->
-              List.exists
-                (fun event ->
-                  Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-                  && pred event)
-                events)
+          | Kernel.Result.Error error -> fail (Kernel.Error.to_string (Kernel.Error.of_async error))
+          | Kernel.Result.Ok events -> List.exists
+            (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
+            events)
 
 let wait_readable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
@@ -111,8 +108,9 @@ let connect_stream = fun poll addr ->
   match Kernel.Net.TcpStream.connect addr with
   | Kernel.Result.Error error ->
       fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
-  | Kernel.Result.Ok Kernel.Net.TcpStream.Connected stream -> stream
-  | Kernel.Result.Ok (Kernel.Net.TcpStream.In_progress stream) ->
+  | Kernel.Result.Ok Kernel.Net.TcpStream.Connected stream ->
+      stream
+  | Kernel.Result.Ok (Kernel.Net.TcpStream.InProgress stream) ->
       let token = Kernel.Async.Token.make 801 in
       let rec finish attempts =
         if attempts = 0 then
@@ -136,7 +134,12 @@ let accept_stream = fun poll listener ->
     | Kernel.Result.Ok (stream, _) -> stream
     | Kernel.Result.Error error ->
         if is_tcp_listener_would_block error then
-          if wait_readable poll ~token:(Kernel.Async.Token.make 802) (Kernel.Net.TcpListener.to_source listener) then
+          if
+            wait_readable
+              poll
+              ~token:(Kernel.Async.Token.make 802)
+              (Kernel.Net.TcpListener.to_source listener)
+          then
             loop ()
           else
             fail "expected property tcp listener to become readable"
@@ -242,7 +245,8 @@ let path_join_preserves_segment_order =
       assume (String.length right > 0);
       assume (not (contains_slash left));
       assume (not (contains_slash right));
-      Kernel.Path.to_string (Kernel.Path.join left right) = left ^ "/" ^ right)
+      Kernel.Path.to_string (Kernel.Path.join left right)
+      = format Format.[ str left; str "/"; str right ])
 
 let path_fold_join_preserves_many_segment_order =
   property "Path.join preserves many simple segments in order" Arbitrary.(array string)
@@ -348,36 +352,29 @@ let file_slice_roundtrips =
           match Kernel.Fs.File.open_write path with
           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok file ->
-              let result =
-                try
-                  match Kernel.Fs.File.write file ~pos ~len bytes with
-                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                  | Kernel.Result.Ok written ->
-                      let _ = Kernel.Fs.File.close file in
-                      if written != len then
-                        false
-                      else
-                        match Kernel.Fs.File.open_read path with
-                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                        | Kernel.Result.Ok input ->
-                            let buffer = Kernel.Bytes.create len in
-                            let read_result =
-                              match Kernel.Fs.File.read input buffer with
-                              | Kernel.Result.Error error -> fail
-                                (Kernel.Fs.File.error_to_string error)
-                              | Kernel.Result.Ok read ->
-                                  let _ = Kernel.Fs.File.close input in
-                                  read = len
-                                  && Kernel.Bytes.sub_string bytes pos len
-                                  = Kernel.Bytes.sub_string buffer 0 len
-                            in
-                            read_result
-                with
-                | error ->
+              try
+                match Kernel.Fs.File.write file ~pos ~len bytes with
+                | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                | Kernel.Result.Ok written ->
                     let _ = Kernel.Fs.File.close file in
-                    raise error
-              in
-              result))
+                    if written != len then
+                      false
+                    else
+                      match Kernel.Fs.File.open_read path with
+                      | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                      | Kernel.Result.Ok input ->
+                          let buffer = Kernel.Bytes.create len in
+                          match Kernel.Fs.File.read input buffer with
+                          | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                          | Kernel.Result.Ok read ->
+                              let _ = Kernel.Fs.File.close input in
+                              read = len
+                              && Kernel.Bytes.sub_string bytes pos len
+                              = Kernel.Bytes.sub_string buffer 0 len
+              with
+              | error ->
+                  let _ = Kernel.Fs.File.close file in
+                  raise error))
 
 let file_vectored_roundtrips =
   property "Fs.File vectored writes and scalar reads preserve payload" Arbitrary.(array string)
@@ -394,35 +391,28 @@ let file_vectored_roundtrips =
           match Kernel.Fs.File.open_write path with
           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok file ->
-              let result =
-                try
-                  match Kernel.Fs.File.write_vectored file iov with
-                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                  | Kernel.Result.Ok written ->
-                      let _ = Kernel.Fs.File.close file in
-                      if written != Kernel.IO.Iovec.length iov then
-                        false
-                      else
-                        match Kernel.Fs.File.open_read path with
-                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                        | Kernel.Result.Ok input ->
-                            let buffer = Kernel.Bytes.create total in
-                            let read_result =
-                              match Kernel.Fs.File.read input buffer with
-                              | Kernel.Result.Error error -> fail
-                                (Kernel.Fs.File.error_to_string error)
-                              | Kernel.Result.Ok read ->
-                                  let _ = Kernel.Fs.File.close input in
-                                  read = total
-                                  && Kernel.Bytes.sub_string buffer 0 read = String.concat "" pieces
-                            in
-                            read_result
-                with
-                | error ->
+              try
+                match Kernel.Fs.File.write_vectored file iov with
+                | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                | Kernel.Result.Ok written ->
                     let _ = Kernel.Fs.File.close file in
-                    raise error
-              in
-              result))
+                    if written != Kernel.IO.Iovec.length iov then
+                      false
+                    else
+                      match Kernel.Fs.File.open_read path with
+                      | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                      | Kernel.Result.Ok input ->
+                          let buffer = Kernel.Bytes.create total in
+                          match Kernel.Fs.File.read input buffer with
+                          | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                          | Kernel.Result.Ok read ->
+                              let _ = Kernel.Fs.File.close input in
+                              read = total
+                              && Kernel.Bytes.sub_string buffer 0 read = String.concat "" pieces
+              with
+              | error ->
+                  let _ = Kernel.Fs.File.close file in
+                  raise error))
 
 let file_scalar_write_vectored_read_roundtrips =
   property "Fs.File scalar writes and vectored reads preserve payload" Arbitrary.string
@@ -435,35 +425,28 @@ let file_scalar_write_vectored_read_roundtrips =
           match Kernel.Fs.File.open_write path with
           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok file ->
-              let result =
-                try
-                  match Kernel.Fs.File.write file bytes with
-                  | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                  | Kernel.Result.Ok written ->
-                      let _ = Kernel.Fs.File.close file in
-                      if written != Kernel.Bytes.length bytes then
-                        false
-                      else
-                        match Kernel.Fs.File.open_read path with
-                        | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
-                        | Kernel.Result.Ok input ->
-                            let iov = Kernel.IO.Iovec.create ~count:4 ~size:64 () in
-                            let read_result =
-                              match Kernel.Fs.File.read_vectored input iov with
-                              | Kernel.Result.Error error -> fail
-                                (Kernel.Fs.File.error_to_string error)
-                              | Kernel.Result.Ok read ->
-                                  let _ = Kernel.Fs.File.close input in
-                                  read = String.length payload
-                                  && String.sub (Kernel.IO.Iovec.into_string iov) 0 read = payload
-                            in
-                            read_result
-                with
-                | error ->
+              try
+                match Kernel.Fs.File.write file bytes with
+                | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                | Kernel.Result.Ok written ->
                     let _ = Kernel.Fs.File.close file in
-                    raise error
-              in
-              result))
+                    if written != Kernel.Bytes.length bytes then
+                      false
+                    else
+                      match Kernel.Fs.File.open_read path with
+                      | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                      | Kernel.Result.Ok input ->
+                          let iov = Kernel.IO.Iovec.create ~count:4 ~size:64 () in
+                          match Kernel.Fs.File.read_vectored input iov with
+                          | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
+                          | Kernel.Result.Ok read ->
+                              let _ = Kernel.Fs.File.close input in
+                              read = String.length payload
+                              && String.sub (Kernel.IO.Iovec.into_string iov) 0 read = payload
+              with
+              | error ->
+                  let _ = Kernel.Fs.File.close file in
+                  raise error))
 
 let tcp_loopback_roundtrips_small_payload =
   property "Net.TcpStream loopback roundtrips small payloads" Arbitrary.string
@@ -473,23 +456,20 @@ let tcp_loopback_roundtrips_small_payload =
       with_poll
         (fun poll ->
           match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
-          | Kernel.Result.Error error ->
-              fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+          | Kernel.Result.Error error -> fail
+            (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
           | Kernel.Result.Ok listener ->
-              protect
-                ~finally:(fun () -> close_listener listener)
+              protect ~finally:(fun () -> close_listener listener)
                 (fun () ->
                   match Kernel.Net.TcpListener.local_addr listener with
-                  | Kernel.Result.Error error ->
-                      fail (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+                  | Kernel.Result.Error error -> fail
+                    (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
                   | Kernel.Result.Ok addr ->
                       let client = connect_stream poll addr in
-                      protect
-                        ~finally:(fun () -> close_stream client)
+                      protect ~finally:(fun () -> close_stream client)
                         (fun () ->
                           let server = accept_stream poll listener in
-                          protect
-                            ~finally:(fun () -> close_stream server)
+                          protect ~finally:(fun () -> close_stream server)
                             (fun () ->
                               let bytes = Kernel.Bytes.of_string payload in
                               let buffer = Kernel.Bytes.create (String.length payload) in
@@ -505,33 +485,35 @@ let udp_loopback_roundtrips_small_payload =
       with_poll
         (fun poll ->
           match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
-          | Kernel.Result.Error error ->
-              fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+          | Kernel.Result.Error error -> fail
+            (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
           | Kernel.Result.Ok server ->
-              protect
-                ~finally:(fun () -> close_udp server)
+              protect ~finally:(fun () -> close_udp server)
                 (fun () ->
                   match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
-                  | Kernel.Result.Error error ->
-                      fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                  | Kernel.Result.Error error -> fail
+                    (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
                   | Kernel.Result.Ok client ->
-                      protect
-                        ~finally:(fun () -> close_udp client)
+                      protect ~finally:(fun () -> close_udp client)
                         (fun () ->
                           match Kernel.Net.UdpSocket.local_addr server with
-                          | Kernel.Result.Error error ->
-                              fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                          | Kernel.Result.Error error -> fail
+                            (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
                           | Kernel.Result.Ok server_addr ->
                               let bytes = Kernel.Bytes.of_string payload in
                               match Kernel.Net.UdpSocket.send_to client server_addr bytes with
-                              | Kernel.Result.Error error ->
-                                  fail (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+                              | Kernel.Result.Error error -> fail
+                                (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
                               | Kernel.Result.Ok written ->
                                   if written != String.length payload then
                                     false
                                   else
                                     let buffer = Kernel.Bytes.create 96 in
-                                    let read, _from = recv_from_udp poll ~token:(Kernel.Async.Token.make 805) server buffer in
+                                    let read, _from = recv_from_udp
+                                      poll
+                                      ~token:(Kernel.Async.Token.make 805)
+                                      server
+                                      buffer in
                                     read = String.length payload
                                     && Kernel.Bytes.sub_string buffer 0 read = payload))))
 

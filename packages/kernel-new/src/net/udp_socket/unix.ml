@@ -5,17 +5,18 @@ let ( let* ) = Result.and_then
 type t = int
 
 type error =
-  | Invalid_slice of { pos: int; len: int; buffer_len: int }
-  | Would_block
-  | Timed_out
-  | Connection_refused
-  | Connection_reset
-  | Network_unreachable
-  | Not_connected
-  | Message_too_long
-  | Destination_address_required
-  | Address_in_use
-  | Address_not_available
+  | InvalidSlice of { pos: int; len: int; buffer_len: int }
+  | InvalidSocketAddr of { ip: string; port: int }
+  | WouldBlock
+  | TimedOut
+  | ConnectionRefused
+  | ConnectionReset
+  | NetworkUnreachable
+  | NotConnected
+  | MessageTooLong
+  | DestinationAddressRequired
+  | AddressInUse
+  | AddressNotAvailable
   | System of System_error.t
 
 module FFI = struct
@@ -38,17 +39,22 @@ end
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Result.Error (Invalid_slice { pos; len; buffer_len = Bytes.length buf })
+    Result.Error (InvalidSlice { pos; len; buffer_len = Bytes.length buf })
   else
     Result.Ok ()
 
 let socket_addr_of_pair = fun (ip, port) ->
   match Ip_addr.of_string ip with
-  | Result.Ok ip -> Socket_addr.of_parts_unchecked ~ip ~port
-  | Result.Error _ -> System_error.panic "kernel returned an invalid ip address"
+  | Result.Error _ -> Result.Error (InvalidSocketAddr { ip; port })
+  | Result.Ok ip -> (
+      match Socket_addr.of_parts ~ip ~port with
+      | Result.Ok addr -> Result.Ok addr
+      | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
+    )
 
-let error_to_string = function
-  | Invalid_slice { pos; len; buffer_len } -> String.concat
+let error_to_string = fun value ->
+  match value with
+  | InvalidSlice { pos; len; buffer_len } -> String.concat
     ""
     [
       "invalid buffer slice: pos=";
@@ -58,29 +64,33 @@ let error_to_string = function
       ", buffer_len=";
       Int.to_string buffer_len;
     ]
-  | Would_block -> "operation would block"
-  | Timed_out -> "timed out"
-  | Connection_refused -> "connection refused"
-  | Connection_reset -> "connection reset by peer"
-  | Network_unreachable -> "network unreachable"
-  | Not_connected -> "socket is not connected"
-  | Message_too_long -> "message too long"
-  | Destination_address_required -> "destination address required"
-  | Address_in_use -> "address already in use"
-  | Address_not_available -> "address not available"
+  | InvalidSocketAddr { ip; port } -> String.concat
+    ""
+    [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port ]
+  | WouldBlock -> "operation would block"
+  | TimedOut -> "timed out"
+  | ConnectionRefused -> "connection refused"
+  | ConnectionReset -> "connection reset by peer"
+  | NetworkUnreachable -> "network unreachable"
+  | NotConnected -> "socket is not connected"
+  | MessageTooLong -> "message too long"
+  | DestinationAddressRequired -> "destination address required"
+  | AddressInUse -> "address already in use"
+  | AddressNotAvailable -> "address not available"
   | System error -> System_error.to_string error
 
-let error_of_system = function
-  | System_error.Would_block -> Would_block
-  | System_error.Timed_out -> Timed_out
-  | System_error.Connection_refused -> Connection_refused
-  | System_error.Connection_reset -> Connection_reset
-  | System_error.Network_unreachable -> Network_unreachable
-  | System_error.Not_connected -> Not_connected
-  | System_error.Message_too_long -> Message_too_long
-  | System_error.Destination_address_required -> Destination_address_required
-  | System_error.Address_in_use -> Address_in_use
-  | System_error.Address_not_available -> Address_not_available
+let error_of_system = fun value ->
+  match value with
+  | System_error.WouldBlock -> WouldBlock
+  | System_error.TimedOut -> TimedOut
+  | System_error.ConnectionRefused -> ConnectionRefused
+  | System_error.ConnectionReset -> ConnectionReset
+  | System_error.NetworkUnreachable -> NetworkUnreachable
+  | System_error.NotConnected -> NotConnected
+  | System_error.MessageTooLong -> MessageTooLong
+  | System_error.DestinationAddressRequired -> DestinationAddressRequired
+  | System_error.AddressInUse -> AddressInUse
+  | System_error.AddressNotAvailable -> AddressNotAvailable
   | error -> System error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->
@@ -101,35 +111,40 @@ let close = fun socket ->
   Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.close socket)
 
 let local_addr = fun socket ->
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (Result.map socket_addr_of_pair (FFI.local_addr socket))
+  let* addr =
+    Result.map_error
+      (fun code -> error_of_system (System_error.of_code code))
+      (FFI.local_addr socket)
+  in
+  socket_addr_of_pair addr
 
 let recv = fun socket ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
   Result.map_error
     (fun code -> error_of_system (System_error.of_code code))
     (FFI.recv socket buf pos len)
 
 let recv_from = fun socket ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (Result.map
-      (fun (read_count, addr) -> (read_count, socket_addr_of_pair addr))
-      (FFI.recv_from socket buf pos len))
+  let* (read_count, addr) =
+    Result.map_error
+      (fun code -> error_of_system (System_error.of_code code))
+      (FFI.recv_from socket buf pos len)
+  in
+  let* addr = socket_addr_of_pair addr in
+  Result.Ok (read_count, addr)
 
 let send = fun socket ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
   Result.map_error
     (fun code -> error_of_system (System_error.of_code code))
     (FFI.send socket buf pos len)
 
 let send_to = fun socket addr ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in

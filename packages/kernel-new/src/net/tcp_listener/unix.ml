@@ -1,13 +1,16 @@
 open Prelude
 
+let ( let* ) = Result.and_then
+
 type t = int
 
 type error =
-  | Invalid_backlog of { backlog: int }
-  | Would_block
-  | Address_in_use
-  | Address_not_available
-  | Connection_aborted
+  | InvalidBacklog of { backlog: int }
+  | InvalidSocketAddr of { ip: string; port: int }
+  | WouldBlock
+  | AddressInUse
+  | AddressNotAvailable
+  | ConnectionAborted
   | System of System_error.t
 
 module FFI = struct
@@ -22,29 +25,38 @@ end
 
 let socket_addr_of_pair = fun (ip, port) ->
   match Ip_addr.of_string ip with
-  | Result.Ok ip -> Socket_addr.of_parts_unchecked ~ip ~port
-  | Result.Error _ -> System_error.panic "kernel returned an invalid ip address"
+  | Result.Error _ -> Result.Error (InvalidSocketAddr { ip; port })
+  | Result.Ok ip -> (
+      match Socket_addr.of_parts ~ip ~port with
+      | Result.Ok addr -> Result.Ok addr
+      | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
+    )
 
-let error_to_string = function
-  | Invalid_backlog { backlog } -> String.concat
+let error_to_string = fun value ->
+  match value with
+  | InvalidBacklog { backlog } -> String.concat
     ""
     [ "invalid listener backlog: "; Int.to_string backlog ]
-  | Would_block -> "operation would block"
-  | Address_in_use -> "address already in use"
-  | Address_not_available -> "address not available"
-  | Connection_aborted -> "connection aborted"
+  | InvalidSocketAddr { ip; port } -> String.concat
+    ""
+    [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port ]
+  | WouldBlock -> "operation would block"
+  | AddressInUse -> "address already in use"
+  | AddressNotAvailable -> "address not available"
+  | ConnectionAborted -> "connection aborted"
   | System error -> System_error.to_string error
 
-let error_of_system = function
-  | System_error.Would_block -> Would_block
-  | System_error.Address_in_use -> Address_in_use
-  | System_error.Address_not_available -> Address_not_available
-  | System_error.Connection_aborted -> Connection_aborted
+let error_of_system = fun value ->
+  match value with
+  | System_error.WouldBlock -> WouldBlock
+  | System_error.AddressInUse -> AddressInUse
+  | System_error.AddressNotAvailable -> AddressNotAvailable
+  | System_error.ConnectionAborted -> ConnectionAborted
   | error -> System error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr ->
   if backlog <= 0 then
-    Result.Error (Invalid_backlog { backlog })
+    Result.Error (InvalidBacklog { backlog })
   else
     let ip = Ip_addr.to_string (Socket_addr.ip addr) in
     let port = Socket_addr.port addr in
@@ -53,17 +65,22 @@ let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr 
       (FFI.bind ip port reuse_addr reuse_port backlog)
 
 let accept = fun listener ->
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (Result.map (fun (stream, addr) -> (stream, socket_addr_of_pair addr)) (FFI.accept listener))
+  let* (stream, addr) =
+    Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.accept listener)
+  in
+  let* addr = socket_addr_of_pair addr in
+  Result.Ok (stream, addr)
 
 let close = fun listener ->
   Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.close listener)
 
 let local_addr = fun listener ->
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (Result.map socket_addr_of_pair (FFI.local_addr listener))
+  let* addr =
+    Result.map_error
+      (fun code -> error_of_system (System_error.of_code code))
+      (FFI.local_addr listener)
+  in
+  socket_addr_of_pair addr
 
 let to_source = fun fd ->
   let module Source = struct

@@ -36,8 +36,8 @@ let ( lsr ) = Caml_runtime.shift_right_logical_int
 
 let ( asr ) = Caml_runtime.shift_right_int
 
-let not = Caml_runtime.not_bool
+let not = fun value -> Caml_runtime.not_bool ~value
 
-let ( && ) = Caml_runtime.and_bool
+let ( && ) = fun left right -> Caml_runtime.and_bool ~left ~right
 
-let ( || ) = Caml_runtime.or_bool
+let ( || ) = fun left right -> Caml_runtime.or_bool ~left ~right

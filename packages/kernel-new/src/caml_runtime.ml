@@ -12,11 +12,11 @@ external less_or_equal: 'a -> 'a -> bool = "%lessequal"
 
 external greater_or_equal: 'a -> 'a -> bool = "%greaterequal"
 
-external not_bool: bool -> bool = "%boolnot"
+external not_bool: value:bool -> bool = "%boolnot"
 
-external and_bool: bool -> bool -> bool = "%sequand"
+external and_bool: left:bool -> right:bool -> bool = "%sequand"
 
-external or_bool: bool -> bool -> bool = "%sequor"
+external or_bool: left:bool -> right:bool -> bool = "%sequor"
 
 external neg_int: int -> int = "%negint"
 

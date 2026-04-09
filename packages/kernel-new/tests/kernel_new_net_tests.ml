@@ -14,19 +14,23 @@ let string_of_tcp_stream_error = fun error ->
 
 let string_of_udp_error = fun error -> Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error)
 
-let lift_async = function
+let lift_async result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (string_of_async_error error)
 
-let lift_tcp_listener = function
+let lift_tcp_listener result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (string_of_tcp_listener_error error)
 
-let lift_tcp_stream = function
+let lift_tcp_stream result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
 
-let lift_udp = function
+let lift_udp result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (string_of_udp_error error)
 
@@ -40,19 +44,22 @@ let protect = fun ~finally fn ->
       finally ();
       raise error
 
-let is_tcp_listener_would_block = function
-  | Kernel.Net.TcpListener.Would_block -> true
-  | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_listener_would_block error =
+  match error with
+  | Kernel.Net.TcpListener.WouldBlock -> true
+  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_tcp_stream_would_block = function
-  | Kernel.Net.TcpStream.Would_block -> true
-  | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_stream_would_block error =
+  match error with
+  | Kernel.Net.TcpStream.WouldBlock -> true
+  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_udp_would_block = function
-  | Kernel.Net.UdpSocket.Would_block -> true
-  | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
+let is_udp_would_block error =
+  match error with
+  | Kernel.Net.UdpSocket.WouldBlock -> true
+  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
 let close_stream = fun stream ->
@@ -67,7 +74,8 @@ let close_udp = fun socket ->
   let _ = Kernel.Net.UdpSocket.close socket in
   ()
 
-let rec close_streams = function
+let rec close_streams streams =
+  match streams with
   | [] -> ()
   | stream :: rest ->
       close_stream stream;
@@ -114,7 +122,7 @@ let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
         if written <= 0 then
           Error "expected tcp write to make progress"
         else
-          write_all_stream poll ~token stream buffer ~pos:((pos + written)) ~len:((len - written))
+          write_all_stream poll ~token stream buffer ~pos:(pos + written) ~len:(len - written)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           let* () = wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) in
@@ -132,7 +140,7 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
         if written <= 0 then
           Error "expected tcp vectored write to make progress"
         else
-          write_all_vectored poll ~token stream iov ~pos:((pos + written)) ~len:((len - written))
+          write_all_vectored poll ~token stream iov ~pos:(pos + written) ~len:(len - written)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           let* () = wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) in
@@ -149,7 +157,7 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
         if read <= 0 then
           Error "expected tcp read to make progress"
         else
-          read_exact_stream poll ~token stream buffer ~pos:((pos + read)) ~len:((len - read))
+          read_exact_stream poll ~token stream buffer ~pos:(pos + read) ~len:(len - read)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           let* () = wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream) in
@@ -167,7 +175,7 @@ let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
         if read <= 0 then
           Error "expected tcp vectored read to make progress"
         else
-          read_exact_vectored poll ~token stream iov ~pos:((pos + read)) ~len:((len - read))
+          read_exact_vectored poll ~token stream iov ~pos:(pos + read) ~len:(len - read)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           let* () = wait_readable poll ~token (Kernel.Net.TcpStream.to_source stream) in
@@ -192,7 +200,7 @@ let connect_stream = fun poll addr ->
   let* connect_result = lift_tcp_stream (Kernel.Net.TcpStream.connect addr) in
   match connect_result with
   | Kernel.Net.TcpStream.Connected stream -> Ok stream
-  | Kernel.Net.TcpStream.In_progress stream ->
+  | Kernel.Net.TcpStream.InProgress stream ->
       let token = Kernel.Async.Token.make 302 in
       let rec finish attempts =
         if attempts = 0 then
@@ -260,7 +268,7 @@ let test_ip_addr_validates_ipv4_and_ipv6 = fun _ctx ->
     Kernel.Net.IpAddr.of_string "::1",
     Kernel.Net.IpAddr.of_string "nope"
   ) with
-  | (Kernel.Result.Ok ipv4, Kernel.Result.Ok ipv6, Kernel.Result.Error (Kernel.Net.IpAddr.Invalid_text _)) ->
+  | (Kernel.Result.Ok ipv4, Kernel.Result.Ok ipv6, Kernel.Result.Error (Kernel.Net.IpAddr.InvalidText _)) ->
       if
         Kernel.String.equal (Kernel.Net.IpAddr.to_string ipv4) "127.0.0.1"
         && Kernel.String.equal (Kernel.Net.IpAddr.to_string ipv6) "::1"
@@ -374,8 +382,8 @@ let test_tcp_stream_shutdown_write_rejects_further_writes = fun _ctx ->
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
       match Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x") with
-      | Kernel.Result.Error Kernel.Net.TcpStream.Broken_pipe -> Ok ()
-      | Kernel.Result.Error Kernel.Net.TcpStream.Not_connected -> Ok ()
+      | Kernel.Result.Error Kernel.Net.TcpStream.BrokenPipe -> Ok ()
+      | Kernel.Result.Error Kernel.Net.TcpStream.NotConnected -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected write-shutdown tcp stream to reject further writes")
 
@@ -403,7 +411,7 @@ let test_tcp_listener_bind_rejects_in_use_address = fun _ctx ->
       | Kernel.Result.Ok extra ->
           let _ = Kernel.Net.TcpListener.close extra in
           Error "expected second tcp listener bind to fail on the same address"
-      | Kernel.Result.Error Kernel.Net.TcpListener.Address_in_use ->
+      | Kernel.Result.Error Kernel.Net.TcpListener.AddressInUse ->
           Ok ()
       | Kernel.Result.Error error ->
           Error (string_of_tcp_listener_error error))
@@ -414,7 +422,7 @@ let test_tcp_listener_accept_reports_would_block = fun _ctx ->
   protect ~finally:(fun () -> close_listener listener)
     (fun () ->
       match Kernel.Net.TcpListener.accept listener with
-      | Kernel.Result.Error Kernel.Net.TcpListener.Would_block ->
+      | Kernel.Result.Error Kernel.Net.TcpListener.WouldBlock ->
           Ok ()
       | Kernel.Result.Error error ->
           Error (string_of_tcp_listener_error error)
@@ -434,7 +442,7 @@ let test_tcp_stream_finish_connect_reports_connection_refused = fun _ctx ->
       | Kernel.Net.TcpStream.Connected stream ->
           close_stream stream;
           Error "expected tcp connect to a closed port to fail"
-      | Kernel.Net.TcpStream.In_progress stream ->
+      | Kernel.Net.TcpStream.InProgress stream ->
           protect ~finally:(fun () -> close_stream stream)
             (fun () ->
               let token = Kernel.Async.Token.make 313 in
@@ -444,10 +452,8 @@ let test_tcp_stream_finish_connect_reports_connection_refused = fun _ctx ->
                 else
                   let* () = wait_writable poll ~token (Kernel.Net.TcpStream.to_source stream) in
                   match Kernel.Net.TcpStream.finish_connect stream with
-                  | Kernel.Result.Ok () ->
-                      Error "expected refused connect to fail after readiness"
-                  | Kernel.Result.Error Kernel.Net.TcpStream.Connection_refused ->
-                      Ok ()
+                  | Kernel.Result.Ok () -> Error "expected refused connect to fail after readiness"
+                  | Kernel.Result.Error Kernel.Net.TcpStream.ConnectionRefused -> Ok ()
                   | Kernel.Result.Error error ->
                       if is_tcp_stream_would_block error then
                         loop (attempts - 1)
@@ -518,7 +524,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                     | [] -> ()
                     | event :: rest ->
                         if Kernel.Async.Event.is_readable event then
-                          let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                          let token = Kernel.Async.Token.unsafe_value
+                            (Kernel.Async.Event.token event) in
                           if token >= 0 && token < 12 then
                             Kernel.Array.set seen token true;
                           mark rest
@@ -539,7 +546,7 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                     else
                       let* events = lift_async
                         (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:64 poll) in
-                      let () = mark events in
+                      mark events;
                       if all_seen 0 then
                         Ok ()
                       else
@@ -631,7 +638,7 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
                         in
                         let buffer = Kernel.Bytes.create 32 in
                         match Kernel.Net.UdpSocket.recv server buffer with
-                        | Kernel.Result.Error Kernel.Net.UdpSocket.Would_block when not server_ready -> Ok ()
+                        | Kernel.Result.Error Kernel.Net.UdpSocket.WouldBlock when not server_ready -> Ok ()
                         | Kernel.Result.Error error -> Error (string_of_udp_error error)
                         | Kernel.Result.Ok _ -> Error "expected connected udp socket to ignore datagrams from other peers")))))
 
@@ -688,7 +695,7 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
                     Kernel.Array.set seen token true;
                   mark rest
@@ -776,7 +783,7 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 8 then
                     Kernel.Array.set seen token true;
                   mark rest
@@ -791,22 +798,24 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
             else
               false
           in
-          let* () = register 0 pairs in
-          let () = close_even 0 pairs in
-          let* () = send_live 0 pairs in
-          let rec poll_until attempts =
-            if attempts = 0 then
-              Error "expected closed registered udp sockets to not poison remaining readiness"
-            else
-              let* events = lift_async
-                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-              let () = mark events in
-              if live_seen 0 then
-                Ok ()
-              else
-                poll_until (attempts - 1)
-          in
-          poll_until 8))
+          Result.and_then (register 0 pairs)
+            (fun () ->
+              close_even 0 pairs;
+              Result.and_then (send_live 0 pairs)
+                (fun () ->
+                  let rec poll_until attempts =
+                    if attempts = 0 then
+                      Error "expected closed registered udp sockets to not poison remaining readiness"
+                    else
+                      let* events = lift_async
+                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                      mark events;
+                      if live_seen 0 then
+                        Ok ()
+                      else
+                        poll_until (attempts - 1)
+                  in
+                  poll_until 8))))
 
 let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
   with_poll
@@ -876,7 +885,8 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                     | [] -> ()
                     | event :: rest ->
                         if Kernel.Async.Event.is_readable event then
-                          let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                          let token = Kernel.Async.Token.unsafe_value
+                            (Kernel.Async.Event.token event) in
                           if token >= 0 && token < 8 then
                             Kernel.Array.set seen token true;
                           mark rest
@@ -891,22 +901,24 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                     else
                       false
                   in
-                  let* () = register 0 servers in
-                  let () = close_even 0 servers in
-                  let* () = write_live 0 clients servers in
-                  let rec poll_until attempts =
-                    if attempts = 0 then
-                      Error "expected closed registered tcp streams to not poison remaining readiness"
-                    else
-                      let* events = lift_async
-                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-                      let () = mark events in
-                      if live_seen 0 then
-                        Ok ()
-                      else
-                        poll_until (attempts - 1)
-                  in
-                  poll_until 8))))
+                  Result.and_then (register 0 servers)
+                    (fun () ->
+                      close_even 0 servers;
+                      Result.and_then (write_live 0 clients servers)
+                        (fun () ->
+                          let rec poll_until attempts =
+                            if attempts = 0 then
+                              Error "expected closed registered tcp streams to not poison remaining readiness"
+                            else
+                              let* events = lift_async
+                                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                              mark events;
+                              if live_seen 0 then
+                                Ok ()
+                              else
+                                poll_until (attempts - 1)
+                          in
+                          poll_until 8))))))
 
 let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
   with_poll
@@ -958,8 +970,7 @@ let test_udp_socket_repeated_bind_and_close_stays_healthy = fun _ctx ->
     if remaining = 0 then
       Ok ()
     else
-      let* socket = lift_udp
-        (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       let* addr = lift_udp (Kernel.Net.UdpSocket.local_addr socket) in
       let* () = lift_udp (Kernel.Net.UdpSocket.close socket) in
       if Kernel.Net.SocketAddr.port addr > 0 then
@@ -974,8 +985,8 @@ let test_udp_send_requires_connected_peer = fun _ctx ->
   protect ~finally:(fun () -> close_udp socket)
     (fun () ->
       match Kernel.Net.UdpSocket.send socket (Kernel.Bytes.of_string "ping") with
-      | Kernel.Result.Error Kernel.Net.UdpSocket.Destination_address_required -> Ok ()
-      | Kernel.Result.Error Kernel.Net.UdpSocket.Not_connected -> Ok ()
+      | Kernel.Result.Error Kernel.Net.UdpSocket.DestinationAddressRequired -> Ok ()
+      | Kernel.Result.Error Kernel.Net.UdpSocket.NotConnected -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.String.append
         "expected destination-address error, got "
         (string_of_udp_error error))
@@ -988,7 +999,7 @@ let test_udp_bind_rejects_in_use_address = fun _ctx ->
     (fun () ->
       let* bound_addr = lift_udp (Kernel.Net.UdpSocket.local_addr first) in
       match Kernel.Net.UdpSocket.bind ~reuse_addr:false ~reuse_port:false bound_addr with
-      | Kernel.Result.Error Kernel.Net.UdpSocket.Address_in_use ->
+      | Kernel.Result.Error Kernel.Net.UdpSocket.AddressInUse ->
           Ok ()
       | Kernel.Result.Error error ->
           Error (string_of_udp_error error)
@@ -998,7 +1009,7 @@ let test_udp_bind_rejects_in_use_address = fun _ctx ->
 
 let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
   match Kernel.Net.TcpListener.bind ~backlog:0 (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
-  | Kernel.Result.Error (Kernel.Net.TcpListener.Invalid_backlog { backlog=0 }) ->
+  | Kernel.Result.Error (Kernel.Net.TcpListener.InvalidBacklog { backlog=0 }) ->
       Ok ()
   | Kernel.Result.Error error ->
       Error (string_of_tcp_listener_error error)

@@ -23,35 +23,42 @@ let protect = fun ~finally fn ->
       finally ();
       raise error
 
-let lift_async = function
+let lift_async result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> panic_async error
 
-let lift_tcp_listener = function
+let lift_tcp_listener result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> panic_tcp_listener error
 
-let lift_tcp_stream = function
+let lift_tcp_stream result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> panic_tcp_stream error
 
-let lift_udp = function
+let lift_udp result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> panic_udp error
 
-let is_tcp_listener_would_block = function
-  | Kernel.Net.TcpListener.Would_block -> true
-  | Kernel.Net.TcpListener.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_listener_would_block error =
+  match error with
+  | Kernel.Net.TcpListener.WouldBlock -> true
+  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_tcp_stream_would_block = function
-  | Kernel.Net.TcpStream.Would_block -> true
-  | Kernel.Net.TcpStream.System error -> Kernel.SystemError.is_would_block error
+let is_tcp_stream_would_block error =
+  match error with
+  | Kernel.Net.TcpStream.WouldBlock -> true
+  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
-let is_udp_would_block = function
-  | Kernel.Net.UdpSocket.Would_block -> true
-  | Kernel.Net.UdpSocket.System error -> Kernel.SystemError.is_would_block error
+let is_udp_would_block error =
+  match error with
+  | Kernel.Net.UdpSocket.WouldBlock -> true
+  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
@@ -88,13 +95,15 @@ let close_udp = fun socket ->
   let _ = Kernel.Net.UdpSocket.close socket in
   ()
 
-let rec close_streams = function
+let rec close_streams streams =
+  match streams with
   | [] -> ()
   | stream :: rest ->
       close_stream stream;
       close_streams rest
 
-let rec close_udp_pairs = function
+let rec close_udp_pairs pairs =
+  match pairs with
   | [] -> ()
   | (server, client) :: rest ->
       close_udp server;
@@ -112,7 +121,7 @@ let with_poll = fun fn ->
 let connect_stream = fun poll addr ->
   match lift_tcp_stream (Kernel.Net.TcpStream.connect addr) with
   | Kernel.Net.TcpStream.Connected stream -> stream
-  | Kernel.Net.TcpStream.In_progress stream ->
+  | Kernel.Net.TcpStream.InProgress stream ->
       let token = Kernel.Async.Token.make 401 in
       let rec finish attempts =
         if attempts = 0 then
@@ -151,7 +160,7 @@ let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
     | Kernel.Result.Ok written ->
         if written <= 0 then
           Kernel.SystemError.panic "expected tcp write to make progress";
-        write_all_stream poll ~token stream buffer ~pos:((pos + written)) ~len:((len - written))
+        write_all_stream poll ~token stream buffer ~pos:(pos + written) ~len:(len - written)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           (
@@ -167,7 +176,7 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
     | Kernel.Result.Ok read ->
         if read <= 0 then
           Kernel.SystemError.panic "expected tcp read to make progress";
-        read_exact_stream poll ~token stream buffer ~pos:((pos + read)) ~len:((len - read))
+        read_exact_stream poll ~token stream buffer ~pos:(pos + read) ~len:(len - read)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           (
@@ -184,7 +193,7 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
     | Kernel.Result.Ok written ->
         if written <= 0 then
           Kernel.SystemError.panic "expected tcp vectored write to make progress";
-        write_all_vectored poll ~token stream iov ~pos:((pos + written)) ~len:((len - written))
+        write_all_vectored poll ~token stream iov ~pos:(pos + written) ~len:(len - written)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           (
@@ -201,7 +210,7 @@ let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
     | Kernel.Result.Ok read ->
         if read <= 0 then
           Kernel.SystemError.panic "expected tcp vectored read to make progress";
-        read_exact_vectored poll ~token stream iov ~pos:((pos + read)) ~len:((len - read))
+        read_exact_vectored poll ~token stream iov ~pos:(pos + read) ~len:(len - read)
     | Kernel.Result.Error error ->
         if is_tcp_stream_would_block error then
           (
@@ -407,8 +416,8 @@ let bench_udp_many_source_readiness = fun () ->
                   (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
                 send_all rest
           in
-          let () = register 0 pairs in
-          let () = send_all pairs in
+          register 0 pairs;
+          send_all pairs;
           let _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
           ()))
 
@@ -458,8 +467,8 @@ let bench_tcp_many_stream_readiness = fun () ->
                       ~len:1;
                     send_all (index + 1) rest
               in
-              let () = register 0 servers in
-              let () = send_all 0 clients in
+              register 0 servers;
+              send_all 0 clients;
               let _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
               ())))
 

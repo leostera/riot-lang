@@ -12,7 +12,7 @@ let bench_into_string = fun segments segment_size () ->
 
 let bench_sub = fun segments segment_size () ->
   let iovec = build_iovec segments segment_size in
-  let _ = Kernel.IO.Iovec.sub ~pos:((segment_size / 2)) ~len:((segments * segment_size / 2)) iovec in
+  let _ = Kernel.IO.Iovec.sub ~pos:(segment_size / 2) ~len:(segments * segment_size / 2) iovec in
   ()
 
 let benchmarks =

@@ -1,17 +1,19 @@
-type 'a t = 'a option =
+type 'value t = 'value option =
   | None
-  | Some of 'a
+  | Some of 'value
 
 let map = fun fn ->
   function
   | Some value -> Some (fn value)
   | None -> None
 
-let is_some = function
+let is_some = fun value ->
+  match value with
   | Some _ -> true
   | None -> false
 
-let is_none = function
+let is_none = fun value ->
+  match value with
   | Some _ -> false
   | None -> true
 

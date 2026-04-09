@@ -1,16 +1,16 @@
 type t =
   | Async of Async.error
   | Env of Env.error
-  | Fs_file of Fs.File.error
-  | Net_ip_addr of Net.IpAddr.error
-  | Net_socket_addr of Net.SocketAddr.error
-  | Net_tcp_listener of Net.TcpListener.error
-  | Net_tcp_stream of Net.TcpStream.error
-  | Net_udp_socket of Net.UdpSocket.error
+  | FsFile of Fs.File.error
+  | NetIpAddr of Net.IpAddr.error
+  | NetSocketAddr of Net.SocketAddr.error
+  | NetTcpListener of Net.TcpListener.error
+  | NetTcpStream of Net.TcpStream.error
+  | NetUdpSocket of Net.UdpSocket.error
   | Process of Process.error
-  | Time_system_time of Time.SystemTime.error
-  | Time_monotonic of Time.Monotonic.error
-  | Time_timer of Time.Timer.error
+  | TimeSystemTime of Time.SystemTime.error
+  | TimeMonotonic of Time.Monotonic.error
+  | TimeTimer of Time.Timer.error
 val of_async: Async.error -> t
 
 val of_env: Env.error -> t
@@ -34,5 +34,12 @@ val of_time_system_time: Time.SystemTime.error -> t
 val of_time_monotonic: Time.Monotonic.error -> t
 
 val of_time_timer: Time.Timer.error -> t
+
+(** Stable module-oriented tag for the wrapped error. *)
+val module_name: t -> string
+
+(** Extract the shared system error when the wrapped module error is rooted in a
+    [SystemError.t]. *)
+val system: t -> System_error.t option
 
 val to_string: t -> string

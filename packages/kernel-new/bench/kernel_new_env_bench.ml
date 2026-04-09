@@ -1,7 +1,8 @@
 open Std
 module Kernel = Kernel_new
 
-let lift = function
+let lift result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.Env.error_to_string error)
 

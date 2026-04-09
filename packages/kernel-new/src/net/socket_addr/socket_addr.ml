@@ -1,7 +1,7 @@
 open Prelude
 
 type error =
-  | Invalid_port of { port: int }
+  | InvalidPort of { port: int }
 
 type t = {
   ip: Ip_addr.t;
@@ -10,12 +10,13 @@ type t = {
 
 let ( let* ) = Result.and_then
 
-let error_to_string = function
-  | Invalid_port { port } -> String.concat "" [ "invalid socket port: "; Int.to_string port ]
+let error_to_string = fun value ->
+  match value with
+  | InvalidPort { port } -> String.concat "" [ "invalid socket port: "; Int.to_string port ]
 
 let validate_port = fun port ->
   if port < 0 || port > 65_535 then
-    Result.Error (Invalid_port { port })
+    Result.Error (InvalidPort { port })
   else
     Result.Ok ()
 
@@ -26,8 +27,6 @@ let make = fun ~ip ~port ->
   Result.Ok { ip; port }
 
 let of_parts = make
-
-let of_parts_unchecked = unsafe_make
 
 let loopback_v4 = fun ~port -> unsafe_make ~ip:Ip_addr.v4_loopback ~port
 

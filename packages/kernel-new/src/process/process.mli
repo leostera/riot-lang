@@ -1,7 +1,7 @@
 type t
 type error =
   | File of Fs.File.error
-  | Invalid_status of { tag: int }
+  | InvalidStatus of { tag: int }
   | System of System_error.t
 val error_to_string: error -> string
 
@@ -10,33 +10,41 @@ type status =
   | Exited of int
   | Signaled of int
   | Stopped of int
-type input_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `File of Fs.File.t
-]
-type output_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `File of Fs.File.t
-]
-type error_stdio =
-[
-  `Null
-  | `Pipe
-  | `Inherit
-  | `Redirect_to_stdout
-  | `File of Fs.File.t
-]
+module Stdin: sig
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | File of Fs.File.t
+end
+
+module Stdout: sig
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | File of Fs.File.t
+end
+
+module Stderr: sig
+  type t =
+    | Null
+    | Pipe
+    | Inherit
+    | RedirectToStdout
+    | File of Fs.File.t
+end
+
+type input_stdio = Stdin.t
+type output_stdio = Stdout.t
+type error_stdio = Stderr.t
 type stdio_config = {
   stdin: input_stdio;
   stdout: output_stdio;
   stderr: error_stdio;
 }
+
+(** Default stdio inherits the parent process streams. *)
 val default_stdio: stdio_config
 
 val spawn:
@@ -50,6 +58,8 @@ val spawn:
 
 val pid: t -> int
 
+(** Pipe handles are present only when the corresponding stdio mode requested [Stdin.Pipe],
+    [Stdout.Pipe], or [Stderr.Pipe]. *)
 val stdin: t -> Fs.File.t option
 
 val stdout: t -> Fs.File.t option

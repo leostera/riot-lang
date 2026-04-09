@@ -1,18 +1,22 @@
 type error =
-  | Invalid_timeout_ns of { timeout_ns: int64 }
-  | Invalid_max_events of { max_events: int }
+  | InvalidTimeoutNs of { timeout_ns: int64 }
+  | InvalidMaxEvents of { max_events: int }
   | System of System_error.t
 val error_to_string: error -> string
 
 module Token: sig
   type t
-  val hash: t -> int
-
-  val equal: ?eq:('a -> 'a -> bool) -> t -> t -> bool
-
   val make: 'value -> t
 
-  val unsafe_to_value: t -> 'value
+  (** Recover the value stored in a token when the caller already knows its type.
+      This is intended for code that owns the token values it registered. *)
+  val unsafe_value: t -> 'value
+
+  val id: t -> int
+
+  val hash: t -> int
+
+  val equal: t -> t -> bool
 end
 
 module Interest: sig
@@ -75,10 +79,20 @@ module Adapter: sig
     val deregister_process: t -> pid:int -> (unit, error) Result.t
 
     val register_timer:
-      t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+      t ->
+      timer_id:int ->
+      token:Token.t ->
+      timeout_parts:(int * int) ->
+      repeat:bool ->
+      (unit, error) Result.t
 
     val reregister_timer:
-      t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+      t ->
+      timer_id:int ->
+      token:Token.t ->
+      timeout_parts:(int * int) ->
+      repeat:bool ->
+      (unit, error) Result.t
 
     val deregister_timer: t -> timer_id:int -> (unit, error) Result.t
   end

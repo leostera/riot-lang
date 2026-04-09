@@ -28,7 +28,7 @@ module Path = Path
 
 module Effect = Effect
 
-module IO = IO
+module IO = Io
 
 module Async = Async
 

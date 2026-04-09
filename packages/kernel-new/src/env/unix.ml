@@ -3,7 +3,7 @@ open Prelude
 let ( let* ) = Result.and_then
 
 type error =
-  | Invalid_var_name of { name: string }
+  | InvalidVarName of { name: string }
   | System of System_error.t
 
 let args = Caml_runtime.argv
@@ -24,8 +24,9 @@ end
 
 let get = FFI.get
 
-let error_to_string = function
-  | Invalid_var_name { name } -> String.concat "" [ "invalid environment variable name: "; name ]
+let error_to_string = fun value ->
+  match value with
+  | InvalidVarName { name } -> String.concat "" [ "invalid environment variable name: "; name ]
   | System error -> System_error.to_string error
 
 let validate_var_name = fun name ->
@@ -34,12 +35,12 @@ let validate_var_name = fun name ->
     if index >= length then
       Result.Ok ()
     else if String.get name index = '=' then
-      Result.Error (Invalid_var_name { name })
+      Result.Error (InvalidVarName { name })
     else
       loop (index + 1)
   in
   if length = 0 then
-    Result.Error (Invalid_var_name { name })
+    Result.Error (InvalidVarName { name })
   else
     loop 0
 
@@ -56,7 +57,7 @@ let vars = FFI.vars
 let current_dir = fun () ->
   Result.map_error
     (fun code -> System (System_error.of_code code))
-    (Result.map Path.v (FFI.current_dir ()))
+    (Result.map Path.of_string (FFI.current_dir ()))
 
 let set_current_dir = fun path ->
   Result.map_error
@@ -64,4 +65,4 @@ let set_current_dir = fun path ->
     (FFI.set_current_dir (Path.to_string path))
 
 let home_dir = fun () ->
-  Option.map Path.v (get "HOME")
+  Option.map Path.of_string (get "HOME")

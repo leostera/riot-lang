@@ -54,12 +54,8 @@ let to_string = fun value ->
           Caml_runtime.bytes_set out index (Caml_runtime.char_of_int (48 + digit));
           fill (index - 1) (current / 10)
         )
-      else
-        ()
     in
     if negative then
-      Caml_runtime.bytes_set out 0 '-'
-    else
-      ();
-      fill (width - 1) value;
-      Caml_runtime.bytes_to_string out
+      Caml_runtime.bytes_set out 0 '-';
+    fill (width - 1) value;
+    Caml_runtime.bytes_to_string out

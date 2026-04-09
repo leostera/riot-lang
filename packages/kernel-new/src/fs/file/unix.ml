@@ -5,16 +5,16 @@ let ( let* ) = Result.and_then
 type t = int
 
 type error =
-  | Invalid_slice of { pos: int; len: int; buffer_len: int }
+  | InvalidSlice of { pos: int; len: int; buffer_len: int }
   | System of System_error.t
 
 type kind =
-  | Regular_file
+  | RegularFile
   | Directory
-  | Symbolic_link
-  | Character_device
-  | Block_device
-  | Named_pipe
+  | SymbolicLink
+  | CharacterDevice
+  | BlockDevice
+  | NamedPipe
   | Socket
   | Unknown
 
@@ -36,11 +36,11 @@ module Metadata = struct
 
   let file_type = fun metadata -> metadata.kind
 
-  let is_file = fun metadata -> metadata.kind = Regular_file
+  let is_file = fun metadata -> metadata.kind = RegularFile
 
   let is_dir = fun metadata -> metadata.kind = Directory
 
-  let is_symlink = fun metadata -> metadata.kind = Symbolic_link
+  let is_symlink = fun metadata -> metadata.kind = SymbolicLink
 
   let permissions = fun metadata -> metadata.perm
 
@@ -68,9 +68,9 @@ module Metadata = struct
 end
 
 type open_flag =
-  | Read_only
-  | Write_only
-  | Read_write
+  | ReadOnly
+  | WriteOnly
+  | ReadWrite
   | Create
   | Truncate
   | Append
@@ -95,13 +95,14 @@ let flag_append = 1 lsl 5
 
 let flag_exclusive = 1 lsl 6
 
-let kind_of_code = function
-  | 0 -> Regular_file
+let kind_of_code = fun value ->
+  match value with
+  | 0 -> RegularFile
   | 1 -> Directory
-  | 2 -> Symbolic_link
-  | 3 -> Character_device
-  | 4 -> Block_device
-  | 5 -> Named_pipe
+  | 2 -> SymbolicLink
+  | 3 -> CharacterDevice
+  | 4 -> BlockDevice
+  | 5 -> NamedPipe
   | 6 -> Socket
   | _ -> Unknown
 
@@ -124,9 +125,9 @@ let metadata_of_tuple = fun (kind_code, perm, size, link_count, owner_uid, owner
 let flags_to_mask = fun flags ->
   let rec loop acc = function
     | [] -> acc
-    | Read_only :: rest -> loop (acc lor flag_read_only) rest
-    | Write_only :: rest -> loop (acc lor flag_write_only) rest
-    | Read_write :: rest -> loop (acc lor flag_read_write) rest
+    | ReadOnly :: rest -> loop (acc lor flag_read_only) rest
+    | WriteOnly :: rest -> loop (acc lor flag_write_only) rest
+    | ReadWrite :: rest -> loop (acc lor flag_read_write) rest
     | Create :: rest -> loop (acc lor flag_create) rest
     | Truncate :: rest -> loop (acc lor flag_truncate) rest
     | Append :: rest -> loop (acc lor flag_append) rest
@@ -143,9 +144,9 @@ module FFI = struct
 
   external write: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
-  external readv: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
+  external readv: t -> Io.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
-  external writev: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
+  external writev: t -> Io.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
 
   external pipe: unit -> ((t * t), int) Result.t = "kernel_new_fs_file_pipe"
 
@@ -194,15 +195,15 @@ let open_file = fun path flags ~perm ->
     (fun code -> System (System_error.of_code code))
     (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
 
-let open_read = fun path -> open_file path [ Read_only ] ~perm:0
+let open_read = fun path -> open_file path [ ReadOnly ] ~perm:0
 
 let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(perm = 0o644) path ->
   let flags =
     let flags =
       if create then
-        Create :: [ Write_only ]
+        Create :: [ WriteOnly ]
       else
-        [ Write_only ]
+        [ WriteOnly ]
     in
     let flags =
       if truncate then
@@ -220,8 +221,9 @@ let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(per
 let close = fun fd ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close fd)
 
-let error_to_string = function
-  | Invalid_slice { pos; len; buffer_len } -> String.concat
+let error_to_string = fun value ->
+  match value with
+  | InvalidSlice { pos; len; buffer_len } -> String.concat
     ""
     [
       "invalid buffer slice: pos=";
@@ -235,7 +237,7 @@ let error_to_string = function
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Result.Error (Invalid_slice { pos; len; buffer_len = Bytes.length buf })
+    Result.Error (InvalidSlice { pos; len; buffer_len = Bytes.length buf })
   else
     Result.Ok ()
 
@@ -246,9 +248,7 @@ let read = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.read fd buf pos len)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.read fd buf pos len)
 
 let write = fun fd ?(pos = 0) ?len buf ->
   let len =
@@ -257,19 +257,13 @@ let write = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.write fd buf pos len)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.write fd buf pos len)
 
 let read_vectored = fun fd iovecs ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.readv fd iovecs)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.readv fd iovecs)
 
 let write_vectored = fun fd iovecs ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.writev fd iovecs)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.writev fd iovecs)
 
 let pipe = fun () ->
   let* (read_end, write_end) =
@@ -283,9 +277,7 @@ let create_dir = fun path ~perm ->
     (FFI.mkdir (Path.to_string path) perm)
 
 let remove_dir = fun path ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.rmdir (Path.to_string path))
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.rmdir (Path.to_string path))
 
 let remove_file = fun path ->
   Result.map_error
@@ -309,14 +301,14 @@ let symlink = fun ~src ~dst ->
 
 let read_link = fun path ->
   Result.map
-    (fun target -> Path.v target)
+    Path.of_string
     (Result.map_error
       (fun code -> System (System_error.of_code code))
       (FFI.readlink (Path.to_string path)))
 
 let canonicalize = fun path ->
   Result.map
-    (fun resolved -> Path.v resolved)
+    Path.of_string
     (Result.map_error
       (fun code -> System (System_error.of_code code))
       (FFI.realpath (Path.to_string path)))
@@ -340,9 +332,7 @@ let symlink_metadata = lstat
 let fstat = fun fd ->
   Result.map
     metadata_of_tuple
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.fstat fd))
+    (Result.map_error (fun code -> System (System_error.of_code code)) (FFI.fstat fd))
 
 let read_dir_names = fun path ->
   Result.map_error
@@ -351,28 +341,22 @@ let read_dir_names = fun path ->
 
 let current_dir = fun () ->
   Result.map
-    (fun path -> Path.v path)
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.getcwd ()))
+    Path.of_string
+    (Result.map_error (fun code -> System (System_error.of_code code)) (FFI.getcwd ()))
 
 let set_current_dir = fun path ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.chdir (Path.to_string path))
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.chdir (Path.to_string path))
 
 let exists = fun path ->
   match metadata path with
   | Result.Ok _ -> Result.Ok true
-  | Result.Error (System System_error.No_such_file_or_directory) ->
-      Result.Ok false
+  | Result.Error (System System_error.NoSuchFileOrDirectory) -> Result.Ok false
   | Result.Error error -> Result.Error error
 
 let is_directory = fun path ->
   match metadata path with
   | Result.Ok metadata -> Result.Ok (Metadata.is_dir metadata)
-  | Result.Error (System System_error.No_such_file_or_directory) ->
-      Result.Ok false
+  | Result.Error (System System_error.NoSuchFileOrDirectory) -> Result.Ok false
   | Result.Error error -> Result.Error error
 
 let copy = fun ~src ~dst ->
@@ -390,7 +374,7 @@ let copy = fun ~src ~dst ->
         else
           let* written = write dst_file ~pos ~len:remaining buffer in
           if written = 0 then
-            Result.Error (System System_error.Input_output)
+            Result.Error (System System_error.InputOutput)
           else
             write_all (pos + written) (remaining - written)
       in
@@ -409,7 +393,7 @@ let copy = fun ~src ~dst ->
       | (Result.Ok (), Result.Ok ()) -> Result.Ok ()
     )
 
-let is_tty = fun fd -> FFI.is_tty fd
+let is_tty = FFI.is_tty
 
 let to_source = fun fd ->
   let module Source = struct
@@ -421,7 +405,6 @@ let to_source = fun fd ->
     let reregister = fun fd selector token interest ->
       Async.Adapter.Selector.reregister selector ~fd ~token ~interest
 
-    let deregister = fun fd selector ->
-      Async.Adapter.Selector.deregister selector ~fd
+    let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in
   Async.Source.make (module Source) fd

@@ -26,4 +26,4 @@ let evfilt_proc = (-5)
 
 let evfilt_timer = (-7)
 
-let note_nseconds = 0x00000004
+let note_nseconds = 0x0000_0004

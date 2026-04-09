@@ -4,8 +4,8 @@ open Prelude
 type selector = int
 
 type error =
-  | Invalid_timeout_ns of { timeout_ns: int64 }
-  | Invalid_max_events of { max_events: int }
+  | InvalidTimeoutNs of { timeout_ns: int64 }
+  | InvalidMaxEvents of { max_events: int }
   | System of System_error.t
 
 type event = {
@@ -40,8 +40,7 @@ module FFI = struct
     selector -> int -> (int * int) -> bool -> Token.t -> (unit, int) Result.t
     = "kernel_new_async_unix_selector_reregister_timer"
 
-  external selector_deregister_timer: selector -> int -> (unit, int) Result.t
-    = "kernel_new_async_unix_selector_deregister_timer"
+  external selector_deregister_timer: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_timer"
 
   let create = fun () ->
     Result.map_error (fun code -> System (System_error.of_code code)) (selector_create ())
@@ -101,8 +100,7 @@ module Kevent = struct
 
   let is_priority = fun event -> event.filter = Libc.evfilt_proc
 
-  let is_readable = fun event ->
-    event.filter = Libc.evfilt_read || event.filter = Libc.evfilt_timer
+  let is_readable = fun event -> event.filter = Libc.evfilt_read || event.filter = Libc.evfilt_timer
 
   let is_writable = fun event -> event.filter = Libc.evfilt_write
 
@@ -122,9 +120,9 @@ module Selector = struct
 
   let select = fun ?(timeout = 500_000_000L) ?(max_events = 1_024) selector ->
     if timeout < 0L then
-      Result.Error (Invalid_timeout_ns { timeout_ns = timeout })
+      Result.Error (InvalidTimeoutNs { timeout_ns = timeout })
     else if max_events <= 0 then
-      Result.Error (Invalid_max_events { max_events })
+      Result.Error (InvalidMaxEvents { max_events })
     else
       let* events = FFI.wait ~max_events ~timeout_ns:timeout selector in
       let rec to_list index acc =

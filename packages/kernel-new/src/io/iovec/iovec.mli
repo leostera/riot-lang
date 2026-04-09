@@ -1,5 +1,11 @@
-type segment
+type segment = {
+  buffer: bytes;
+  offset: int;
+  length: int;
+}
+
 type t
+
 val create: ?count:int -> size:int -> unit -> t
 
 val with_capacity: int -> t

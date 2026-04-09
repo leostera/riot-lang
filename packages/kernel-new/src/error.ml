@@ -1,51 +1,84 @@
 type t =
   | Async of Async.error
   | Env of Env.error
-  | Fs_file of Fs.File.error
-  | Net_ip_addr of Net.IpAddr.error
-  | Net_socket_addr of Net.SocketAddr.error
-  | Net_tcp_listener of Net.TcpListener.error
-  | Net_tcp_stream of Net.TcpStream.error
-  | Net_udp_socket of Net.UdpSocket.error
+  | FsFile of Fs.File.error
+  | NetIpAddr of Net.IpAddr.error
+  | NetSocketAddr of Net.SocketAddr.error
+  | NetTcpListener of Net.TcpListener.error
+  | NetTcpStream of Net.TcpStream.error
+  | NetUdpSocket of Net.UdpSocket.error
   | Process of Process.error
-  | Time_system_time of Time.SystemTime.error
-  | Time_monotonic of Time.Monotonic.error
-  | Time_timer of Time.Timer.error
+  | TimeSystemTime of Time.SystemTime.error
+  | TimeMonotonic of Time.Monotonic.error
+  | TimeTimer of Time.Timer.error
 
 let of_async = fun error -> Async error
 
 let of_env = fun error -> Env error
 
-let of_fs_file = fun error -> Fs_file error
+let of_fs_file = fun error -> FsFile error
 
-let of_net_ip_addr = fun error -> Net_ip_addr error
+let of_net_ip_addr = fun error -> NetIpAddr error
 
-let of_net_socket_addr = fun error -> Net_socket_addr error
+let of_net_socket_addr = fun error -> NetSocketAddr error
 
-let of_net_tcp_listener = fun error -> Net_tcp_listener error
+let of_net_tcp_listener = fun error -> NetTcpListener error
 
-let of_net_tcp_stream = fun error -> Net_tcp_stream error
+let of_net_tcp_stream = fun error -> NetTcpStream error
 
-let of_net_udp_socket = fun error -> Net_udp_socket error
+let of_net_udp_socket = fun error -> NetUdpSocket error
 
 let of_process = fun error -> Process error
 
-let of_time_system_time = fun error -> Time_system_time error
+let of_time_system_time = fun error -> TimeSystemTime error
 
-let of_time_monotonic = fun error -> Time_monotonic error
+let of_time_monotonic = fun error -> TimeMonotonic error
 
-let of_time_timer = fun error -> Time_timer error
+let of_time_timer = fun error -> TimeTimer error
 
-let to_string = function
+let module_name = fun value ->
+  match value with
+  | Async _ -> "async"
+  | Env _ -> "env"
+  | FsFile _ -> "fs.file"
+  | NetIpAddr _ -> "net.ip_addr"
+  | NetSocketAddr _ -> "net.socket_addr"
+  | NetTcpListener _ -> "net.tcp_listener"
+  | NetTcpStream _ -> "net.tcp_stream"
+  | NetUdpSocket _ -> "net.udp_socket"
+  | Process _ -> "process"
+  | TimeSystemTime _ -> "time.system_time"
+  | TimeMonotonic _ -> "time.monotonic"
+  | TimeTimer _ -> "time.timer"
+
+let system = fun value ->
+  match value with
+  | Async (Async.System error) -> Some error
+  | Env (Env.System error) -> Some error
+  | FsFile (Fs.File.System error) -> Some error
+  | NetTcpListener (Net.TcpListener.System error) -> Some error
+  | NetTcpStream (Net.TcpStream.System error) -> Some error
+  | NetUdpSocket (Net.UdpSocket.System error) -> Some error
+  | Process (Process.System error) -> Some error
+  | Process (Process.File (Fs.File.System error)) -> Some error
+  | TimeSystemTime (Time.SystemTime.System error) -> Some error
+  | TimeMonotonic (Time.Monotonic.System error) -> Some error
+  | _ -> None
+
+let detail_to_string = fun value ->
+  match value with
   | Async error -> Async.error_to_string error
   | Env error -> Env.error_to_string error
-  | Fs_file error -> Fs.File.error_to_string error
-  | Net_ip_addr error -> Net.IpAddr.error_to_string error
-  | Net_socket_addr error -> Net.SocketAddr.error_to_string error
-  | Net_tcp_listener error -> Net.TcpListener.error_to_string error
-  | Net_tcp_stream error -> Net.TcpStream.error_to_string error
-  | Net_udp_socket error -> Net.UdpSocket.error_to_string error
+  | FsFile error -> Fs.File.error_to_string error
+  | NetIpAddr error -> Net.IpAddr.error_to_string error
+  | NetSocketAddr error -> Net.SocketAddr.error_to_string error
+  | NetTcpListener error -> Net.TcpListener.error_to_string error
+  | NetTcpStream error -> Net.TcpStream.error_to_string error
+  | NetUdpSocket error -> Net.UdpSocket.error_to_string error
   | Process error -> Process.error_to_string error
-  | Time_system_time error -> Time.SystemTime.error_to_string error
-  | Time_monotonic error -> Time.Monotonic.error_to_string error
-  | Time_timer error -> Time.Timer.error_to_string error
+  | TimeSystemTime error -> Time.SystemTime.error_to_string error
+  | TimeMonotonic error -> Time.Monotonic.error_to_string error
+  | TimeTimer error -> Time.Timer.error_to_string error
+
+let to_string = fun error ->
+  String.concat "" [ module_name error; ": "; detail_to_string error ]

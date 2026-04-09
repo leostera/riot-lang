@@ -1,23 +1,27 @@
 open Std
 module Kernel = Kernel_new
 
-let lift_process = function
+let lift_process result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_process error))
 
-let lift_async = function
+let lift_async result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_async error))
 
-let lift_file = function
+let lift_file result =
+  match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
     (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
-let is_would_block = function
-  | Kernel.Fs.File.System error -> Kernel.SystemError.is_would_block error
+let is_would_block error =
+  match error with
+  | Kernel.Fs.File.System system_error -> Kernel.SystemError.is_would_block system_error
   | _ -> false
 
 let with_process = fun process fn ->
@@ -30,7 +34,8 @@ let with_process = fun process fn ->
       let _ = Kernel.Process.close process in
       raise error
 
-let rec close_processes = function
+let rec close_processes processes =
+  match processes with
   | [] -> ()
   | process :: rest ->
       let _ = Kernel.Process.close process in
@@ -55,7 +60,7 @@ let with_poll = fun fn ->
     (fun () -> fn poll)
 
 let with_processes = fun count fn ->
-  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let rec spawn remaining acc =
     if remaining = 0 then
       List.rev acc
@@ -140,7 +145,7 @@ let bench_spawn_true = fun () ->
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
     (fun poll ->
-      let stdio = Kernel.Process.{ stdin = `Null; stdout = `Pipe; stderr = `Null } in
+      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
       let process = lift_process
         (Kernel.Process.spawn ~program:"/bin/echo" ~args:[|"-n"; "kernel-new"|] ~stdio ()) in
       with_process process
@@ -172,7 +177,7 @@ let bench_many_process_exit_sources = fun () ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
                     Kernel.Array.set seen token true;
                   mark_events rest
@@ -180,13 +185,13 @@ let bench_many_process_exit_sources = fun () ->
           let rec mark_exits index = function
             | [] -> ()
             | process :: rest ->
-                let () =
+                (
                   match Kernel.Process.try_wait process with
                   | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) ->
                       if index < 16 then
                         Kernel.Array.set seen index true
                   | _ -> ()
-                in
+                );
                 mark_exits (index + 1) rest
           in
           let rec all_seen index =
@@ -205,11 +210,11 @@ let bench_many_process_exit_sources = fun () ->
             else
               let events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-              let () = mark_events events in
-              let () = mark_exits 0 processes in
+              mark_events events;
+              mark_exits 0 processes;
               poll_until (attempts - 1)
           in
-          let () = register 0 processes in
+          register 0 processes;
           poll_until 16))
 
 let benchmarks =

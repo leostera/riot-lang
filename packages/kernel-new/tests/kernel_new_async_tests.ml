@@ -4,23 +4,28 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let lift_file = function
+let lift_file result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
 
-let lift_async = function
+let lift_async result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error)
 
-let lift_process = function
+let lift_process result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
 
-let lift_timer = function
+let lift_timer result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Time.Timer.error_to_string error)
 
-let lift_udp = function
+let lift_udp result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Net.UdpSocket.error_to_string error)
 
@@ -43,14 +48,16 @@ let with_pipe = fun fn ->
       ())
     (fun () -> fn pipe.read_end pipe.write_end)
 
-let rec close_pipes = function
+let rec close_pipes pipes =
+  match pipes with
   | [] -> ()
   | (read_end, write_end) :: rest ->
       let _ = Kernel.Fs.File.close read_end in
       let _ = Kernel.Fs.File.close write_end in
       close_pipes rest
 
-let rec close_processes = function
+let rec close_processes processes =
+  match processes with
   | [] -> ()
   | process :: rest ->
       let _ = Kernel.Process.close process in
@@ -80,7 +87,7 @@ let with_poll = fun fn ->
     (fun () -> fn poll)
 
 let with_processes = fun count fn ->
-  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let rec spawn remaining acc =
     if remaining = 0 then
       Ok acc
@@ -194,7 +201,7 @@ let test_reregister_updates_pipe_token = fun _ctx ->
               (fun event ->
                 Kernel.Async.Event.is_writable event
                 && Kernel.String.equal
-                  (Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event))
+                  (Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event))
                   "second")
               events
           in
@@ -262,7 +269,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 64 then
                     Kernel.Array.set seen token true;
                   mark rest
@@ -283,7 +290,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
 
 let test_token_roundtrips_structured_values = fun _ctx ->
   let token = Kernel.Async.Token.make ("pipe", 99) in
-  let tag, value = Kernel.Async.Token.unsafe_to_value token in
+  let tag, value = Kernel.Async.Token.unsafe_value token in
   if Kernel.String.equal tag "pipe" && value = 99 then
     Ok ()
   else
@@ -293,7 +300,7 @@ let test_poll_rejects_invalid_limits = fun _ctx ->
   with_poll
     (fun poll ->
       match (Kernel.Async.Poll.poll ~timeout:(-1L) poll, Kernel.Async.Poll.poll ~max_events:0 poll) with
-      | (Kernel.Result.Error (Kernel.Async.Invalid_timeout_ns { timeout_ns }), Kernel.Result.Error (Kernel.Async.Invalid_max_events {
+      | (Kernel.Result.Error (Kernel.Async.InvalidTimeoutNs { timeout_ns }), Kernel.Result.Error (Kernel.Async.InvalidMaxEvents {
         max_events
       })) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
       | (Kernel.Result.Error error, _) -> Error (Kernel.Async.error_to_string error)
@@ -321,7 +328,7 @@ let test_poll_handles_many_process_exits = fun _ctx ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
                     Kernel.Array.set seen token true;
                   mark_events rest
@@ -334,13 +341,13 @@ let test_poll_handles_many_process_exits = fun _ctx ->
                   | Kernel.Result.Ok status -> Ok status
                   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
                 in
-                let () =
+                (
                   match status with
                   | Some (Kernel.Process.Exited 0) ->
                       if index < 16 then
                         Kernel.Array.set seen index true
                   | _ -> ()
-                in
+                );
                 mark_exits (index + 1) rest
           in
           let rec all_seen index =
@@ -358,7 +365,7 @@ let test_poll_handles_many_process_exits = fun _ctx ->
             else
               let* events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-              let () = mark_events events in
+              mark_events events;
               let* () = mark_exits 0 processes in
               if all_seen 0 then
                 Ok ()
@@ -399,7 +406,7 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
         | [] -> ()
         | event :: rest ->
             if Kernel.Async.Event.is_readable event then
-              let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+              let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
               if token >= 0 && token < 16 then
                 Kernel.Array.set seen token true;
               mark rest
@@ -417,9 +424,8 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
         if attempts = 0 then
           Error "expected many timer sources to wake the poller"
         else
-          let* events = lift_async
-            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-          let () = mark events in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+          mark events;
           if all_seen 0 then
             Ok ()
           else
@@ -453,7 +459,8 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
     (fun read_end write_end ->
       with_poll
         (fun poll ->
-          let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+          let stdio =
+            Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
           let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
           let* process = lift_process
             (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
@@ -464,13 +471,11 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
             (fun () ->
               let* server = lift_udp
                 (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
-              protect
-                ~finally:(fun () -> close_udp server)
+              protect ~finally:(fun () -> close_udp server)
                 (fun () ->
                   let* client = lift_udp
                     (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
-                  protect
-                    ~finally:(fun () -> close_udp client)
+                  protect ~finally:(fun () -> close_udp client)
                     (fun () ->
                       let timer_source = Kernel.Time.Timer.to_source timer in
                       let process_source = Kernel.Process.to_source process in
@@ -529,24 +534,21 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                               let rec mark = function
                                 | [] -> ()
                                 | event :: rest ->
-                                    let token =
-                                      Kernel.Async.Token.unsafe_to_value
-                                        (Kernel.Async.Event.token event) in
-                                    let () =
-                                      if token = "pipe" && Kernel.Async.Event.is_readable event then
-                                        seen_pipe := true
-                                      else if token = "timer" && Kernel.Async.Event.is_readable event then
-                                        seen_timer := true
-                                      else if token = "process" && Kernel.Async.Event.is_priority event then
-                                        seen_process := true
-                                      else if token = "udp" && Kernel.Async.Event.is_readable event then
-                                        seen_udp := true
-                                    in
+                                    let token = Kernel.Async.Token.unsafe_value
+                                      (Kernel.Async.Event.token event) in
+                                    if token = "pipe" && Kernel.Async.Event.is_readable event then
+                                      seen_pipe := true
+                                    else if token = "timer" && Kernel.Async.Event.is_readable event then
+                                      seen_timer := true
+                                    else if
+                                      token = "process" && Kernel.Async.Event.is_priority event
+                                    then
+                                      seen_process := true
+                                    else if token = "udp" && Kernel.Async.Event.is_readable event then
+                                      seen_udp := true;
                                     mark rest
                               in
-                              let rec all_seen () =
-                                !seen_pipe && !seen_timer && !seen_process && !seen_udp
-                              in
+                              let rec all_seen () = !seen_pipe && !seen_timer && !seen_process && !seen_udp in
                               let rec poll_until attempts =
                                 if all_seen () then
                                   Ok ()
@@ -555,7 +557,7 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                                 else
                                   let* events = lift_async
                                     (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:16 poll) in
-                                  let () = mark events in
+                                  mark events;
                                   poll_until (attempts - 1)
                               in
                               poll_until 12))))))
@@ -582,7 +584,7 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                 if index land 1 = 0 then
                   let _ = Kernel.Fs.File.close read_end in
                   ();
-                close_even (index + 1) rest
+                  close_even (index + 1) rest
           in
           let rec write_live index = function
             | [] -> Ok ()
@@ -602,7 +604,7 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
-                  let token = Kernel.Async.Token.unsafe_to_value (Kernel.Async.Event.token event) in
+                  let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 8 then
                     Kernel.Array.set seen token true;
                   mark rest
@@ -617,22 +619,24 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
             else
               false
           in
-          let* () = register 0 pipes in
-          let () = close_even 0 pipes in
-          let* () = write_live 0 pipes in
-          let rec poll_until attempts =
-            if attempts = 0 then
-              Error "expected closed registered pipe sources to not poison remaining readiness"
-            else
-              let* events = lift_async
-                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-              let () = mark events in
-              if live_seen 0 then
-                Ok ()
-              else
-                poll_until (attempts - 1)
-          in
-          poll_until 8))
+          Result.and_then (register 0 pipes)
+            (fun () ->
+              close_even 0 pipes;
+              Result.and_then (write_live 0 pipes)
+                (fun () ->
+                  let rec poll_until attempts =
+                    if attempts = 0 then
+                      Error "expected closed registered pipe sources to not poison remaining readiness"
+                    else
+                      let* events = lift_async
+                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                      mark events;
+                      if live_seen 0 then
+                        Ok ()
+                      else
+                        poll_until (attempts - 1)
+                  in
+                  poll_until 8))))
 
 let tests = [
   Test.case "Async poll reports pipe readability" test_poll_reports_pipe_readability;

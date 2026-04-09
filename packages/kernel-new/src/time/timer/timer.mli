@@ -1,6 +1,6 @@
 type t
 type error =
-  | Invalid_timeout_ns of { timeout_ns: int64 }
+  | InvalidTimeoutNs of { timeout_ns: int64 }
 val error_to_string: error -> string
 
 val after_ns: int64 -> (t, error) Result.t

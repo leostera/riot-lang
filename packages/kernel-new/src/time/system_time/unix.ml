@@ -3,7 +3,7 @@ open Prelude
 let ( let* ) = Result.and_then
 
 type error =
-  | Invalid_nanoseconds of { nanos: int }
+  | InvalidNanoseconds of { nanos: int }
   | System of System_error.t
 
 type t = {
@@ -17,14 +17,15 @@ module FFI = struct
   external now: unit -> ((int * int), int) Result.t = "kernel_new_time_system_time_now"
 end
 
-let error_to_string = function
-  | Invalid_nanoseconds { nanos } -> String.concat
+let error_to_string error =
+  match error with
+  | InvalidNanoseconds { nanos } -> String.concat
     ""
     [ "invalid nanoseconds component: "; Int.to_string nanos ]
-  | System error -> System_error.to_string error
+  | System system_error -> System_error.to_string system_error
 
 let validate_parts = fun ~secs:_ ~nanos ->
-  Result.map_error (fun () -> Invalid_nanoseconds { nanos }) (Common.validate_nanos nanos)
+  Result.map_error (fun () -> InvalidNanoseconds { nanos }) (Common.validate_nanos nanos)
 
 let of_parts = fun ~secs ~nanos ->
   let* () = validate_parts ~secs ~nanos in

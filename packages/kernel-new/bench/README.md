@@ -27,14 +27,14 @@ Current baseline medians from the latest validated Unix run:
   - `env vars snapshot`: `7.15us`
   - `env get existing var`: below timer resolution on this runner
 - file:
-  - `file scalar write: 4KiB`: `351.91us`
-  - `file partial write: 2KiB@512`: `288.96us`
-  - `file vectored write: 4 x 1KiB`: `298.02us`
-  - `file scalar read: 4KiB`: `331.88us`
-  - `file partial read: 2KiB@512`: `462.06us`
-  - `file vectored read: 4 x 1KiB`: `330.93us`
-  - `file metadata: 4KiB`: `349.05us`
-  - `file read_dir_names: 2 entries`: `519.99us`
+  - `File scalar write: 4KiB`: `351.91us`
+  - `File partial write: 2KiB@512`: `288.96us`
+  - `File vectored write: 4 x 1KiB`: `298.02us`
+  - `File scalar read: 4KiB`: `331.88us`
+  - `File partial read: 2KiB@512`: `462.06us`
+  - `File vectored read: 4 x 1KiB`: `330.93us`
+  - `File metadata: 4KiB`: `349.05us`
+  - `File read_dir_names: 2 entries`: `519.99us`
 - iovec:
   - `iovec into_string: 32 x 1KiB`: `306.85us`
   - `iovec into_string: 128 x 1KiB`: `1.20ms`

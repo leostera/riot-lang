@@ -4,20 +4,24 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let lift_system_time = function
+let lift_system_time result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string
     (Kernel.Error.of_time_system_time error))
 
-let lift_monotonic = function
+let lift_monotonic result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
 
-let lift_timer = function
+let lift_timer result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
 
-let lift_async = function
+let lift_async result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_async error))
 
@@ -41,15 +45,13 @@ let with_poll = fun fn ->
 
 let wait_for_timer = fun poll ~token timer ->
   let source = Kernel.Time.Timer.to_source timer in
-  let* () = lift_async
-    (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+  let* () = lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Async.Poll.deregister poll source in
       ())
     (fun () ->
-      let* events = lift_async
-        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+      let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
       if
         List.exists
           (fun event ->
@@ -130,12 +132,9 @@ let test_monotonic_diff_ns_matches_parts = fun _ctx ->
 
 let test_timer_rejects_non_positive_timeout = fun _ctx ->
   match Kernel.Time.Timer.after_ns 0L with
-  | Kernel.Result.Error (Kernel.Time.Timer.Invalid_timeout_ns { timeout_ns=0L }) ->
-      Ok ()
-  | Kernel.Result.Error error ->
-      Error (Kernel.Time.Timer.error_to_string error)
-  | Kernel.Result.Ok _ ->
-      Error "expected timer source construction to reject a non-positive timeout"
+  | Kernel.Result.Error (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns=0L }) -> Ok ()
+  | Kernel.Result.Error error -> Error (Kernel.Time.Timer.error_to_string error)
+  | Kernel.Result.Ok _ -> Error "expected timer source construction to reject a non-positive timeout"
 
 let test_timer_after_ns_wakes_poll = fun _ctx ->
   with_poll
@@ -188,14 +187,12 @@ let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
           let _ = Kernel.Async.Poll.deregister poll source in
           ())
         (fun () ->
-          let* first = lift_async
-            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+          let* first = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
           if not (has_readable_token token first) then
             Error "expected repeating timer to fire before deregistration"
           else
             let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
-            let* second = lift_async
-              (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+            let* second = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
             if has_readable_token token second then
               Error "expected deregistered timer to stop producing events"
             else

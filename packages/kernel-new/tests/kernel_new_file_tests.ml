@@ -4,7 +4,8 @@ module Kernel = Kernel_new
 
 let ( let* ) = Result.and_then
 
-let lift = function
+let lift result =
+  match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
 
@@ -19,7 +20,7 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -60,8 +61,7 @@ let array_has_exact_members = fun actual expected ->
     else
       false
   in
-  Kernel.Array.length actual = Kernel.Array.length expected
-  && members_present 0
+  Kernel.Array.length actual = Kernel.Array.length expected && members_present 0
 
 let test_file_scalar_write_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "scalar.bin"
@@ -393,7 +393,7 @@ let test_remove_nonempty_dir_reports_resource_busy = fun _ctx ->
             Ok ())
       in
       match Kernel.Fs.File.remove_dir directory with
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.Directory_not_empty) -> Ok ()
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.DirectoryNotEmpty) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected removing a non-empty directory to fail")
 
@@ -478,7 +478,7 @@ let test_open_read_missing_file_maps_error = fun _ctx ->
     (fun path ->
       match Kernel.Fs.File.open_read path with
       | Kernel.Result.Ok _ -> Error "expected opening a missing file to fail"
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory) -> Ok ()
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.String.append
         "expected no-such-file error, got "
         (Kernel.Fs.File.error_to_string error)))
@@ -489,7 +489,7 @@ let test_remove_missing_paths_report_no_such_file = fun _ctx ->
       let missing_file = Kernel.Path.(tempdir / "missing.txt") in
       let missing_dir = Kernel.Path.(tempdir / "missing-dir") in
       match (Kernel.Fs.File.remove_file missing_file, Kernel.Fs.File.remove_dir missing_dir) with
-      | (Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory), Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.No_such_file_or_directory)) -> Ok ()
+      | (Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory), Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory)) -> Ok ()
       | _ -> Error "expected removing missing file and dir to report no-such-file")
 
 let test_repeated_pipe_open_and_close_stays_healthy = fun _ctx ->
@@ -521,7 +521,7 @@ let test_read_dir_names_skips_dot_entries_and_is_order_agnostic = fun _ctx ->
               Error "expected directory fixture file write to make progress")
       in
       let* names = lift (Kernel.Fs.File.read_dir_names tempdir) in
-      let expected = [| "nested"; "note.txt" |] in
+      let expected = [|"nested"; "note.txt"|] in
       if
         not (array_contains names ".")
         && not (array_contains names "..")
@@ -537,8 +537,8 @@ let test_nested_symlink_chain_canonicalizes_cleanly = fun _ctx ->
       let target = Kernel.Path.(tempdir / "target.txt") in
       let link = Kernel.Path.(tempdir / "link") in
       let nested_link = Kernel.Path.(tempdir / "nested-link") in
-      let target_ref = Kernel.Path.v "target.txt" in
-      let link_ref = Kernel.Path.v "link" in
+      let target_ref = Kernel.Path.of_string "target.txt" in
+      let link_ref = Kernel.Path.of_string "link" in
       let* file = lift (Kernel.Fs.File.open_write target) in
       let* () =
         with_file file
@@ -561,9 +561,10 @@ let test_nested_symlink_chain_canonicalizes_cleanly = fun _ctx ->
           let* canonical = lift (Kernel.Fs.File.canonicalize nested_link) in
           let* canonical_target = lift (Kernel.Fs.File.canonicalize target) in
           if
-            not (Kernel.String.equal
-              (Kernel.Path.to_string canonical)
-              (Kernel.Path.to_string canonical_target))
+            not
+              (Kernel.String.equal
+                (Kernel.Path.to_string canonical)
+                (Kernel.Path.to_string canonical_target))
           then
             Error "expected nested symlink canonicalize to resolve to the final target"
           else
@@ -610,7 +611,7 @@ let test_hard_link_rename_preserves_remaining_link_count = fun _ctx ->
 let test_vectored_write_subslice_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "vectored-subslice.bin"
     (fun path ->
-      let payload = Kernel.IO.Iovec.of_string_array [| "__"; "hello"; " "; "kernel"; "__" |] in
+      let payload = Kernel.IO.Iovec.of_string_array [|"__"; "hello"; " "; "kernel"; "__"|] in
       let slice = Kernel.IO.Iovec.sub ~pos:2 ~len:12 payload in
       let* file = lift (Kernel.Fs.File.open_write path) in
       let* () =

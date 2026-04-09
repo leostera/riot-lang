@@ -47,8 +47,7 @@ let of_string_array = fun values -> of_bytes_array (Array.map Bytes.of_string va
 let length = fun segments ->
   Array.fold_left (fun total segment -> total + segment.length) 0 segments
 
-let iter = fun fn segments ->
-  Array.iter fn segments
+let iter = Array.iter
 
 let sub = fun ?(pos = 0) ~len segments ->
   if pos < 0 || len < 0 then

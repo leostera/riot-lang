@@ -5,7 +5,7 @@ let panic_file = fun error ->
   Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.v (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
   | Ok value -> value
   | Error _ -> Kernel.SystemError.panic "failed to create temporary directory"
 

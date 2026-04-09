@@ -5,7 +5,7 @@ version = "0.0.15"
 license = "Apache-2.0"
 
 [riot.fix]
-rules = [ "-no-stdlib" ]
+rules = [ "-no-stdlib", "-no-positional-bool-parameters" ]
 
 [lib]
 path = "src/kernel_new.ml"
