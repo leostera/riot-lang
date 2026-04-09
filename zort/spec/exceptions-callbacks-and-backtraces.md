@@ -72,6 +72,11 @@
 - `Runtime.deliverPendingActions(...)` now uses those callback boundaries when delivering:
   - pending signal handlers from `RuntimeServices`,
   - ready finalizer callbacks from `ManagedLiveness`.
+- `Runtime` now also supports configured checkpoint-driven delivery:
+  - scheduler safepoints,
+  - blocking entry,
+  - blocking exit,
+  - and STW pause acknowledgement all enter the same callback-boundary delivery path.
 - Entering a callback boundary:
   - saves the current parent-fiber link,
   - clears parent traversal for the duration of the callback,

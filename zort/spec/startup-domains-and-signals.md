@@ -73,6 +73,8 @@ Executable model:
 
 - [`domains/RunnableTransfer.tla`](./domains/RunnableTransfer.tla)
 - [`domains/README.md`](./domains/README.md)
+- [`runtime/PendingActionDrain.tla`](./runtime/PendingActionDrain.tla)
+- [`runtime/README.md`](./runtime/README.md)
 
 - `RuntimeServices` now exists as a separate subsystem in `src/runtime_services.zig`.
 - `DomainRegistry` now exists as a separate subsystem in `src/domain_registry.zig`.
@@ -82,6 +84,15 @@ Executable model:
   - blocking-section depth,
   - string-keyed named values rooted through the collector's `RootProvider` seam,
   - runtime-local signal handlers delivered through explicit callback-boundary entry.
+- Pending actions now drain through explicit runtime checkpoints rather than only through ad hoc manual delivery:
+  - scheduler safepoints after current-fiber activation/switch,
+  - blocking-section entry before the domain becomes blocked,
+  - blocking-section exit after the domain becomes attached again,
+  - stop-the-world pause acknowledgements.
+- zort's drain path is now lossless under delivery failure:
+  - pending signals are cleared only after successful delivery,
+  - ready finalizers are acknowledged one by one after successful delivery,
+  - a failed callback leaves the action pending for retry instead of dropping it silently.
 - The current domain model includes:
   - a main attached domain created at runtime startup,
   - a main worker bootstrapped at runtime startup with an explicit owner token,

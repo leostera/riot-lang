@@ -44,6 +44,7 @@ what to shim, and what to drop.
 - [`gc/`](./gc/README.md): bounded TLA+ models for generational GC protocol behavior.
 - [`effects/`](./effects/README.md): bounded TLA+ models for continuation and callback-boundary behavior.
 - [`domains/`](./domains/README.md): bounded TLA+ models for domain-lane ownership and runnable transfer.
+- [`runtime/`](./runtime/README.md): bounded TLA+ models for pending-action draining and other cross-cutting runtime-service protocols.
 
 ## Coverage notes
 

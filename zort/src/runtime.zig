@@ -87,6 +87,33 @@ pub const StopTheWorldCoordinator = stw_coordinator_mod.StopTheWorldCoordinator;
 pub const StopTheWorldSnapshot = stw_coordinator_mod.CoordinationSnapshot;
 pub const Error = language_mod.Error;
 
+pub const PendingActionCheckpoint = enum {
+    explicit,
+    scheduler_safepoint,
+    blocking_enter,
+    blocking_exit,
+    stw_pause,
+};
+
+pub const PendingSignal = struct {
+    signo: u8,
+    handler: Value,
+};
+
+pub const PendingAction = union(enum) {
+    signal: PendingSignal,
+    finalizer: ReadyFinalizer,
+};
+
+pub const PendingActionDelivery = struct {
+    ctx: ?*anyopaque = null,
+    deliver_fn: ?*const fn (ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) anyerror!void = null,
+
+    pub fn configured(self: PendingActionDelivery) bool {
+        return self.deliver_fn != null;
+    }
+};
+
 pub const Runtime = struct {
     pub const GcStrategy = collector_mod.GcStrategy;
 
@@ -105,6 +132,7 @@ pub const Runtime = struct {
         nurseryLiveObjects: usize = 256,
         memprof: MemprofConfig = .{},
         stackLimits: StackLimits = .{},
+        pendingActionDelivery: PendingActionDelivery = .{},
     };
 
     pub const DebugChecks = struct {
@@ -130,16 +158,6 @@ pub const Runtime = struct {
         major_words: usize,
     };
 
-    pub const PendingSignal = struct {
-        signo: u8,
-        handler: Value,
-    };
-
-    pub const PendingAction = union(enum) {
-        signal: PendingSignal,
-        finalizer: ReadyFinalizer,
-    };
-
     allocator: std.mem.Allocator,
     event_sink: EventSink,
     domains: DomainRegistry,
@@ -160,6 +178,8 @@ pub const Runtime = struct {
     collect_generations: usize = 0,
     minor_collect_generations: usize = 0,
     main_worker_token: u64 = 1,
+    pending_action_delivery: PendingActionDelivery = .{},
+    draining_pending_actions: bool = false,
 
     pub fn init(allocator: std.mem.Allocator) Runtime {
         return initWithConfig(allocator, .{});
@@ -181,6 +201,7 @@ pub const Runtime = struct {
             .memprof = MemprofState.init(allocator, config.eventSink, config.memprof),
             .debug_root_checks = config.debugRootChecks,
             .debug_checks = config.debugChecks,
+            .pending_action_delivery = config.pendingActionDelivery,
         };
         runtime.control_kernel = ControlKernel.initWithConfig(allocator, .{
             .event_sink = config.eventSink,
@@ -432,12 +453,14 @@ pub const Runtime = struct {
         const owner_token = try self.requiredLaneOwnerToken(domain);
         try self.fiber_scheduler.activate(domain, fiber, owner_token);
         try self.control_kernel.activateFiber(fiber);
+        _ = try self.drainConfiguredPendingActions(.scheduler_safepoint);
     }
 
     pub fn scheduleNextFiber(self: *Runtime, domain: DomainHandle) !?FiberHandle {
         const owner_token = try self.requiredLaneOwnerToken(domain);
         const next = try self.fiber_scheduler.switchToNext(domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
+        _ = try self.drainConfiguredPendingActions(.scheduler_safepoint);
         return next;
     }
 
@@ -446,6 +469,7 @@ pub const Runtime = struct {
         const owner_token = try self.requiredLaneOwnerToken(current_domain);
         const next = try self.fiber_scheduler.yieldCurrent(current_domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
+        _ = try self.drainConfiguredPendingActions(.scheduler_safepoint);
         return next;
     }
 
@@ -454,6 +478,7 @@ pub const Runtime = struct {
         const owner_token = try self.requiredLaneOwnerToken(current_domain);
         const next = try self.fiber_scheduler.parkCurrent(current_domain, owner_token) orelse return null;
         try self.control_kernel.activateFiber(next);
+        _ = try self.drainConfiguredPendingActions(.scheduler_safepoint);
         return next;
     }
 
@@ -614,7 +639,9 @@ pub const Runtime = struct {
 
     pub fn enterSafepoint(self: *Runtime, domain: DomainHandle) !bool {
         const generation = self.stw.currentGeneration();
-        return self.stw.acknowledgePause(domain, generation);
+        const acknowledged = try self.stw.acknowledgePause(domain, generation);
+        if (acknowledged) _ = try self.drainConfiguredPendingActions(.stw_pause);
+        return acknowledged;
     }
 
     pub fn resumeTheWorld(self: *Runtime) void {
@@ -828,18 +855,24 @@ pub const Runtime = struct {
         return self.services.lookupNamedValue(name);
     }
 
-    pub fn enterBlockingSection(self: *Runtime) void {
+    pub fn enterBlockingSection(self: *Runtime) !void {
+        _ = try self.drainConfiguredPendingActions(.blocking_enter);
         self.services.enterBlockingSection();
-        self.domains.enterBlocking(self.currentDomain()) catch unreachable;
+        try self.domains.enterBlocking(self.currentDomain());
     }
 
     pub fn exitBlockingSection(self: *Runtime) !void {
         try self.services.exitBlockingSection();
         try self.domains.exitBlocking(self.currentDomain());
+        _ = try self.drainConfiguredPendingActions(.blocking_exit);
     }
 
     pub fn recordSignal(self: *Runtime, signo: u8) !void {
         try self.services.recordSignal(signo);
+    }
+
+    pub fn pendingSignalBits(self: *Runtime) u64 {
+        return self.services.pendingSignalBits();
     }
 
     pub fn takePendingSignals(self: *Runtime) u64 {
@@ -884,6 +917,14 @@ pub const Runtime = struct {
 
     pub fn drainReadyFinalizers(self: *Runtime, allocator: std.mem.Allocator) ![]ReadyFinalizer {
         return self.liveness.drainReadyFinalizers(allocator);
+    }
+
+    pub fn pendingActionCount(self: *Runtime) usize {
+        return @popCount(self.services.pendingSignalBits()) + self.liveness.readyFinalizerCount();
+    }
+
+    pub fn hasPendingActions(self: *Runtime) bool {
+        return self.pendingActionCount() != 0;
     }
 
     pub fn captureCurrentBacktrace(self: *Runtime, allocator: std.mem.Allocator) ![]control_kernel_mod.BacktraceFrame {
@@ -990,15 +1031,23 @@ pub const Runtime = struct {
         context: anytype,
         comptime deliver: fn (@TypeOf(context), PendingAction) anyerror!void,
     ) !usize {
+        return self.deliverPendingActionsAtCheckpoint(context, deliver, .explicit);
+    }
+
+    fn deliverPendingActionsAtCheckpoint(
+        self: *Runtime,
+        context: anytype,
+        comptime deliver: fn (@TypeOf(context), PendingAction) anyerror!void,
+        checkpoint: PendingActionCheckpoint,
+    ) !usize {
         const current = self.control_kernel.currentFiber();
         var delivered: usize = 0;
 
-        var pending_signals = self.services.takePendingSignals();
-        while (pending_signals != 0) {
-            const bit_index = @ctz(pending_signals);
-            pending_signals &= ~(@as(u64, 1) << @intCast(bit_index));
-            const signo: u8 = @intCast(bit_index);
-            const handler = self.services.lookupSignalHandler(signo) orelse continue;
+        while (self.services.nextPendingSignal()) |signo| {
+            const handler = self.services.lookupSignalHandler(signo) orelse {
+                _ = try self.services.clearPendingSignal(signo);
+                continue;
+            };
             {
                 try self.control_kernel.enterCallbackBoundary(current);
                 defer self.control_kernel.exitCallbackBoundary(current) catch unreachable;
@@ -1007,21 +1056,47 @@ pub const Runtime = struct {
                     .handler = handler,
                 } });
             }
+            _ = try self.services.clearPendingSignal(signo);
             delivered += 1;
         }
 
-        const ready_finalizers = try self.liveness.drainReadyFinalizers(self.allocator);
-        defer self.allocator.free(ready_finalizers);
-        for (ready_finalizers) |ready| {
+        while (self.liveness.peekReadyFinalizer()) |ready| {
             {
                 try self.control_kernel.enterCallbackBoundary(current);
                 defer self.control_kernel.exitCallbackBoundary(current) catch unreachable;
                 try deliver(context, .{ .finalizer = ready });
             }
+            std.debug.assert(self.liveness.acknowledgeReadyFinalizer(ready.handle));
             delivered += 1;
         }
 
+        _ = checkpoint;
         return delivered;
+    }
+
+    fn drainConfiguredPendingActions(self: *Runtime, checkpoint: PendingActionCheckpoint) !usize {
+        if (!self.pending_action_delivery.configured()) return 0;
+        if (!self.hasPendingActions()) return 0;
+        if (self.draining_pending_actions) return 0;
+
+        self.draining_pending_actions = true;
+        defer self.draining_pending_actions = false;
+
+        const Delivery = struct {
+            delivery: PendingActionDelivery,
+            checkpoint: PendingActionCheckpoint,
+
+            fn visit(delivery_ctx: *@This(), action: PendingAction) !void {
+                const deliver_fn = delivery_ctx.delivery.deliver_fn.?;
+                try deliver_fn(delivery_ctx.delivery.ctx, delivery_ctx.checkpoint, action);
+            }
+        };
+
+        var delivery = Delivery{
+            .delivery = self.pending_action_delivery,
+            .checkpoint = checkpoint,
+        };
+        return self.deliverPendingActionsAtCheckpoint(&delivery, Delivery.visit, checkpoint);
     }
 
     fn trackAllocationSample(self: *Runtime, block_value: Value) void {
@@ -2264,7 +2339,7 @@ test "runtime: runtime services track pending signals and blocking sections" {
     var rt = Runtime.init(std.testing.allocator);
     defer rt.deinit();
 
-    rt.enterBlockingSection();
+    try rt.enterBlockingSection();
     try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
     try rt.recordSignal(2);
     try rt.recordSignal(7);
@@ -2361,6 +2436,201 @@ test "runtime: weak refs and ephemerons follow collector liveness" {
     try std.testing.expectEqual(@as(?Value, null), try rt.ephemeronData(ephemeron));
 }
 
+test "runtime: configured pending actions drain at scheduler safepoints" {
+    var trace = TraceRecorder.init(std.testing.allocator, .{
+        .capture_events = true,
+    });
+    defer trace.deinit();
+
+    const Delivery = struct {
+        runtime: ?*Runtime = null,
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+            if (self.runtime) |rt| {
+                try std.testing.expectError(error.UnhandledEffect, rt.performEffectAt(8, 55, Value.fromInt(1), &.{}));
+            }
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .eventSink = trace.sink(),
+    });
+    defer rt.deinit();
+    delivery.runtime = &rt;
+
+    const main = rt.currentFiber();
+    try rt.pushEffectHandler(main, .{
+        .effect = 55,
+        .handle_effect = Value.fromInt(1),
+    });
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+
+    const finalizer_target = try rt.allocTuple(0);
+    const finalizer_callback = try rt.allocTuple(0);
+    _ = try rt.registerFinalizer(finalizer_target, finalizer_callback, .first);
+    rt.collectMajor();
+
+    rt.pending_action_delivery = .{
+        .ctx = &delivery,
+        .deliver_fn = Delivery.deliver,
+    };
+    try std.testing.expectEqual(@as(usize, 2), rt.pendingActionCount());
+
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
+
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+    try std.testing.expectEqual(@as(usize, 2), delivery.checkpoints.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.scheduler_safepoint, delivery.checkpoints.items[0]);
+    try std.testing.expectEqual(PendingActionCheckpoint.scheduler_safepoint, delivery.checkpoints.items[1]);
+    try std.testing.expect(delivery.actions.items[0] == .signal);
+    try std.testing.expect(delivery.actions.items[1] == .finalizer);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+
+    var callback_entries: usize = 0;
+    for (trace.traceEntries()) |entry| {
+        if (entry.event == .control) {
+            if (entry.event.control.action == .callback_enter or entry.event.control.action == .callback_exit) {
+                callback_entries += 1;
+            }
+        }
+    }
+    try std.testing.expect(callback_entries >= 4);
+}
+
+test "runtime: blocking transitions drain configured pending actions deterministically" {
+    const Delivery = struct {
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .pendingActionDelivery = .{
+            .ctx = &delivery,
+            .deliver_fn = Delivery.deliver,
+        },
+    });
+    defer rt.deinit();
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.registerSignalHandler(7, try rt.allocTuple(0));
+
+    try rt.recordSignal(2);
+    try rt.enterBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual(@as(usize, 1), delivery.actions.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[0]);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+
+    try rt.recordSignal(7);
+    try rt.exitBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual(@as(usize, 2), delivery.actions.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_exit, delivery.checkpoints.items[1]);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+}
+
+test "runtime: failed configured pending-action delivery does not clear work" {
+    const Delivery = struct {
+        fail_once: bool = true,
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            if (self.fail_once) {
+                self.fail_once = false;
+                return error.DeliveryFailed;
+            }
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .pendingActionDelivery = .{
+            .ctx = &delivery,
+            .deliver_fn = Delivery.deliver,
+        },
+    });
+    defer rt.deinit();
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+    try std.testing.expectEqual(@as(usize, 1), rt.pendingActionCount());
+
+    try std.testing.expectError(error.DeliveryFailed, rt.enterBlockingSection());
+    try std.testing.expectEqual(@as(usize, 1), rt.pendingActionCount());
+    try std.testing.expectEqual(@as(?DomainStatus, .attached), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual((@as(u64, 1) << 2), rt.pendingSignalBits());
+
+    try rt.enterBlockingSection();
+    try std.testing.expectEqual(@as(?DomainStatus, .blocked), rt.domainRegistry().domain(rt.currentDomain()).?.status);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+    try std.testing.expectEqual(@as(usize, 1), delivery.actions.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.blocking_enter, delivery.checkpoints.items[0]);
+}
+
+test "runtime: stop-the-world pause drains configured pending actions" {
+    const Delivery = struct {
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
+        checkpoints: std.ArrayListUnmanaged(PendingActionCheckpoint) = .{},
+
+        fn deliver(ctx: ?*anyopaque, checkpoint: PendingActionCheckpoint, action: PendingAction) !void {
+            const self: *@This() = @ptrCast(@alignCast(ctx.?));
+            try self.actions.append(std.testing.allocator, action);
+            try self.checkpoints.append(std.testing.allocator, checkpoint);
+        }
+    };
+
+    var delivery = Delivery{};
+    defer delivery.actions.deinit(std.testing.allocator);
+    defer delivery.checkpoints.deinit(std.testing.allocator);
+
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .pendingActionDelivery = .{
+            .ctx = &delivery,
+            .deliver_fn = Delivery.deliver,
+        },
+    });
+    defer rt.deinit();
+
+    try rt.registerSignalHandler(2, try rt.allocTuple(0));
+    try rt.recordSignal(2);
+
+    _ = try rt.requestStopTheWorld();
+    defer rt.resumeTheWorld();
+
+    try std.testing.expectEqual(@as(usize, 1), delivery.actions.items.len);
+    try std.testing.expectEqual(PendingActionCheckpoint.stw_pause, delivery.checkpoints.items[0]);
+    try std.testing.expectEqual(@as(usize, 0), rt.pendingActionCount());
+}
+
 test "runtime: pending signal and finalizer delivery runs inside callback boundaries" {
     var trace = TraceRecorder.init(std.testing.allocator, .{
         .capture_events = true,
@@ -2390,9 +2660,9 @@ test "runtime: pending signal and finalizer delivery runs inside callback bounda
 
     const Delivery = struct {
         rt: *Runtime,
-        actions: std.ArrayListUnmanaged(Runtime.PendingAction) = .{},
+        actions: std.ArrayListUnmanaged(PendingAction) = .{},
 
-        fn visit(self: *@This(), action: Runtime.PendingAction) !void {
+        fn visit(self: *@This(), action: PendingAction) !void {
             try self.actions.append(std.testing.allocator, action);
             try std.testing.expectError(error.UnhandledEffect, self.rt.performEffectAt(8, 55, Value.fromInt(1), &.{}));
         }

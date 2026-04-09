@@ -220,6 +220,19 @@ pub const ManagedLiveness = struct {
         return self.ready_finalizers.items.len;
     }
 
+    pub fn peekReadyFinalizer(self: *const ManagedLiveness) ?ReadyFinalizer {
+        if (self.ready_finalizers.items.len == 0) return null;
+        return self.ready_finalizers.items[0];
+    }
+
+    pub fn acknowledgeReadyFinalizer(self: *ManagedLiveness, handle: FinalizerHandle) bool {
+        if (self.ready_finalizers.items.len == 0) return false;
+        const ready = self.ready_finalizers.items[0];
+        if (ready.handle.index != handle.index or ready.handle.generation != handle.generation) return false;
+        _ = self.ready_finalizers.orderedRemove(0);
+        return true;
+    }
+
     pub fn drainReadyFinalizers(self: *ManagedLiveness, allocator: std.mem.Allocator) Error![]ReadyFinalizer {
         const drained = try allocator.dupe(ReadyFinalizer, self.ready_finalizers.items);
         self.ready_finalizers.clearRetainingCapacity();
@@ -435,4 +448,26 @@ test "managed_liveness: first finalizers re-root targets until drained" {
     try std.testing.expectEqual(@as(usize, 1), ready.len);
     try std.testing.expectEqual(callback, ready[0].callback);
     try std.testing.expectEqual(target, ready[0].argument.?);
+}
+
+test "managed_liveness: ready finalizers can be acknowledged one by one" {
+    var heap = collector_mod.HeapStore.init(std.testing.allocator);
+    defer heap.deinit(false);
+    var fixed_arena: ?std.heap.FixedBufferAllocator = null;
+    var liveness = ManagedLiveness.init(std.testing.allocator);
+    defer liveness.deinit();
+
+    const target = Value.fromHeapRef(try heap.add(collector_mod.Object.initBoxedI64(1)));
+    const callback = Value.fromHeapRef(try heap.add(collector_mod.Object.initBoxedI64(2)));
+    _ = try liveness.registerFinalizer(target, callback, .first);
+
+    var collector = Collector.init(&heap, null, null, &.{}, &fixed_arena, null, .mark_sweep, collector_mod.EventSink.noop(), Collector.PhaseHooks.noop());
+    _ = liveness.processFinalizers(&collector);
+
+    const ready = liveness.peekReadyFinalizer().?;
+    try std.testing.expectEqual(callback, ready.callback);
+    try std.testing.expectEqual(target, ready.argument.?);
+    try std.testing.expect(liveness.acknowledgeReadyFinalizer(ready.handle));
+    try std.testing.expectEqual(@as(usize, 0), liveness.readyFinalizerCount());
+    try std.testing.expect(!liveness.acknowledgeReadyFinalizer(ready.handle));
 }

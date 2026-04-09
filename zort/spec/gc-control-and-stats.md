@@ -125,6 +125,11 @@
 
 ## zort debug and stats baseline
 
+Executable model:
+
+- [`runtime/PendingActionDrain.tla`](./runtime/PendingActionDrain.tla)
+- [`runtime/README.md`](./runtime/README.md)
+
 - zort now emits collector-scoped observability through `src/event_sink.zig` rather
   than through ad hoc bench-only counters.
 - Each collection can emit:
@@ -138,6 +143,10 @@
     - root count
     - marked counts by object kind
     - promoted counts by object kind
+- zort now treats pending-action delivery as an explicit runtime protocol:
+  - configured delivery hooks run only at explicit checkpoints,
+  - manual `deliverPendingActions(...)` still exists as the explicit compatibility/testing seam,
+  - the automatic checkpoint path is guarded against reentrant drain recursion.
     - promoted words
     - reclaimed counts by object kind
     - current live nursery object/word counts

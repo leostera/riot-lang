@@ -89,9 +89,30 @@ pub const RuntimeServices = struct {
         return self.blocking_sections;
     }
 
+    pub fn pendingSignalBits(self: *const RuntimeServices) u64 {
+        return self.pending_signals;
+    }
+
+    pub fn hasPendingSignals(self: *const RuntimeServices) bool {
+        return self.pending_signals != 0;
+    }
+
+    pub fn nextPendingSignal(self: *const RuntimeServices) ?u8 {
+        if (self.pending_signals == 0) return null;
+        return @intCast(@ctz(self.pending_signals));
+    }
+
     pub fn recordSignal(self: *RuntimeServices, signo: u8) Error!void {
         if (signo >= 64) return error.UnsupportedSignal;
         self.pending_signals |= (@as(u64, 1) << @intCast(signo));
+    }
+
+    pub fn clearPendingSignal(self: *RuntimeServices, signo: u8) Error!bool {
+        if (signo >= 64) return error.UnsupportedSignal;
+        const bit = (@as(u64, 1) << @intCast(signo));
+        const had_signal = (self.pending_signals & bit) != 0;
+        self.pending_signals &= ~bit;
+        return had_signal;
     }
 
     pub fn takePendingSignals(self: *RuntimeServices) u64 {
@@ -207,7 +228,12 @@ test "runtime_services: pending signals and blocking sections are explicit" {
     try std.testing.expectEqual(@as(usize, 1), services.blockingDepth());
     try services.recordSignal(2);
     try services.recordSignal(5);
-    try std.testing.expectEqual((@as(u64, 1) << 2) | (@as(u64, 1) << 5), services.takePendingSignals());
+    try std.testing.expect(services.hasPendingSignals());
+    try std.testing.expectEqual(@as(?u8, 2), services.nextPendingSignal());
+    try std.testing.expectEqual((@as(u64, 1) << 2) | (@as(u64, 1) << 5), services.pendingSignalBits());
+    try std.testing.expect(try services.clearPendingSignal(2));
+    try std.testing.expectEqual(@as(?u8, 5), services.nextPendingSignal());
+    try std.testing.expectEqual((@as(u64, 1) << 5), services.takePendingSignals());
     try std.testing.expectEqual(@as(u64, 0), services.takePendingSignals());
     try services.exitBlockingSection();
     try std.testing.expectEqual(@as(usize, 0), services.blockingDepth());
