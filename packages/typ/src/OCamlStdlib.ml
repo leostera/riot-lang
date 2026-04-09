@@ -11,18 +11,16 @@ let make_next_id = fun start ->
   let next = ref start in
   fun () ->
     let id = !next in
-    let () =
-      next := id - 1
-    in
+    (next := id - 1);
     id
 
 let next_constructor_id = make_next_id ocaml_stdlib_constructor_id_start
 
 let next_label_id = make_next_id ocaml_stdlib_label_id_start
 
-let monomorphic = fun ty -> TypeScheme.of_type ty
+let monomorphic = TypeScheme.of_type
 
-let var = fun id -> TypeRepr.make_var id
+let var = TypeRepr.make_var
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
@@ -44,7 +42,7 @@ let qualified_export_name = fun module_path name ->
 let type_decl = fun ~scope_path declaration -> { FileSummary.scope_path; declaration }
 
 let module_typings = fun ~source_id ~module_name ?(type_decls = []) exports ->
-  let file_summary = FileSummary.trusted ~source_id ~type_decls exports in
+  let file_summary = FileSummary.complete ~source_id ~type_decls exports in
   let export_result = file_summary.export_result in
   let source_hash = ModuleTypings.synthetic_source_hash ~module_name ~export_result ~type_decls () in
   ModuleTypings.of_file_summary ~module_name ~source_hash file_summary
@@ -2003,6 +2001,51 @@ let stdlib_root_exports = [
   ("~-", TypeScheme.of_type (arrow TypeRepr.int TypeRepr.int));
   ("~-.", float_unop);
 ]
+
+let default_root_exports = [
+  ("raise", polymorphic_raise);
+  ("max", polymorphic_min_max);
+  ("min", polymorphic_min_max);
+]
+
+let root_bindings =
+  default_root_exports |> List.map
+    (fun (name, scheme) -> (IdentPath.of_name name, scheme))
+
+let option_type_decl =
+  let element = var 0 in
+  variant_type_decl_with_params
+    ~scope_path:IdentPath.empty
+    ~path:"option"
+    ~type_name:"option"
+    ~param_ids:[ 0 ]
+    ~param_variances:[ TypeDecl.Covariant ]
+    [
+      constructor "None" (TypeScheme.of_explicit ~quantified:[ 0 ] (TypeRepr.option element));
+      constructor "Some" (TypeScheme.of_explicit
+        ~quantified:[ 0 ]
+        (arrow element (TypeRepr.option element)));
+    ]
+
+let result_type_decl =
+  let ok_ty = var 0 in
+  let error_ty = var 1 in
+  variant_type_decl_with_params
+    ~scope_path:IdentPath.empty
+    ~path:"result"
+    ~type_name:"result"
+    ~param_ids:[ 0; 1 ]
+    ~param_variances:[ TypeDecl.Covariant; TypeDecl.Covariant ]
+    [
+      constructor "Ok" (TypeScheme.of_explicit
+        ~quantified:[ 0; 1 ]
+        (arrow ok_ty (TypeRepr.result ok_ty error_ty)));
+      constructor "Error" (TypeScheme.of_explicit
+        ~quantified:[ 0; 1 ]
+        (arrow error_ty (TypeRepr.result ok_ty error_ty)));
+    ]
+
+let root_type_decls = [ option_type_decl; result_type_decl ]
 
 let summaries =
   [

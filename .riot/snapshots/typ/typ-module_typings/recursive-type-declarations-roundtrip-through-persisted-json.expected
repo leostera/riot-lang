@@ -1,5 +1,6 @@
 {
   "file_summary": {
+    "completeness": "complete",
     "export_result": {
       "exports": [],
       "tag": "trusted_export"
@@ -7,6 +8,7 @@
     "source_id": 0
   },
   "module_typings": {
+    "completeness": "complete",
     "export_result": {
       "exports": [],
       "tag": "trusted_export"
@@ -77,6 +79,7 @@
           }
         ],
         "labels": [],
+        "nonrec": false,
         "param_ids": [],
         "param_variances": [],
         "scope_path": [],

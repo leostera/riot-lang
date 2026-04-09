@@ -5,9 +5,9 @@ let runtime_args_hole_id = (-2)
 
 let array_length_element_hole_id = (-1)
 
-let monomorphic = fun ty -> TypeScheme.of_type ty
+let monomorphic = TypeScheme.of_type
 
-let var = fun id -> TypeRepr.make_var id
+let var = TypeRepr.make_var
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
@@ -26,7 +26,7 @@ let qualified_export_name = fun module_name name -> qualified_name module_name n
 let type_decl = fun ~scope_path declaration -> { FileSummary.scope_path; declaration }
 
 let module_typings = fun ~source_id ~module_name ?(type_decls = []) exports ->
-  let file_summary = FileSummary.trusted ~source_id ~type_decls exports in
+  let file_summary = FileSummary.complete ~source_id ~type_decls exports in
   let export_result = file_summary.export_result in
   let source_hash = ModuleTypings.synthetic_source_hash ~module_name ~export_result ~type_decls () in
   ModuleTypings.of_file_summary ~module_name ~source_hash file_summary

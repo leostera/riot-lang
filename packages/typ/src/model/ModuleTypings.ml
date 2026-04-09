@@ -17,6 +17,7 @@ type value_definition = {
 type t = {
   module_name: string;
   source_hash: Crypto.hash;
+  completeness: FileSummary.completeness;
   export_result: FileSummary.export_result;
   type_decls: FileSummary.type_decl list;
   value_definitions: value_definition list;
@@ -33,20 +34,18 @@ let map_preserving = fun loop xs ->
         else
           xs
     | x :: rest ->
-        let x' = loop x in
-        walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+        let x2 = loop x in
+        walk (changed || not (Std.Ptr.equal x x2)) (x2 :: acc) rest
   in
   walk false [] xs
 
 let local_type_decl_index = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity (List.length type_decls) in
-  let () =
-    List.iter
+  (List.iter
       (fun (type_decl: FileSummary.type_decl) ->
         let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
         ())
-      type_decls
-  in
+      type_decls);
   by_path
 
 let resolve_named_type_head_for_persistence = fun by_path name ->
@@ -82,104 +81,112 @@ let canonicalize_type_for_persistence = fun by_path ->
     | TypeRepr.Var _ ->
         ty
     | TypeRepr.Option element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let element2 = loop element in
+        if Std.Ptr.equal element element2 then
           ty
         else
-          TypeRepr.option element'
+          TypeRepr.option element2
     | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty' = loop ok_ty in
-        let error_ty' = loop error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        let ok_ty2 = loop ok_ty in
+        let error_ty2 = loop error_ty in
+        if Std.Ptr.equal ok_ty ok_ty2 && Std.Ptr.equal error_ty error_ty2 then
           ty
         else
-          TypeRepr.result ok_ty' error_ty'
+          TypeRepr.result ok_ty2 error_ty2
     | TypeRepr.Array element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let element2 = loop element in
+        if Std.Ptr.equal element element2 then
           ty
         else
-          TypeRepr.array element'
+          TypeRepr.array element2
     | TypeRepr.List element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let element2 = loop element in
+        if Std.Ptr.equal element element2 then
           ty
         else
-          TypeRepr.list element'
+          TypeRepr.list element2
     | TypeRepr.Seq element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let element2 = loop element in
+        if Std.Ptr.equal element element2 then
           ty
         else
-          TypeRepr.seq element'
+          TypeRepr.seq element2
     | TypeRepr.Package signature ->
         let values =
           signature.values
           |> map_preserving
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = loop value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let scheme2 = loop value.scheme in
+              if Std.Ptr.equal value.scheme scheme2 then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = scheme2 })
         in
         if Std.Ptr.equal signature.values values then
           ty
         else
           TypeRepr.package ~values
     | TypeRepr.Named { head; arguments } ->
-        let arguments' = map_preserving loop arguments in
+        let arguments2 = map_preserving loop arguments in
+        let head2 =
+          resolve_named_type_head_for_persistence by_path head.name
+          |> Option.unwrap_or ~default:head
+        in
         (
-          match BuiltinTypeConstructors.type_of_path head.name arguments' with
+          match BuiltinTypeConstructors.type_of_path head2.name arguments2 with
           | Some builtin -> builtin
           | None ->
-              if Std.Ptr.equal arguments arguments' then
+              if
+                Std.Ptr.equal arguments arguments2
+                && TypeConstructorId.equal head.type_constructor_id head2.type_constructor_id
+                && IdentPath.equal head.name head2.name
+              then
                 ty
               else
-                TypeRepr.named ~head ~arguments:arguments'
+                TypeRepr.named ~head:head2 ~arguments:arguments2
         )
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' =
+        let tags2 =
           map_preserving
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
               | Some payload_type ->
-                  let payload_type' = loop payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
+                  let payload_type2 = loop payload_type in
+                  if Std.Ptr.equal payload_type payload_type2 then
                     tag
                   else
-                    { tag with payload_type = Some payload_type' }
+                    { tag with payload_type = Some payload_type2 }
               | None -> tag)
             tags
         in
-        let inherited' = map_preserving loop inherited in
-        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+        let inherited2 = map_preserving loop inherited in
+        if Std.Ptr.equal tags tags2 && Std.Ptr.equal inherited inherited2 then
           ty
         else
-          TypeRepr.poly_variant ~bound ~tags:tags' ~inherited:inherited'
+          TypeRepr.poly_variant ~bound ~tags:tags2 ~inherited:inherited2
     | TypeRepr.Tuple members ->
-        let members' = map_preserving loop members in
-        if Std.Ptr.equal members members' then
+        let members2 = map_preserving loop members in
+        if Std.Ptr.equal members members2 then
           ty
         else
-          TypeRepr.tuple members'
+          TypeRepr.tuple members2
     | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs' = loop lhs in
-        let rhs' = loop rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        let lhs2 = loop lhs in
+        let rhs2 = loop rhs in
+        if Std.Ptr.equal lhs lhs2 && Std.Ptr.equal rhs rhs2 then
           ty
         else
-          TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
+          TypeRepr.arrow ~label ~lhs:lhs2 ~rhs:rhs2
   in
   loop
 
 let canonicalize_scheme_for_persistence = fun canonicalize_type scheme ->
   let quantified, body = TypeScheme.to_explicit scheme in
-  let body' = canonicalize_type body in
-  if Std.Ptr.equal body body' then
+  let body2 = canonicalize_type body in
+  if Std.Ptr.equal body body2 then
     scheme
   else
-    TypeScheme.of_explicit ~quantified body'
+    TypeScheme.of_explicit ~quantified body2
 
 let canonicalize_type_decl_for_persistence = fun canonicalize_type (type_decl: FileSummary.type_decl) ->
   let declaration = type_decl.declaration in
@@ -232,48 +239,52 @@ let canonicalize_export_result_for_persistence = fun canonicalize_type export_re
   | FileSummary.NoExport -> FileSummary.NoExport
 
 let canonicalize_payload_for_persistence = fun ~export_result ~type_decls ->
-  let visible_types = VisibleTypes.of_type_decls type_decls in
-  let canonicalize_type = VisibleTypes.canonicalize_type visible_types in
+  let by_path = local_type_decl_index type_decls in
+  let canonicalize_type = canonicalize_type_for_persistence by_path in
   (
     canonicalize_export_result_for_persistence canonicalize_type export_result,
     List.map (canonicalize_type_decl_for_persistence canonicalize_type) type_decls
   )
 
-let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
+let complete = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:(FileSummary.TrustedExport { exports })
     ~type_decls in
   {
     module_name;
     source_hash;
+    completeness = FileSummary.Complete;
     export_result;
     type_decls;
     value_definitions;
   }
+
+let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) ?exports () ->
+  let export_result =
+    match exports with
+    | Some exports -> FileSummary.ErroredExport { exports }
+    | None -> FileSummary.NoExport
+  in
+  let (export_result, type_decls) = canonicalize_payload_for_persistence
+    ~export_result
+    ~type_decls in
+  {
+    module_name;
+    source_hash;
+    completeness = FileSummary.Partial;
+    export_result;
+    type_decls;
+    value_definitions;
+  }
+
+let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
+  complete ~module_name ~source_hash ~type_decls ~value_definitions exports
 
 let errored = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
-  let (export_result, type_decls) = canonicalize_payload_for_persistence
-    ~export_result:(FileSummary.ErroredExport { exports })
-    ~type_decls in
-  {
-    module_name;
-    source_hash;
-    export_result;
-    type_decls;
-    value_definitions;
-  }
+  partial ~module_name ~source_hash ~type_decls ~value_definitions ~exports ()
 
 let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) () ->
-  let (export_result, type_decls) = canonicalize_payload_for_persistence
-    ~export_result:FileSummary.NoExport
-    ~type_decls in
-  {
-    module_name;
-    source_hash;
-    export_result;
-    type_decls;
-    value_definitions;
-  }
+  partial ~module_name ~source_hash ~type_decls ~value_definitions ()
 
 let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
   summary: FileSummary.t
@@ -284,13 +295,19 @@ let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
   {
     module_name;
     source_hash;
+    completeness = summary.completeness;
     export_result;
     type_decls;
     value_definitions;
   }
 
 let to_file_summary = fun ~source_id summary ->
-  { FileSummary.source_id; export_result = summary.export_result; type_decls = summary.type_decls }
+  {
+    FileSummary.source_id;
+    completeness = summary.completeness;
+    export_result = summary.export_result;
+    type_decls = summary.type_decls;
+  }
 
 let module_name = fun summary -> summary.module_name
 
@@ -298,7 +315,19 @@ let source_hash = fun summary -> summary.source_hash
 
 let export_result = fun summary -> summary.export_result
 
-let exports = function
+let completeness = fun summary -> summary.completeness
+
+let export_status = fun summary -> match summary.export_result with
+  | FileSummary.TrustedExport _ ->
+      (
+        match summary.completeness with
+        | FileSummary.Complete -> FileSummary.Trusted
+        | FileSummary.Partial -> FileSummary.Errored
+      )
+  | FileSummary.ErroredExport _ -> FileSummary.Errored
+  | FileSummary.NoExport -> FileSummary.Missing
+
+let exports = fun value -> match value with
   | { export_result=FileSummary.TrustedExport { exports }; _ }
   | { export_result=FileSummary.ErroredExport { exports }; _ } -> exports
   | { export_result=FileSummary.NoExport; _ } -> []
@@ -315,7 +344,7 @@ let find_value_definition = fun summary ~export_name ->
       else
         None)
 
-let rec json_type_name = function
+let rec json_type_name = fun value -> match value with
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -326,21 +355,21 @@ let rec json_type_name = function
   | Embed t -> json_type_name t
 
 let error_expected = fun expected actual ->
-  Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
+  Error (format Format.[ str "expected "; str expected; str " but got "; str (json_type_name actual) ])
 
-let get_object = function
+let get_object = fun value -> match value with
   | Data.Json.Object fields -> Ok fields
   | other -> error_expected "object" other
 
-let get_array = function
+let get_array = fun value -> match value with
   | Data.Json.Array values -> Ok values
   | other -> error_expected "array" other
 
-let get_string = function
+let get_string = fun value -> match value with
   | Data.Json.String value -> Ok value
   | other -> error_expected "string" other
 
-let get_int = function
+let get_int = fun value -> match value with
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
 
@@ -367,14 +396,14 @@ let span_of_json = fun json ->
 let field = fun name fields ->
   match List.assoc_opt name fields with
   | Some value -> Ok value
-  | None -> Error ("missing field " ^ name)
+  | None -> Error (format Format.[ str "missing field "; str name ])
 
 let ( let* ) result f =
   match result with
   | Ok value -> f value
   | Error _ as err -> err
 
-let label_to_json = function
+let label_to_json = fun value -> match value with
   | TypeRepr.Nolabel -> Data.Json.Object [ ("tag", Data.Json.String "nolabel") ]
   | TypeRepr.Labelled label -> Data.Json.Object [
     ("tag", Data.Json.String "labeled");
@@ -496,7 +525,8 @@ let exports_to_json = fun exports ->
       (fun (name, scheme) ->
         let scheme_json =
           try scheme_to_json scheme with
-          | Failure message -> raise (Failure ("module typings export " ^ name ^ ": " ^ message))
+          | Failure message ->
+              raise (Failure (format Format.[ str "module typings export "; str name; str ": "; str message ]))
         in
         Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_json); ])
   )
@@ -523,7 +553,7 @@ let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   in
   Data.Json.Object fields
 
-let manifest_to_json = function
+let manifest_to_json = fun value -> match value with
   | TypeDecl.Alias manifest_type -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
     ("type", type_to_json manifest_type);
@@ -586,7 +616,7 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
 
 let type_decls_to_json = fun type_decls -> Data.Json.Array (List.map type_decl_to_json type_decls)
 
-let export_result_to_json = function
+let export_result_to_json = fun value -> match value with
   | FileSummary.TrustedExport { exports } -> Data.Json.Object [
     ("tag", Data.Json.String "trusted_export");
     ("exports", exports_to_json exports);
@@ -600,10 +630,15 @@ let export_result_to_json = function
     ("exports", Data.Json.Array []);
   ]
 
+let completeness_to_json = fun value ->
+  match value with
+  | FileSummary.Complete -> Data.Json.String "complete"
+  | FileSummary.Partial -> Data.Json.String "partial"
+
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
-let source_origin_to_json = function
+let source_origin_to_json = fun value -> match value with
   | Source.Path path -> Data.Json.Object [
     ("tag", Data.Json.String "path");
     ("value", Data.Json.String (Path.to_string path));
@@ -613,7 +648,7 @@ let source_origin_to_json = function
     ("value", Data.Json.String label);
   ]
 
-let value_definition_target_to_json = function
+let value_definition_target_to_json = fun value -> match value with
   | Site { origin; span } -> Data.Json.Object [
     ("tag", Data.Json.String "site");
     ("origin", source_origin_to_json origin);
@@ -633,17 +668,25 @@ let value_definition_to_json = fun (definition: value_definition) ->
 let value_definitions_to_json = fun value_definitions ->
   Data.Json.Array (List.map value_definition_to_json value_definitions)
 
-let payload_to_json = fun ~export_result ~type_decls ~value_definitions ->
+let payload_to_json = fun ~completeness ~export_result ~type_decls ~value_definitions ->
   Data.Json.Object [
+    ("completeness", completeness_to_json completeness);
     ("export_result", export_result_to_json export_result);
     ("type_decls", type_decls_to_json type_decls);
     ("value_definitions", value_definitions_to_json value_definitions);
   ]
 
 let synthetic_source_hash = fun ~module_name ~export_result ~type_decls ?(value_definitions = []) () ->
-  payload_to_json ~export_result ~type_decls ~value_definitions
+  let completeness =
+    match export_result with
+    | FileSummary.TrustedExport _ -> FileSummary.Complete
+    | FileSummary.ErroredExport _
+    | FileSummary.NoExport -> FileSummary.Partial
+  in
+  payload_to_json ~completeness ~export_result ~type_decls ~value_definitions
   |> Data.Json.to_string
-  |> fun json -> Crypto.hash_string ("typ-module-typings\x1f" ^ module_name ^ "\x1f" ^ json)
+  |> fun json ->
+      Crypto.hash_string (format Format.[ str "typ-module-typings\x1f"; str module_name; str "\x1f"; str json ])
 
 let label_of_json = fun json ->
   let* fields = get_object json in
@@ -661,7 +704,7 @@ let label_of_json = fun json ->
       let* label = get_string label_json in
       Ok (TypeRepr.Optional label)
   | other ->
-      Error ("unknown module typings type label tag " ^ other)
+      Error (format Format.[ str "unknown module typings type label tag "; str other ])
 
 let rec type_of_json = fun json ->
   let* fields = get_object json in
@@ -743,7 +786,8 @@ let rec type_of_json = fun json ->
         | "exact" -> Ok TypeRepr.Exact
         | "upper" -> Ok TypeRepr.UpperBound
         | "lower" -> Ok TypeRepr.LowerBound
-        | other -> Error ("unknown module typings structural poly-variant bound " ^ other)
+        | other ->
+            Error (format Format.[ str "unknown module typings structural poly-variant bound "; str other ])
       in
       let* bound = bound in
       let* tags_json = get_array tags_json in
@@ -799,7 +843,7 @@ let rec type_of_json = fun json ->
       let* id = get_int id_json in
       Ok (TypeRepr.hole id)
   | other ->
-      Error ("unknown module typings type tag " ^ other)
+      Error (format Format.[ str "unknown module typings type tag "; str other ])
 
 and scheme_of_json = function
   | Data.Json.Object fields -> (
@@ -951,7 +995,8 @@ let manifest_of_json = fun json ->
         | "exact" -> Ok TypeDecl.Exact
         | "upper" -> Ok TypeDecl.UpperBound
         | "lower" -> Ok TypeDecl.LowerBound
-        | other -> Error ("unknown module typings poly-variant bound " ^ other)
+        | other ->
+            Error (format Format.[ str "unknown module typings poly-variant bound "; str other ])
       in
       let* bound = bound in
       let* tags_json = get_array tags_json in
@@ -972,7 +1017,7 @@ let manifest_of_json = fun json ->
       let* inherited = parse_inherited [] inherited_json in
       Ok (TypeDecl.PolyVariant { bound; tags; inherited })
   | other ->
-      Error ("unknown module typings manifest tag " ^ other)
+      Error (format Format.[ str "unknown module typings manifest tag "; str other ])
 
 let type_decl_of_json = fun json ->
   let* fields = get_object json in
@@ -1000,7 +1045,7 @@ let type_decl_of_json = fun json ->
                 | "covariant" -> Ok TypeDecl.Covariant
                 | "contravariant" -> Ok TypeDecl.Contravariant
                 | "invariant" -> Ok TypeDecl.Invariant
-                | other -> Error ("unknown module typings variance " ^ other)
+                | other -> Error (format Format.[ str "unknown module typings variance "; str other ])
               in
               loop (variance :: acc) rest
         in
@@ -1072,7 +1117,20 @@ let export_result_of_json = fun json ->
   | "trusted_export" -> Ok (FileSummary.TrustedExport { exports })
   | "errored_export" -> Ok (FileSummary.ErroredExport { exports })
   | "no_export" -> Ok FileSummary.NoExport
-  | other -> Error ("unknown module typings export_result tag " ^ other)
+  | other -> Error (format Format.[ str "unknown module typings export_result tag "; str other ])
+
+let completeness_of_json = fun json ->
+  let* value = get_string json in
+  match value with
+  | "complete" -> Ok FileSummary.Complete
+  | "partial" -> Ok FileSummary.Partial
+  | other -> Error (format Format.[ str "unknown module typings completeness "; str other ])
+
+let completeness_of_export_result = fun export_result ->
+  match export_result with
+  | FileSummary.TrustedExport _ -> FileSummary.Complete
+  | FileSummary.ErroredExport _
+  | FileSummary.NoExport -> FileSummary.Partial
 
 let source_origin_of_json = fun json ->
   let* fields = get_object json in
@@ -1084,17 +1142,15 @@ let source_origin_of_json = fun json ->
   | "path" -> (
       match Path.of_string value with
       | Ok path -> Ok (Source.Path path)
-      | Error (Path.InvalidUtf8 { path }) -> Error ("invalid utf-8 path " ^ path)
-      | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error ("invalid utf-8 path from "
-      ^ syscall
-      ^ ": "
-      ^ path)
+      | Error (Path.InvalidUtf8 { path }) -> Error (format Format.[ str "invalid utf-8 path "; str path ])
+      | Error (Path.SystemInvalidUtf8 { syscall; path }) ->
+          Error (format Format.[ str "invalid utf-8 path from "; str syscall; str ": "; str path ])
       | Error (Path.SystemError message) -> Error message
     )
   | "label" ->
       Ok (Source.Label value)
   | other ->
-      Error ("unknown module typings source origin tag " ^ other)
+      Error (format Format.[ str "unknown module typings source origin tag "; str other ])
 
 let value_definition_target_of_json = fun json ->
   let* fields = get_object json in
@@ -1112,7 +1168,7 @@ let value_definition_target_of_json = fun json ->
       let* path = get_string path_json in
       Ok (Export (IdentPath.of_string path))
   | other ->
-      Error ("unknown module typings value definition target tag " ^ other)
+      Error (format Format.[ str "unknown module typings value definition target tag "; str other ])
 
 let value_definition_of_json = fun json ->
   let* fields = get_object json in
@@ -1122,7 +1178,7 @@ let value_definition_of_json = fun json ->
   let* target = value_definition_target_of_json target_json in
   Ok { export_name; target }
 
-let value_definitions_of_json = function
+let value_definitions_of_json = fun value -> match value with
   | Data.Json.Array values ->
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
@@ -1136,13 +1192,14 @@ let value_definitions_of_json = function
 let hash_of_hex = fun hex ->
   match Encoding.Hex.decode_bytes hex with
   | Ok bytes -> Ok (Crypto.Hash.of_bytes bytes)
-  | Error `Invalid_base16 -> Error ("invalid source_hash hex digest " ^ hex)
+  | Error `Invalid_base16 -> Error (format Format.[ str "invalid source_hash hex digest "; str hex ])
 
 module Json = struct
   let to_json = fun summary ->
     Data.Json.Object [
       ("module_name", Data.Json.String summary.module_name);
       ("source_hash", Data.Json.String (Crypto.Digest.hex summary.source_hash));
+      ("completeness", completeness_to_json summary.completeness);
       ("export_result", export_result_to_json summary.export_result);
       ("type_decls", type_decls_to_json summary.type_decls);
       ("value_definitions", value_definitions_to_json summary.value_definitions);
@@ -1157,6 +1214,11 @@ module Json = struct
     let* source_hash_hex = get_string source_hash_json in
     let* source_hash = hash_of_hex source_hash_hex in
     let* export_result = export_result_of_json export_result_json in
+    let completeness =
+      match List.assoc_opt "completeness" fields with
+      | Some completeness_json -> completeness_of_json completeness_json
+      | None -> Ok (completeness_of_export_result export_result)
+    in
     let type_decls =
       match List.assoc_opt "type_decls" fields with
       | Some type_decls_json -> type_decls_of_json type_decls_json
@@ -1167,11 +1229,13 @@ module Json = struct
       | Some value_definitions_json -> value_definitions_of_json value_definitions_json
       | None -> Ok []
     in
+    let* completeness = completeness in
     let* type_decls = type_decls in
     let* value_definitions = value_definitions in
     Ok {
       module_name;
       source_hash;
+      completeness;
       export_result;
       type_decls;
       value_definitions;

@@ -4,6 +4,10 @@ open Diagnostics
 open Infer
 open Model
 
+type completeness = FileSummary.completeness =
+  | Complete
+  | Partial
+
 (** One source analyzed within one immutable snapshot. *)
 type t = {
   (** Logical source revision analyzed by this record. *)
@@ -20,6 +24,8 @@ type t = {
   typing_diagnostics: Diagnostic.t list;
   (** Visible ambient type declarations available while analyzing this source. *)
   ambient_type_decls: FileSummary.type_decl list;
+  (** Whether this analysis is authoritative or contains holes/errors. *)
+  completeness: completeness;
   (** Export-facing summary for this analyzed source. *)
   file_summary: FileSummary.t;
   (** Export-facing binding references retained for definition queries. *)
@@ -37,6 +43,9 @@ val analyze: config:TypConfig.t -> Source.t -> t
 
 (** Extract the export environment, or [[]] when no export was produced. *)
 val exports: t -> FileSummary.exports
+
+(** Derive analysis completeness from one export-facing summary. *)
+val completeness_of_file_summary: FileSummary.t -> completeness
 
 (** Resolve one binding reference to a local definition site or an exported path. *)
 val definition_target_of_binding_ref:

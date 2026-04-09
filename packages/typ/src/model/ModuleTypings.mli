@@ -19,6 +19,25 @@ type value_definition = {
 }
 type t
 
+(** Build complete module typings. *)
+val complete:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  FileSummary.exports ->
+  t
+
+(** Build partial module typings, optionally retaining partial exports. *)
+val partial:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  ?exports:FileSummary.exports ->
+  unit ->
+  t
+
 (** Build trusted module typings. *)
 val trusted:
   module_name:string ->
@@ -79,6 +98,12 @@ val source_hash: t -> Crypto.hash
 
 (** Recover the export trust result carried by these typings. *)
 val export_result: t -> FileSummary.export_result
+
+(** Recover whether these typings are authoritative or partial. *)
+val completeness: t -> FileSummary.completeness
+
+(** Recover the export trust status independently of the export payload. *)
+val export_status: t -> FileSummary.export_status
 
 (** Extract the exported environment carried by these typings. *)
 val exports: t -> FileSummary.exports

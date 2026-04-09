@@ -1,5 +1,6 @@
 {
   "file_summary": {
+    "completeness": "partial",
     "export_result": {
       "exports": [
         {
@@ -12,6 +13,7 @@
     "source_id": 0
   },
   "module_typings": {
+    "completeness": "partial",
     "export_result": {
       "exports": [
         {

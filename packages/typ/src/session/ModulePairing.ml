@@ -1,6 +1,7 @@
 open Std
 open Diagnostics
 open Model
+module ModuleSurface = ModuleSurface
 
 type t = {
   module_typings: ModuleTypings.t;
@@ -50,8 +51,13 @@ let source_span = fun (source: Source.t) ->
 let qualified_name = fun scope_path name ->
   IdentPath.append_name scope_path name
 
-let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  qualified_name type_decl.scope_path type_decl.declaration.type_name
+let type_decl_key = ModuleSurface.type_decl_key
+
+let qualify_signature_exports = fun module_name type_decls exports ->
+  ModuleSurface.qualify_signature_exports ~module_name ~type_decls exports
+
+let qualify_signature_type_decls = fun module_name type_decls ->
+  ModuleSurface.qualify_type_decls ~module_name type_decls
 
 let signature_visible_types = fun ~ambient_type_decls ~interface_decls ~implementation_decls ->
   VisibleTypes.of_type_decls (ambient_type_decls @ interface_decls @ implementation_decls)
@@ -143,39 +149,58 @@ let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_
 let is_abstract_type_decl = fun (decl: TypeDecl.t) ->
   List.is_empty decl.constructors && List.is_empty decl.labels && Option.is_none decl.manifest
 
-let mark_analysis_errored = fun (analysis: SourceAnalysis.t) diagnostics ->
+let mark_analysis_partial = fun (analysis: SourceAnalysis.t) diagnostics ->
   if List.is_empty diagnostics then
     analysis
   else
     let file_summary =
       match analysis.file_summary.FileSummary.export_result with
       | FileSummary.TrustedExport { exports }
-      | FileSummary.ErroredExport { exports } -> FileSummary.errored
+      | FileSummary.ErroredExport { exports } -> FileSummary.partial
         ~source_id:analysis.source.source_id
         ~type_decls:(FileSummary.type_decls analysis.file_summary)
-        exports
-      | FileSummary.NoExport -> FileSummary.missing
+        ~exports
+        ()
+      | FileSummary.NoExport -> FileSummary.partial
         ~source_id:analysis.source.source_id
         ~type_decls:(FileSummary.type_decls analysis.file_summary)
         ()
     in
-    { analysis with typing_diagnostics = analysis.typing_diagnostics @ diagnostics; file_summary }
+    {
+      analysis
+      with
+        typing_diagnostics = analysis.typing_diagnostics @ diagnostics;
+        completeness = SourceAnalysis.completeness_of_file_summary file_summary;
+        file_summary;
+    }
 
 let module_typings_of_summary = fun ~module_name ~source_hash ~value_definitions summary ->
   match summary.FileSummary.export_result with
-  | FileSummary.TrustedExport { exports } -> ModuleTypings.trusted
+  | FileSummary.TrustedExport { exports } ->
+      (
+        match summary.FileSummary.completeness with
+        | FileSummary.Complete -> ModuleTypings.complete
+          ~module_name
+          ~source_hash
+          ~type_decls:summary.type_decls
+          ~value_definitions
+          exports
+        | FileSummary.Partial -> ModuleTypings.partial
+          ~module_name
+          ~source_hash
+          ~type_decls:summary.type_decls
+          ~value_definitions
+          ~exports
+          ()
+      )
+  | FileSummary.ErroredExport { exports } -> ModuleTypings.partial
     ~module_name
     ~source_hash
     ~type_decls:summary.type_decls
     ~value_definitions
-    exports
-  | FileSummary.ErroredExport { exports } -> ModuleTypings.errored
-    ~module_name
-    ~source_hash
-    ~type_decls:summary.type_decls
-    ~value_definitions
-    exports
-  | FileSummary.NoExport -> ModuleTypings.missing
+    ~exports
+    ()
+  | FileSummary.NoExport -> ModuleTypings.partial
     ~module_name
     ~source_hash
     ~type_decls:summary.type_decls
@@ -183,9 +208,12 @@ let module_typings_of_summary = fun ~module_name ~source_hash ~value_definitions
     ()
 
 let with_module_view = fun module_typings (analysis: SourceAnalysis.t) ->
+  let file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_typings in
   {
     analysis
-    with file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_typings
+    with
+      completeness = SourceAnalysis.completeness_of_file_summary file_summary;
+      file_summary;
   }
 
 let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
@@ -263,6 +291,23 @@ let list_for_all2 = fun predicate left right ->
   in
   loop left right
 
+let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) (right: TypeRepr.package_signature) ->
+  List.length left.values = List.length right.values
+  && List.for_all
+    (fun (left_value: TypeRepr.package_value) ->
+      match List.find_opt (fun (right_value: TypeRepr.package_value) -> String.equal left_value.name right_value.name) right.values with
+      | Some right_value -> equal_type left_value.scheme right_value.scheme
+      | None -> false)
+    left.values
+
+let package_signature_includes = fun includes_type (actual: TypeRepr.package_signature) (expected: TypeRepr.package_signature) ->
+  List.for_all
+    (fun (expected_value: TypeRepr.package_value) ->
+      match List.find_opt (fun (actual_value: TypeRepr.package_value) -> String.equal actual_value.name expected_value.name) actual.values with
+      | Some actual_value -> includes_type actual_value.scheme expected_value.scheme
+      | None -> false)
+    expected.values
+
 let rigid_type_equal =
   let rec equal_type left right =
     let left = TypeRepr.prune left in
@@ -299,6 +344,10 @@ let rigid_type_equal =
       equal_type
       left_members
       right_members
+    | TypeRepr.Package left_signature, TypeRepr.Package right_signature -> package_signature_equal
+      equal_type
+      left_signature
+      right_signature
     | TypeRepr.Arrow { label=left_label; lhs=left_lhs; rhs=left_rhs }, TypeRepr.Arrow {
       label=right_label;
       lhs=right_lhs;
@@ -370,6 +419,10 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
         } -> actual_bound = expected_bound
         && list_for_all2 includes_poly_variant_tag actual_tags expected_tags
         && list_for_all2 includes_type actual_inherited expected_inherited
+        | TypeRepr.Package actual_signature, TypeRepr.Package expected_signature -> package_signature_includes
+          includes_type
+          actual_signature
+          expected_signature
         | TypeRepr.Tuple actual_members, TypeRepr.Tuple expected_members -> list_for_all2
           includes_type
           actual_members
@@ -408,6 +461,75 @@ let value_mismatches = fun ~visible_types interface_exports implementation_expor
           else
             Some (Diagnostic.ValueTypeMismatch { name; expected; actual }))
 
+let canonical_type_equal = fun ~visible_types left right ->
+  rigid_type_equal
+    (VisibleTypes.canonicalize_type visible_types left)
+    (VisibleTypes.canonicalize_type visible_types right)
+
+let scheme_equal = fun ~visible_types left right ->
+  scheme_includes ~visible_types left right && scheme_includes ~visible_types right left
+
+let label_equal = fun ~visible_types (left: TypeDecl.label) (right: TypeDecl.label) ->
+  String.equal left.name right.name
+  && Bool.equal left.mutable_ right.mutable_
+  && canonical_type_equal ~visible_types left.field_type right.field_type
+
+let inline_record_labels_equal = fun ~visible_types left right ->
+  match (left, right) with
+  | None, None -> true
+  | Some left, Some right -> list_for_all2 (label_equal ~visible_types) left right
+  | _ -> false
+
+let constructor_equal = fun ~visible_types (left: TypeDecl.constructor) (right: TypeDecl.constructor) ->
+  String.equal left.name right.name
+  && scheme_equal ~visible_types left.scheme right.scheme
+  && inline_record_labels_equal
+    ~visible_types
+    left.inline_record_labels
+    right.inline_record_labels
+
+let poly_variant_tag_equal = fun ~visible_types (left: TypeDecl.poly_variant_tag) (right: TypeDecl.poly_variant_tag) ->
+  String.equal left.name right.name
+  && (
+    match (left.payload_type, right.payload_type) with
+    | None, None -> true
+    | Some left_payload, Some right_payload -> canonical_type_equal
+      ~visible_types
+      left_payload
+      right_payload
+    | _ -> false
+  )
+
+let manifest_aliases_decl_self = fun ~visible_types (type_decl: FileSummary.type_decl) manifest_type ->
+  match TypeRepr.view (VisibleTypes.canonicalize_type visible_types manifest_type) with
+  | TypeRepr.Named { head; arguments=[] } ->
+      TypeConstructorId.equal head.type_constructor_id type_decl.declaration.type_constructor_id
+      || IdentPath.equal head.name (type_decl_key type_decl)
+  | _ -> false
+
+let normalized_manifest = fun ~visible_types (type_decl: FileSummary.type_decl) ->
+  match type_decl.declaration.manifest with
+  | Some (TypeDecl.Alias manifest_type) when manifest_aliases_decl_self
+    ~visible_types
+    type_decl
+    manifest_type -> None
+  | manifest -> manifest
+
+let manifest_equal = fun ~visible_types left_decl right_decl ->
+  match (normalized_manifest ~visible_types left_decl, normalized_manifest ~visible_types right_decl) with
+  | None, None -> true
+  | Some (TypeDecl.Alias left_type), Some (TypeDecl.Alias right_type) -> canonical_type_equal
+    ~visible_types
+    left_type
+    right_type
+  | Some (TypeDecl.PolyVariant { bound=left_bound; tags=left_tags; inherited=left_inherited }), Some (
+      TypeDecl.PolyVariant { bound=right_bound; tags=right_tags; inherited=right_inherited }
+    ) ->
+      left_bound = right_bound
+      && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags
+      && list_for_all2 (canonical_type_equal ~visible_types) left_inherited right_inherited
+  | _ -> false
+
 let type_decl_matches = fun ~visible_types interface_decl implementation_decl ->
   let interface_arity = List.length interface_decl.FileSummary.declaration.TypeDecl.param_ids in
   let implementation_arity = List.length implementation_decl.FileSummary.declaration.TypeDecl.param_ids in
@@ -416,9 +538,29 @@ let type_decl_matches = fun ~visible_types interface_decl implementation_decl ->
   else if is_abstract_type_decl interface_decl.FileSummary.declaration then
     true
   else
-    String.equal
-      (type_decl_signature_string visible_types interface_decl)
-      (type_decl_signature_string visible_types implementation_decl)
+    let implementation_decl =
+      if Option.is_none interface_decl.FileSummary.declaration.manifest then
+        {
+          implementation_decl
+          with declaration = { implementation_decl.declaration with manifest = None }
+        }
+      else
+        implementation_decl
+    in
+    interface_decl.declaration.type_name = implementation_decl.declaration.type_name
+    && list_for_all2
+      ( = )
+      interface_decl.declaration.param_variances
+      implementation_decl.declaration.param_variances
+    && list_for_all2
+      (constructor_equal ~visible_types)
+      interface_decl.declaration.constructors
+      implementation_decl.declaration.constructors
+    && list_for_all2
+      (label_equal ~visible_types)
+      interface_decl.declaration.labels
+      implementation_decl.declaration.labels
+    && manifest_equal ~visible_types interface_decl implementation_decl
 
 let type_decl_mismatches = fun ~visible_types interface_decls implementation_decls ->
   interface_decls |> List.filter_map
@@ -452,12 +594,16 @@ let interface_shaped_export_result = fun interface_summary implementation_summar
   | _ -> FileSummary.ErroredExport { exports }
 
 let should_check_signature_inclusion = fun interface_summary implementation_summary ->
-  match (
-    interface_summary.FileSummary.export_result,
-    implementation_summary.FileSummary.export_result
-  ) with
-  | (FileSummary.TrustedExport _, FileSummary.TrustedExport _) -> true
-  | _ -> false
+  let has_reusable_exports summary =
+    match summary.FileSummary.export_result with
+    | FileSummary.TrustedExport _
+    | FileSummary.ErroredExport _ -> true
+    | FileSummary.NoExport -> false
+  in
+  interface_summary.FileSummary.completeness = FileSummary.Complete
+  && implementation_summary.FileSummary.completeness = FileSummary.Complete
+  && has_reusable_exports interface_summary
+  && has_reusable_exports implementation_summary
 
 let analyses_by_source = fun sources ->
   sources
@@ -497,7 +643,17 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
     ~module_name
     ~source_hash
     ~value_definitions
-    { FileSummary.source_id = interface_analysis.source.source_id; export_result; type_decls } in
+    {
+      FileSummary.source_id = interface_analysis.source.source_id;
+      completeness = (
+        match export_result with
+        | FileSummary.TrustedExport _ -> FileSummary.Complete
+        | FileSummary.ErroredExport _
+        | FileSummary.NoExport -> FileSummary.Partial
+      );
+      export_result;
+      type_decls;
+    } in
   let interface_analysis = with_module_view module_typings interface_analysis in
   let implementation_analysis = with_module_view module_typings implementation_analysis in
   {
@@ -522,18 +678,32 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
     paired_module_view ~module_name interface_pair implementation_pair
   else
     let ambient_type_decls = interface_analysis.ambient_type_decls @ implementation_analysis.ambient_type_decls in
+    let interface_type_decls = qualify_signature_type_decls
+      module_name
+      (FileSummary.type_decls interface_analysis.file_summary) in
+    let implementation_type_decls = qualify_signature_type_decls
+      module_name
+      (FileSummary.type_decls implementation_analysis.file_summary) in
+    let interface_exports = qualify_signature_exports
+      module_name
+      (FileSummary.type_decls interface_analysis.file_summary)
+      (FileSummary.exports interface_analysis.file_summary) in
+    let implementation_exports = qualify_signature_exports
+      module_name
+      (FileSummary.type_decls implementation_analysis.file_summary)
+      (FileSummary.exports implementation_analysis.file_summary) in
     let visible_types = signature_visible_types
       ~ambient_type_decls
-      ~interface_decls:(FileSummary.type_decls interface_analysis.file_summary)
-      ~implementation_decls:(FileSummary.type_decls implementation_analysis.file_summary) in
+      ~interface_decls:interface_type_decls
+      ~implementation_decls:implementation_type_decls in
     let mismatches = value_mismatches
       ~visible_types
-      (FileSummary.exports interface_analysis.file_summary)
-      (FileSummary.exports implementation_analysis.file_summary)
+      interface_exports
+      implementation_exports
     @ type_decl_mismatches
       ~visible_types
-      (FileSummary.type_decls interface_analysis.file_summary)
-      (FileSummary.type_decls implementation_analysis.file_summary) in
+      interface_type_decls
+      implementation_type_decls in
     if List.is_empty mismatches then
       paired_module_view ~module_name interface_pair implementation_pair
     else
@@ -541,7 +711,7 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
       |> List.map (interface_diagnostic interface_pair implementation_pair) in
       let implementation_diagnostics = mismatches
       |> List.map (implementation_diagnostic interface_pair implementation_pair) in
-      let module_typings = ModuleTypings.missing
+      let module_typings = ModuleTypings.partial
         ~module_name
         ~source_hash:(ModuleTypings.synthetic_source_hash
           ~module_name
@@ -549,9 +719,9 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
           ~type_decls:[]
           ())
         () in
-      let interface_analysis = mark_analysis_errored interface_analysis interface_diagnostics
+      let interface_analysis = mark_analysis_partial interface_analysis interface_diagnostics
       |> with_module_view module_typings in
-      let implementation_analysis = mark_analysis_errored implementation_analysis implementation_diagnostics
+      let implementation_analysis = mark_analysis_partial implementation_analysis implementation_diagnostics
       |> with_module_view module_typings in
       {
         module_typings;
@@ -597,7 +767,7 @@ let of_sources = fun ~module_name sources ->
         ~type_decls:[]
         () in
       {
-        module_typings = ModuleTypings.missing ~module_name ~source_hash ();
+        module_typings = ModuleTypings.partial ~module_name ~source_hash ();
         analyses_by_source = analyses_by_source sources;
         signature_mismatches = []
       }

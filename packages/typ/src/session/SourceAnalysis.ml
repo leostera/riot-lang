@@ -7,6 +7,10 @@ open Model
 module Typ_diagnostic = Diagnostic
 open Syn
 
+type completeness = FileSummary.completeness =
+  | Complete
+  | Partial
+
 type t = {
   source: Source.t;
   parse_diagnostics: Syn.Diagnostic.t list;
@@ -15,6 +19,7 @@ type t = {
   lowering_diagnostics: Typ_diagnostic.t list;
   typing_diagnostics: Typ_diagnostic.t list;
   ambient_type_decls: FileSummary.type_decl list;
+  completeness: completeness;
   file_summary: FileSummary.t;
   export_bindings: Check_result.binding_ref list;
   type_index: TypeIndex.t;
@@ -23,6 +28,9 @@ type t = {
 }
 
 let exports = fun analysis -> FileSummary.exports analysis.file_summary
+
+let completeness_of_file_summary = fun summary ->
+  FileSummary.completeness summary
 
 let definition_site_of_origin_id = fun analysis origin_id ->
   match analysis.semantic_tree with
@@ -59,7 +67,7 @@ let alias_target_path = fun ~alias_name ~module_path path ->
 
 let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.binding_ref) ->
   match binding_ref.provenance with
-  | Check_result.Lowered_pattern pat_id -> (
+  | Check_result.LoweredPattern pat_id -> (
       match analysis.semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
@@ -67,7 +75,7 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
         (fun pattern -> definition_site_of_origin_id analysis pattern.origin_id)
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
-  | Check_result.Declared_value { name; scope_path } -> (
+  | Check_result.DeclaredValue { name; scope_path } -> (
       match analysis.semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
@@ -90,10 +98,10 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
         Some (ModuleTypings.Export binding_ref.path)
   | Check_result.Included { module_path } ->
       Some (ModuleTypings.Export (IdentPath.append_path module_path binding_ref.path))
-  | Check_result.Module_alias { alias_name; module_path } ->
+  | Check_result.ModuleAlias { alias_name; module_path } ->
       Some (ModuleTypings.Export (alias_target_path ~alias_name ~module_path binding_ref.path))
   | Check_result.Prelude
-  | Check_result.Type_constructor _ ->
+  | Check_result.TypeConstructor _ ->
       None
 
 let export_definitions = fun analysis ->
@@ -121,7 +129,7 @@ let ambient_type_decls = fun (config: TypConfig.t) ->
   |> List.concat_map
     (fun typings ->
       qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings)) in
-  VisibleTypes.of_type_decls (config.ambient_type_decls @ loaded_type_decls) |> VisibleTypes.type_decls
+  VisibleTypes.of_type_decls (loaded_type_decls @ config.ambient_type_decls) |> VisibleTypes.type_decls
 
 let analyze = fun ~config (source: Source.t) ->
   let parsed = source.parse_result in
@@ -145,19 +153,24 @@ let analyze = fun ~config (source: Source.t) ->
   let diagnostics = semantic_tree.diagnostics @ inferred.diagnostics in
   let file_summary =
     if diagnostics = [] then
-      FileSummary.trusted ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
+      FileSummary.complete ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
     else
-      FileSummary.errored ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
+      FileSummary.partial
+        ~source_id:source.source_id
+        ~type_decls:inferred.type_decls
+        ~exports:inferred.exports
+        ()
   in
   let ambient_type_decls = ambient_type_decls config in
   {
     source;
-    parse_diagnostics = parsed.Parser.diagnostics;
+    parse_diagnostics =Parser.(parsed.diagnostics);
     cst;
     semantic_tree = Some semantic_tree;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
     ambient_type_decls;
+    completeness = completeness_of_file_summary file_summary;
     file_summary;
     export_bindings = inferred.export_bindings;
     type_index;

@@ -13,6 +13,9 @@ type type_decl = {
   declaration: TypeDecl.t;
 }
 type exports = (string * TypeScheme.t) list
+type completeness =
+  | Complete
+  | Partial
 type export_result =
   (** Exports are safe enough for downstream reuse. *)
   | TrustedExport of { exports: exports }
@@ -20,14 +23,26 @@ type export_result =
   | ErroredExport of { exports: exports }
   (** No export can be trusted for this source revision. *)
   | NoExport
+type export_status =
+  | Trusted
+  | Errored
+  | Missing
 type t = {
   (** Source summarized by this export result. *)
   source_id: SourceId.t;
+  (** Whether this summary is authoritative or contains holes/errors. *)
+  completeness: completeness;
   (** Trust-classified export payload. *)
   export_result: export_result;
   (** Exported lowered type declarations preserved for summary hydration. *)
   type_decls: type_decl list;
 }
+
+(** Build a complete summary with reusable exports. *)
+val complete: source_id:SourceId.t -> ?type_decls:type_decl list -> exports -> t
+
+(** Build a partial summary, optionally retaining partial exports. *)
+val partial: source_id:SourceId.t -> ?type_decls:type_decl list -> ?exports:exports -> unit -> t
 
 (** Build a trusted export summary. *)
 val trusted: source_id:SourceId.t -> ?type_decls:type_decl list -> exports -> t
@@ -40,6 +55,12 @@ val missing: source_id:SourceId.t -> ?type_decls:type_decl list -> unit -> t
 
 (** Extract the export environment, or [[]] for [NoExport]. *)
 val exports: t -> exports
+
+(** Recover whether this summary is authoritative or partial. *)
+val completeness: t -> completeness
+
+(** Recover the trust status carried by this summary independently of its export payload. *)
+val export_status: t -> export_status
 
 (** Extract the lowered exported type declarations. *)
 val type_decls: t -> type_decl list
