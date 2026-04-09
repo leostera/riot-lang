@@ -54,6 +54,7 @@ let abstract_type_decl = fun ~scope_path ~path ~type_name ?(param_ids = []) ?(pa
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids;
       param_variances;
       constructors = [];
@@ -66,6 +67,7 @@ let alias_type_decl = fun ~scope_path ~path ~type_name ?(param_ids = []) ?(param
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids;
       param_variances;
       constructors = [];
@@ -94,6 +96,7 @@ let variant_type_decl = fun ~scope_path ~path ~type_name constructors ->
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids = [];
       param_variances = [];
       constructors;
@@ -106,6 +109,7 @@ let record_type_decl = fun ~scope_path ~path ~type_name labels ->
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids = [];
       param_variances = [];
       constructors = [];
@@ -118,6 +122,7 @@ let variant_type_decl_with_params = fun ~scope_path ~path ~type_name ?(param_ids
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids;
       param_variances;
       constructors;
@@ -1901,9 +1906,9 @@ let stdlib_root_exports = [
   ("-.", float_binop);
   ("/", int_binop);
   ("/.", float_binop);
+  ("!=", polymorphic_order);
   ("<", polymorphic_order);
   ("<=", polymorphic_order);
-  ("<>", polymorphic_order);
   ("=", polymorphic_order);
   ("==", polymorphic_order);
   (">", polymorphic_order);

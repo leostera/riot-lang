@@ -364,6 +364,10 @@ let local_module_aliases_of_internal_module_name = fun module_name ->
   | _root :: local_segments ->
       module_name_suffix_aliases (String.concat "." local_segments)
 
+let ambient_module_names_of_local_module_name = fun module_name ->
+  (module_name :: local_module_aliases_of_internal_module_name module_name)
+  |> List.sort_uniq String.compare
+
 let matches_required_local_module = fun ~required_module_name candidate_module_name ->
   String.equal candidate_module_name required_module_name
   || List.mem required_module_name (local_module_aliases_of_internal_module_name candidate_module_name)
@@ -390,6 +394,26 @@ let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
           matches_required_local_module ~required_module_name candidate_module_name)
         required_local_modules)
 
+let visiting_module_names = fun (snapshot: t) visiting ->
+  visiting
+  |> List.filter_map (slot_of_source_id snapshot)
+  |> List.map (fun (slot: analysis_slot) -> Source.module_name slot.source)
+  |> List.sort_uniq String.compare
+
+let local_module_names_depend_on_visiting = fun (snapshot: t) visiting local_module_names ->
+  let visiting_module_names = visiting_module_names snapshot visiting in
+  local_module_names
+  |> List.exists
+    (fun module_name -> List.mem module_name visiting_module_names)
+
+let analysis_depends_on_visiting = fun (snapshot: t) visiting (slot: analysis_slot) ->
+  local_module_names_for snapshot slot
+  |> local_module_names_depend_on_visiting snapshot visiting
+
+let module_result_depends_on_visiting = fun (snapshot: t) visiting module_name ->
+  module_slots snapshot module_name
+  |> List.exists (analysis_depends_on_visiting snapshot visiting)
+
 let cached_local_module_typings_for = fun (snapshot: t) (slot: analysis_slot) ->
   local_module_names_for snapshot slot
   |> List.filter_map
@@ -403,7 +427,7 @@ let cached_local_ambient_env_for = fun snapshot (slot: analysis_slot) ->
     (fun (module_name, typings) ->
       let type_decls = ModuleTypings.type_decls typings in
       let exports = ModuleTypings.exports typings in
-      local_module_aliases_of_internal_module_name module_name
+      ambient_module_names_of_local_module_name module_name
       |> List.map (fun alias -> qualify_exports alias type_decls exports)
       |> List.flatten)
   |> List.flatten
@@ -413,7 +437,7 @@ let cached_local_ambient_type_decls_for = fun snapshot (slot: analysis_slot) ->
   |> List.map
     (fun (module_name, typings) ->
       let type_decls = ModuleTypings.type_decls typings in
-      local_module_aliases_of_internal_module_name module_name
+      ambient_module_names_of_local_module_name module_name
       |> List.map (fun alias -> qualify_type_decls alias type_decls)
       |> List.flatten)
   |> List.flatten
@@ -493,7 +517,7 @@ and ambient_env_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
     (fun (module_name, result) ->
       let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
       let exports = ModuleTypings.exports result.ModulePairing.module_typings in
-      local_module_aliases_of_internal_module_name module_name
+      ambient_module_names_of_local_module_name module_name
       |> List.map (fun alias -> qualify_exports alias type_decls exports)
       |> List.flatten)
   |> List.flatten in
@@ -505,7 +529,7 @@ and ambient_type_decls_for = fun (snapshot: t) visiting (slot: analysis_slot) ->
   |> List.map
     (fun (module_name, result) ->
       let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
-      local_module_aliases_of_internal_module_name module_name
+      ambient_module_names_of_local_module_name module_name
       |> List.map (fun alias -> qualify_type_decls alias type_decls)
       |> List.flatten)
   |> List.flatten in
@@ -515,6 +539,7 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
   match slot.analysis with
   | Some analysis -> analysis
   | None ->
+      let cache_result = not (analysis_depends_on_visiting snapshot visiting slot) in
       let visiting = slot.source_id :: visiting in
       let ambient = ambient_env_for snapshot visiting slot in
       let ambient_type_decls = ambient_type_decls_for snapshot visiting slot in
@@ -548,21 +573,75 @@ and force_analysis = fun (snapshot: t) ?(visiting = []) (slot: analysis_slot) ->
               lowering_diagnostics = analysis.lowering_diagnostics;
               typing_diagnostics = analysis.typing_diagnostics;
               export_status = export_status_of_file_summary analysis.file_summary;
-              export_count = List.length (FileSummary.exports analysis.file_summary);
-              type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
+                export_count = List.length (FileSummary.exports analysis.file_summary);
+                type_decl_count = List.length (FileSummary.type_decls analysis.file_summary);
             })
       in
       let () =
-        match visiting with
-        | [ source_id ] when SourceId.equal source_id slot.source_id -> slot.analysis <- Some analysis
-        | _ -> ()
+        if cache_result then
+          slot.analysis <- Some analysis
       in
       analysis
 
 and module_result_for = fun (snapshot: t) visiting module_name ->
   let cache_key = module_result_cache_key visiting module_name in
+  let global_cache_key = module_result_cache_key [] module_name in
+  let cache_result = not (module_result_depends_on_visiting snapshot visiting module_name) in
   match Collections.HashMap.get snapshot.module_result_cache cache_key with
   | Some result -> result
+  | None when cache_result -> (
+      match Collections.HashMap.get snapshot.module_result_cache global_cache_key with
+      | Some result ->
+          let _ = Collections.HashMap.insert snapshot.module_result_cache cache_key result in
+          result
+      | None ->
+          let slots = module_slots snapshot module_name in
+          let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
+          let () =
+            match slots with
+            | [] -> ()
+            | slot :: _ -> TypConfig.emit_event
+              slot.config
+              (fun () -> Event.ModulePairingStarted { module_name; source_ids })
+          in
+          let sources =
+            slots
+            |> List.map
+              (fun (slot: analysis_slot) ->
+                let analysis =
+                  if List.exists (SourceId.equal slot.source_id) visiting then
+                    force_base_analysis snapshot slot
+                  else
+                    force_analysis snapshot ~visiting slot
+                in
+                (slot.source, analysis))
+          in
+          let result = ModulePairing.of_sources ~module_name sources in
+          let _ = Collections.HashMap.insert snapshot.module_result_cache cache_key result in
+          let _ = Collections.HashMap.insert snapshot.module_result_cache global_cache_key result in
+          let () =
+            match slots with
+            | [] -> ()
+            | slot :: _ ->
+                TypConfig.emit_event slot.config
+                  (fun () ->
+                    Event.ModulePairingFinished {
+                      module_name;
+                      source_ids;
+                      export_status = export_status_of_module_typings result.ModulePairing.module_typings;
+                      export_count = List.length
+                        (ModuleTypings.exports result.ModulePairing.module_typings);
+                      type_decl_count = List.length
+                        (ModuleTypings.type_decls result.ModulePairing.module_typings);
+                      mismatch_count = List.length result.ModulePairing.signature_mismatches;
+                      mismatch_subjects = result.ModulePairing.signature_mismatches
+                      |> List.map signature_mismatch_subject
+                      |> List.sort_uniq String.compare;
+                      mismatch_messages = result.ModulePairing.signature_mismatches |> List.map signature_mismatch_message;
+                    })
+          in
+          result
+    )
   | None ->
       let slots = module_slots snapshot module_name in
       let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
@@ -587,6 +666,10 @@ and module_result_for = fun (snapshot: t) visiting module_name ->
       in
       let result = ModulePairing.of_sources ~module_name sources in
       let _ = Collections.HashMap.insert snapshot.module_result_cache cache_key result in
+      let () =
+        if cache_result then
+          ignore (Collections.HashMap.insert snapshot.module_result_cache global_cache_key result)
+      in
       let () =
         match slots with
         | [] -> ()

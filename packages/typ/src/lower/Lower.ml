@@ -153,6 +153,32 @@ let register_declared_type_name = fun (state: state) name ->
       in
       type_constructor_id
 
+let with_nonrec_current_type_name_hidden = fun (state: state) (declaration: Cst.TypeDeclaration.t) f ->
+  match Cst.TypeDeclaration.nonrec_token declaration with
+  | None -> f ()
+  | Some _ ->
+      let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
+      let saved_declared_type_names = state.declared_type_names in
+      let () =
+        state.declared_type_names <- List.filter
+          (fun (candidate_name, candidate_scope_path, _) ->
+            not
+              (String.equal candidate_name type_name
+              && IdentPath.equal candidate_scope_path state.scope_path))
+          state.declared_type_names
+      in
+      try
+        let lowered = f () in
+        let () =
+          state.declared_type_names <- saved_declared_type_names
+        in
+        lowered
+      with error ->
+        let () =
+          state.declared_type_names <- saved_declared_type_names
+        in
+        raise error
+
 let is_module_name = fun name ->
   String.length name > 0
   && Char.uppercase_ascii name.[0] = name.[0]
@@ -227,8 +253,18 @@ let builtin_type_of_name = fun name arguments ->
   | ("string", []) -> Some TypeRepr.string
   | ("char", []) -> Some TypeRepr.char
   | ("unit", []) -> Some TypeRepr.unit_
+  | ("exn", []) -> Some (
+      TypeRepr.named
+        ~head:(TypeRepr.named_head
+          ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
+          ~name:(IdentPath.of_name "exn"))
+        ~arguments:[]
+    )
   | ("array", [ argument ]) -> Some (TypeRepr.array argument)
   | ("list", [ argument ]) -> Some (TypeRepr.list argument)
+  | ("option", [ argument ]) -> Some (TypeRepr.option argument)
+  | ("result", [ ok_ty; error_ty ]) -> Some (TypeRepr.result ok_ty error_ty)
+  | ("seq", [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None
 
 let lower_arrow_label = fun (label: Cst.arrow_label option) ->
@@ -826,106 +862,117 @@ let rec register_type_declaration_names = fun (state: state) (declaration: Cst.T
 let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
   let syntax_node = Cst.TypeDeclaration.syntax_node declaration in
   let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
+  let nonrec_ = Option.is_some (Cst.TypeDeclaration.nonrec_token declaration) in
   let type_constructor_id = register_declared_type_name state type_name in
   let params = type_param_bindings declaration in
-  let lowered_manifest_alias =
-    Cst.TypeDeclaration.manifest_alias declaration
-    |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest))
-  in
   let result_type = TypeRepr.named
     ~head:(TypeRepr.named_head
       ~type_constructor_id
       ~name:(qualify_scoped_name state.scope_path type_name))
     ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
   let lowered_declaration =
-    match Cst.TypeDeclaration.type_definition declaration with
-    | Cst.TypeDefinition.Abstract ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors = [];
-          labels = [];
-          manifest = lowered_manifest_alias;
-        }
-    | Cst.TypeDefinition.Alias { manifest; _ } ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors = [];
-          labels = [];
-          manifest = Some (TypeDecl.Alias (lower_core_type state params manifest));
-        }
-    | Cst.TypeDefinition.Variant { constructors; _ } ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors =
-            constructors |> List.map
-              (fun (constructor: Cst.VariantConstructor.t) ->
-                let constructor_params = constructor_type_param_bindings params constructor in
-                let payload_type = variant_constructor_payload state constructor_params constructor in
-                let result_type =
-                  match Cst.VariantConstructor.result_type constructor with
-                  | Some result_type -> lower_core_type state constructor_params result_type
-                  | None -> result_type
-                in
-                let inline_record_labels = inline_record_labels_for_constructor
-                  state
-                  constructor_params
-                  constructor in
-                {
-                  TypeDecl.constructor_id = ConstructorId.of_int state.next_constructor_id;
-                  TypeDecl.name = Cst.VariantConstructor.name constructor;
-                  scheme = constructor_scheme ~params:constructor_params ~result_type payload_type;
-                  inline_record_labels
-                }
-                |> fun constructor ->
-                  let () =
-                    state.next_constructor_id <- state.next_constructor_id + 1
-                  in
-                  constructor);
-          labels = [];
-          manifest = lowered_manifest_alias;
-        }
-    | Cst.TypeDefinition.Record { fields; _ } ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors = [];
-          labels = List.map (lower_record_label state params) fields;
-          manifest = lowered_manifest_alias;
-        }
-    | Cst.TypeDefinition.PolyVariant poly_variant ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors = [];
-          labels = [];
-          manifest = Option.or_else
-            lowered_manifest_alias
-            (fun () -> Some (lower_poly_variant_manifest state params poly_variant));
-        }
-    | Cst.TypeDefinition.Extensible _ ->
-        Some {
-          TypeDecl.type_constructor_id;
-          TypeDecl.type_name = type_name;
-          param_ids = List.map snd params;
-          param_variances = invariant_param_variances params;
-          constructors = [];
-          labels = [];
-          manifest = lowered_manifest_alias;
-        }
-    | _ -> None
+    with_nonrec_current_type_name_hidden
+      state
+      declaration
+      (fun () ->
+        let lowered_manifest_alias =
+          Cst.TypeDeclaration.manifest_alias declaration
+          |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest))
+        in
+        match Cst.TypeDeclaration.type_definition declaration with
+        | Cst.TypeDefinition.Abstract ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors = [];
+              labels = [];
+              manifest = lowered_manifest_alias;
+            }
+        | Cst.TypeDefinition.Alias { manifest; _ } ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors = [];
+              labels = [];
+              manifest = Some (TypeDecl.Alias (lower_core_type state params manifest));
+            }
+        | Cst.TypeDefinition.Variant { constructors; _ } ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors =
+                constructors |> List.map
+                  (fun (constructor: Cst.VariantConstructor.t) ->
+                    let constructor_params = constructor_type_param_bindings params constructor in
+                    let payload_type = variant_constructor_payload state constructor_params constructor in
+                    let result_type =
+                      match Cst.VariantConstructor.result_type constructor with
+                      | Some result_type -> lower_core_type state constructor_params result_type
+                      | None -> result_type
+                    in
+                    let inline_record_labels = inline_record_labels_for_constructor
+                      state
+                      constructor_params
+                      constructor in
+                    {
+                      TypeDecl.constructor_id = ConstructorId.of_int state.next_constructor_id;
+                      TypeDecl.name = Cst.VariantConstructor.name constructor;
+                      scheme = constructor_scheme ~params:constructor_params ~result_type payload_type;
+                      inline_record_labels
+                    }
+                    |> fun constructor ->
+                      let () =
+                        state.next_constructor_id <- state.next_constructor_id + 1
+                      in
+                      constructor);
+              labels = [];
+              manifest = lowered_manifest_alias;
+            }
+        | Cst.TypeDefinition.Record { fields; _ } ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors = [];
+              labels = List.map (lower_record_label state params) fields;
+              manifest = lowered_manifest_alias;
+            }
+        | Cst.TypeDefinition.PolyVariant poly_variant ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors = [];
+              labels = [];
+              manifest = Option.or_else
+                lowered_manifest_alias
+                (fun () -> Some (lower_poly_variant_manifest state params poly_variant));
+            }
+        | Cst.TypeDefinition.Extensible _ ->
+            Some {
+              TypeDecl.type_constructor_id;
+              TypeDecl.type_name = type_name;
+              nonrec_;
+              param_ids = List.map snd params;
+              param_variances = invariant_param_variances params;
+              constructors = [];
+              labels = [];
+              manifest = lowered_manifest_alias;
+            }
+        | _ -> None)
   in
   match lowered_declaration with
   | Some lowered_declaration ->

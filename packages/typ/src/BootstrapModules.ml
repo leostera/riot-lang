@@ -87,6 +87,7 @@ let stdlib_seq_t_decl =
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string "Stdlib.Seq.t");
       type_name = "t";
+      nonrec_ = false;
       param_ids = [ 0 ];
       param_variances = [ TypeDecl.Covariant ];
       constructors = [];
@@ -99,6 +100,7 @@ let abstract_type_decl = fun ~scope_path ~path ~type_name ->
     {
       TypeDecl.type_constructor_id = TypeConstructorId.of_path (IdentPath.of_string path);
       type_name;
+      nonrec_ = false;
       param_ids = [];
       param_variances = [];
       constructors = [];

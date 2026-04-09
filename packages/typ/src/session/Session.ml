@@ -289,6 +289,23 @@ let declared_modules = fun session (source: Source.t) ->
       let _ = Collections.HashMap.insert session.declared_modules_by_source_hash key modules in
       modules
 
+let has_top_level_include_statement = fun (source: Source.t) ->
+  match source.cst with
+  | Syn.Cst.Implementation implementation ->
+      implementation.Syn.Cst.items |> List.exists
+        (
+          function
+          | Syn.Cst.StructureItem.IncludeStatement _ -> true
+          | _ -> false
+        )
+  | Syn.Cst.Interface interface ->
+      interface.Syn.Cst.items |> List.exists
+        (
+          function
+          | Syn.Cst.SignatureItem.IncludeStatement _ -> true
+          | _ -> false
+        )
+
 let module_dependencies = fun session ~deps_env_key ~deps_env (source: Source.t) ->
   let key = deps_env_key ^ ":" ^ source_hash_key source in
   match Collections.HashMap.get session.module_dependencies_by_env_and_source_hash key with
@@ -314,6 +331,20 @@ let collect_missing_module_summaries = fun session roots ->
   let dependency_is_loaded_only module_name =
     Collections.HashSet.contains loaded_module_names module_name
     && not (has_local_source_for_module session module_name) in
+  let initial_source_ids =
+    roots
+    |> List.filter_map
+      (fun source_id ->
+        source_of_id session source_id |> Option.map
+          (fun (source: Source.t) ->
+            let siblings = source_ids_of_module session (Source.module_name source) in
+            if List.is_empty siblings then
+              [ source_id ]
+            else
+              siblings))
+    |> List.flatten
+    |> List.sort_uniq SourceId.compare
+  in
   let local_nested_module_prefixes_cache = Collections.HashMap.with_capacity 32 in
   let module_source_closure initial_source_ids =
     let seen = Collections.HashSet.with_capacity (List.length initial_source_ids) in
@@ -340,26 +371,36 @@ let collect_missing_module_summaries = fun session roots ->
       (fun (source: Source.t) ->
         Collections.HashSet.contains closure_source_ids (SourceId.to_int source.source_id))
   in
+  let local_nested_module_snapshot = ref None in
+  let local_nested_module_snapshot = fun () ->
+    match !local_nested_module_snapshot with
+    | Some snapshot -> snapshot
+    | None ->
+        let sources = module_source_closure initial_source_ids in
+        let snapshot = Snapshot.make
+          ~revision:session.next_revision
+          ~roots:initial_source_ids
+          ~config:session.config
+          ~sources in
+        let () = local_nested_module_snapshot := Some snapshot in
+        snapshot
+  in
   let local_nested_module_prefixes module_name =
     match Collections.HashMap.get local_nested_module_prefixes_cache module_name with
     | Some nested_modules -> nested_modules
     | None ->
-        let declared_nested_modules = source_ids_of_module session module_name
-        |> List.filter_map (source_of_id session)
+        let module_sources = source_ids_of_module session module_name
+        |> List.filter_map (source_of_id session) in
+        let declared_nested_modules = module_sources
         |> List.concat_map (declared_modules session) in
+        let has_include_statement = List.exists has_top_level_include_statement module_sources in
         let exported_nested_modules =
-          let roots = source_ids_of_module session module_name in
-          match roots with
-          | [] -> []
-          | _ ->
-              let snapshot = Snapshot.make
-                ~revision:session.next_revision
-                ~roots
-                ~config:session.config
-                ~sources:(module_source_closure roots) in
-              match Snapshot.find_module_typings_by_name snapshot module_name with
-              | Some module_typings -> nested_module_prefixes_of_typings module_typings
-              | None -> []
+          if not has_include_statement then
+            []
+          else
+            match Snapshot.find_module_typings_by_name (local_nested_module_snapshot ()) module_name with
+            | Some module_typings -> nested_module_prefixes_of_typings module_typings
+            | None -> []
         in
         let nested_modules = declared_nested_modules @ exported_nested_modules
         |> List.sort_uniq String.compare in
@@ -404,20 +445,6 @@ let collect_missing_module_summaries = fun session roots ->
           head :: loop tail
     in
     loop missing
-  in
-  let initial_source_ids =
-    roots
-    |> List.filter_map
-      (fun source_id ->
-        source_of_id session source_id |> Option.map
-          (fun (source: Source.t) ->
-            let siblings = source_ids_of_module session (Source.module_name source) in
-            if List.is_empty siblings then
-              [ source_id ]
-            else
-              siblings))
-    |> List.flatten
-    |> List.sort_uniq SourceId.compare
   in
   let seen = Collections.HashSet.with_capacity (List.length initial_source_ids) in
   let rec discover to_visit seen missing =

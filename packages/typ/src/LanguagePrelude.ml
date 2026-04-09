@@ -79,6 +79,7 @@ let type_decls = [ {
       {
         TypeDecl.type_constructor_id = prelude_list_type_constructor_id;
         type_name = "list";
+        nonrec_ = false;
         param_ids = [ 0 ];
         param_variances = [ TypeDecl.Covariant ];
         constructors = [

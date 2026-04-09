@@ -50,6 +50,7 @@ let nested_shade_type_decl = {
     {
       TypeDecl.type_constructor_id = TypeConstructorId.make ~owner:"env2-test" ~local_id:(-9_000);
       type_name = "shade";
+      nonrec_ = false;
       param_ids = [];
       param_variances = [];
       constructors = [];

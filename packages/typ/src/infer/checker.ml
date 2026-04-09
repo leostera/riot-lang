@@ -142,6 +142,11 @@ let resolve_named_type_head_in_env = fun (state: state) env name ->
         State.resolve_named_type_head state name)
 
 let canonicalize_scheme_in_env = fun (state: state) env scheme ->
+  let scheme =
+    State.canonicalize_scheme_with_named_type_head
+      (fun name -> resolve_named_type_head_in_env state env name)
+      scheme
+  in
   let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
   VisibleTypes.canonicalize_scheme visible_types scheme
 
@@ -326,6 +331,9 @@ let declared_value_bindings = fun (state: state) env (
       name = declared_value_item.value_name;
       scope_path = declared_value_item.scope_path
     })
+
+let canonicalize_generalized_scheme_in_env = fun (state: state) env scheme ->
+  canonicalize_scheme_in_env state env scheme
 
 let instantiate = fun (state: state) scheme ->
   Solver.instantiate state.solver scheme
@@ -917,8 +925,9 @@ type instantiated_constructor_entry = {
   inline_record_labels: TypeDecl.label list option;
 }
 
-let instantiate_constructor_entry = fun (state: state) constructor_entry ->
-  let quantified, body = TypeScheme.to_explicit (Env.Constructor_env.scheme constructor_entry) in
+let instantiate_constructor_entry = fun (state: state) env constructor_entry ->
+  let scheme = canonicalize_scheme_in_env state env (Env.Constructor_env.scheme constructor_entry) in
+  let quantified, body = TypeScheme.to_explicit scheme in
   let mapping = Collections.HashMap.with_capacity (List.length quantified) in
   let () =
     quantified
@@ -1739,7 +1748,7 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
           match resolve_constructor_entry state env constructor ~expected_ty with
           | Some constructor_entry ->
               let origin = origin_of_pattern state pat_id in
-              let instantiated = instantiate_constructor_entry state constructor_entry in
+              let instantiated = instantiate_constructor_entry state env constructor_entry in
               let () = try_unify state ~origin expected_ty instantiated.result_ty in
               (
                 match (instantiated.inline_record_labels, arguments) with
@@ -2175,9 +2184,12 @@ and infer_expr = fun (state: state) env expr_id ->
                 | Some origin when String.equal origin.label "constructor_expression"
                 || String.equal origin.label "constructor_path_expression" -> (
                     match resolve_constructor_without_expected env name with
-                    | Some constructor_entry -> instantiate
-                      state
-                      (Env.Constructor_env.scheme constructor_entry)
+                    | Some constructor_entry ->
+                        let scheme = canonicalize_scheme_in_env
+                          state
+                          env
+                          (Env.Constructor_env.scheme constructor_entry) in
+                        instantiate state scheme
                     | None ->
                         let hole = fresh_hole state in
                         let () = add_diagnostic
@@ -2356,7 +2368,7 @@ and infer_expr = fun (state: state) env expr_id ->
                   | Some { desc=BodyArena.EVar constructor; _ } -> (
                       match resolve_constructor_without_expected env constructor with
                       | Some constructor_entry ->
-                          let instantiated = instantiate_constructor_entry state constructor_entry in
+                          let instantiated = instantiate_constructor_entry state env constructor_entry in
                           let constructor_ty =
                             List.fold_right
                               (fun argument_ty result_ty ->
@@ -2573,9 +2585,11 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
           || String.equal origin.label "constructor_path_expression" -> (
               match resolve_constructor_entry state env name ~expected_ty with
               | Some constructor_entry ->
-                  let inferred_type = instantiate
+                  let scheme = canonicalize_scheme_in_env
                     state
+                    env
                     (Env.Constructor_env.scheme constructor_entry) in
+                  let inferred_type = instantiate state scheme in
                   let () = try_unify state ~origin:(origin_of_expr state expr_id) expected_ty inferred_type in
                   inferred_type
               | None ->
@@ -2595,7 +2609,7 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
               | Some { desc=BodyArena.EVar constructor; _ } -> (
                   match resolve_constructor_entry state env constructor ~expected_ty with
                   | Some constructor_entry ->
-                      let instantiated = instantiate_constructor_entry state constructor_entry in
+                      let instantiated = instantiate_constructor_entry state env constructor_entry in
                       let callee_ty =
                         List.fold_right
                           (fun argument_ty result_ty ->
@@ -2774,7 +2788,7 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
         let generalized_entries =
           List.map2
             (fun entry scheme ->
-              Binding.with_scheme scheme entry)
+              Binding.with_scheme (canonicalize_generalized_scheme_in_env state env scheme) entry)
             entries.entries
             schemes
         in
@@ -2837,7 +2851,8 @@ and infer_recursive_group = fun (state: state) env bindings ->
             let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
             let entry =
               match schemes with
-              | [ scheme ] -> Binding.with_scheme scheme entry
+              | [ scheme ] ->
+                  Binding.with_scheme (canonicalize_generalized_scheme_in_env state env scheme) entry
               | _ -> entry
             in
             loop (entry :: acc) rest_bindings rest_groups

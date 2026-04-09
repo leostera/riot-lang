@@ -72,6 +72,8 @@ type t = {
   type_constructor_id: TypeConstructorId.t;
   (** Declared type name. *)
   type_name: string;
+  (** Whether lowering marked this declaration as [nonrec]. *)
+  nonrec_: bool;
   (** Prototype-local type parameter identifiers used for later instantiation. *)
   param_ids: int list;
   (** Precomputed declaration variance for each parameter. *)

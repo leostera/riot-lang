@@ -67,6 +67,7 @@ type manifest =
 type t = {
   type_constructor_id: TypeConstructorId.t;
   type_name: string;
+  nonrec_: bool;
   param_ids: int list;
   param_variances: variance list;
   constructors: constructor list;
@@ -136,6 +137,7 @@ let to_json = fun decl ->
   let fields = [
     ("type_constructor_id", TypeConstructorId.to_json decl.type_constructor_id);
     ("type_name", Data.Json.String decl.type_name);
+    ("nonrec", Data.Json.Bool decl.nonrec_);
     (
       "param_variances",
       Data.Json.Array (List.map
@@ -230,6 +232,7 @@ let to_string = fun decl ->
   TypeConstructorId.to_string decl.type_constructor_id
   ^ " "
   ^ decl.type_name
+  ^ (if decl.nonrec_ then " nonrec" else "")
   ^ " { param_variances = "
   ^ param_variances
   ^ "; constructors = "

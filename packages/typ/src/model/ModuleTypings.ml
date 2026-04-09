@@ -554,6 +554,7 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
     );
     ("type_constructor_id", TypeConstructorId.to_json type_decl.declaration.type_constructor_id);
     ("type_name", Data.Json.String type_decl.declaration.type_name);
+    ("nonrec", Data.Json.Bool type_decl.declaration.nonrec_);
     (
       "param_ids",
       Data.Json.Array (List.map (fun id -> Data.Json.Int id) type_decl.declaration.param_ids)
@@ -1022,6 +1023,13 @@ let type_decl_of_json = fun json ->
     | Some manifest_json -> manifest_of_json manifest_json |> Result.map Option.some
     | None -> Ok None
   in
+  let nonrec_ =
+    match List.assoc_opt "nonrec" fields with
+    | Some (Data.Json.Bool value) -> Ok value
+    | Some other -> error_expected "bool" other
+    | None -> Ok false
+  in
+  let* nonrec_ = nonrec_ in
   let* manifest = manifest in
   Ok {
     FileSummary.scope_path = IdentPath.of_segments scope_path;
@@ -1029,6 +1037,7 @@ let type_decl_of_json = fun json ->
       {
         TypeDecl.type_constructor_id = type_constructor_id;
         TypeDecl.type_name = type_name;
+        nonrec_;
         param_ids;
         param_variances;
         constructors;
