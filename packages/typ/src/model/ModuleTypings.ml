@@ -414,21 +414,27 @@ let rec type_to_json = fun ty ->
   | TypeRepr.Seq element ->
       Data.Json.Object [ ("tag", Data.Json.String "seq"); ("element", type_to_json element); ]
   | TypeRepr.Package signature ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "package");
-        ("values", Data.Json.Array (
-          signature.values
-          |> List.map
-            (fun (value: TypeRepr.package_value) ->
-              let quantified, body = TypeScheme.to_explicit value.scheme in
-              Data.Json.Object [
-                ("name", Data.Json.String value.name);
-                ("scheme", Data.Json.Object [
-                  ("quantified", Data.Json.Array (List.map (fun id -> Data.Json.Int id) quantified));
-                  ("body", type_to_json body);
-                ]);
-              ])));
-      ]
+      Data.Json.Object [ ("tag", Data.Json.String "package"); (
+          "values",
+          Data.Json.Array (
+            signature.values |> List.map
+              (fun (value: TypeRepr.package_value) ->
+                let quantified, body = TypeScheme.to_explicit value.scheme in
+                Data.Json.Object [
+                  ("name", Data.Json.String value.name);
+                  (
+                    "scheme",
+                    Data.Json.Object [
+                      (
+                        "quantified",
+                        Data.Json.Array (List.map (fun id -> Data.Json.Int id) quantified)
+                      );
+                      ("body", type_to_json body);
+                    ]
+                  );
+                ])
+          )
+        ); ]
   | TypeRepr.Named { head={ type_constructor_id; name }; arguments } ->
       Data.Json.Object [
         ("tag", Data.Json.String "named");

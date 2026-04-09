@@ -107,12 +107,12 @@ type expr_desc =
   | ESequence of ExprId.t list
   (** Integer for-loop with a scoped iterator, integer bounds, and a unit body. *)
   | EFor of {
-    iterator_pattern_id: PatId.t;
-    descending: bool;
-    start_id: ExprId.t;
-    end_id: ExprId.t;
-    body_id: ExprId.t;
-  }
+      iterator_pattern_id: PatId.t;
+      descending: bool;
+      start_id: ExprId.t;
+      end_id: ExprId.t;
+      body_id: ExprId.t
+    }
   (** Function expression with parameter patterns and one body expression. *)
   | EFun of function_parameter list * ExprId.t
   (** Application with one callee and labeled or positional arguments. *)

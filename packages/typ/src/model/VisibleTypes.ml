@@ -55,30 +55,27 @@ let resolve_named_type_head_in_index = fun by_path name ->
     (fun (type_decl: FileSummary.type_decl) ->
       TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
   |> fun resolved ->
-    Option.or_else resolved
-      (fun () -> BuiltinTypeConstructors.head_of_path name)
+    Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
 
 let resolve_named_type_decl_in_index = fun by_id by_path (head: TypeRepr.named_type_head) ->
-  Option.or_else
-    (Collections.HashMap.get by_id head.type_constructor_id)
-    (fun () -> Collections.HashMap.get by_path head.name)
+  Option.or_else (Collections.HashMap.get by_id head.type_constructor_id)
+    (fun () ->
+      Collections.HashMap.get by_path head.name)
 
 let nonrec_resolvers = fun by_id by_path (current: FileSummary.type_decl) ->
   let current_id = current.declaration.type_constructor_id in
-  let not_current = fun (type_decl: FileSummary.type_decl) ->
-    not (TypeConstructorId.equal type_decl.declaration.type_constructor_id current_id)
-  in
-  let resolve_named_type_head = fun name ->
+  let not_current (type_decl: FileSummary.type_decl) = not
+    (TypeConstructorId.equal type_decl.declaration.type_constructor_id current_id) in
+  let resolve_named_type_head name =
     Collections.HashMap.get by_path name
     |> Option.filter not_current
     |> Option.map
       (fun (type_decl: FileSummary.type_decl) ->
         TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
     |> fun resolved ->
-      Option.or_else resolved
-        (fun () -> BuiltinTypeConstructors.head_of_path name)
+      Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
   in
-  let resolve_named_type_decl = fun (head: TypeRepr.named_type_head) ->
+  let resolve_named_type_decl (head: TypeRepr.named_type_head) =
     Option.or_else
       (Collections.HashMap.get by_id head.type_constructor_id |> Option.filter not_current)
       (fun () -> Collections.HashMap.get by_path head.name |> Option.filter not_current)
@@ -264,8 +261,7 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
         (
           match Option.or_else
             (resolve_named_type_decl resolved_head)
-            (fun () -> resolve_named_type_decl head)
-          with
+            (fun () -> resolve_named_type_decl head) with
           | Some type_decl -> (
               match instantiate_alias_manifest ~make type_decl arguments' with
               | Some manifest -> loop manifest
@@ -388,9 +384,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       else
         (default_resolve_named_type_head, resolve_named_type_decl_in_index by_id by_path)
     in
-    let resolve_type =
-      resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head
-    in
+    let resolve_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
     let declaration = type_decl.declaration in
     let manifest =
       match declaration.manifest with
@@ -567,9 +561,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       else
         (default_resolve_named_type_head, resolve_named_type_decl_in_index by_id by_path)
     in
-    let resolve_type =
-      resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head
-    in
+    let resolve_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
     let variances = Collections.HashMap.with_capacity 8 in
     let () =
       match declaration.manifest with
@@ -779,13 +771,11 @@ let canonicalize_type = fun visible_types ->
         let arguments' = map_preserving loop arguments in
         let head' =
           match lookup_by_id visible_types head.type_constructor_id with
-          | Some (type_decl: FileSummary.type_decl) ->
-              TypeRepr.named_head
-                ~type_constructor_id:type_decl.declaration.type_constructor_id
-                ~name:(type_decl_key type_decl)
-          | None ->
-              resolve_named_type_head_in_index visible_types.by_path head.name
-              |> Option.unwrap_or ~default:head
+          | Some (type_decl: FileSummary.type_decl) -> TypeRepr.named_head
+            ~type_constructor_id:type_decl.declaration.type_constructor_id
+            ~name:(type_decl_key type_decl)
+          | None -> resolve_named_type_head_in_index visible_types.by_path head.name
+          |> Option.unwrap_or ~default:head
         in
         if
           Std.Ptr.equal arguments arguments'
@@ -873,10 +863,10 @@ let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl
       let type_decls = visible_types.type_decls
       |> List.filter
         (fun (candidate: FileSummary.type_decl) ->
-          not (TypeConstructorId.equal
-            candidate.declaration.type_constructor_id
-            type_decl.declaration.type_constructor_id))
-      in
+          not
+            (TypeConstructorId.equal
+              candidate.declaration.type_constructor_id
+              type_decl.declaration.type_constructor_id)) in
       let by_path = Collections.HashMap.with_capacity (List.length type_decls + 16) in
       let by_id = Collections.HashMap.with_capacity (List.length type_decls + 16) in
       let () =

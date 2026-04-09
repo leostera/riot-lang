@@ -84,8 +84,7 @@ let poly_variant_max_level = fun tags inherited ->
   Int.max tag_max (max_level inherited)
 
 let package_signature_max_level = fun (signature: package_signature) ->
-  signature.values
-  |> List.fold_left
+  signature.values |> List.fold_left
     (fun acc (value: package_value) ->
       Int.max acc value.scheme.level)
     0
@@ -351,8 +350,7 @@ let seal_levels =
             0
             arguments
       | Package signature ->
-          signature.values
-          |> List.fold_left
+          signature.values |> List.fold_left
             (fun acc (value: package_value) ->
               Int.max acc (loop value.scheme))
             0
@@ -594,7 +592,8 @@ let rec collect_variances = fun variance ty ->
       collect_variances variance element
   | Package signature ->
       List.fold_left
-        (fun acc (value: package_value) -> merge_variances acc (collect_variances variance value.scheme))
+        (fun acc (value: package_value) ->
+          merge_variances acc (collect_variances variance value.scheme))
         []
         signature.values
   | Named { arguments; _ } ->
@@ -650,7 +649,9 @@ let rec occurs = fun needle ty ->
   | Array element -> occurs needle element
   | List element -> occurs needle element
   | Seq element -> occurs needle element
-  | Package signature -> List.exists (fun (value: package_value) -> occurs needle value.scheme) signature.values
+  | Package signature -> List.exists
+    (fun (value: package_value) -> occurs needle value.scheme)
+    signature.values
   | Named { arguments; _ } -> List.exists (occurs needle) arguments
   | PolyVariant { tags; inherited; _ } ->
       List.exists
@@ -695,12 +696,10 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
               loop (element :: rest)
           | Package signature ->
               loop
-                (
-                  List.fold_right
-                    (fun (value: package_value) acc -> value.scheme :: acc)
-                    signature.values
-                    rest
-                )
+                (List.fold_right
+                  (fun (value: package_value) acc -> value.scheme :: acc)
+                  signature.values
+                  rest)
           | Result (ok_ty, error_ty) ->
               loop (ok_ty :: error_ty :: rest)
           | Named { arguments; _ }

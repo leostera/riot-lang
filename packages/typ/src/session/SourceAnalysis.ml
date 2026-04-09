@@ -117,14 +117,11 @@ let qualify_type_decls = fun module_name type_decls ->
     type_decls
 
 let ambient_type_decls = fun (config: TypConfig.t) ->
-  let loaded_type_decls =
-    config.loaded_modules
-    |> List.concat_map
-      (fun typings ->
-        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))
-  in
-  VisibleTypes.of_type_decls (config.ambient_type_decls @ loaded_type_decls)
-  |> VisibleTypes.type_decls
+  let loaded_type_decls = config.loaded_modules
+  |> List.concat_map
+    (fun typings ->
+      qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings)) in
+  VisibleTypes.of_type_decls (config.ambient_type_decls @ loaded_type_decls) |> VisibleTypes.type_decls
 
 let analyze = fun ~config (source: Source.t) ->
   let parsed = source.parse_result in

@@ -30,4 +30,25 @@ Then use the feature slices that match the work you are doing.
 
 ## Validate
 
-`timeout 180 riot test -p typ`
+Run the current validation stack in this order:
+
+```sh
+riot fix ./packages/typ
+riot fix ./packages/riot-check
+riot fmt ./packages/typ
+riot fmt ./packages/riot-check
+riot build typ riot-check
+riot test -p typ
+riot bench -p typ
+riot run riot -- check -p kernel-new
+```
+
+Interpret the results carefully:
+
+- `riot fix` currently reports an existing lint backlog in both `typ` and
+  `riot-check`; do not treat that as a slice-specific regression unless your
+  batch made it worse.
+- `riot bench -p typ` currently reports `No benchmark suites found in package
+  'typ'`.
+- `riot run riot -- check -p kernel-new` is only a meaningful `typ` signal when
+  planner/source preparation succeeds and actually hands `typ` prepared sources.

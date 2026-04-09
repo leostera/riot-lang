@@ -4,7 +4,6 @@ open Model
 
 (** Immutable analysis view over one [Session] revision. *)
 type t
-
 module SharedCaches: sig
   type t
 

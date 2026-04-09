@@ -143,8 +143,7 @@ let typ_event_name = fun ({ Event.kind; _ }: Event.t) ->
 let typ_event_instants_are_monotonic = fun (events: Event.t list) ->
   let rec loop previous = function
     | [] -> true
-    | ({ Event.instant_us; _ }: Event.t) :: rest ->
-        instant_us >= previous && loop instant_us rest
+    | ({ Event.instant_us; _ }: Event.t) :: rest -> instant_us >= previous && loop instant_us rest
   in
   loop 0 events
 
@@ -304,8 +303,9 @@ let scheme_has_named_path =
             | None -> false)
           tags || List.exists type_has_named_path inherited
     | TypeRepr.Arrow { lhs; rhs; _ } -> type_has_named_path lhs || type_has_named_path rhs
-    | TypeRepr.Package signature ->
-        List.exists (fun (value: TypeRepr.package_value) -> type_has_named_path value.scheme) signature.values
+    | TypeRepr.Package signature -> List.exists
+      (fun (value: TypeRepr.package_value) -> type_has_named_path value.scheme)
+      signature.values
     | TypeRepr.Int
     | TypeRepr.Float
     | TypeRepr.Bool
@@ -650,7 +650,8 @@ let test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_
     let of_string value = value
 
     let to_string value = value
-  |ocaml} in
+  |ocaml}
+  in
   let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
   let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
   let (session, unix_source_id) = Session.create_source
@@ -662,18 +663,12 @@ let test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_
     ~source_hash:(Source.hash ~implicit_opens:[] ~cst:unix_cst)
     ~parse_result:unix_parse_result
     ~cst:unix_cst in
-  let (session, impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.ml")
+  let (session, impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.ml")
     ~text:{ocaml|
       include Unix
     |ocaml}
   in
-  let (session, intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.mli")
+  let (session, intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.mli")
     ~text:{ocaml|
       type t
 
@@ -716,7 +711,8 @@ let test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively = 
     let of_string value = value
 
     let to_string value = value
-  |ocaml} in
+  |ocaml}
+  in
   let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
   let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
   let (session, _unix_source_id) = Session.create_source
@@ -728,18 +724,12 @@ let test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively = 
     ~source_hash:(Source.hash ~implicit_opens:[] ~cst:unix_cst)
     ~parse_result:unix_parse_result
     ~cst:unix_cst in
-  let (session, _ip_addr_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.ml")
+  let (session, _ip_addr_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.ml")
     ~text:{ocaml|
       include Unix
     |ocaml}
   in
-  let (session, _ip_addr_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.mli")
+  let (session, _ip_addr_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.mli")
     ~text:{ocaml|
       type t
 
@@ -748,26 +738,17 @@ let test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively = 
       val to_string : t -> string
     |ocaml}
   in
-  let (session, _socket_addr_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "socket_addr.ml")
+  let (session, _socket_addr_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "socket_addr.ml")
     ~text:{ocaml|
       let render value = Ip_addr.to_string value
     |ocaml}
   in
-  let (session, _socket_addr_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "socket_addr.mli")
+  let (session, _socket_addr_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "socket_addr.mli")
     ~text:{ocaml|
       val render : Ip_addr.t -> string
     |ocaml}
   in
-  let (session, app_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "app.ml")
+  let (session, app_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "app.ml")
     ~text:{ocaml|
       let render value = Socket_addr.render value
     |ocaml}
@@ -787,18 +768,12 @@ let test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively = 
 
 let test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _ip_addr_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.ml")
+  let (session, _ip_addr_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.ml")
     ~text:{ocaml|
       include Unix
     |ocaml}
   in
-  let (session, _ip_addr_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "ip_addr.mli")
+  let (session, _ip_addr_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ip_addr.mli")
     ~text:{ocaml|
       type t
 
@@ -807,26 +782,17 @@ let test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order 
       val to_string : t -> string
     |ocaml}
   in
-  let (session, _socket_addr_impl_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "socket_addr.ml")
+  let (session, _socket_addr_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "socket_addr.ml")
     ~text:{ocaml|
       let render value = Ip_addr.to_string value
     |ocaml}
   in
-  let (session, _socket_addr_intf_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "socket_addr.mli")
+  let (session, _socket_addr_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "socket_addr.mli")
     ~text:{ocaml|
       val render : Ip_addr.t -> string
     |ocaml}
   in
-  let (session, app_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "app.ml")
+  let (session, app_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "app.ml")
     ~text:{ocaml|
       let render value = Socket_addr.render value
     |ocaml}
@@ -837,7 +803,8 @@ let test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order 
     let of_string value = value
 
     let to_string value = value
-  |ocaml} in
+  |ocaml}
+  in
   let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
   let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
   let (session, _unix_source_id) = Session.create_source
@@ -863,7 +830,7 @@ let test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order 
           Ok ()
 
 let test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck = fun _ctx ->
-  let create_named_source = fun session ~module_name ~filename ~text ->
+  let create_named_source session ~module_name ~filename ~text =
     let parse_result = Syn.parse ~filename:(Path.v filename) text in
     let cst = expect_cst ~filename parse_result in
     Session.create_source
@@ -877,18 +844,12 @@ let test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck = f
       ~cst
   in
   let session = Session.empty ~config:Config.default in
-  let (session, _ip_addr_impl_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new__Net__Ip_addr"
-    ~filename:"ip_addr.ml"
+  let (session, _ip_addr_impl_source_id) = create_named_source session ~module_name:"Kernel_new__Net__Ip_addr" ~filename:"ip_addr.ml"
     ~text:{ocaml|
       include Unix
     |ocaml}
   in
-  let (session, _ip_addr_intf_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new__Net__Ip_addr"
-    ~filename:"ip_addr.mli"
+  let (session, _ip_addr_intf_source_id) = create_named_source session ~module_name:"Kernel_new__Net__Ip_addr" ~filename:"ip_addr.mli"
     ~text:{ocaml|
       type t
 
@@ -897,34 +858,22 @@ let test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck = f
       val to_string : t -> string
     |ocaml}
   in
-  let (session, _socket_addr_impl_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new__Net__Socket_addr"
-    ~filename:"socket_addr.ml"
+  let (session, _socket_addr_impl_source_id) = create_named_source session ~module_name:"Kernel_new__Net__Socket_addr" ~filename:"socket_addr.ml"
     ~text:{ocaml|
       let render value = Ip_addr.to_string value
     |ocaml}
   in
-  let (session, _socket_addr_intf_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new__Net__Socket_addr"
-    ~filename:"socket_addr.mli"
+  let (session, _socket_addr_intf_source_id) = create_named_source session ~module_name:"Kernel_new__Net__Socket_addr" ~filename:"socket_addr.mli"
     ~text:{ocaml|
       val render : Ip_addr.t -> string
     |ocaml}
   in
-  let (session, app_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new"
-    ~filename:"kernel_new.ml"
+  let (session, app_source_id) = create_named_source session ~module_name:"Kernel_new" ~filename:"kernel_new.ml"
     ~text:{ocaml|
       let render value = Socket_addr.render value
     |ocaml}
   in
-  let (session, _unix_source_id) = create_named_source
-    session
-    ~module_name:"Kernel_new__Net__Ip_addr__Unix"
-    ~filename:"unix.ml"
+  let (session, _unix_source_id) = create_named_source session ~module_name:"Kernel_new__Net__Ip_addr__Unix" ~filename:"unix.ml"
     ~text:{ocaml|
       type t = string
 
@@ -1352,10 +1301,7 @@ let test_paired_modules_accept_manifest_alias_specialization = fun _ctx ->
 
 let test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, string_alias_source_id) = create_source
-    seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "string_alias.mli")
+  let (seed_session, string_alias_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "string_alias.mli")
     ~text:{ocaml|
       type t = string
     |ocaml}
@@ -1439,7 +1385,8 @@ let test_manifest_option_aliases_canonicalize_during_inference = fun _ctx ->
     | Some typings -> typings
     | None -> panic "expected path module typings"
   in
-  let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_option; loaded_path ] in
+  let config = Config.default
+  |> Config.with_loaded_modules ~loaded_modules:[ loaded_option; loaded_path ] in
   let session = Session.empty ~config in
   let (session, unix_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "unix.ml")
     ~text:{ocaml|
@@ -1456,16 +1403,17 @@ let test_manifest_option_aliases_canonicalize_during_inference = fun _ctx ->
       if not (List.is_empty diagnostics) then
         Error (String.concat "\n" diagnostics)
       else
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot unix_source_id) in
-        let () = Test.assert_equal ~expected:true ~actual:(Option.is_some (export_scheme snapshot unix_source_id "home_dir")) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot unix_source_id) in
+        let () = Test.assert_equal
+          ~expected:true
+          ~actual:(Option.is_some (export_scheme snapshot unix_source_id "home_dir")) in
         Ok ()
 
 let test_manifest_aliases_canonicalize_across_modules = fun _ctx ->
   let seed_session = Session.empty ~config:Config.default in
-  let (seed_session, list_alias_source_id) = create_source
-    seed_session
-    ~kind:Source.File
-    ~origin:(Source.Label "list_alias.ml")
+  let (seed_session, list_alias_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "list_alias.ml")
     ~text:{ocaml|
       type 'value t = 'value list
     |ocaml}
@@ -1492,8 +1440,12 @@ let test_manifest_aliases_canonicalize_across_modules = fun _ctx ->
       if not (List.is_empty diagnostics) then
         Error (String.concat "\n" diagnostics)
       else
-        let () = Test.assert_equal ~expected:true ~actual:(Option.is_some (export_scheme snapshot use_source_id "wrap")) in
-        let () = Test.assert_equal ~expected:true ~actual:(Option.is_some (export_scheme snapshot use_source_id "unwrap")) in
+        let () = Test.assert_equal
+          ~expected:true
+          ~actual:(Option.is_some (export_scheme snapshot use_source_id "wrap")) in
+        let () = Test.assert_equal
+          ~expected:true
+          ~actual:(Option.is_some (export_scheme snapshot use_source_id "unwrap")) in
         Ok ()
 
 let test_paired_modules_accept_option_manifest_aliases_in_signature_inclusion = fun _ctx ->
@@ -1531,8 +1483,12 @@ let test_paired_modules_accept_option_manifest_aliases_in_signature_inclusion = 
       if not (List.is_empty impl_diagnostics && List.is_empty intf_diagnostics) then
         Error (String.concat "\n" (impl_diagnostics @ intf_diagnostics))
       else
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot impl_source_id) in
-        let () = Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot impl_source_id) in
+        let () = Test.assert_equal
+          ~expected:false
+          ~actual:(has_signature_error snapshot intf_source_id) in
         let () = Test.assert_equal
           ~expected:(Some "string option -> string option")
           ~actual:(export_scheme snapshot impl_source_id "normalize") in
@@ -1867,48 +1823,51 @@ let test_prepare_snapshot_emits_structured_events = fun _ctx ->
         ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
       else
         match !events with
-      | [
-        { Event.kind = Event.PrepareSnapshotStarted _; _ };
-        { Event.kind = Event.PrepareSnapshotFinished _; _ };
-        { Event.kind = Event.ModulePairingStarted _; _ };
-        { Event.kind = Event.SourceAnalysisStarted {
-          source_id=analysis_source_id;
-          module_name;
-          mode=Event.SnapshotAnalysis;
-          _
-        }; _ };
-        { Event.kind = Event.SourceAnalysisFinished {
-          source_id=finished_source_id;
-          module_name=finished_module_name;
-          mode=Event.SnapshotAnalysis;
-          export_status=Event.TrustedExport;
-          _
-        }; _ };
-        { Event.kind = Event.ModulePairingFinished {
-          module_name=paired_module_name;
-          export_status=Event.TrustedExport;
-          export_count=1;
-          type_decl_count=0;
-          _
-        }; _ };
+        | [
+          { Event.kind=Event.PrepareSnapshotStarted _; _ };
+          { Event.kind=Event.PrepareSnapshotFinished _; _ };
+          { Event.kind=Event.ModulePairingStarted _; _ };
+          {
+            Event.kind=Event.SourceAnalysisStarted {
+              source_id=analysis_source_id;
+              module_name;
+              mode=Event.SnapshotAnalysis;
+              _
+            };
+            _
+          };
+          { Event.kind=Event.SourceAnalysisFinished {
+              source_id=finished_source_id;
+              module_name=finished_module_name;
+              mode=Event.SnapshotAnalysis;
+              export_status=Event.TrustedExport;
+              _
+            }; _ };
+          { Event.kind=Event.ModulePairingFinished {
+              module_name=paired_module_name;
+              export_status=Event.TrustedExport;
+              export_count=1;
+              type_decl_count=0;
+              _
+            }; _ };
 
-      ] ->
-          let expected_source_id = SourceId.to_int source_id in
-          if
-            List.for_all
-              (fun actual_source_id -> SourceId.to_int actual_source_id = expected_source_id)
-              [ analysis_source_id; finished_source_id ]
-            && List.for_all
-              (fun actual_module_name ->
-                String.equal actual_module_name "Demo")
-              [ module_name; finished_module_name; paired_module_name; ]
-          then
-            Ok ()
-          else
-            Error ("unexpected structured event payloads: "
-            ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
-      | _ -> Error ("unexpected typ event payloads: "
-      ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+        ] ->
+            let expected_source_id = SourceId.to_int source_id in
+            if
+              List.for_all
+                (fun actual_source_id -> SourceId.to_int actual_source_id = expected_source_id)
+                [ analysis_source_id; finished_source_id ]
+              && List.for_all
+                (fun actual_module_name ->
+                  String.equal actual_module_name "Demo")
+                [ module_name; finished_module_name; paired_module_name; ]
+            then
+              Ok ()
+            else
+              Error ("unexpected structured event payloads: "
+              ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+        | _ -> Error ("unexpected typ event payloads: "
+        ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
 
 let test_prepare_snapshot_emits_structured_diagnostics_in_events = fun _ctx ->
   let events = ref [] in
@@ -1927,29 +1886,27 @@ let test_prepare_snapshot_emits_structured_diagnostics_in_events = fun _ctx ->
       let _ = Query.analysis_of_source snapshot source_id |> Option.expect ~msg:"expected analysis" in
       match !events with
       | [
-        { Event.kind = Event.PrepareSnapshotStarted _; _ };
-        { Event.kind = Event.PrepareSnapshotFinished _; _ };
-        { Event.kind = Event.ModulePairingStarted _; _ };
-        { Event.kind = Event.SourceAnalysisStarted _; _ };
-        {
-          Event.kind = Event.SourceAnalysisFinished {
-            source_id = finished_source_id;
+        { Event.kind=Event.PrepareSnapshotStarted _; _ };
+        { Event.kind=Event.PrepareSnapshotFinished _; _ };
+        { Event.kind=Event.ModulePairingStarted _; _ };
+        { Event.kind=Event.SourceAnalysisStarted _; _ };
+        { Event.kind=Event.SourceAnalysisFinished {
+            source_id=finished_source_id;
             module_name;
-            mode = Event.SnapshotAnalysis;
-            parse_diagnostics = [];
-            lowering_diagnostics = [];
-            typing_diagnostics = [ _ ];
-            parse_diagnostic_count = 0;
-            lowering_diagnostic_count = 0;
-            typing_diagnostic_count = 1;
-            export_status = Event.ErroredExport;
+            mode=Event.SnapshotAnalysis;
+            parse_diagnostics=[];
+            lowering_diagnostics=[];
+            typing_diagnostics=[ _ ];
+            parse_diagnostic_count=0;
+            lowering_diagnostic_count=0;
+            typing_diagnostic_count=1;
+            export_status=Event.ErroredExport;
             _;
-          };
-          _;
-        };
-        { Event.kind = Event.ModulePairingFinished _; _ };
-      ] when SourceId.equal finished_source_id source_id && String.equal module_name "Demo" ->
-          Ok ()
+
+          }; _;  };
+        { Event.kind=Event.ModulePairingFinished _; _ };
+
+      ] when SourceId.equal finished_source_id source_id && String.equal module_name "Demo" -> Ok ()
       | _ -> Error ("expected structured typing diagnostics in event payloads, got "
       ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
 
@@ -1983,12 +1940,10 @@ let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
       let paired_modules =
         !events
         |> List.filter_map
-          (
-            fun (event: Event.t) ->
+          (fun (event: Event.t) ->
             match event.Event.kind with
             | Event.ModulePairingStarted { module_name; _ } -> Some module_name
-            | _ -> None
-          )
+            | _ -> None)
         |> List.sort_uniq String.compare
       in
       if List.mem "Unused" paired_modules then
@@ -2005,7 +1960,8 @@ let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
   let session = Session.empty ~config in
   let base_text = {ocaml|
     let value = 1
-  |ocaml} in
+  |ocaml}
+  in
   let base_parse_result = Syn.parse ~filename:(Path.v "base.ml") base_text in
   let base_cst = expect_cst ~filename:"base.ml" base_parse_result in
   let (session, _base_source_id) = Session.create_source
@@ -2046,7 +2002,7 @@ let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
         |> List.fold_left
           (fun counts (event: Event.t) ->
             match event.Event.kind with
-            | Event.SourceAnalysisStarted { module_name; mode = Event.SnapshotAnalysis; _ } ->
+            | Event.SourceAnalysisStarted { module_name; mode=Event.SnapshotAnalysis; _ } ->
                 let count = List.assoc_opt module_name counts |> Option.unwrap_or ~default:0 in
                 (module_name, count + 1) :: List.remove_assoc module_name counts
             | _ -> counts)
@@ -2063,16 +2019,13 @@ let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
             | _ -> counts)
           []
       in
-      let count_for counts module_name =
-        List.assoc_opt module_name counts |> Option.unwrap_or ~default:0
-      in
-      let repeated_modules =
-        [ "App"; "Left"; "Right"; "Base" ]
-        |> List.filter
-          (fun module_name ->
-            count_for snapshot_analysis_counts module_name > 1
-            || count_for module_pairing_counts module_name > 1)
-      in
+      let count_for counts module_name = List.assoc_opt module_name counts
+      |> Option.unwrap_or ~default:0 in
+      let repeated_modules = [ "App"; "Left"; "Right"; "Base" ]
+      |> List.filter
+        (fun module_name ->
+          count_for snapshot_analysis_counts module_name > 1
+          || count_for module_pairing_counts module_name > 1) in
       if not (repeated_modules = []) then
         Error ("expected shared local modules to be analyzed and paired once, got repeated work for "
         ^ String.concat ", " repeated_modules
@@ -2118,7 +2071,7 @@ let test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots = 
       let right = Fs.read ()
     |ocaml}
   in
-  let run_root = fun source_id ->
+  let run_root source_id =
     match Session.prepare_snapshot session ~roots:[ source_id ] with
     | Error missing -> Error ("expected rooted snapshot, got "
     ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
@@ -2132,92 +2085,97 @@ let test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots = 
   in
   match run_root left_source_id with
   | Error _ as err -> err
-  | Ok () ->
-      (
-        match run_root right_source_id with
-        | Error _ as err -> err
-        | Ok () ->
-            let snapshot_analysis_counts =
-              !events
-              |> List.fold_left
-                (fun counts (event: Event.t) ->
-                  match event.Event.kind with
-                  | Event.SourceAnalysisStarted { source_id; mode = Event.SnapshotAnalysis; _ } ->
-                      let key = SourceId.to_int source_id in
-                      let count = List.assoc_opt key counts |> Option.unwrap_or ~default:0 in
-                      (key, count + 1) :: List.remove_assoc key counts
-                  | _ -> counts)
-                []
-            in
-            let module_pairing_counts =
-              !events
-              |> List.fold_left
-                (fun counts (event: Event.t) ->
-                  match event.Event.kind with
-                  | Event.ModulePairingStarted { module_name; _ } ->
-                      let count = List.assoc_opt module_name counts |> Option.unwrap_or ~default:0 in
-                      (module_name, count + 1) :: List.remove_assoc module_name counts
-                  | _ -> counts)
-                []
-            in
-            let count_for_source counts source_id =
-              List.assoc_opt (SourceId.to_int source_id) counts |> Option.unwrap_or ~default:0
-            in
-            let count_for_module counts module_name =
-              List.assoc_opt module_name counts |> Option.unwrap_or ~default:0
-            in
-            let repeated_sources =
-              [
-                ("File.mli", file_intf_source_id);
-                ("File.ml", file_impl_source_id);
-                ("Fs.mli", fs_intf_source_id);
-                ("Fs.ml", fs_impl_source_id);
-              ]
-              |> List.filter_map
-                (fun (label, source_id) ->
-                  let count = count_for_source snapshot_analysis_counts source_id in
-                  if count > 1 then
-                    Some (label ^ "=" ^ Int.to_string count)
-                  else
-                    None)
-            in
-            let repeated_modules =
-              [ "File"; "Fs" ]
-              |> List.filter_map
-                (fun module_name ->
-                  let count = count_for_module module_pairing_counts module_name in
-                  if count > 1 then
-                    Some (module_name ^ "=" ^ Int.to_string count)
-                  else
-                    None)
-            in
-            if not (List.is_empty repeated_sources) || not (List.is_empty repeated_modules) then
-              Error ("expected paired local dependencies to be reused across rooted snapshots, got repeated source analyses ["
-              ^ String.concat ", " repeated_sources
-              ^ "] and pairings ["
-              ^ String.concat ", " repeated_modules
-              ^ "]: "
-              ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
-            else
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts file_intf_source_id) in
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts file_impl_source_id) in
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts fs_intf_source_id) in
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts fs_impl_source_id) in
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "File") in
-              let () = Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "Fs") in
-              Ok ()
-      )
+  | Ok () -> (
+      match run_root right_source_id with
+      | Error _ as err -> err
+      | Ok () ->
+          let snapshot_analysis_counts =
+            !events
+            |> List.fold_left
+              (fun counts (event: Event.t) ->
+                match event.Event.kind with
+                | Event.SourceAnalysisStarted { source_id; mode=Event.SnapshotAnalysis; _ } ->
+                    let key = SourceId.to_int source_id in
+                    let count = List.assoc_opt key counts |> Option.unwrap_or ~default:0 in
+                    (key, count + 1) :: List.remove_assoc key counts
+                | _ -> counts)
+              []
+          in
+          let module_pairing_counts =
+            !events
+            |> List.fold_left
+              (fun counts (event: Event.t) ->
+                match event.Event.kind with
+                | Event.ModulePairingStarted { module_name; _ } ->
+                    let count = List.assoc_opt module_name counts |> Option.unwrap_or ~default:0 in
+                    (module_name, count + 1) :: List.remove_assoc module_name counts
+                | _ -> counts)
+              []
+          in
+          let count_for_source counts source_id = List.assoc_opt (SourceId.to_int source_id) counts
+          |> Option.unwrap_or ~default:0 in
+          let count_for_module counts module_name = List.assoc_opt module_name counts
+          |> Option.unwrap_or ~default:0 in
+          let repeated_sources =
+            [
+              ("File.mli", file_intf_source_id);
+              ("File.ml", file_impl_source_id);
+              ("Fs.mli", fs_intf_source_id);
+              ("Fs.ml", fs_impl_source_id);
+            ]
+            |> List.filter_map
+              (fun (label, source_id) ->
+                let count = count_for_source snapshot_analysis_counts source_id in
+                if count > 1 then
+                  Some (label ^ "=" ^ Int.to_string count)
+                else
+                  None)
+          in
+          let repeated_modules =
+            [ "File"; "Fs" ]
+            |> List.filter_map
+              (fun module_name ->
+                let count = count_for_module module_pairing_counts module_name in
+                if count > 1 then
+                  Some (module_name ^ "=" ^ Int.to_string count)
+                else
+                  None)
+          in
+          if not (List.is_empty repeated_sources) || not (List.is_empty repeated_modules) then
+            Error ("expected paired local dependencies to be reused across rooted snapshots, got repeated source analyses ["
+            ^ String.concat ", " repeated_sources
+            ^ "] and pairings ["
+            ^ String.concat ", " repeated_modules
+            ^ "]: "
+            ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+          else
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts file_intf_source_id) in
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts file_impl_source_id) in
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts fs_intf_source_id) in
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts fs_impl_source_id) in
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_module module_pairing_counts "File") in
+            let () = Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_module module_pairing_counts "Fs") in
+            Ok ()
+    )
 
 let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx ->
   let events = ref [] in
   let config = Config.default
   |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let aliases_text =
-    "module Base = Base\n"
-    ^ "module Left = Left\n"
-    ^ "module Right = Right\n"
-  in
+  let aliases_text = "module Base = Base\n" ^ "module Left = Left\n" ^ "module Right = Right\n" in
   let aliases_parse_result = Syn.parse ~filename:(Path.v "Aliases.ml-gen") aliases_text in
   let aliases_cst = expect_cst ~filename:"Aliases.ml-gen" aliases_parse_result in
   let (session, _aliases_source_id) = Session.create_source
@@ -2237,7 +2195,8 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
   let implicit_opens = [ IdentPath.of_string "Aliases" ] in
   let left_text = {ocaml|
     let left = Base.value
-  |ocaml} in
+  |ocaml}
+  in
   let left_parse_result = Syn.parse ~filename:(Path.v "left.ml") left_text in
   let left_cst = expect_cst ~filename:"left.ml" left_parse_result in
   let (session, _left_source_id) = Session.create_source
@@ -2251,7 +2210,8 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
     ~cst:left_cst in
   let right_text = {ocaml|
     let right = Base.value
-  |ocaml} in
+  |ocaml}
+  in
   let right_parse_result = Syn.parse ~filename:(Path.v "right.ml") right_text in
   let right_cst = expect_cst ~filename:"right.ml" right_parse_result in
   let (session, _right_source_id) = Session.create_source
@@ -2265,7 +2225,8 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
     ~cst:right_cst in
   let app_text = {ocaml|
     let total = Left.left + Right.right
-  |ocaml} in
+  |ocaml}
+  in
   let app_parse_result = Syn.parse ~filename:(Path.v "app.ml") app_text in
   let app_cst = expect_cst ~filename:"app.ml" app_parse_result in
   let (session, app_source_id) = Session.create_source
@@ -2287,7 +2248,7 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
         |> List.fold_left
           (fun counts (event: Event.t) ->
             match event.Event.kind with
-            | Event.SourceAnalysisStarted { module_name; mode = Event.SnapshotAnalysis; _ } ->
+            | Event.SourceAnalysisStarted { module_name; mode=Event.SnapshotAnalysis; _ } ->
                 let count = List.assoc_opt module_name counts |> Option.unwrap_or ~default:0 in
                 (module_name, count + 1) :: List.remove_assoc module_name counts
             | _ -> counts)
@@ -2304,9 +2265,8 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
             | _ -> counts)
           []
       in
-      let count_for counts module_name =
-        List.assoc_opt module_name counts |> Option.unwrap_or ~default:0
-      in
+      let count_for counts module_name = List.assoc_opt module_name counts
+      |> Option.unwrap_or ~default:0 in
       let alias_analysis_count = count_for snapshot_analysis_counts "Aliases" in
       let alias_pairing_count = count_for module_pairing_counts "Aliases" in
       if alias_analysis_count > 1 || alias_pairing_count > 2 then
@@ -2405,10 +2365,23 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
           else
             match !events with
             | [
-              { Event.kind = Event.PrepareSnapshotStarted _; _ };
-              { Event.kind = Event.HydrateModuleTypingsStarted { missing_modules; _ }; _ };
-              { Event.kind = Event.HydrateModuleTypingsFinished { hydrated_modules; loaded_module_count; _ }; _ };
-              { Event.kind = Event.PrepareSnapshotFinished { loaded_module_count=final_loaded_module_count; _ }; _ };
+              { Event.kind=Event.PrepareSnapshotStarted _; _ };
+              { Event.kind=Event.HydrateModuleTypingsStarted { missing_modules; _ }; _ };
+              {
+                Event.kind=Event.HydrateModuleTypingsFinished {
+                  hydrated_modules;
+                  loaded_module_count;
+                  _
+                };
+                _
+              };
+              {
+                Event.kind=Event.PrepareSnapshotFinished {
+                  loaded_module_count=final_loaded_module_count;
+                  _
+                };
+                _
+              };
 
             ] ->
                 if
@@ -2444,8 +2417,8 @@ let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx
       let () = Test.assert_equal ~expected ~actual in
       match !events with
       | [
-        { Event.kind = Event.PrepareSnapshotStarted _; _ };
-        { Event.kind = Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ }; _ };
+        { Event.kind=Event.PrepareSnapshotStarted _; _ };
+        { Event.kind=Event.PrepareSnapshotFailed { missing_root_source_ids; missing_modules; _ }; _ };
 
       ] ->
           let () = Test.assert_equal
@@ -4872,10 +4845,7 @@ let test_prepare_snapshot_sorts_missing_modules_by_name = fun _ctx ->
 
 let test_prepare_snapshot_uses_local_prelude_variant_constructors = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _prelude_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "prelude.ml")
+  let (session, _prelude_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "prelude.ml")
     ~text:{ocaml|
       type 'a option =
         | None
@@ -4886,10 +4856,7 @@ let test_prepare_snapshot_uses_local_prelude_variant_constructors = fun _ctx ->
         | Error of 'error
     |ocaml}
   in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
       open Prelude
 
@@ -4917,28 +4884,19 @@ let test_prepare_snapshot_uses_local_prelude_variant_constructors = fun _ctx ->
 
 let test_prepare_snapshot_uses_sibling_int_module_with_local_prelude = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _prelude_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "prelude.ml")
+  let (session, _prelude_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "prelude.ml")
     ~text:{ocaml|
       type 'a option =
         | None
         | Some of 'a
     |ocaml}
   in
-  let (session, _int_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "int.ml")
+  let (session, _int_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "int.ml")
     ~text:{ocaml|
       let to_string _value = "n"
     |ocaml}
   in
-  let (session, source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
       open Prelude
 
@@ -5247,10 +5205,7 @@ let countdown start =
     if loop_type = Some "int -> unit" && countdown_type = Some "int -> unit" then
       Ok ()
     else
-      Error ("unexpected loop types: loop="
-      ^ show_option loop_type
-      ^ ", countdown="
-      ^ show_option countdown_type)
+      Error ("unexpected loop types: loop=" ^ show_option loop_type ^ ", countdown=" ^ show_option countdown_type)
 
 let test_if_branches_do_not_capture_trailing_sequences = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -6261,15 +6216,14 @@ let panic : string -> 'a = fun _ ->
   then
     Ok ()
   else
-    Error
-      ("unexpected module exports: ref="
-      ^ String.concat ", " ref_exports
-      ^ " global="
-      ^ String.concat ", " global_exports
-      ^ " ref.type_equal="
-      ^ show_option ref_type_equal
-      ^ " global.spawn="
-      ^ show_option global_spawn)
+    Error ("unexpected module exports: ref="
+    ^ String.concat ", " ref_exports
+    ^ " global="
+    ^ String.concat ", " global_exports
+    ^ " ref.type_equal="
+    ^ show_option ref_type_equal
+    ^ " global.spawn="
+    ^ show_option global_spawn)
 
 let test_deps_collect_loaded_module_agent_dependencies = fun _ctx ->
   let text = {ocaml|
@@ -6290,7 +6244,8 @@ let start: type state. (unit -> state) -> state t = fun init ->
   ignore (self ());
   ignore (panic "boom");
   { pid; state_ref }
-|ocaml} in
+|ocaml}
+  in
   let parse_result = Syn.parse ~filename:(Path.v "agent.ml") text in
   match Syn.Deps.of_parse_result parse_result with
   | Error (Syn.Deps.Parse_diagnostics diagnostics) ->
@@ -6852,18 +6807,10 @@ let () =
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
         Test.case "prepare_snapshot uses implicit-opened alias modules with internal names" test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
         Test.case "prepare_snapshot resolves internal module dependencies by local alias" test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias;
-        Test.case
-          "prepare_snapshot prefers internal local alias dependencies over loaded modules"
-          test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules;
-        Test.case
-          "prepare_snapshot uses internal local alias dependencies transitively"
-          test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
-        Test.case
-          "prepare_snapshot internal local alias dependencies ignore source order"
-          test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
-        Test.case
-          "prepare_snapshot nested internal local alias dependencies typecheck"
-          test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
+        Test.case "prepare_snapshot prefers internal local alias dependencies over loaded modules" test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules;
+        Test.case "prepare_snapshot uses internal local alias dependencies transitively" test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
+        Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
+        Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "implicit opens do not leak into module exports" test_implicit_opens_do_not_leak_into_module_exports;
         Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
         Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
@@ -6889,15 +6836,9 @@ let () =
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
-        Test.case
-          "prepare_snapshot reuses shared transitive local modules"
-          test_prepare_snapshot_reuses_shared_transitive_local_modules;
-        Test.case
-          "prepare_snapshot reuses paired local modules across rooted snapshots"
-          test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
-        Test.case
-          "prepare_snapshot reuses shared implicit-open alias modules"
-          test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;
+        Test.case "prepare_snapshot reuses shared transitive local modules" test_prepare_snapshot_reuses_shared_transitive_local_modules;
+        Test.case "prepare_snapshot reuses paired local modules across rooted snapshots" test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
+        Test.case "prepare_snapshot reuses shared implicit-open alias modules" test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;
         Test.case "prepare_snapshot store hydration emits structured events" test_prepare_snapshot_store_hydration_emits_structured_events;
         Test.case "prepare_snapshot missing requirements emit structured events" test_prepare_snapshot_missing_requirements_emit_structured_events;
         Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
@@ -6915,9 +6856,7 @@ let () =
         Test.case "include module type of stdlib float uses bootstrap module typings" test_include_module_type_of_stdlib_float_uses_bootstrap_module_typings;
         Test.case "include module type of ocaml stdlib hashtbl uses loaded module typings" test_include_module_type_of_ocaml_stdlib_hashtbl_uses_loaded_module_typings;
         Test.case "ocaml stdlib root operators typecheck" test_ocaml_stdlib_root_operators_typecheck;
-        Test.case
-          "ocaml stdlib angle bracket not equal is unbound"
-          test_ocaml_stdlib_angle_bracket_not_equal_is_unbound;
+        Test.case "ocaml stdlib angle bracket not equal is unbound" test_ocaml_stdlib_angle_bracket_not_equal_is_unbound;
         Test.case "paired modules preserve builtin exit polymorphism" test_paired_modules_preserve_builtin_exit_polymorphism;
         Test.case "paired modules preserve builtin raise polymorphism" test_paired_modules_preserve_builtin_raise_polymorphism;
         Test.case "paired modules allow builtin dynlink alias" test_paired_modules_allow_builtin_dynlink_alias;
@@ -6969,24 +6908,16 @@ let () =
         Test.case
           "prepare_snapshot keeps loaded nested module exports out of top-level requirements"
           test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements;
-        Test.case
-          "prepare_snapshot imports bare local module exports into rooted analysis"
-          test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis;
+        Test.case "prepare_snapshot imports bare local module exports into rooted analysis" test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis;
         Test.case "prepare_snapshot canonicalizes missing requirements" test_prepare_snapshot_canonicalizes_missing_requirements;
         Test.case "prepare_snapshot sorts missing modules by name" test_prepare_snapshot_sorts_missing_modules_by_name;
-        Test.case
-          "prepare_snapshot uses local Prelude variant constructors"
-          test_prepare_snapshot_uses_local_prelude_variant_constructors;
-        Test.case
-          "prepare_snapshot uses sibling Int module with local Prelude"
-          test_prepare_snapshot_uses_sibling_int_module_with_local_prelude;
+        Test.case "prepare_snapshot uses local Prelude variant constructors" test_prepare_snapshot_uses_local_prelude_variant_constructors;
+        Test.case "prepare_snapshot uses sibling Int module with local Prelude" test_prepare_snapshot_uses_sibling_int_module_with_local_prelude;
         Test.case "check_source recovers when rooted preparation reports missing module summaries" test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries;
         Test.case "match guards typecheck in pattern scope" test_match_guards_typecheck_in_pattern_scope;
         Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
         Test.case "optional argument forwarding preserves option wrapper" test_optional_argument_forwarding_preserves_option_wrapper;
-        Test.case
-          "inline record constructor payloads use constructor owner"
-          test_inline_record_constructor_payloads_use_constructor_owner;
+        Test.case "inline record constructor payloads use constructor owner" test_inline_record_constructor_payloads_use_constructor_owner;
         Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
         Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
         Test.case "if branches do not capture trailing sequences" test_if_branches_do_not_capture_trailing_sequences;
@@ -7002,9 +6933,7 @@ let () =
         Test.case "snapshot exposes loaded module agent support exports" test_snapshot_exposes_loaded_module_agent_support_exports;
         Test.case "deps collect loaded module agent dependencies" test_deps_collect_loaded_module_agent_dependencies;
         Test.case "selector alias chain across loaded modules typechecks" test_selector_alias_chain_across_loaded_modules_typechecks;
-        Test.case
-          "included extensible types preserve constructor identity across siblings"
-          test_included_extensible_types_preserve_constructor_identity_across_siblings;
+        Test.case "included extensible types preserve constructor identity across siblings" test_included_extensible_types_preserve_constructor_identity_across_siblings;
         Test.case "loaded module ref shape typechecks" test_loaded_module_ref_shape_typechecks;
         Test.case "spawn alias chain across loaded modules typechecks" test_spawn_alias_chain_across_loaded_modules_typechecks;
         Test.case "function body annotation alias chain exports canonical result" test_function_body_annotation_alias_chain_exports_canonical_result;

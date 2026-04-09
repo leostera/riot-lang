@@ -270,8 +270,7 @@ let copy = fun scheme ->
           | TypeRepr.Package signature ->
               let values =
                 map_preserving
-                  (fun (value: TypeRepr.package_value) ->
-                    { value with scheme = clone value.scheme })
+                  (fun (value: TypeRepr.package_value) -> { value with scheme = clone value.scheme })
                   signature.values
               in
               TypeRepr.of_desc ~level (TypeRepr.Package { values })

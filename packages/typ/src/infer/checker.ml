@@ -73,15 +73,15 @@ let empty_pattern_bindings = { entries = []; module_entries = [] }
 
 let pattern_bindings_of_entries entries = { empty_pattern_bindings with entries }
 
-let merge_pattern_bindings = fun left right -> {
-  entries = left.entries @ right.entries;
-  module_entries = left.module_entries @ right.module_entries;
-}
+let merge_pattern_bindings = fun left right ->
+  {
+    entries = left.entries @ right.entries;
+    module_entries = left.module_entries @ right.module_entries
+  }
 
 let env_with_pattern_bindings = fun env bindings ->
   let env = Env.extend env bindings.entries in
-  bindings.module_entries
-  |> List.fold_left
+  bindings.module_entries |> List.fold_left
     (fun env (name, module_env) ->
       Env.bind env (Env.singleton_module ~name module_env))
     env
@@ -114,12 +114,10 @@ let generalized_pattern_binding = fun (state: state) pat_id ~name ty ->
   pattern_binding state pat_id ~name ~scheme:(TypeScheme.of_type ty)
 
 let package_env = fun (state: state) pat_id (signature: TypeRepr.package_signature) ->
-  let entries =
-    signature.values
-    |> List.map
-      (fun (value: TypeRepr.package_value) ->
-        pattern_binding state pat_id ~name:value.name ~scheme:value.scheme)
-  in
+  let entries = signature.values
+  |> List.map
+    (fun (value: TypeRepr.package_value) ->
+      pattern_binding state pat_id ~name:value.name ~scheme:value.scheme) in
   Env.of_bindings entries
 
 let env_of_module_scope = fun scope ->
@@ -1525,18 +1523,13 @@ let package_signature_of_type = fun ty ->
   | TypeRepr.Package signature -> Some signature
   | _ -> None
 
-let check_module_pack_against_signature = fun
-  (state: state)
-  env
-  ~origin
-  module_path
-  ((signature: TypeRepr.package_signature))
-  ->
+let check_module_pack_against_signature = fun (state: state) env ~origin module_path ((
+  signature: TypeRepr.package_signature
+)) ->
   match Env.lookup_module_scope env module_path with
   | Some scope ->
       let scope_env = env_of_module_scope scope in
-      signature.values
-      |> List.iter
+      signature.values |> List.iter
         (fun (value: TypeRepr.package_value) ->
           match Env.Value_env.lookup (Env.scope_values scope) (IdentPath.of_name value.name) with
           | Some binding ->
@@ -1545,20 +1538,18 @@ let check_module_pack_against_signature = fun
                 (canonicalize_scheme_in_env state scope_env (Binding.scheme binding)) in
               let expected_ty = instantiate state value.scheme in
               try_unify state ~origin actual_ty expected_ty
-          | None ->
-              add_diagnostic
-                state
-                (Typ_diagnostic.UnboundName {
-                  reference_span = diagnostic_span origin;
-                  name = IdentPath.append_name module_path value.name |> IdentPath.to_string
-                }))
-  | None ->
-      add_diagnostic
-        state
-        (Typ_diagnostic.UnboundName {
-          reference_span = diagnostic_span origin;
-          name = IdentPath.to_string module_path
-        })
+          | None -> add_diagnostic
+            state
+            (Typ_diagnostic.UnboundName {
+              reference_span = diagnostic_span origin;
+              name = IdentPath.append_name module_path value.name |> IdentPath.to_string
+            }))
+  | None -> add_diagnostic
+    state
+    (Typ_diagnostic.UnboundName {
+      reference_span = diagnostic_span origin;
+      name = IdentPath.to_string module_path
+    })
 
 let is_recursive_binding_supported = fun (state: state) (binding: BodyArena.binding) ->
   match binding.name with
@@ -1682,12 +1673,11 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
   | Some pattern -> (
       let () =
         match pattern.annotation with
-        | Some annotation ->
-            try_unify
-              state
-              ~origin:(origin_of_pattern state pat_id)
-              expected_ty
-              (canonicalize_type_in_env state env annotation)
+        | Some annotation -> try_unify
+          state
+          ~origin:(origin_of_pattern state pat_id)
+          expected_ty
+          (canonicalize_type_in_env state env annotation)
         | None -> ()
       in
       match pattern.desc with
@@ -1837,7 +1827,8 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
       | BodyArena.PAlias { pattern_id; alias } ->
           let bindings = bind_pattern state env pattern_id expected_ty in
           merge_pattern_bindings
-            (pattern_bindings_of_entries [ generalized_pattern_binding state pat_id ~name:alias expected_ty ])
+            (pattern_bindings_of_entries
+              [ generalized_pattern_binding state pat_id ~name:alias expected_ty ])
             bindings
       | BodyArena.PFirstClassModule { module_name; package_type } ->
           let annotated_signature =
@@ -1849,15 +1840,18 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
           let signature =
             match (annotated_signature, expected_signature) with
             | (Some annotated_signature, Some _expected_signature) ->
-                let () = try_unify state ~origin:(origin_of_pattern state pat_id) expected_ty (TypeRepr.package ~values:annotated_signature.values) in
+                let () = try_unify
+                  state
+                  ~origin:(origin_of_pattern state pat_id)
+                  expected_ty
+                  (TypeRepr.package ~values:annotated_signature.values) in
                 Some annotated_signature
             | (Some annotated_signature, None) ->
                 let () = try_unify
                   state
                   ~origin:(origin_of_pattern state pat_id)
                   expected_ty
-                  (TypeRepr.package ~values:annotated_signature.values)
-                in
+                  (TypeRepr.package ~values:annotated_signature.values) in
                 Some annotated_signature
             | (None, Some expected_signature) ->
                 Some expected_signature
@@ -1870,19 +1864,16 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
                       expected = "(module ...)";
                       actual = TypePrinter.type_to_string expected_ty
                     }
-                  })
-                in
+                  }) in
                 None
           in
           begin
             match (module_name, signature) with
-            | (Some module_name, Some signature) ->
-                {
-                  empty_pattern_bindings
-                  with module_entries = [ (module_name, package_env state pat_id signature) ]
-                }
-            | _ ->
-                empty_pattern_bindings
+            | (Some module_name, Some signature) -> {
+              empty_pattern_bindings
+              with module_entries = [ (module_name, package_env state pat_id signature) ]
+            }
+            | _ -> empty_pattern_bindings
           end
       | BodyArena.PPolyVariant { tag; payload } ->
           let payload_ty =
@@ -2249,7 +2240,13 @@ and infer_expr = fun (state: state) env expr_id ->
                 in
                 infer_expr state env last_id
           )
-        | BodyArena.EFor { iterator_pattern_id; start_id; end_id; body_id; _ } ->
+        | BodyArena.EFor {
+          iterator_pattern_id;
+          start_id;
+          end_id;
+          body_id;
+          _
+        } ->
             let start_ty = infer_expr state env start_id in
             let end_ty = infer_expr state env end_id in
             let () = try_unify state ~origin:(origin_of_expr state start_id) start_ty TypeRepr.int in
@@ -2282,7 +2279,7 @@ and infer_expr = fun (state: state) env expr_id ->
             lower_parameters env parameters
         | BodyArena.EApply (callee_id, arguments) ->
             let callee_ty = infer_expr state env callee_id in
-            let infer_apply_argument_against = fun (argument: BodyArena.apply_argument) lhs ->
+            let infer_apply_argument_against (argument: BodyArena.apply_argument) lhs =
               match (argument.label, argument.implicit) with
               | (BodyArena.Optional _, true) ->
                   let forwarded_option_ty = infer_expr state env argument.value_id in
@@ -2298,8 +2295,7 @@ and infer_expr = fun (state: state) env expr_id ->
                     forwarded_value_ty
                     lhs in
                   infer_expr_against state env argument.value_id (TypeRepr.option lhs)
-              | _ ->
-                  infer_expr_against state env argument.value_id lhs
+              | _ -> infer_expr_against state env argument.value_id lhs
             in
             let rec apply_with_known_type current_ty arguments =
               match arguments with
@@ -2541,8 +2537,7 @@ and infer_expr = fun (state: state) env expr_id ->
                           expected = "(module ...)";
                           actual = TypePrinter.type_to_string package_type
                         }
-                      })
-                    in
+                      }) in
                     fresh_hole state
               )
             | None ->
@@ -2554,8 +2549,7 @@ and infer_expr = fun (state: state) env expr_id ->
                       expected = "(module S)";
                       actual = "(module ...)"
                     }
-                  })
-                in
+                  }) in
                 fresh_hole state
           )
         | BodyArena.ELocalOpen { module_path; body_id } ->
@@ -2796,11 +2790,7 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
       inferred_bindings
       generalized_groups
   in
-  List.fold_left
-    (fun env (_, entries) ->
-      env_with_pattern_bindings env entries)
-    env
-    generalized_bindings
+  List.fold_left (fun env (_, entries) -> env_with_pattern_bindings env entries) env generalized_bindings
 
 and infer_recursive_group = fun (state: state) env bindings ->
   let unsupported_bindings =
@@ -2851,8 +2841,9 @@ and infer_recursive_group = fun (state: state) env bindings ->
             let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
             let entry =
               match schemes with
-              | [ scheme ] ->
-                  Binding.with_scheme (canonicalize_generalized_scheme_in_env state env scheme) entry
+              | [ scheme ] -> Binding.with_scheme
+                (canonicalize_generalized_scheme_in_env state env scheme)
+                entry
               | _ -> entry
             in
             loop (entry :: acc) rest_bindings rest_groups

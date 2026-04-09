@@ -65,30 +65,25 @@ let resolve_named_type_head_in_index = fun by_path name ->
     (fun (type_decl: FileSummary.type_decl) ->
       TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
   |> fun resolved ->
-    Option.or_else resolved
-      (fun () -> BuiltinTypeConstructors.head_of_path name)
+    Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
 
 let resolve_named_type_decl_in_index = fun by_path name ->
   Collections.HashMap.get by_path name
 
 let nonrec_resolvers = fun by_path (type_decl: FileSummary.type_decl) ->
   let current_id = type_decl.declaration.type_constructor_id in
-  let not_current = fun (candidate: FileSummary.type_decl) ->
-    not (TypeConstructorId.equal candidate.declaration.type_constructor_id current_id)
-  in
-  let resolve_named_type_head = fun name ->
+  let not_current (candidate: FileSummary.type_decl) = not
+    (TypeConstructorId.equal candidate.declaration.type_constructor_id current_id) in
+  let resolve_named_type_head name =
     Collections.HashMap.get by_path name
     |> Option.filter not_current
     |> Option.map
       (fun (candidate: FileSummary.type_decl) ->
         TypeRepr.named_head ~type_constructor_id:candidate.declaration.type_constructor_id ~name)
     |> fun resolved ->
-      Option.or_else resolved
-        (fun () -> BuiltinTypeConstructors.head_of_path name)
+      Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
   in
-  let resolve_named_type_decl = fun name ->
-    Collections.HashMap.get by_path name |> Option.filter not_current
-  in
+  let resolve_named_type_decl name = Collections.HashMap.get by_path name |> Option.filter not_current in
   (resolve_named_type_head, resolve_named_type_decl)
 
 let substitute_type_vars_with = fun ~make ty mapping ->
@@ -376,9 +371,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       else
         (default_resolve_named_type_head, resolve_named_type_decl_in_index by_path)
     in
-    let resolve_type =
-      resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head
-    in
+    let resolve_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
     let declaration = type_decl.declaration in
     let manifest =
       match declaration.manifest with
@@ -555,9 +548,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       else
         (default_resolve_named_type_head, resolve_named_type_decl_in_index by_path)
     in
-    let resolve_type =
-      resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head
-    in
+    let resolve_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
     let variances = Collections.HashMap.with_capacity 8 in
     let () =
       match declaration.manifest with

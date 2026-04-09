@@ -229,15 +229,9 @@ let to_string = fun decl ->
     | Some manifest -> "; manifest = " ^ manifest_to_string manifest
     | None -> ""
   in
-  TypeConstructorId.to_string decl.type_constructor_id
-  ^ " "
-  ^ decl.type_name
-  ^ (if decl.nonrec_ then " nonrec" else "")
-  ^ " { param_variances = "
-  ^ param_variances
-  ^ "; constructors = "
-  ^ constructors
-  ^ "; labels = "
-  ^ labels
-  ^ manifest
-  ^ " }"
+  TypeConstructorId.to_string decl.type_constructor_id ^ " " ^ decl.type_name ^ (
+    if decl.nonrec_ then
+      " nonrec"
+    else
+      ""
+  ) ^ " { param_variances = " ^ param_variances ^ "; constructors = " ^ constructors ^ "; labels = " ^ labels ^ manifest ^ " }"

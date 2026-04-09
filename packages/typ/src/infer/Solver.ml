@@ -255,14 +255,14 @@ let unify = fun (solver: t) ~left ~right ->
               let right_values = sort_values right_signature.values in
               let rec add_value_pairs acc left_values right_values =
                 match (left_values, right_values) with
-                | ([], []) ->
-                    Some acc
+                | ([], []) -> Some acc
                 | ((left_value: TypeRepr.package_value) :: left_rest, (
                   right_value: TypeRepr.package_value
-                ) :: right_rest) when String.equal left_value.name right_value.name ->
-                    add_value_pairs ((left_value.scheme, right_value.scheme) :: acc) left_rest right_rest
-                | _ ->
-                    None
+                ) :: right_rest) when String.equal left_value.name right_value.name -> add_value_pairs
+                  ((left_value.scheme, right_value.scheme) :: acc)
+                  left_rest
+                  right_rest
+                | _ -> None
               in
               (
                 match add_value_pairs [] left_values right_values with

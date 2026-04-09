@@ -101,37 +101,47 @@ let object_with_instant = fun instant_us fields ->
 let to_json = fun event ->
   let instant_us = event.instant_us in
   match event.kind with
-  | PrepareSnapshotStarted { roots; root_modules; session_source_count; loaded_module_count } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_prepare_snapshot_start");
-    ("roots", source_ids_to_json roots);
-    ("root_modules", strings_to_json root_modules);
-    ("session_source_count", Data.Json.Int session_source_count);
-    ("loaded_module_count", Data.Json.Int loaded_module_count);
-  ]
-  | HydrateModuleTypingsStarted { roots; missing_modules } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_hydrate_module_typings_start");
-    ("roots", source_ids_to_json roots);
-    ("missing_modules", strings_to_json missing_modules);
-  ]
-  | HydrateModuleTypingsFinished { roots; hydrated_modules; loaded_module_count } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_hydrate_module_typings_finish");
-    ("roots", source_ids_to_json roots);
-    ("hydrated_modules", strings_to_json hydrated_modules);
-    ("loaded_module_count", Data.Json.Int loaded_module_count);
-  ]
-  | PrepareSnapshotFailed { roots; missing_root_source_ids; missing_modules } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_prepare_snapshot_failed");
-    ("roots", source_ids_to_json roots);
-    ("missing_root_source_ids", source_ids_to_json missing_root_source_ids);
-    ("missing_modules", strings_to_json missing_modules);
-  ]
-  | PrepareSnapshotFinished { roots; local_source_count; loaded_module_count; revision } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_prepare_snapshot_finish");
-    ("roots", source_ids_to_json roots);
-    ("local_source_count", Data.Json.Int local_source_count);
-    ("loaded_module_count", Data.Json.Int loaded_module_count);
-    ("revision", Data.Json.Int revision);
-  ]
+  | PrepareSnapshotStarted { roots; root_modules; session_source_count; loaded_module_count } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_prepare_snapshot_start");
+      ("roots", source_ids_to_json roots);
+      ("root_modules", strings_to_json root_modules);
+      ("session_source_count", Data.Json.Int session_source_count);
+      ("loaded_module_count", Data.Json.Int loaded_module_count);
+    ]
+  | HydrateModuleTypingsStarted { roots; missing_modules } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_hydrate_module_typings_start");
+      ("roots", source_ids_to_json roots);
+      ("missing_modules", strings_to_json missing_modules);
+    ]
+  | HydrateModuleTypingsFinished { roots; hydrated_modules; loaded_module_count } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_hydrate_module_typings_finish");
+      ("roots", source_ids_to_json roots);
+      ("hydrated_modules", strings_to_json hydrated_modules);
+      ("loaded_module_count", Data.Json.Int loaded_module_count);
+    ]
+  | PrepareSnapshotFailed { roots; missing_root_source_ids; missing_modules } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_prepare_snapshot_failed");
+      ("roots", source_ids_to_json roots);
+      ("missing_root_source_ids", source_ids_to_json missing_root_source_ids);
+      ("missing_modules", strings_to_json missing_modules);
+    ]
+  | PrepareSnapshotFinished { roots; local_source_count; loaded_module_count; revision } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_prepare_snapshot_finish");
+      ("roots", source_ids_to_json roots);
+      ("local_source_count", Data.Json.Int local_source_count);
+      ("loaded_module_count", Data.Json.Int loaded_module_count);
+      ("revision", Data.Json.Int revision);
+    ]
   | SourceAnalysisStarted {
     source_id;
     module_name;
@@ -139,15 +149,17 @@ let to_json = fun event ->
     loaded_module_count;
     ambient_binding_count;
     ambient_type_decl_count
-  } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_source_analysis_start");
-    ("source_id", Data.Json.Int (SourceId.to_int source_id));
-    ("module_name", Data.Json.String module_name);
-    ("mode", Data.Json.String (analysis_mode_to_string mode));
-    ("loaded_module_count", Data.Json.Int loaded_module_count);
-    ("ambient_binding_count", Data.Json.Int ambient_binding_count);
-    ("ambient_type_decl_count", Data.Json.Int ambient_type_decl_count);
-  ]
+  } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_source_analysis_start");
+      ("source_id", Data.Json.Int (SourceId.to_int source_id));
+      ("module_name", Data.Json.String module_name);
+      ("mode", Data.Json.String (analysis_mode_to_string mode));
+      ("loaded_module_count", Data.Json.Int loaded_module_count);
+      ("ambient_binding_count", Data.Json.Int ambient_binding_count);
+      ("ambient_type_decl_count", Data.Json.Int ambient_type_decl_count);
+    ]
   | SourceAnalysisFinished {
     source_id;
     module_name;
@@ -162,26 +174,29 @@ let to_json = fun event ->
     export_count;
     type_decl_count
   } ->
-      object_with_instant instant_us [
-        ("type", Data.Json.String "typ_source_analysis_finish");
-        ("source_id", Data.Json.Int (SourceId.to_int source_id));
-        ("module_name", Data.Json.String module_name);
-        ("mode", Data.Json.String (analysis_mode_to_string mode));
-        ("parse_diagnostic_count", Data.Json.Int parse_diagnostic_count);
-        ("lowering_diagnostic_count", Data.Json.Int lowering_diagnostic_count);
-        ("typing_diagnostic_count", Data.Json.Int typing_diagnostic_count);
-        ("parse_diagnostics", parse_diagnostics_to_json parse_diagnostics);
-        ("lowering_diagnostics", diagnostics_to_json lowering_diagnostics);
-        ("typing_diagnostics", diagnostics_to_json typing_diagnostics);
-        ("export_status", Data.Json.String (export_status_to_string export_status));
-        ("export_count", Data.Json.Int export_count);
-        ("type_decl_count", Data.Json.Int type_decl_count);
-      ]
-  | ModulePairingStarted { module_name; source_ids } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_module_pairing_start");
-    ("module_name", Data.Json.String module_name);
-    ("source_ids", source_ids_to_json source_ids);
-  ]
+      object_with_instant instant_us
+        [
+          ("type", Data.Json.String "typ_source_analysis_finish");
+          ("source_id", Data.Json.Int (SourceId.to_int source_id));
+          ("module_name", Data.Json.String module_name);
+          ("mode", Data.Json.String (analysis_mode_to_string mode));
+          ("parse_diagnostic_count", Data.Json.Int parse_diagnostic_count);
+          ("lowering_diagnostic_count", Data.Json.Int lowering_diagnostic_count);
+          ("typing_diagnostic_count", Data.Json.Int typing_diagnostic_count);
+          ("parse_diagnostics", parse_diagnostics_to_json parse_diagnostics);
+          ("lowering_diagnostics", diagnostics_to_json lowering_diagnostics);
+          ("typing_diagnostics", diagnostics_to_json typing_diagnostics);
+          ("export_status", Data.Json.String (export_status_to_string export_status));
+          ("export_count", Data.Json.Int export_count);
+          ("type_decl_count", Data.Json.Int type_decl_count);
+        ]
+  | ModulePairingStarted { module_name; source_ids } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_module_pairing_start");
+      ("module_name", Data.Json.String module_name);
+      ("source_ids", source_ids_to_json source_ids);
+    ]
   | ModulePairingFinished {
     module_name;
     source_ids;
@@ -191,14 +206,16 @@ let to_json = fun event ->
     mismatch_count;
     mismatch_subjects;
     mismatch_messages
-  } -> object_with_instant instant_us [
-    ("type", Data.Json.String "typ_module_pairing_finish");
-    ("module_name", Data.Json.String module_name);
-    ("source_ids", source_ids_to_json source_ids);
-    ("export_status", Data.Json.String (export_status_to_string export_status));
-    ("export_count", Data.Json.Int export_count);
-    ("type_decl_count", Data.Json.Int type_decl_count);
-    ("mismatch_count", Data.Json.Int mismatch_count);
-    ("mismatch_subjects", strings_to_json mismatch_subjects);
-    ("mismatch_messages", strings_to_json mismatch_messages);
-  ]
+  } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_module_pairing_finish");
+      ("module_name", Data.Json.String module_name);
+      ("source_ids", source_ids_to_json source_ids);
+      ("export_status", Data.Json.String (export_status_to_string export_status));
+      ("export_count", Data.Json.Int export_count);
+      ("type_decl_count", Data.Json.Int type_decl_count);
+      ("mismatch_count", Data.Json.Int mismatch_count);
+      ("mismatch_subjects", strings_to_json mismatch_subjects);
+      ("mismatch_messages", strings_to_json mismatch_messages);
+    ]

@@ -184,10 +184,14 @@ The usual questions are:
 Run these after each meaningful item or batch of items:
 
 ```sh
-riot build typ
+riot fix ./packages/typ
+riot fix ./packages/riot-check
+riot fmt ./packages/typ
+riot fmt ./packages/riot-check
+riot build typ riot-check
 timeout 180 riot test -p typ
-riot build
-riot install riot
+timeout 180 riot bench -p typ
+timeout 180 riot run riot -- check -p kernel-new
 ```
 
 If the batch changes semantics:
@@ -199,6 +203,18 @@ Do not blindly revert every semantic diff, instead use this rule:
 - if the change is slower and semantically neutral or incorrect, revert it
 - if the change fixes behavior that was wrong before, fix the tests and keep
   judging the batch on the corrected semantics
+
+Interpret the validation stack carefully:
+
+- `riot fix ./packages/typ` and `riot fix ./packages/riot-check` currently
+  report an existing lint backlog. Treat them as visibility into repo health,
+  not as slice-specific failures unless your batch adds new issues.
+- `riot fmt` is part of the validation loop because it rewrites files in place.
+  Run it before build/test/bench so later failures reflect the formatted tree.
+- `riot bench -p typ` currently reports no benchmark suites, so that command is
+  a guardrail for the package shape as much as it is a performance signal.
+- `riot run riot -- check -p kernel-new` is only meaningful when planner/source
+  preparation succeeds and actually hands prepared sources to `typ`.
 
 ## How to validate your work for performance
 

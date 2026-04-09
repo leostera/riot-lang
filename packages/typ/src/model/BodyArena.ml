@@ -66,12 +66,12 @@ type expr_desc =
   | EArray of ExprId.t list
   | ESequence of ExprId.t list
   | EFor of {
-    iterator_pattern_id: PatId.t;
-    descending: bool;
-    start_id: ExprId.t;
-    end_id: ExprId.t;
-    body_id: ExprId.t;
-  }
+      iterator_pattern_id: PatId.t;
+      descending: bool;
+      start_id: ExprId.t;
+      end_id: ExprId.t;
+      body_id: ExprId.t
+    }
   | EFun of function_parameter list * ExprId.t
   | EApply of ExprId.t * apply_argument list
   | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
@@ -185,19 +185,20 @@ let render_label = function
   | Optional label -> "?" ^ label
 
 let render_function_parameter = fun (parameter: function_parameter) ->
-  render_label parameter.label
-  ^ (if parameter.has_default then "=default" else "")
-  ^ ":"
-  ^ PatId.to_string parameter.pattern_id
+  render_label parameter.label ^ (
+    if parameter.has_default then
+      "=default"
+    else
+      ""
+  ) ^ ":" ^ PatId.to_string parameter.pattern_id
 
 let render_apply_argument = fun (argument: apply_argument) ->
-  render_label argument.label
-  ^ (if argument.implicit then
+  render_label argument.label ^ (
+    if argument.implicit then
       "(implicit)"
     else
-      "")
-  ^ ":"
-  ^ ExprId.to_string argument.value_id
+      ""
+  ) ^ ":" ^ ExprId.to_string argument.value_id
 
 let render_record_pattern_field = fun (field: record_pattern_field) ->
   field.label ^ "=" ^ PatId.to_string field.pattern_id
@@ -285,18 +286,19 @@ let render_expr_desc = function
       "array [" ^ render_ids ExprId.to_string elements ^ "]"
   | ESequence elements ->
       "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
-  | EFor { iterator_pattern_id; descending; start_id; end_id; body_id } ->
-      "for "
-      ^ PatId.to_string iterator_pattern_id
-      ^ " = "
-      ^ ExprId.to_string start_id
-      ^ (if descending then
+  | EFor {
+    iterator_pattern_id;
+    descending;
+    start_id;
+    end_id;
+    body_id
+  } ->
+      "for " ^ PatId.to_string iterator_pattern_id ^ " = " ^ ExprId.to_string start_id ^ (
+        if descending then
           " downto "
         else
-          " to ")
-      ^ ExprId.to_string end_id
-      ^ " do "
-      ^ ExprId.to_string body_id
+          " to "
+      ) ^ ExprId.to_string end_id ^ " do " ^ ExprId.to_string body_id
   | EFun (parameters, body_id) ->
       "fun ["
       ^ (parameters |> List.map render_function_parameter |> String.concat ", ")
@@ -466,21 +468,17 @@ let pattern_desc_to_json = function
     ("alias", Data.Json.String alias)
   ]
   | PFirstClassModule { module_name; package_type } ->
-      Data.Json.Object [
-        ("tag", Data.Json.String "first_class_module");
-        (
+      Data.Json.Object [ ("tag", Data.Json.String "first_class_module"); (
           "module_name",
           match module_name with
           | Some module_name -> Data.Json.String module_name
           | None -> Data.Json.Null
-        );
-        (
+        ); (
           "package_type",
           match package_type with
           | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
           | None -> Data.Json.Null
-        );
-      ]
+        ); ]
   | PPolyVariant { tag; payload } ->
       Data.Json.Object [
         ("tag", Data.Json.String "poly_variant");
@@ -608,7 +606,13 @@ let expr_desc_to_json = function
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
     );
   ]
-  | EFor { iterator_pattern_id; descending; start_id; end_id; body_id } -> Data.Json.Object [
+  | EFor {
+    iterator_pattern_id;
+    descending;
+    start_id;
+    end_id;
+    body_id
+  } -> Data.Json.Object [
     ("tag", Data.Json.String "for");
     ("iterator_pattern_id", Data.Json.Int (PatId.to_int iterator_pattern_id));
     ("descending", Data.Json.Bool descending);
@@ -683,16 +687,17 @@ let expr_desc_to_json = function
     ("value_id", Data.Json.Int (ExprId.to_int value_id));
     ("target_type", Data.Json.String (TypePrinter.type_to_string target_type));
   ]
-  | EModulePack { module_path; package_type } -> Data.Json.Object [
-    ("tag", Data.Json.String "module_pack");
-    ("module_path", Data.Json.String (IdentPath.to_string module_path));
-    (
-      "package_type",
-      match package_type with
-      | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
-      | None -> Data.Json.Null
-    );
-  ]
+  | EModulePack { module_path; package_type } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "module_pack");
+        ("module_path", Data.Json.String (IdentPath.to_string module_path));
+        (
+          "package_type",
+          match package_type with
+          | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
+          | None -> Data.Json.Null
+        );
+      ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
     ("module_path", Data.Json.String (IdentPath.to_string module_path));
@@ -765,20 +770,16 @@ let to_json = fun arena ->
   ]
 
 let to_string = fun arena ->
-  let pattern_lines = arena.patterns
-  |> List.map
-    (fun (node: pattern_node) ->
-      "  "
-      ^ PatId.to_string node.pat_id
-      ^ " "
-      ^ OriginId.to_string node.origin_id
-      ^ (
-        match node.annotation with
-        | Some annotation -> " : " ^ TypePrinter.type_to_string annotation
-        | None -> ""
-      )
-      ^ " "
-      ^ render_pattern_desc node.desc) in
+  let pattern_lines =
+    arena.patterns
+    |> List.map
+      (fun (node: pattern_node) ->
+        "  " ^ PatId.to_string node.pat_id ^ " " ^ OriginId.to_string node.origin_id ^ (
+          match node.annotation with
+          | Some annotation -> " : " ^ TypePrinter.type_to_string annotation
+          | None -> ""
+        ) ^ " " ^ render_pattern_desc node.desc)
+  in
   let binding_lines = arena.bindings |> List.map render_binding in
   let expr_lines = arena.expressions
   |> List.map

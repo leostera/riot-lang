@@ -78,8 +78,7 @@ let split_internal_module_name = fun module_name ->
 
 let dedupe_preserving_order = fun names ->
   let seen = Collections.HashSet.with_capacity (List.length names + 1) in
-  names
-  |> List.filter
+  names |> List.filter
     (fun name ->
       if Collections.HashSet.contains seen name then
         false
@@ -88,11 +87,9 @@ let dedupe_preserving_order = fun names ->
         true)
 
 let module_name_suffix_aliases = fun module_name ->
-  let segments =
-    module_name
-    |> String.split_on_char '.'
-    |> List.filter (fun segment -> not (String.equal segment ""))
-  in
+  let segments = module_name
+  |> String.split_on_char '.'
+  |> List.filter (fun segment -> not (String.equal segment "")) in
   let rec loop aliases = function
     | [] -> List.rev aliases
     | _ :: rest as current -> loop (String.concat "." current :: aliases) rest
@@ -103,24 +100,21 @@ let local_module_aliases_of_internal_module_name = fun module_name ->
   match split_internal_module_name module_name with
   | []
   | [ _ ] -> []
-  | _root :: local_segments ->
-      module_name_suffix_aliases (String.concat "." local_segments)
+  | _root :: local_segments -> module_name_suffix_aliases (String.concat "." local_segments)
 
 let matches_required_local_module = fun ~required_module_name candidate_module_name ->
   String.equal candidate_module_name required_module_name
-  || List.mem required_module_name (local_module_aliases_of_internal_module_name candidate_module_name)
+  || List.mem
+    required_module_name
+    (local_module_aliases_of_internal_module_name candidate_module_name)
 
 let local_source_ids_for_module = fun session module_name ->
   let direct = source_ids_of_module session module_name in
-  let aliased =
-    session.sources
-    |> List.filter
-      (fun (source: Source.t) ->
-        matches_required_local_module
-          ~required_module_name:module_name
-          (Source.module_name source))
-    |> List.map (fun (source: Source.t) -> source.source_id)
-  in
+  let aliased = session.sources
+  |> List.filter
+    (fun (source: Source.t) ->
+      matches_required_local_module ~required_module_name:module_name (Source.module_name source))
+  |> List.map (fun (source: Source.t) -> source.source_id) in
   (direct @ aliased) |> List.sort_uniq SourceId.compare
 
 let has_local_source_for_module = fun session module_name ->
@@ -430,8 +424,7 @@ let collect_missing_module_summaries = fun session roots ->
               | None -> discover rest seen
               | Some source ->
                   let additional = (implicit_open_source_ids source)
-                  @ (module_dependencies session ~deps_env_key ~deps_env source
-                  |> List.concat_map local_dependency_source_ids) in
+                  @ (module_dependencies session ~deps_env_key ~deps_env source |> List.concat_map local_dependency_source_ids) in
                   discover (additional @ rest) seen
             )
     in
@@ -441,7 +434,7 @@ let collect_missing_module_summaries = fun session roots ->
         Collections.HashSet.contains closure_source_ids (SourceId.to_int source.source_id))
   in
   let local_nested_module_snapshot = ref None in
-  let local_nested_module_snapshot = fun () ->
+  let local_nested_module_snapshot () =
     match !local_nested_module_snapshot with
     | Some snapshot -> snapshot
     | None ->
@@ -452,7 +445,9 @@ let collect_missing_module_summaries = fun session roots ->
           ~config:session.config
           ~sources
           ~shared_caches:session.shared_snapshot_caches in
-        let () = local_nested_module_snapshot := Some snapshot in
+        let () =
+          local_nested_module_snapshot := Some snapshot
+        in
         snapshot
   in
   let local_nested_module_prefixes module_name =
@@ -461,8 +456,7 @@ let collect_missing_module_summaries = fun session roots ->
     | None ->
         let module_sources = source_ids_of_module session module_name
         |> List.filter_map (source_of_id session) in
-        let declared_nested_modules = module_sources
-        |> List.concat_map (declared_modules session) in
+        let declared_nested_modules = module_sources |> List.concat_map (declared_modules session) in
         let has_include_statement = List.exists has_top_level_include_statement module_sources in
         let exported_nested_modules =
           if not has_include_statement then
@@ -614,10 +608,9 @@ let local_source_closure = fun session roots ->
                 @ (module_dependencies session ~deps_env_key ~deps_env source
                 |> List.filter
                   (fun module_name ->
-                    not (
-                      Collections.HashSet.contains loaded_module_names module_name
-                      && not (has_local_source_for_module session module_name)
-                    ))
+                    not
+                      (Collections.HashSet.contains loaded_module_names module_name
+                      && not (has_local_source_for_module session module_name)))
                 |> List.concat_map local_dependency_source_ids) in
                 discover (additional @ rest) seen
           )
@@ -715,14 +708,12 @@ let prepare_snapshot = fun session ~roots ->
             revision = session.next_revision
           })
     in
-    Ok (
-      Snapshot.make_with_shared_caches
-        ~revision:session.next_revision
-        ~roots
-        ~config:session.config
-        ~sources
-        ~shared_caches:session.shared_snapshot_caches
-    )
+    Ok (Snapshot.make_with_shared_caches
+      ~revision:session.next_revision
+      ~roots
+      ~config:session.config
+      ~sources
+      ~shared_caches:session.shared_snapshot_caches)
   else
     let () =
       TypConfig.emit_event session.config

@@ -122,10 +122,9 @@ let resolve_module_type_template = fun (state: state) path ->
   in
   if IdentPath.is_bare path then
     match IdentPath.last_name path with
-    | Some name ->
-        IdentPath.prefixes state.scope_path
-        |> List.rev
-        |> List.find_map (fun scope_path -> lookup (qualify_scoped_name scope_path name))
+    | Some name -> IdentPath.prefixes state.scope_path
+    |> List.rev
+    |> List.find_map (fun scope_path -> lookup (qualify_scoped_name scope_path name))
     | None -> None
   else
     lookup path
@@ -163,8 +162,7 @@ let with_nonrec_current_type_name_hidden = fun (state: state) (declaration: Cst.
         state.declared_type_names <- List.filter
           (fun (candidate_name, candidate_scope_path, _) ->
             not
-              (String.equal candidate_name type_name
-              && IdentPath.equal candidate_scope_path state.scope_path))
+              (String.equal candidate_name type_name && IdentPath.equal candidate_scope_path state.scope_path))
           state.declared_type_names
       in
       try
@@ -173,11 +171,12 @@ let with_nonrec_current_type_name_hidden = fun (state: state) (declaration: Cst.
           state.declared_type_names <- saved_declared_type_names
         in
         lowered
-      with error ->
-        let () =
-          state.declared_type_names <- saved_declared_type_names
-        in
-        raise error
+      with
+      | error ->
+          let () =
+            state.declared_type_names <- saved_declared_type_names
+          in
+          raise error
 
 let is_module_name = fun name ->
   String.length name > 0
@@ -253,17 +252,15 @@ let builtin_type_of_name = fun name arguments ->
   | ("string", []) -> Some TypeRepr.string
   | ("char", []) -> Some TypeRepr.char
   | ("unit", []) -> Some TypeRepr.unit_
-  | ("exn", []) -> Some (
-      TypeRepr.named
-        ~head:(TypeRepr.named_head
-          ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
-          ~name:(IdentPath.of_name "exn"))
-        ~arguments:[]
-    )
+  | ("exn", []) -> Some (TypeRepr.named
+    ~head:(TypeRepr.named_head
+      ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
+      ~name:(IdentPath.of_name "exn"))
+    ~arguments:[])
   | ("array", [ argument ]) -> Some (TypeRepr.array argument)
   | ("list", [ argument ]) -> Some (TypeRepr.list argument)
   | ("option", [ argument ]) -> Some (TypeRepr.option argument)
-  | ("result", [ ok_ty; error_ty ]) -> Some (TypeRepr.result ok_ty error_ty)
+  | ("result", [ok_ty;error_ty]) -> Some (TypeRepr.result ok_ty error_ty)
   | ("seq", [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None
 
@@ -288,7 +285,10 @@ let substitute_package_type =
         ty
     | TypeRepr.Option element ->
         let element' = loop replacements element in
-        if Std.Ptr.equal element element' then ty else TypeRepr.option element'
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.option element'
     | TypeRepr.Result (ok_ty, error_ty) ->
         let ok_ty' = loop replacements ok_ty in
         let error_ty' = loop replacements error_ty in
@@ -298,13 +298,22 @@ let substitute_package_type =
           TypeRepr.result ok_ty' error_ty'
     | TypeRepr.Array element ->
         let element' = loop replacements element in
-        if Std.Ptr.equal element element' then ty else TypeRepr.array element'
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.array element'
     | TypeRepr.List element ->
         let element' = loop replacements element in
-        if Std.Ptr.equal element element' then ty else TypeRepr.list element'
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.list element'
     | TypeRepr.Seq element ->
         let element' = loop replacements element in
-        if Std.Ptr.equal element element' then ty else TypeRepr.seq element'
+        if Std.Ptr.equal element element' then
+          ty
+        else
+          TypeRepr.seq element'
     | TypeRepr.Named { head; arguments } ->
         let arguments' = List.map (loop replacements) arguments in
         begin
@@ -346,13 +355,18 @@ let substitute_package_type =
             tags
         in
         let inherited' = List.map (loop replacements) inherited in
-        if List.for_all2 Std.Ptr.equal tags tags' && List.for_all2 Std.Ptr.equal inherited inherited' then
+        if
+          List.for_all2 Std.Ptr.equal tags tags' && List.for_all2 Std.Ptr.equal inherited inherited'
+        then
           ty
         else
           TypeRepr.poly_variant ~bound ~tags:tags' ~inherited:inherited'
     | TypeRepr.Tuple members ->
         let members' = List.map (loop replacements) members in
-        if List.for_all2 Std.Ptr.equal members members' then ty else TypeRepr.tuple members'
+        if List.for_all2 Std.Ptr.equal members members' then
+          ty
+        else
+          TypeRepr.tuple members'
     | TypeRepr.Arrow { label; lhs; rhs } ->
         let lhs' = loop replacements lhs in
         let rhs' = loop replacements rhs in
@@ -416,13 +430,12 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
   let module_type_path = ident_path package_type.module_type_path in
   match resolve_module_type_template state module_type_path with
   | Some template ->
-      let abstract_head_for_constraint = fun (constraint_: Cst.module_type_constraint) ->
+      let abstract_head_for_constraint (constraint_: Cst.module_type_constraint) =
         match constraint_.constrained_type with
         | Cst.CoreType.Constr { constructor_path; arguments=[]; _ } ->
             let constrained_path = ident_path constructor_path in
             let constrained_name = IdentPath.last_name constrained_path in
-            template.abstract_types
-            |> List.find_map
+            template.abstract_types |> List.find_map
               (fun ((type_name, (head: TypeRepr.named_type_head))) ->
                 if IdentPath.equal head.name constrained_path then
                   Some head
@@ -430,8 +443,7 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
                   match constrained_name with
                   | Some constrained_name when String.equal constrained_name type_name -> Some head
                   | _ -> None)
-        | _ ->
-            None
+        | _ -> None
       in
       let replacements = Collections.HashMap.with_capacity (List.length package_type.constraints) in
       let () =
@@ -445,15 +457,12 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
                 ()
             | _ -> ())
       in
-      let values =
-        template.values
-        |> List.map
-          (fun (value: TypeRepr.package_value) ->
-            { value with scheme = substitute_package_type replacements value.scheme })
-      in
+      let values = template.values
+      |> List.map
+        (fun (value: TypeRepr.package_value) ->
+          { value with scheme = substitute_package_type replacements value.scheme }) in
       TypeRepr.package ~values
-  | None ->
-      TypeRepr.hole unsupported_core_type_hole_id
+  | None -> TypeRepr.hole unsupported_core_type_hole_id
 
 let constructor_scheme = fun ~params ~result_type payload_type ->
   let body =
@@ -871,14 +880,10 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
       ~name:(qualify_scoped_name state.scope_path type_name))
     ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
   let lowered_declaration =
-    with_nonrec_current_type_name_hidden
-      state
-      declaration
+    with_nonrec_current_type_name_hidden state declaration
       (fun () ->
-        let lowered_manifest_alias =
-          Cst.TypeDeclaration.manifest_alias declaration
-          |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest))
-        in
+        let lowered_manifest_alias = Cst.TypeDeclaration.manifest_alias declaration
+        |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest)) in
         match Cst.TypeDeclaration.type_definition declaration with
         | Cst.TypeDefinition.Abstract ->
             Some {
@@ -1079,8 +1084,7 @@ let rec first_unsupported_core_type = fun core_type ->
   | Cst.CoreType.Record _
   | Cst.CoreType.Object _ -> Some core_type
   | Cst.CoreType.FirstClassModule { package_type; _ } ->
-      package_type.constraints
-      |> List.find_map
+      package_type.constraints |> List.find_map
         (fun (constraint_: Cst.module_type_constraint) ->
           Option.or_else
             (first_unsupported_core_type constraint_.constrained_type)
@@ -1108,7 +1112,7 @@ let scheme_of_declared_core_type = fun (state: state) core_type ->
   TypeScheme.of_explicit ~quantified:(List.map snd params) ty
 
 let lower_module_type_template =
-  let register_abstract_type_name = fun state type_name ->
+  let register_abstract_type_name state type_name =
     let type_constructor_id = TypeConstructorId.make ~owner:state.source_owner ~local_id:state.next_type_constructor_id in
     let () =
       state.next_type_constructor_id <- state.next_type_constructor_id + 1
@@ -1131,7 +1135,8 @@ let lower_module_type_template =
             let abstract_types =
               items
               |> List.concat_map
-                (function
+                (
+                  function
                   | Cst.SignatureItem.TypeDeclaration declaration ->
                       let rec collect acc declaration =
                         let type_name = Cst.TypeDeclaration.name_token declaration |> Cst.Token.text in
@@ -1141,23 +1146,30 @@ let lower_module_type_template =
                         | None -> List.rev (abstract_type :: acc)
                       in
                       collect [] declaration
-                  | _ -> [])
+                  | _ -> []
+                )
             in
             let values =
               items
               |> List.filter_map
-                (function
+                (
+                  function
                   | Cst.SignatureItem.ValueDeclaration declaration ->
-                      let value_name = declared_value_name (Cst.ValueDeclaration.name_tokens declaration) in
+                      let value_name = declared_value_name
+                        (Cst.ValueDeclaration.name_tokens declaration) in
                       Some (TypeRepr.package_value
                         ~name:value_name
-                        ~scheme:(scheme_of_declared_core_type state (Cst.ValueDeclaration.type_ declaration)))
+                        ~scheme:(scheme_of_declared_core_type
+                          state
+                          (Cst.ValueDeclaration.type_ declaration)))
                   | Cst.SignatureItem.ExternalDeclaration declaration ->
                       let value_name = declared_value_name declaration.name_tokens in
                       Some (TypeRepr.package_value
                         ~name:value_name
                         ~scheme:(scheme_of_declared_core_type state declaration.type_))
-                  | _ -> None)
+                  | _ ->
+                      None
+                )
             in
             let () =
               state.declared_type_names <- saved_declared_type_names
@@ -1432,13 +1444,19 @@ let recovered_parameter_pattern = fun (state: state) syntax_node ~label paramete
     )
 
 let positional_function_parameter = fun pattern_id ->
-  ({ BodyArena.label = BodyArena.Positional; has_default = false; pattern_id }: BodyArena.function_parameter)
+  (
+    { BodyArena.label = BodyArena.Positional; has_default = false; pattern_id }: BodyArena.function_parameter
+  )
 
 let labeled_function_parameter = fun label pattern_id ->
-  ({ BodyArena.label = BodyArena.Labeled label; has_default = false; pattern_id }: BodyArena.function_parameter)
+  (
+    { BodyArena.label = BodyArena.Labeled label; has_default = false; pattern_id }: BodyArena.function_parameter
+  )
 
 let optional_function_parameter = fun label ~has_default pattern_id ->
-  ({ BodyArena.label = BodyArena.Optional label; has_default; pattern_id }: BodyArena.function_parameter)
+  (
+    { BodyArena.label = BodyArena.Optional label; has_default; pattern_id }: BodyArena.function_parameter
+  )
 
 let rec lower_parameter = fun (state: state) parameter ->
   match parameter with
@@ -1537,11 +1555,11 @@ and lower_binding_source = fun (state: state) ~syntax_node ~binding_pattern ~par
         let params = binders |> List.mapi (fun index binder -> (Cst.TypeBinder.text binder, index)) in
         TypeScheme.of_explicit ~quantified:(List.map snd params) (lower_core_type state params body)
     | core_type ->
-        let params =
-          collect_core_type_var_names core_type
-          |> List.mapi (fun index name -> (name, index))
-        in
-        TypeScheme.of_explicit ~quantified:(List.map snd params) (lower_core_type state params core_type)
+        let params = collect_core_type_var_names core_type
+        |> List.mapi (fun index name -> (name, index)) in
+        TypeScheme.of_explicit
+          ~quantified:(List.map snd params)
+          (lower_core_type state params core_type)
   in
   let rec peel_binding_annotation ~parameters = function
     | Cst.Expression.Parenthesized { inner; _ } -> peel_binding_annotation ~parameters inner
@@ -1728,15 +1746,16 @@ and lower_let_operator_expression = fun (state: state) (let_operator: Cst.let_op
   match let_operator.binding.and_binding with
   | Some _ ->
       let syntax_node = let_operator.syntax_node in
-      let () = add_diagnostic
-        state
-        (Typ_diagnostic.UnsupportedSyntax {
-          syntax_kind = unsupported_syntax_kind syntax_node;
-          syntax_span = Ceibo.Red.SyntaxNode.span syntax_node;
-          context = Typ_diagnostic.Expression;
-          recovery = Typ_diagnostic.HoleExpression;
-          reason = None;
-        })
+      let () = add_diagnostic state
+        (
+          Typ_diagnostic.UnsupportedSyntax {
+            syntax_kind = unsupported_syntax_kind syntax_node;
+            syntax_span = Ceibo.Red.SyntaxNode.span syntax_node;
+            context = Typ_diagnostic.Expression;
+            recovery = Typ_diagnostic.HoleExpression;
+            reason = None;
+          }
+        )
       in
       add_expr
         state
@@ -1896,15 +1915,14 @@ and lower_expr = fun (state: state) expression ->
       add_expr state ~syntax_node ~label:"sequence_expression" (BodyArena.ESequence element_ids)
   | Cst.Expression.ModulePack { syntax_node; module_expression; package_type; _ } -> (
       match module_path_segments_of_module_expression module_expression with
-      | Some module_path ->
-          add_expr
-            state
-            ~syntax_node
-            ~label:"module_pack_expression"
-            (BodyArena.EModulePack {
-              module_path;
-              package_type = package_type |> Option.map (lower_package_type state [])
-            })
+      | Some module_path -> add_expr
+        state
+        ~syntax_node
+        ~label:"module_pack_expression"
+        (BodyArena.EModulePack {
+          module_path;
+          package_type = package_type |> Option.map (lower_package_type state [])
+        })
       | None ->
           let () = add_diagnostic state
             (
@@ -1937,11 +1955,16 @@ and lower_expr = fun (state: state) expression ->
         | Cst.Downto _ -> true
         | Cst.To _ -> false
       in
-      add_expr
-        state
-        ~syntax_node:for_expression.syntax_node
-        ~label:"for_expression"
-        (BodyArena.EFor { iterator_pattern_id; descending; start_id; end_id; body_id })
+      add_expr state ~syntax_node:for_expression.syntax_node ~label:"for_expression"
+        (
+          BodyArena.EFor {
+            iterator_pattern_id;
+            descending;
+            start_id;
+            end_id;
+            body_id;
+          }
+        )
   | Cst.Expression.Parenthesized { inner; _ } ->
       lower_expr state inner
   | Cst.Expression.TypeAscription { syntax_node; expression; kind; _ } -> (
@@ -2146,10 +2169,13 @@ let rec lower_structure_item = fun (state: state) item ->
           begin
             match lower_module_type_template state module_type with
             | Some template -> register_module_type_template state module_type_name template
-            | None -> add_unsupported_structure_item state (Cst.ModuleTypeDeclaration.syntax_node declaration)
+            | None -> add_unsupported_structure_item
+              state
+              (Cst.ModuleTypeDeclaration.syntax_node declaration)
           end
-      | None ->
-          add_unsupported_structure_item state (Cst.ModuleTypeDeclaration.syntax_node declaration)
+      | None -> add_unsupported_structure_item
+        state
+        (Cst.ModuleTypeDeclaration.syntax_node declaration)
     )
   | item ->
       add_unsupported_structure_item state (Cst.StructureItem.syntax_node item)
@@ -2222,10 +2248,13 @@ and lower_signature_item = fun (state: state) item ->
           begin
             match lower_module_type_template state module_type with
             | Some template -> register_module_type_template state module_type_name template
-            | None -> add_unsupported_signature_item state (Cst.ModuleTypeDeclaration.syntax_node declaration)
+            | None -> add_unsupported_signature_item
+              state
+              (Cst.ModuleTypeDeclaration.syntax_node declaration)
           end
-      | None ->
-          add_unsupported_signature_item state (Cst.ModuleTypeDeclaration.syntax_node declaration)
+      | None -> add_unsupported_signature_item
+        state
+        (Cst.ModuleTypeDeclaration.syntax_node declaration)
     )
   | item ->
       add_unsupported_signature_item state (Cst.SignatureItem.syntax_node item)

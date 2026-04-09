@@ -29,6 +29,6 @@ let type_of_path = fun path arguments ->
   | ([ "array" ], [ argument ]) -> Some (TypeRepr.array argument)
   | ([ "list" ], [ argument ]) -> Some (TypeRepr.list argument)
   | ([ "option" ], [ argument ]) -> Some (TypeRepr.option argument)
-  | ([ "result" ], [ ok_ty; error_ty ]) -> Some (TypeRepr.result ok_ty error_ty)
+  | ([ "result" ], [ok_ty;error_ty]) -> Some (TypeRepr.result ok_ty error_ty)
   | ([ "seq" ], [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None

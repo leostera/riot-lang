@@ -70,7 +70,6 @@ type kind =
       mismatch_subjects: string list;
       mismatch_messages: string list
     }
-
 type t = {
   instant_us: int;
   kind: kind;
