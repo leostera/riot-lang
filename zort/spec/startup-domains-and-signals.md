@@ -69,6 +69,11 @@
 
 ## zort runtime-services baseline
 
+Executable model:
+
+- [`domains/RunnableTransfer.tla`](./domains/RunnableTransfer.tla)
+- [`domains/README.md`](./domains/README.md)
+
 - `RuntimeServices` now exists as a separate subsystem in `src/runtime_services.zig`.
 - `DomainRegistry` now exists as a separate subsystem in `src/domain_registry.zig`.
 - The current service model includes:

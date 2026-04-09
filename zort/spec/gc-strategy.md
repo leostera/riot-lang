@@ -84,6 +84,11 @@
 
 ## zort collector baseline notes
 
+Executable model:
+
+- [`gc/GenerationalGC.tla`](./gc/GenerationalGC.tla)
+- [`gc/README.md`](./gc/README.md)
+
 - zort currently uses a deliberately simpler collector baseline than OCaml:
   - `Collector` is a dedicated subsystem in `src/collector.zig`
   - `HeapStore` owns storage and reclamation primitives

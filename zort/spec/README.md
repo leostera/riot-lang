@@ -39,6 +39,12 @@ what to shim, and what to drop.
 - [`benchmark-depth.md`](./benchmark-depth.md): retained filename; now documents observability, GC/debug controls, and runtime event surfaces relevant to measurement.
 - [`runtime-hosted-primitives.md`](./runtime-hosted-primitives.md): channels, basic syscalls, and lexing/parsing engines that live in the runtime tree.
 
+## Executable protocol models
+
+- [`gc/`](./gc/README.md): bounded TLA+ models for generational GC protocol behavior.
+- [`effects/`](./effects/README.md): bounded TLA+ models for continuation and callback-boundary behavior.
+- [`domains/`](./domains/README.md): bounded TLA+ models for domain-lane ownership and runnable transfer.
+
 ## Coverage notes
 
 - The specs are based on source inspection of `vendor/ocaml/runtime/*.c` and `vendor/ocaml/runtime/caml/*.h`.

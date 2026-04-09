@@ -172,6 +172,11 @@
 
 ## zort control-kernel baseline notes
 
+Executable model:
+
+- [`effects/Continuations.tla`](./effects/Continuations.tla)
+- [`effects/README.md`](./effects/README.md)
+
 - zort now has a dedicated `ControlKernel` subsystem in `zort/src/control_kernel.zig`.
 - The current semantic model includes:
   - typed `FiberHandle`s with explicit parent links,
