@@ -10,6 +10,7 @@ type t = {
   next_source_id: int;
   next_revision: int;
   sources: Source.t list;
+  shared_snapshot_caches: Snapshot.SharedCaches.t;
   sources_by_id: (int, Source.t) Collections.HashMap.t;
   source_ids_by_module_name: (string, SourceId.t list) Collections.HashMap.t;
   parse_results_by_source_hash: (string, Syn.Parser.parse_result) Collections.HashMap.t;
@@ -24,6 +25,7 @@ let empty = fun ~config ->
     next_source_id = 0;
     next_revision = 0;
     sources = [];
+    shared_snapshot_caches = Snapshot.SharedCaches.create ();
     sources_by_id = Collections.HashMap.with_capacity 64;
     source_ids_by_module_name = Collections.HashMap.with_capacity 32;
     parse_results_by_source_hash = Collections.HashMap.with_capacity 64;
@@ -51,8 +53,75 @@ let source_ids_of_module = fun session module_name ->
   | Some source_ids -> source_ids
   | None -> []
 
+let split_internal_module_name = fun module_name ->
+  let rec find_separator index =
+    if index + 1 >= String.length module_name then
+      None
+    else if module_name.[index] = '_' && module_name.[index + 1] = '_' then
+      Some index
+    else
+      find_separator (index + 1)
+  in
+  let rec loop start acc =
+    if start >= String.length module_name then
+      List.rev acc
+    else
+      match find_separator start with
+      | Some index ->
+          let segment = String.sub module_name start (index - start) in
+          loop (index + 2) (segment :: acc)
+      | None ->
+          let segment = String.sub module_name start (String.length module_name - start) in
+          List.rev (segment :: acc)
+  in
+  loop 0 []
+
+let dedupe_preserving_order = fun names ->
+  let seen = Collections.HashSet.with_capacity (List.length names + 1) in
+  names
+  |> List.filter
+    (fun name ->
+      if Collections.HashSet.contains seen name then
+        false
+      else
+        let _ = Collections.HashSet.insert seen name in
+        true)
+
+let module_name_suffix_aliases = fun module_name ->
+  let segments =
+    module_name
+    |> String.split_on_char '.'
+    |> List.filter (fun segment -> not (String.equal segment ""))
+  in
+  let rec loop aliases = function
+    | [] -> List.rev aliases
+    | _ :: rest as current -> loop (String.concat "." current :: aliases) rest
+  in
+  loop [] segments |> dedupe_preserving_order
+
+let local_module_aliases_of_internal_module_name = fun module_name ->
+  match split_internal_module_name module_name with
+  | []
+  | [ _ ] -> []
+  | _root :: local_segments ->
+      module_name_suffix_aliases (String.concat "." local_segments)
+
+let matches_required_local_module = fun ~required_module_name candidate_module_name ->
+  String.equal candidate_module_name required_module_name
+  || List.mem required_module_name (local_module_aliases_of_internal_module_name candidate_module_name)
+
 let local_source_ids_for_module = fun session module_name ->
-  source_ids_of_module session module_name
+  let direct = source_ids_of_module session module_name in
+  let aliased =
+    session.sources
+    |> List.filter
+      (fun (source: Source.t) ->
+        matches_required_local_module
+          ~required_module_name:module_name
+          (Source.module_name source))
+    |> List.map (fun (source: Source.t) -> source.source_id)
+  in
+  (direct @ aliased) |> List.sort_uniq SourceId.compare
 
 let has_local_source_for_module = fun session module_name ->
   match local_source_ids_for_module session module_name with
@@ -377,11 +446,12 @@ let collect_missing_module_summaries = fun session roots ->
     | Some snapshot -> snapshot
     | None ->
         let sources = module_source_closure initial_source_ids in
-        let snapshot = Snapshot.make
+        let snapshot = Snapshot.make_with_shared_caches
           ~revision:session.next_revision
           ~roots:initial_source_ids
           ~config:session.config
-          ~sources in
+          ~sources
+          ~shared_caches:session.shared_snapshot_caches in
         let () = local_nested_module_snapshot := Some snapshot in
         snapshot
   in
@@ -645,7 +715,14 @@ let prepare_snapshot = fun session ~roots ->
             revision = session.next_revision
           })
     in
-    Ok (Snapshot.make ~revision:session.next_revision ~roots ~config:session.config ~sources)
+    Ok (
+      Snapshot.make_with_shared_caches
+        ~revision:session.next_revision
+        ~roots
+        ~config:session.config
+        ~sources
+        ~shared_caches:session.shared_snapshot_caches
+    )
   else
     let () =
       TypConfig.emit_event session.config

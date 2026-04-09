@@ -642,6 +642,310 @@ let test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias =
         else
           Error ("unexpected value type: " ^ show_option value_type)
 
+let test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let unix_text = {ocaml|
+    type t = string
+
+    let of_string value = value
+
+    let to_string value = value
+  |ocaml} in
+  let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
+  let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
+  let (session, unix_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Ip_addr__Unix"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "unix.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:unix_cst)
+    ~parse_result:unix_parse_result
+    ~cst:unix_cst in
+  let (session, impl_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.ml")
+    ~text:{ocaml|
+      include Unix
+    |ocaml}
+  in
+  let (session, intf_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.mli")
+    ~text:{ocaml|
+      type t
+
+      val of_string : string -> t
+
+      val to_string : t -> string
+    |ocaml}
+  in
+  match prepare_snapshot_or_error session ~roots:[ impl_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let impl_diagnostics = diagnostic_strings snapshot impl_source_id in
+      let intf_diagnostics = diagnostic_strings snapshot intf_source_id in
+      if not (List.is_empty impl_diagnostics) then
+        Error (String.concat "\n" impl_diagnostics)
+      else if not (List.is_empty intf_diagnostics) then
+        Error (String.concat "\n" intf_diagnostics)
+      else
+        let local_unix_typings = Session.Snapshot.find_module_typings_by_name snapshot "Ip_addr__Unix" in
+        let of_string_type = export_scheme snapshot impl_source_id "of_string" in
+        let to_string_type = export_scheme snapshot impl_source_id "to_string" in
+        if has_signature_error snapshot impl_source_id then
+          Error "expected implementation signature inclusion to succeed"
+        else if has_signature_error snapshot intf_source_id then
+          Error "expected interface signature inclusion to succeed"
+        else if Option.is_none local_unix_typings then
+          Error "expected internal Unix sibling to be included in the rooted snapshot"
+        else if not (of_string_type = Some "string -> t") then
+          Error ("unexpected of_string type: " ^ show_option of_string_type)
+        else if not (to_string_type = Some "t -> string") then
+          Error ("unexpected to_string type: " ^ show_option to_string_type)
+        else
+          Ok ()
+
+let test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let unix_text = {ocaml|
+    type t = string
+
+    let of_string value = value
+
+    let to_string value = value
+  |ocaml} in
+  let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
+  let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
+  let (session, _unix_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Ip_addr__Unix"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "unix.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:unix_cst)
+    ~parse_result:unix_parse_result
+    ~cst:unix_cst in
+  let (session, _ip_addr_impl_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.ml")
+    ~text:{ocaml|
+      include Unix
+    |ocaml}
+  in
+  let (session, _ip_addr_intf_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.mli")
+    ~text:{ocaml|
+      type t
+
+      val of_string : string -> t
+
+      val to_string : t -> string
+    |ocaml}
+  in
+  let (session, _socket_addr_impl_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "socket_addr.ml")
+    ~text:{ocaml|
+      let render value = Ip_addr.to_string value
+    |ocaml}
+  in
+  let (session, _socket_addr_intf_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "socket_addr.mli")
+    ~text:{ocaml|
+      val render : Ip_addr.t -> string
+    |ocaml}
+  in
+  let (session, app_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "app.ml")
+    ~text:{ocaml|
+      let render value = Socket_addr.render value
+    |ocaml}
+  in
+  match prepare_snapshot_or_error session ~roots:[ app_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot app_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let render_type = export_scheme snapshot app_source_id "render" in
+        if not (render_type = Some "Ip_addr.t -> string") then
+          Error ("unexpected render type: " ^ show_option render_type)
+        else
+          Ok ()
+
+let test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _ip_addr_impl_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.ml")
+    ~text:{ocaml|
+      include Unix
+    |ocaml}
+  in
+  let (session, _ip_addr_intf_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "ip_addr.mli")
+    ~text:{ocaml|
+      type t
+
+      val of_string : string -> t
+
+      val to_string : t -> string
+    |ocaml}
+  in
+  let (session, _socket_addr_impl_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "socket_addr.ml")
+    ~text:{ocaml|
+      let render value = Ip_addr.to_string value
+    |ocaml}
+  in
+  let (session, _socket_addr_intf_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "socket_addr.mli")
+    ~text:{ocaml|
+      val render : Ip_addr.t -> string
+    |ocaml}
+  in
+  let (session, app_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "app.ml")
+    ~text:{ocaml|
+      let render value = Socket_addr.render value
+    |ocaml}
+  in
+  let unix_text = {ocaml|
+    type t = string
+
+    let of_string value = value
+
+    let to_string value = value
+  |ocaml} in
+  let unix_parse_result = Syn.parse ~filename:(Path.v "unix.ml") unix_text in
+  let unix_cst = expect_cst ~filename:"unix.ml" unix_parse_result in
+  let (session, _unix_source_id) = Session.create_source
+    session
+    ~kind:Source.File
+    ~module_name:"Ip_addr__Unix"
+    ~implicit_opens:[]
+    ~origin:(Source.Label "unix.ml")
+    ~source_hash:(Source.hash ~implicit_opens:[] ~cst:unix_cst)
+    ~parse_result:unix_parse_result
+    ~cst:unix_cst in
+  match prepare_snapshot_or_error session ~roots:[ app_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot app_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let render_type = export_scheme snapshot app_source_id "render" in
+        if not (render_type = Some "Ip_addr.t -> string") then
+          Error ("unexpected render type: " ^ show_option render_type)
+        else
+          Ok ()
+
+let test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck = fun _ctx ->
+  let create_named_source = fun session ~module_name ~filename ~text ->
+    let parse_result = Syn.parse ~filename:(Path.v filename) text in
+    let cst = expect_cst ~filename parse_result in
+    Session.create_source
+      session
+      ~kind:Source.File
+      ~module_name
+      ~implicit_opens:[]
+      ~origin:(Source.Label filename)
+      ~source_hash:(Source.hash ~implicit_opens:[] ~cst)
+      ~parse_result
+      ~cst
+  in
+  let session = Session.empty ~config:Config.default in
+  let (session, _ip_addr_impl_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new__Net__Ip_addr"
+    ~filename:"ip_addr.ml"
+    ~text:{ocaml|
+      include Unix
+    |ocaml}
+  in
+  let (session, _ip_addr_intf_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new__Net__Ip_addr"
+    ~filename:"ip_addr.mli"
+    ~text:{ocaml|
+      type t
+
+      val of_string : string -> t
+
+      val to_string : t -> string
+    |ocaml}
+  in
+  let (session, _socket_addr_impl_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new__Net__Socket_addr"
+    ~filename:"socket_addr.ml"
+    ~text:{ocaml|
+      let render value = Ip_addr.to_string value
+    |ocaml}
+  in
+  let (session, _socket_addr_intf_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new__Net__Socket_addr"
+    ~filename:"socket_addr.mli"
+    ~text:{ocaml|
+      val render : Ip_addr.t -> string
+    |ocaml}
+  in
+  let (session, app_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new"
+    ~filename:"kernel_new.ml"
+    ~text:{ocaml|
+      let render value = Socket_addr.render value
+    |ocaml}
+  in
+  let (session, _unix_source_id) = create_named_source
+    session
+    ~module_name:"Kernel_new__Net__Ip_addr__Unix"
+    ~filename:"unix.ml"
+    ~text:{ocaml|
+      type t = string
+
+      let of_string value = value
+
+      let to_string value = value
+    |ocaml}
+  in
+  match prepare_snapshot_or_error session ~roots:[ app_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot app_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let render_type = export_scheme snapshot app_source_id "render" in
+        if not (render_type = Some "Ip_addr.t -> string") then
+          Error ("unexpected render type: " ^ show_option render_type)
+        else
+          Ok ()
+
 let test_implicit_opens_do_not_leak_into_module_exports = fun _ctx ->
   let config = Config.default |> Config.with_capture_traces ~capture_traces:true in
   let session = Session.empty ~config in
@@ -1776,14 +2080,133 @@ let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
         ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
       else
         let () = Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "App") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "Left") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "Right") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "Base") in
         let () = Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "App") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "Left") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "Right") in
-        let () = Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "Base") in
         Ok ()
+
+let test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let (session, file_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "file.mli")
+    ~text:{ocaml|
+      val read : unit -> int
+    |ocaml}
+  in
+  let (session, file_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "file.ml")
+    ~text:{ocaml|
+      let read () = 1
+    |ocaml}
+  in
+  let (session, fs_intf_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "fs.mli")
+    ~text:{ocaml|
+      val read : unit -> int
+    |ocaml}
+  in
+  let (session, fs_impl_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "fs.ml")
+    ~text:{ocaml|
+      let read = File.read
+    |ocaml}
+  in
+  let (session, left_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "left.ml")
+    ~text:{ocaml|
+      let left = Fs.read ()
+    |ocaml}
+  in
+  let (session, right_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "right.ml")
+    ~text:{ocaml|
+      let right = Fs.read ()
+    |ocaml}
+  in
+  let run_root = fun source_id ->
+    match Session.prepare_snapshot session ~roots:[ source_id ] with
+    | Error missing -> Error ("expected rooted snapshot, got "
+    ^ (Session.MissingRequirements.to_json missing |> Data.Json.to_string))
+    | Ok snapshot ->
+        let _ = Query.analysis_of_source snapshot source_id |> Option.expect ~msg:"expected analysis" in
+        let diagnostics = diagnostic_strings snapshot source_id in
+        if List.is_empty diagnostics then
+          Ok ()
+        else
+          Error (String.concat "\n" diagnostics)
+  in
+  match run_root left_source_id with
+  | Error _ as err -> err
+  | Ok () ->
+      (
+        match run_root right_source_id with
+        | Error _ as err -> err
+        | Ok () ->
+            let snapshot_analysis_counts =
+              !events
+              |> List.fold_left
+                (fun counts (event: Event.t) ->
+                  match event.Event.kind with
+                  | Event.SourceAnalysisStarted { source_id; mode = Event.SnapshotAnalysis; _ } ->
+                      let key = SourceId.to_int source_id in
+                      let count = List.assoc_opt key counts |> Option.unwrap_or ~default:0 in
+                      (key, count + 1) :: List.remove_assoc key counts
+                  | _ -> counts)
+                []
+            in
+            let module_pairing_counts =
+              !events
+              |> List.fold_left
+                (fun counts (event: Event.t) ->
+                  match event.Event.kind with
+                  | Event.ModulePairingStarted { module_name; _ } ->
+                      let count = List.assoc_opt module_name counts |> Option.unwrap_or ~default:0 in
+                      (module_name, count + 1) :: List.remove_assoc module_name counts
+                  | _ -> counts)
+                []
+            in
+            let count_for_source counts source_id =
+              List.assoc_opt (SourceId.to_int source_id) counts |> Option.unwrap_or ~default:0
+            in
+            let count_for_module counts module_name =
+              List.assoc_opt module_name counts |> Option.unwrap_or ~default:0
+            in
+            let repeated_sources =
+              [
+                ("File.mli", file_intf_source_id);
+                ("File.ml", file_impl_source_id);
+                ("Fs.mli", fs_intf_source_id);
+                ("Fs.ml", fs_impl_source_id);
+              ]
+              |> List.filter_map
+                (fun (label, source_id) ->
+                  let count = count_for_source snapshot_analysis_counts source_id in
+                  if count > 1 then
+                    Some (label ^ "=" ^ Int.to_string count)
+                  else
+                    None)
+            in
+            let repeated_modules =
+              [ "File"; "Fs" ]
+              |> List.filter_map
+                (fun module_name ->
+                  let count = count_for_module module_pairing_counts module_name in
+                  if count > 1 then
+                    Some (module_name ^ "=" ^ Int.to_string count)
+                  else
+                    None)
+            in
+            if not (List.is_empty repeated_sources) || not (List.is_empty repeated_modules) then
+              Error ("expected paired local dependencies to be reused across rooted snapshots, got repeated source analyses ["
+              ^ String.concat ", " repeated_sources
+              ^ "] and pairings ["
+              ^ String.concat ", " repeated_modules
+              ^ "]: "
+              ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+            else
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts file_intf_source_id) in
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts file_impl_source_id) in
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts fs_intf_source_id) in
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_source snapshot_analysis_counts fs_impl_source_id) in
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "File") in
+              let () = Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "Fs") in
+              Ok ()
+      )
 
 let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx ->
   let events = ref [] in
@@ -1886,8 +2309,8 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
       in
       let alias_analysis_count = count_for snapshot_analysis_counts "Aliases" in
       let alias_pairing_count = count_for module_pairing_counts "Aliases" in
-      if alias_analysis_count > 1 || alias_pairing_count > 1 then
-        Error ("expected implicit-open alias module to be analyzed and paired once, got analysis="
+      if alias_analysis_count > 1 || alias_pairing_count > 2 then
+        Error ("expected implicit-open alias module to be analyzed once and paired at most once per mode, got analysis="
         ^ Int.to_string alias_analysis_count
         ^ " pairing="
         ^ Int.to_string alias_pairing_count
@@ -1895,7 +2318,7 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
         ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
       else
         let () = Test.assert_equal ~expected:1 ~actual:alias_analysis_count in
-        let () = Test.assert_equal ~expected:1 ~actual:alias_pairing_count in
+        let () = Test.assert_equal ~expected:2 ~actual:alias_pairing_count in
         Ok ()
 
 let test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis = fun _ctx ->
@@ -6429,6 +6852,18 @@ let () =
         Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
         Test.case "prepare_snapshot uses implicit-opened alias modules with internal names" test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
         Test.case "prepare_snapshot resolves internal module dependencies by local alias" test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias;
+        Test.case
+          "prepare_snapshot prefers internal local alias dependencies over loaded modules"
+          test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules;
+        Test.case
+          "prepare_snapshot uses internal local alias dependencies transitively"
+          test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
+        Test.case
+          "prepare_snapshot internal local alias dependencies ignore source order"
+          test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
+        Test.case
+          "prepare_snapshot nested internal local alias dependencies typecheck"
+          test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "implicit opens do not leak into module exports" test_implicit_opens_do_not_leak_into_module_exports;
         Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
         Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
@@ -6457,6 +6892,9 @@ let () =
         Test.case
           "prepare_snapshot reuses shared transitive local modules"
           test_prepare_snapshot_reuses_shared_transitive_local_modules;
+        Test.case
+          "prepare_snapshot reuses paired local modules across rooted snapshots"
+          test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
         Test.case
           "prepare_snapshot reuses shared implicit-open alias modules"
           test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;

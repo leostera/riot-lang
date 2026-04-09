@@ -5,14 +5,38 @@ open Model
 (** Immutable analysis view over one [Session] revision. *)
 type t
 
+module SharedCaches: sig
+  type t
+
+  (** Create one reusable cross-snapshot cache scope.
+
+      Reusing the same cache scope across repeated rooted snapshots lets hosts
+      avoid reanalyzing sources whose revision, loaded-module set, and
+      dependency analysis modes are unchanged. *)
+  val create: unit -> t
+end
+
 (** Build a rooted snapshot from the current session sources.
 
     Analyses are prepared lazily per source and only forced by queries that
     actually need them. Before the final per-source analysis runs, the snapshot
     may synthesize an ambient environment from sibling source exports and
     host-loaded module typings so implicit file modules can participate in
-    name resolution. *)
+    name resolution.
+
+    This constructor creates one standalone cache scope for the snapshot. Hosts
+    that prepare many rooted snapshots in one execution should prefer
+    [make_with_shared_caches]. *)
 val make: revision:int -> roots:SourceId.t list -> config:TypConfig.t -> sources:Source.t list -> t
+
+(** Build a rooted snapshot while reusing one host-owned shared cache scope. *)
+val make_with_shared_caches:
+  revision:int ->
+  roots:SourceId.t list ->
+  config:TypConfig.t ->
+  sources:Source.t list ->
+  shared_caches:SharedCaches.t ->
+  t
 
 (** Monotonic session revision captured by this snapshot. *)
 val revision: t -> int
