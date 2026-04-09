@@ -130,13 +130,25 @@ let write_all = fun poll ~token file buffer ->
   in
   loop 0 (Kernel.Bytes.length buffer)
 
-let rec wait_for_exit = fun process ->
-  let* status = lift_process (Kernel.Process.try_wait process) in
-  match status with
-  | Some status -> Ok status
-  | None ->
-      yield ();
-      wait_for_exit process
+let wait_for_exit = fun poll ~token process ->
+  let exit_poll_timeout = 1_000_000L in
+  let rec loop () =
+    let* status = lift_process (Kernel.Process.try_wait process) in
+    match status with
+    | Some status -> Ok status
+    | None ->
+        let source = Kernel.Process.to_source process in
+        let* () = lift_async
+          (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+        protect
+          ~finally:(fun () ->
+            let _ = Kernel.Async.Poll.deregister poll source in
+            ())
+          (fun () ->
+            let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
+            loop ())
+  in
+  loop ()
 
 let test_current_pid_is_positive = fun _ctx ->
   if Kernel.Process.current_pid () > 0 then
@@ -155,7 +167,7 @@ let test_stdout_pipe_roundtrips = fun _ctx ->
       | Some stdout ->
           with_poll
             (fun poll ->
-              let* status = wait_for_exit process in
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 520) process in
               let* payload = read_all poll ~token:(Kernel.Async.Token.make 501) stdout in
               if payload = "hello" && status = Kernel.Process.Exited 0 then
                 Ok ()
@@ -175,7 +187,7 @@ let test_stdin_and_stdout_pipes_roundtrip = fun _ctx ->
               let* () = write_all poll ~token:(Kernel.Async.Token.make 502) stdin payload in
               let* () = lift_file (Kernel.Fs.File.close stdin) in
               let* echoed = read_once poll ~token:(Kernel.Async.Token.make 503) stdout in
-              let* status = wait_for_exit process in
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 521) process in
               if echoed = "ping" && status = Kernel.Process.Exited 0 then
                 Ok ()
               else
@@ -193,7 +205,7 @@ let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
       | Some stdout ->
           with_poll
             (fun poll ->
-              let* status = wait_for_exit process in
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 522) process in
               let* payload = read_all poll ~token:(Kernel.Async.Token.make 504) stdout in
               if payload = "outerr" && status = Kernel.Process.Exited 0 then
                 Ok ()
@@ -210,11 +222,27 @@ let test_try_wait_reports_running_then_exit = fun _ctx ->
       match status with
       | Some _ -> Error "expected process to still be running on immediate try_wait"
       | None ->
-          let* status = wait_for_exit process in
+          with_poll
+            (fun poll ->
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 523) process in
+              if status = Kernel.Process.Exited 0 then
+                Ok ()
+              else
+                Error "expected process to exit cleanly after async poll"))
+
+let test_process_source_reports_exit_ready = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.01"|] ~stdio ()) in
+  with_process process
+    (fun process ->
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 531) process in
           if status = Kernel.Process.Exited 0 then
             Ok ()
           else
-            Error "expected process to exit cleanly after wait")
+            Error "expected async process source to report a clean exit"))
 
 let test_kill_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
@@ -222,12 +250,14 @@ let test_kill_reports_signaled_status = fun _ctx ->
     (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
   with_process process
     (fun process ->
-      let* () = lift_process (Kernel.Process.kill process ~signal:9) in
-      let* status = wait_for_exit process in
-      if status = Kernel.Process.Signaled 9 then
-        Ok ()
-      else
-        Error "expected killed process to report a signaled status")
+      with_poll
+        (fun poll ->
+          let* () = lift_process (Kernel.Process.kill process ~signal:9) in
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 524) process in
+          if status = Kernel.Process.Signaled 9 then
+            Ok ()
+          else
+            Error "expected killed process to report a signaled status"))
 
 let test_sigterm_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
@@ -235,12 +265,14 @@ let test_sigterm_reports_signaled_status = fun _ctx ->
     (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
   with_process process
     (fun process ->
-      let* () = lift_process (Kernel.Process.kill process ~signal:15) in
-      let* status = wait_for_exit process in
-      if status = Kernel.Process.Signaled 15 then
-        Ok ()
-      else
-        Error "expected sigterm to report the delivered signal number")
+      with_poll
+        (fun poll ->
+          let* () = lift_process (Kernel.Process.kill process ~signal:15) in
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 525) process in
+          if status = Kernel.Process.Signaled 15 then
+            Ok ()
+          else
+            Error "expected sigterm to report the delivered signal number"))
 
 let test_non_zero_exit_status_roundtrips = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
@@ -248,11 +280,13 @@ let test_non_zero_exit_status_roundtrips = fun _ctx ->
     (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 7"|] ~stdio ()) in
   with_process process
     (fun process ->
-      let* status = wait_for_exit process in
-      if status = Kernel.Process.Exited 7 then
-        Ok ()
-      else
-        Error "expected process exit status to preserve a non-zero code")
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 526) process in
+          if status = Kernel.Process.Exited 7 then
+            Ok ()
+          else
+            Error "expected process exit status to preserve a non-zero code"))
 
 let test_spawn_applies_custom_environment = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = `Null; stdout = `Pipe; stderr = `Null } in
@@ -270,7 +304,7 @@ let test_spawn_applies_custom_environment = fun _ctx ->
       | Some stdout ->
           with_poll
             (fun poll ->
-              let* status = wait_for_exit process in
+              let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 527) process in
               let* payload = read_all poll ~token:(Kernel.Async.Token.make 505) stdout in
               if payload = "env-ok" && status = Kernel.Process.Exited 0 then
                 Ok ()
@@ -290,7 +324,7 @@ let test_spawn_applies_current_dir = fun _ctx ->
           | Some stdout ->
               with_poll
                 (fun poll ->
-                  let* status = wait_for_exit process in
+                  let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 528) process in
                   let* payload = read_all poll ~token:(Kernel.Async.Token.make 506) stdout in
                   let output =
                     if
@@ -346,7 +380,11 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
               let* process = lift_process
                 (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
               let* status =
-                with_process process (fun process -> wait_for_exit process)
+                with_process
+                  process
+                  (fun process ->
+                    with_poll
+                      (fun poll -> wait_for_exit poll ~token:(Kernel.Async.Token.make 529) process))
               in
               let* output = lift_file (Kernel.Fs.File.open_read output_path) in
               let buffer = Kernel.Bytes.create 32 in
@@ -366,16 +404,42 @@ let test_inherited_stdio_uses_no_kernel_pipes = fun _ctx ->
   let* process = lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
   with_process process
     (fun process ->
-      let* status = wait_for_exit process in
-      if
-        status = Kernel.Process.Exited 0
-        && Kernel.Process.stdin process = None
-        && Kernel.Process.stdout process = None
-        && Kernel.Process.stderr process = None
-      then
-        Ok ()
-      else
-        Error "expected inherited stdio to avoid creating kernel pipes")
+      with_poll
+        (fun poll ->
+          let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 530) process in
+          if
+            status = Kernel.Process.Exited 0
+            && Kernel.Process.stdin process = None
+            && Kernel.Process.stdout process = None
+            && Kernel.Process.stderr process = None
+          then
+            Ok ()
+          else
+            Error "expected inherited stdio to avoid creating kernel pipes"))
+
+let test_spawn_missing_program_reports_no_such_file = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Null; stdout = `Null; stderr = `Null } in
+  match Kernel.Process.spawn ~program:"/definitely/missing/kernel-new-process" ~args:[||] ~stdio () with
+  | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.No_such_file_or_directory) ->
+      Ok ()
+  | Kernel.Result.Error error ->
+      Error (Kernel.Process.error_to_string error)
+  | Kernel.Result.Ok process ->
+      let _ = Kernel.Process.close process in
+      Error "expected missing program spawn to fail"
+
+let test_process_close_tolerates_preclosed_pipe_handles = fun _ctx ->
+  let stdio = Kernel.Process.{ stdin = `Pipe; stdout = `Pipe; stderr = `Null } in
+  let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+  match (Kernel.Process.stdin process, Kernel.Process.stdout process) with
+  | (Some stdin, Some stdout) ->
+      let* () = lift_file (Kernel.Fs.File.close stdin) in
+      let* () = lift_file (Kernel.Fs.File.close stdout) in
+      let* () = lift_process (Kernel.Process.close process) in
+      Ok ()
+  | _ ->
+      let _ = Kernel.Process.close process in
+      Error "expected process pipes to exist"
 
 let tests = [
   Test.case "Process current_pid is positive" test_current_pid_is_positive;
@@ -383,6 +447,7 @@ let tests = [
   Test.case "Process stdin and stdout pipes roundtrip" test_stdin_and_stdout_pipes_roundtrip;
   Test.case "Process stderr redirect_to_stdout merges streams" test_stderr_redirect_to_stdout_merges_streams;
   Test.case "Process try_wait reports running then exit" test_try_wait_reports_running_then_exit;
+  Test.case "Process source reports exit readiness" test_process_source_reports_exit_ready;
   Test.case "Process kill reports signaled status" test_kill_reports_signaled_status;
   Test.case "Process sigterm reports signaled status" test_sigterm_reports_signaled_status;
   Test.case "Process preserves non-zero exit status" test_non_zero_exit_status_roundtrips;
@@ -390,6 +455,8 @@ let tests = [
   Test.case "Process spawn applies current_dir" test_spawn_applies_current_dir;
   Test.case "Process file-backed stdio roundtrips" test_file_backed_stdio_roundtrips;
   Test.case "Process inherited stdio uses no kernel pipes" test_inherited_stdio_uses_no_kernel_pipes;
+  Test.case "Process spawn missing program reports no-such-file" test_spawn_missing_program_reports_no_such_file;
+  Test.case "Process close tolerates preclosed pipe handles" test_process_close_tolerates_preclosed_pipe_handles;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_process_tests" ~tests ~args

@@ -24,10 +24,7 @@ let error_to_string = function
   | System error -> System_error.to_string error
 
 let validate_parts = fun ~secs:_ ~nanos ->
-  if nanos < 0 || nanos >= 1_000_000_000 then
-    Result.Error (Invalid_nanoseconds { nanos })
-  else
-    Result.Ok ()
+  Result.map_error (fun () -> Invalid_nanoseconds { nanos }) (Common.validate_nanos nanos)
 
 let of_parts = fun ~secs ~nanos ->
   let* () = validate_parts ~secs ~nanos in
@@ -48,10 +45,17 @@ let now = fun () ->
   of_parts ~secs ~nanos
 
 let compare = fun left right ->
-  let secs_order = Int.compare left.secs right.secs in
-  if secs_order = 0 then
-    Int.compare left.nanos right.nanos
-  else
-    secs_order
+  Common.compare_parts
+    ~left_secs:left.secs
+    ~left_nanos:left.nanos
+    ~right_secs:right.secs
+    ~right_nanos:right.nanos
 
 let equal = fun left right -> compare left right = 0
+
+let diff_ns = fun left right ->
+  Common.diff_ns
+    ~left_secs:left.secs
+    ~left_nanos:left.nanos
+    ~right_secs:right.secs
+    ~right_nanos:right.nanos

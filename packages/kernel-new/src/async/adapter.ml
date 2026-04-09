@@ -24,6 +24,12 @@ module FFI = struct
 
   external selector_apply: selector -> event array -> int array -> (unit, int) Result.t = "kernel_new_async_unix_selector_apply"
 
+  external selector_register_process: selector -> int -> Token.t -> (unit, int) Result.t = "kernel_new_async_unix_selector_register_process"
+
+  external selector_reregister_process: selector -> int -> Token.t -> (unit, int) Result.t = "kernel_new_async_unix_selector_reregister_process"
+
+  external selector_deregister_process: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_process"
+
   let create = fun () ->
     Result.map_error (fun code -> System (System_error.of_code code)) (selector_create ())
 
@@ -39,6 +45,21 @@ module FFI = struct
     Result.map_error
       (fun code -> System (System_error.of_code code))
       (selector_apply selector changes ignored_errors)
+
+  let register_process = fun selector ~pid ~token ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_register_process selector pid token)
+
+  let reregister_process = fun selector ~pid ~token ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_reregister_process selector pid token)
+
+  let deregister_process = fun selector ~pid ->
+    Result.map_error
+      (fun code -> System (System_error.of_code code))
+      (selector_deregister_process selector pid)
 end
 
 module Kevent = struct
@@ -50,7 +71,7 @@ module Kevent = struct
 
   let is_error = fun event -> event.flags land Libc.ev_error != 0
 
-  let is_priority = fun _event -> false
+  let is_priority = fun event -> event.filter = Libc.evfilt_proc
 
   let is_readable = fun event -> event.filter = Libc.evfilt_read
 
@@ -125,4 +146,10 @@ module Selector = struct
       Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
     |] in
     FFI.apply selector changes [|System_error.code_no_such_file_or_directory|]
+
+  let register_process = fun selector ~pid ~token -> FFI.register_process selector ~pid ~token
+
+  let reregister_process = fun selector ~pid ~token -> FFI.reregister_process selector ~pid ~token
+
+  let deregister_process = fun selector ~pid -> FFI.deregister_process selector ~pid
 end

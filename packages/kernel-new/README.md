@@ -38,6 +38,17 @@ Examples:
 - Keep native code in [`native/`](./native).
 - Keep public APIs portable even when the backend is Unix-only today.
 - Prefer structured errors over stringly errors or native exceptions.
+- If an operation has a real async/readiness path, prefer exposing that path instead of a blocking helper. Fast metadata-style syscalls are still fine when they are inherently synchronous.
+
+## For `std`
+
+`std` should treat `kernel-new` as the portability substrate, not as a complete user-facing I/O library.
+
+The intended seams are:
+- `Fs.File.to_source`, `Net.*.to_source`, and `Process.to_source` for actor-friendly waiting
+- `try_wait` instead of a blocking process wait
+- `IO.Iovec` for vectored file and socket operations
+- `SystemTime` and `Monotonic` as raw clock primitives, with richer time APIs above
 
 ## Validate
 

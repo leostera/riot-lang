@@ -24,6 +24,8 @@ type t =
   | Not_connected
   | Connection_aborted
   | Message_too_long
+  | No_such_process
+  | Directory_not_empty
   | Unknown of int
 
 let code_end_of_file = 1
@@ -76,6 +78,10 @@ let code_connection_aborted = 24
 
 let code_message_too_long = 25
 
+let code_no_such_process = 26
+
+let code_directory_not_empty = 27
+
 let of_code = function
   | 1 -> End_of_file
   | 2 -> Permission_denied
@@ -102,6 +108,8 @@ let of_code = function
   | 23 -> Not_connected
   | 24 -> Connection_aborted
   | 25 -> Message_too_long
+  | 26 -> No_such_process
+  | 27 -> Directory_not_empty
   | code -> Unknown code
 
 let to_string = function
@@ -130,6 +138,8 @@ let to_string = function
   | Not_connected -> "socket is not connected"
   | Connection_aborted -> "connection aborted"
   | Message_too_long -> "message too long"
+  | No_such_process -> "no such process"
+  | Directory_not_empty -> "directory not empty"
   | Unknown _ -> "unknown kernel error"
 
 let is_would_block = function

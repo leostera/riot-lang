@@ -278,3 +278,101 @@ CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value ch
   result = kernel_new_result_ok(Val_unit);
   CAMLreturn(result);
 }
+
+static value kernel_new_async_process_change(
+  value selector_val,
+  value pid_val,
+  value token_val,
+  int flags
+) {
+  CAMLparam3(selector_val, pid_val, token_val);
+
+  int selector_fd = Int_val(selector_val);
+  int pid = Int_val(pid_val);
+  struct kevent change;
+  token_binding *binding = NULL;
+
+  if ((flags & EV_DELETE) != 0) {
+    binding = kernel_new_async_find_binding(selector_fd, pid, EVFILT_PROC);
+    if (binding == NULL) {
+      CAMLreturn(kernel_new_result_ok(Val_unit));
+    }
+  } else {
+    binding = kernel_new_async_store_binding(selector_fd, pid, EVFILT_PROC, token_val);
+  }
+
+  EV_SET(
+    &change,
+    (uintptr_t)pid,
+    EVFILT_PROC,
+    flags,
+    NOTE_EXIT,
+    0,
+    binding->token_root);
+
+  int syscall_result;
+  caml_enter_blocking_section();
+  syscall_result = kevent(selector_fd, &change, 1, NULL, 0, NULL);
+  caml_leave_blocking_section();
+
+  if (syscall_result == -1) {
+    int code = kernel_new_error_of_errno(errno);
+    if ((flags & EV_DELETE) == 0) {
+      kernel_new_async_remove_binding(selector_fd, pid, EVFILT_PROC);
+    }
+    if (
+      code == KERNEL_NEW_ERR_INTERRUPTED
+      || code == KERNEL_NEW_ERR_NO_SUCH_PROCESS
+    ) {
+      if ((flags & EV_DELETE) != 0) {
+        kernel_new_async_remove_binding(selector_fd, pid, EVFILT_PROC);
+      }
+      CAMLreturn(kernel_new_result_ok(Val_unit));
+    }
+    CAMLreturn(kernel_new_result_error(code));
+  }
+
+  if ((flags & EV_DELETE) != 0) {
+    kernel_new_async_remove_binding(selector_fd, pid, EVFILT_PROC);
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
+CAMLprim value kernel_new_async_unix_selector_register_process(
+  value selector_val,
+  value pid_val,
+  value token_val
+) {
+  return kernel_new_async_process_change(
+    selector_val,
+    pid_val,
+    token_val,
+    EV_ADD | EV_RECEIPT | EV_CLEAR
+  );
+}
+
+CAMLprim value kernel_new_async_unix_selector_reregister_process(
+  value selector_val,
+  value pid_val,
+  value token_val
+) {
+  return kernel_new_async_process_change(
+    selector_val,
+    pid_val,
+    token_val,
+    EV_ADD | EV_RECEIPT | EV_CLEAR
+  );
+}
+
+CAMLprim value kernel_new_async_unix_selector_deregister_process(
+  value selector_val,
+  value pid_val
+) {
+  return kernel_new_async_process_change(
+    selector_val,
+    pid_val,
+    Val_int(0),
+    EV_DELETE | EV_RECEIPT
+  );
+}

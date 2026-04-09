@@ -19,3 +19,5 @@ val now: unit -> (t, error) Result.t
 val compare: t -> t -> int
 
 val equal: t -> t -> bool
+
+val diff_ns: t -> t -> int64

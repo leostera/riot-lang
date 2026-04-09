@@ -182,6 +182,21 @@ let try_wait = fun process ->
           process.status <- status;
           Result.Ok (Some status)
 
+let to_source = fun process ->
+  let module Source = struct
+    type nonrec t = t
+
+    let register = fun process selector token _interest ->
+      Async.Adapter.Selector.register_process selector ~pid:process.pid ~token
+
+    let reregister = fun process selector token _interest ->
+      Async.Adapter.Selector.reregister_process selector ~pid:process.pid ~token
+
+    let deregister = fun process selector ->
+      Async.Adapter.Selector.deregister_process selector ~pid:process.pid
+  end in
+  Async.Source.make (module Source) process
+
 let kill = fun process ~signal ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.kill process.pid signal)
 
@@ -197,6 +212,7 @@ let close = fun process ->
           match (first_error, Fs.File.close file) with
           | (Some error, _) -> Some error
           | (None, Result.Ok ()) -> None
+          | (None, Result.Error (Fs.File.System System_error.Bad_file_descriptor)) -> None
           | (None, Result.Error error) -> Some (File error)
         in
         close_all next_error rest

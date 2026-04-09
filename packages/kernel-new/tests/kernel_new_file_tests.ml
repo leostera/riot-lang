@@ -189,6 +189,32 @@ let test_symlink_metadata_and_canonicalize = fun _ctx ->
           else
             Error "expected symlink metadata and canonicalize to distinguish link from target"))
 
+let test_dangling_symlink_still_has_symlink_metadata = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let target = Kernel.Path.(tempdir / "target.txt") in
+      let link = Kernel.Path.(tempdir / "dangling") in
+      let* file = lift (Kernel.Fs.File.open_write target) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "kernel")) in
+            Ok ())
+      in
+      let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
+      protect
+        ~finally:(fun () ->
+          let _ = Kernel.Fs.File.remove_file link in
+          ())
+        (fun () ->
+          let* () = lift (Kernel.Fs.File.remove_file target) in
+          let* exists = lift (Kernel.Fs.File.exists link) in
+          let* metadata = lift (Kernel.Fs.File.symlink_metadata link) in
+          if not exists && Kernel.Fs.File.Metadata.is_symlink metadata then
+            Ok ()
+          else
+            Error "expected dangling symlink_metadata to preserve symlink kind"))
+
 let test_copy_and_rename_roundtrip = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
@@ -271,6 +297,24 @@ let test_hard_link_updates_link_count_and_remove_ops = fun _ctx ->
         Ok ()
       else
         Error "expected hard_link to share metadata and remove ops to clean up paths")
+
+let test_remove_nonempty_dir_reports_resource_busy = fun _ctx ->
+  with_tempdir "kernel_new_file"
+    (fun tempdir ->
+      let directory = Kernel.Path.(tempdir / "child") in
+      let child_file = Kernel.Path.(directory / "entry.txt") in
+      let* () = lift (Kernel.Fs.File.create_dir directory ~perm:0o755) in
+      let* file = lift (Kernel.Fs.File.open_write child_file) in
+      let* () =
+        with_file file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.of_string "x")) in
+            Ok ())
+      in
+      match Kernel.Fs.File.remove_dir directory with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.Directory_not_empty) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
+      | Kernel.Result.Ok () -> Error "expected removing a non-empty directory to fail")
 
 let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
   with_tempdir "kernel_new_file"
@@ -373,9 +417,11 @@ let tests = [
   Test.case "Fs.File read and write respect pos and len" test_file_read_and_write_respect_pos_and_len;
   Test.case "Fs.File create_dir and read_dir_names" test_create_dir_and_read_dir_names;
   Test.case "Fs.File symlink metadata and canonicalize" test_symlink_metadata_and_canonicalize;
+  Test.case "Fs.File dangling symlink still reports symlink metadata" test_dangling_symlink_still_has_symlink_metadata;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
   Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
   Test.case "Fs.File hard_link and remove ops update filesystem state" test_hard_link_updates_link_count_and_remove_ops;
+  Test.case "Fs.File remove non-empty dir reports an error" test_remove_nonempty_dir_reports_resource_busy;
   Test.case "Fs.File exists and is_directory report expected kinds" test_exists_and_is_directory_report_expected_kinds;
   Test.case "Fs.File read_vectored roundtrips" test_read_vectored_roundtrips;
   Test.case "Fs.File is_tty is false for files and pipes" test_is_tty_is_false_for_files_and_pipes;

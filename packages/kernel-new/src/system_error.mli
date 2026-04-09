@@ -24,6 +24,8 @@ type t =
   | Not_connected
   | Connection_aborted
   | Message_too_long
+  | No_such_process
+  | Directory_not_empty
   | Unknown of int
 val code_end_of_file: int
 
@@ -74,6 +76,10 @@ val code_not_connected: int
 val code_connection_aborted: int
 
 val code_message_too_long: int
+
+val code_no_such_process: int
+
+val code_directory_not_empty: int
 
 val of_code: int -> t
 

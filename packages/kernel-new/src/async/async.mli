@@ -19,6 +19,8 @@ module Interest: sig
 
   val writable: t
 
+  val priority: t
+
   val add: t -> t -> t
 
   val remove: t -> t -> t option
@@ -26,6 +28,8 @@ module Interest: sig
   val is_readable: t -> bool
 
   val is_writable: t -> bool
+
+  val is_priority: t -> bool
 end
 
 module Event: sig
@@ -59,6 +63,12 @@ module Adapter: sig
     val reregister: t -> fd:int -> token:Token.t -> interest:Interest.t -> (unit, error) Result.t
 
     val deregister: t -> fd:int -> (unit, error) Result.t
+
+    val register_process: t -> pid:int -> token:Token.t -> (unit, error) Result.t
+
+    val reregister_process: t -> pid:int -> token:Token.t -> (unit, error) Result.t
+
+    val deregister_process: t -> pid:int -> (unit, error) Result.t
   end
 end
 

@@ -58,6 +58,8 @@ val stderr: t -> Fs.File.t option
 
 val try_wait: t -> (status option, error) Result.t
 
+val to_source: t -> Async.Source.t
+
 val kill: t -> signal:int -> (unit, error) Result.t
 
 val close: t -> (unit, error) Result.t

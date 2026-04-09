@@ -33,6 +33,8 @@
 #define KERNEL_NEW_ERR_NOT_CONNECTED 23
 #define KERNEL_NEW_ERR_CONNECTION_ABORTED 24
 #define KERNEL_NEW_ERR_MESSAGE_TOO_LONG 25
+#define KERNEL_NEW_ERR_NO_SUCH_PROCESS 26
+#define KERNEL_NEW_ERR_DIRECTORY_NOT_EMPTY 27
 
 static inline int kernel_new_error_of_errno(int error_number) {
   switch (error_number) {
@@ -76,6 +78,12 @@ static inline int kernel_new_error_of_errno(int error_number) {
 #endif
 #ifdef EMSGSIZE
     case EMSGSIZE: return KERNEL_NEW_ERR_MESSAGE_TOO_LONG;
+#endif
+#ifdef ESRCH
+    case ESRCH: return KERNEL_NEW_ERR_NO_SUCH_PROCESS;
+#endif
+#ifdef ENOTEMPTY
+    case ENOTEMPTY: return KERNEL_NEW_ERR_DIRECTORY_NOT_EMPTY;
 #endif
     default: return KERNEL_NEW_ERR_UNKNOWN_BASE + error_number;
   }

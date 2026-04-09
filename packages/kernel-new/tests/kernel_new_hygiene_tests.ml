@@ -53,9 +53,20 @@ let test_source_limits_identity_casts_to_primitives = fun _ctx ->
   | [] -> Ok ()
   | path :: _ -> Error ("expected only primitives.ml to use %identity, found " ^ path)
 
+let test_process_surface_avoids_blocking_wait_api = fun _ctx ->
+  let* process_mli = read_file (Path.v "packages/kernel-new/src/process/process.mli") in
+  let* process_native = read_file (Path.v "packages/kernel-new/native/kernel_new_unix_process.c") in
+  if
+    String.contains process_mli "val wait:" || String.contains process_native "kernel_new_process_wait("
+  then
+    Error "expected kernel-new process to avoid a blocking wait API"
+  else
+    Ok ()
+
 let tests = [
   Test.case "Kernel-new source avoids Unix and Stdlib references" test_source_avoids_stdlib_and_unix_references;
   Test.case "Kernel-new source limits %identity casts to primitives" test_source_limits_identity_casts_to_primitives;
+  Test.case "Kernel-new process avoids a blocking wait api" test_process_surface_avoids_blocking_wait_api;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_hygiene_tests" ~tests ~args

@@ -83,20 +83,40 @@ let read_once = fun poll ~token file ->
   in
   loop ()
 
-let rec wait_for_exit = fun process ->
-  match Kernel.Process.try_wait process with
-  | Kernel.Result.Ok (Some _status as status) ->
-      status
-  | Kernel.Result.Ok None ->
-      yield ();
-      wait_for_exit process
-  | Kernel.Result.Error error ->
-      Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+let wait_for_exit = fun poll ~token process ->
+  let exit_poll_timeout = 1_000_000L in
+  let rec loop () =
+    match Kernel.Process.try_wait process with
+    | Kernel.Result.Ok (Some _status as status) ->
+        status
+    | Kernel.Result.Ok None ->
+        let source = Kernel.Process.to_source process in
+        let _ = lift_async
+          (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+        protect
+          ~finally:(fun () ->
+            let _ = Kernel.Async.Poll.deregister poll source in
+            ())
+          (fun () ->
+            let _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
+            loop ())
+    | Kernel.Result.Error error ->
+        Kernel.Error.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+  in
+  loop ()
 
 let bench_spawn_true = fun () ->
-  let process = lift_process
-    (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio:Kernel.Process.default_stdio ()) in
-  with_process process (fun process -> ignore (wait_for_exit process))
+  with_poll
+    (fun poll ->
+      let process = lift_process
+        (Kernel.Process.spawn
+          ~program:"/usr/bin/true"
+          ~args:[||]
+          ~stdio:Kernel.Process.default_stdio
+          ()) in
+      with_process
+        process
+        (fun process -> ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 610) process)))
 
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
@@ -110,7 +130,7 @@ let bench_spawn_echo_with_pipe = fun () ->
           | None -> Kernel.Error.panic "expected stdout pipe"
           | Some stdout ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
-              ignore (wait_for_exit process)))
+              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 611) process)))
 
 let benchmarks =
   Bench.[

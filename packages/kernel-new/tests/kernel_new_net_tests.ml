@@ -349,6 +349,16 @@ let test_tcp_stream_shutdown_write_reports_eof_to_peer = fun _ctx ->
       else
         Error "expected tcp write shutdown to surface eof to the peer")
 
+let test_tcp_stream_shutdown_write_rejects_further_writes = fun _ctx ->
+  with_tcp_pair
+    (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
+      let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
+      match Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x") with
+      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.Broken_pipe) -> Ok ()
+      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.Not_connected) -> Ok ()
+      | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
+      | Kernel.Result.Ok _ -> Error "expected write-shutdown tcp stream to reject further writes")
+
 let test_tcp_listener_ipv6_local_addr_roundtrips = fun _ctx ->
   let* listener = lift_tcp_listener
     (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
@@ -564,6 +574,7 @@ let tests = [
   Test.case "Net.TcpListener and TcpStream roundtrip over loopback" test_tcp_listener_and_stream_roundtrip;
   Test.case "Net.TcpStream reports eof after peer close" test_tcp_stream_reports_eof_after_peer_close;
   Test.case "Net.TcpStream write shutdown reports eof to the peer" test_tcp_stream_shutdown_write_reports_eof_to_peer;
+  Test.case "Net.TcpStream write shutdown rejects further writes" test_tcp_stream_shutdown_write_rejects_further_writes;
   Test.case "Net.TcpListener ipv6 local_addr preserves loopback" test_tcp_listener_ipv6_local_addr_roundtrips;
   Test.case "Net.TcpListener bind rejects address already in use" test_tcp_listener_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send_to and recv_from roundtrip over loopback" test_udp_socket_send_to_and_recv_from;

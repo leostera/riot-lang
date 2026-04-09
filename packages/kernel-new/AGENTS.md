@@ -11,8 +11,9 @@
 5. Do not depend on `stdlib` or `unix` in `kernel-new` implementation code. If a compiler-owned type such as `string` or `option` must be referenced, keep that dependency explicit and minimal.
 6. Prefer explicit error variants over exception-driven APIs. Each public module should own a small typed `error` type, and `Kernel_new.Error` should wrap those typed errors at package boundaries. Native stubs should return `Result.t` with canonical `SystemError.t` codes instead of surfacing platform exceptions into OCaml.
 7. Build new native stubs mechanically and narrowly. Avoid monolithic helpers that smuggle policy into C.
-8. Tests belong in `tests/` and benchmarks in `bench/`, using `std` as a dev-dependency.
-9. Start with the Unix backend, but keep the directory structure ready for additional backends under each public module.
+8. If a capability has a real async or readiness-driven path, do not add a blocking helper for it in `kernel-new`. Fast metadata/sysinfo calls are fine when they are inherently synchronous.
+9. Tests belong in `tests/` and benchmarks in `bench/`, using `std` as a dev-dependency.
+10. Start with the Unix backend, but keep the directory structure ready for additional backends under each public module.
 
 ## Validate
 

@@ -19,3 +19,5 @@ let ev_error = 0x4000
 let evfilt_read = (-1)
 
 let evfilt_write = (-2)
+
+let evfilt_proc = (-5)
