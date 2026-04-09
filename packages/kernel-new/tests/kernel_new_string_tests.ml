@@ -22,7 +22,7 @@ let test_to_bytes_copies_input = fun _ctx ->
 
 let test_init_builds_expected_string = fun _ctx ->
   let built =
-    Kernel.String.init 4 (fun index -> Kernel.Char.of_int (65 + index))
+    Kernel.String.init 4 (fun index -> Kernel.Char.unsafe_of_int (65 + index))
   in
   if Kernel.String.equal built "ABCD" then
     Ok ()

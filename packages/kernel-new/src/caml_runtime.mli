@@ -44,6 +44,8 @@ external shift_right_int: int -> int -> int = "%asrint"
 
 external int_of_char: char -> int = "%identity"
 
+(** Internal unchecked bridge from an integer that is already known to be a valid byte-sized
+    character. Public checked constructors should live above this module. *)
 external char_of_int: int -> char = "%identity"
 
 external argv: string array = "%sys_argv"
@@ -66,12 +68,18 @@ external bytes_blit: bytes -> int -> bytes -> int -> int -> unit = "caml_blit_by
 
 external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_string" [@@noalloc]
 
+(** Internal zero-copy bridge from owned mutable bytes into an immutable string view. Callers must
+    ensure the bytes will not be mutated afterward. *)
 external bytes_unsafe_to_string: bytes -> string = "%bytes_to_string"
 
+(** Internal zero-copy bridge from an immutable string into mutable bytes. Callers must ensure the
+    bytes view will not be mutated in a way that violates string immutability assumptions. *)
 external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
 
+(** Internal copying bridge from bytes into a fresh immutable string. *)
 val bytes_to_string: bytes -> string
 
+(** Internal copying bridge from string into fresh mutable bytes. *)
 val bytes_of_string: string -> bytes
 
 external int64_of_int: int -> int64 = "%int64_of_int"

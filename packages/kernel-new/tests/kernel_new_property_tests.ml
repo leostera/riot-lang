@@ -306,6 +306,43 @@ let iovec_sub_matches_flattened_substring =
       let actual = Kernel.IO.Iovec.into_string (Kernel.IO.Iovec.sub ~pos ~len iov) in
       actual = expected)
 
+let array_of_list_roundtrips =
+  property
+    "Array.of_list roundtrips arbitrary integer arrays"
+    Arbitrary.(array int)
+    (fun values -> array_to_list (Kernel.Array.of_list (array_to_list values)) = array_to_list values)
+
+let array_map_preserves_order =
+  property
+    "Array.map preserves element order"
+    Arbitrary.(array int)
+    (fun values ->
+      array_to_list (Kernel.Array.map (fun value -> value + 1) values)
+      = List.map (fun value -> value + 1) (array_to_list values))
+
+let char_of_int_roundtrips_valid_bytes =
+  property "Char.of_int roundtrips valid byte values" Arbitrary.int
+    (fun raw ->
+      let value = Int.abs raw mod 256 in
+      match Kernel.Char.of_int value with
+      | Some char -> Kernel.Char.to_int char = value
+      | None -> false)
+
+let option_unwrap_or_prefers_some =
+  property
+    "Option.unwrap_or prefers the Some branch"
+    Arbitrary.(pair int int)
+    (fun (value, default) ->
+      Kernel.Option.unwrap_or (Kernel.Option.Some value) ~default = value
+      && Kernel.Option.unwrap_or Kernel.Option.None ~default = default)
+
+let result_map_error_preserves_ok =
+  property "Result.map_error preserves the Ok branch" Arbitrary.int
+    (fun value ->
+      match Kernel.Result.map_error (fun _ -> "mapped") (Kernel.Result.Ok value) with
+      | Kernel.Result.Ok mapped -> mapped = value
+      | Kernel.Result.Error _ -> false)
+
 let bytes_string_roundtrip =
   property "Bytes.of_string and Bytes.to_string roundtrip arbitrary strings" Arbitrary.string
     (fun value ->
@@ -834,6 +871,11 @@ let udp_loopback_roundtrips_small_payload =
 let tests = [
   iovec_into_string_roundtrips;
   iovec_sub_matches_flattened_substring;
+  array_of_list_roundtrips;
+  array_map_preserves_order;
+  char_of_int_roundtrips_valid_bytes;
+  option_unwrap_or_prefers_some;
+  result_map_error_preserves_ok;
   bytes_string_roundtrip;
   bytes_sub_string_matches_string_sub;
   string_bytes_roundtrip;
