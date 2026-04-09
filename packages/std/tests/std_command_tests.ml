@@ -82,4 +82,4 @@ let main = fun ~args ->
   | _ :: "capture-both-streams" :: _ -> capture_main ()
   | _ -> meta_main ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

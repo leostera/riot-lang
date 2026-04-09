@@ -15,7 +15,7 @@ let self_executable = fun () ->
   | [] -> panic "missing argv[0] for std_bench_cli_tests"
 
 let run_sample_capture = fun args ->
-  let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
+  let cmd = Command.make (self_executable ()) ~args:("sample" :: args) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample bench cli"
 
 let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
@@ -174,7 +174,7 @@ let sample_main = fun ~args ->
   | exe :: _sample :: rest -> Bench.Cli.main
     ~name:"sample"
     ~benchmarks:sample_benchmarks
-    ~args:((exe :: rest))
+    ~args:(exe :: rest)
   | _ -> Error (Failure "expected sample subcommand arguments")
 
 let meta_main = fun ~args ->
@@ -190,4 +190,4 @@ let main = fun ~args ->
   | _ :: "sample" :: _ -> sample_main ~args
   | _ -> meta_main ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

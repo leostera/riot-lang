@@ -307,4 +307,4 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"datetime" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"datetime" ~tests ~args) ~args:Env.args ()

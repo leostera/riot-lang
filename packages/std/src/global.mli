@@ -45,25 +45,27 @@ exception Receive_timeout
 
 exception Syscall_timeout
 
-(** Get the PID of the currently running process *)
-type 'msg selector = 'msg Actors.selector
-val self: unit -> Actors.Pid.t
+(** Mailbox selector type used by receive operations. *)
+type 'msg selector = 'msg Runtime.selector
+
+(** Get the PID of the currently running process. *)
+val self: unit -> Runtime.Pid.t
 
 (** Spawn a new process *)
-val spawn: (unit -> (unit, Actors.Process.exit_reason) Kernel.result) -> Actors.Pid.t
+val spawn: (unit -> (unit, Runtime.Actor.exit_reason) Kernel.result) -> Runtime.Pid.t
 
 (** Spawn a new process linked to the current process *)
-val spawn_link: (unit -> (unit, Actors.Process.exit_reason) Kernel.result) -> Actors.Pid.t
+val spawn_link: (unit -> (unit, Runtime.Actor.exit_reason) Kernel.result) -> Runtime.Pid.t
 
 (** Send a message to a process *)
-val send: Actors.Pid.t -> Actors.Message.t -> unit
+val send: Runtime.Pid.t -> Runtime.Message.t -> unit
 
 (** Receive a message using a selector *)
 
 (** Receive any message *)
-val receive: selector:'value Actors.selector -> ?timeout:Time.Duration.t -> unit -> 'value
+val receive: selector:'value Runtime.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
-val receive_any: ?timeout:Time.Duration.t -> unit -> Actors.Message.t
+val receive_any: ?timeout:Time.Duration.t -> unit -> Runtime.Message.t
 
 (** Sleeps the current process for at least the specified duration *)
 val sleep: Time.Duration.t -> unit

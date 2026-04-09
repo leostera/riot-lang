@@ -92,5 +92,5 @@ val assert_true: bool -> unit
 module Cli: sig
   (** Main entry point for test binaries with CLI support. *)
   val main:
-    name:string -> tests:test_case list -> args:string list -> (unit, Actors.Process.exit_reason) result
+    name:string -> tests:test_case list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
 end

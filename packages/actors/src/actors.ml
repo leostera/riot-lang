@@ -6,7 +6,7 @@ module Message = Message
 module Proc = Process
 module Config = Config
 
-module Process = struct
+module Actor = struct
   include Proc
 
   type exit_reason = Proc.exit_reason
@@ -74,6 +74,8 @@ module Process = struct
     Scheduler.kill (Scheduler.get_scheduler ()) pid reason
 end
 
+module Process = Actor
+
 let run = fun ~main ~args ?config () ->
   let config = Option.unwrap_or config ~default:Config.default in
   Kernel.Exception.record_backtrace true;
@@ -85,11 +87,7 @@ let spawn = fun fn ->
   Scheduler.spawn (Scheduler.get_scheduler ()) fn
 
 let spawn_pinned = fun ?scheduler fn ->
-  let scheduler =
-    match scheduler with
-    | None -> None
-    | Some scheduler -> Some (Scheduler_id.of_int scheduler)
-  in
+  let scheduler = Option.map Scheduler_id.of_int scheduler in
   Scheduler.spawn_pinned ?worker_id:scheduler (Scheduler.get_scheduler ()) fn
 
 let spawn_blocked = fun fn ->
@@ -97,15 +95,14 @@ let spawn_blocked = fun fn ->
 
 let spawn_link = fun fn ->
   let pid = spawn fn in
-  Process.link pid;
+  Actor.link pid;
   pid
 
 let self = fun () -> Scheduler.self ()
 
 let current_scheduler_id = fun () -> Scheduler.current_worker_id_opt ()
 
-let send = fun pid msg ->
-  Scheduler.send pid msg
+let send = Scheduler.send
 
 (* Cooperative I/O syscall for actor-aware I/O operations *)
 
@@ -113,7 +110,9 @@ let syscall = fun ~name ~interest ~source ~timeout ->
   Effect.perform (Proc_effect.Syscall { name; interest; source; timeout })
 
 module Timer = struct
-  type id = Timer_id.t
+  type t = Timer_id.t
+
+  type id = t
 
   let send_after = fun target_pid (msg: Message.t) ~after ->
     let sch = Scheduler.get_scheduler () in
@@ -146,9 +145,9 @@ include Effects
 
 let yield = fun () ->
   let current = Scheduler.get_current_process () in
-  match Process.use_reduction current with
-  | Process.Continue -> ()
-  | Process.Yield -> Effects.yield ()
+  match Actor.use_reduction current with
+  | Actor.Continue -> ()
+  | Actor.Yield -> Effects.yield ()
 
 module Timer_id = Timer_id
 

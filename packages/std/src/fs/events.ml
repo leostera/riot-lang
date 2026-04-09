@@ -83,19 +83,18 @@ let poll = fun t ->
                 IO.Bytes.blit read_buf 0 new_buf t.buffer_len n;
                 t.buffer <- new_buf;
               end
-            else
-              begin
-                IO.Bytes.blit read_buf 0 t.buffer t.buffer_len n;
-              end;
-              t.buffer_len <- new_len;
-              read_and_parse events
+            else begin
+              IO.Bytes.blit read_buf 0 t.buffer t.buffer_len n;
+            end;
+            t.buffer_len <- new_len;
+            read_and_parse events
         | Error (IO.Operation_would_block | IO.Resource_unavailable_try_again) ->
             (* If we have events already, return them *)
             if List.length events > 0 then
               Ok (List.rev events)
               (* Otherwise wait for readable *)
             else
-              Actors.syscall
+              Runtime.syscall
                 ~name:"Fs.Events.read"
                 ~interest:Kernel.Async.Interest.readable
                 ~source:t.source

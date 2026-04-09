@@ -83,4 +83,4 @@ let tests = [ Test.case "std regex DSL compiles and matches"
 
 let main = fun ~args -> Test.Cli.main ~name:"std_glob_regex_tests" ~tests ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

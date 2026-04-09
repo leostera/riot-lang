@@ -122,4 +122,4 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
 
 let main = fun ~args -> Test.Cli.main ~name:"std_fs_walker_tests" ~tests ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

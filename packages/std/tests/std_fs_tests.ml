@@ -28,4 +28,4 @@ let tests = [
 
 let main = fun ~args -> Test.Cli.main ~name:"std_fs_tests" ~tests ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

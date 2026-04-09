@@ -43,6 +43,7 @@ module Range = Range
 module Regex = Regex
 module Ref = Ref
 module Result = Result
+module Runtime = Runtime
 module String = String
 module Supervisor = Supervisor
 module Sync = Sync
@@ -66,7 +67,7 @@ include Global
 (* Application startup *)
 
 let start = fun ~apps ->
-  let config = Actors.Config.default in
+  let config = Runtime.Config.default in
   let main ~args:_ =
     match Application.start_applications apps with
     | Ok _app_pids ->
@@ -79,4 +80,4 @@ let start = fun ~apps ->
         Ok ()
     | Error e -> Error e
   in
-  Actors.run ~config ~main ~args:[] ()
+  Runtime.run ~config ~main ~args:[] ()

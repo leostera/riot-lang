@@ -196,7 +196,7 @@ let tests = [
 ]
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args -> Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args)
     ~args:Env.args
     ()

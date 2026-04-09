@@ -17,7 +17,7 @@ open Global
 
     ```ocaml
     let () =
-      Actors.run
+      Runtime.run
         ~main:(fun ~args ->
           Bench.Cli.main
             ~name:"My Benchmarks"
@@ -30,4 +30,4 @@ val main:
   name:string ->
   benchmarks:Bench_runner.bench_item list ->
   args:string list ->
-  (unit, Actors.Process.exit_reason) result
+  (unit, Runtime.Actor.exit_reason) result

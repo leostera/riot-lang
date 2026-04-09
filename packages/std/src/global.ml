@@ -3,34 +3,34 @@ include Kernel.Types
 include Kernel.Global
 
 (** Process management globals *)
-include Actors.Exception
+include Runtime.Exception
 
-type 'msg selector = 'msg Actors.selector
+type 'msg selector = 'msg Runtime.selector
 
-let self = Actors.self
+let self = Runtime.self
 
-let spawn = Actors.spawn
+let spawn = Runtime.spawn
 
-let spawn_link = Actors.spawn_link
+let spawn_link = Runtime.spawn_link
 
-let send = Actors.send
+let send = Runtime.send
 
 let receive = fun ~selector ?timeout () ->
   let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Actors.receive ~selector ?timeout ()
+  Runtime.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
   let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Actors.receive_any ?timeout ()
+  Runtime.receive_any ?timeout ()
 
 let sleep = fun timeout ->
   let selector _msg = `skip in
   try receive ~selector ~timeout () with
   | Receive_timeout -> ()
 
-let yield = Actors.yield
+let yield = Runtime.yield
 
-let shutdown = Actors.shutdown
+let shutdown = Runtime.shutdown
 
 open Kernel
 

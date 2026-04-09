@@ -153,4 +153,4 @@ let tests = [
   test_stop_idempotent;
 ]
 
-let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

@@ -2,4 +2,4 @@
 
     Open variant type used for actor message passing across the runtime. *)
 
-type t = Actors.Message.t = ..
+type t = Runtime.Message.t = ..

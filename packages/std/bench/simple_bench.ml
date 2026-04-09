@@ -7,7 +7,9 @@ let bench_addition = fun () ->
   ()
 
 let bench_string_concat = fun () ->
-  let _ = "hello" ^ " " ^ "world" in
+  let left = "hello" in
+  let right = "world" in
+  let _ = left ^ " " ^ right in
   ()
 
 let bench_list_creation = fun () ->
@@ -26,7 +28,7 @@ let benchmarks =
 (* Main entry point using new Bench.Cli *)
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()

@@ -130,7 +130,7 @@ let test_at_path_no_match = Test.case "at_path with no match" @@ fun _ctx ->
     Error "Expected no matches"
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args ->
       let all_tests = [
         test_path_component_key;

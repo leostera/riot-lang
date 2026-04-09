@@ -151,10 +151,10 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
         )
 
 let test_udp_server_serves_one_datagram = fun _ctx ->
-  let parent = Actors.self () in
+  let parent = Runtime.self () in
   let handler ~socket ~from payload ~len =
     let received = Bytes.sub_string payload 0 len in
-    Actors.send parent (Udp_server_received received);
+    Runtime.send parent (Udp_server_received received);
     ignore (Net.UdpSocket.send_to socket from (Bytes.of_string "pong") ());
     Net.UdpSocket.close socket
   in
@@ -162,7 +162,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
   | Error err -> Error ("UdpServer.bind failed: " ^ string_of_udp_server_error err)
   | Ok server -> (
       let _server_pid =
-        Actors.spawn
+        Runtime.spawn
           (fun () ->
             ignore (Net.UdpServer.serve server);
             Ok ())
@@ -184,7 +184,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
               Error ("client send_to server failed: " ^ string_of_udp_error err)
           | Ok _ -> (
               match
-                Actors.receive
+                Runtime.receive
                   ~selector:(
                     function
                     | Udp_server_received payload -> `select payload
@@ -223,4 +223,4 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp" ~tests ~args) ~args:Env.args ()

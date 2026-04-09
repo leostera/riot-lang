@@ -31,10 +31,10 @@ module Message: sig
   type t = ..
 end
 
-module Process: sig
-  (** The reason a process exited. *)
+module Actor: sig
+  (** The reason an actor exited. *)
   type exit_reason = exn
-  (** Process flags. *)
+  (** Actor flags. *)
   type flag =
     | TrapExit of bool
   (** Opaque reference to a monitor registration. *)
@@ -43,7 +43,7 @@ module Process: sig
     | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
     | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
 
-  (** Scheduler-visible process state. *)
+  (** Scheduler-visible actor state. *)
   type state =
     private | Uninitialized
     | Runnable
@@ -52,25 +52,25 @@ module Process: sig
     | Running
     | Exited of (unit, exit_reason) result
     | Finalized
-  (** Opaque process handle. *)
+  (** Opaque actor handle. *)
   type t
 
-  (** Create a process from its entry function. *)
+  (** Create an actor from its entry function. *)
   val make: (unit -> (unit, exit_reason) result) -> t
 
-  (** Return the process identifier. *)
+  (** Return the actor identifier. *)
   val pid: t -> Pid.t
 
-  (** Return the current process state. *)
+  (** Return the current actor state. *)
   val state: t -> state
 
-  (** Return `true` if the process is still alive. *)
+  (** Return `true` if the actor is still alive. *)
   val is_alive: t -> bool
 
-  (** Return `true` if the process has pending messages. *)
+  (** Return `true` if the actor has pending messages. *)
   val has_messages: t -> bool
 
-  (** Send a message to the process from any scheduler domain. *)
+  (** Send a message to the actor from any scheduler domain. *)
   val send_message: t -> Message.t -> unit
 
   (** Mark the process as waiting for the given I/O operation. *)
@@ -90,36 +90,39 @@ module Process: sig
     type t = monitor_ref
   end
 
-  (** Link the current process to another process. *)
+  (** Link the current actor to another actor. *)
   val link: Pid.t -> unit
 
-  (** Unlink the current process from another process. *)
+  (** Unlink the current actor from another actor. *)
   val unlink: Pid.t -> unit
 
-  (** Monitor another process. *)
+  (** Monitor another actor. *)
   val monitor: Pid.t -> Monitor.t
 
-  (** Stop monitoring a process. *)
+  (** Stop monitoring an actor. *)
   val demonitor: Monitor.t -> unit
 
-  (** Request that a process exit at its next scheduler boundary. *)
+  (** Request that an actor exit at its next scheduler boundary. *)
   val kill: Pid.t -> reason:exit_reason -> unit
 
-  (** Set flags for the currently running process. *)
+  (** Set flags for the currently running actor. *)
   val set_flags: flag list -> unit
 end
+
+module Process = Actor
 
 (** Opaque timer identifiers. *)
 module Timer_id = Timer_id
 
 module Timer: sig
   (** Opaque timer identifier. *)
-  type id = Timer_id.t
+  type t = Timer_id.t
+  type id = t
 
-  (** Send a message to a process after the given delay in seconds. *)
+  (** Send a message to an actor after the given delay in seconds. *)
   val send_after: Pid.t -> Message.t -> after:float -> id
 
-  (** Send a message to a process repeatedly at the given interval in seconds. *)
+  (** Send a message to an actor repeatedly at the given interval in seconds. *)
   val send_interval: Pid.t -> Message.t -> interval:float -> id
 
   (** Cancel a timer. If the timer has already fired or does not exist, this is
@@ -131,19 +134,19 @@ end
 val self: unit -> Pid.t
 
 (** Spawn an actor using the normal placement policy. *)
-val spawn: (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (** Spawn an actor pinned to one normal scheduler. When [scheduler] is omitted,
     the runtime prefers the current normal scheduler and otherwise falls back to
     the normal placement policy. Pinned actors are not work-stolen. *)
-val spawn_pinned: ?scheduler:int -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_pinned: ?scheduler:int -> (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (** Spawn an actor on a dedicated blocking lane outside the normal
     work-stealing scheduler pool. *)
-val spawn_blocked: (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_blocked: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (** Spawn an actor and link it to the current process. *)
-val spawn_link: (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_link: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (** Return the current normal scheduler identifier, or [None] when the caller
     is not running on a normal scheduler worker. *)
@@ -188,7 +191,7 @@ val syscall:
 (** Start the runtime with optional configuration. Defaults to millisecond
     timer resolution and [Config.default_scheduler_count] workers. *)
 val run:
-  main:(args:string list -> (unit, Process.exit_reason) result) ->
+  main:(args:string list -> (unit, Actor.exit_reason) result) ->
   args:string list ->
   ?config:Config.t ->
   unit ->

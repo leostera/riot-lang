@@ -3,7 +3,7 @@ open Collections
 
 exception Test_timeout of Time.Duration.t
 
-type Actors.Message.t +=
+type Runtime.Message.t +=
   | Test_runner_start
 
 let find_segment_index = fun segments needle ->
@@ -173,16 +173,16 @@ let retry_budget = fun policy (test: Test_case.t) ->
 
 let wait_for_exit = fun pid ?timeout () ->
   receive
-    ~selector:(fun (msg: Actors.Message.t) ->
+    ~selector:(fun (msg: Runtime.Message.t) ->
       match msg with
-      | Actors.Process.DOWN { pid=down_pid; reason; _ } when Pid.equal down_pid pid -> `select reason
+      | Runtime.Actor.DOWN { pid=down_pid; reason; _ } when Pid.equal down_pid pid -> `select reason
       | _ -> `skip)
     ?timeout
     ()
 
 let wait_for_start = fun () ->
   receive
-    ~selector:(fun (msg: Actors.Message.t) ->
+    ~selector:(fun (msg: Runtime.Message.t) ->
       match msg with
       | Test_runner_start -> `select ()
       | _ -> `skip)
@@ -203,7 +203,7 @@ let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
         Sync.Atomic.set outcome (Some result);
         Ok ())
   in
-  let monitor_ref = Actors.Process.monitor child in
+  let monitor_ref = Runtime.Actor.monitor child in
   let started = Time.Instant.now () in
   send child Test_runner_start;
   let exit_reason =
@@ -212,11 +212,11 @@ let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
     | Some timeout -> (
         try wait_for_exit child ~timeout () with
         | Receive_timeout ->
-            Actors.Process.kill child ~reason:(Test_timeout timeout);
+            Runtime.Actor.kill child ~reason:(Test_timeout timeout);
             wait_for_exit child ()
       )
   in
-  Actors.Process.demonitor monitor_ref;
+  Runtime.Actor.demonitor monitor_ref;
   let duration = Time.Instant.elapsed started in
   let result =
     match Sync.Atomic.get outcome with

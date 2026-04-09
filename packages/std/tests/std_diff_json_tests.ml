@@ -331,7 +331,7 @@ let test_json_at_path = Test.case "filter JSON diffs by path" @@ fun _ctx ->
     ^ Int.to_string (List.length user_age_changes))
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args ->
       let all_tests = [
         test_diff_identical_nulls;

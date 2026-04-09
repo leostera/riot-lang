@@ -19,7 +19,7 @@ open Global
       ]
 
       let () =
-        Actors.run
+        Runtime.run
           ~main:(fun ~args ->
             let config = Bench.Runner.{
               reporter = (module Bench.Reporter.Default);
@@ -145,5 +145,5 @@ module Cli: sig
     name:string ->
     benchmarks:bench_item list ->
     args:string list ->
-    (unit, Actors.Process.exit_reason) result
+    (unit, Runtime.Actor.exit_reason) result
 end

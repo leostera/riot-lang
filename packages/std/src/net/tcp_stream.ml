@@ -18,7 +18,7 @@ let connect = fun addr ->
     | Ok (`In_progress stream) ->
         (* Connection in progress, wait for writable - this suspends the process *)
         let source = Kernel.Net.Tcp_stream.to_source stream in
-        Actors.syscall
+        Runtime.syscall
           ~name:"TcpStream.connect"
           ~interest:Interest.writable
           ~source
@@ -36,7 +36,7 @@ let read = fun stream buffer ?(pos = 0) ?len ?timeout () ->
     | Some l -> l
   in
   let source = Kernel.Net.Tcp_stream.to_source stream in
-  (* Transform Time.Duration.t to float seconds for Actors.syscall *)
+  (* Transform Time.Duration.t to float seconds for Runtime.syscall *)
   let timeout = Option.map Time.Duration.to_secs_float timeout in
   let rec read_loop () =
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
@@ -45,7 +45,7 @@ let read = fun stream buffer ?(pos = 0) ?len ?timeout () ->
     | Error IO.Operation_would_block
     | Error IO.Resource_unavailable_try_again ->
         (* Would block, register interest and wait - this suspends the process *)
-        Actors.syscall
+        Runtime.syscall
           ?timeout
           ~name:"TcpStream.read"
           ~interest:Interest.readable
@@ -68,7 +68,7 @@ let write = fun stream buffer ?(pos = 0) ?len () ->
     | Error IO.Operation_would_block
     | Error IO.Resource_unavailable_try_again ->
         (* Would block, register interest and wait - this suspends the process *)
-        Actors.syscall
+        Runtime.syscall
           ~name:"TcpStream.write"
           ~interest:Interest.writable
           ~source
@@ -93,6 +93,8 @@ let to_reader = fun stream ->
       match Kernel.Net.Tcp_stream.read_vectored t bufs with
       | Ok n -> Ok n
       | Error err -> Error (System_error err)
+
+    let direct_string = fun _t -> None
   end in
   IO.Reader.of_read_src (module Read) stream
 

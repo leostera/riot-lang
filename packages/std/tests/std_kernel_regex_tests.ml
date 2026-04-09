@@ -25,4 +25,4 @@ let tests = [ Test.case "kernel regex compiles and matches"
 
 let main = fun ~args -> Test.Cli.main ~name:"std_kernel_regex_tests" ~tests ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

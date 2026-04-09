@@ -70,7 +70,7 @@ let read = fun t buffer ~offset ~len ->
         match Kernel.Fs.File.read t.fd buffer ~pos:offset ~len with
         | Ok bytes_read -> Ok bytes_read
         | Error IO.Operation_would_block
-        | Error IO.Resource_unavailable_try_again -> Actors.syscall
+        | Error IO.Resource_unavailable_try_again -> Runtime.syscall
           ~name:"File.read"
           ~interest:Kernel.Async.Interest.readable
           ~source
@@ -145,7 +145,7 @@ let write = fun t buffer ~offset ~len ->
         match Kernel.Fs.File.write t.fd buffer ~pos:offset ~len with
         | Ok bytes_written -> Ok bytes_written
         | Error IO.Operation_would_block
-        | Error IO.Resource_unavailable_try_again -> Actors.syscall
+        | Error IO.Resource_unavailable_try_again -> Runtime.syscall
           ~name:"File.write"
           ~interest:Kernel.Async.Interest.writable
           ~source
@@ -309,6 +309,8 @@ let to_reader = fun t ->
                 IO.Bytes.blit scratch !copied ba off chunk_len;
                 copied := !copied + chunk_len);
           Ok read_len
+
+    let direct_string = fun _file -> None
   end in
   IO.Reader.of_read_src (module Read) t
 

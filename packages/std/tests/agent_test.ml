@@ -79,4 +79,4 @@ let run_test = fun () ->
   println "✓ Type polymorphism tests passed!\n";
   println "=== All Agent tests passed! ===\n"
 
-let () = Actors.run @@ fun () -> spawn run_test |> ignore
+let () = Runtime.run @@ fun () -> spawn run_test |> ignore

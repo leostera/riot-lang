@@ -35,7 +35,7 @@ let recv = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     match Kernel.Net.Udp_socket.recv socket buffer ~pos ~len with
     | Ok bytes_read -> Ok bytes_read
     | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again -> Actors.syscall
+    | Error IO.Resource_unavailable_try_again -> Runtime.syscall
       ?timeout
       ~name:"UdpSocket.recv"
       ~interest:Interest.readable
@@ -57,7 +57,7 @@ let recv_from = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     match Kernel.Net.Udp_socket.recv_from socket buffer ~pos ~len with
     | Ok (bytes_read, from) -> Ok { bytes_read; from }
     | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again -> Actors.syscall
+    | Error IO.Resource_unavailable_try_again -> Runtime.syscall
       ?timeout
       ~name:"UdpSocket.recv_from"
       ~interest:Interest.readable
@@ -78,7 +78,7 @@ let send = fun socket buffer ?(pos = 0) ?len () ->
     match Kernel.Net.Udp_socket.send socket buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
     | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again -> Actors.syscall
+    | Error IO.Resource_unavailable_try_again -> Runtime.syscall
       ~name:"UdpSocket.send"
       ~interest:Interest.writable
       ~source
@@ -98,7 +98,7 @@ let send_to = fun socket addr buffer ?(pos = 0) ?len () ->
     match Kernel.Net.Udp_socket.send_to socket addr buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
     | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again -> Actors.syscall
+    | Error IO.Resource_unavailable_try_again -> Runtime.syscall
       ~name:"UdpSocket.send_to"
       ~interest:Interest.writable
       ~source

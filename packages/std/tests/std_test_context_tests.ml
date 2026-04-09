@@ -47,7 +47,7 @@ let tests = [
 ]
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args -> Test.Cli.main ~name:"std_test_context" ~tests ~args)
     ~args:Env.args
     ()

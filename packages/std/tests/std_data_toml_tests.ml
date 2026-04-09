@@ -706,7 +706,7 @@ port = "9090"
   | _ -> Error "Parse failed"
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args ->
       let all_tests = [
         test_simple_string;

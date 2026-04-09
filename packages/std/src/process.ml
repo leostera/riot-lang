@@ -1,7 +1,7 @@
-include Actors.Process
+include Runtime.Actor
 
-let self = Actors.self
+let self = Runtime.self
 
-let spawn = Actors.spawn
+let spawn = Runtime.spawn
 
-let spawn_link = Actors.spawn_link
+let spawn_link = Runtime.spawn_link

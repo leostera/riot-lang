@@ -249,4 +249,4 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"json" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"json" ~tests ~args) ~args:Env.args ()

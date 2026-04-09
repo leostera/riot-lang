@@ -53,7 +53,7 @@ let listed_test_fields_from_json = fun stdout ->
   | _ -> []
 
 let run_sample_capture = fun args ->
-  let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
+  let cmd = Command.make (self_executable ()) ~args:("sample" :: args) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
 
 let test_list_tests_lists_all_cases = fun _ctx ->
@@ -277,7 +277,7 @@ let meta_tests = [
 
 let sample_main = fun ~args ->
   match args with
-  | exe :: _sample :: rest -> Test.Cli.main ~name:"sample" ~tests:sample_tests ~args:((exe :: rest))
+  | exe :: _sample :: rest -> Test.Cli.main ~name:"sample" ~tests:sample_tests ~args:(exe :: rest)
   | _ -> Error (Failure "expected sample subcommand arguments")
 
 let meta_main = fun ~args ->
@@ -293,4 +293,4 @@ let main = fun ~args ->
   | _ :: "sample" :: _ -> sample_main ~args
   | _ -> meta_main ~args
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

@@ -2,8 +2,8 @@ open Global
 open Collections
 open Kernel.System
 
-type Actors.Message.t +=
-  | Reader_finished of { reader: Actors.Pid.t; stream: 
+type Runtime.Message.t +=
+  | Reader_finished of { reader: Runtime.Pid.t; stream: 
         [
           `stdout
           | `stderr
@@ -116,10 +116,10 @@ let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
       receive
         ~selector:(
           function
-          | Reader_finished { reader; stream=`stdout; result } when Actors.Pid.equal reader stdout_reader ->
+          | Reader_finished { reader; stream=`stdout; result } when Runtime.Pid.equal reader stdout_reader ->
               stdout_result := Some result;
               `select ()
-          | Reader_finished { reader; stream=`stderr; result } when Actors.Pid.equal reader stderr_reader ->
+          | Reader_finished { reader; stream=`stderr; result } when Runtime.Pid.equal reader stderr_reader ->
               stderr_result := Some result;
               `select ()
           | _ ->
@@ -165,7 +165,7 @@ let output = fun t ->
           let rec wait_for_exit () =
             match OsProcess.try_wait proc with
             | None ->
-                Actors.yield ();
+                Runtime.yield ();
                 wait_for_exit ()
             | Some status -> status
           in
@@ -204,7 +204,7 @@ let status = fun t ->
             match OsProcess.try_wait proc with
             | None ->
                 (* Still running - yield to other processes *)
-                Actors.yield ();
+                Runtime.yield ();
                 wait_for_exit ()
             | Some status -> status
           in

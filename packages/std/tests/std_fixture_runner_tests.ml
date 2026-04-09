@@ -12,7 +12,7 @@ let tests =
       Test.Snapshot.assert_text ~ctx:ctx.test ~actual)
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args -> Test.Cli.main ~name:"std_fixture_runner_tests" ~tests ~args)
     ~args:Env.args
     ()

@@ -1267,6 +1267,13 @@ module Regex = Regex
 
 module Result = Result
 
+(** **When to use:** Accessing the actor runtime surface that backs `std`
+
+    Use Runtime when you need direct scheduler, mailbox, timer, or low-level
+    actor runtime primitives that sit below the higher-level `Std.Process`,
+    `Std.Global`, and `Std.Timer` helpers. *)
+module Runtime = Runtime
+
 (** **When to use:** Explicit error handling
     
     Use Result for operations that can fail in expected, recoverable ways.
@@ -1474,9 +1481,9 @@ module Application = Application
 val start: apps:Application.t list -> unit
 
 (** Start the runtime with applications.
-    
+
     Applications are started in dependency order.
-    Uses `Actors.run` under the hood.
+    Uses `Runtime.run` under the hood.
     
     **Example:**
     ```ocaml
@@ -1553,7 +1560,7 @@ exception Receive_timeout
 exception Syscall_timeout
 
 (** Raised when a syscall operation times out *)
-type 'msg selector = 'msg Actors.selector
+type 'msg selector = 'msg Runtime.selector
 
 (** Message selector type *)
 val self: unit -> Pid.t

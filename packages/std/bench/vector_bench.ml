@@ -2,9 +2,15 @@ open Std
 open Std.Collections
 
 let fill_vector = fun vector ~count ~start ->
-  for index = 0 to count - 1 do
-    Vector.push vector (start + index)
-  done
+  let rec loop index =
+    if index >= count then
+      ()
+    else (
+      Vector.push vector (start + index);
+      loop (index + 1)
+    )
+  in
+  loop 0
 
 let build_vector = fun count ->
   let vector = Vector.create () in
@@ -16,11 +22,9 @@ let build_vector_with_capacity = fun capacity count ->
   fill_vector vector ~count ~start:0;
   vector
 
-let bench_push_growing = fun count () ->
-  ignore (build_vector count)
+let bench_push_growing = fun count () -> ignore (build_vector count)
 
-let bench_push_preallocated = fun count () ->
-  ignore (build_vector_with_capacity count count)
+let bench_push_preallocated = fun count () -> ignore (build_vector_with_capacity count count)
 
 let bench_get_middle = fun count () ->
   let vector = build_vector count in
@@ -42,23 +46,38 @@ let bench_append_preallocated_dst = fun count () ->
 
 let benchmarks =
   Bench.[
-    with_config ~config:{ iterations = 10; warmup = 2 } "push growing: 10k items" (bench_push_growing 10_000);
+    with_config
+      ~config:{ iterations = 10; warmup = 2 }
+      "push growing: 10k items"
+      (bench_push_growing 10_000);
     with_config
       ~config:{ iterations = 10; warmup = 2 }
       "push preallocated: 10k items"
       (bench_push_preallocated 10_000);
-    with_config ~config:{ iterations = 5; warmup = 1 } "push growing: 100k items" (bench_push_growing 100_000);
+    with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "push growing: 100k items"
+      (bench_push_growing 100_000);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
       "push preallocated: 100k items"
       (bench_push_preallocated 100_000);
-    with_config ~config:{ iterations = 3; warmup = 1 } "push growing: 1M items" (bench_push_growing 1_000_000);
+    with_config
+      ~config:{ iterations = 3; warmup = 1 }
+      "push growing: 1M items"
+      (bench_push_growing 1_000_000);
     with_config
       ~config:{ iterations = 3; warmup = 1 }
       "push preallocated: 1M items"
       (bench_push_preallocated 1_000_000);
-    with_config ~config:{ iterations = 50; warmup = 5 } "get middle: 10k items" (bench_get_middle 10_000);
-    with_config ~config:{ iterations = 20; warmup = 2 } "get middle: 100k items" (bench_get_middle 100_000);
+    with_config
+      ~config:{ iterations = 50; warmup = 5 }
+      "get middle: 10k items"
+      (bench_get_middle 10_000);
+    with_config
+      ~config:{ iterations = 20; warmup = 2 }
+      "get middle: 100k items"
+      (bench_get_middle 100_000);
     with_config ~config:{ iterations = 10; warmup = 2 } "iter: 100k items" (bench_iter 100_000);
     with_config
       ~config:{ iterations = 10; warmup = 2 }
@@ -79,7 +98,7 @@ let benchmarks =
   ]
 
 let () =
-  Actors.run
+  Runtime.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()

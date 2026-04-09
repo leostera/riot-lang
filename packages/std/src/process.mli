@@ -14,8 +14,8 @@
     ```
 *)
 
-(** Re-export of the core process API from [Actors.Process]. *)
-include module type of Actors.Process
+(** Re-export of the core process API from [Runtime.Actor]. *)
+include module type of Runtime.Actor
 
 open Global
 

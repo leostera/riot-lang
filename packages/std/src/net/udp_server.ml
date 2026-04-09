@@ -32,7 +32,7 @@ let serve = fun t ->
         let payload = Bytes.sub buffer 0 bytes_read in
         ignore
           (
-            Actors.spawn
+            Runtime.spawn
               (fun () ->
                 t.handler ~socket:t.socket ~from payload ~len:bytes_read;
                 Ok ())
