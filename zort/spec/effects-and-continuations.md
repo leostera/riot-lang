@@ -213,11 +213,13 @@
 - Fibers now also move through explicit per-domain scheduler lanes:
   - one active `current` fiber per domain,
   - a runnable queue,
-  - and a parked queue used for explicit suspension/wakeup policy.
+  - a parked queue used for explicit suspension/wakeup policy,
+  - and a scheduler-owned suspended queue for fibers captured into one-shot continuations.
 - Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
   - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
   - runnable/current fibers use the same ownership seam,
-  - suspended continuations remain separate through the `suspended_continuations` provider instead of being conflated with lane ownership.
+  - fibers captured by effects stay scheduler-owned through the suspended lane,
+  - while `suspended_continuations` owns only the captured payload/roots/suspended-stack snapshot.
 - The runtime now exposes explicit stop-the-world hooks around collection:
   - STW requests,
   - per-domain safepoint pauses,

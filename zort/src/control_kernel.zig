@@ -492,6 +492,19 @@ pub const ControlKernel = struct {
         return self.addFiber(FiberState.init(parent, .suspended, domain));
     }
 
+    pub fn discardFiber(self: *ControlKernel, handle: FiberHandle) !void {
+        if (self.current_fiber.index == handle.index and self.current_fiber.generation == handle.generation) {
+            return error.InvalidFiber;
+        }
+        if (handle.index >= self.fibers.items.len) return error.InvalidFiber;
+        const slot = &self.fibers.items[handle.index];
+        if (!slot.alive or slot.generation != handle.generation) return error.InvalidFiber;
+        slot.fiber.deinit(self.allocator);
+        slot.alive = false;
+        slot.generation +%= 1;
+        try self.free_fibers.append(self.allocator, handle.index);
+    }
+
     pub fn activateFiber(self: *ControlKernel, handle: FiberHandle) !void {
         if (self.fiber(handle) == null) return error.InvalidFiber;
         if (self.current_fiber.index != handle.index or self.current_fiber.generation != handle.generation) {

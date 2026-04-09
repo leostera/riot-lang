@@ -100,13 +100,13 @@
 - Scoped root handles are an ownership tool only; they do not yet model stack roots, callback roots, or effect-parent roots.
 - This is the seam zort will use for suspended fibers, continuations, callback-owned roots, and other non-registry liveness owners.
 - Runtime root ownership is now split across explicit control-state providers instead of one opaque `control_kernel` bucket:
-  - `fiber_scheduler` visits the active, runnable, and parked fibers currently owned by per-domain scheduler lanes,
+  - `fiber_scheduler` visits the active, runnable, parked, and scheduler-suspended fibers currently owned by per-domain scheduler lanes,
   - `suspended_continuations` visits continuation payloads, captured roots, and managed suspended-stack frames,
-  - `orphan_fibers` is a transitional fallback for live fibers that exist in the control kernel but are not yet scheduler-owned.
+  - direct unscheduled live fibers are now treated as an ownership bug instead of a collector fallback path.
 - This means collection now answers liveness questions more explicitly:
   - domain-owned parked fibers stay collector-visible through the scheduler provider,
-  - suspended continuations stay collector-visible without reusing fiber-lane ownership,
-  - direct low-level control-kernel usage does not silently lose roots while the runtime is still migrating toward full scheduler ownership.
+  - fibers suspended by effect capture stay scheduler-owned through a dedicated suspended lane while their captured stacks live in `suspended_continuations`,
+  - direct low-level control-kernel usage fails ownership verification instead of silently widening the GC root set.
 - `RuntimeServices` is now the next built-in provider:
   - named values stay live through service-owned roots,
   - signal handlers stay live through the same provider,

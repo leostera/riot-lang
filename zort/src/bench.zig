@@ -830,9 +830,9 @@ fn benchmarkEffectRoundtrip(rt: *Runtime, iters: usize) !u64 {
         try rt.setField(payload, 0, Value.fromInt(@as(i64, @intCast(i))));
         try kernel.pushFrameRoot(main_fiber, payload);
 
-        const performed = try kernel.performAt(@intCast(i), effect, payload, &.{payload});
-        _ = try kernel.resumeContinuation(performed.continuation, Value.fromInt(@as(i64, @intCast(i))));
-        _ = kernel.dropContinuation(performed.continuation);
+        const performed = try rt.performEffectAt(@intCast(i), effect, payload, &.{payload});
+        _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(@as(i64, @intCast(i))));
+        _ = rt.dropContinuation(performed.continuation);
         _ = try kernel.popFrame(main_fiber);
 
         if ((i & 0x7F) == 0) rt.collect();

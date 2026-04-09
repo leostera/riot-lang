@@ -41,6 +41,8 @@ pub const TraceRecorder = event_sink_mod.TraceRecorder;
 pub const TraceEntry = event_sink_mod.TraceEntry;
 pub const RootProviderEvent = event_sink_mod.RootProviderEvent;
 pub const ControlKernel = control_kernel_mod.ControlKernel;
+pub const PerformResult = control_kernel_mod.ControlKernel.PerformResult;
+pub const ResumeResult = control_kernel_mod.ControlKernel.ResumeResult;
 pub const ContinuationHandle = control_kernel_mod.ContinuationHandle;
 pub const EffectId = control_kernel_mod.EffectId;
 pub const FiberHandle = control_kernel_mod.FiberHandle;
@@ -320,17 +322,17 @@ pub const Runtime = struct {
     pub fn createFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
         const state = self.domains.domain(domain) orelse return error.InvalidDomain;
         if (state.status == .detached) return error.DomainDetached;
-        return self.control_kernel.createFiberInDomain(parent, domain);
-    }
-
-    pub fn spawnFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
-        const fiber = try self.createFiberInDomain(parent, domain);
+        const fiber = try self.control_kernel.createFiberInDomain(parent, domain);
         try self.fiber_scheduler.enqueue(domain, fiber);
         return fiber;
     }
 
+    pub fn spawnFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
+        return self.createFiberInDomain(parent, domain);
+    }
+
     pub fn activateFiberInDomain(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
-        try self.fiber_scheduler.setCurrent(domain, fiber);
+        try self.fiber_scheduler.activate(domain, fiber);
         try self.control_kernel.activateFiber(fiber);
     }
 
@@ -354,6 +356,89 @@ pub const Runtime = struct {
 
     pub fn unparkFiber(self: *Runtime, domain: DomainHandle, fiber: FiberHandle) !void {
         try self.fiber_scheduler.unpark(domain, fiber);
+    }
+
+    pub fn performEffect(
+        self: *Runtime,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        return self.performEffectAt(0, effect, payload, captured_roots);
+    }
+
+    pub fn performEffectAt(
+        self: *Runtime,
+        site_id: u32,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        const current_fiber = self.control_kernel.currentFiber();
+        const current_domain = self.currentDomain();
+        const performed = try self.control_kernel.performAt(site_id, effect, payload, captured_roots);
+        if (performed.handler_fiber.index != current_fiber.index or performed.handler_fiber.generation != current_fiber.generation) {
+            _ = try self.fiber_scheduler.suspendCurrent(current_domain);
+            const handler_domain = self.control_kernel.fiber(performed.handler_fiber).?.domain;
+            try self.activateFiberInDomain(handler_domain, performed.handler_fiber);
+        } else {
+            try self.control_kernel.activateFiber(current_fiber);
+        }
+        return performed;
+    }
+
+    pub fn reperformEffect(
+        self: *Runtime,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        return self.reperformEffectAt(0, effect, payload, captured_roots);
+    }
+
+    pub fn reperformEffectAt(
+        self: *Runtime,
+        site_id: u32,
+        effect: EffectId,
+        payload: Value,
+        captured_roots: []const Value,
+    ) !PerformResult {
+        const current_fiber = self.control_kernel.currentFiber();
+        const current_domain = self.currentDomain();
+        const performed = try self.control_kernel.reperformAt(site_id, effect, payload, captured_roots);
+        if (performed.handler_fiber.index != current_fiber.index or performed.handler_fiber.generation != current_fiber.generation) {
+            _ = try self.fiber_scheduler.suspendCurrent(current_domain);
+            const handler_domain = self.control_kernel.fiber(performed.handler_fiber).?.domain;
+            try self.activateFiberInDomain(handler_domain, performed.handler_fiber);
+        } else {
+            try self.control_kernel.activateFiber(current_fiber);
+        }
+        return performed;
+    }
+
+    pub fn resumeContinuation(self: *Runtime, handle: ContinuationHandle, value_to_resume: Value) !ResumeResult {
+        const continuation = self.control_kernel.continuation(handle) orelse return error.InvalidContinuation;
+        const target_domain = self.currentDomain();
+        const resumed = try self.control_kernel.resumeContinuation(handle, value_to_resume);
+        if (continuation.handler_fiber.index != continuation.fiber.index or continuation.handler_fiber.generation != continuation.fiber.generation) {
+            _ = try self.fiber_scheduler.discardSuspended(continuation.domain, continuation.fiber);
+        }
+        try self.activateFiberInDomain(target_domain, resumed.fiber);
+        return resumed;
+    }
+
+    pub fn dropContinuation(self: *Runtime, handle: ContinuationHandle) bool {
+        const continuation = self.control_kernel.continuation(handle) orelse return false;
+        const fiber = continuation.fiber;
+        const fiber_domain = continuation.domain;
+        const self_handled = continuation.handler_fiber.index == fiber.index and continuation.handler_fiber.generation == fiber.generation;
+        const dropped = self.control_kernel.dropContinuation(handle);
+        if (!dropped) return false;
+        if (!self_handled) {
+            _ = self.fiber_scheduler.discardSuspended(fiber_domain, fiber) catch return false;
+            self.control_kernel.discardFiber(fiber) catch return false;
+        }
+        return true;
     }
 
     pub fn requestStopTheWorld(self: *Runtime) !usize {
@@ -674,6 +759,7 @@ pub const Runtime = struct {
     }
 
     pub const VerifyError = heap_store.HeapStore.VerifyError || control_kernel_mod.ControlKernel.VerifyError || domain_registry_mod.DomainRegistry.VerifyError || fiber_scheduler_mod.FiberScheduler.VerifyError || stw_coordinator_mod.StopTheWorldCoordinator.VerifyError || error{
+        OrphanFiber,
         InvalidScheduledFiber,
         ScheduledFiberDomainMismatch,
     };
@@ -697,12 +783,13 @@ pub const Runtime = struct {
     }
 
     pub fn collectMinor(self: *Runtime) void {
+        self.enforceFiberOwnership();
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         _ = self.requestStopTheWorld() catch unreachable;
         defer self.resumeTheWorld();
         self.collect_generations +%= 1;
         self.minor_collect_generations +%= 1;
-        var providers_buffer: [6]RootProvider = undefined;
+        var providers_buffer: [5]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         if (self.gc_strategy == .generational) {
@@ -716,11 +803,12 @@ pub const Runtime = struct {
     }
 
     pub fn collectMajor(self: *Runtime) void {
+        self.enforceFiberOwnership();
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         _ = self.requestStopTheWorld() catch unreachable;
         defer self.resumeTheWorld();
         self.collect_generations +%= 1;
-        var providers_buffer: [6]RootProvider = undefined;
+        var providers_buffer: [5]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
         var gc = self.collectorWithProviders(providers);
         gc.collectMajor();
@@ -828,14 +916,13 @@ pub const Runtime = struct {
     }
 
     fn fillRootProviders(self: *Runtime, buffer: []RootProvider) []const RootProvider {
-        std.debug.assert(buffer.len >= 6);
+        std.debug.assert(buffer.len >= 5);
         buffer[0] = self.root_registry.provider();
         buffer[1] = self.schedulerFiberProvider();
-        buffer[2] = self.orphanFiberProvider();
-        buffer[3] = self.control_kernel.continuationProvider();
-        buffer[4] = self.services.provider();
-        buffer[5] = self.liveness.provider();
-        return buffer[0..6];
+        buffer[2] = self.control_kernel.continuationProvider();
+        buffer[3] = self.services.provider();
+        buffer[4] = self.liveness.provider();
+        return buffer[0..5];
     }
 
     fn currentAllocator(self: *Runtime) std.mem.Allocator {
@@ -851,15 +938,6 @@ pub const Runtime = struct {
             .ctx = self,
             .count_fn = countSchedulerFiberRoots,
             .visit_fn = visitSchedulerFiberRoots,
-        };
-    }
-
-    fn orphanFiberProvider(self: *Runtime) RootProvider {
-        return .{
-            .name = "orphan_fibers",
-            .ctx = self,
-            .count_fn = countOrphanFiberRoots,
-            .visit_fn = visitOrphanFiberRoots,
         };
     }
 
@@ -901,44 +979,6 @@ pub const Runtime = struct {
         self.fiber_scheduler.visitOwnedFibers(&visit_ctx, Visit.visit);
     }
 
-    fn countOrphanFiberRoots(ctx: ?*anyopaque) usize {
-        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
-        const Count = struct {
-            runtime: *Runtime,
-            total: usize = 0,
-
-            fn visit(context: *@This(), fiber: FiberHandle, fiber_state: *const control_kernel_mod.FiberState) void {
-                if (fiber_state.status == .completed) return;
-                if (context.runtime.fiber_scheduler.ownsFiber(fiber)) return;
-                context.total += context.runtime.control_kernel.fiberRootCount(fiber);
-            }
-        };
-
-        var count = Count{ .runtime = self };
-        self.control_kernel.visitFibers(&count, Count.visit);
-        return count.total;
-    }
-
-    fn visitOrphanFiberRoots(ctx: ?*anyopaque, visitor: RootVisitor) void {
-        const self: *Runtime = @ptrCast(@alignCast(ctx.?));
-        const Visit = struct {
-            runtime: *Runtime,
-            visitor: RootVisitor,
-
-            fn visit(context: *@This(), fiber: FiberHandle, fiber_state: *const control_kernel_mod.FiberState) void {
-                if (fiber_state.status == .completed) return;
-                if (context.runtime.fiber_scheduler.ownsFiber(fiber)) return;
-                context.runtime.control_kernel.visitFiberRoots(fiber, context.visitor);
-            }
-        };
-
-        var visit_ctx = Visit{
-            .runtime = self,
-            .visitor = visitor,
-        };
-        self.control_kernel.visitFibers(&visit_ctx, Visit.visit);
-    }
-
     fn verifyScheduledFiberOwnership(self: *Runtime) VerifyError!void {
         const Verify = struct {
             runtime: *Runtime,
@@ -959,6 +999,28 @@ pub const Runtime = struct {
         var verify = Verify{ .runtime = self };
         self.fiber_scheduler.visitOwnedFibers(&verify, Verify.visit);
         if (verify.error_state) |err| return err;
+
+        const Orphans = struct {
+            runtime: *Runtime,
+            error_state: ?VerifyError = null,
+
+            fn visit(context: *@This(), fiber: FiberHandle, fiber_state: *const control_kernel_mod.FiberState) void {
+                if (context.error_state != null) return;
+                if (fiber_state.status == .completed) return;
+                if (context.runtime.fiber_scheduler.ownsFiber(fiber)) return;
+                context.error_state = error.OrphanFiber;
+            }
+        };
+
+        var orphans = Orphans{ .runtime = self };
+        self.control_kernel.visitFibers(&orphans, Orphans.visit);
+        if (orphans.error_state) |err| return err;
+    }
+
+    fn enforceFiberOwnership(self: *Runtime) void {
+        self.verifyScheduledFiberOwnership() catch |err| {
+            std.debug.panic("zort: strict fiber ownership failed: {s}", .{@errorName(err)});
+        };
     }
 
     fn processWeakHook(ctx: ?*anyopaque, collector: *Collector) usize {
@@ -1584,15 +1646,15 @@ test "runtime: performed continuations keep heap values alive until resumed" {
         .handle_effect = handler_value,
     });
 
-    const child = try rt.controlKernel().createFiber(main);
-    try rt.controlKernel().activateFiber(child);
-    const performed = try rt.controlKernel().perform(1, Value.fromInt(0), &.{captured_value});
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
+    const performed = try rt.performEffect(1, Value.fromInt(0), &.{captured_value});
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
     _ = try rt.controlKernel().popHandler(main);
-    _ = try rt.controlKernel().resumeContinuation(performed.continuation, Value.fromInt(123));
+    _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(123));
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
@@ -1614,15 +1676,15 @@ test "runtime: continuations can migrate across attached domains" {
     });
 
     const child = try rt.createFiberInDomain(main, main_domain);
-    try rt.controlKernel().activateFiber(child);
+    try rt.activateFiberInDomain(main_domain, child);
     try rt.controlKernel().pushFrame(child, 606);
     try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
 
-    const performed = try rt.controlKernel().performAt(606, 6, Value.fromInt(2), &.{});
+    const performed = try rt.performEffectAt(606, 6, Value.fromInt(2), &.{});
     const worker = try rt.createFiberInDomain(null, other_domain);
-    try rt.controlKernel().activateFiber(worker);
+    try rt.activateFiberInDomain(other_domain, worker);
 
-    _ = try rt.controlKernel().resumeContinuation(performed.continuation, Value.fromInt(11));
+    _ = try rt.resumeContinuation(performed.continuation, Value.fromInt(11));
 
     try std.testing.expectEqual(other_domain, rt.currentDomain());
     try std.testing.expectEqual(other_domain, rt.controlKernel().fiber(child).?.domain);
@@ -1639,17 +1701,18 @@ test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
     try std.testing.expectEqual(first, (try rt.scheduleNextFiber(main_domain)).?);
     try std.testing.expectEqual(first, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
 
     try std.testing.expectEqual(second, (try rt.yieldCurrentFiber()).?);
     try std.testing.expectEqual(second, rt.controlKernel().currentFiber());
-    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(main_domain));
+    try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
 
-    try std.testing.expectEqual(first, (try rt.parkCurrentFiber()).?);
+    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, (try rt.parkCurrentFiber()).?);
     try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().parkedCount(main_domain));
-    try std.testing.expectEqual(first, rt.controlKernel().currentFiber());
+    try std.testing.expectEqual(FiberHandle{ .index = 0, .generation = 1 }, rt.controlKernel().currentFiber());
 
     try rt.unparkFiber(main_domain, second);
-    try std.testing.expectEqual(@as(usize, 1), rt.fiberScheduler().runnableCount(main_domain));
+    try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
     try rt.verifyDebugState();
 }
 
@@ -1709,7 +1772,7 @@ test "runtime: suspended continuations use dedicated root providers" {
     try rt.controlKernel().pushFrameRoot(child, try rt.allocTuple(0));
     const payload = try rt.allocTuple(0);
 
-    _ = try rt.controlKernel().performAt(909, 9, payload, &.{});
+    _ = try rt.performEffectAt(909, 9, payload, &.{});
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
@@ -1795,6 +1858,15 @@ test "runtime: verifyDebugState accepts healthy runtime" {
     var rooted = try rt.allocTuple(0);
     try rt.registerRoot(&rooted);
     try rt.verifyDebugState();
+}
+
+test "runtime: direct unscheduled fibers fail strict ownership checks" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const main = rt.controlKernel().currentFiber();
+    _ = try rt.controlKernel().createFiber(main);
+    try std.testing.expectError(error.OrphanFiber, rt.verifyDebugState());
 }
 
 test "runtime: runtime services named values keep blocks alive across collection" {
@@ -1930,8 +2002,8 @@ test "runtime: pending signal and finalizer delivery runs inside callback bounda
         .handle_effect = Value.fromInt(1),
     });
 
-    const child = try rt.controlKernel().createFiber(main);
-    try rt.controlKernel().activateFiber(child);
+    const child = try rt.spawnFiberInDomain(main, rt.currentDomain());
+    try rt.activateFiberInDomain(rt.currentDomain(), child);
     try rt.registerSignalHandler(2, try rt.allocTuple(0));
     try rt.recordSignal(2);
 
@@ -1946,7 +2018,7 @@ test "runtime: pending signal and finalizer delivery runs inside callback bounda
 
         fn visit(self: *@This(), action: Runtime.PendingAction) !void {
             try self.actions.append(std.testing.allocator, action);
-            try std.testing.expectError(error.UnhandledEffect, self.rt.controlKernel().performAt(8, 55, Value.fromInt(1), &.{}));
+            try std.testing.expectError(error.UnhandledEffect, self.rt.performEffectAt(8, 55, Value.fromInt(1), &.{}));
         }
     };
 

@@ -11,10 +11,12 @@ const Lane = struct {
     current: ?FiberHandle = null,
     runnable: std.ArrayListUnmanaged(FiberHandle) = .{},
     parked: std.ArrayListUnmanaged(FiberHandle) = .{},
+    suspended: std.ArrayListUnmanaged(FiberHandle) = .{},
 
     fn deinit(self: *Lane, allocator: std.mem.Allocator) void {
         self.runnable.deinit(allocator);
         self.parked.deinit(allocator);
+        self.suspended.deinit(allocator);
         self.* = .{};
     }
 };
@@ -37,8 +39,10 @@ pub const FiberScheduler = struct {
     pub const VerifyError = error{
         DuplicateRunnableFiber,
         DuplicateParkedFiber,
+        DuplicateSuspendedFiber,
         CurrentFiberAlsoRunnable,
         CurrentFiberAlsoParked,
+        CurrentFiberAlsoSuspended,
         FiberOwnedMultipleTimes,
     };
 
@@ -78,11 +82,50 @@ pub const FiberScheduler = struct {
         return lane_state.parked.items.len;
     }
 
+    pub fn suspendedCount(self: *const FiberScheduler, domain: DomainHandle) usize {
+        const lane_state = self.lane(domain) orelse return 0;
+        return lane_state.suspended.items.len;
+    }
+
     pub fn setCurrent(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!void {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
         _ = removeHandle(&lane_state.runnable, fiber);
         _ = removeHandle(&lane_state.parked, fiber);
+        _ = removeHandle(&lane_state.suspended, fiber);
         lane_state.current = fiber;
+    }
+
+    pub fn activate(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) !void {
+        const lane_state = try self.ensureLane(domain);
+        if (lane_state.current) |active_fiber| {
+            if (!sameFiber(active_fiber, fiber) and
+                !containsHandle(lane_state.runnable.items, active_fiber) and
+                !containsHandle(lane_state.parked.items, active_fiber) and
+                !containsHandle(lane_state.suspended.items, active_fiber))
+            {
+                try lane_state.runnable.append(self.allocator, active_fiber);
+                self.emit(.fiber_enqueue, active_fiber, domain);
+            }
+        }
+        _ = removeHandle(&lane_state.runnable, fiber);
+        _ = removeHandle(&lane_state.parked, fiber);
+        _ = removeHandle(&lane_state.suspended, fiber);
+        lane_state.current = fiber;
+    }
+
+    pub fn suspendCurrent(self: *FiberScheduler, domain: DomainHandle) !?FiberHandle {
+        const lane_state = try self.ensureLane(domain);
+        const active_fiber = lane_state.current orelse return null;
+        lane_state.current = null;
+        if (!containsHandle(lane_state.suspended.items, active_fiber)) {
+            try lane_state.suspended.append(self.allocator, active_fiber);
+        }
+        return active_fiber;
+    }
+
+    pub fn discardSuspended(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!bool {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        return removeHandle(&lane_state.suspended, fiber);
     }
 
     pub fn ownsFiber(self: *const FiberScheduler, needle: FiberHandle) bool {
@@ -93,6 +136,7 @@ pub const FiberScheduler = struct {
             }
             if (containsHandle(slot.lane.runnable.items, needle)) return true;
             if (containsHandle(slot.lane.parked.items, needle)) return true;
+            if (containsHandle(slot.lane.suspended.items, needle)) return true;
         }
         return false;
     }
@@ -111,6 +155,7 @@ pub const FiberScheduler = struct {
             if (slot.lane.current) |fiber| visit(context, domain, fiber);
             for (slot.lane.runnable.items) |fiber| visit(context, domain, fiber);
             for (slot.lane.parked.items) |fiber| visit(context, domain, fiber);
+            for (slot.lane.suspended.items) |fiber| visit(context, domain, fiber);
         }
     }
 
@@ -121,12 +166,22 @@ pub const FiberScheduler = struct {
         }
         if (containsHandle(lane_state.runnable.items, fiber)) return;
         _ = removeHandle(&lane_state.parked, fiber);
+        _ = removeHandle(&lane_state.suspended, fiber);
         try lane_state.runnable.append(self.allocator, fiber);
         self.emit(.fiber_enqueue, fiber, domain);
     }
 
     pub fn switchToNext(self: *FiberScheduler, domain: DomainHandle) Error!?FiberHandle {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        if (lane_state.current) |active_fiber| {
+            if (!containsHandle(lane_state.runnable.items, active_fiber) and
+                !containsHandle(lane_state.parked.items, active_fiber) and
+                !containsHandle(lane_state.suspended.items, active_fiber))
+            {
+                lane_state.runnable.append(self.allocator, active_fiber) catch @panic("zort: out of memory while rotating scheduler lane");
+                self.emit(.fiber_enqueue, active_fiber, domain);
+            }
+        }
         lane_state.current = popFront(&lane_state.runnable);
         return lane_state.current;
     }
@@ -173,9 +228,11 @@ pub const FiberScheduler = struct {
             if (slot.lane.current) |active_fiber| {
                 if (containsHandle(slot.lane.runnable.items, active_fiber)) return error.CurrentFiberAlsoRunnable;
                 if (containsHandle(slot.lane.parked.items, active_fiber)) return error.CurrentFiberAlsoParked;
+                if (containsHandle(slot.lane.suspended.items, active_fiber)) return error.CurrentFiberAlsoSuspended;
             }
             if (hasDuplicates(slot.lane.runnable.items)) return error.DuplicateRunnableFiber;
             if (hasDuplicates(slot.lane.parked.items)) return error.DuplicateParkedFiber;
+            if (hasDuplicates(slot.lane.suspended.items)) return error.DuplicateSuspendedFiber;
         }
         if (hasDuplicateOwnedFiber(self)) return error.FiberOwnedMultipleTimes;
     }
@@ -363,11 +420,14 @@ test "fiber_scheduler: ownership traversal sees current runnable and parked fibe
     const runnable = FiberHandle{ .index = 2, .generation = 1 };
     const parked = FiberHandle{ .index = 3, .generation = 1 };
     const worker_current = FiberHandle{ .index = 4, .generation = 1 };
+    const suspended = FiberHandle{ .index = 5, .generation = 1 };
 
     try scheduler.enqueue(main_domain, runnable);
     try scheduler.enqueue(main_domain, parked);
     _ = try scheduler.parkCurrent(main_domain);
     try scheduler.setCurrent(worker_domain, worker_current);
+    try scheduler.enqueue(worker_domain, suspended);
+    _ = try scheduler.suspendCurrent(worker_domain);
 
     var seen = std.ArrayListUnmanaged(FiberHandle){};
     defer seen.deinit(std.testing.allocator);
@@ -379,9 +439,11 @@ test "fiber_scheduler: ownership traversal sees current runnable and parked fibe
     };
 
     scheduler.visitOwnedFibers(&seen, Collect.visit);
-    try std.testing.expectEqual(@as(usize, 4), seen.items.len);
+    try std.testing.expectEqual(@as(usize, 5), seen.items.len);
     try std.testing.expect(scheduler.ownsFiber(.{ .index = 1, .generation = 1 }));
     try std.testing.expect(scheduler.ownsFiber(runnable));
     try std.testing.expect(scheduler.ownsFiber(parked));
     try std.testing.expect(scheduler.ownsFiber(worker_current));
+    try std.testing.expect(scheduler.ownsFiber(suspended));
+    try std.testing.expectEqual(@as(usize, 1), scheduler.suspendedCount(worker_domain));
 }
