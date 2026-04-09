@@ -3,6 +3,8 @@ type t =
   | Async of Async.error
   | Env of Env.error
   | FsFile of Fs.File.error
+  | FsReadDir of Fs.ReadDir.error
+  | NetAddr of Net.Addr.error
   | NetIpAddr of Net.IpAddr.error
   | NetSocketAddr of Net.SocketAddr.error
   | NetTcpListener of Net.TcpListener.error
@@ -17,6 +19,10 @@ val of_async: Async.error -> t
 val of_env: Env.error -> t
 
 val of_fs_file: Fs.File.error -> t
+
+val of_fs_read_dir: Fs.ReadDir.error -> t
+
+val of_net_addr: Net.Addr.error -> t
 
 val of_net_ip_addr: Net.IpAddr.error -> t
 

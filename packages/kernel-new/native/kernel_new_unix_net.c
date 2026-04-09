@@ -5,7 +5,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netdb.h>
 #include <netinet/in.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,12 @@
 
 #define KERNEL_NEW_NET_CONNECT_CONNECTED 0
 #define KERNEL_NEW_NET_CONNECT_IN_PROGRESS 1
+#define KERNEL_NEW_NET_ADDR_KIND_STREAM 0
+#define KERNEL_NEW_NET_ADDR_KIND_DATAGRAM 1
+#define KERNEL_NEW_NET_RESOLVER_ERR_BASE 4096
+#define KERNEL_NEW_NET_RESOLVER_ERR_HOST_NOT_FOUND (KERNEL_NEW_NET_RESOLVER_ERR_BASE + 1)
+#define KERNEL_NEW_NET_RESOLVER_ERR_TEMPORARY_FAILURE (KERNEL_NEW_NET_RESOLVER_ERR_BASE + 2)
+#define KERNEL_NEW_NET_RESOLVER_ERR_RESOLUTION_FAILED (KERNEL_NEW_NET_RESOLVER_ERR_BASE + 3)
 
 static int kernel_new_net_configure_socket(int fd) {
   if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
@@ -167,6 +175,29 @@ static int kernel_new_net_set_reuse_options(int fd, int reuse_addr, int reuse_po
   return 0;
 }
 
+static int kernel_new_net_resolver_error(int status) {
+  switch (status) {
+#ifdef EAI_NONAME
+    case EAI_NONAME:
+      return KERNEL_NEW_NET_RESOLVER_ERR_HOST_NOT_FOUND;
+#endif
+#ifdef EAI_NODATA
+    case EAI_NODATA:
+      return KERNEL_NEW_NET_RESOLVER_ERR_HOST_NOT_FOUND;
+#endif
+#ifdef EAI_AGAIN
+    case EAI_AGAIN:
+      return KERNEL_NEW_NET_RESOLVER_ERR_TEMPORARY_FAILURE;
+#endif
+#ifdef EAI_SYSTEM
+    case EAI_SYSTEM:
+      return kernel_new_error_of_errno(errno);
+#endif
+    default:
+      return KERNEL_NEW_NET_RESOLVER_ERR_RESOLUTION_FAILED;
+  }
+}
+
 CAMLprim value kernel_new_net_ip_addr_is_valid(value ip_val) {
   CAMLparam1(ip_val);
 
@@ -174,6 +205,79 @@ CAMLprim value kernel_new_net_ip_addr_is_valid(value ip_val) {
   socklen_t addr_len = 0;
   int family = kernel_new_net_sockaddr_of_parts(String_val(ip_val), 0, &storage, &addr_len);
   CAMLreturn(Val_bool(family != -1));
+}
+
+CAMLprim value kernel_new_net_addr_resolve(value host_val, value port_val, value kind_val) {
+  CAMLparam3(host_val, port_val, kind_val);
+  CAMLlocal4(entries, item, tuple, ip_val);
+
+  int port = Int_val(port_val);
+  if (port < 0 || port > 65535) {
+    errno = EINVAL;
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  switch (Int_val(kind_val)) {
+    case KERNEL_NEW_NET_ADDR_KIND_STREAM:
+      hints.ai_socktype = SOCK_STREAM;
+      break;
+    case KERNEL_NEW_NET_ADDR_KIND_DATAGRAM:
+      hints.ai_socktype = SOCK_DGRAM;
+      break;
+    default:
+      errno = EINVAL;
+      CAMLreturn(kernel_new_result_errno());
+  }
+
+  char service_buffer[16];
+  snprintf(service_buffer, sizeof(service_buffer), "%d", port);
+
+  struct addrinfo *results = NULL;
+  int status = getaddrinfo(String_val(host_val), service_buffer, &hints, &results);
+  if (status != 0) {
+    CAMLreturn(kernel_new_result_error(kernel_new_net_resolver_error(status)));
+  }
+
+  int count = 0;
+  for (struct addrinfo *current = results; current != NULL; current = current->ai_next) {
+    if (current->ai_family == AF_INET || current->ai_family == AF_INET6) {
+      count++;
+    }
+  }
+
+  entries = caml_alloc(count, 0);
+  int index = 0;
+  for (struct addrinfo *current = results; current != NULL; current = current->ai_next) {
+    if (current->ai_family != AF_INET && current->ai_family != AF_INET6) {
+      continue;
+    }
+
+    char ip_buffer[INET6_ADDRSTRLEN];
+    int resolved_port = 0;
+    if (kernel_new_net_socket_addr_components(
+          current->ai_addr,
+          current->ai_addrlen,
+          ip_buffer,
+          sizeof(ip_buffer),
+          &resolved_port) == -1) {
+      freeaddrinfo(results);
+      CAMLreturn(kernel_new_result_errno());
+    }
+
+    ip_val = caml_copy_string(ip_buffer);
+    tuple = caml_alloc_tuple(2);
+    Store_field(tuple, 0, ip_val);
+    Store_field(tuple, 1, Val_int(resolved_port));
+    item = tuple;
+    Store_field(entries, index, item);
+    index++;
+  }
+
+  freeaddrinfo(results);
+  CAMLreturn(kernel_new_result_ok(entries));
 }
 
 CAMLprim value kernel_new_net_socket_close(value fd_val) {

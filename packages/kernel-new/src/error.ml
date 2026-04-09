@@ -4,6 +4,8 @@ type t =
   | Async of Async.error
   | Env of Env.error
   | FsFile of Fs.File.error
+  | FsReadDir of Fs.ReadDir.error
+  | NetAddr of Net.Addr.error
   | NetIpAddr of Net.IpAddr.error
   | NetSocketAddr of Net.SocketAddr.error
   | NetTcpListener of Net.TcpListener.error
@@ -19,6 +21,10 @@ let of_async = fun error -> Async error
 let of_env = fun error -> Env error
 
 let of_fs_file = fun error -> FsFile error
+
+let of_fs_read_dir = fun error -> FsReadDir error
+
+let of_net_addr = fun error -> NetAddr error
 
 let of_net_ip_addr = fun error -> NetIpAddr error
 
@@ -43,6 +49,8 @@ let module_name = fun value ->
   | Async _ -> "async"
   | Env _ -> "env"
   | FsFile _ -> "fs.file"
+  | FsReadDir _ -> "fs.read_dir"
+  | NetAddr _ -> "net.addr"
   | NetIpAddr _ -> "net.ip_addr"
   | NetSocketAddr _ -> "net.socket_addr"
   | NetTcpListener _ -> "net.tcp_listener"
@@ -58,6 +66,8 @@ let system = fun value ->
   | Async (Async.System error) -> Some error
   | Env (Env.System error) -> Some error
   | FsFile (Fs.File.System error) -> Some error
+  | FsReadDir (Fs.ReadDir.File (Fs.File.System error)) -> Some error
+  | NetAddr (Net.Addr.System error) -> Some error
   | NetTcpListener (Net.TcpListener.System error) -> Some error
   | NetTcpStream (Net.TcpStream.System error) -> Some error
   | NetUdpSocket (Net.UdpSocket.System error) -> Some error
@@ -72,6 +82,8 @@ let detail_to_string = fun value ->
   | Async error -> Async.error_to_string error
   | Env error -> Env.error_to_string error
   | FsFile error -> Fs.File.error_to_string error
+  | FsReadDir error -> Fs.ReadDir.error_to_string error
+  | NetAddr error -> Net.Addr.error_to_string error
   | NetIpAddr error -> Net.IpAddr.error_to_string error
   | NetSocketAddr error -> Net.SocketAddr.error_to_string error
   | NetTcpListener error -> Net.TcpListener.error_to_string error

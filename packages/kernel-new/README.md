@@ -12,7 +12,7 @@ Current backend status:
 
 Current public surface:
 - foundational: `Bool`, `Char`, `Int`, `Int32`, `Int64`, `Float`, `String`, `Bytes`, `Array`, `Option`, `Result`, `SystemError`, `Error`
-- runtime/platform: `Effect`, `Async`, `Path`, `IO.Iovec`, `Fs.File`, `Net`, `Time`, `Env`, `Process`
+- runtime/platform: `Effect`, `Async`, `Path`, `IO.Iovec`, `Fs.File`, `Fs.ReadDir`, `Net.Addr`, `Net`, `Time`, `Env`, `Process`
 
 Not in `kernel-new`:
 - `Reader` / `Writer`
@@ -25,6 +25,8 @@ Each public module owns a small typed `error` type.
 
 Examples:
 - `Fs.File.error`
+- `Fs.ReadDir.error`
+- `Net.Addr.error`
 - `Net.TcpStream.error`
 - `Net.UdpSocket.error`
 - `Time.SystemTime.error`
@@ -97,6 +99,8 @@ Keep pure modules pure. Do not add backend files where the code is platform-free
 
 The intended seams are:
 - `Fs.File.to_source`, `Net.*.to_source`, and `Process.to_source` for actor-friendly waiting
+- `Fs.ReadDir` for incremental directory iteration without raw OS handles
+- `Net.Addr` for hostname-to-`SocketAddr` resolution above raw IP parsing
 - `try_wait` instead of a blocking process wait
 - `IO.Iovec` for vectored file and socket operations
 - `SystemTime` and `Monotonic` as raw clock primitives, with richer time APIs above
