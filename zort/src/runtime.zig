@@ -190,6 +190,7 @@ pub const Runtime = struct {
             runtime.domains.mainDomain(),
             runtime.control_kernel.currentFiber(),
         );
+        runtime.stw.registerDomain(runtime.domains.mainDomain()) catch @panic("zort: out of memory while creating main stw slot");
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
             runtime.fixed_arena_buffer = buffer;
@@ -299,6 +300,14 @@ pub const Runtime = struct {
         try self.fiber_scheduler.requestWake(domain);
     }
 
+    pub fn claimSchedulerLane(self: *Runtime, domain: DomainHandle, token: u64) !bool {
+        return self.fiber_scheduler.claimLaneOwnership(domain, token);
+    }
+
+    pub fn releaseSchedulerLane(self: *Runtime, domain: DomainHandle, token: u64) !bool {
+        return self.fiber_scheduler.releaseLaneOwnership(domain, token);
+    }
+
     pub fn takeSchedulerWake(self: *Runtime, domain: DomainHandle) !bool {
         return self.fiber_scheduler.takeWakeRequest(domain);
     }
@@ -342,6 +351,7 @@ pub const Runtime = struct {
     pub fn createDomain(self: *Runtime) !DomainHandle {
         const domain = try self.domains.createDomain();
         try self.fiber_scheduler.registerDomain(domain);
+        try self.stw.registerDomain(domain);
         return domain;
     }
 
@@ -513,21 +523,14 @@ pub const Runtime = struct {
     }
 
     pub fn requestStopTheWorld(self: *Runtime) !usize {
-        const generation = try self.stw.request(self.currentDomain());
-        const Pause = struct {
-            stw: *StopTheWorldCoordinator,
-
-            fn visit(ctx: *@This(), domain: DomainHandle) void {
-                ctx.stw.markPaused(domain) catch unreachable;
-            }
-        };
-        var pause_ctx = Pause{ .stw = &self.stw };
-        self.domains.visitAttached(&pause_ctx, Pause.visit);
+        const generation = try self.stw.request(self.currentDomain(), self.domainRegistry().attachedCount());
+        _ = try self.enterSafepoint(self.currentDomain());
         return generation;
     }
 
-    pub fn enterSafepoint(self: *Runtime, domain: DomainHandle) !void {
-        try self.stw.markPaused(domain);
+    pub fn enterSafepoint(self: *Runtime, domain: DomainHandle) !bool {
+        const generation = self.stw.currentGeneration();
+        return self.stw.acknowledgePause(domain, generation);
     }
 
     pub fn resumeTheWorld(self: *Runtime) void {
@@ -866,6 +869,7 @@ pub const Runtime = struct {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         _ = self.requestStopTheWorld() catch unreachable;
         defer self.resumeTheWorld();
+        self.quiesceAttachedDomainsForCollection();
         self.collect_generations +%= 1;
         self.minor_collect_generations +%= 1;
         var providers_buffer: [5]RootProvider = undefined;
@@ -886,6 +890,7 @@ pub const Runtime = struct {
         if (self.debug_root_checks or self.debug_checks.verify_roots) self.verifyRoots();
         _ = self.requestStopTheWorld() catch unreachable;
         defer self.resumeTheWorld();
+        self.quiesceAttachedDomainsForCollection();
         self.collect_generations +%= 1;
         var providers_buffer: [5]RootProvider = undefined;
         const providers = self.fillRootProviders(&providers_buffer);
@@ -983,6 +988,20 @@ pub const Runtime = struct {
         if (words > self.heap_store.nursery_config.max_object_words) return;
         if (!self.heap_store.shouldCollectBeforeNurseryAlloc(words)) return;
         self.collectMinor();
+    }
+
+    fn quiesceAttachedDomainsForCollection(self: *Runtime) void {
+        const Pause = struct {
+            runtime: *Runtime,
+
+            fn visit(ctx: *@This(), domain: DomainHandle) void {
+                _ = ctx.runtime.enterSafepoint(domain) catch unreachable;
+            }
+        };
+
+        var pause_ctx = Pause{ .runtime = self };
+        self.domains.visitAttached(&pause_ctx, Pause.visit);
+        std.debug.assert(self.stw.allPaused());
     }
 
     fn objectFrom(self: *Runtime, block_value: Value) ?*Object {
@@ -1868,9 +1887,13 @@ test "runtime: scheduler and stw coordination snapshots are explicit" {
     var lane = try rt.schedulerLaneSnapshot(main_domain);
     try std.testing.expectEqual(@as(usize, 1), lane.runnable_count);
     try std.testing.expect(lane.wake_requested);
+    try std.testing.expect(try rt.claimSchedulerLane(main_domain, 0xCAFE));
+    lane = try rt.schedulerLaneSnapshot(main_domain);
+    try std.testing.expectEqual(@as(?u64, 0xCAFE), lane.owner_token);
     try std.testing.expect(try rt.takeSchedulerWake(main_domain));
     lane = try rt.schedulerLaneSnapshot(main_domain);
     try std.testing.expect(!lane.wake_requested);
+    try std.testing.expect(try rt.releaseSchedulerLane(main_domain, 0xCAFE));
 
     try std.testing.expectEqual(child, (try rt.scheduleNextFiber(main_domain)).?);
     lane = try rt.schedulerLaneSnapshot(main_domain);
@@ -1879,10 +1902,12 @@ test "runtime: scheduler and stw coordination snapshots are explicit" {
 
     var stw = rt.stwSnapshot();
     try std.testing.expect(!stw.active);
-    _ = try rt.requestStopTheWorld();
+    const generation = try rt.requestStopTheWorld();
     stw = rt.stwSnapshot();
     try std.testing.expect(stw.active);
-    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), stw.paused_count);
+    try std.testing.expectEqual(@as(usize, 1), stw.paused_count);
+    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), stw.target_pause_count);
+    try std.testing.expectEqual(generation, stw.generation);
     rt.resumeTheWorld();
     stw = rt.stwSnapshot();
     try std.testing.expect(!stw.active);
@@ -1971,9 +1996,13 @@ test "runtime: stop-the-world hooks pause attached domains in the single-threade
     const generation = try rt.requestStopTheWorld();
     try std.testing.expectEqual(@as(usize, 1), generation);
     try std.testing.expect(rt.stwCoordinator().isActive());
-    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), rt.stwCoordinator().pausedCount());
     try std.testing.expect(rt.stwCoordinator().isPaused(rt.currentDomain()));
+    try std.testing.expect(!rt.stwCoordinator().isPaused(other));
+
+    try std.testing.expect(try rt.enterSafepoint(other));
+    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), rt.stwCoordinator().pausedCount());
     try std.testing.expect(rt.stwCoordinator().isPaused(other));
+    try std.testing.expect(rt.stwCoordinator().allPaused());
 
     rt.resumeTheWorld();
     try std.testing.expect(!rt.stwCoordinator().isActive());

@@ -10,23 +10,28 @@ pub const EventSink = event_sink_mod.EventSink;
 
 const AtomicCounter = atomic_mod.AtomicCounter;
 const AtomicFlag = atomic_mod.AtomicFlag;
+const OptionalTokenCell = atomic_mod.OptionalTokenCell;
 const OptionalFiberCell = atomic_mod.OptionalHandleCell(FiberHandle);
 
 pub const LaneCoordinationSnapshot = struct {
     state_epoch: usize,
+    ownership_epoch: usize,
     runnable_count: usize,
     parked_count: usize,
     suspended_count: usize,
     wake_requested: bool,
+    owner_token: ?u64,
     current: ?FiberHandle,
 };
 
 const LaneCoordination = struct {
     state_epoch: AtomicCounter = AtomicCounter.init(0),
+    ownership_epoch: AtomicCounter = AtomicCounter.init(0),
     runnable_count: AtomicCounter = AtomicCounter.init(0),
     parked_count: AtomicCounter = AtomicCounter.init(0),
     suspended_count: AtomicCounter = AtomicCounter.init(0),
     wake_requested: AtomicFlag = AtomicFlag.init(false),
+    owner_token: OptionalTokenCell = OptionalTokenCell.init(null),
     current: OptionalFiberCell = OptionalFiberCell.init(null),
 
     fn sync(self: *LaneCoordination, current: ?FiberHandle, runnable_count: usize, parked_count: usize, suspended_count: usize) void {
@@ -54,12 +59,30 @@ const LaneCoordination = struct {
     fn snapshot(self: *const LaneCoordination) LaneCoordinationSnapshot {
         return .{
             .state_epoch = self.state_epoch.load(),
+            .ownership_epoch = self.ownership_epoch.load(),
             .runnable_count = self.runnable_count.load(),
             .parked_count = self.parked_count.load(),
             .suspended_count = self.suspended_count.load(),
             .wake_requested = self.wake_requested.isSet(),
+            .owner_token = self.owner_token.load(),
             .current = self.current.load(),
         };
+    }
+
+    fn claim(self: *LaneCoordination, token: u64) bool {
+        if (self.owner_token.claim(token)) {
+            _ = self.ownership_epoch.increment();
+            return true;
+        }
+        return self.owner_token.load() == token;
+    }
+
+    fn release(self: *LaneCoordination, token: u64) bool {
+        if (self.owner_token.release(token)) {
+            _ = self.ownership_epoch.increment();
+            return true;
+        }
+        return false;
     }
 };
 
@@ -137,6 +160,16 @@ pub const FiberScheduler = struct {
     pub fn coordinationSnapshot(self: *const FiberScheduler, domain: DomainHandle) Error!LaneCoordinationSnapshot {
         const lane_state = self.lane(domain) orelse return error.InvalidDomain;
         return lane_state.coordination.snapshot();
+    }
+
+    pub fn claimLaneOwnership(self: *FiberScheduler, domain: DomainHandle, token: u64) Error!bool {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        return lane_state.coordination.claim(token);
+    }
+
+    pub fn releaseLaneOwnership(self: *FiberScheduler, domain: DomainHandle, token: u64) Error!bool {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        return lane_state.coordination.release(token);
     }
 
     pub fn parkedCount(self: *const FiberScheduler, domain: DomainHandle) usize {
@@ -564,16 +597,25 @@ test "fiber_scheduler: coordination snapshots mirror queue state and wake reques
     try std.testing.expectEqual(@as(usize, 0), snapshot.runnable_count);
     try std.testing.expectEqual(@as(?FiberHandle, null), snapshot.current);
     try std.testing.expect(!snapshot.wake_requested);
+    try std.testing.expectEqual(@as(?u64, null), snapshot.owner_token);
 
     try scheduler.enqueue(worker_domain, worker);
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expectEqual(@as(usize, 1), snapshot.runnable_count);
     try std.testing.expectEqual(@as(?FiberHandle, null), snapshot.current);
     try std.testing.expect(snapshot.wake_requested);
+    try std.testing.expectEqual(@as(?u64, null), snapshot.owner_token);
 
     try std.testing.expect(try scheduler.takeWakeRequest(worker_domain));
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
     try std.testing.expect(!snapshot.wake_requested);
+
+    try std.testing.expect(try scheduler.claimLaneOwnership(worker_domain, 99));
+    snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expectEqual(@as(?u64, 99), snapshot.owner_token);
+    try std.testing.expect(snapshot.ownership_epoch >= 1);
+    try std.testing.expect(!(try scheduler.releaseLaneOwnership(worker_domain, 7)));
+    try std.testing.expect(try scheduler.releaseLaneOwnership(worker_domain, 99));
 
     try std.testing.expectEqual(worker, (try scheduler.switchToNext(worker_domain)).?);
     snapshot = try scheduler.coordinationSnapshot(worker_domain);
@@ -586,4 +628,44 @@ test "fiber_scheduler: coordination snapshots mirror queue state and wake reques
     try std.testing.expect(snapshot.wake_requested);
     try std.testing.expect(try scheduler.takeWakeRequest(worker_domain));
     try std.testing.expect(!(try scheduler.takeWakeRequest(worker_domain)));
+}
+
+test "fiber_scheduler: lane ownership claims are atomic" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 0, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const worker_domain = DomainHandle{ .index = 1, .generation = 1 };
+    try scheduler.registerDomain(worker_domain);
+
+    const ClaimContext = struct {
+        scheduler: *FiberScheduler,
+        domain: DomainHandle,
+        token: u64,
+        result: *bool,
+    };
+    const Claim = struct {
+        fn run(ctx: *ClaimContext) void {
+            ctx.result.* = ctx.scheduler.claimLaneOwnership(ctx.domain, ctx.token) catch unreachable;
+        }
+    };
+
+    var results = [_]bool{ false, false };
+    var contexts = [_]ClaimContext{
+        .{ .scheduler = &scheduler, .domain = worker_domain, .token = 1, .result = &results[0] },
+        .{ .scheduler = &scheduler, .domain = worker_domain, .token = 2, .result = &results[1] },
+    };
+    var threads: [2]std.Thread = undefined;
+    for (&threads, &contexts) |*thread, *ctx| {
+        thread.* = try std.Thread.spawn(.{}, Claim.run, .{ctx});
+    }
+    for (threads) |thread| thread.join();
+
+    try std.testing.expect(results[0] != results[1]);
+    const snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expect(snapshot.owner_token == 1 or snapshot.owner_token == 2);
 }

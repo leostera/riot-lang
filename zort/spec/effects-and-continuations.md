@@ -232,15 +232,16 @@
 - Scheduler lanes now also expose explicit coordination state:
   - atomic queue counters,
   - an atomic current-fiber mirror,
-  - and an atomic wake-request flag that future cross-domain scheduling can consume without peeking into queue internals.
+  - an atomic wake-request flag that future cross-domain scheduling can consume without peeking into queue internals,
+  - and an atomic owner token so future worker loops can claim exclusive mutation rights per domain lane.
 - Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
   - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
   - runnable/current fibers use the same ownership seam,
   - fibers captured by effects stay scheduler-owned through the suspended lane,
   - while `suspended_continuations` owns only the captured payload/roots/suspended-stack snapshot.
 - The runtime now exposes explicit stop-the-world hooks around collection:
-  - STW requests,
-  - per-domain safepoint pauses,
+  - STW requests with a target participant count,
+  - per-domain safepoint acknowledgements,
   - and world-resume events.
 - Control-kernel activity is now observable through typed events carrying:
   - action kind

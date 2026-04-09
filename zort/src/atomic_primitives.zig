@@ -29,6 +29,10 @@ pub const AtomicCounter = struct {
     pub fn add(self: *AtomicCounter, delta: usize) usize {
         return self.raw.fetchAdd(delta, Orders.update) + delta;
     }
+
+    pub fn compareExchange(self: *AtomicCounter, expected: usize, new: usize) ?usize {
+        return self.raw.cmpxchgStrong(expected, new, Orders.update, Orders.observe);
+    }
 };
 
 pub const AtomicFlag = struct {
@@ -56,6 +60,46 @@ pub const AtomicFlag = struct {
 
     pub fn take(self: *AtomicFlag) bool {
         return self.clear();
+    }
+};
+
+pub const OptionalTokenCell = struct {
+    raw: std.atomic.Value(u64),
+
+    const Self = @This();
+    const null_sentinel = std.math.maxInt(u64);
+
+    pub fn init(value: ?u64) Self {
+        return .{ .raw = std.atomic.Value(u64).init(encode(value)) };
+    }
+
+    pub fn load(self: *const Self) ?u64 {
+        return decode(self.raw.load(Orders.observe));
+    }
+
+    pub fn store(self: *Self, value: ?u64) void {
+        self.raw.store(encode(value), Orders.publish);
+    }
+
+    pub fn swap(self: *Self, value: ?u64) ?u64 {
+        return decode(self.raw.swap(encode(value), Orders.update));
+    }
+
+    pub fn claim(self: *Self, token: u64) bool {
+        return self.raw.cmpxchgStrong(null_sentinel, token, Orders.update, Orders.observe) == null;
+    }
+
+    pub fn release(self: *Self, token: u64) bool {
+        return self.raw.cmpxchgStrong(token, null_sentinel, Orders.update, Orders.observe) == null;
+    }
+
+    fn encode(value: ?u64) u64 {
+        return value orelse null_sentinel;
+    }
+
+    fn decode(encoded: u64) ?u64 {
+        if (encoded == null_sentinel) return null;
+        return encoded;
     }
 };
 
@@ -135,6 +179,17 @@ test "atomic_primitives: optional handle cell round-trips handles" {
     try std.testing.expectEqual(handle, cell.load().?);
     try std.testing.expectEqual(handle, cell.clear().?);
     try std.testing.expectEqual(@as(?FiberHandle, null), cell.load());
+}
+
+test "atomic_primitives: optional token cell claims and releases ownership" {
+    var token = OptionalTokenCell.init(null);
+    try std.testing.expectEqual(@as(?u64, null), token.load());
+    try std.testing.expect(token.claim(42));
+    try std.testing.expectEqual(@as(?u64, 42), token.load());
+    try std.testing.expect(!token.claim(7));
+    try std.testing.expect(!token.release(7));
+    try std.testing.expect(token.release(42));
+    try std.testing.expectEqual(@as(?u64, null), token.load());
 }
 
 test "atomic_primitives: counter is safe under threaded increments" {

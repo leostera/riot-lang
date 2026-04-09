@@ -83,14 +83,16 @@
   - per-domain blocking depth and blocked/attached state transitions,
   - fibers and suspended continuations carrying domain ownership in the control kernel,
   - per-domain scheduler lanes with explicit current/runnable/parked fiber states,
-  - per-domain scheduler coordination snapshots with atomic wake flags and queue counters,
-  - a stop-the-world coordinator with explicit request/pause/resume hooks,
-  - and STW coordination snapshots with atomic active/generation/paused-count mirrors.
+  - per-domain scheduler coordination snapshots with atomic wake flags, queue counters, and claimable owner tokens,
+  - a stop-the-world coordinator with explicit request/acknowledge/resume hooks,
+  - per-domain STW acknowledgement slots keyed by domain handle,
+  - and STW coordination snapshots with atomic active/generation/target/paused-count mirrors.
 - This is an intentional simplification of OCaml's runtime-global model:
   - services are attached to one `Runtime` instance,
   - named values are runtime-local rather than process-global,
-  - scheduler lanes and STW coordination currently expose shared-memory-safe atomic coordination state,
-  - but the queue and STW protocols are still single-threaded scaffolding rather than a fully parallel runtime protocol.
+  - scheduler lanes and STW coordination now expose shared-memory-safe atomic coordination state,
+  - STW pause acknowledgements can arrive independently per registered domain,
+  - but worker lifecycle and scheduler queue mutation are not yet fully enforced through claimed owner tokens.
 - zort now explicitly allows a suspended fiber to resume in a different attached domain:
   - the resumed fiber adopts the resumer's active domain,
   - this is the current migration seam for multicore fibers,
