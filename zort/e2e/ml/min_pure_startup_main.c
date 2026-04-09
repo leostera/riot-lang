@@ -2,7 +2,6 @@
 
 extern void caml_startup(void *argv);
 extern void caml_shutdown(void);
-extern long long zort_last_emitted_int;
 extern unsigned long long caml_globals_inited;
 extern unsigned long long zort_startup_calls;
 extern unsigned long long zort_start_program_calls;
@@ -18,10 +17,9 @@ int main(int argc, char **argv) {
   (void)argc;
 
   caml_globals_inited = 0;
-  zort_last_emitted_int = -1;
   caml_startup((void *)argv);
 
-  printf("output=%lld\n", zort_last_emitted_int);
+  printf("output=unit\n");
   printf(
       "trace startup_calls=%llu start_program_calls=%llu globals_inited=%llu "
       "frametables=%llu frame_descriptors=%llu gc_root_tables=%llu "
@@ -38,9 +36,7 @@ int main(int argc, char **argv) {
       zort_metadata_data_segments,
       zort_last_start_program_result);
 
-  int ok = zort_last_emitted_int == 42 &&
-           caml_globals_inited == 1 &&
-           zort_last_start_program_result == 1;
+  int ok = caml_globals_inited == 1 && zort_last_start_program_result == 1;
   caml_shutdown();
   return ok ? 0 : 1;
 }

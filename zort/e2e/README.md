@@ -17,8 +17,9 @@ Current cases:
   continuation resume, and control-flow trace counters.
 - `ml/*.ml`: compiler-emitted native smoke fixtures built with `ocamlopt.opt`
   in `-output-obj` mode and linked today against vendor `libasmrun` as the
-  baseline runtime, with one narrow `zort`-linked exception for compiler-compat
-  bring-up.
+  baseline runtime, with narrow `zort`-linked exceptions for compiler-compat
+  bring-up. The `zort` path now also verifies fixture-local expected stdout,
+  expected startup-metadata traces, and a tiny per-case benchmark signal.
 
 Run them with:
 

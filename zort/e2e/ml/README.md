@@ -25,8 +25,12 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` currently runs one intentionally narrow fixture
-  against `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
+- `zig build e2e-ml-zort` now runs two intentionally narrow fixtures against
+  `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
+- each zort-linked fixture now carries:
+  - expected stdout
+  - expected startup-metadata trace output
+  - a recorded `bench_ns_per_run.txt` signal from the harness
 
 Current cases:
 
@@ -35,6 +39,9 @@ Current cases:
 - `alloc_pair_callback.ml`: tuple allocation and field inspection from C
 - `external_identity_callback.ml`: external primitive call through a native C
   symbol plus callback registration
+- `min_pure_startup.ml`: strict `-nostdlib -nopervasives` pure startup smoke
+  intended to prove the smallest compiler-emitted object can run against the
+  `zort` compiler-compatibility shim without depending on externals
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -62,18 +69,18 @@ They are the baseline compiler-emitted programs we will later use to prove:
 - external primitive compatibility
 - callback/effect compatibility
 
-The current `zort`-linked exception is `min_external_startup.ml`, which is
-intentionally narrower:
+The current `zort`-linked fixtures are intentionally narrow:
 
-- it avoids the standard library entirely,
-- it uses only a top-level external primitive,
-- and it exists to prove the first "compiler-emitted OCaml code ran against a
-  zort shim" milestone before broader stdlib/runtime compatibility exists.
+- `min_pure_startup.ml` avoids both the standard library and externals so the
+  harness can prove bare startup reaches compiler-emitted code
+- `min_external_startup.ml` adds one top-level external primitive on the same
+  startup path
 
-Successful `zort` milestone today:
+Successful `zort` milestones today:
 
 - target: `aarch64-apple-darwin`
 - compiler path:
   `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
 - runtime path: `libzort-compiler-compat.dylib`
-- observable result: `output=42`
+- observable pure-startup result: `output=unit`
+- observable external-startup result: `output=42`
