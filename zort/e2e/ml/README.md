@@ -27,9 +27,10 @@ Current status:
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
 - `zig build e2e-ml-zort` now runs two intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
-- the compiler-compat startup path now retains linked frametable, `gc_roots`,
-  and code/data segment tables in compatibility-owned state before entering
-  `caml_start_program`
+- the compiler-compat startup path now registers linked frametable,
+  `gc_roots`, and code/data segment tables in compatibility-owned state and
+  verifies that `caml_program` lands in a registered code fragment before
+  entering `caml_start_program`
 - each zort-linked fixture now carries:
   - expected stdout
   - expected startup-metadata trace output

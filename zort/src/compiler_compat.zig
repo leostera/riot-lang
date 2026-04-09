@@ -52,6 +52,43 @@ const MetadataTables = struct {
     }
 };
 
+const RegisteredFrameTable = struct {
+    table: [*]const Intnat,
+    descriptor_count: usize,
+};
+
+const RegisteredGcRootTable = struct {
+    table: [*]const RawValue,
+    entry_count: usize,
+
+    fn visitEntries(self: RegisteredGcRootTable, visitor: RawRootSlotVisitor) void {
+        var root_index: usize = 0;
+        while (self.table[root_index] != 0) : (root_index += 1) {
+            visitor.visit(&self.table[root_index]);
+        }
+    }
+};
+
+const RegisteredDataSegment = struct {
+    begin: *const anyopaque,
+    end: *const anyopaque,
+};
+
+const RegisteredCodeFragment = struct {
+    const DigestPolicy = enum {
+        later,
+    };
+
+    begin: *const anyopaque,
+    end: *const anyopaque,
+    digest_policy: DigestPolicy = .later,
+
+    fn contains(self: RegisteredCodeFragment, pc: *const anyopaque) bool {
+        const pc_addr = @intFromPtr(pc);
+        return pc_addr >= @intFromPtr(self.begin) and pc_addr < @intFromPtr(self.end);
+    }
+};
+
 const RawRootSlotVisitor = struct {
     ctx: ?*anyopaque,
     visit_fn: *const fn (?*anyopaque, *const RawValue) void,
@@ -63,26 +100,96 @@ const RawRootSlotVisitor = struct {
 
 const CompilerCompatState = struct {
     const StartupMetadata = struct {
-        tables: MetadataTables,
+        frame_tables: std.ArrayListUnmanaged(RegisteredFrameTable) = .{},
+        gc_root_tables: std.ArrayListUnmanaged(RegisteredGcRootTable) = .{},
+        code_fragments: std.ArrayListUnmanaged(RegisteredCodeFragment) = .{},
+        data_segments: std.ArrayListUnmanaged(RegisteredDataSegment) = .{},
         summary: MetadataSummary,
+
+        fn deinit(self: *StartupMetadata, allocator: std.mem.Allocator) void {
+            self.frame_tables.deinit(allocator);
+            self.gc_root_tables.deinit(allocator);
+            self.code_fragments.deinit(allocator);
+            self.data_segments.deinit(allocator);
+            self.* = .{ .summary = .{} };
+        }
     };
 
+    allocator: std.mem.Allocator,
     startup_metadata: ?StartupMetadata = null,
 
+    fn init(allocator: std.mem.Allocator) CompilerCompatState {
+        return .{
+            .allocator = allocator,
+        };
+    }
+
     fn reset(self: *CompilerCompatState) void {
+        if (self.startup_metadata) |*metadata| metadata.deinit(self.allocator);
         self.startup_metadata = null;
     }
 
-    fn registerStartupMetadata(self: *CompilerCompatState, tables: MetadataTables) void {
+    fn registerStartupMetadata(self: *CompilerCompatState, tables: MetadataTables) !void {
+        self.reset();
         if (tables.isEmpty()) {
-            self.reset();
             return;
         }
 
-        self.startup_metadata = .{
-            .tables = tables,
-            .summary = tables.summarize(),
+        var metadata = StartupMetadata{
+            .summary = .{},
         };
+        errdefer metadata.deinit(self.allocator);
+
+        if (tables.frametables) |frametables| {
+            var frametable_index: usize = 0;
+            while (frametables[frametable_index]) |table| : (frametable_index += 1) {
+                try metadata.frame_tables.append(self.allocator, .{
+                    .table = table,
+                    .descriptor_count = @as(usize, @intCast(table[0])),
+                });
+                metadata.summary.frametable_count += 1;
+                metadata.summary.frame_descriptor_count += @as(usize, @intCast(table[0]));
+            }
+        }
+
+        if (tables.globals) |globals| {
+            var global_index: usize = 0;
+            while (globals[global_index]) |table| : (global_index += 1) {
+                var entry_count: usize = 0;
+                while (table[entry_count] != 0) : (entry_count += 1) {}
+
+                try metadata.gc_root_tables.append(self.allocator, .{
+                    .table = table,
+                    .entry_count = entry_count,
+                });
+                metadata.summary.gc_root_table_count += 1;
+                metadata.summary.gc_root_entry_count += entry_count;
+            }
+        }
+
+        if (tables.code_segments) |code_segments| {
+            var code_index: usize = 0;
+            while (code_segments[code_index].begin) |begin| : (code_index += 1) {
+                try metadata.code_fragments.append(self.allocator, .{
+                    .begin = begin,
+                    .end = code_segments[code_index].end.?,
+                });
+                metadata.summary.code_segment_count += 1;
+            }
+        }
+
+        if (tables.data_segments) |data_segments| {
+            var data_index: usize = 0;
+            while (data_segments[data_index].begin) |begin| : (data_index += 1) {
+                try metadata.data_segments.append(self.allocator, .{
+                    .begin = begin,
+                    .end = data_segments[data_index].end.?,
+                });
+                metadata.summary.data_segment_count += 1;
+            }
+        }
+
+        self.startup_metadata = metadata;
     }
 
     fn hasStartupMetadata(self: *const CompilerCompatState) bool {
@@ -95,15 +202,15 @@ const CompilerCompatState = struct {
 
     fn visitGcRootTableEntries(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
         const metadata = self.startup_metadata orelse return;
-        const globals = metadata.tables.globals orelse return;
+        for (metadata.gc_root_tables.items) |table| table.visitEntries(visitor);
+    }
 
-        var global_index: usize = 0;
-        while (globals[global_index]) |table| : (global_index += 1) {
-            var root_index: usize = 0;
-            while (table[root_index] != 0) : (root_index += 1) {
-                visitor.visit(&table[root_index]);
-            }
+    fn findCodeFragment(self: *const CompilerCompatState, pc: *const anyopaque) ?RegisteredCodeFragment {
+        const metadata = self.startup_metadata orelse return null;
+        for (metadata.code_fragments.items) |fragment| {
+            if (fragment.contains(pc)) return fragment;
         }
+        return null;
     }
 };
 
@@ -113,6 +220,7 @@ const FakeDomainState = extern struct {
 };
 
 extern fn caml_start_program(state: *FakeDomainState) callconv(.c) RawValue;
+extern fn caml_program() callconv(.c) RawValue;
 comptime {
     if (builtin.is_test) {
         _ = struct {
@@ -124,7 +232,7 @@ comptime {
 }
 
 var fake_domain = FakeDomainState{};
-var compiler_compat_state = CompilerCompatState{};
+var compiler_compat_state = CompilerCompatState.init(std.heap.page_allocator);
 
 pub export var caml_globals_inited: usize = 0;
 pub export var @"caml_system$frametable": [1]usize = .{0};
@@ -139,6 +247,7 @@ pub export var zort_metadata_gc_root_tables: usize = 0;
 pub export var zort_metadata_gc_root_entries: usize = 0;
 pub export var zort_metadata_code_segments: usize = 0;
 pub export var zort_metadata_data_segments: usize = 0;
+pub export var zort_metadata_program_fragment_registered: usize = 0;
 
 fn countSegments(segments: [*]const Segment) usize {
     var count: usize = 0;
@@ -192,13 +301,15 @@ fn resetObservability() void {
     zort_metadata_gc_root_entries = 0;
     zort_metadata_code_segments = 0;
     zort_metadata_data_segments = 0;
+    zort_metadata_program_fragment_registered = 0;
 }
 
 fn startupCommon() RawValue {
     resetObservability();
     zort_startup_calls = 1;
 
-    compiler_compat_state.registerStartupMetadata(MetadataTables.captureExtern());
+    compiler_compat_state.registerStartupMetadata(MetadataTables.captureExtern()) catch
+        @panic("zort: out of memory while registering compiler metadata");
     zort_metadata_registered = @intFromBool(compiler_compat_state.hasStartupMetadata());
 
     const metadata = compiler_compat_state.summary();
@@ -208,6 +319,8 @@ fn startupCommon() RawValue {
     zort_metadata_gc_root_entries = metadata.gc_root_entry_count;
     zort_metadata_code_segments = metadata.code_segment_count;
     zort_metadata_data_segments = metadata.data_segment_count;
+    zort_metadata_program_fragment_registered =
+        @intFromBool(compiler_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
 
     const result = caml_start_program(&fake_domain);
     zort_start_program_calls = 1;
@@ -320,8 +433,9 @@ test "compiler compat: state retains startup metadata and visits gc root entries
         .{},
     };
 
-    var state = CompilerCompatState{};
-    state.registerStartupMetadata(.{
+    var state = CompilerCompatState.init(std.testing.allocator);
+    defer state.reset();
+    try state.registerStartupMetadata(.{
         .frametables = frametables[0..].ptr,
         .globals = globals[0..].ptr,
         .code_segments = code_segments[0..].ptr,
@@ -333,6 +447,11 @@ test "compiler compat: state retains startup metadata and visits gc root entries
     try std.testing.expectEqual(@as(usize, 1), summary.frametable_count);
     try std.testing.expectEqual(@as(usize, 1), summary.gc_root_table_count);
     try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
+    try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.frame_tables.items.len);
+    try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.code_fragments.items.len);
+    try std.testing.expectEqual(RegisteredCodeFragment.DigestPolicy.later, state.startup_metadata.?.code_fragments.items[0].digest_policy);
+    try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x18)) != null);
+    try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x28)) == null);
 
     var seen = std.ArrayListUnmanaged(RawValue){};
     defer seen.deinit(std.testing.allocator);
@@ -370,8 +489,8 @@ test "compiler compat: state reset clears registered startup metadata" {
         .{},
     };
 
-    var state = CompilerCompatState{};
-    state.registerStartupMetadata(.{
+    var state = CompilerCompatState.init(std.testing.allocator);
+    try state.registerStartupMetadata(.{
         .frametables = frametables[0..].ptr,
         .globals = globals[0..].ptr,
         .code_segments = segments[0..].ptr,
@@ -383,4 +502,60 @@ test "compiler compat: state reset clears registered startup metadata" {
 
     try std.testing.expect(!state.hasStartupMetadata());
     try std.testing.expectEqual(MetadataSummary{}, state.summary());
+}
+
+test "compiler compat: reregistering startup metadata replaces prior registrations" {
+    const first_frametable = [_]Intnat{ 1, 0 };
+    const second_frametable = [_]Intnat{ 2, 0, 0 };
+    const first_frametables = [_]?[*]const Intnat{
+        first_frametable[0..].ptr,
+        null,
+    };
+    const second_frametables = [_]?[*]const Intnat{
+        second_frametable[0..].ptr,
+        null,
+    };
+    const first_roots = [_]RawValue{ 0x10, 0 };
+    const second_roots = [_]RawValue{ 0x20, 0x30, 0 };
+    const first_globals = [_]?[*]const RawValue{
+        first_roots[0..].ptr,
+        null,
+    };
+    const second_globals = [_]?[*]const RawValue{
+        second_roots[0..].ptr,
+        null,
+    };
+    const first_segments = [_]Segment{
+        .{ .begin = @ptrFromInt(0x1000), .end = @ptrFromInt(0x1100) },
+        .{},
+    };
+    const second_segments = [_]Segment{
+        .{ .begin = @ptrFromInt(0x2000), .end = @ptrFromInt(0x2200) },
+        .{},
+    };
+
+    var state = CompilerCompatState.init(std.testing.allocator);
+    defer state.reset();
+
+    try state.registerStartupMetadata(.{
+        .frametables = first_frametables[0..].ptr,
+        .globals = first_globals[0..].ptr,
+        .code_segments = first_segments[0..].ptr,
+        .data_segments = first_segments[0..].ptr,
+    });
+    try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x1008)) != null);
+
+    try state.registerStartupMetadata(.{
+        .frametables = second_frametables[0..].ptr,
+        .globals = second_globals[0..].ptr,
+        .code_segments = second_segments[0..].ptr,
+        .data_segments = second_segments[0..].ptr,
+    });
+
+    const summary = state.summary();
+    try std.testing.expectEqual(@as(usize, 1), summary.frametable_count);
+    try std.testing.expectEqual(@as(usize, 2), summary.frame_descriptor_count);
+    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
+    try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x1008)) == null);
+    try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x2008)) != null);
 }

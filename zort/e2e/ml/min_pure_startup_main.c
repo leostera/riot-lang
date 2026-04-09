@@ -13,6 +13,7 @@ extern unsigned long long zort_metadata_gc_root_tables;
 extern unsigned long long zort_metadata_gc_root_entries;
 extern unsigned long long zort_metadata_code_segments;
 extern unsigned long long zort_metadata_data_segments;
+extern unsigned long long zort_metadata_program_fragment_registered;
 
 int main(int argc, char **argv) {
   (void)argc;
@@ -25,7 +26,7 @@ int main(int argc, char **argv) {
       "trace startup_calls=%llu start_program_calls=%llu globals_inited=%llu "
       "metadata_registered=%llu frametables=%llu frame_descriptors=%llu "
       "gc_root_tables=%llu gc_root_entries=%llu code_segments=%llu "
-      "data_segments=%llu result_raw=%llu\n",
+      "data_segments=%llu program_fragment_registered=%llu result_raw=%llu\n",
       zort_startup_calls,
       zort_start_program_calls,
       caml_globals_inited,
@@ -36,10 +37,12 @@ int main(int argc, char **argv) {
       zort_metadata_gc_root_entries,
       zort_metadata_code_segments,
       zort_metadata_data_segments,
+      zort_metadata_program_fragment_registered,
       zort_last_start_program_result);
 
   int ok = caml_globals_inited == 1 &&
            zort_metadata_registered == 1 &&
+           zort_metadata_program_fragment_registered == 1 &&
            zort_last_start_program_result == 1;
   caml_shutdown();
   return ok ? 0 : 1;
