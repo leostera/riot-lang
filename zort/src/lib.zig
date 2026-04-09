@@ -4,6 +4,8 @@ pub const Value = @import("value.zig").Value;
 pub const Tag = @import("value.zig").Tag;
 pub const HeapRef = @import("value.zig").HeapRef;
 pub const CompatValue = @import("compat.zig").CompatValue;
+pub const AtomicCounter = @import("atomic_primitives.zig").AtomicCounter;
+pub const AtomicFlag = @import("atomic_primitives.zig").AtomicFlag;
 pub const Error = @import("runtime.zig").Error;
 pub const Collector = @import("runtime.zig").Collector;
 pub const ContinuationHandle = @import("runtime.zig").ContinuationHandle;
@@ -42,7 +44,9 @@ pub const RootRegistry = @import("runtime.zig").RootRegistry;
 pub const RootHandle = @import("runtime.zig").RootHandle;
 pub const Runtime = @import("runtime.zig").Runtime;
 pub const RuntimeServices = @import("runtime.zig").RuntimeServices;
+pub const SchedulerLaneSnapshot = @import("runtime.zig").SchedulerLaneSnapshot;
 pub const StopTheWorldCoordinator = @import("runtime.zig").StopTheWorldCoordinator;
+pub const StopTheWorldSnapshot = @import("runtime.zig").StopTheWorldSnapshot;
 pub const StackLimits = @import("runtime.zig").StackLimits;
 pub const SuspendedStack = @import("runtime.zig").SuspendedStack;
 pub const TraceEntry = @import("runtime.zig").TraceEntry;
@@ -51,6 +55,7 @@ pub const WeakRefHandle = @import("runtime.zig").WeakRefHandle;
 
 test {
     std.testing.refAllDecls(@import("value.zig"));
+    std.testing.refAllDecls(@import("atomic_primitives.zig"));
     std.testing.refAllDecls(@import("collector.zig"));
     std.testing.refAllDecls(@import("compat.zig"));
     std.testing.refAllDecls(@import("control_kernel.zig"));

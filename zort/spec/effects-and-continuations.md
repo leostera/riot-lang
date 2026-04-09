@@ -229,6 +229,10 @@
   - a runnable queue,
   - a parked queue used for explicit suspension/wakeup policy,
   - and a scheduler-owned suspended queue for fibers captured into one-shot continuations.
+- Scheduler lanes now also expose explicit coordination state:
+  - atomic queue counters,
+  - an atomic current-fiber mirror,
+  - and an atomic wake-request flag that future cross-domain scheduling can consume without peeking into queue internals.
 - Scheduler-owned fibers are now collector-visible through an explicit `fiber_scheduler` root provider:
   - parked fibers keep their managed-stack roots alive without routing through `RootRegistry`,
   - runnable/current fibers use the same ownership seam,

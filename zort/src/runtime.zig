@@ -1,4 +1,5 @@
 const std = @import("std");
+const atomic_mod = @import("atomic_primitives.zig");
 const control_kernel_mod = @import("control_kernel.zig");
 const domain_registry_mod = @import("domain_registry.zig");
 const value = @import("value.zig");
@@ -19,6 +20,8 @@ const stw_coordinator_mod = @import("stw_coordinator.zig");
 pub const Value = value.Value;
 pub const Tag = value.Tag;
 pub const HeapRef = value.HeapRef;
+pub const AtomicCounter = atomic_mod.AtomicCounter;
+pub const AtomicFlag = atomic_mod.AtomicFlag;
 pub const Event = event_sink_mod.Event;
 pub const EventCounters = event_sink_mod.Counters;
 pub const EventRecorder = event_sink_mod.Recorder;
@@ -54,6 +57,7 @@ pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const DomainRegistry = domain_registry_mod.DomainRegistry;
 pub const DomainStatus = domain_registry_mod.DomainStatus;
 pub const FiberScheduler = fiber_scheduler_mod.FiberScheduler;
+pub const SchedulerLaneSnapshot = fiber_scheduler_mod.LaneCoordinationSnapshot;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
@@ -78,6 +82,7 @@ pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const RuntimeServices = runtime_services_mod.RuntimeServices;
 pub const StopTheWorldCoordinator = stw_coordinator_mod.StopTheWorldCoordinator;
+pub const StopTheWorldSnapshot = stw_coordinator_mod.CoordinationSnapshot;
 pub const Error = language_mod.Error;
 
 pub const Runtime = struct {
@@ -286,8 +291,24 @@ pub const Runtime = struct {
         return &self.fiber_scheduler;
     }
 
+    pub fn schedulerLaneSnapshot(self: *Runtime, domain: DomainHandle) !SchedulerLaneSnapshot {
+        return self.fiber_scheduler.coordinationSnapshot(domain);
+    }
+
+    pub fn requestSchedulerWake(self: *Runtime, domain: DomainHandle) !void {
+        try self.fiber_scheduler.requestWake(domain);
+    }
+
+    pub fn takeSchedulerWake(self: *Runtime, domain: DomainHandle) !bool {
+        return self.fiber_scheduler.takeWakeRequest(domain);
+    }
+
     pub fn stwCoordinator(self: *Runtime) *StopTheWorldCoordinator {
         return &self.stw;
+    }
+
+    pub fn stwSnapshot(self: *Runtime) StopTheWorldSnapshot {
+        return self.stw.coordinationSnapshot();
     }
 
     pub fn currentDomain(self: *Runtime) DomainHandle {
@@ -1835,6 +1856,36 @@ test "runtime: per-domain fiber scheduler queues, parks, and unparks fibers" {
     try rt.unparkFiber(main_domain, second);
     try std.testing.expectEqual(@as(usize, 2), rt.fiberScheduler().runnableCount(main_domain));
     try rt.verifyDebugState();
+}
+
+test "runtime: scheduler and stw coordination snapshots are explicit" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const main_domain = rt.currentDomain();
+    const child = try rt.spawnFiberInDomain(null, main_domain);
+
+    var lane = try rt.schedulerLaneSnapshot(main_domain);
+    try std.testing.expectEqual(@as(usize, 1), lane.runnable_count);
+    try std.testing.expect(lane.wake_requested);
+    try std.testing.expect(try rt.takeSchedulerWake(main_domain));
+    lane = try rt.schedulerLaneSnapshot(main_domain);
+    try std.testing.expect(!lane.wake_requested);
+
+    try std.testing.expectEqual(child, (try rt.scheduleNextFiber(main_domain)).?);
+    lane = try rt.schedulerLaneSnapshot(main_domain);
+    try std.testing.expectEqual(child, lane.current.?);
+    try std.testing.expectEqual(@as(usize, 1), lane.runnable_count);
+
+    var stw = rt.stwSnapshot();
+    try std.testing.expect(!stw.active);
+    _ = try rt.requestStopTheWorld();
+    stw = rt.stwSnapshot();
+    try std.testing.expect(stw.active);
+    try std.testing.expectEqual(rt.domainRegistry().attachedCount(), stw.paused_count);
+    rt.resumeTheWorld();
+    stw = rt.stwSnapshot();
+    try std.testing.expect(!stw.active);
 }
 
 test "runtime: parked fibers stay live through scheduler-owned root providers" {

@@ -110,6 +110,16 @@ for values that should become unreachable.
   - promotion and reclaim lifecycle tracking by `HeapRef`
 - `Mutator` now exposes remembered-set recording through barrier events.
 - `Runtime.snapshotContinuationStack(...)` returns a deep copy of a suspended continuation stack so effects/backtraces can inspect captured managed-stack state without resuming it.
+- `FiberScheduler` now exposes per-domain coordination snapshots with:
+  - atomic runnable/parked/suspended counters
+  - an atomic current-fiber mirror
+  - and an atomic wake-request flag for future cross-domain scheduling
+- `StopTheWorldCoordinator` now exposes coordination snapshots with atomic:
+  - active state
+  - generation
+  - paused-domain count
+  - pause/resume epochs
+  - and initiator-domain mirrors
 - Bench trace modes:
   - `--trace` prints all recorded events
   - `--trace-gc` prints GC-focused events only
@@ -160,6 +170,7 @@ For benchmark snapshots, capture rows as CSV with columns:
 - Decide which native boundary services belong in zort core versus the outer shim.
 - Harden the new per-domain scheduler with parked-fiber ownership, work stealing, and cross-domain migration policy.
 - Replace the current single-threaded STW coordinator with real parallel safepoint handshakes.
+- Use the new scheduler/STW atomic coordination state to drive real parallel pause/ack/resume and cross-domain wakeup behavior.
 - Keep every live fiber under explicit scheduler ownership and keep continuation payloads/root snapshots separate from fiber-lane ownership.
 - Extend the generational baseline toward a truer nursery/major collector under the new domain/STW control surface.
 - Decide how much of weak/finalizer/ephemeron behavior should become heap-visible language surface versus stay runtime-managed.

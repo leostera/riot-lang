@@ -1,4 +1,5 @@
 const std = @import("std");
+const atomic_mod = @import("atomic_primitives.zig");
 const control_kernel_mod = @import("control_kernel.zig");
 const domain_registry_mod = @import("domain_registry.zig");
 const event_sink_mod = @import("event_sink.zig");
@@ -7,11 +8,67 @@ pub const FiberHandle = control_kernel_mod.FiberHandle;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const EventSink = event_sink_mod.EventSink;
 
+const AtomicCounter = atomic_mod.AtomicCounter;
+const AtomicFlag = atomic_mod.AtomicFlag;
+const OptionalFiberCell = atomic_mod.OptionalHandleCell(FiberHandle);
+
+pub const LaneCoordinationSnapshot = struct {
+    state_epoch: usize,
+    runnable_count: usize,
+    parked_count: usize,
+    suspended_count: usize,
+    wake_requested: bool,
+    current: ?FiberHandle,
+};
+
+const LaneCoordination = struct {
+    state_epoch: AtomicCounter = AtomicCounter.init(0),
+    runnable_count: AtomicCounter = AtomicCounter.init(0),
+    parked_count: AtomicCounter = AtomicCounter.init(0),
+    suspended_count: AtomicCounter = AtomicCounter.init(0),
+    wake_requested: AtomicFlag = AtomicFlag.init(false),
+    current: OptionalFiberCell = OptionalFiberCell.init(null),
+
+    fn sync(self: *LaneCoordination, current: ?FiberHandle, runnable_count: usize, parked_count: usize, suspended_count: usize) void {
+        self.current.store(current);
+        self.runnable_count.store(runnable_count);
+        self.parked_count.store(parked_count);
+        self.suspended_count.store(suspended_count);
+        _ = self.state_epoch.increment();
+    }
+
+    fn requestWake(self: *LaneCoordination) void {
+        if (!self.wake_requested.set()) _ = self.state_epoch.increment();
+    }
+
+    fn clearWake(self: *LaneCoordination) void {
+        if (self.wake_requested.clear()) _ = self.state_epoch.increment();
+    }
+
+    fn takeWake(self: *LaneCoordination) bool {
+        const had_wake = self.wake_requested.take();
+        if (had_wake) _ = self.state_epoch.increment();
+        return had_wake;
+    }
+
+    fn snapshot(self: *const LaneCoordination) LaneCoordinationSnapshot {
+        return .{
+            .state_epoch = self.state_epoch.load(),
+            .runnable_count = self.runnable_count.load(),
+            .parked_count = self.parked_count.load(),
+            .suspended_count = self.suspended_count.load(),
+            .wake_requested = self.wake_requested.isSet(),
+            .current = self.current.load(),
+        };
+    }
+};
+
 const Lane = struct {
     current: ?FiberHandle = null,
     runnable: std.ArrayListUnmanaged(FiberHandle) = .{},
     parked: std.ArrayListUnmanaged(FiberHandle) = .{},
     suspended: std.ArrayListUnmanaged(FiberHandle) = .{},
+    coordination: LaneCoordination = .{},
 
     fn deinit(self: *Lane, allocator: std.mem.Allocator) void {
         self.runnable.deinit(allocator);
@@ -77,6 +134,11 @@ pub const FiberScheduler = struct {
         return lane_state.runnable.items.len;
     }
 
+    pub fn coordinationSnapshot(self: *const FiberScheduler, domain: DomainHandle) Error!LaneCoordinationSnapshot {
+        const lane_state = self.lane(domain) orelse return error.InvalidDomain;
+        return lane_state.coordination.snapshot();
+    }
+
     pub fn parkedCount(self: *const FiberScheduler, domain: DomainHandle) usize {
         const lane_state = self.lane(domain) orelse return 0;
         return lane_state.parked.items.len;
@@ -93,6 +155,8 @@ pub const FiberScheduler = struct {
         _ = removeHandle(&lane_state.parked, fiber);
         _ = removeHandle(&lane_state.suspended, fiber);
         lane_state.current = fiber;
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
     }
 
     pub fn activate(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) !void {
@@ -111,6 +175,8 @@ pub const FiberScheduler = struct {
         _ = removeHandle(&lane_state.parked, fiber);
         _ = removeHandle(&lane_state.suspended, fiber);
         lane_state.current = fiber;
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
     }
 
     pub fn suspendCurrent(self: *FiberScheduler, domain: DomainHandle) !?FiberHandle {
@@ -120,12 +186,16 @@ pub const FiberScheduler = struct {
         if (!containsHandle(lane_state.suspended.items, active_fiber)) {
             try lane_state.suspended.append(self.allocator, active_fiber);
         }
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
         return active_fiber;
     }
 
     pub fn discardSuspended(self: *FiberScheduler, domain: DomainHandle, fiber: FiberHandle) Error!bool {
         const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
-        return removeHandle(&lane_state.suspended, fiber);
+        const removed = removeHandle(&lane_state.suspended, fiber);
+        if (removed) syncLaneCoordination(lane_state);
+        return removed;
     }
 
     pub fn ownsFiber(self: *const FiberScheduler, needle: FiberHandle) bool {
@@ -168,7 +238,19 @@ pub const FiberScheduler = struct {
         _ = removeHandle(&lane_state.parked, fiber);
         _ = removeHandle(&lane_state.suspended, fiber);
         try lane_state.runnable.append(self.allocator, fiber);
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.requestWake();
         self.emit(.fiber_enqueue, fiber, domain);
+    }
+
+    pub fn requestWake(self: *FiberScheduler, domain: DomainHandle) Error!void {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        lane_state.coordination.requestWake();
+    }
+
+    pub fn takeWakeRequest(self: *FiberScheduler, domain: DomainHandle) Error!bool {
+        const lane_state = self.laneMut(domain) orelse return error.InvalidDomain;
+        return lane_state.coordination.takeWake();
     }
 
     pub fn switchToNext(self: *FiberScheduler, domain: DomainHandle) Error!?FiberHandle {
@@ -183,6 +265,8 @@ pub const FiberScheduler = struct {
             }
         }
         lane_state.current = popFront(&lane_state.runnable);
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
         return lane_state.current;
     }
 
@@ -195,6 +279,8 @@ pub const FiberScheduler = struct {
         lane_state.current = null;
         const next = popFront(&lane_state.runnable);
         lane_state.current = next;
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
         return next;
     }
 
@@ -207,6 +293,8 @@ pub const FiberScheduler = struct {
         lane_state.current = null;
         const next = popFront(&lane_state.runnable);
         lane_state.current = next;
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.clearWake();
         return next;
     }
 
@@ -219,6 +307,8 @@ pub const FiberScheduler = struct {
         if (!containsHandle(lane_state.runnable.items, fiber)) {
             lane_state.runnable.append(self.allocator, fiber) catch @panic("zort: out of memory while unparking fiber");
         }
+        syncLaneCoordination(lane_state);
+        lane_state.coordination.requestWake();
         self.emit(.fiber_unpark, fiber, domain);
     }
 
@@ -287,6 +377,15 @@ pub const FiberScheduler = struct {
         } });
     }
 };
+
+fn syncLaneCoordination(lane_state: *Lane) void {
+    lane_state.coordination.sync(
+        lane_state.current,
+        lane_state.runnable.items.len,
+        lane_state.parked.items.len,
+        lane_state.suspended.items.len,
+    );
+}
 
 fn sameFiber(lhs: FiberHandle, rhs: FiberHandle) bool {
     return lhs.index == rhs.index and lhs.generation == rhs.generation;
@@ -446,4 +545,45 @@ test "fiber_scheduler: ownership traversal sees current runnable and parked fibe
     try std.testing.expect(scheduler.ownsFiber(worker_current));
     try std.testing.expect(scheduler.ownsFiber(suspended));
     try std.testing.expectEqual(@as(usize, 1), scheduler.suspendedCount(worker_domain));
+}
+
+test "fiber_scheduler: coordination snapshots mirror queue state and wake requests" {
+    var scheduler = FiberScheduler.init(
+        std.testing.allocator,
+        EventSink.noop(),
+        .{ .index = 0, .generation = 1 },
+        .{ .index = 0, .generation = 1 },
+    );
+    defer scheduler.deinit();
+
+    const worker_domain = DomainHandle{ .index = 1, .generation = 1 };
+    const worker = FiberHandle{ .index = 9, .generation = 1 };
+    try scheduler.registerDomain(worker_domain);
+
+    var snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expectEqual(@as(usize, 0), snapshot.runnable_count);
+    try std.testing.expectEqual(@as(?FiberHandle, null), snapshot.current);
+    try std.testing.expect(!snapshot.wake_requested);
+
+    try scheduler.enqueue(worker_domain, worker);
+    snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expectEqual(@as(usize, 1), snapshot.runnable_count);
+    try std.testing.expectEqual(@as(?FiberHandle, null), snapshot.current);
+    try std.testing.expect(snapshot.wake_requested);
+
+    try std.testing.expect(try scheduler.takeWakeRequest(worker_domain));
+    snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expect(!snapshot.wake_requested);
+
+    try std.testing.expectEqual(worker, (try scheduler.switchToNext(worker_domain)).?);
+    snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expectEqual(worker, snapshot.current.?);
+    try std.testing.expectEqual(@as(usize, 0), snapshot.runnable_count);
+    try std.testing.expect(!snapshot.wake_requested);
+
+    try scheduler.requestWake(worker_domain);
+    snapshot = try scheduler.coordinationSnapshot(worker_domain);
+    try std.testing.expect(snapshot.wake_requested);
+    try std.testing.expect(try scheduler.takeWakeRequest(worker_domain));
+    try std.testing.expect(!(try scheduler.takeWakeRequest(worker_domain)));
 }
