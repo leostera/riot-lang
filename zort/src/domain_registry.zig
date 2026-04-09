@@ -11,14 +11,28 @@ pub const DomainStatus = enum {
     blocked,
 };
 
+pub const DomainWorkerState = enum {
+    stopped,
+    running,
+    stopping,
+};
+
+pub const DomainWorker = struct {
+    state: DomainWorkerState = .stopped,
+    owner_token: ?u64 = null,
+    shutdown_requested: bool = false,
+};
+
 pub const DomainState = struct {
     status: DomainStatus,
     blocking_depth: usize = 0,
+    worker: DomainWorker = .{},
 
     fn empty() DomainState {
         return .{
             .status = .detached,
             .blocking_depth = 0,
+            .worker = .{},
         };
     }
 };
@@ -41,11 +55,19 @@ pub const DomainRegistry = struct {
         AlreadyDetached,
         BlockingSectionUnderflow,
         CannotDetachBlockedDomain,
+        CannotDetachRunningWorker,
+        CannotStartDetachedDomain,
+        WorkerAlreadyOwned,
+        WorkerNotOwned,
+        WorkerShutdownPending,
     };
 
     pub const VerifyError = error{
         InvalidMainDomain,
         DetachedDomainIsBlocked,
+        DetachedDomainHasWorker,
+        RunningWorkerMissingOwner,
+        StoppedWorkerKeepsOwner,
     };
 
     pub fn init(allocator: std.mem.Allocator) DomainRegistry {
@@ -112,6 +134,11 @@ pub const DomainRegistry = struct {
         });
     }
 
+    pub fn worker(self: *const DomainRegistry, handle: DomainHandle) ?DomainWorker {
+        const state = self.domain(handle) orelse return null;
+        return state.worker;
+    }
+
     pub fn attach(self: *DomainRegistry, handle: DomainHandle) Error!void {
         const state = self.domainMut(handle) orelse return error.InvalidDomain;
         if (state.status == .attached) return error.AlreadyAttached;
@@ -123,7 +150,48 @@ pub const DomainRegistry = struct {
         const state = self.domainMut(handle) orelse return error.InvalidDomain;
         if (state.status == .detached) return error.AlreadyDetached;
         if (state.blocking_depth != 0) return error.CannotDetachBlockedDomain;
+        if (state.worker.state != .stopped) return error.CannotDetachRunningWorker;
         state.status = .detached;
+    }
+
+    pub fn startWorker(self: *DomainRegistry, handle: DomainHandle, owner_token: u64) Error!bool {
+        const state = self.domainMut(handle) orelse return error.InvalidDomain;
+        if (state.status == .detached) return error.CannotStartDetachedDomain;
+        return switch (state.worker.state) {
+            .stopped => blk: {
+                state.worker = .{
+                    .state = .running,
+                    .owner_token = owner_token,
+                    .shutdown_requested = false,
+                };
+                break :blk true;
+            },
+            .running => if (state.worker.owner_token == owner_token) false else error.WorkerAlreadyOwned,
+            .stopping => error.WorkerShutdownPending,
+        };
+    }
+
+    pub fn requestWorkerShutdown(self: *DomainRegistry, handle: DomainHandle, owner_token: u64) Error!bool {
+        const state = self.domainMut(handle) orelse return error.InvalidDomain;
+        if (state.worker.owner_token != owner_token) return error.WorkerNotOwned;
+        return switch (state.worker.state) {
+            .stopped => error.WorkerNotOwned,
+            .running => blk: {
+                state.worker.state = .stopping;
+                state.worker.shutdown_requested = true;
+                break :blk true;
+            },
+            .stopping => false,
+        };
+    }
+
+    pub fn finishWorkerShutdown(self: *DomainRegistry, handle: DomainHandle, owner_token: u64) Error!bool {
+        const state = self.domainMut(handle) orelse return error.InvalidDomain;
+        if (state.worker.state == .stopped) return false;
+        if (state.worker.owner_token != owner_token) return error.WorkerNotOwned;
+        if (state.worker.state != .stopping) return error.WorkerShutdownPending;
+        state.worker = .{};
+        return true;
     }
 
     pub fn enterBlocking(self: *DomainRegistry, handle: DomainHandle) Error!void {
@@ -147,6 +215,17 @@ pub const DomainRegistry = struct {
             if (!slot.alive) continue;
             if (slot.domain.status == .detached and slot.domain.blocking_depth != 0) {
                 return error.DetachedDomainIsBlocked;
+            }
+            if (slot.domain.status == .detached and slot.domain.worker.state != .stopped) {
+                return error.DetachedDomainHasWorker;
+            }
+            switch (slot.domain.worker.state) {
+                .stopped => {
+                    if (slot.domain.worker.owner_token != null) return error.StoppedWorkerKeepsOwner;
+                },
+                .running, .stopping => {
+                    if (slot.domain.worker.owner_token == null) return error.RunningWorkerMissingOwner;
+                },
             }
         }
     }
@@ -227,4 +306,31 @@ test "domain_registry: detached domains cannot stay blocked" {
     try registry.exitBlocking(domain);
     try registry.detach(domain);
     try registry.verify();
+}
+
+test "domain_registry: worker lifecycle is explicit and detach waits for shutdown" {
+    var registry = DomainRegistry.init(std.testing.allocator);
+    defer registry.deinit();
+
+    const domain = try registry.createDomain();
+    try registry.attach(domain);
+    try std.testing.expect(try registry.startWorker(domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .running), registry.worker(domain).?.state);
+    try std.testing.expectError(DomainRegistry.Error.CannotDetachRunningWorker, registry.detach(domain));
+
+    try std.testing.expect(try registry.requestWorkerShutdown(domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .stopping), registry.worker(domain).?.state);
+    try std.testing.expect(try registry.finishWorkerShutdown(domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .stopped), registry.worker(domain).?.state);
+
+    try registry.detach(domain);
+    try registry.verify();
+}
+
+test "domain_registry: detached domains cannot start workers" {
+    var registry = DomainRegistry.init(std.testing.allocator);
+    defer registry.deinit();
+
+    const domain = try registry.createDomain();
+    try std.testing.expectError(DomainRegistry.Error.CannotStartDetachedDomain, registry.startWorker(domain, 5));
 }

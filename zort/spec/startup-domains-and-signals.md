@@ -79,8 +79,10 @@
   - runtime-local signal handlers delivered through explicit callback-boundary entry.
 - The current domain model includes:
   - a main attached domain created at runtime startup,
+  - a main worker bootstrapped at runtime startup with an explicit owner token,
   - explicit domain creation plus attach/detach lifecycle,
   - per-domain blocking depth and blocked/attached state transitions,
+  - explicit worker lifecycle states (`stopped`, `running`, `stopping`) separate from attach/detach,
   - fibers and suspended continuations carrying domain ownership in the control kernel,
   - per-domain scheduler lanes with explicit current/runnable/parked fiber states,
   - per-domain scheduler coordination snapshots with atomic wake flags, queue counters, and claimable owner tokens,
@@ -92,7 +94,11 @@
   - named values are runtime-local rather than process-global,
   - scheduler lanes and STW coordination now expose shared-memory-safe atomic coordination state,
   - STW pause acknowledgements can arrive independently per registered domain,
-  - but worker lifecycle and scheduler queue mutation are not yet fully enforced through claimed owner tokens.
+  - worker lifecycle is now explicit at the runtime layer,
+  - but scheduler queue mutation is not yet fully enforced through claimed owner tokens.
+- zort's intended split is now explicit:
+  - runtime owns capabilities such as domain workers, lane claims, cross-domain resume, and future runnable-transfer primitives,
+  - userland owns balancing policy such as work stealing, fairness, and actor placement.
 - zort now explicitly allows a suspended fiber to resume in a different attached domain:
   - the resumed fiber adopts the resumer's active domain,
   - this is the current migration seam for multicore fibers,

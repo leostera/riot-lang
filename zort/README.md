@@ -115,6 +115,11 @@ for values that should become unreachable.
   - an atomic current-fiber mirror
   - an atomic wake-request flag for future cross-domain scheduling
   - and an atomic owner token for claimed lane mutation rights
+- `DomainRegistry` now tracks worker lifecycle explicitly:
+  - attached vs detached domain state
+  - worker state (`stopped`, `running`, `stopping`)
+  - worker owner token
+  - shutdown-request state
 - `StopTheWorldCoordinator` now exposes coordination snapshots with atomic:
   - active state
   - generation
@@ -126,6 +131,11 @@ for values that should become unreachable.
   - the initiator acknowledges its own safepoint immediately
   - other domains acknowledge through `enterSafepoint(...)`
   - collection uses that same path to quiesce attached domains instead of directly marking them paused
+- `Runtime` now bootstraps the main domain worker explicitly and exposes worker lifecycle APIs:
+  - `startDomainWorker`
+  - `requestDomainWorkerShutdown`
+  - `finishDomainWorkerShutdown`
+  - worker shutdown only completes once the scheduler lane is quiescent
 - Bench trace modes:
   - `--trace` prints all recorded events
   - `--trace-gc` prints GC-focused events only
@@ -177,7 +187,8 @@ For benchmark snapshots, capture rows as CSV with columns:
 - Harden the new per-domain scheduler with parked-fiber ownership, work stealing, and cross-domain migration policy.
 - Drive the new STW request/ack protocol from real worker threads and explicit domain lifecycle management.
 - Use the new scheduler/STW atomic coordination state to drive parallel pause/ack/resume and cross-domain wakeup behavior.
-- Enforce claimed scheduler-lane ownership on every mutable queue path before introducing worker threads and work stealing.
+- Enforce claimed scheduler-lane ownership on every mutable queue path before introducing worker threads or userland scheduling policy.
+- Keep zort at the capability layer: domain workers and runnable transfer in the runtime, balancing policy in userland.
 - Keep every live fiber under explicit scheduler ownership and keep continuation payloads/root snapshots separate from fiber-lane ownership.
 - Extend the generational baseline toward a truer nursery/major collector under the new domain/STW control surface.
 - Decide how much of weak/finalizer/ephemeron behavior should become heap-visible language surface versus stay runtime-managed.

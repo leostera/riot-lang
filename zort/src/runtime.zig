@@ -55,6 +55,8 @@ pub const StackLimits = control_kernel_mod.StackLimits;
 pub const SuspendedStack = control_kernel_mod.SuspendedStack;
 pub const DomainHandle = domain_registry_mod.DomainHandle;
 pub const DomainRegistry = domain_registry_mod.DomainRegistry;
+pub const DomainWorker = domain_registry_mod.DomainWorker;
+pub const DomainWorkerState = domain_registry_mod.DomainWorkerState;
 pub const DomainStatus = domain_registry_mod.DomainStatus;
 pub const FiberScheduler = fiber_scheduler_mod.FiberScheduler;
 pub const SchedulerLaneSnapshot = fiber_scheduler_mod.LaneCoordinationSnapshot;
@@ -157,6 +159,7 @@ pub const Runtime = struct {
     fixed_arena_buffer: ?[]u8 = null,
     collect_generations: usize = 0,
     minor_collect_generations: usize = 0,
+    main_worker_token: u64 = 1,
 
     pub fn init(allocator: std.mem.Allocator) Runtime {
         return initWithConfig(allocator, .{});
@@ -191,6 +194,10 @@ pub const Runtime = struct {
             runtime.control_kernel.currentFiber(),
         );
         runtime.stw.registerDomain(runtime.domains.mainDomain()) catch @panic("zort: out of memory while creating main stw slot");
+        _ = runtime.fiber_scheduler.claimLaneOwnership(runtime.domains.mainDomain(), runtime.main_worker_token) catch
+            @panic("zort: failed to claim main scheduler lane");
+        _ = runtime.domains.startWorker(runtime.domains.mainDomain(), runtime.main_worker_token) catch
+            @panic("zort: failed to bootstrap main domain worker");
         if (config.fixedArena) |buffer| {
             runtime.fixed_arena = std.heap.FixedBufferAllocator.init(buffer);
             runtime.fixed_arena_buffer = buffer;
@@ -324,6 +331,10 @@ pub const Runtime = struct {
         return self.control_kernel.currentDomain();
     }
 
+    pub fn mainWorkerToken(self: *const Runtime) u64 {
+        return self.main_worker_token;
+    }
+
     pub fn currentFiber(self: *Runtime) FiberHandle {
         return self.control_kernel.currentFiber();
     }
@@ -348,6 +359,10 @@ pub const Runtime = struct {
         return &self.remembered_set;
     }
 
+    pub fn domainWorker(self: *Runtime, handle: DomainHandle) ?DomainWorker {
+        return self.domains.worker(handle);
+    }
+
     pub fn createDomain(self: *Runtime) !DomainHandle {
         const domain = try self.domains.createDomain();
         try self.fiber_scheduler.registerDomain(domain);
@@ -361,6 +376,34 @@ pub const Runtime = struct {
 
     pub fn detachDomain(self: *Runtime, handle: DomainHandle) !void {
         try self.domains.detach(handle);
+    }
+
+    pub fn startDomainWorker(self: *Runtime, handle: DomainHandle, owner_token: u64) !bool {
+        const lane = try self.schedulerLaneSnapshot(handle);
+        if (!try self.claimSchedulerLane(handle, owner_token)) return error.WorkerAlreadyOwned;
+        errdefer if (lane.owner_token == null) {
+            _ = self.releaseSchedulerLane(handle, owner_token) catch {};
+        };
+
+        const started = try self.domains.startWorker(handle, owner_token);
+        if (started) try self.requestSchedulerWake(handle);
+        return started;
+    }
+
+    pub fn requestDomainWorkerShutdown(self: *Runtime, handle: DomainHandle, owner_token: u64) !bool {
+        const requested = try self.domains.requestWorkerShutdown(handle, owner_token);
+        if (requested) try self.requestSchedulerWake(handle);
+        return requested;
+    }
+
+    pub fn finishDomainWorkerShutdown(self: *Runtime, handle: DomainHandle, owner_token: u64) !bool {
+        const lane = try self.schedulerLaneSnapshot(handle);
+        if (lane.owner_token != owner_token) return error.WorkerNotOwned;
+        if (lane.current != null or lane.runnable_count != 0 or lane.parked_count != 0 or lane.suspended_count != 0) {
+            return error.WorkerNotQuiescent;
+        }
+        if (!try self.releaseSchedulerLane(handle, owner_token)) return error.WorkerNotOwned;
+        return self.domains.finishWorkerShutdown(handle, owner_token);
     }
 
     pub fn createFiberInDomain(self: *Runtime, parent: ?FiberHandle, domain: DomainHandle) !FiberHandle {
@@ -1887,13 +1930,13 @@ test "runtime: scheduler and stw coordination snapshots are explicit" {
     var lane = try rt.schedulerLaneSnapshot(main_domain);
     try std.testing.expectEqual(@as(usize, 1), lane.runnable_count);
     try std.testing.expect(lane.wake_requested);
-    try std.testing.expect(try rt.claimSchedulerLane(main_domain, 0xCAFE));
+    try std.testing.expectEqual(@as(?u64, rt.mainWorkerToken()), lane.owner_token);
+    try std.testing.expect(try rt.claimSchedulerLane(main_domain, rt.mainWorkerToken()));
     lane = try rt.schedulerLaneSnapshot(main_domain);
-    try std.testing.expectEqual(@as(?u64, 0xCAFE), lane.owner_token);
+    try std.testing.expectEqual(@as(?u64, rt.mainWorkerToken()), lane.owner_token);
     try std.testing.expect(try rt.takeSchedulerWake(main_domain));
     lane = try rt.schedulerLaneSnapshot(main_domain);
     try std.testing.expect(!lane.wake_requested);
-    try std.testing.expect(try rt.releaseSchedulerLane(main_domain, 0xCAFE));
 
     try std.testing.expectEqual(child, (try rt.scheduleNextFiber(main_domain)).?);
     lane = try rt.schedulerLaneSnapshot(main_domain);
@@ -1911,6 +1954,44 @@ test "runtime: scheduler and stw coordination snapshots are explicit" {
     rt.resumeTheWorld();
     stw = rt.stwSnapshot();
     try std.testing.expect(!stw.active);
+}
+
+test "runtime: domain workers bootstrap and shut down explicitly" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const main_domain = rt.currentDomain();
+    try std.testing.expectEqual(@as(?DomainWorkerState, .running), rt.domainWorker(main_domain).?.state);
+    try std.testing.expectEqual(@as(?u64, rt.mainWorkerToken()), rt.domainWorker(main_domain).?.owner_token);
+
+    const worker_domain = try rt.createDomain();
+    try rt.attachDomain(worker_domain);
+    try std.testing.expect(try rt.startDomainWorker(worker_domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .running), rt.domainWorker(worker_domain).?.state);
+    try std.testing.expectEqual(@as(?u64, 77), (try rt.schedulerLaneSnapshot(worker_domain)).owner_token);
+
+    try std.testing.expect(try rt.requestDomainWorkerShutdown(worker_domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .stopping), rt.domainWorker(worker_domain).?.state);
+    try std.testing.expect(try rt.finishDomainWorkerShutdown(worker_domain, 77));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .stopped), rt.domainWorker(worker_domain).?.state);
+    try std.testing.expectEqual(@as(?u64, null), (try rt.schedulerLaneSnapshot(worker_domain)).owner_token);
+
+    try rt.detachDomain(worker_domain);
+}
+
+test "runtime: worker shutdown requires a quiescent scheduler lane" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    const worker_domain = try rt.createDomain();
+    try rt.attachDomain(worker_domain);
+    try std.testing.expect(try rt.startDomainWorker(worker_domain, 88));
+
+    _ = try rt.spawnFiberInDomain(null, worker_domain);
+    try std.testing.expect(try rt.requestDomainWorkerShutdown(worker_domain, 88));
+    try std.testing.expectError(error.WorkerNotQuiescent, rt.finishDomainWorkerShutdown(worker_domain, 88));
+    try std.testing.expectEqual(@as(?DomainWorkerState, .stopping), rt.domainWorker(worker_domain).?.state);
+    try std.testing.expectEqual(@as(?u64, 88), (try rt.schedulerLaneSnapshot(worker_domain)).owner_token);
 }
 
 test "runtime: parked fibers stay live through scheduler-owned root providers" {
