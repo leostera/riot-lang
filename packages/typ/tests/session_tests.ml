@@ -3677,7 +3677,8 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
     ~config
     ~ordered_sources:[ source; adapter ]
     ~init:[]
-    ~f:(fun groups (group: Check.finished_group) -> group :: groups) with
+    ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+    () with
   | Error Check.MissingRequirements { module_name; requirements } ->
       Error (format
         Format.[
@@ -3687,13 +3688,23 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
           str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
         ])
   | Error Check.MissingModuleTypings { module_name } ->
-      Error ("missing module typings for " ^ module_name)
+      Error (format Format.[ str "missing module typings for "; str module_name ])
   | Error Check.MissingAnalysis { module_name; path } ->
-      Error ("missing analysis for " ^ module_name ^ " at " ^ Path.to_string path)
+      Error (format
+        Format.[
+          str "missing analysis for ";
+          str module_name;
+          str " at ";
+          str (Path.to_string path);
+        ])
   | Error Check.StoreFailure { module_name; reason } ->
-      Error ("store failure for " ^ module_name ^ ": " ^ reason)
-  | Ok (groups, loaded_modules) ->
-      let groups = List.rev groups in
+      Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+  | Error Check.PackageStoreFailure { package_name; reason } ->
+      Error (format
+        Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
+  | Ok result ->
+      let groups = List.rev result.acc in
+      let loaded_modules = result.loaded_modules in
       let module_order = groups |> List.map (fun (group: Check.finished_group) -> group.module_name) in
       let expected_order = [ "Kernel_new__Async__Adapter"; "Kernel_new__Async__Source" ] in
       let source_group =
@@ -3722,6 +3733,67 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
         ~expected:true
         ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Source");
       Ok ()
+
+let test_fold_package_sources_persists_package_bundle = fun _ctx ->
+  with_typ_store
+    (fun store ->
+      let source = prepared_check_source
+        ~source_id:(SourceId.of_int 0)
+        ~filename:"async.ml"
+        ~internal_module_name:"Kernel_new__Async"
+        ~local_module_name:"Async"
+        ~public_module_name:(Some "Async")
+        ~text:"let answer = 42\n" in
+      let package_fingerprint = Crypto.hash_string "kernel-new:async" in
+      let config = Config.default
+      |> Config.with_store ~store:(Some store)
+      |> Config.with_capture_traces ~capture_traces:false in
+      match Check.fold_package_sources
+        ~package_name:"kernel-new"
+        ~package_fingerprint
+        ~config
+        ~ordered_sources:[ source ]
+        ~init:[]
+        ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+        () with
+      | Error Check.MissingRequirements { module_name; requirements } ->
+          Error (format
+            Format.[
+              str "unexpected missing requirements while checking ";
+              str module_name;
+              str ": ";
+              str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+            ])
+      | Error Check.MissingModuleTypings { module_name } ->
+          Error (format Format.[ str "missing module typings for "; str module_name ])
+      | Error Check.MissingAnalysis { module_name; path } ->
+          Error (format
+            Format.[
+              str "missing analysis for ";
+              str module_name;
+              str " at ";
+              str (Path.to_string path);
+            ])
+      | Error Check.StoreFailure { module_name; reason } ->
+          Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+      | Error Check.PackageStoreFailure { package_name; reason } ->
+          Error (format
+            Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
+      | Ok result -> (
+          match Store.load_package_bundle store ~package_name:"kernel-new" with
+          | None -> Error "expected persisted package bundle"
+          | Some bundle ->
+              let package_modules = bundle.typings |> List.map ModuleTypings.module_name in
+              let returned_modules = result.public_module_typings
+              |> LoadedModules.values
+              |> List.map ModuleTypings.module_name in
+              Test.assert_equal
+                ~expected:(Crypto.Digest.hex package_fingerprint)
+                ~actual:(Crypto.Digest.hex bundle.fingerprint);
+              Test.assert_equal ~expected:[ "Async" ] ~actual:package_modules;
+              Test.assert_equal ~expected:[ "Async" ] ~actual:returned_modules;
+              Ok ()
+        ))
 
 let test_prepare_snapshot_emits_structured_events = fun _ctx ->
   let events = ref [] in
@@ -8892,6 +8964,7 @@ let () =
         Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
         Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
+        Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
         Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;
         Test.case "prepare_snapshot wrapper module reexports unix exports to sibling modules" test_prepare_snapshot_wrapper_module_reexports_unix_exports_to_sibling_modules;
         Test.case "prepare_snapshot wrapper module preserves same-path nominal value types" test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types;

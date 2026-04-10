@@ -20,9 +20,13 @@ type finished_group = {
   module_name: string;
   checked_sources: checked_source list;
   module_typings: ModuleTypings.t;
-  local_alias_typings: ModuleTypings.t list;
-  public_module_typings: ModuleTypings.t list;
   loaded_modules: LoadedModules.t;
+}
+
+type 'acc package_check_result = {
+  acc: 'acc;
+  loaded_modules: LoadedModules.t;
+  public_module_typings: LoadedModules.t;
 }
 
 type error =
@@ -30,6 +34,9 @@ type error =
   | MissingModuleTypings of { module_name: string }
   | MissingAnalysis of { module_name: string; path: Path.t }
   | StoreFailure of { module_name: string; reason: string }
+  | PackageStoreFailure of { package_name: string; reason: string }
+
+let check_source_with_config = Batch.check_source_with_config
 
 let check_source = Batch.check_source
 
@@ -68,6 +75,7 @@ type package_graph = {
 
 type engine_state = {
   local_canonical_typings: LoadedModules.t;
+  public_module_typings: LoadedModules.t;
   local_typings_by_id: ModuleTypings.t option array;
   local_surfaces_by_id: local_module_surface option array;
 }
@@ -381,6 +389,12 @@ let merge_loaded_modules = fun loaded_modules new_typings ->
     ~fallback:loaded_modules
     ~combine:(fun existing _incoming -> existing)
 
+let merge_public_module_typings = fun loaded_modules new_typings ->
+  LoadedModules.merge
+    ~preferred:(LoadedModules.of_list new_typings)
+    ~fallback:loaded_modules
+    ~combine:(fun existing _incoming -> existing)
+
 let persist_module_typings = fun store module_typings ->
   match Store.save_module_typings store module_typings with
   | Ok () -> Ok ()
@@ -399,6 +413,25 @@ let persist_module_views = fun config ~module_name typings ->
           )
       in
       loop typings
+
+let persist_package_bundle = fun config ?package_name ?package_fingerprint public_module_typings ->
+  let typings = LoadedModules.values public_module_typings in
+  match (config.TypConfig.store, package_name, package_fingerprint, typings) with
+  | (_, None, _, _)
+  | (_, _, _, []) ->
+      Ok ()
+  | (None, Some _, _, _) ->
+      Ok ()
+  | (Some store, Some package_name, Some fingerprint, typings) -> (
+      match Store.save_package_bundle store ~package_name ~fingerprint typings with
+      | Ok () -> Ok ()
+      | Error reason -> Error (PackageStoreFailure { package_name; reason })
+    )
+  | (Some store, Some package_name, None, typings) -> (
+      match Store.save_package_module_typings store ~package_name typings with
+      | Ok () -> Ok ()
+      | Error reason -> Error (PackageStoreFailure { package_name; reason })
+    )
 
 let rebind_module_views = fun (group: graph_group) module_typings ->
   let local_alias_typings = group.local_alias_names
@@ -497,13 +530,14 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
   | Error _ as err -> err
   | Ok analyzed_sources -> Ok (List.rev analyzed_sources)
 
-let fold_package_sources = fun ~config ~ordered_sources ~init ~f ->
+let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~ordered_sources ~init ~f () ->
   let graph = build_package_graph ~config ~ordered_sources in
   match ordered_group_ids graph with
   | Error _ as err -> err
   | Ok ordered_group_ids ->
       let initial_state = {
         local_canonical_typings = LoadedModules.empty;
+        public_module_typings = LoadedModules.empty;
         local_typings_by_id = Array.make (Array.length graph.groups) None;
         local_surfaces_by_id = Array.make (Array.length graph.groups) None
       } in
@@ -537,6 +571,9 @@ let fold_package_sources = fun ~config ~ordered_sources ~init ~f ->
                             let local_canonical_typings = merge_loaded_modules
                               state.local_canonical_typings
                               [ module_typings ] in
+                            let public_module_typings_index = merge_public_module_typings
+                              state.public_module_typings
+                              public_module_typings in
                             let local_typings_by_id = Array.copy state.local_typings_by_id in
                             local_typings_by_id.(module_id) <- Some module_typings;
                             let local_surfaces_by_id = Array.copy state.local_surfaces_by_id in
@@ -553,13 +590,11 @@ let fold_package_sources = fun ~config ~ordered_sources ~init ~f ->
                               module_name = group.module_name;
                               checked_sources;
                               module_typings;
-                              local_alias_typings;
-                              public_module_typings;
-                              loaded_modules;
-                            }
-                            in
+                              loaded_modules
+                            } in
                             let state = {
                               local_canonical_typings;
+                              public_module_typings = public_module_typings_index;
                               local_typings_by_id;
                               local_surfaces_by_id
                             } in
@@ -570,11 +605,15 @@ let fold_package_sources = fun ~config ~ordered_sources ~init ~f ->
       in
       match result with
       | Error _ as err -> err
-      | Ok (acc, state) ->
-          let loaded_modules =
-            LoadedModules.merge
-              ~preferred:state.local_canonical_typings
-              ~fallback:config.TypConfig.loaded_modules
-              ~combine:(fun existing _incoming -> existing)
-          in
-          Ok (acc, loaded_modules)
+      | Ok (acc, state) -> (
+          match persist_package_bundle config ?package_name ?package_fingerprint state.public_module_typings with
+          | Error _ as err -> err
+          | Ok () ->
+              let loaded_modules =
+                LoadedModules.merge
+                  ~preferred:state.local_canonical_typings
+                  ~fallback:config.TypConfig.loaded_modules
+                  ~combine:(fun existing _incoming -> existing)
+              in
+              Ok { acc; loaded_modules; public_module_typings = state.public_module_typings }
+        )

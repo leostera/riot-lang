@@ -991,6 +991,10 @@ let incremental_check_error_reason = function
   ^ module_name
   ^ ": "
   ^ reason
+  | Typ.Check.PackageStoreFailure { package_name; reason } -> "while persisting package bundle for "
+  ^ package_name
+  ^ ": "
+  ^ reason
 
 let local_module_dependencies_for_source = fun local_module_names (source: readable_typ_source) ->
   match Syn.Deps.of_parse_result source.source.parse_result with
@@ -1487,49 +1491,6 @@ let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
   }
   | None -> None
 
-let save_module_typings_or_raise = fun store typings ->
-  match Typ.Store.save_module_typings store typings with
-  | Ok () -> ()
-  | Error message -> raise (Failure message)
-
-let persist_module_typings = fun store ?package_name ?package_fingerprint typings ->
-  let package_bundle_is_current =
-    match (package_name, package_fingerprint) with
-    | (Some package_name, Some package_fingerprint) -> (
-        match Typ.Store.load_package_bundle store ~package_name with
-        | Some bundle -> hash_equal bundle.fingerprint package_fingerprint
-        | None -> false
-      )
-    | _ -> false
-  in
-  if package_bundle_is_current then
-    ()
-  else (
-    typings |> List.iter
-      (fun typings ->
-        try save_module_typings_or_raise store typings with
-        | Failure message -> raise
-          (Failure ("while persisting module typings for "
-          ^ Typ_module_typings.module_name typings
-          ^ ": "
-          ^ message)));
-    match (package_name, package_fingerprint) with
-    | (Some package_name, Some package_fingerprint) when not (List.is_empty typings) -> (
-        match Typ.Store.save_package_bundle store ~package_name ~fingerprint:package_fingerprint typings with
-        | Ok () -> ()
-        | Error message -> raise
-          (Failure ("while persisting package bundle for " ^ package_name ^ ": " ^ message))
-      )
-    | (Some package_name, None) when not (List.is_empty typings) -> (
-        match Typ.Store.save_package_module_typings store ~package_name typings with
-        | Ok () -> ()
-        | Error message -> raise
-          (Failure ("while persisting package module typings for " ^ package_name ^ ": " ^ message))
-      )
-    | _ ->
-        ()
-  )
-
 let workspace_dependency_packages = fun ~include_dev (workspace: Workspace.t) (pkg: Package.t) ->
   let dependencies =
     if include_dev then
@@ -1574,15 +1535,14 @@ let workspace_module_typings_for_package =
           |> Typ.Config.with_capture_traces ~capture_traces:false
           |> with_typ_event_sink ?on_event in
           match Typ.Check.fold_package_sources
+            ~package_name:pkg.name
+            ~package_fingerprint
             ~config
             ~ordered_sources:(List.map typ_check_prepared_source_of_package_source ordered_sources)
-            ~init:Typ_loaded_modules.empty
-            ~f:(fun public_typings (finished_group: Typ.Check.finished_group) ->
-              Typ_loaded_modules.merge
-                ~preferred:(Typ_loaded_modules.of_list finished_group.public_module_typings)
-                ~fallback:public_typings
-                ~combine:merge_module_typings) with
-          | Ok (public_typings, _loaded_modules) -> public_typings
+            ~init:()
+            ~f:(fun () (_finished_group: Typ.Check.finished_group) -> ())
+            () with
+          | Ok result -> result.public_module_typings
           | Error error -> raise (Failure (incremental_check_error_reason error))
         in
         let package_typings =
@@ -1678,24 +1638,21 @@ let ordered_sources_by_path = fun ordered_sources ->
 
 let checked_group_for_package_scan = fun config ~package_name ~package_fingerprint ordered_sources target_paths ->
   let checked_files_by_path = ref [] in
-  let public_module_typings = ref Typ_loaded_modules.empty in
   let record_checked_file path analysis =
     checked_files_by_path := (path_key path, checked_file_of_analysis path analysis) :: !checked_files_by_path
   in
-  match
-    Typ.Check.fold_package_sources ~config ~ordered_sources:(List.map
-      typ_check_prepared_source_of_package_source
-      ordered_sources) ~init:()
-      ~f:(fun () (finished_group: Typ.Check.finished_group) ->
-        finished_group.checked_sources
-        |> List.iter
-          (fun (checked_source: Typ.Check.checked_source) ->
-            record_checked_file checked_source.path checked_source.analysis);
-        public_module_typings := Typ_loaded_modules.merge
-          ~preferred:(Typ_loaded_modules.of_list finished_group.public_module_typings)
-          ~fallback:!public_module_typings
-          ~combine:merge_module_typings)
-  with
+  match Typ.Check.fold_package_sources
+    ~package_name
+    ~package_fingerprint
+    ~config
+    ~ordered_sources:(List.map typ_check_prepared_source_of_package_source ordered_sources)
+    ~init:()
+    ~f:(fun () (finished_group: Typ.Check.finished_group) ->
+      finished_group.checked_sources
+      |> List.iter
+        (fun (checked_source: Typ.Check.checked_source) ->
+          record_checked_file checked_source.path checked_source.analysis))
+    () with
   | Error error ->
       let reason = incremental_check_error_reason error in
       {
@@ -1705,10 +1662,10 @@ let checked_group_for_package_scan = fun config ~package_name ~package_fingerpri
               match List.assoc_opt (path_key path) !checked_files_by_path with
               | Some checked_file -> checked_file
               | None -> State.Unreadable { path; reason });
-        module_typings = Typ_loaded_modules.values !public_module_typings;
+        module_typings = [];
       }
-  | Ok ((), _loaded_modules) ->
-      let checked_group = {
+  | Ok result ->
+      {
         checked_files =
           target_paths |> List.map
             (fun path ->
@@ -1718,19 +1675,8 @@ let checked_group_for_package_scan = fun config ~package_name ~package_fingerpri
                 path;
                 reason = "missing checked result for " ^ Path.to_string path
               });
-        module_typings = Typ_loaded_modules.values !public_module_typings;
+        module_typings = Typ_loaded_modules.values result.public_module_typings;
       }
-      in
-      let () =
-        match config.Typ.Config.store with
-        | Some store -> persist_module_typings
-          store
-          ~package_name
-          ~package_fingerprint
-          checked_group.module_typings
-        | None -> ()
-      in
-      checked_group
 
 let checked_group_for_session = fun config session prepared_by_path root_paths ->
   let target_prepared_sources =

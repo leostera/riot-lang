@@ -244,8 +244,9 @@ Where each finished module callback receives:
 - checked-file payload for the group
 - enough dependency metadata for host events and store writes
 
-The host should not need to call back in later to reconstruct authoritative
-typings from a snapshot.
+The engine result should also expose the final authoritative public-module
+bundle directly, so the host does not need to reconstruct package typings from
+per-group callback payloads or from a snapshot.
 
 ## 10. Migration Plan
 
