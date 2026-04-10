@@ -12,43 +12,36 @@
     - [ANSI.to_rgb] for terminal palette values
     - [RGB.blend] for perceptual blending between RGB colors
 *)
-
 (** ANSI 256-color palette entry. *)
 type ansi =
 [
   | `ansi of int
 ]
-
 (** Standard RGB color with integer channels in the range `0..255`. *)
 type rgb =
 [
   | `rgb of int * int * int
 ]
-
 (** Linear RGB color used for numeric color-space calculations. *)
 type lrgb =
 [
   | `lrgb of float * float * float
 ]
-
 (** CIE 1931 XYZ color. This representation is device-independent. *)
 type xyz =
 [
   | `xyz of float * float * float
 ]
-
 (** CIE LUV color. This space is designed to be perceptually uniform. *)
 type luv =
 [
   | `luv of float * float * float
 ]
-
 (** Chromaticity coordinates derived from XYZ. *)
 type uv =
 [
   | `uv of float * float
 ]
-
 (** Any supported color representation. *)
 type color = [
   | ansi
@@ -148,11 +141,7 @@ module XYZ: sig
       Use this when your working white point is not the default daylight
       reference.
   *)
-  val to_luv_with_ref:
-    xyz ->
-    (** White reference to use for the conversion. *)
-    wref:xyz ->
-    luv
+  val to_luv_with_ref: xyz -> wref:xyz -> luv
 
   (** Convert XYZ to LUV using [White_reference.d65]. *)
   val to_luv: xyz -> luv
@@ -167,11 +156,7 @@ module LUV: sig
 
       The white reference should match the one used in the forward conversion.
   *)
-  val to_xyz_with_ref:
-    luv ->
-    (** White reference to use for the conversion. *)
-    wref:xyz ->
-    xyz
+  val to_xyz_with_ref: luv -> wref:xyz -> xyz
 
   (** Convert LUV to XYZ using [White_reference.d65]. *)
   val to_xyz: luv -> xyz
@@ -195,12 +180,7 @@ module LUV: sig
       let midpoint = LUV.blend start finish ~mix:0.5
       ```
   *)
-  val blend:
-    luv ->
-    luv ->
-    (** Blend ratio between the two colors. *)
-    mix:float ->
-    luv
+  val blend: luv -> luv -> mix:float -> luv
 end
 
 (** High-level RGB helpers.
@@ -225,10 +205,5 @@ module RGB: sig
       let midpoint = RGB.blend blue yellow ~mix:0.5
       ```
   *)
-  val blend:
-    rgb ->
-    rgb ->
-    (** Blend ratio between the two colors. *)
-    mix:float ->
-    rgb
+  val blend: rgb -> rgb -> mix:float -> rgb
 end
