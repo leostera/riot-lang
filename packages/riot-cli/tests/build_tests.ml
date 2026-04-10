@@ -305,6 +305,32 @@ let test_run_rejects_ambiguous_implicit_binary = fun _ctx ->
       else
         Error ("expected ambiguity error, got: " ^ err)
 
+let test_run_reports_no_binaries_with_creation_hint = fun _ctx ->
+  let workspace = make_workspace [] in
+  match Riot_cli.Run.resolve_implicit_local_target workspace with
+  | Ok _ -> Error "expected implicit run target resolution to reject missing binaries"
+  | Error err ->
+      if String.equal
+        err
+        "no runnable binaries found; pass a binary name or create one with `riot new --bin ./packages/my-binary`"
+      then
+        Ok ()
+      else
+        Error ("expected no-binaries hint, got: " ^ err)
+
+let test_run_reports_package_without_binaries_with_creation_hint = fun _ctx ->
+  let workspace = make_workspace [] in
+  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:"demo" workspace with
+  | Ok _ -> Error "expected package-filtered implicit run target resolution to reject missing binaries"
+  | Error err ->
+      if String.equal
+        err
+        "package 'demo' has no runnable binaries; create one with `riot new --bin ./packages/my-binary`"
+      then
+        Ok ()
+      else
+        Error ("expected package no-binaries hint, got: " ^ err)
+
 let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Riot_cli.Build.format_pm_event
@@ -407,6 +433,8 @@ let tests =
     case "run: single implicit binary resolves" test_run_resolves_single_implicit_binary;
     case "run: package-filtered implicit binary resolves" test_run_resolves_single_implicit_binary_in_package;
     case "run: ambiguous implicit binary is rejected" test_run_rejects_ambiguous_implicit_binary;
+    case "run: missing binaries suggest creating one" test_run_reports_no_binaries_with_creation_hint;
+    case "run: package with no binaries suggests creating one" test_run_reports_package_without_binaries_with_creation_hint;
     case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
     case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
     case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;

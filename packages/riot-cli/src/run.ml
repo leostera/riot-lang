@@ -43,6 +43,12 @@ type implicit_local_target = {
   binary_name: string;
 }
 
+let no_runnable_binaries_message = fun ?package_name () ->
+  let hint = "create one with `riot new --bin ./packages/my-binary`" in
+  match package_name with
+  | Some package_name -> "package '" ^ package_name ^ "' has no runnable binaries; " ^ hint
+  | None -> "no runnable binaries found; pass a binary name or " ^ hint
+
 let parse_local_target = fun ?package_filter name ->
   match String.split_on_char ':' name with
   | [package_name;binary_name] -> (
@@ -104,8 +110,8 @@ let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.W
       Ok { package_name; binary_name }
   | [] -> (
       match package_filter with
-      | Some package_name -> Error ("package '" ^ package_name ^ "' has no runnable binaries")
-      | None -> Error "no runnable binaries found; pass a binary name"
+      | Some package_name -> Error (no_runnable_binaries_message ~package_name ())
+      | None -> Error (no_runnable_binaries_message ())
     )
   | targets ->
       let rendered = targets
