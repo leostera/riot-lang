@@ -17,36 +17,27 @@ let serialize = fun frame ->
   in
   let payload_len = String.length payload in
   (* First byte: FIN, RSV, opcode *)
-  let byte0 =
-    (
-      if fin then
-        0x80
-      else
-        0x00
-    ) lor
-      (
-        if rsv1 then
-          0x40
-        else
-          0x00
-      )
-      lor
-      (
-        if rsv2 then
-          0x20
-        else
-          0x00
-      )
-      lor
-      (
-        if rsv3 then
-          0x10
-        else
-          0x00
-      )
-      lor
-      Frame.opcode_to_int
-      opcode
+  let byte0 = (
+    if fin then
+      0x80
+    else
+      0x00
+  ) lor (
+    if rsv1 then
+      0x40
+    else
+      0x00
+  ) lor (
+    if rsv2 then
+      0x20
+    else
+      0x00
+  ) lor (
+    if rsv3 then
+      0x10
+    else
+      0x00
+  ) lor Frame.opcode_to_int opcode
   in
   (* Determine payload length encoding *)
   let length_bytes, extended_length =
@@ -65,13 +56,12 @@ let serialize = fun frame ->
       ([ 127 ], [ 0; 0; 0; 0; b0; b1; b2; b3 ])
   in
   (* Second byte: MASK, payload length *)
-  let byte1 =
-    (
-      if masked then
-        0x80
-      else
-        0x00
-    ) lor List.hd length_bytes
+  let byte1 = (
+    if masked then
+      0x80
+    else
+      0x00
+  ) lor List.hd length_bytes
   in
   (* Build header *)
   let header = Buffer.create 14 in
@@ -96,4 +86,4 @@ let serialize = fun frame ->
     )
   else
     Buffer.add_string header payload;
-    Buffer.contents header
+  Buffer.contents header

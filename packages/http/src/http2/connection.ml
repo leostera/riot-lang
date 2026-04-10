@@ -549,7 +549,7 @@ let process_frame = fun conn frame ->
               | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
               | None -> ()
             );
-            Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+          Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
       | _ -> Error "Invalid WINDOW_UPDATE payload"
     )
   | Frame.Ping -> (

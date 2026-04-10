@@ -167,13 +167,9 @@ let parse_payload = fun frame payload_data ->
         else
           let id = (Char.code payload_data.[offset] lsl 8) lor Char.code payload_data.[offset + 1] in
           let value = (Char.code payload_data.[offset + 2] lsl 24)
-            lor
-            (Char.code payload_data.[offset + 3] lsl 16)
-            lor
-            (Char.code payload_data.[offset + 4] lsl 8)
-            lor
-            Char.code
-            payload_data.[offset + 5] in
+          lor (Char.code payload_data.[offset + 3] lsl 16)
+          lor (Char.code payload_data.[offset + 4] lsl 8)
+          lor Char.code payload_data.[offset + 5] in
           let setting_opt =
             match id with
             | 0x1 -> Some (Frame.HeaderTableSize value)
@@ -211,13 +207,9 @@ let parse_payload = fun frame payload_data ->
         })
       else
         let increment = (Char.code payload_data.[0] lsl 24)
-          lor
-          (Char.code payload_data.[1] lsl 16)
-          lor
-          (Char.code payload_data.[2] lsl 8)
-          lor
-          Char.code
-          payload_data.[3] in
+        lor (Char.code payload_data.[1] lsl 16)
+        lor (Char.code payload_data.[2] lsl 8)
+        lor Char.code payload_data.[3] in
         let increment = increment land 0x7fff_ffff in
         Ok { frame with payload = Frame.WindowUpdatePayload increment }
   | Frame.RstStream ->
@@ -229,13 +221,9 @@ let parse_payload = fun frame payload_data ->
         })
       else
         let code = (Char.code payload_data.[0] lsl 24)
-          lor
-          (Char.code payload_data.[1] lsl 16)
-          lor
-          (Char.code payload_data.[2] lsl 8)
-          lor
-          Char.code
-          payload_data.[3] in
+        lor (Char.code payload_data.[1] lsl 16)
+        lor (Char.code payload_data.[2] lsl 8)
+        lor Char.code payload_data.[3] in
         let error_code =
           match code with
           | 0x0 -> Frame.NoError
@@ -264,23 +252,14 @@ let parse_payload = fun frame payload_data ->
         })
       else
         let last_stream_id = ((Char.code payload_data.[0] lsl 24)
-          lor
-          (Char.code payload_data.[1] lsl 16)
-          lor
-          (Char.code payload_data.[2] lsl 8)
-          lor
-          Char.code
-          payload_data.[3])
-          land
-          0x7fff_ffff in
+        lor (Char.code payload_data.[1] lsl 16)
+        lor (Char.code payload_data.[2] lsl 8)
+        lor Char.code payload_data.[3])
+        land 0x7fff_ffff in
         let error_code_int = (Char.code payload_data.[4] lsl 24)
-          lor
-          (Char.code payload_data.[5] lsl 16)
-          lor
-          (Char.code payload_data.[6] lsl 8)
-          lor
-          Char.code
-          payload_data.[7] in
+        lor (Char.code payload_data.[5] lsl 16)
+        lor (Char.code payload_data.[6] lsl 8)
+        lor Char.code payload_data.[7] in
         let error_code =
           match error_code_int with
           | 0x0 -> Frame.NoError
