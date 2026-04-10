@@ -19,6 +19,8 @@ type t = {
 
 let binaries = fun t -> t.binaries
 
+let deps = fun t -> t.deps
+
 let uses_stdlib = fun t -> t.uses_stdlib
 
 let uses_unix = fun t -> t.uses_unix
@@ -53,6 +55,16 @@ let parse_string_list = fun toml_array ->
         )
         items
   | _ -> []
+
+let parse_dependency_names = fun dep_items ->
+  List.filter_map
+    (fun ((name: string), _) ->
+      match name with
+      | "stdlib"
+      | "unix"
+      | "dynlink" -> None
+      | dep -> Some dep)
+    dep_items
 
 let is_runtime_binary_path = fun path ->
   not
@@ -127,14 +139,15 @@ let read = fun path ->
             | _ -> []
           in
           (* Get dependencies from [dependencies] table *)
-          let uses_stdlib, uses_unix, uses_dynlink =
+          let deps, uses_stdlib, uses_unix, uses_dynlink =
             match Toml.find "dependencies" items with
             | Some (Toml.Table dep_items) ->
+                let deps = parse_dependency_names dep_items in
                 let has_stdlib = Toml.find "stdlib" dep_items != None in
                 let has_unix = Toml.find "unix" dep_items != None in
                 let has_dynlink = Toml.find "dynlink" dep_items != None in
-                (has_stdlib, has_unix, has_dynlink)
-            | _ -> (false, false, false)
+                (deps, has_stdlib, has_unix, has_dynlink)
+            | _ -> ([], false, false, false)
           in
           (* Get target-specific flags based on OS *)
           let os = detect_os () in
@@ -183,7 +196,7 @@ let read = fun path ->
           {
             name;
             path;
-            deps = [];
+            deps;
             binaries;
             uses_stdlib;
             uses_unix;

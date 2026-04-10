@@ -497,7 +497,13 @@ module Alias_module = struct
           Format.sprintf "module %s = %s" name ns)
         unique_modules
     in
-    String.concat "\n" (header :: body)
+    let super_body =
+      if unique_modules = [] then
+        []
+      else
+        [ ""; "module Super = struct" ] @ body @ [ "end" ]
+    in
+    String.concat "\n" (header :: body @ super_body)
 
   let make_node = fun (ns: Namespace.t) (modules: Module.t list) ->
     let mod_ = Module.of_path ~ns "aliases" in
@@ -947,23 +953,35 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
           do_scan ~t ~ctx child;
           let subdir_mod_name = Module_name.of_string name in
           let subdir_namespaced_name = Namespace.add ns subdir_mod_name |> Namespace.to_string in
-          (* Look up nodes by the namespaced name (e.g., "Kernel__Collections") *)
+          (* Prefer the sub-library interface when it exists, but fall back to the
+             implementation node when the library exposes its surface via .ml only. *)
           let node_ids = Module_registry.get_by_name t.registry subdir_mod_name in
-          (* Find the interface node (not the implementation) *)
-          List.iter
-            (fun node_id ->
-              try
-                let node = Graph.get_node t.graph node_id in
-                (
-                  match node.value.kind with
-                  | MLI mod_ ->
+          let find_subdir_surface expected_kind =
+            List.find_map
+              (fun node_id ->
+                try
+                  let node = Graph.get_node t.graph node_id in
+                  match (expected_kind, node.value.kind) with
+                  | (`interface, MLI mod_)
+                  | (`implementation, ML mod_) ->
                       if Module.namespaced_name mod_ = subdir_namespaced_name then
-                        subdir_lib_intfs := node :: !subdir_lib_intfs
-                  | _ -> ()
-                )
-              with
-              | Not_found -> ())
-            node_ids
+                        Some node
+                      else
+                        None
+                  | _ -> None
+                with
+                | Not_found -> None)
+              node_ids
+          in
+          (
+            match find_subdir_surface `interface with
+            | Some node -> subdir_lib_intfs := node :: !subdir_lib_intfs
+            | None -> (
+                match find_subdir_surface `implementation with
+                | Some node -> subdir_lib_intfs := node :: !subdir_lib_intfs
+                | None -> ()
+              )
+          )
       | _ -> ())
     sorted_children;
   (* Add dependencies from parent library interface to subdirectory library interfaces *)
@@ -1005,6 +1023,26 @@ let scan_from_root = fun t ->
       } in
       handle_library ~t ~ctx dir
   | File file -> failwith (Format.sprintf "Expected root src dir! Instead found: %S\n" file.path)
+
+let has_matching_interface_surface = fun t (node: dep Graph.node) ->
+  match node.value.kind with
+  | ML mod_ ->
+      let namespaced_name = Module.namespaced_name mod_ in
+      let mod_name = Module.module_name mod_ in
+      (
+        try
+          let node_ids = Module_registry.get_by_name t.registry mod_name in
+          List.exists
+            (fun node_id ->
+              let candidate = Graph.get_node t.graph node_id in
+              match candidate.value.kind with
+              | MLI candidate_mod -> Module.namespaced_name candidate_mod = namespaced_name
+              | _ -> false)
+            node_ids
+        with
+        | Not_found -> false
+      )
+  | _ -> false
 
 let handle_dep = fun t (node: dep Graph.node) ->
   let dep = node.value in
@@ -1130,7 +1168,7 @@ let handle_dep = fun t (node: dep Graph.node) ->
                             | Generated { path=p; _ } -> p
                           );
                       match (node.value.kind, dep_node.value.kind) with
-                      | MLI _, ML _ -> ()
+                      | MLI _, ML _ when has_matching_interface_surface t dep_node -> ()
                       | _ -> Graph.add_edge node ~depends_on:dep_node)
                     node_ids
                 with
@@ -1164,7 +1202,7 @@ let handle_dep = fun t (node: dep Graph.node) ->
                       );
                   (
                     match (node.value.kind, dep_node.value.kind) with
-                    | MLI _, ML _ -> ()
+                    | MLI _, ML _ when has_matching_interface_surface t dep_node -> ()
                     | _ -> Graph.add_edge node ~depends_on:dep_node
                   ))
                 resolved_node_ids)

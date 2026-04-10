@@ -55,37 +55,57 @@ let build_package = fun ~build_results ?(needs_stdlib_and_unix = false) pkg_name
     ~cc_flags:(Package.cc_flags pkg)
     ~ld_flags:(Package.ld_flags pkg)
 
+let discover_workspace_packages = fun packages_root ->
+  let packages = Hashtbl.create 64 in
+  Sys.readdir packages_root |> Array.iter
+    (fun entry ->
+      let path = Filename.concat packages_root entry in
+      let manifest = Filename.concat path "riot.toml" in
+      if Sys.file_exists manifest && Sys.is_directory path then
+        let pkg = Package.read path in
+        Hashtbl.replace packages pkg.Package.name pkg);
+  packages
+
+let topo_sort_packages = fun packages roots ->
+  let visiting = Hashtbl.create 64 in
+  let built = Hashtbl.create 64 in
+  let order = ref [] in
+  let rec visit name =
+    if Hashtbl.mem built name then
+      ()
+    else if Hashtbl.mem visiting name then
+      failwith (Printf.sprintf "Bootstrap dependency cycle detected at package %s" name)
+    else
+      match Hashtbl.find_opt packages name with
+      | None -> failwith (Printf.sprintf "Unknown bootstrap package %s" name)
+      | Some pkg ->
+          Hashtbl.replace visiting name ();
+          Package.deps pkg |> List.iter
+            (fun dep ->
+              if Hashtbl.mem packages dep then
+                visit dep);
+          Hashtbl.remove visiting name;
+          Hashtbl.replace built name ();
+          order := name :: !order
+  in
+  List.iter visit roots;
+  List.rev !order
+
 let () =
   Printf.printf "=== Actors Build System ===\n";
   (* Create build results tracker for cross-package dependencies *)
   let build_results = Dep_graph.Build_results.create () in
-  (* Build packages in runtime dependency order for bootstrapping riot-cli. *)
-  build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
-  build_package ~build_results "actors" "packages/actors";
-  build_package ~build_results "std" "packages/std";
-  build_package ~build_results "colors" "packages/colors";
-  build_package ~build_results "tty" "packages/tty";
-  build_package ~build_results "ceibo" "packages/ceibo";
-  build_package ~build_results "http" "packages/http";
-  build_package ~build_results "blink" "packages/blink";
-  build_package ~build_results "jsonrpc" "packages/jsonrpc";
-  build_package ~build_results "lsp" "packages/lsp";
-  build_package ~build_results "pkgs-ml" "packages/pkgs-ml";
-  build_package ~build_results "syn" "packages/syn";
-  build_package ~build_results "fixme" "packages/fixme";
-  build_package ~build_results "krasny" "packages/krasny";
-  build_package ~build_results "riot-model" "packages/riot-model";
-  build_package ~build_results "riot-store" "packages/riot-store";
-  build_package ~build_results "riot-toolchain" "packages/riot-toolchain";
-  build_package ~build_results "riot-planner" "packages/riot-planner";
-  build_package ~build_results "riot-executor" "packages/riot-executor";
-  build_package ~build_results "riot-init" "packages/riot-init";
-  build_package ~build_results "riot-fix" "packages/riot-fix";
-  build_package ~build_results "riot-fmt" "packages/riot-fmt";
-  build_package ~build_results "riot-lsp" "packages/riot-lsp";
-  build_package ~build_results "pubgrub" "packages/pubgrub";
-  build_package ~build_results "riot-deps" "packages/riot-deps";
-  build_package ~build_results "riot-build" "packages/riot-build";
-  build_package ~build_results "riot-publish" "packages/riot-publish";
-  build_package ~build_results "riot-cli" "packages/riot-cli";
+  let packages = discover_workspace_packages "packages" in
+  let build_order = topo_sort_packages packages [ "riot-cli" ] in
+  Printf.printf "Bootstrap build order: %s\n" (String.concat " -> " build_order);
+  List.iter
+    (fun pkg_name ->
+      match Hashtbl.find_opt packages pkg_name with
+      | None -> failwith (Printf.sprintf "Unknown bootstrap package %s" pkg_name)
+      | Some pkg -> build_package
+        ~build_results
+        ~needs_stdlib_and_unix:(String.equal pkg_name "kernel")
+        pkg_name
+        pkg.Package.path)
+    build_order;
   Printf.printf "\n=== Build complete! ===\n"
