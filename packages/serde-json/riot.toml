@@ -1,6 +1,6 @@
 [package]
 name = "serde-json"
-version = "0.0.16"
+version = "0.0.17"
 
 [lib]
 path = "src/serde_json.ml"

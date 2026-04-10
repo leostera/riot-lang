@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.0.17 - 2026-04-10
+
+### Fixed
+
+- `riot init` now defaults to the current directory when no target path is provided.
+- `riot` now gives clearer guidance when commands are run outside a workspace.
+- `riot` surfaces a better hint when a package does not define a runnable binary.
+- Repaired the `miniriot` bootstrap dependency graph.
+
+## 0.0.16 - 2026-04-10
+
+### Added
+
+- Added hover request support across the LSP stack and editor integrations.
+- Added more detailed `riot check` progress events in the CLI.
+- Added a large new slice of experimental multicore runtime and `kernel-new` groundwork.
+
+### Changed
+
+- Workspace package-root handling is more consistent across `riot check`, docs generation, and editor flows.
+- A broad round of interface and formatter refreshes landed across core packages.
+
+### Fixed
+
+- Fixed package-root scanning in `riot-check` so per-package runs stay scoped correctly.
+- Fixed docs planning so package documentation resolves source roots correctly.
+- Fixed several parser and formatter edge cases, including keyword-operator handling in `syn`.
+
 ## 0.0.15 - 2026-04-06
 
 ### Added
