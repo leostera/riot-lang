@@ -4,7 +4,6 @@ open Std
 type error =
   | File_system of { path: Path.t option; cause: Fs.error }
   | Invalid_glob of { path: Path.t; line: int; input: string; message: string; offset: int option }
-
 (** Ignore-aware walk plan.
 
     A plan stores the traversal roots and ignore configuration so it can be
@@ -29,25 +28,15 @@ type t
     on-disk ignore files.
 *)
 val create:
-  (** Root paths to traverse. *)
   roots:Path.t list ->
-  (** Maximum worker concurrency. *)
   ?concurrency:int ->
-  (** Whether to sort entries before yielding them. *)
   ?sort:bool ->
-  (** Whether to follow symbolic links. *)
   ?follow_symlinks:bool ->
-  (** Whether hidden files should be included. *)
   ?hidden:bool ->
-  (** Whether ignore rules from parent directories should apply. *)
   ?parents:bool ->
-  (** Whether generic ignore files should be read. *)
   ?ignore:bool ->
-  (** Whether `.gitignore` files should be read. *)
   ?git_ignore:bool ->
-  (** Extra ignore filenames to load in each directory. *)
   ?custom_ignore_filenames:string list ->
-  (** Override globs applied on top of file-based ignore rules. *)
   ?overrides:string list ->
   unit ->
   (t, Glob.glob_error) Result.t

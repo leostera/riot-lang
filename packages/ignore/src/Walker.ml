@@ -292,11 +292,7 @@ let read_child_entries = fun config entry ->
             ignore (Kernel.Fs.ReadDir.close handle);
             Error (File_system { path = Some (Fs.Walker.FileItem.path entry); cause })
         | Ok raw -> (
-            match child_entry_for_raw
-              config
-              ~dir_path
-              ~depth:((Fs.Walker.FileItem.depth entry + 1))
-              raw with
+            match child_entry_for_raw config ~dir_path ~depth:(Fs.Walker.FileItem.depth entry + 1) raw with
             | Ok child -> loop (child :: acc)
             | Error cause ->
                 ignore (Kernel.Fs.ReadDir.close handle);
@@ -467,7 +463,8 @@ let enqueue_root_task = fun config state ~f root ->
           if Option.is_none state.error then
             state.error <- Some err;
           state.stop <- true
-      | Ok match_ when Match.is_ignore match_ -> ()
+      | Ok match_ when Match.is_ignore match_ ->
+          ()
       | Ok _ ->
           if should_descend_root entry then
             match load_frame config entry with
@@ -520,7 +517,7 @@ let rec coordinator_loop = fun state ->
           state.stop <- true
         else
           List.iter (Queue.push state.pending_tasks) child_tasks;
-          coordinator_loop state
+        coordinator_loop state
     | Walk_event (Scan_failed err) ->
         state.in_flight <- state.in_flight - 1;
         if Option.is_none state.error then
