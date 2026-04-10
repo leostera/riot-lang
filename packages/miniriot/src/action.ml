@@ -269,7 +269,7 @@ let execute_action = fun ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib
       ) @ wrapped_cc_flags @ wrapped_ld_flags
       in
       match Ocaml_platform.Ocamlc.run
-        ~includes:(("." :: final_includes))
+        ~includes:("." :: final_includes)
         ~output:(Some archive_name)
         ~mode:Ocaml_platform.Library
         ~flags

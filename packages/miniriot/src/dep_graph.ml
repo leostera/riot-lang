@@ -1093,10 +1093,10 @@ let handle_dep = fun t (node: dep Graph.node) ->
                             Printf.printf
                               "[DEBUG]   Module %s not found in registry\n"
                               (Module_name.to_string dep_name);
-                            []
-                          else
-                            []
-                      | _ -> [])
+                          []
+                    else
+                      []
+                | _ -> [])
               node.value.open_modules
           in
           let is_debug =
