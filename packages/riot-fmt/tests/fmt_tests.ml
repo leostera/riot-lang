@@ -197,7 +197,7 @@ let test_fmt_explain_prints_syn_explanation = fun _ctx ->
   let stderr, stderr_contents = make_capture_writer () in
   Riot_fmt.run ~stdout ~stderr matches |> Result.expect ~msg:"explain error id";
   Test.assert_equal
-    ~expected:((Syn.Error.explain Syn.Error.E0001_MalformedTypeVariable ^ "\n"))
+    ~expected:(Syn.Error.explain Syn.Error.E0001_MalformedTypeVariable ^ "\n")
     ~actual:(stdout_contents ());
   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
   Ok ()
