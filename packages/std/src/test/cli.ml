@@ -66,7 +66,7 @@ let list_tests = fun ~json tests ->
     write_tests_json tests
   else
     List.iter (fun (test: Test_case.t) -> println test.name) tests;
-    Ok ()
+  Ok ()
 
 let parse_format_to_reporter = function
   | "tap" -> Ok (module Reporter.TAP : Reporter.Intf)

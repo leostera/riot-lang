@@ -112,6 +112,20 @@ type 't var_type =
   | Char: char var_type
 
 (** Single character values *)
+val get: string -> string option
+
+(** Reads a raw environment variable as a string.
+
+    Returns [`None`] if the variable is not set.
+
+    ## Examples
+
+    ```ocaml
+    let database_url =
+      Env.get "DATABASE_URL"
+      |> Option.unwrap_or ~default:"sqlite://local.db"
+    ```
+*)
 val var: 't var_type -> name:string -> 't option
 
 (** Reads and parses a typed environment variable.

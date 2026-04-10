@@ -28,39 +28,42 @@ type 't var_type =
   | Bool: bool var_type
   | Char: char var_type
 
-let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
-  try
-    let value = Kernel.Env.getenv_exn name in
-    match var_type with
-    | String ->
-        Some value
-    | Int -> (
-        try Some (int_of_string value) with
-        | _ -> None
-      )
-    | Float -> (
-        try Some (float_of_string value) with
-        | _ -> None
-      )
-    | Bool -> (
-        match String.lowercase_ascii value with
-        | "true"
-        | "1"
-        | "yes"
-        | "on" -> Some true
-        | "false"
-        | "0"
-        | "no"
-        | "off" -> Some false
-        | _ -> None
-      )
-    | Char ->
-        if String.length value = 1 then
-          Some value.[0]
-        else
-          None
-  with
+let get = fun name ->
+  try Some (Kernel.Env.getenv_exn name) with
   | Not_found -> None
+
+let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
+  match get name with
+  | None -> None
+  | Some value ->
+      match var_type with
+      | String ->
+          Some value
+      | Int -> (
+          try Some (int_of_string value) with
+          | _ -> None
+        )
+      | Float -> (
+          try Some (float_of_string value) with
+          | _ -> None
+        )
+      | Bool -> (
+          match String.lowercase_ascii value with
+          | "true"
+          | "1"
+          | "yes"
+          | "on" -> Some true
+          | "false"
+          | "0"
+          | "no"
+          | "off" -> Some false
+          | _ -> None
+        )
+      | Char ->
+          if String.length value = 1 then
+            Some value.[0]
+          else
+            None
 
 let set_var = fun ~name ~value ->
   Kernel.Env.putenv name value;

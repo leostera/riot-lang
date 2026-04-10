@@ -192,7 +192,7 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
       let closing_indent = indentation depth in
       "[\n"
       ^ (items
-      |> List.map (fun item -> item_indent ^ to_string_pretty ~depth:((depth + 1)) item)
+      |> List.map (fun item -> item_indent ^ to_string_pretty ~depth:(depth + 1) item)
       |> String.concat ",\n")
       ^ "\n"
       ^ closing_indent
@@ -206,7 +206,7 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
       ^ (fields
       |> List.map
         (fun (key, value) ->
-          field_indent ^ to_string (String key) ^ ": " ^ to_string_pretty ~depth:((depth + 1)) value)
+          field_indent ^ to_string (String key) ^ ": " ^ to_string_pretty ~depth:(depth + 1) value)
       |> String.concat ",\n")
       ^ "\n"
       ^ closing_indent
@@ -268,13 +268,9 @@ let of_string = fun str ->
             })
         in
         let code = (decode_at (!pos + 1) lsl 12)
-          lor
-          (decode_at (!pos + 2) lsl 8)
-          lor
-          (decode_at (!pos + 3) lsl 4)
-          lor
-          decode_at
-          (!pos + 4) in
+        lor (decode_at (!pos + 2) lsl 8)
+        lor (decode_at (!pos + 3) lsl 4)
+        lor decode_at (!pos + 4) in
         advance ();
         advance ();
         advance ();

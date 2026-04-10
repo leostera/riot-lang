@@ -75,7 +75,7 @@ module FileItem = struct
     | None ->
         let path_string = path_string_of_entry item in
         let path = Path.of_string path_string
-        |> Result.expect ~msg:(("Invalid walker path " ^ path_string)) in
+        |> Result.expect ~msg:("Invalid walker path " ^ path_string) in
         item.path_cache <- Some path;
         path
 
@@ -266,7 +266,7 @@ let next_dir_entry = fun opts ~depth ~dir_path handle ->
   | None -> None
   | Some relative -> Some (hinted_entry_for_name
     opts
-    ~depth:((depth + 1))
+    ~depth:(depth + 1)
     ~dir_path
     ~name:relative.name
     relative.kind)

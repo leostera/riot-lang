@@ -75,9 +75,9 @@ let push = fun heap value ->
     heap.data <- Array.make 8 value
   else
     ensure_capacity heap;
-    heap.data.(heap.size) <- value;
-    sift_up heap heap.size;
-    heap.size <- heap.size + 1
+  heap.data.(heap.size) <- value;
+  sift_up heap heap.size;
+  heap.size <- heap.size + 1
 
 let peek = fun heap ->
   if heap.size = 0 then

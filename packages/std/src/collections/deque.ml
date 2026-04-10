@@ -132,18 +132,17 @@ let remove = fun deque index ->
         deque.data.(deque.front) <- None;
         deque.front <- (deque.front + 1) mod Array.length deque.data
       )
-    else
-      (
-        for i = index to deque.size - 2 do
-          let curr_idx = (deque.front + i) mod Array.length deque.data in
-          let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-          deque.data.(curr_idx) <- deque.data.(next_idx)
-        done;
-        deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
-        deque.data.(deque.back) <- None
-      );
-      deque.size <- deque.size - 1;
-      value
+    else (
+      for i = index to deque.size - 2 do
+        let curr_idx = (deque.front + i) mod Array.length deque.data in
+        let next_idx = (deque.front + i + 1) mod Array.length deque.data in
+        deque.data.(curr_idx) <- deque.data.(next_idx)
+      done;
+      deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
+      deque.data.(deque.back) <- None
+    );
+    deque.size <- deque.size - 1;
+    value
 
 let clear = fun deque ->
   for i = 0 to Array.length deque.data - 1 do

@@ -58,15 +58,6 @@ type 'value change = {
 type 'value diff =
   | Equal
   | Diff of 'value change list
-(** {1 Diffable Protocol} *)
-
-module type Diffable = sig
-  type t
-  val diff: t -> t -> t diff list
-
-  val equal: t -> t -> bool
-end
-
 (** {1 Helper Functions} *)
 val has_changes: 'a change list -> bool
 

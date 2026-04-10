@@ -79,7 +79,7 @@ let list_benchmarks = fun ~json benchmarks ->
         | Bench_runner.Single case -> println case.Bench_case.name
         | Bench_runner.Compare comp -> println (comp.Bench_comparison.description ^ " (comparison)"))
       benchmarks;
-    Ok ()
+  Ok ()
 
 (** Apply CLI overrides to benchmark items *)
 let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->

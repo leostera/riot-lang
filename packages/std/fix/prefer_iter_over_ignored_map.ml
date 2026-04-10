@@ -77,7 +77,7 @@ let make_diagnostic = fun ~iter_name expr ->
       message = explanation.Api.Explanation.message
     })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-    ~suggestion:(("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects."))
+    ~suggestion:("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects.")
     ()
 
 let diagnostic_for_expression = fun expr ->

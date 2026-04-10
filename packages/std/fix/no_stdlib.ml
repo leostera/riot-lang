@@ -81,7 +81,7 @@ let make_suggestion = fun text ->
 
 let make_fix = fun token replacement ->
   Api.Fix.make
-    ~title:(("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement))
+    ~title:("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement)
     ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement; ]
 
 let make_diagnostic = fun token ->

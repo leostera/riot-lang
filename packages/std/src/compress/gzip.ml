@@ -212,6 +212,8 @@ let to_reader:
                 Bytes.blit scratch !copied ba off chunk_len;
                 copied := !copied + chunk_len);
           Ok read_len
+
+    let direct_string = fun _t -> None
   end in
   Reader.of_read_src (module Read) state
 

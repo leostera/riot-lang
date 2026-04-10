@@ -6,7 +6,7 @@ type env =
   | Prod
 
 let detect_env = fun () ->
-  match Kernel.Env.getenv "RIOT_ENV" with
+  match Env.get "RIOT_ENV" with
   | Some "test" -> Test
   | Some "prod" -> Prod
   | Some "production" -> Prod

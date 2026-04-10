@@ -43,7 +43,7 @@ let rec to_string = fun ?(indent = 0) ->
       if children = [] then
         spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
       else
-        let children_str = String.concat "\n" (List.map (to_string ~indent:((indent + 1))) children) in
+        let children_str = String.concat "\n" (List.map (to_string ~indent:(indent + 1)) children) in
         spaces ^ "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "\n" ^ spaces ^ "</" ^ name ^ ">"
 
 let declaration = {|<?xml version="1.0" encoding="UTF-8"?>|}

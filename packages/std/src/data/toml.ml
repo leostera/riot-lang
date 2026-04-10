@@ -503,13 +503,13 @@ let rec to_string = fun ?(indent = 0) value ->
       else
         "false"
   | Array items ->
-      let items_str = String.concat ", " (List.map (to_string ~indent:((indent + 1))) items) in
+      let items_str = String.concat ", " (List.map (to_string ~indent:(indent + 1)) items) in
       "[" ^ items_str ^ "]"
   | Table items ->
       let items_str =
         String.concat
           ",\n"
-          (List.map (fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:((indent + 1)) v) items)
+          (List.map (fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v) items)
       in
       if indent = 0 then
         "{\n" ^ items_str ^ "\n}"

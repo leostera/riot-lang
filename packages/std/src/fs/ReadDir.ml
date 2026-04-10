@@ -72,7 +72,7 @@ let next_raw_entry = fun t ->
       Some { name = entry.name; kind = entry_kind_of_kernel entry.kind }
     with
     | End_of_file ->
-        close t |> Result.expect ~msg:(("Could not close ReadDir.t for " ^ t.path_string));
+        close t |> Result.expect ~msg:("Could not close ReadDir.t for " ^ t.path_string);
         None
 
 let rec next_entry = fun t ->

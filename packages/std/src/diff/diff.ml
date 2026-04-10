@@ -21,13 +21,6 @@ type 'value diff =
   Equal
   | Diff of 'value change list
 
-module type Diffable = sig
-  type t
-  val diff: t -> t -> t diff list
-
-  val equal: t -> t -> bool
-end
-
 let has_changes = fun changes -> List.length changes > 0
 
 let additions = fun changes ->

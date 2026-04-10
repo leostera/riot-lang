@@ -44,27 +44,27 @@ let encode_bytes = fun bytes ->
         Buffer.add_char result table.[(b1 lsr 1) land 0x1f]
       else
         Buffer.add_char result '=';
-        if remaining > 1 then
-          Buffer.add_char result table.[((b1 land 0x01) lsl 4) lor (b2 lsr 4)]
-        else
-          Buffer.add_char result '=';
-          if remaining > 2 then
-            Buffer.add_char result table.[((b2 land 0x0f) lsl 1) lor (b3 lsr 7)]
-          else
-            Buffer.add_char result '=';
-            if remaining > 3 then
-              Buffer.add_char result table.[(b3 lsr 2) land 0x1f]
-            else
-              Buffer.add_char result '=';
-              if remaining > 3 then
-                Buffer.add_char result table.[((b3 land 0x03) lsl 3) lor (b4 lsr 5)]
-              else
-                Buffer.add_char result '=';
-                if remaining > 4 then
-                  Buffer.add_char result table.[b4 land 0x1f]
-                else
-                  Buffer.add_char result '=';
-                  encode_block (i + 5)
+      if remaining > 1 then
+        Buffer.add_char result table.[((b1 land 0x01) lsl 4) lor (b2 lsr 4)]
+      else
+        Buffer.add_char result '=';
+      if remaining > 2 then
+        Buffer.add_char result table.[((b2 land 0x0f) lsl 1) lor (b3 lsr 7)]
+      else
+        Buffer.add_char result '=';
+      if remaining > 3 then
+        Buffer.add_char result table.[(b3 lsr 2) land 0x1f]
+      else
+        Buffer.add_char result '=';
+      if remaining > 3 then
+        Buffer.add_char result table.[((b3 land 0x03) lsl 3) lor (b4 lsr 5)]
+      else
+        Buffer.add_char result '=';
+      if remaining > 4 then
+        Buffer.add_char result table.[b4 land 0x1f]
+      else
+        Buffer.add_char result '=';
+      encode_block (i + 5)
   in
   encode_block 0;
   Buffer.contents result

@@ -52,11 +52,11 @@ let base64 = fun hash ->
           Buffer.add_char buf b64_chars.[((b2 land 0x0f) lsl 2) lor (b3 lsr 6)]
         else
           Buffer.add_char buf '=';
-          if i + 2 < len then
-            Buffer.add_char buf b64_chars.[b3 land 0x3f]
-          else
-            Buffer.add_char buf '=';
-            encode (i + 3)
+        if i + 2 < len then
+          Buffer.add_char buf b64_chars.[b3 land 0x3f]
+        else
+          Buffer.add_char buf '=';
+        encode (i + 3)
       )
   in
   encode 0;
