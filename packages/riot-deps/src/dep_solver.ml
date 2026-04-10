@@ -950,14 +950,14 @@ let ranges_of_requirement = fun requirement ->
       Ok Pubgrub.full
   | Std.Version.PrefixMajorRequirement major ->
       let lower_bound = Std.Version.make ~major ~minor:0 ~patch:0 () in
-      let upper_bound = Std.Version.make ~major:((major + 1)) ~minor:0 ~patch:0 () in
+      let upper_bound = Std.Version.make ~major:(major + 1) ~minor:0 ~patch:0 () in
       Ok (Pubgrub.Ranges.intersection
         ~compare_v:pubgrub_version_compare
         (Pubgrub.higher_than lower_bound)
         (Pubgrub.strictly_lower_than upper_bound))
   | Std.Version.PrefixMinorRequirement (major, minor) ->
       let lower_bound = Std.Version.make ~major ~minor ~patch:0 () in
-      let upper_bound = Std.Version.make ~major ~minor:((minor + 1)) ~patch:0 () in
+      let upper_bound = Std.Version.make ~major ~minor:(minor + 1) ~patch:0 () in
       Ok (Pubgrub.Ranges.intersection
         ~compare_v:pubgrub_version_compare
         (Pubgrub.higher_than lower_bound)
@@ -975,7 +975,7 @@ let ranges_of_requirement = fun requirement ->
   | Std.Version.LessThanOrEqualRequirement version ->
       Ok (Pubgrub.lower_than version)
   | Std.Version.TildeRequirement version ->
-      let upper_bound = Std.Version.make ~major:version.major ~minor:((version.minor + 1)) ~patch:0 () in
+      let upper_bound = Std.Version.make ~major:version.major ~minor:(version.minor + 1) ~patch:0 () in
       Ok (Pubgrub.Ranges.intersection
         ~compare_v:pubgrub_version_compare
         (Pubgrub.higher_than version)

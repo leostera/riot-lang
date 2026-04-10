@@ -148,7 +148,7 @@ let run_git = fun ?cwd args ->
     | None -> args
   in
   let command = Command.make "env"
-    ~args:((
+    ~args:(
       [
         "-u";
         "GIT_DIR";
@@ -166,7 +166,7 @@ let run_git = fun ?cwd args ->
         "GIT_IMPLICIT_WORK_TREE";
         "git";
       ] @ args
-    ))
+    )
   in
   match Command.output command with
   | Error (Command.SystemError error) -> Error (GitCommandSpawnFailed {

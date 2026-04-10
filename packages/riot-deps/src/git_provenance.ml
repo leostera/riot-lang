@@ -51,7 +51,7 @@ let message = function
 let run_git = fun ~cwd args ->
   let command = Command.make
     "env"
-    ~args:(([
+    ~args:([
       "-u";
       "GIT_DIR";
       "-u";
@@ -62,7 +62,7 @@ let run_git = fun ~cwd args ->
       "-C";
       Path.to_string cwd;
     ]
-    @ args)) in
+    @ args) in
   match Command.output command with
   | Error (Command.SystemError error) ->
       Error (GitCommandSpawnFailed { command = Command.to_string command; error })

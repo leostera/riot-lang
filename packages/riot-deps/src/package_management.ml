@@ -1044,12 +1044,12 @@ let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(r
   let dependencies = upsert_dependency target.dependencies (dependency_of_parsed parsed) in
   let* () =
     update_manifest ~emit ~target ~scope:request.scope ~dependencies ~operation:`Add
-      ~dependency:((
+      ~dependency:(
         match parsed with
         | Registry parsed -> parsed.name
         | Path parsed -> parsed.name
         | Source parsed -> parsed.name
-      ))
+      )
   in
   let* registry = init_registry () in
   let* workspace = reload_workspace ~workspace_root:workspace.root in

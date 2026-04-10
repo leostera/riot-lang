@@ -126,11 +126,11 @@ let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_roo
           Error err
       | Ok toml ->
           Riot_model.Package.from_toml toml ~workspace_deps:[] ~workspace_dev_deps:[] ~workspace_build_deps:[] ~path:package_root
-            ~relative_path:((
+            ~relative_path:(
               match lock_package.root with
               | Some root -> root
               | None -> package_root
-            ))
+            )
           |> Result.map
             (fun pkg ->
               emit_finished ();
