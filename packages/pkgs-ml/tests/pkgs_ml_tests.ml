@@ -702,7 +702,7 @@ let tar_zero_pad_left = fun width value ->
 let tar_bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = tar_zero_pad_left digits_width (tar_octal_string value) in
-  tar_bytes_set_string dst ~offset ~width:((width - 1)) trimmed;
+  tar_bytes_set_string dst ~offset ~width:(width - 1) trimmed;
   IO.Bytes.set dst (offset + width - 1) '\000'
 
 let tar_compute_checksum = fun header ->

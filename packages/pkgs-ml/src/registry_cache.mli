@@ -8,13 +8,7 @@ type t
     Use [`riot_home`] to override the default Riot home location in tests or
     custom environments.
 *)
-val create:
-  (** Optional Riot home override. *)
-  ?riot_home:Path.t ->
-  (** Registry name, used to namespace cache paths. *)
-  registry_name:string ->
-  unit ->
-  (t, string) result
+val create: ?riot_home:Path.t -> registry_name:string -> unit -> (t, string) result
 
 (** Return the Riot home directory used by the cache. *)
 val riot_home: t -> Path.t

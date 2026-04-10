@@ -8,13 +8,11 @@ type config = {
   index_base_url: string;
   artifact_base_url: string;
 }
-
 (** Dependency entry from a package document. *)
 type dependency = {
   name: string;
   raw: Data.Json.t;
 }
-
 (** Published release entry in a package document. *)
 type release = {
   version: string;
@@ -37,7 +35,6 @@ type release = {
   yanked_at: string option;
   yanked_by_github_login: string option;
 }
-
 (** Sparse-index package document. *)
 type package_document = {
   schema_version: int;

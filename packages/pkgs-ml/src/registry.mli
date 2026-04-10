@@ -2,41 +2,34 @@ open Std
 
 (** Registry handle. *)
 type t
-
 (** Raw HTTP response returned by a fetch function. *)
 type fetch_response = {
   status_code: int;
   body: string;
 }
-
 (** Fetch implementation used by the registry client. *)
 type fetch
-
 (** Published artifact location. *)
 type published_artifact_location = {
   key: string;
   url: string;
 }
-
 (** Published record status returned by the registry. *)
 type published_record = {
   key: string;
   created: bool;
 }
-
 (** Package search result. *)
 type search_result = {
   package_name: string;
   latest_version: string;
   description: string option;
 }
-
 (** Materialization status for published assets. *)
 type published_materialization = {
   manifest: bool;
   source: bool;
 }
-
 (** Result returned after publishing an artifact. *)
 type published_release = {
   artifact_sha256: string;
@@ -48,7 +41,6 @@ type published_release = {
   release: published_record;
   materialization: published_materialization;
 }
-
 (** Result returned after yanking a release. *)
 type yanked_release = {
   package_name: string;
@@ -57,13 +49,11 @@ type yanked_release = {
   yanked_at: string option;
   yanked_by_github_login: string option;
 }
-
 (** One source file included in an in-memory release fixture. *)
 type release_file = {
   path: Path.t;
   contents: string;
 }
-
 (** Release source payload used for in-memory registries and tests. *)
 type release_source = {
   package_name: string;
@@ -71,7 +61,6 @@ type release_source = {
   manifest_toml: string;
   files: release_file list;
 }
-
 (** Result of attempting to materialize a release into the cache. *)
 type materialize_result =
 [
@@ -85,9 +74,7 @@ type materialize_result =
     tests or custom runtimes.
 *)
 val make_fetch:
-  (** GET implementation. *)
   get:(Net.Uri.t -> (fetch_response, string) result) ->
-  (** Optional POST implementation for mutating routes such as publish or yank. *)
   ?post:(Net.Uri.t -> headers:(string * string) list -> body:string -> (fetch_response, string) result) ->
   unit ->
   fetch
