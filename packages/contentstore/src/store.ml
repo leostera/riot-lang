@@ -11,7 +11,7 @@ type error = string
 
 let create = fun ~root ~policy () ->
   let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:(("Failed to create content store root: " ^ Path.to_string root)) in
+  |> Result.expect ~msg:("Failed to create content store root: " ^ Path.to_string root) in
   { root; policy }
 
 let root = fun store -> store.root
@@ -51,7 +51,7 @@ let named_blob_path = fun store ~namespace ~key ->
 let save_blob = fun store ~namespace ~hash ~content ->
   let root = namespace_dir store namespace in
   let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:(("Failed to create content namespace root: " ^ Path.to_string root)) in
+  |> Result.expect ~msg:("Failed to create content namespace root: " ^ Path.to_string root) in
   let destination = blob_path store ~namespace ~hash in
   let temp_path =
     let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
@@ -89,7 +89,7 @@ let load_json_bundle = fun store ~namespace ~hash ->
 let save_named_blob = fun store ~namespace ~key ~content ->
   let root = named_namespace_dir store namespace in
   let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:(("Failed to create named namespace root: " ^ Path.to_string root)) in
+  |> Result.expect ~msg:("Failed to create named namespace root: " ^ Path.to_string root) in
   let destination = named_blob_path store ~namespace ~key in
   let temp_path =
     let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
