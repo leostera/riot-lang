@@ -134,22 +134,14 @@ module Group = struct
       (I64.shift_right_logical
         (I64.logand bits (I64.shift_left 0x80L (byte_pos * 8)))
         (byte_pos * 8 + 7)) in
-    extract_bit
-      0
-      lor
-      (extract_bit 1 lsl 1)
-      lor
-      (extract_bit 2 lsl 2)
-      lor
-      (extract_bit 3 lsl 3)
-      lor
-      (extract_bit 4 lsl 4)
-      lor
-      (extract_bit 5 lsl 5)
-      lor
-      (extract_bit 6 lsl 6)
-      lor
-      (extract_bit 7 lsl 7)
+    extract_bit 0
+    lor (extract_bit 1 lsl 1)
+    lor (extract_bit 2 lsl 2)
+    lor (extract_bit 3 lsl 3)
+    lor (extract_bit 4 lsl 4)
+    lor (extract_bit 5 lsl 5)
+    lor (extract_bit 6 lsl 6)
+    lor (extract_bit 7 lsl 7)
 
   let match_tag_impl = fun ctrl idx tag ->
     (* Use SIMD-optimized C function - directly returns bitmask *)
