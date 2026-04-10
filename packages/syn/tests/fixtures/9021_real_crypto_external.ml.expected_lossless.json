@@ -434,16 +434,23 @@
             "leading_trivia": []
           },
           {
-            "type": "token",
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "sha256_bytes",
-            "width": 12,
-            "full_width": 13,
-            "leading_trivia": [
+            "width": 13,
+            "children": [
               {
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "sha256_bytes",
+                "width": 12,
+                "full_width": 13,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },
@@ -568,16 +575,23 @@
             ]
           },
           {
-            "type": "token",
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "sha512_bytes",
-            "width": 12,
-            "full_width": 13,
-            "leading_trivia": [
+            "width": 13,
+            "children": [
               {
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "sha512_bytes",
+                "width": 12,
+                "full_width": 13,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },
@@ -702,16 +716,23 @@
             ]
           },
           {
-            "type": "token",
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "simple_hash_bytes",
-            "width": 17,
-            "full_width": 18,
-            "leading_trivia": [
+            "width": 18,
+            "children": [
               {
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "simple_hash_bytes",
+                "width": 17,
+                "full_width": 18,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },

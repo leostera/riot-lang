@@ -58,114 +58,114 @@
           },
           "parameters": [],
           "value": {
-            "tag": "if",
+            "tag": "sequence",
             "syntax_node": {
-              "kind": "IF_EXPR",
+              "kind": "SEQUENCE_EXPR",
               "span": {
                 "start": 7,
                 "end": 48
               }
             },
-            "keyword_token": {
+            "separator_token": {
               "kind": "IDENT_EXPR",
-              "text": "if",
+              "text": ";",
               "span": {
-                "start": 10,
-                "end": 12
+                "start": 41,
+                "end": 42
               }
             },
-            "then_token": {
-              "kind": "IDENT_EXPR",
-              "text": "then",
-              "span": {
-                "start": 18,
-                "end": 22
-              }
-            },
-            "else_token": {
-              "kind": "IDENT_EXPR",
-              "text": "else",
-              "span": {
-                "start": 31,
-                "end": 35
-              }
-            },
-            "condition": {
-              "tag": "literal",
-              "literal": {
-                "tag": "bool",
-                "syntax_node": {
-                  "kind": "BOOL_LITERAL",
-                  "span": {
-                    "start": 12,
-                    "end": 17
-                  }
-                },
-                "literal_token": {
-                  "kind": "BOOL_LITERAL",
-                  "text": "true",
-                  "span": {
-                    "start": 13,
-                    "end": 17
-                  }
-                },
-                "value": true
-              }
-            },
-            "then_branch": {
-              "tag": "literal",
-              "literal": {
-                "tag": "int",
-                "syntax_node": {
-                  "kind": "INT_LITERAL",
-                  "span": {
-                    "start": 22,
-                    "end": 28
-                  }
-                },
-                "literal_token": {
-                  "kind": "INT_LITERAL",
-                  "text": "1",
-                  "span": {
-                    "start": 27,
-                    "end": 28
-                  }
-                },
-                "base": "decimal",
-                "prefix": null,
-                "digits": "1",
-                "suffix": null
-              }
-            },
-            "else_branch": {
-              "tag": "sequence",
-              "syntax_node": {
-                "kind": "SEQUENCE_EXPR",
-                "span": {
-                  "start": 35,
-                  "end": 48
-                }
-              },
-              "separator_token": {
+            "separator_tokens": [
+              {
                 "kind": "IDENT_EXPR",
                 "text": ";",
                 "span": {
                   "start": 41,
                   "end": 42
                 }
-              },
-              "separator_tokens": [
-                {
-                  "kind": "IDENT_EXPR",
-                  "text": ";",
+              }
+            ],
+            "expressions": [
+              {
+                "tag": "if",
+                "syntax_node": {
+                  "kind": "IF_EXPR",
                   "span": {
-                    "start": 41,
-                    "end": 42
+                    "start": 7,
+                    "end": 41
                   }
-                }
-              ],
-              "expressions": [
-                {
+                },
+                "keyword_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "if",
+                  "span": {
+                    "start": 10,
+                    "end": 12
+                  }
+                },
+                "then_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "then",
+                  "span": {
+                    "start": 18,
+                    "end": 22
+                  }
+                },
+                "else_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "else",
+                  "span": {
+                    "start": 31,
+                    "end": 35
+                  }
+                },
+                "condition": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "bool",
+                    "syntax_node": {
+                      "kind": "BOOL_LITERAL",
+                      "span": {
+                        "start": 12,
+                        "end": 17
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "BOOL_LITERAL",
+                      "text": "true",
+                      "span": {
+                        "start": 13,
+                        "end": 17
+                      }
+                    },
+                    "value": true
+                  }
+                },
+                "then_branch": {
+                  "tag": "literal",
+                  "literal": {
+                    "tag": "int",
+                    "syntax_node": {
+                      "kind": "INT_LITERAL",
+                      "span": {
+                        "start": 22,
+                        "end": 28
+                      }
+                    },
+                    "literal_token": {
+                      "kind": "INT_LITERAL",
+                      "text": "1",
+                      "span": {
+                        "start": 27,
+                        "end": 28
+                      }
+                    },
+                    "base": "decimal",
+                    "prefix": null,
+                    "digits": "1",
+                    "suffix": null
+                  }
+                },
+                "else_branch": {
                   "tag": "literal",
                   "literal": {
                     "tag": "int",
@@ -189,34 +189,34 @@
                     "digits": "2",
                     "suffix": null
                   }
-                },
-                {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 42,
-                        "end": 48
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "3",
-                      "span": {
-                        "start": 47,
-                        "end": 48
-                      }
-                    },
-                    "base": "decimal",
-                    "prefix": null,
-                    "digits": "3",
-                    "suffix": null
-                  }
                 }
-              ]
-            }
+              },
+              {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
+                  "syntax_node": {
+                    "kind": "INT_LITERAL",
+                    "span": {
+                      "start": 42,
+                      "end": 48
+                    }
+                  },
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "3",
+                    "span": {
+                      "start": 47,
+                      "end": 48
+                    }
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "3",
+                  "suffix": null
+                }
+              }
+            ]
           },
           "and_binding": null,
           "is_recursive": false

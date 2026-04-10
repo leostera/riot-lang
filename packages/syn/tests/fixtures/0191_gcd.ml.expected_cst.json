@@ -406,25 +406,25 @@
                       },
                       "grouping": "parens",
                       "inner": {
-                        "tag": "apply",
+                        "tag": "infix",
                         "syntax_node": {
-                          "kind": "APPLY_EXPR",
+                          "kind": "INFIX_EXPR",
                           "span": {
                             "start": 65,
                             "end": 72
                           }
                         },
-                        "callee": {
-                          "tag": "apply",
+                        "left": {
+                          "tag": "path",
                           "syntax_node": {
-                            "kind": "APPLY_EXPR",
+                            "kind": "IDENT_EXPR",
                             "span": {
                               "start": 65,
-                              "end": 70
+                              "end": 66
                             }
                           },
-                          "callee": {
-                            "tag": "path",
+                          "path": {
+                            "tag": "ident",
                             "syntax_node": {
                               "kind": "IDENT_EXPR",
                               "span": {
@@ -432,61 +432,37 @@
                                 "end": 66
                               }
                             },
-                            "path": {
-                              "tag": "ident",
-                              "syntax_node": {
-                                "kind": "IDENT_EXPR",
-                                "span": {
-                                  "start": 65,
-                                  "end": 66
-                                }
-                              },
-                              "name_token": {
-                                "kind": "IDENT_EXPR",
-                                "text": "a",
-                                "span": {
-                                  "start": 65,
-                                  "end": 66
-                                }
-                              }
-                            }
-                          },
-                          "argument": {
-                            "tag": "positional",
-                            "value": {
-                              "tag": "path",
-                              "syntax_node": {
-                                "kind": "IDENT_EXPR",
-                                "span": {
-                                  "start": 66,
-                                  "end": 70
-                                }
-                              },
-                              "path": {
-                                "tag": "ident",
-                                "syntax_node": {
-                                  "kind": "IDENT_EXPR",
-                                  "span": {
-                                    "start": 66,
-                                    "end": 70
-                                  }
-                                },
-                                "name_token": {
-                                  "kind": "IDENT_EXPR",
-                                  "text": "mod",
-                                  "span": {
-                                    "start": 67,
-                                    "end": 70
-                                  }
-                                }
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "a",
+                              "span": {
+                                "start": 65,
+                                "end": 66
                               }
                             }
                           }
                         },
-                        "argument": {
-                          "tag": "positional",
-                          "value": {
-                            "tag": "path",
+                        "operator_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "mod",
+                            "span": {
+                              "start": 67,
+                              "end": 70
+                            }
+                          }
+                        ],
+                        "right": {
+                          "tag": "path",
+                          "syntax_node": {
+                            "kind": "IDENT_EXPR",
+                            "span": {
+                              "start": 70,
+                              "end": 72
+                            }
+                          },
+                          "path": {
+                            "tag": "ident",
                             "syntax_node": {
                               "kind": "IDENT_EXPR",
                               "span": {
@@ -494,22 +470,12 @@
                                 "end": 72
                               }
                             },
-                            "path": {
-                              "tag": "ident",
-                              "syntax_node": {
-                                "kind": "IDENT_EXPR",
-                                "span": {
-                                  "start": 70,
-                                  "end": 72
-                                }
-                              },
-                              "name_token": {
-                                "kind": "IDENT_EXPR",
-                                "text": "b",
-                                "span": {
-                                  "start": 71,
-                                  "end": 72
-                                }
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "b",
+                              "span": {
+                                "start": 71,
+                                "end": 72
                               }
                             }
                           }

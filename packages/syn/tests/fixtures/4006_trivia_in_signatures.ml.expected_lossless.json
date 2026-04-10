@@ -1315,16 +1315,23 @@
                     ]
                   },
                   {
-                    "type": "token",
+                    "type": "node",
                     "kind": "IDENT_EXPR",
-                    "text": "add",
-                    "width": 3,
-                    "full_width": 4,
-                    "leading_trivia": [
+                    "width": 4,
+                    "children": [
                       {
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "add",
+                        "width": 3,
+                        "full_width": 4,
+                        "leading_trivia": [
+                          {
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
                       }
                     ]
                   },

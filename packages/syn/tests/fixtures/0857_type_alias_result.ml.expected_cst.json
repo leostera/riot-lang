@@ -85,74 +85,62 @@
               },
               "arguments": [
                 {
-                  "tag": "tuple",
+                  "tag": "constr",
                   "syntax_node": {
-                    "kind": "TYPE_TUPLE",
+                    "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 15,
-                      "end": 31
+                      "start": 17,
+                      "end": 23
                     }
                   },
-                  "elements": [
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 17,
-                          "end": 23
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 17,
-                            "end": 23
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "string",
-                          "span": {
-                            "start": 17,
-                            "end": 23
-                          }
-                        }
-                      },
-                      "arguments": []
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 17,
+                        "end": 23
+                      }
                     },
-                    {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 24,
-                          "end": 30
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 24,
-                            "end": 30
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "error",
-                          "span": {
-                            "start": 25,
-                            "end": 30
-                          }
-                        }
-                      },
-                      "arguments": []
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "string",
+                      "span": {
+                        "start": 17,
+                        "end": 23
+                      }
                     }
-                  ]
+                  },
+                  "arguments": []
+                },
+                {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 24,
+                      "end": 30
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 24,
+                        "end": 30
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "error",
+                      "span": {
+                        "start": 25,
+                        "end": 30
+                      }
+                    }
+                  },
+                  "arguments": []
                 }
               ]
             }

@@ -736,49 +736,35 @@
                           },
                           {
                             "type": "node",
-                            "kind": "APPLY_EXPR",
+                            "kind": "INFIX_EXPR",
                             "width": 7,
                             "children": [
                               {
                                 "type": "node",
-                                "kind": "APPLY_EXPR",
-                                "width": 5,
+                                "kind": "IDENT_EXPR",
+                                "width": 1,
                                 "children": [
                                   {
-                                    "type": "node",
+                                    "type": "token",
                                     "kind": "IDENT_EXPR",
+                                    "text": "a",
                                     "width": 1,
-                                    "children": [
-                                      {
-                                        "type": "token",
-                                        "kind": "IDENT_EXPR",
-                                        "text": "a",
-                                        "width": 1,
-                                        "full_width": 1,
-                                        "leading_trivia": []
-                                      }
-                                    ]
-                                  },
+                                    "full_width": 1,
+                                    "leading_trivia": []
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "mod",
+                                "width": 3,
+                                "full_width": 4,
+                                "leading_trivia": [
                                   {
-                                    "type": "node",
-                                    "kind": "IDENT_EXPR",
-                                    "width": 4,
-                                    "children": [
-                                      {
-                                        "type": "token",
-                                        "kind": "IDENT_EXPR",
-                                        "text": "mod",
-                                        "width": 3,
-                                        "full_width": 4,
-                                        "leading_trivia": [
-                                          {
-                                            "kind": "WHITESPACE",
-                                            "text": " ",
-                                            "width": 1
-                                          }
-                                        ]
-                                      }
-                                    ]
+                                    "kind": "WHITESPACE",
+                                    "text": " ",
+                                    "width": 1
                                   }
                                 ]
                               },

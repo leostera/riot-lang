@@ -1946,68 +1946,56 @@
                   },
                   "arguments": [
                     {
-                      "tag": "tuple",
+                      "tag": "var",
                       "syntax_node": {
-                        "kind": "TYPE_TUPLE",
+                        "kind": "TYPE_VAR",
                         "span": {
-                          "start": 287,
-                          "end": 296
+                          "start": 289,
+                          "end": 291
                         }
                       },
-                      "elements": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 289,
-                              "end": 291
-                            }
-                          },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "'",
-                            "span": {
-                              "start": 289,
-                              "end": 290
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 290,
-                              "end": 291
-                            }
-                          }
-                        },
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 292,
-                              "end": 295
-                            }
-                          },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "'",
-                            "span": {
-                              "start": 293,
-                              "end": 294
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 294,
-                              "end": 295
-                            }
-                          }
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 289,
+                          "end": 290
                         }
-                      ]
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 290,
+                          "end": 291
+                        }
+                      }
+                    },
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 292,
+                          "end": 295
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 293,
+                          "end": 294
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 294,
+                          "end": 295
+                        }
+                      }
                     }
                   ]
                 },
@@ -2040,68 +2028,56 @@
                   },
                   "arguments": [
                     {
-                      "tag": "tuple",
+                      "tag": "var",
                       "syntax_node": {
-                        "kind": "TYPE_TUPLE",
+                        "kind": "TYPE_VAR",
                         "span": {
-                          "start": 287,
-                          "end": 296
+                          "start": 289,
+                          "end": 291
                         }
                       },
-                      "elements": [
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 289,
-                              "end": 291
-                            }
-                          },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "'",
-                            "span": {
-                              "start": 289,
-                              "end": 290
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 290,
-                              "end": 291
-                            }
-                          }
-                        },
-                        {
-                          "tag": "var",
-                          "syntax_node": {
-                            "kind": "TYPE_VAR",
-                            "span": {
-                              "start": 292,
-                              "end": 295
-                            }
-                          },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "'",
-                            "span": {
-                              "start": 293,
-                              "end": 294
-                            }
-                          },
-                          "name_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "span": {
-                              "start": 294,
-                              "end": 295
-                            }
-                          }
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 289,
+                          "end": 290
                         }
-                      ]
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 290,
+                          "end": 291
+                        }
+                      }
+                    },
+                    {
+                      "tag": "var",
+                      "syntax_node": {
+                        "kind": "TYPE_VAR",
+                        "span": {
+                          "start": 292,
+                          "end": 295
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 293,
+                          "end": 294
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "span": {
+                          "start": 294,
+                          "end": 295
+                        }
+                      }
                     }
                   ]
                 },

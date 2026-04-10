@@ -168,74 +168,62 @@
                   },
                   "arguments": [
                     {
-                      "tag": "tuple",
+                      "tag": "constr",
                       "syntax_node": {
-                        "kind": "TYPE_TUPLE",
+                        "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 77,
-                          "end": 84
+                          "start": 79,
+                          "end": 80
                         }
                       },
-                      "elements": [
-                        {
-                          "tag": "constr",
-                          "syntax_node": {
-                            "kind": "TYPE_CONSTR",
-                            "span": {
-                              "start": 79,
-                              "end": 80
-                            }
-                          },
-                          "constructor_path": {
-                            "tag": "ident",
-                            "syntax_node": {
-                              "kind": "TYPE_CONSTR",
-                              "span": {
-                                "start": 79,
-                                "end": 80
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "a",
-                              "span": {
-                                "start": 79,
-                                "end": 80
-                              }
-                            }
-                          },
-                          "arguments": []
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 79,
+                            "end": 80
+                          }
                         },
-                        {
-                          "tag": "constr",
-                          "syntax_node": {
-                            "kind": "TYPE_CONSTR",
-                            "span": {
-                              "start": 81,
-                              "end": 83
-                            }
-                          },
-                          "constructor_path": {
-                            "tag": "ident",
-                            "syntax_node": {
-                              "kind": "TYPE_CONSTR",
-                              "span": {
-                                "start": 81,
-                                "end": 83
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "b",
-                              "span": {
-                                "start": 82,
-                                "end": 83
-                              }
-                            }
-                          },
-                          "arguments": []
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "a",
+                          "span": {
+                            "start": 79,
+                            "end": 80
+                          }
                         }
-                      ]
+                      },
+                      "arguments": []
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 81,
+                          "end": 83
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 81,
+                            "end": 83
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "b",
+                          "span": {
+                            "start": 82,
+                            "end": 83
+                          }
+                        }
+                      },
+                      "arguments": []
                     }
                   ]
                 }
@@ -391,74 +379,62 @@
                   },
                   "arguments": [
                     {
-                      "tag": "tuple",
+                      "tag": "constr",
                       "syntax_node": {
-                        "kind": "TYPE_TUPLE",
+                        "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 113,
-                          "end": 127
+                          "start": 115,
+                          "end": 118
                         }
                       },
-                      "elements": [
-                        {
-                          "tag": "constr",
-                          "syntax_node": {
-                            "kind": "TYPE_CONSTR",
-                            "span": {
-                              "start": 115,
-                              "end": 118
-                            }
-                          },
-                          "constructor_path": {
-                            "tag": "ident",
-                            "syntax_node": {
-                              "kind": "TYPE_CONSTR",
-                              "span": {
-                                "start": 115,
-                                "end": 118
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "int",
-                              "span": {
-                                "start": 115,
-                                "end": 118
-                              }
-                            }
-                          },
-                          "arguments": []
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 115,
+                            "end": 118
+                          }
                         },
-                        {
-                          "tag": "constr",
-                          "syntax_node": {
-                            "kind": "TYPE_CONSTR",
-                            "span": {
-                              "start": 119,
-                              "end": 126
-                            }
-                          },
-                          "constructor_path": {
-                            "tag": "ident",
-                            "syntax_node": {
-                              "kind": "TYPE_CONSTR",
-                              "span": {
-                                "start": 119,
-                                "end": 126
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "string",
-                              "span": {
-                                "start": 120,
-                                "end": 126
-                              }
-                            }
-                          },
-                          "arguments": []
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "int",
+                          "span": {
+                            "start": 115,
+                            "end": 118
+                          }
                         }
-                      ]
+                      },
+                      "arguments": []
+                    },
+                    {
+                      "tag": "constr",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 119,
+                          "end": 126
+                        }
+                      },
+                      "constructor_path": {
+                        "tag": "ident",
+                        "syntax_node": {
+                          "kind": "TYPE_CONSTR",
+                          "span": {
+                            "start": 119,
+                            "end": 126
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "string",
+                          "span": {
+                            "start": 120,
+                            "end": 126
+                          }
+                        }
+                      },
+                      "arguments": []
                     }
                   ]
                 }

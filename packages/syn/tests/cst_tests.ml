@@ -290,7 +290,7 @@ let tests = [
             token_kinds
         );
       Test.assert_equal
-        ~expected:((String.length source - 1))
+        ~expected:(String.length source - 1)
         ~actual:(Ceibo.Green.width (Ceibo.Green.Node result.tree));
       Ok ());
   Test.case "red tree traversal stays trivia-free while first token keeps leading trivia"
@@ -375,7 +375,7 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       Test.assert_equal
         ~expected:[ ";"; ";" ]
-        ~actual:((Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text));
+        ~actual:(Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text);
       Ok ());
   Test.case "cst polymorphic-variant inherit patterns keep the identifier after #"
     (fun _ctx ->
@@ -393,10 +393,10 @@ let tests = [
           | { pattern=PolyVariantInherit first; _ } :: { pattern=PolyVariantInherit second; _ } :: _ ->
               Test.assert_equal
                 ~expected:[ "color" ]
-                ~actual:((Syn.Cst.Ident.segments first.type_path |> List.map Syn.Cst.Token.text));
+                ~actual:(Syn.Cst.Ident.segments first.type_path |> List.map Syn.Cst.Token.text);
               Test.assert_equal
                 ~expected:[ "theme" ]
-                ~actual:((Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text));
+                ~actual:(Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text);
               Ok ()
           | _ -> Error "expected polymorphic-variant inherit match cases"
         )
@@ -417,7 +417,7 @@ let tests = [
           | { pattern=Alias { pattern=PolyVariantInherit inherited; name_token; _ }; _ } :: _ ->
               Test.assert_equal
                 ~expected:[ "Rio"; "io_error" ]
-                ~actual:((Syn.Cst.Ident.segments inherited.type_path |> List.map Syn.Cst.Token.text));
+                ~actual:(Syn.Cst.Ident.segments inherited.type_path |> List.map Syn.Cst.Token.text);
               Test.assert_equal ~expected:"err" ~actual:(Syn.Cst.Token.text name_token);
               Ok ()
           | _ -> Error "expected aliased polymorphic-variant inherit match case"
@@ -438,7 +438,7 @@ let tests = [
       Test.assert_false (Syn.Cst.Ident.equal left wrong);
       Test.assert_equal
         ~expected:[ "List"; "rev" ]
-        ~actual:((Syn.Cst.Ident.segments left |> List.map Syn.Cst.Token.text));
+        ~actual:(Syn.Cst.Ident.segments left |> List.map Syn.Cst.Token.text);
       Ok ());
   Test.case "cst type extensions keep last module-path segment as name"
     (fun _ctx ->
@@ -549,9 +549,9 @@ let tests = [
           Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_alias);
           Test.assert_equal
             ~expected:(Some "private")
-            ~actual:((Syn.Cst.TypeDeclaration.private_flag hidden_record
+            ~actual:(Syn.Cst.TypeDeclaration.private_flag hidden_record
             |> Syn.Cst.PrivateFlag.private_token
-            |> Option.map Syn.Cst.Token.text));
+            |> Option.map Syn.Cst.Token.text);
           Ok ()
       | _ -> Error "expected private and public type declarations");
   Test.case "cst type declarations preserve nonrec and manifest aliases"
@@ -662,7 +662,7 @@ let tests = [
                       _
                     } -> Test.assert_equal
                       ~expected:[ "Outer"; "Inner"; "t" ]
-                      ~actual:((Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text))
+                      ~actual:(Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text)
                     | _ -> raise
                       (Failure "expected grouped alias declaration to keep the qualified type path")
                   );
@@ -759,6 +759,31 @@ let tests = [
           Test.assert_equal ~expected:[ "'a"; "'error" ] ~actual:params;
           Ok ()
       | _ -> Error "expected first item to be a type declaration");
+  Test.case "cst core-type constructors split comma-separated type arguments"
+    (fun _ctx ->
+      let result = parse_mli "val pair : (int, string) result\n" in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match signature_items cst with
+      | Syn.Cst.SignatureItem.ValueDeclaration {
+        type_=Syn.Cst.CoreType.Constr { constructor_path; arguments; _ };
+        _;
+
+      } :: _ ->
+          let argument_names =
+            arguments
+            |> List.map
+              (
+                function
+                | Syn.Cst.CoreType.Constr { constructor_path; _ } -> Syn.Cst.Ident.name constructor_path
+                |> Option.unwrap_or ~default:"<anonymous>"
+                | _ -> "<unexpected>"
+              )
+          in
+          Test.assert_equal ~expected:(Some "result") ~actual:(Syn.Cst.Ident.name constructor_path);
+          Test.assert_equal ~expected:[ "int"; "string" ] ~actual:argument_names;
+          Ok ()
+      | _ -> Error "expected value declaration with a multi-argument core-type constructor");
   Test.case "cst type declarations expose parameter variance and injectivity"
     (fun _ctx ->
       let result = parse_ml "type (+!'a, -'b, !'c, 'd) descriptor = int\n" in
@@ -2791,8 +2816,8 @@ val decode : Outer.Inner (* c *).(request -> response)
               Test.assert_equal ~expected:1 ~actual:(List.length attributes);
               Test.assert_equal
                 ~expected:[ Some "foo" ]
-                ~actual:((attributes
-                |> List.map (fun ({ name; _ }: Syn.Cst.attribute) -> Syn.Cst.Ident.name name)));
+                ~actual:(attributes
+                |> List.map (fun ({ name; _ }: Syn.Cst.attribute) -> Syn.Cst.Ident.name name));
               Ok ()
           | _ -> Error "expected parenthesized identifier pattern"
         )
@@ -2921,11 +2946,11 @@ val decode : Outer.Inner (* c *).(request -> response)
             | _ -> ()
           );
           Test.assert_equal ~expected:(Some "List")
-            ~actual:((
+            ~actual:(
               match Syn.Cst.OpenStatement.module_path stmt with
               | Some module_path -> Syn.Cst.Ident.name module_path
               | None -> None
-            ));
+            );
           (
             match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.ModuleExpression (Syn.Cst.ModuleExpression.Path _) -> Ok ()
@@ -2948,11 +2973,11 @@ val decode : Outer.Inner (* c *).(request -> response)
             | _ -> ()
           );
           Test.assert_equal ~expected:(Some "List")
-            ~actual:((
+            ~actual:(
               match Syn.Cst.OpenStatement.module_path stmt with
               | Some module_path -> Syn.Cst.Ident.name module_path
               | None -> None
-            ));
+            );
           (
             match Syn.Cst.OpenStatement.target stmt with
             | Syn.Cst.OpenStatement.Path _ -> Ok ()
@@ -2993,8 +3018,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             ~actual:(Syn.Cst.Docstring.text overview);
           Test.assert_equal
             ~expected:[ "(** Request/response ID type. *)"; "(** Request identifiers. *)"; ]
-            ~actual:((node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
-            |> List.map Syn.Cst.Trivia.text));
+            ~actual:(node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
+            |> List.map Syn.Cst.Trivia.text);
           Ok ()
       | _ -> Error "expected standalone module overview, two opens, and a type declaration with repeated leading docs");
   Test.case "cst preserves standalone implementation docstrings after open statements"
@@ -3679,6 +3704,28 @@ val decode : Outer.Inner (* c *).(request -> response)
           | _ -> Error "expected infix expression value"
         )
       | _ -> Error "expected first item to be a let binding");
+  Test.case "cst let bindings expose keyword infix operators structurally"
+    (fun _ctx ->
+      let source = {ocaml|
+let mask value = value land 255
+let toggle value = value lxor (-1)
+|ocaml}
+      in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding mask :: Syn.Cst.StructureItem.LetBinding toggle :: _ -> (
+          match (Syn.Cst.LetBinding.value mask, Syn.Cst.LetBinding.value toggle) with
+          | (Syn.Cst.Expression.Infix mask_expr, Syn.Cst.Expression.Infix toggle_expr) ->
+              Test.assert_equal ~expected:"land" ~actual:(Syn.Cst.InfixExpression.operator mask_expr);
+              Test.assert_equal
+                ~expected:"lxor"
+                ~actual:(Syn.Cst.InfixExpression.operator toggle_expr);
+              Ok ()
+          | _ -> Error "expected keyword operators to parse as infix expressions"
+        )
+      | _ -> Error "expected two let bindings");
   Test.case "cst let bindings preserve infix expressions across inline comments"
     (fun _ctx ->
       let source = "let banner = \"a\" (* c *) ^ \"b\"\n" in
@@ -3737,6 +3784,48 @@ val decode : Outer.Inner (* c *).(request -> response)
           Test.assert_true (String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "true");
           Ok ()
       | _ -> Error "expected first item to be a let binding");
+  Test.case "cst keeps sequence outside if expressions without else"
+    (fun _ctx ->
+      let source = "let render ok = if ok then log (); next ()\n" in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.Sequence {
+          expressions=[Syn.Cst.Expression.If { else_branch=None; _ };Syn.Cst.Expression.Apply _;];
+          _;
+
+        };
+        _;
+
+      } :: _ -> Ok ()
+      | _ -> Error "expected top-level sequence after if without else");
+  Test.case "cst keeps sequence outside if expressions with explicit else"
+    (fun _ctx ->
+      let source = "let render ok = if ok then log () else (); next ()\n" in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.Sequence {
+          expressions=[
+            Syn.Cst.Expression.If {
+              else_branch=Some (Syn.Cst.Expression.Literal (Syn.Cst.Literal.Unit _));
+              _;
+
+            };
+            Syn.Cst.Expression.Apply _;
+
+          ];
+          _;
+
+        };
+        _;
+
+      } :: _ -> Ok ()
+      | _ -> Error "expected top-level sequence after if with explicit else");
   Test.case "cst typed expressions preserve the wrapped expression and type node"
     (fun _ctx ->
       let source = "let render = (value : user_t)\n" in
@@ -6229,7 +6318,7 @@ let x =
           Test.assert_equal ~expected:(Some "s") ~actual:(Syn.Cst.Ident.name path);
           Test.assert_equal
             ~expected:[ "."; "[" ]
-            ~actual:((opening_tokens |> List.map Syn.Cst.Token.text));
+            ~actual:(opening_tokens |> List.map Syn.Cst.Token.text);
           Test.assert_equal ~expected:"0" ~actual:(Syn.Cst.Token.text literal_token);
           Test.assert_equal ~expected:"]" ~actual:(Syn.Cst.Token.text closing_token);
           Ok ()
@@ -6252,7 +6341,7 @@ let x =
           Test.assert_equal ~expected:(Some "x") ~actual:(Syn.Cst.Ident.name path);
           Test.assert_equal
             ~expected:[ "."; "%"; "(" ]
-            ~actual:((opening_tokens |> List.map Syn.Cst.Token.text));
+            ~actual:(opening_tokens |> List.map Syn.Cst.Token.text);
           Test.assert_equal ~expected:"0" ~actual:(Syn.Cst.Token.text literal_token);
           Test.assert_equal ~expected:")" ~actual:(Syn.Cst.Token.text closing_token);
           Ok ()

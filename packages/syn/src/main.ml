@@ -148,12 +148,12 @@ let handle_print_cst = fun sub_matches ->
             let build_started = now_nanos () in
             let cst_result =
               CstBuilder.create_from_ceibo
-                ~kind:((
+                ~kind:(
                   if String.ends_with ~suffix:".mli" file then
                     `Interface
                   else
                     `Implementation
-                ))
+                )
                 ~source
                 ~tokens:result.tokens
                 result.tree

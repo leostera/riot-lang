@@ -1397,11 +1397,11 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ?(at_module_start = t
               | Some decl ->
                   let normalized_decl, next_trivia =
                     normalize_type_declaration_group ~source
-                      ~has_next_sibling:((
+                      ~has_next_sibling:(
                         match tail with
                         | [] -> false
                         | _ -> true
-                      ))
+                      )
                       ~initial_leading:attached_docstrings
                       decl
                   in
@@ -1439,11 +1439,11 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ?(at_module_start = t
               | Some decl ->
                   let normalized_decl, next_trivia =
                     normalize_type_declaration_group ~source
-                      ~has_next_sibling:((
+                      ~has_next_sibling:(
                         match rest with
                         | [] -> false
                         | _ -> true
-                      ))
+                      )
                       decl
                   in
                   let normalized_decl, rest = finalize_normalized_type_declaration
@@ -2979,7 +2979,7 @@ let direct_required_token_with_text = fun ~context node expected ->
   match direct_token_with_text node expected with
   | Some token -> token
   | None -> bail
-    ~message:(("expected '" ^ expected ^ "' token during Ceibo -> CST lifting"))
+    ~message:("expected '" ^ expected ^ "' token during Ceibo -> CST lifting")
     ~syntax_node:node
     ~context
 
@@ -3006,7 +3006,7 @@ let direct_required_tokens_with_text_between_offsets = fun ~context ~after_offse
     lifted_tokens
   else
     bail
-      ~message:(("expected token sequence [" ^ (expected_texts |> String.concat ", ") ^ "] during Ceibo -> CST lifting"))
+      ~message:("expected token sequence [" ^ (expected_texts |> String.concat ", ") ^ "] during Ceibo -> CST lifting")
       ~syntax_node:node
       ~context
 
@@ -3765,6 +3765,17 @@ and core_type_from_node = fun node ->
             kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child) |> List.map row_field_from_node;
       closing_token;
     }
+  and core_type_arguments_from_nodes child_types =
+    match child_types with
+    | [ tuple_node ] when Ceibo.Red.SyntaxNode.kind tuple_node = Syntax_kind.TYPE_TUPLE ->
+        let tuple_tokens = direct_non_trivia_tokens tuple_node in
+        if tuple_tokens |> List.exists
+            (fun syntax_token ->
+              String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ",") then
+          child_type_nodes tuple_node |> List.map core_type_from_node
+        else
+          [ core_type_from_node tuple_node ]
+    | _ -> child_types |> List.map core_type_from_node
   in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_VAR -> (
@@ -3817,13 +3828,13 @@ and core_type_from_node = fun node ->
           syntax_node = node;
           hash_token;
           class_path;
-          arguments = child_types |> List.map core_type_from_node
+          arguments = core_type_arguments_from_nodes child_types
         }
       else
         Cst.CoreType.Constr {
           syntax_node = node;
           constructor_path = type_constructor_path_from_node node;
-          arguments = child_types |> List.map core_type_from_node
+          arguments = core_type_arguments_from_nodes child_types
         }
   | Syntax_kind.TYPE_ALIAS -> (
       match child_type_nodes node with
@@ -7412,7 +7423,7 @@ and match_case_from_node = fun node ->
     match direct_token_with_text_in_tokens expected with
     | Some token -> token
     | None -> bail
-      ~message:(("expected '" ^ expected ^ "' token during Ceibo -> CST lifting"))
+      ~message:("expected '" ^ expected ^ "' token during Ceibo -> CST lifting")
       ~syntax_node:node
       ~context
   in
@@ -9803,9 +9814,9 @@ let rec validate_pattern = fun ~context ->
   | Cst.Pattern.Extension _ ->
       ()
   | Cst.Pattern.Lazy { pattern; _ } ->
-      validate_pattern ~context:(("pattern.lazy" :: context)) pattern
+      validate_pattern ~context:("pattern.lazy" :: context) pattern
   | Cst.Pattern.Exception { pattern; _ } ->
-      validate_pattern ~context:(("pattern.exception" :: context)) pattern
+      validate_pattern ~context:("pattern.exception" :: context) pattern
   | Cst.Pattern.Range _
   | Cst.Pattern.Operator _
   | Cst.Pattern.PolyVariantInherit _ ->
@@ -9816,29 +9827,29 @@ let rec validate_pattern = fun ~context ->
           List.iteri
             (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
               validate_core_type
-                ~context:((("pattern.first_class_module.type.constraint[" ^ Int.to_string index ^ "].target")
-                :: context))
+                ~context:(("pattern.first_class_module.type.constraint[" ^ Int.to_string index ^ "].target")
+                :: context)
                 constrained_type;
               validate_core_type
-                ~context:((("pattern.first_class_module.type.constraint[" ^ Int.to_string index ^ "].replacement")
-                :: context))
+                ~context:(("pattern.first_class_module.type.constraint[" ^ Int.to_string index ^ "].replacement")
+                :: context)
                 replacement_type)
             constraints)
         package_type
   | Cst.Pattern.PolyVariant { payload; _ } ->
-      Option.iter (validate_pattern ~context:(("pattern.poly_variant.payload" :: context))) payload
+      Option.iter (validate_pattern ~context:("pattern.poly_variant.payload" :: context)) payload
   | Cst.Pattern.Constructor { arguments; _ } ->
       List.iteri
         (fun index argument ->
           validate_pattern
-            ~context:((("pattern.constructor.argument[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("pattern.constructor.argument[" ^ Int.to_string index ^ "]") :: context)
             argument)
         arguments
   | Cst.Pattern.Tuple { elements; _ } ->
       List.iteri
         (fun index ({ Cst.pattern; _ }: Cst.tuple_pattern_element) ->
           validate_pattern
-            ~context:((("pattern.tuple.element[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("pattern.tuple.element[" ^ Int.to_string index ^ "]") :: context)
             pattern)
         elements
   | Cst.Pattern.List { elements; _ }
@@ -9846,31 +9857,31 @@ let rec validate_pattern = fun ~context ->
   | Cst.Pattern.Or { alternatives=elements; _ } ->
       List.iteri
         (fun index pattern ->
-          validate_pattern ~context:((("pattern.element[" ^ Int.to_string index ^ "]") :: context)) pattern)
+          validate_pattern ~context:(("pattern.element[" ^ Int.to_string index ^ "]") :: context) pattern)
         elements
   | Cst.Pattern.Record { fields; _ } ->
       List.iteri
         (fun index (field: Cst.record_pattern_field) ->
           Option.iter
             (validate_pattern
-              ~context:((("pattern.record.field[" ^ Int.to_string index ^ "].pattern") :: context)))
+              ~context:(("pattern.record.field[" ^ Int.to_string index ^ "].pattern") :: context))
             field.pattern)
         fields
   | Cst.Pattern.Cons { head; tail; _ } ->
-      validate_pattern ~context:(("pattern.cons.head" :: context)) head;
-      validate_pattern ~context:(("pattern.cons.tail" :: context)) tail
+      validate_pattern ~context:("pattern.cons.head" :: context) head;
+      validate_pattern ~context:("pattern.cons.tail" :: context) tail
   | Cst.Pattern.Alias { pattern; _ } ->
-      validate_pattern ~context:(("pattern.alias.pattern" :: context)) pattern
+      validate_pattern ~context:("pattern.alias.pattern" :: context) pattern
   | Cst.Pattern.Typed { pattern; type_; _ } ->
-      validate_pattern ~context:(("pattern.typed.pattern" :: context)) pattern;
-      validate_core_type ~context:(("pattern.typed.type" :: context)) type_
+      validate_pattern ~context:("pattern.typed.pattern" :: context) pattern;
+      validate_core_type ~context:("pattern.typed.type" :: context) type_
   | Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
-      validate_pattern ~context:(("pattern.effect.effect" :: context)) effect_pattern;
-      validate_pattern ~context:(("pattern.effect.continuation" :: context)) continuation
+      validate_pattern ~context:("pattern.effect.effect" :: context) effect_pattern;
+      validate_pattern ~context:("pattern.effect.continuation" :: context) continuation
   | Cst.Pattern.LocalOpen { pattern; _ } ->
-      validate_pattern ~context:(("pattern.local_open.pattern" :: context)) pattern
+      validate_pattern ~context:("pattern.local_open.pattern" :: context) pattern
   | Cst.Pattern.Parenthesized { inner; _ } ->
-      validate_pattern ~context:(("pattern.parenthesized" :: context)) inner
+      validate_pattern ~context:("pattern.parenthesized" :: context) inner
 
 and validate_parameter = fun ~context ->
   function
@@ -9887,28 +9898,28 @@ and validate_module_type = fun ~context ->
   | Cst.ModuleType.Extension _ ->
       ()
   | Cst.ModuleType.Parenthesized { inner; _ } ->
-      validate_module_type ~context:(("module_type.parenthesized" :: context)) inner
+      validate_module_type ~context:("module_type.parenthesized" :: context) inner
   | Cst.ModuleType.Attribute { module_type; _ } ->
-      validate_module_type ~context:(("module_type.attribute" :: context)) module_type
+      validate_module_type ~context:("module_type.attribute" :: context) module_type
   | Cst.ModuleType.With { base; constraints; _ } ->
-      validate_module_type ~context:(("module_type.with.base" :: context)) base;
+      validate_module_type ~context:("module_type.with.base" :: context) base;
       List.iteri
         (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
           validate_core_type
-            ~context:((("module_type.with.constraint[" ^ Int.to_string index ^ "].target") :: context))
+            ~context:(("module_type.with.constraint[" ^ Int.to_string index ^ "].target") :: context)
             constrained_type;
           validate_core_type
-            ~context:((("module_type.with.constraint[" ^ Int.to_string index ^ "].replacement") :: context))
+            ~context:(("module_type.with.constraint[" ^ Int.to_string index ^ "].replacement") :: context)
             replacement_type)
         constraints
   | Cst.ModuleType.Functor { parameters; result; _ } ->
       List.iteri
         (fun index ({ module_type; _ }: Cst.functor_parameter) ->
           validate_module_type
-            ~context:((("module_type.functor.parameter[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("module_type.functor.parameter[" ^ Int.to_string index ^ "]") :: context)
             module_type)
         parameters;
-      validate_module_type ~context:(("module_type.functor.result" :: context)) result
+      validate_module_type ~context:("module_type.functor.result" :: context) result
 
 and validate_core_type = fun ~context ->
   function
@@ -9917,74 +9928,73 @@ and validate_core_type = fun ~context ->
   | Cst.CoreType.Extension _ ->
       ()
   | Cst.CoreType.Poly { body; _ } ->
-      validate_core_type ~context:(("core_type.poly.body" :: context)) body
+      validate_core_type ~context:("core_type.poly.body" :: context) body
   | Cst.CoreType.FirstClassModule { package_type; _ } ->
       List.iteri
         (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
           validate_core_type
-            ~context:((("core_type.first_class_module.constraint[" ^ Int.to_string index ^ "].target")
-            :: context))
+            ~context:(("core_type.first_class_module.constraint[" ^ Int.to_string index ^ "].target")
+            :: context)
             constrained_type;
           validate_core_type
-            ~context:((("core_type.first_class_module.constraint[" ^ Int.to_string index ^ "].replacement")
-            :: context))
+            ~context:(("core_type.first_class_module.constraint[" ^ Int.to_string index ^ "].replacement")
+            :: context)
             replacement_type)
         package_type.constraints
   | Cst.CoreType.Constr { arguments; _ } ->
       List.iteri
         (fun index type_ ->
           validate_core_type
-            ~context:((("core_type.constr.arg[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("core_type.constr.arg[" ^ Int.to_string index ^ "]") :: context)
             type_)
         arguments
   | Cst.CoreType.Class { arguments; _ } ->
       List.iteri
         (fun index type_ ->
           validate_core_type
-            ~context:((("core_type.class.arg[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("core_type.class.arg[" ^ Int.to_string index ^ "]") :: context)
             type_)
         arguments
   | Cst.CoreType.Alias { type_; _ } ->
-      validate_core_type ~context:(("core_type.alias.type" :: context)) type_
+      validate_core_type ~context:("core_type.alias.type" :: context) type_
   | Cst.CoreType.Attribute { type_; _ } ->
-      validate_core_type ~context:(("core_type.attribute.type" :: context)) type_
+      validate_core_type ~context:("core_type.attribute.type" :: context) type_
   | Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
-      validate_core_type ~context:(("core_type.arrow.parameter" :: context)) parameter_type;
-      validate_core_type ~context:(("core_type.arrow.result" :: context)) result_type
+      validate_core_type ~context:("core_type.arrow.parameter" :: context) parameter_type;
+      validate_core_type ~context:("core_type.arrow.result" :: context) result_type
   | Cst.CoreType.Tuple { elements; _ } ->
       List.iteri
         (fun index type_ ->
           validate_core_type
-            ~context:((("core_type.tuple.element[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("core_type.tuple.element[" ^ Int.to_string index ^ "]") :: context)
             type_)
         elements
   | Cst.CoreType.Parenthesized { inner; _ } ->
-      validate_core_type ~context:(("core_type.parenthesized" :: context)) inner
+      validate_core_type ~context:("core_type.parenthesized" :: context) inner
   | Cst.CoreType.PolyVariant poly_variant ->
-      validate_poly_variant ~context:(("core_type.poly_variant" :: context)) poly_variant
+      validate_poly_variant ~context:("core_type.poly_variant" :: context) poly_variant
   | Cst.CoreType.Record { fields; _ } ->
       List.iteri
         (fun index ({ field_type; _ }: Cst.record_type_field) ->
           validate_core_type
-            ~context:((("core_type.record.field[" ^ Int.to_string index ^ "].type") :: context))
+            ~context:(("core_type.record.field[" ^ Int.to_string index ^ "].type") :: context)
             field_type)
         fields
   | Cst.CoreType.Object { fields; _ } ->
       List.iteri
         (fun index ({ field_type; _ }: Cst.object_type_field) ->
           validate_core_type
-            ~context:((("core_type.object.field[" ^ Int.to_string index ^ "].type") :: context))
+            ~context:(("core_type.object.field[" ^ Int.to_string index ^ "].type") :: context)
             field_type)
         fields
 
 and validate_row_field = fun ~context index ->
   function
   | Cst.RowField.Tag tag -> Option.iter
-    (validate_core_type
-      ~context:((("row_field[" ^ Int.to_string index ^ "].tag.payload") :: context)))
+    (validate_core_type ~context:(("row_field[" ^ Int.to_string index ^ "].tag.payload") :: context))
     (Cst.PolyVariantTag.payload_type tag)
   | Cst.RowField.Inherit { type_; _ } -> validate_core_type
-    ~context:((("row_field[" ^ Int.to_string index ^ "].inherit") :: context))
+    ~context:(("row_field[" ^ Int.to_string index ^ "].inherit") :: context)
     type_
 
 and validate_poly_variant = fun ~context poly_variant ->
@@ -9993,16 +10003,16 @@ and validate_poly_variant = fun ~context poly_variant ->
 and validate_class_type_field = fun ~context ->
   function
   | Cst.ClassTypeField.Inherit { class_type; _ } ->
-      validate_class_type ~context:(("class_type_field.inherit" :: context)) class_type
+      validate_class_type ~context:("class_type_field.inherit" :: context) class_type
   | Cst.ClassTypeField.Value { type_; _ } ->
-      validate_core_type ~context:(("class_type_field.value" :: context)) type_
+      validate_core_type ~context:("class_type_field.value" :: context) type_
   | Cst.ClassTypeField.Method { type_; _ } ->
-      validate_core_type ~context:(("class_type_field.method" :: context)) type_
+      validate_core_type ~context:("class_type_field.method" :: context) type_
   | Cst.ClassTypeField.Constraint { left; right; _ } ->
-      validate_core_type ~context:(("class_type_field.constraint.left" :: context)) left;
-      validate_core_type ~context:(("class_type_field.constraint.right" :: context)) right
+      validate_core_type ~context:("class_type_field.constraint.left" :: context) left;
+      validate_core_type ~context:("class_type_field.constraint.right" :: context) right
   | Cst.ClassTypeField.Attribute { field; _ } ->
-      validate_class_type_field ~context:(("class_type_field.attribute" :: context)) field
+      validate_class_type_field ~context:("class_type_field.attribute" :: context) field
   | Cst.ClassTypeField.Extension _ ->
       ()
 
@@ -10015,52 +10025,50 @@ and validate_class_type = fun ~context ->
       List.iteri
         (fun index field ->
           validate_class_type_field
-            ~context:((("class_type.signature.field[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("class_type.signature.field[" ^ Int.to_string index ^ "]") :: context)
             field)
         fields
   | Cst.ClassType.Arrow { parameter_type; result_type; _ } ->
-      validate_core_type ~context:(("class_type.arrow.parameter" :: context)) parameter_type;
-      validate_class_type ~context:(("class_type.arrow.result" :: context)) result_type
+      validate_core_type ~context:("class_type.arrow.parameter" :: context) parameter_type;
+      validate_class_type ~context:("class_type.arrow.result" :: context) result_type
   | Cst.ClassType.Parenthesized { inner; _ } ->
-      validate_class_type ~context:(("class_type.parenthesized" :: context)) inner
+      validate_class_type ~context:("class_type.parenthesized" :: context) inner
   | Cst.ClassType.Attribute { class_type; _ } ->
-      validate_class_type ~context:(("class_type.attribute" :: context)) class_type
+      validate_class_type ~context:("class_type.attribute" :: context) class_type
 
 and validate_class_field = fun ~context ->
   function
   | Cst.ClassField.Method { definition; _ } -> (
       match definition with
       | Cst.ConcreteMethod { body; type_ } ->
-          validate_expression ~context:(("class_field.method.body" :: context)) body;
+          validate_expression ~context:("class_field.method.body" :: context) body;
           Option.iter
-            (fun ((_, type_)) ->
-              validate_core_type ~context:(("class_field.method.type" :: context)) type_)
+            (fun ((_, type_)) -> validate_core_type ~context:("class_field.method.type" :: context) type_)
             type_
       | Cst.VirtualMethod { type_; _ } -> validate_core_type
-        ~context:(("class_field.method.type" :: context))
+        ~context:("class_field.method.type" :: context)
         type_
     )
   | Cst.ClassField.Value { definition; _ } -> (
       match definition with
       | Cst.ConcreteValue { value; type_ } ->
-          validate_expression ~context:(("class_field.value.value" :: context)) value;
+          validate_expression ~context:("class_field.value.value" :: context) value;
           Option.iter
-            (fun ((_, type_)) ->
-              validate_core_type ~context:(("class_field.value.type" :: context)) type_)
+            (fun ((_, type_)) -> validate_core_type ~context:("class_field.value.type" :: context) type_)
             type_
       | Cst.VirtualValue { type_; _ } -> validate_core_type
-        ~context:(("class_field.value.type" :: context))
+        ~context:("class_field.value.type" :: context)
         type_
     )
   | Cst.ClassField.Inherit { class_expression; _ } ->
-      validate_class_expression ~context:(("class_field.inherit.class_expression" :: context)) class_expression
+      validate_class_expression ~context:("class_field.inherit.class_expression" :: context) class_expression
   | Cst.ClassField.Constraint { left; right; _ } ->
-      validate_core_type ~context:(("class_field.constraint.left" :: context)) left;
-      validate_core_type ~context:(("class_field.constraint.right" :: context)) right
+      validate_core_type ~context:("class_field.constraint.left" :: context) left;
+      validate_core_type ~context:("class_field.constraint.right" :: context) right
   | Cst.ClassField.Initializer { body; _ } ->
-      validate_expression ~context:(("class_field.initializer.body" :: context)) body
+      validate_expression ~context:("class_field.initializer.body" :: context) body
   | Cst.ClassField.Attribute { field; _ } ->
-      validate_class_field ~context:(("class_field.attribute" :: context)) field
+      validate_class_field ~context:("class_field.attribute" :: context) field
   | Cst.ClassField.Extension _ ->
       ()
 
@@ -10071,19 +10079,19 @@ and validate_class_expression = fun ~context ->
       ()
   | Cst.ClassExpression.Structure { self_pattern; fields; _ } ->
       Option.iter
-        (validate_pattern ~context:(("class_expression.structure.self_pattern" :: context)))
+        (validate_pattern ~context:("class_expression.structure.self_pattern" :: context))
         self_pattern;
       List.iteri
         (fun index field ->
           validate_class_field
-            ~context:((("class_expression.structure.field[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("class_expression.structure.field[" ^ Int.to_string index ^ "]") :: context)
             field)
         fields
   | Cst.ClassExpression.Fun { body; _ } ->
-      validate_class_expression ~context:(("class_expression.fun.body" :: context)) body
+      validate_class_expression ~context:("class_expression.fun.body" :: context) body
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
-      validate_class_expression ~context:(("class_expression.apply.callee" :: context)) callee;
-      validate_apply_argument ~context:(("class_expression.apply.argument" :: context)) argument
+      validate_class_expression ~context:("class_expression.apply.callee" :: context) callee;
+      validate_apply_argument ~context:("class_expression.apply.argument" :: context) argument
   | Cst.ClassExpression.Let {
     parameters;
     bound_value;
@@ -10094,35 +10102,35 @@ and validate_class_expression = fun ~context ->
       List.iteri
         (fun index parameter ->
           validate_parameter
-            ~context:((("class_expression.let.parameters[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("class_expression.let.parameters[" ^ Int.to_string index ^ "]") :: context)
             parameter)
         parameters;
-      validate_expression ~context:(("class_expression.let.bound_value" :: context)) bound_value;
+      validate_expression ~context:("class_expression.let.bound_value" :: context) bound_value;
       List.iteri (fun index binding ->
         validate_expression
-          ~context:((("class_expression.let.and_binding[" ^ Int.to_string index ^ "]") :: context))
+          ~context:(("class_expression.let.and_binding[" ^ Int.to_string index ^ "]") :: context)
           (Cst.LetBinding.value binding))
         (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list);
-      validate_class_expression ~context:(("class_expression.let.body" :: context)) body
+      validate_class_expression ~context:("class_expression.let.body" :: context) body
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
-      validate_class_expression ~context:(("class_expression.constraint.expression" :: context)) class_expression;
-      validate_class_type ~context:(("class_expression.constraint.class_type" :: context)) class_type
+      validate_class_expression ~context:("class_expression.constraint.expression" :: context) class_expression;
+      validate_class_type ~context:("class_expression.constraint.class_type" :: context) class_type
   | Cst.ClassExpression.LocalOpen (Cst.LetOpen { body; _ })
   | Cst.ClassExpression.LocalOpen (Cst.Delimited { body; _ }) ->
-      validate_class_expression ~context:(("class_expression.local_open" :: context)) body
+      validate_class_expression ~context:("class_expression.local_open" :: context) body
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
-      validate_class_expression ~context:(("class_expression.parenthesized" :: context)) inner
+      validate_class_expression ~context:("class_expression.parenthesized" :: context) inner
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
-      validate_class_expression ~context:(("class_expression.attribute" :: context)) class_expression
+      validate_class_expression ~context:("class_expression.attribute" :: context) class_expression
 
 and validate_apply_argument = fun ~context ->
   function
-  | Cst.Positional expr -> validate_expression ~context:(("apply_argument.positional" :: context)) expr
+  | Cst.Positional expr -> validate_expression ~context:("apply_argument.positional" :: context) expr
   | Cst.Labeled { value; _ } -> Option.iter
-    (validate_expression ~context:(("apply_argument.labeled.value" :: context)))
+    (validate_expression ~context:("apply_argument.labeled.value" :: context))
     value
   | Cst.Optional { value; _ } -> Option.iter
-    (validate_expression ~context:(("apply_argument.optional.value" :: context)))
+    (validate_expression ~context:("apply_argument.optional.value" :: context))
     value
 
 and validate_module_expression = fun ~context ->
@@ -10135,60 +10143,60 @@ and validate_module_expression = fun ~context ->
       List.iteri
         (fun index ({ module_type; _ }: Cst.functor_parameter) ->
           validate_module_type
-            ~context:((("module_expression.functor.parameter[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("module_expression.functor.parameter[" ^ Int.to_string index ^ "]") :: context)
             module_type)
         parameters;
-      validate_module_expression ~context:(("module_expression.functor.body" :: context)) body
+      validate_module_expression ~context:("module_expression.functor.body" :: context) body
   | Cst.ModuleExpression.Apply { callee; argument; _ } ->
-      validate_module_expression ~context:(("module_expression.apply.callee" :: context)) callee;
-      validate_module_expression ~context:(("module_expression.apply.argument" :: context)) argument
+      validate_module_expression ~context:("module_expression.apply.callee" :: context) callee;
+      validate_module_expression ~context:("module_expression.apply.argument" :: context) argument
   | Cst.ModuleExpression.ApplyUnit { callee; _ } ->
-      validate_module_expression ~context:(("module_expression.apply_unit.callee" :: context)) callee
+      validate_module_expression ~context:("module_expression.apply_unit.callee" :: context) callee
   | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
-      validate_module_expression ~context:(("module_expression.constraint.expression" :: context)) module_expression;
-      validate_module_type ~context:(("module_expression.constraint.type" :: context)) module_type
+      validate_module_expression ~context:("module_expression.constraint.expression" :: context) module_expression;
+      validate_module_type ~context:("module_expression.constraint.type" :: context) module_type
   | Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } ->
-      validate_expression ~context:(("module_expression.unpack.expression" :: context)) expression;
+      validate_expression ~context:("module_expression.unpack.expression" :: context) expression;
       Option.iter
         (fun ({ constraints; _ }: Cst.package_type) ->
           List.iteri
             (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
               validate_core_type
-                ~context:((("module_expression.unpack.type.constraint[" ^ Int.to_string index ^ "].target")
-                :: context))
+                ~context:(("module_expression.unpack.type.constraint[" ^ Int.to_string index ^ "].target")
+                :: context)
                 constrained_type;
               validate_core_type
-                ~context:((("module_expression.unpack.type.constraint[" ^ Int.to_string index ^ "].replacement")
-                :: context))
+                ~context:(("module_expression.unpack.type.constraint[" ^ Int.to_string index ^ "].replacement")
+                :: context)
                 replacement_type)
             constraints)
         package_type
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
-      validate_module_expression ~context:(("module_expression.parenthesized" :: context)) inner
+      validate_module_expression ~context:("module_expression.parenthesized" :: context) inner
   | Cst.ModuleExpression.Attribute { module_expression; _ } ->
-      validate_module_expression ~context:(("module_expression.attribute" :: context)) module_expression
+      validate_module_expression ~context:("module_expression.attribute" :: context) module_expression
 
 and validate_object_member = fun ~context ->
   function
   | Cst.ObjectMember.Method { body; type_; _ } ->
-      validate_expression ~context:(("object_member.method.body" :: context)) body;
-      Option.iter (validate_core_type ~context:(("object_member.method.type" :: context))) type_
+      validate_expression ~context:("object_member.method.body" :: context) body;
+      Option.iter (validate_core_type ~context:("object_member.method.type" :: context)) type_
   | Cst.ObjectMember.Value { value; type_; _ } ->
-      validate_expression ~context:(("object_member.value.value" :: context)) value;
-      Option.iter (validate_core_type ~context:(("object_member.value.type" :: context))) type_
+      validate_expression ~context:("object_member.value.value" :: context) value;
+      Option.iter (validate_core_type ~context:("object_member.value.type" :: context)) type_
   | Cst.ObjectMember.Inherit { expression; _ } ->
-      validate_expression ~context:(("object_member.inherit.expression" :: context)) expression
+      validate_expression ~context:("object_member.inherit.expression" :: context) expression
   | Cst.ObjectMember.Extension _ ->
       ()
   | Cst.ObjectMember.Initializer { body; _ } ->
-      validate_expression ~context:(("object_member.initializer.body" :: context)) body
+      validate_expression ~context:("object_member.initializer.body" :: context) body
 
 and validate_fun_body = fun ~context ->
   function
-  | Cst.Expression expression -> validate_expression ~context:(("fun_body.expression" :: context)) expression
+  | Cst.Expression expression -> validate_expression ~context:("fun_body.expression" :: context) expression
   | Cst.Cases { cases; _ } -> List.iteri
     (fun index case ->
-      validate_match_case ~context:((("fun_body.case[" ^ Int.to_string index ^ "]") :: context)) case)
+      validate_match_case ~context:(("fun_body.case[" ^ Int.to_string index ^ "]") :: context) case)
     cases
 
 and validate_expression = fun ~context ->
@@ -10200,162 +10208,158 @@ and validate_expression = fun ~context ->
   | Cst.Expression.Extension _ ->
       ()
   | Cst.Expression.Constructor { payload; _ } ->
-      Option.iter (validate_expression ~context:(("expression.constructor.payload" :: context))) payload
+      Option.iter (validate_expression ~context:("expression.constructor.payload" :: context)) payload
   | Cst.Expression.ModulePack { module_expression; package_type; _ } ->
-      validate_module_expression ~context:(("expression.first_class_module.expression" :: context)) module_expression;
+      validate_module_expression ~context:("expression.first_class_module.expression" :: context) module_expression;
       Option.iter
         (fun ({ constraints; _ }: Cst.package_type) ->
           List.iteri
             (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
               validate_core_type
-                ~context:((("expression.first_class_module.type.constraint["
-                ^ Int.to_string index
-                ^ "].target")
-                :: context))
+                ~context:(("expression.first_class_module.type.constraint[" ^ Int.to_string index ^ "].target")
+                :: context)
                 constrained_type;
               validate_core_type
-                ~context:((("expression.first_class_module.type.constraint["
-                ^ Int.to_string index
-                ^ "].replacement")
-                :: context))
+                ~context:(("expression.first_class_module.type.constraint[" ^ Int.to_string index ^ "].replacement")
+                :: context)
                 replacement_type)
             constraints)
         package_type
   | Cst.Expression.Object { self_pattern; members; _ } ->
-      Option.iter (validate_pattern ~context:(("expression.object.self_pattern" :: context))) self_pattern;
+      Option.iter (validate_pattern ~context:("expression.object.self_pattern" :: context)) self_pattern;
       List.iteri
         (fun index member ->
           validate_object_member
-            ~context:((("expression.object.member[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.object.member[" ^ Int.to_string index ^ "]") :: context)
             member)
         members
   | Cst.Expression.LetModule { body; _ } ->
-      validate_expression ~context:(("expression.let_module.body" :: context)) body
+      validate_expression ~context:("expression.let_module.body" :: context) body
   | Cst.Expression.LetException { body; _ } ->
-      validate_expression ~context:(("expression.let_exception.body" :: context)) body
+      validate_expression ~context:("expression.let_exception.body" :: context) body
   | Cst.Expression.PolyVariant { payload; _ } ->
-      Option.iter (validate_expression ~context:(("expression.poly_variant.payload" :: context))) payload
+      Option.iter (validate_expression ~context:("expression.poly_variant.payload" :: context)) payload
   | Cst.Expression.Assert { asserted; _ } ->
-      validate_expression ~context:(("expression.assert.asserted" :: context)) asserted
+      validate_expression ~context:("expression.assert.asserted" :: context) asserted
   | Cst.Expression.Lazy { body; _ } ->
-      validate_expression ~context:(("expression.lazy.body" :: context)) body
+      validate_expression ~context:("expression.lazy.body" :: context) body
   | Cst.Expression.While { condition; body; _ } ->
-      validate_expression ~context:(("expression.while.condition" :: context)) condition;
-      validate_expression ~context:(("expression.while.body" :: context)) body
+      validate_expression ~context:("expression.while.condition" :: context) condition;
+      validate_expression ~context:("expression.while.body" :: context) body
   | Cst.Expression.For { start_expr; end_expr; body; _ } ->
-      validate_expression ~context:(("expression.for.start" :: context)) start_expr;
-      validate_expression ~context:(("expression.for.end" :: context)) end_expr;
-      validate_expression ~context:(("expression.for.body" :: context)) body
+      validate_expression ~context:("expression.for.start" :: context) start_expr;
+      validate_expression ~context:("expression.for.end" :: context) end_expr;
+      validate_expression ~context:("expression.for.body" :: context) body
   | Cst.Expression.Apply { callee; argument; _ } ->
-      validate_expression ~context:(("expression.apply.callee" :: context)) callee;
-      validate_apply_argument ~context:(("expression.apply.argument" :: context)) argument
+      validate_expression ~context:("expression.apply.callee" :: context) callee;
+      validate_apply_argument ~context:("expression.apply.argument" :: context) argument
   | Cst.Expression.MethodCall { receiver; _ } ->
-      validate_expression ~context:(("expression.method_call.receiver" :: context)) receiver
+      validate_expression ~context:("expression.method_call.receiver" :: context) receiver
   | Cst.Expression.New _ ->
       ()
   | Cst.Expression.Prefix { operand; _ } ->
-      validate_expression ~context:(("expression.prefix.operand" :: context)) operand
+      validate_expression ~context:("expression.prefix.operand" :: context) operand
   | Cst.Expression.FieldAccess { receiver; _ } ->
-      validate_expression ~context:(("expression.field_access.receiver" :: context)) receiver
+      validate_expression ~context:("expression.field_access.receiver" :: context) receiver
   | Cst.Expression.Index { collection; index; _ } ->
-      validate_expression ~context:(("expression.index.collection" :: context)) collection;
-      validate_expression ~context:(("expression.index.index" :: context)) index
+      validate_expression ~context:("expression.index.collection" :: context) collection;
+      validate_expression ~context:("expression.index.index" :: context) index
   | Cst.Expression.ObjectOverride { fields; _ } ->
       List.iteri
         (fun index (field: Cst.object_override_field) ->
           Option.iter
             (validate_expression
-              ~context:((("expression.object_override.field[" ^ Int.to_string index ^ "].value") :: context)))
+              ~context:(("expression.object_override.field[" ^ Int.to_string index ^ "].value") :: context))
             field.value)
         fields
   | Cst.Expression.InstanceVariableAssign { value; _ } ->
-      validate_expression ~context:(("expression.instance_variable_assign.value" :: context)) value
+      validate_expression ~context:("expression.instance_variable_assign.value" :: context) value
   | Cst.Expression.FieldAssign { target; value; _ } ->
-      validate_expression ~context:(("expression.field_assign.receiver" :: context)) target.receiver;
-      validate_expression ~context:(("expression.field_assign.value" :: context)) value
+      validate_expression ~context:("expression.field_assign.receiver" :: context) target.receiver;
+      validate_expression ~context:("expression.field_assign.value" :: context) value
   | Cst.Expression.Assign { target; value; _ } ->
-      validate_expression ~context:(("expression.assign.target" :: context)) target;
-      validate_expression ~context:(("expression.assign.value" :: context)) value
+      validate_expression ~context:("expression.assign.target" :: context) target;
+      validate_expression ~context:("expression.assign.value" :: context) value
   | Cst.Expression.Infix { left; right; _ } ->
-      validate_expression ~context:(("expression.infix.left" :: context)) left;
-      validate_expression ~context:(("expression.infix.right" :: context)) right
+      validate_expression ~context:("expression.infix.left" :: context) left;
+      validate_expression ~context:("expression.infix.right" :: context) right
   | Cst.Expression.TypeAscription { expression; kind; _ } ->
-      validate_expression ~context:(("expression.type_ascription.expression" :: context)) expression;
+      validate_expression ~context:("expression.type_ascription.expression" :: context) expression;
       (
         match kind with
         | Cst.Type { type_; _ }
         | Cst.Coerce { type_; _ } -> validate_core_type
-          ~context:(("expression.type_ascription.type" :: context))
+          ~context:("expression.type_ascription.type" :: context)
           type_
         | Cst.ConstraintCoerce { from_type; to_type; _ } ->
-            validate_core_type ~context:(("expression.type_ascription.from_type" :: context)) from_type;
-            validate_core_type ~context:(("expression.type_ascription.to_type" :: context)) to_type
+            validate_core_type ~context:("expression.type_ascription.from_type" :: context) from_type;
+            validate_core_type ~context:("expression.type_ascription.to_type" :: context) to_type
       )
   | Cst.Expression.Polymorphic { expression; type_; _ } ->
-      validate_expression ~context:(("expression.polymorphic.expression" :: context)) expression;
-      validate_core_type ~context:(("expression.polymorphic.type" :: context)) type_
+      validate_expression ~context:("expression.polymorphic.expression" :: context) expression;
+      validate_core_type ~context:("expression.polymorphic.type" :: context) type_
   | Cst.Expression.Sequence { expressions; _ } ->
-      List.iter (validate_expression ~context:(("expression.sequence.expressions" :: context))) expressions
+      List.iter (validate_expression ~context:("expression.sequence.expressions" :: context)) expressions
   | Cst.Expression.Tuple { elements; _ }
   | Cst.Expression.List { elements; _ }
   | Cst.Expression.Array { elements; _ } ->
       List.iteri
         (fun index expr ->
           validate_expression
-            ~context:((("expression.element[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.element[" ^ Int.to_string index ^ "]") :: context)
             expr)
         elements
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
       List.iteri
         (fun index (field: Cst.record_expression_field) ->
           validate_expression
-            ~context:((("expression.record.field[" ^ Int.to_string index ^ "].value") :: context))
+            ~context:(("expression.record.field[" ^ Int.to_string index ^ "].value") :: context)
             field.value)
         fields
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
-      validate_expression ~context:(("expression.record.base" :: context)) base;
+      validate_expression ~context:("expression.record.base" :: context) base;
       List.iteri
         (fun index (field: Cst.record_expression_field) ->
           validate_expression
-            ~context:((("expression.record.field[" ^ Int.to_string index ^ "].value") :: context))
+            ~context:(("expression.record.field[" ^ Int.to_string index ^ "].value") :: context)
             field.value)
         fields
   | Cst.Expression.LocalOpen (Cst.LetOpen { body; _ })
   | Cst.Expression.LocalOpen (Cst.Delimited { body; _ }) ->
-      validate_expression ~context:(("expression.local_open.body" :: context)) body
+      validate_expression ~context:("expression.local_open.body" :: context) body
   | Cst.Expression.Fun { parameters; return_type; body; _ } ->
       List.iteri
         (fun index parameter ->
           validate_parameter
-            ~context:((("expression.fun.parameter[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.fun.parameter[" ^ Int.to_string index ^ "]") :: context)
             parameter)
         parameters;
       Option.iter
-        (fun return_type -> validate_core_type ~context:(("expression.fun.return_type" :: context)) return_type)
+        (fun return_type -> validate_core_type ~context:("expression.fun.return_type" :: context) return_type)
         return_type;
-      validate_fun_body ~context:(("expression.fun.body" :: context)) body
+      validate_fun_body ~context:("expression.fun.body" :: context) body
   | Cst.Expression.Function { cases; _ } ->
       List.iteri
         (fun index case ->
           validate_match_case
-            ~context:((("expression.function.case[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.function.case[" ^ Int.to_string index ^ "]") :: context)
             case)
         cases
   | Cst.Expression.LetOperator { binding; body; _ } ->
-      validate_pattern ~context:(("expression.let_operator.binding.pattern" :: context)) binding.binding_pattern;
-      validate_expression ~context:(("expression.let_operator.binding.value" :: context)) binding.bound_value;
+      validate_pattern ~context:("expression.let_operator.binding.pattern" :: context) binding.binding_pattern;
+      validate_expression ~context:("expression.let_operator.binding.value" :: context) binding.bound_value;
       List.iteri
         (fun index ({ binding_pattern; bound_value; _ }: Cst.binding_operator_binding) ->
           validate_pattern
-            ~context:((("expression.let_operator.and_bindings[" ^ Int.to_string index ^ "].pattern")
-            :: context))
+            ~context:(("expression.let_operator.and_bindings[" ^ Int.to_string index ^ "].pattern")
+            :: context)
             binding_pattern;
           validate_expression
-            ~context:((("expression.let_operator.and_bindings[" ^ Int.to_string index ^ "].value")
-            :: context))
+            ~context:(("expression.let_operator.and_bindings[" ^ Int.to_string index ^ "].value")
+            :: context)
             bound_value)
         (binding_operator_chain_tail binding);
-      validate_expression ~context:(("expression.let_operator.body" :: context)) body
+      validate_expression ~context:("expression.let_operator.body" :: context) body
   | Cst.Expression.Let {
     binding_pattern;
     parameters;
@@ -10364,64 +10368,64 @@ and validate_expression = fun ~context ->
     body;
     _
   } ->
-      validate_pattern ~context:(("expression.let.pattern" :: context)) binding_pattern;
+      validate_pattern ~context:("expression.let.pattern" :: context) binding_pattern;
       List.iteri
         (fun index parameter ->
           validate_parameter
-            ~context:((("expression.let.parameters[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.let.parameters[" ^ Int.to_string index ^ "]") :: context)
             parameter)
         parameters;
-      validate_expression ~context:(("expression.let.bound_value" :: context)) bound_value;
+      validate_expression ~context:("expression.let.bound_value" :: context) bound_value;
       List.iteri
         (fun index binding ->
           validate_pattern
-            ~context:((("expression.let.and_bindings[" ^ Int.to_string index ^ "].pattern") :: context))
+            ~context:(("expression.let.and_bindings[" ^ Int.to_string index ^ "].pattern") :: context)
             (Cst.LetBinding.binding_pattern binding);
           validate_expression
-            ~context:((("expression.let.and_bindings[" ^ Int.to_string index ^ "].value") :: context))
+            ~context:(("expression.let.and_bindings[" ^ Int.to_string index ^ "].value") :: context)
             (Cst.LetBinding.value binding))
         (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list);
-      validate_expression ~context:(("expression.let.body" :: context)) body
+      validate_expression ~context:("expression.let.body" :: context) body
   | Cst.Expression.Match { scrutinee; cases; _ } ->
-      validate_expression ~context:(("expression.match.scrutinee" :: context)) scrutinee;
+      validate_expression ~context:("expression.match.scrutinee" :: context) scrutinee;
       List.iteri
         (fun index case ->
           validate_match_case
-            ~context:((("expression.match.case[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.match.case[" ^ Int.to_string index ^ "]") :: context)
             case)
         cases
   | Cst.Expression.Try { body; cases; _ } ->
-      validate_expression ~context:(("expression.try.body" :: context)) body;
+      validate_expression ~context:("expression.try.body" :: context) body;
       List.iteri
         (fun index case ->
           validate_match_case
-            ~context:((("expression.try.case[" ^ Int.to_string index ^ "]") :: context))
+            ~context:(("expression.try.case[" ^ Int.to_string index ^ "]") :: context)
             case)
         cases
   | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
-      validate_expression ~context:(("expression.if.condition" :: context)) condition;
-      validate_expression ~context:(("expression.if.then_branch" :: context)) then_branch;
-      Option.iter (validate_expression ~context:(("expression.if.else_branch" :: context))) else_branch
+      validate_expression ~context:("expression.if.condition" :: context) condition;
+      validate_expression ~context:("expression.if.then_branch" :: context) then_branch;
+      Option.iter (validate_expression ~context:("expression.if.else_branch" :: context)) else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
-      validate_expression ~context:(("expression.parenthesized" :: context)) inner
+      validate_expression ~context:("expression.parenthesized" :: context) inner
 
 and validate_match_case = fun ~context ({ pattern; guard; body; _ }: Cst.match_case) ->
-  validate_pattern ~context:(("match_case.pattern" :: context)) pattern;
-  Option.iter (validate_expression ~context:(("match_case.guard" :: context))) guard;
-  validate_expression ~context:(("match_case.body" :: context)) body
+  validate_pattern ~context:("match_case.pattern" :: context) pattern;
+  Option.iter (validate_expression ~context:("match_case.guard" :: context)) guard;
+  validate_expression ~context:("match_case.body" :: context) body
 
 let validate_constructor_arguments = fun ~context ->
   function
   | Cst.ConstructorArguments.Tuple elements -> List.iteri
     (fun index element ->
       validate_core_type
-        ~context:((("constructor_arguments.tuple[" ^ Int.to_string index ^ "]") :: context))
+        ~context:(("constructor_arguments.tuple[" ^ Int.to_string index ^ "]") :: context)
         element)
     elements
   | Cst.ConstructorArguments.Record { fields; _ } -> List.iteri
     (fun index field ->
       validate_core_type
-        ~context:((("constructor_arguments.record[" ^ Int.to_string index ^ "].type") :: context))
+        ~context:(("constructor_arguments.record[" ^ Int.to_string index ^ "].type") :: context)
         (Cst.RecordField.field_type field))
     fields
 
@@ -10429,31 +10433,31 @@ let validate_type_definition = fun ~context ->
   function
   | Cst.TypeDefinition.Abstract -> ()
   | Cst.TypeDefinition.Alias { manifest; _ } -> validate_core_type
-    ~context:(("type_definition.alias" :: context))
+    ~context:("type_definition.alias" :: context)
     manifest
   | Cst.TypeDefinition.Extensible _ -> ()
   | Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
       List.iteri
         (fun index ({ constrained_type; replacement_type; _ }: Cst.module_type_constraint) ->
           validate_core_type
-            ~context:((("type_definition.first_class_module.constraint[" ^ Int.to_string index ^ "].target")
-            :: context))
+            ~context:(("type_definition.first_class_module.constraint[" ^ Int.to_string index ^ "].target")
+            :: context)
             constrained_type;
           validate_core_type
-            ~context:((("type_definition.first_class_module.constraint[" ^ Int.to_string index ^ "].replacement")
-            :: context))
+            ~context:(("type_definition.first_class_module.constraint[" ^ Int.to_string index ^ "].replacement")
+            :: context)
             replacement_type)
         package_type.constraints
   | Cst.TypeDefinition.Object { fields; _ } -> List.iteri
     (fun index ({ field_type; _ }: Cst.object_type_field) ->
       validate_core_type
-        ~context:((("type_definition.object.field[" ^ Int.to_string index ^ "].type") :: context))
+        ~context:(("type_definition.object.field[" ^ Int.to_string index ^ "].type") :: context)
         field_type)
     fields
   | Cst.TypeDefinition.Record { fields; _ } -> List.iteri
     (fun index field ->
       validate_core_type
-        ~context:((("type_definition.record.field[" ^ Int.to_string index ^ "].type") :: context))
+        ~context:(("type_definition.record.field[" ^ Int.to_string index ^ "].type") :: context)
         (Cst.RecordField.field_type field))
     fields
   | Cst.TypeDefinition.Variant { constructors; _ } ->
@@ -10461,45 +10465,45 @@ let validate_type_definition = fun ~context ->
         (fun index constructor ->
           Option.iter
             (validate_constructor_arguments
-              ~context:((("type_definition.variant.constructor[" ^ Int.to_string index ^ "].arguments")
-              :: context)))
+              ~context:(("type_definition.variant.constructor[" ^ Int.to_string index ^ "].arguments")
+              :: context))
             (Cst.VariantConstructor.arguments constructor);
           Option.iter
             (validate_core_type
-              ~context:((("type_definition.variant.constructor[" ^ Int.to_string index ^ "].payload")
-              :: context)))
+              ~context:(("type_definition.variant.constructor[" ^ Int.to_string index ^ "].payload")
+              :: context))
             (Cst.VariantConstructor.payload_type constructor);
           Option.iter
             (validate_core_type
-              ~context:((("type_definition.variant.constructor[" ^ Int.to_string index ^ "].result")
-              :: context)))
+              ~context:(("type_definition.variant.constructor[" ^ Int.to_string index ^ "].result")
+              :: context))
             (Cst.VariantConstructor.result_type constructor))
         constructors
   | Cst.TypeDefinition.PolyVariant poly_variant -> validate_poly_variant
-    ~context:(("type_definition.poly_variant" :: context))
+    ~context:("type_definition.poly_variant" :: context)
     poly_variant
 
 let validate_type_constraint = fun ~context ({ left; right; _ }: Cst.type_constraint) ->
-  validate_core_type ~context:(("type_constraint.left" :: context)) left;
-  validate_core_type ~context:(("type_constraint.right" :: context)) right
+  validate_core_type ~context:("type_constraint.left" :: context) left;
+  validate_core_type ~context:("type_constraint.right" :: context) right
 
 let rec validate_type_declaration = fun ~context (decl: Cst.TypeDeclaration.t) ->
   let type_definition = Cst.TypeDeclaration.type_definition decl in
   let manifest_alias = Cst.TypeDeclaration.manifest_alias decl in
   let constraints = Cst.TypeDeclaration.constraints decl in
-  Option.iter (validate_core_type ~context:(("item.type_declaration.manifest_alias" :: context))) manifest_alias;
-  validate_type_definition ~context:(("item.type_declaration" :: context)) type_definition;
+  Option.iter (validate_core_type ~context:("item.type_declaration.manifest_alias" :: context)) manifest_alias;
+  validate_type_definition ~context:("item.type_declaration" :: context) type_definition;
   List.iteri
     (fun index constraint_ ->
       validate_type_constraint
-        ~context:((("item.type_declaration.constraint[" ^ Int.to_string index ^ "]") :: context))
+        ~context:(("item.type_declaration.constraint[" ^ Int.to_string index ^ "]") :: context)
         constraint_)
     constraints;
   let rec validate_tail = fun index ->
     function
     | Some declaration ->
         validate_type_declaration
-          ~context:((("item.type_declaration.next_and_declaration[" ^ Int.to_string index ^ "]") :: context))
+          ~context:(("item.type_declaration.next_and_declaration[" ^ Int.to_string index ^ "]") :: context)
           declaration;
         validate_tail (index + 1) (Cst.TypeDeclaration.next_and_declaration declaration)
     | None -> ()
@@ -10511,44 +10515,44 @@ let validate_type_extension = fun ~context ({ constructors; _ }: Cst.TypeExtensi
     (fun index constructor ->
       Option.iter
         (validate_constructor_arguments
-          ~context:((("item.type_extension.constructor[" ^ Int.to_string index ^ "].arguments") :: context)))
+          ~context:(("item.type_extension.constructor[" ^ Int.to_string index ^ "].arguments") :: context))
         (Cst.VariantConstructor.arguments constructor);
       Option.iter
         (validate_core_type
-          ~context:((("item.type_extension.constructor[" ^ Int.to_string index ^ "].payload") :: context)))
+          ~context:(("item.type_extension.constructor[" ^ Int.to_string index ^ "].payload") :: context))
         (Cst.VariantConstructor.payload_type constructor);
       Option.iter
         (validate_core_type
-          ~context:((("item.type_extension.constructor[" ^ Int.to_string index ^ "].result") :: context)))
+          ~context:(("item.type_extension.constructor[" ^ Int.to_string index ^ "].result") :: context))
         (Cst.VariantConstructor.result_type constructor))
     constructors
 
 let validate_class_declaration = fun ~context (decl: Cst.ClassDeclaration.t) ->
   validate_class_type
-    ~context:(("item.class_declaration.type" :: context))
+    ~context:("item.class_declaration.type" :: context)
     (Cst.ClassDeclaration.class_type decl)
 
 let validate_class_definition = fun ~context (decl: Cst.ClassDefinition.t) ->
   Option.iter
-    (validate_class_type ~context:(("item.class_definition.type" :: context)))
+    (validate_class_type ~context:("item.class_definition.type" :: context))
     (Cst.ClassDefinition.class_type decl);
   validate_class_expression
-    ~context:(("item.class_definition.body" :: context))
+    ~context:("item.class_definition.body" :: context)
     (Cst.ClassDefinition.class_body decl)
 
 let validate_class_type_declaration = fun ~context (
   { class_type_body; _ }: Cst.class_type_declaration
 ) ->
-  validate_class_type ~context:(("item.class_type_declaration.body" :: context)) class_type_body
+  validate_class_type ~context:("item.class_type_declaration.body" :: context) class_type_body
 
 let validate_module_type_declaration = fun ~context ({ module_type; _ }: Cst.ModuleTypeDeclaration.t) ->
-  Option.iter (validate_module_type ~context:(("item.module_type_declaration" :: context))) module_type
+  Option.iter (validate_module_type ~context:("item.module_type_declaration" :: context)) module_type
 
 let validate_open_statement = fun ~context stmt ->
   match Cst.OpenStatement.target stmt with
   | Cst.OpenStatement.Path _ -> ()
   | Cst.OpenStatement.ModuleExpression expr -> validate_module_expression
-    ~context:(("item.open_statement.target" :: context))
+    ~context:("item.open_statement.target" :: context)
     expr
 
 let validate_structure_item = fun ~context ->
@@ -10558,23 +10562,23 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.TypeExtension decl ->
       validate_type_extension ~context decl
   | Cst.StructureItem.LetBinding { binding_pattern; value; and_binding; _ } ->
-      validate_pattern ~context:(("item.let_binding.pattern" :: context)) binding_pattern;
-      validate_expression ~context:(("item.let_binding.value" :: context)) value;
+      validate_pattern ~context:("item.let_binding.pattern" :: context) binding_pattern;
+      validate_expression ~context:("item.let_binding.value" :: context) value;
       let rec validate_and_bindings = fun index ->
         function
         | Some binding ->
             validate_pattern
-              ~context:((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern") :: context))
+              ~context:(("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].pattern") :: context)
               (Cst.LetBinding.binding_pattern binding);
             validate_expression
-              ~context:((("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value") :: context))
+              ~context:(("item.let_binding.and_bindings[" ^ Int.to_string index ^ "].value") :: context)
               (Cst.LetBinding.value binding);
             validate_and_bindings (index + 1) (Cst.LetBinding.and_binding binding)
         | None -> ()
       in
       validate_and_bindings 0 and_binding
   | Cst.StructureItem.Expression expr ->
-      validate_expression ~context:(("item.expression" :: context)) expr
+      validate_expression ~context:("item.expression" :: context) expr
   | Cst.StructureItem.ClassDeclaration decl ->
       validate_class_definition ~context decl
   | Cst.StructureItem.ClassTypeDeclaration decl ->
@@ -10587,7 +10591,7 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.Comment _ ->
       ()
   | Cst.StructureItem.ExternalDeclaration { type_; _ } ->
-      validate_core_type ~context:(("item.external_declaration.type" :: context)) type_
+      validate_core_type ~context:("item.external_declaration.type" :: context) type_
   | Cst.StructureItem.ModuleTypeDeclaration decl ->
       validate_module_type_declaration ~context decl
   | Cst.StructureItem.OpenStatement stmt ->
@@ -10610,10 +10614,10 @@ let validate_signature_item = fun ~context ->
   | Cst.SignatureItem.ModuleTypeDeclaration decl -> validate_module_type_declaration ~context decl
   | Cst.SignatureItem.OpenStatement stmt -> validate_open_statement ~context stmt
   | Cst.SignatureItem.ValueDeclaration { type_; _ } -> validate_core_type
-    ~context:(("item.value_declaration.type" :: context))
+    ~context:("item.value_declaration.type" :: context)
     type_
   | Cst.SignatureItem.ExternalDeclaration { type_; _ } -> validate_core_type
-    ~context:(("item.external_declaration.type" :: context))
+    ~context:("item.external_declaration.type" :: context)
     type_
   | Cst.SignatureItem.ModuleDeclaration _
   | Cst.SignatureItem.IncludeStatement _

@@ -236,16 +236,23 @@
             "leading_trivia": []
           },
           {
-            "type": "token",
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "poll",
-            "width": 4,
-            "full_width": 5,
-            "leading_trivia": [
+            "width": 5,
+            "children": [
               {
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "poll",
+                "width": 4,
+                "full_width": 5,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
               }
             ]
           },
