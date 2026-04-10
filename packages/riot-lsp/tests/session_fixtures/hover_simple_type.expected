@@ -12,6 +12,7 @@
           },
           "documentFormattingProvider": true,
           "hoverProvider": true,
+          "hoverProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
               "quickfix",
@@ -26,11 +27,32 @@
       }
     },
     {
+      "params": {
+        "diagnostics": [],
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      },
+      "jsonrpc": "2.0",
+      "method": "textDocument/publishDiagnostics"
+    },
+    {
       "jsonrpc": "2.0",
       "id": 2,
-      "error": {
-        "message": "code actions requested for a document that is not open",
-        "code": -32602
+      "result": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "int"
+        },
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 13
+          },
+          "end": {
+            "line": 0,
+            "character": 15
+          }
+        }
       }
     }
   ],
@@ -38,6 +60,11 @@
   "state": {
     "initialized": true,
     "shutdownRequested": false,
-    "documents": []
+    "documents": [
+      {
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      }
+    ]
   }
 }

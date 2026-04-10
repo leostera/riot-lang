@@ -11,6 +11,7 @@
             "change": 1
           },
           "documentFormattingProvider": true,
+          "hoverProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
               "quickfix",

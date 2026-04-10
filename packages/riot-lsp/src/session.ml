@@ -377,7 +377,7 @@ let workspace_module_typings_for_package =
     | None ->
         let dependency_typings = workspace_dependency_packages ~include_dev:false workspace pkg
         |> List.concat_map
-          (fun dependency_pkg -> load cache typ_store workspace ~visiting:((pkg.name :: visiting)) dependency_pkg) in
+          (fun dependency_pkg -> load cache typ_store workspace ~visiting:(pkg.name :: visiting) dependency_pkg) in
         let package_typings =
           match load_package_module_typings_from_store typ_store pkg with
           | Some typings -> typings
@@ -570,7 +570,7 @@ let typ_analysis_for_document = fun state ->
                   ~revision:document.version
                   ~roots:[ source_id ]
                   ~config
-                  ~sources:((sources @ [ source ]))
+                  ~sources:(sources @ [ source ])
                 |> fun snapshot ->
                   Typ.Query.analysis_of_source snapshot source_id
       )
@@ -667,7 +667,7 @@ let action_kind_allowed = fun only actual ->
         (fun requested_kind ->
           let requested_name = Lsp.Action_kind.to_string requested_kind in
           String.equal requested_name actual_name
-          || String.starts_with ~prefix:((requested_name ^ ".")) actual_name)
+          || String.starts_with ~prefix:(requested_name ^ ".") actual_name)
         requested
 
 let lint_diagnostic_requested = fun context range diagnostic ->
@@ -759,8 +759,36 @@ let publish_diagnostics = fun state ->
       uri = document.uri;
       version = Some document.version;
       diagnostics
-    } in
-    Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
+  } in
+  Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
+
+let hover_for_document = fun state ->
+  fun document ->
+    fun position ->
+      match typ_analysis_for_document state document with
+      | None -> None
+      | Some analysis -> (
+          match Lsp.Utf16.offset_of_position document.text position with
+          | Error _ -> None
+          | Ok offset -> (
+              match Typ.Analysis.TypeIndex.find_at
+                analysis.SourceAnalysis.type_index
+                (Position.make ~offset)
+              with
+              | None -> None
+              | Some entry ->
+                  Some {
+                    Lsp.Hover_result.contents = {
+                      kind = Lsp.Markup_kind.Plain_text;
+                      value = TypePrinter.type_to_string entry.inferred_type;
+                    };
+                    range = Some (Lsp.Utf16.range_of_offsets
+                      document.text
+                      ~start_offset:entry.span.start
+                      ~end_offset:entry.span.end_);
+                  }
+            )
+        )
 
 let clear_diagnostics = fun uri ->
   let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
@@ -805,6 +833,7 @@ let capabilities = {
     save = None
   });
   document_formatting_provider = Some true;
+  hover_provider = Some true;
   code_action_provider = Some (Lsp.Initialize.Server_capabilities.Provider_options {
     code_action_kinds = Some [ Lsp.Action_kind.Quick_fix; Source_fix_all ];
     resolve_provider = Some false
@@ -920,6 +949,34 @@ let handle_formatting = fun state ->
                 ]
       )
 
+let handle_hover = fun state ->
+  fun payload ->
+    match Lsp.request_of_json Lsp.Text_document_methods.Hover.request payload with
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Ok (id, params) -> (
+        match find_document state params.text_document.uri with
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"hover requested for a document that is not open"
+              ();
+          ]
+        | Some document ->
+            ok
+              state
+              [
+                Lsp.response_to_json
+                  ~id
+                  Lsp.Text_document_methods.Hover.request
+                  (hover_for_document state document params.position)
+              ]
+      )
+
 let handle_code_action = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Code_action.request payload with
@@ -993,6 +1050,8 @@ let handle_request = fun state ->
             handle_initialize state payload
         | "shutdown" ->
             handle_shutdown state payload
+        | "textDocument/hover" ->
+            handle_hover state payload
         | "textDocument/formatting" ->
             handle_formatting state payload
         | "textDocument/codeAction" ->
@@ -1005,7 +1064,7 @@ let handle_request = fun state ->
                 response_error
                   ~id
                   ~code:Lsp.Error_code.method_not_found
-                  ~message:(("unknown method `" ^ method_ ^ "`"))
+                  ~message:("unknown method `" ^ method_ ^ "`")
                   ()
               ]
 
