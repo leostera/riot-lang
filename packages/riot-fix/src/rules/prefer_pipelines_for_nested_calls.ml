@@ -66,7 +66,7 @@ let pipeline_text = fun ~source expr ->
 let make_diagnostic = fun ~source expr ->
   Diagnostic.make ~severity:Warning ~kind:(Diagnostic.Known { rule_id; message = rule_description }) ~span:(Syn.Ceibo.Red.SyntaxNode.span
     (Syn.Cst.Expression.syntax_node expr)) ~suggestion:"Rewrite this call chain as a pipeline."
-    ?fix:((
+    ?fix:(
       match pipeline_text ~source expr with
       | None -> None
       | Some text -> Some (Fix.make
@@ -74,7 +74,7 @@ let make_diagnostic = fun ~source expr ->
         ~operations:[
           Fix.replace_node_with_text ~target:(Syn.Cst.Expression.syntax_node expr) ~text
         ])
-    ))
+    )
     ()
 
 let diagnostic_for_expression = fun ~source expr ->

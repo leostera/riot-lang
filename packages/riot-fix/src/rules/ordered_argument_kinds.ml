@@ -38,7 +38,7 @@ let make_diagnostic = fun parameter ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
-    ~suggestion:(("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional"))
+    ~suggestion:("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional")
     ()
 
 let diagnostic_for_binding = fun binding ->

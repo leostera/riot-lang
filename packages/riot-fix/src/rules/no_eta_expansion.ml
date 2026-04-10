@@ -191,7 +191,7 @@ let make_diagnostic = fun (expr: Syn.Cst.fun_expression) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
+    ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
     ~suggestion:"Replace this eta-expanded function with the callee directly."
     ?fix
     ()

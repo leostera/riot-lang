@@ -163,25 +163,29 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
     on_event
       (Types.Summary { summary = outcome.result.summary; limit_reached = outcome.limit_reached });
     match output_mode with
-    | Types.Silent -> ()
-    | Types.Report Reporter.Json -> Reporting.print_json_event
-      (Event.to_json
-        (Types.Summary { summary = outcome.result.summary; limit_reached = outcome.limit_reached }))
+    | Types.Silent ->
+        ()
+    | Types.Report Reporter.Json ->
+        Reporting.print_json_event
+          (Event.to_json
+            (Types.Summary {
+              summary = outcome.result.summary;
+              limit_reached = outcome.limit_reached
+            }))
     | Types.Report Reporter.Text ->
         if outcome.result.summary.total_files = 0 then
           println "No OCaml files found."
-        else
-          (
-            if outcome.limit_reached then
-              (
-                println "";
-                println
-                  ("\027[1;33m!\027[0m Reached diagnostic limit "
-                  ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
-                  ^ "; stopped early")
-              );
-            Reporting.print_text_summary mode outcome.result.summary
-          )
+        else (
+          if outcome.limit_reached then
+            (
+              println "";
+              println
+                ("\027[1;33m!\027[0m Reached diagnostic limit "
+                ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+                ^ "; stopped early")
+            );
+          Reporting.print_text_summary mode outcome.result.summary
+        )
   );
   if outcome.result.summary.failed_files > 0 || outcome.result.summary.remaining_diagnostics > 0 then
     Error (Failure "Issues remain after riot fix")

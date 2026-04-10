@@ -65,7 +65,8 @@ let handle_entry = fun state (entry: Std.Fs.Walker.FileItem.t) on_file ->
             on_file path;
           Std.Fs.Walker.Continue
       | Symlink
-      | Other -> Std.Fs.Walker.Continue
+      | Other ->
+          Std.Fs.Walker.Continue
     )
 
 let scan = fun scanner ->

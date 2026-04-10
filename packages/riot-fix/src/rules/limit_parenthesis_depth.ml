@@ -23,8 +23,8 @@ let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) depth ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-    ~suggestion:(("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value"))
+    ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~suggestion:("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value")
     ()
 
 let rec parenthesis_chain_depth = function

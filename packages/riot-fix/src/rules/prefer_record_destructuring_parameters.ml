@@ -282,9 +282,9 @@ let diagnostic_for_binding = fun binding ->
           ~severity:Warning
           ~kind:(Diagnostic.Known { rule_id; message = rule_description })
           ~span:(Syn.Cst.Token.span parameter_token)
-          ~suggestion:(("Destructure this record in the parameter list instead of binding "
+          ~suggestion:("Destructure this record in the parameter list instead of binding "
           ^ parameter_name
-          ^ " and immediately unpacking it in the function body"))
+          ^ " and immediately unpacking it in the function body")
           ())
       else
         None

@@ -2264,7 +2264,7 @@ let render x y z =
         } in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
-        ~actual:((bindings |> List.map Syn.Cst.LetBinding.name));
+        ~actual:(bindings |> List.map Syn.Cst.LetBinding.name);
       Ok ());
   Test.case "rule query collects type declarations from implementations and interfaces"
     (fun _ctx ->

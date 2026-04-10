@@ -67,7 +67,7 @@ let make_diagnostic = fun expr ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span
-    ~suggestion:(("Replace " ^ operator ^ " with a named function"))
+    ~suggestion:("Replace " ^ operator ^ " with a named function")
     ()
 
 let rec diagnostics_for_expression = function

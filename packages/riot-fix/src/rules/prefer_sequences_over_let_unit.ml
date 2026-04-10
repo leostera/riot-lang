@@ -69,7 +69,7 @@ let make_fix = fun ~source (expr: Syn.Cst.let_expression) ->
     ~operations:[
       Fix.replace_node_with_text
         ~target:expr.syntax_node
-        ~text:((leading ^ bound_value ^ sequence_separator body ^ body));
+        ~text:(leading ^ bound_value ^ sequence_separator body ^ body);
     ]
 
 let make_diagnostic = fun ~source (expr: Syn.Cst.let_expression) ->

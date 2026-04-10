@@ -12,7 +12,7 @@ let keep_ml = fun path ->
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with
-  | Some ext -> Some (Path.add_extension path ~ext:((ext ^ ".expected")))
+  | Some ext -> Some (Path.add_extension path ~ext:(ext ^ ".expected"))
   | None -> Some (Path.add_extension path ~ext:"expected")
 
 let split_on_double_underscore = fun value ->
@@ -46,7 +46,7 @@ let find_rule = fun rule_id ->
   Riot_fix.Pipeline.default_rules () |> List.find_opt
     (fun rule ->
       String.equal (Riot_fix.Rule.id rule) rule_id) |> Result.of_option
-    ~error:(("unknown rule fixture id: " ^ rule_id))
+    ~error:("unknown rule fixture id: " ^ rule_id)
 
 let result_to_json = fun result ->
   Json.obj
@@ -94,7 +94,7 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   in
   Test.Snapshot.assert_text
     ~ctx:ctx.test
-    ~actual:((Json.to_string_pretty (result_to_json result) ^ "\n"))
+    ~actual:(Json.to_string_pretty (result_to_json result) ^ "\n")
 
 let () =
   Actors.run

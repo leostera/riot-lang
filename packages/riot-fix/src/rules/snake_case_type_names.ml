@@ -50,7 +50,7 @@ let should_flag_type_name = fun text -> not (String.equal text (to_snake_case te
 
 let make_fix = fun token replacement ->
   Fix.make
-    ~title:(("Rename type " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement))
+    ~title:("Rename type " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement)
     ~operations:[ Fix.replace_token_with_text ~target:token ~text:replacement; ]
 
 let make_diagnostic = fun token ->
@@ -60,7 +60,7 @@ let make_diagnostic = fun token ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ~fix:(make_fix token replacement)
     ()
 

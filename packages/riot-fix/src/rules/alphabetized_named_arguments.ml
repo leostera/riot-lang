@@ -32,7 +32,7 @@ let make_diagnostic = fun ~previous_name parameter ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
-    ~suggestion:(("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))
+    ~suggestion:("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized")
     ()
 
 let classify_parameter parameter =

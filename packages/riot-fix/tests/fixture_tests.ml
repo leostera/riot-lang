@@ -84,7 +84,7 @@ Replace direct `Pervasives` references with `Std`.
 
   let make_fix = fun token replacement ->
     Api.Fix.make
-      ~title:(("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement))
+      ~title:("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement)
       ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement ]
 
   let make_diagnostic = fun token ->
@@ -223,7 +223,7 @@ let fixture_filter = fun path ->
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:((ext ^ ".expected"))
+  | Some ext -> Path.add_extension path ~ext:(ext ^ ".expected")
   | None -> Path.add_extension path ~ext:"expected"
 
 let relativize_path = fun ~workspace_root path ->

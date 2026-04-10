@@ -45,7 +45,7 @@ let diagnostic_for_open_count = fun opens ->
     | third_open :: _ -> Some (Diagnostic.make
       ~severity:Warning
       ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-      ~span:((Syn.Cst.OpenStatement.syntax_node third_open |> Syn.Ceibo.Red.SyntaxNode.span))
+      ~span:(Syn.Cst.OpenStatement.syntax_node third_open |> Syn.Ceibo.Red.SyntaxNode.span)
       ~suggestion:"Keep only the most useful opens and qualify the remaining names."
       ())
     | [] -> None

@@ -96,8 +96,8 @@ let make_diagnostic = fun (expr: Syn.Cst.match_expression) depth ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-    ~suggestion:(("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))
+    ~span:(expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~suggestion:("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow.")
     ()
 
 let rec diagnostics_for_expression = fun ~inside_match ->

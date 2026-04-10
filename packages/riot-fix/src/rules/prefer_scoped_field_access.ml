@@ -76,7 +76,7 @@ let make_field_access_fix = fun ~source (
         ~operations:[
           Fix.replace_node_with_text
             ~target:syntax_node
-            ~text:((module_name ^ ".(" ^ receiver ^ "." ^ field_name ^ ")"));
+            ~text:(module_name ^ ".(" ^ receiver ^ "." ^ field_name ^ ")");
         ])
   | _ -> None
 

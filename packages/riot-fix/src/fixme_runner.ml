@@ -131,7 +131,7 @@ let registry_source = fun providers ->
 let embedded_provider_module_source = fun (provider: generated_provider) ->
   let source = Fs.read provider.provider.source_path
   |> Result.expect
-    ~msg:(("failed to read provider source " ^ Path.to_string provider.provider.source_path)) in
+    ~msg:("failed to read provider source " ^ Path.to_string provider.provider.source_path) in
   String.concat "\n"
     [ "module " ^ provider.module_name ^ " = struct"; String.concat "\n"
         (
@@ -139,7 +139,7 @@ let embedded_provider_module_source = fun (provider: generated_provider) ->
             (fun ((module_name, source_path)) ->
               let source = Fs.read source_path
               |> Result.expect
-                ~msg:(("failed to read provider support source " ^ Path.to_string source_path)) in
+                ~msg:("failed to read provider support source " ^ Path.to_string source_path) in
               String.concat "\n" [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
             provider.support_module_sources
         ); source; "end"; ""; ]
@@ -346,23 +346,23 @@ let ensure_directories = fun plan ->
   List.iter
     (fun path ->
       Fs.create_dir_all path
-      |> Result.expect ~msg:(("failed to create generated fixme runner dir " ^ Path.to_string path)))
+      |> Result.expect ~msg:("failed to create generated fixme runner dir " ^ Path.to_string path))
     [ plan.generated_dir; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists = fun path remove ->
   match Fs.exists path with
-  | Ok true -> remove path |> Result.expect ~msg:(("failed to clean " ^ Path.to_string path))
+  | Ok true -> remove path |> Result.expect ~msg:("failed to clean " ^ Path.to_string path)
   | _ -> ()
 
 let cleanup_stale_sources = fun plan -> remove_if_exists plan.providers_dir Fs.remove_dir_all
 
 let write_file = fun path content ->
-  Fs.write content path |> Result.expect ~msg:(("failed to write " ^ Path.to_string path))
+  Fs.write content path |> Result.expect ~msg:("failed to write " ^ Path.to_string path)
 
 let copy_provider_source = fun (provider: generated_provider) ->
   Fs.copy ~src:provider.provider.source_path ~dst:provider.copied_source_path
   |> Result.expect
-    ~msg:(("failed to copy provider source " ^ Path.to_string provider.provider.source_path))
+    ~msg:("failed to copy provider source " ^ Path.to_string provider.provider.source_path)
 
 let attach_to_workspace = fun workspace plan ->
   let other_packages = workspace.Riot_model.Workspace.packages

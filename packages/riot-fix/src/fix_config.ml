@@ -147,14 +147,13 @@ let glob_match = fun pattern text ->
           current.(text_idx) <- (!previous).(text_idx) || current.(text_idx - 1)
         done
       )
-    else
-      (
-        for text_idx = 1 to text_len do
-          current.(text_idx) <- (!previous).(text_idx - 1)
-          && String.get pattern (pattern_idx - 1) = String.get text (text_idx - 1)
-        done;
-      );
-      previous := current
+    else (
+      for text_idx = 1 to text_len do
+        current.(text_idx) <- (!previous).(text_idx - 1)
+        && String.get pattern (pattern_idx - 1) = String.get text (text_idx - 1)
+      done;
+    );
+    previous := current
   done;
   (!previous).(text_len)
 

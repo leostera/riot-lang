@@ -113,7 +113,7 @@ let make_fix = fun ~source (if_expr: Syn.Cst.if_expression) ->
     ~operations:[
       Fix.replace_node_with_text
         ~target:(Syn.Cst.Expression.syntax_node if_expr.condition)
-        ~text:((" " ^ text))
+        ~text:(" " ^ text)
     ])
 
 let make_diagnostic = fun ~source (if_expr: Syn.Cst.if_expression) ->
