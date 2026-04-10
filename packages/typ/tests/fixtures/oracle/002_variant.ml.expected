@@ -1,0 +1,87 @@
+{
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "pick",
+        "scheme": "bool -> color"
+      }
+    ],
+    "interface_lines": [
+      "type color = Red | Blue",
+      "val pick : bool -> color"
+    ],
+    "type_names": [
+      "color"
+    ],
+    "typedtree_lines": [
+      "[",
+      "  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
+      "    Tstr_type Rec",
+      "    [",
+      "      type_declaration color/4 (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
+      "        ptype_params =",
+      "          []",
+      "        ptype_constraints =",
+      "          []",
+      "        ptype_kind =",
+      "          Ttype_variant",
+      "            [",
+      "              (packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+7])",
+      "                Red/5",
+      "                []",
+      "                None",
+      "              (packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
+      "                Blue/6",
+      "                []",
+      "                None",
+      "            ]",
+      "        ptype_private = Public",
+      "        ptype_manifest =",
+      "          None",
+      "    ]",
+      "  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
+      "    Tstr_value Nonrec",
+      "    [",
+      "      <def>",
+      "        pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+8])",
+      "          Tpat_var \"pick/7\"",
+      "        expression (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8]) ghost",
+      "          Texp_function",
+      "          [",
+      "            Nolabel",
+      "            Param_pat",
+      "              pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+13])",
+      "                Tpat_var \"flag/9\"",
+      "          ]",
+      "          Tfunction_body",
+      "            expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
+      "              Texp_ifthenelse",
+      "              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+5]..packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+9])",
+      "                Texp_ident \"flag/9\"",
+      "              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+7])",
+      "                Texp_construct \"Red\"",
+      "                []",
+      "              Some",
+      "                expression (packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
+      "                  Texp_construct \"Blue\"",
+      "                  []",
+      "    ]",
+      "]"
+    ]
+  },
+  "typ": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "pick",
+        "scheme": "bool -> color"
+      }
+    ],
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "type_names": [
+      "color"
+    ],
+    "typing_diagnostics": []
+  }
+}

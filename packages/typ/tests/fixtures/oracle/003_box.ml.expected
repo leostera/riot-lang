@@ -1,0 +1,85 @@
+{
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "unbox",
+        "scheme": "'a box -> 'a"
+      }
+    ],
+    "interface_lines": [
+      "type 'a box = Box of 'a",
+      "val unbox : 'a box -> 'a"
+    ],
+    "type_names": [
+      "box"
+    ],
+    "typedtree_lines": [
+      "[",
+      "  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
+      "    Tstr_type Rec",
+      "    [",
+      "      type_declaration box/4 (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
+      "        ptype_params =",
+      "          [",
+      "            core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+5]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+7])",
+      "              Ttyp_var a",
+      "          ]",
+      "        ptype_constraints =",
+      "          []",
+      "        ptype_kind =",
+      "          Ttype_variant",
+      "            [",
+      "              (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+14]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
+      "                Box/5",
+      "                [",
+      "                  core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+21]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
+      "                    Ttyp_var a",
+      "                ]",
+      "                None",
+      "            ]",
+      "        ptype_private = Public",
+      "        ptype_manifest =",
+      "          None",
+      "    ]",
+      "  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+0]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])",
+      "    Tstr_value Nonrec",
+      "    [",
+      "      <def>",
+      "        pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+4]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+9])",
+      "          Tpat_var \"unbox/6\"",
+      "        expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29]) ghost",
+      "          Texp_function",
+      "          [",
+      "            Nolabel",
+      "            Param_pat",
+      "              pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+21])",
+      "                Tpat_construct \"Box\"",
+      "                [",
+      "                  pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+15]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+20])",
+      "                    Tpat_var \"value/8\"",
+      "                ]",
+      "                None",
+      "          ]",
+      "          Tfunction_body",
+      "            expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+24]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])",
+      "              Texp_ident \"value/8\"",
+      "    ]",
+      "]"
+    ]
+  },
+  "typ": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "unbox",
+        "scheme": "'a box -> 'a"
+      }
+    ],
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "type_names": [
+      "box"
+    ],
+    "typing_diagnostics": []
+  }
+}

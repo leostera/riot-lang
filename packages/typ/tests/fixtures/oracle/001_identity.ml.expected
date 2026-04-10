@@ -1,0 +1,80 @@
+{
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "const",
+        "scheme": "'a -> 'b -> 'a"
+      },
+      {
+        "name": "id",
+        "scheme": "'a -> 'a"
+      }
+    ],
+    "interface_lines": [
+      "val id : 'a -> 'a",
+      "val const : 'a -> 'b -> 'a"
+    ],
+    "type_names": [],
+    "typedtree_lines": [
+      "[",
+      "  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])",
+      "    Tstr_value Nonrec",
+      "    [",
+      "      <def>",
+      "        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+6])",
+      "          Tpat_var \"id/4\"",
+      "        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12]) ghost",
+      "          Texp_function",
+      "          [",
+      "            Nolabel",
+      "            Param_pat",
+      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+8])",
+      "                Tpat_var \"x/6\"",
+      "          ]",
+      "          Tfunction_body",
+      "            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+11]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])",
+      "              Texp_ident \"x/6\"",
+      "    ]",
+      "  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])",
+      "    Tstr_value Nonrec",
+      "    [",
+      "      <def>",
+      "        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+9])",
+      "          Tpat_var \"const/7\"",
+      "        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17]) ghost",
+      "          Texp_function",
+      "          [",
+      "            Nolabel",
+      "            Param_pat",
+      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+11])",
+      "                Tpat_var \"x/9\"",
+      "            Nolabel",
+      "            Param_pat",
+      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+12]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+13])",
+      "                Tpat_any",
+      "          ]",
+      "          Tfunction_body",
+      "            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+16]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])",
+      "              Texp_ident \"x/9\"",
+      "    ]",
+      "]"
+    ]
+  },
+  "typ": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "const",
+        "scheme": "'a -> 'b -> 'a"
+      },
+      {
+        "name": "id",
+        "scheme": "'a -> 'a"
+      }
+    ],
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "type_names": [],
+    "typing_diagnostics": []
+  }
+}
