@@ -69,12 +69,30 @@ const RegisteredFrameTable = struct {
 const RegisteredGcRootTable = struct {
     table: [*]const RawValue,
     entry_count: usize,
+    block_field_count: usize,
 
     fn visitBlockFields(self: RegisteredGcRootTable, visitor: RawRootSlotVisitor) void {
         var root_index: usize = 0;
         while (self.table[root_index] != 0) : (root_index += 1) {
             visitRawBlockFieldRoots(self.table[root_index], visitor);
         }
+    }
+
+    fn blockFieldSlotAt(self: RegisteredGcRootTable, slot_index: usize) ?*RawValue {
+        var remaining = slot_index;
+        var root_index: usize = 0;
+        while (self.table[root_index] != 0) : (root_index += 1) {
+            const raw = self.table[root_index];
+            if (!rawBlockHasScannableFields(raw)) continue;
+
+            const field_count = rawBlockWordSize(raw);
+            if (remaining < field_count) {
+                return &rawBlockFieldBase(raw)[remaining];
+            }
+            remaining -= field_count;
+        }
+
+        return null;
     }
 };
 
@@ -233,6 +251,7 @@ const CompilerCompatState = struct {
                 try metadata.gc_root_tables.append(self.allocator, .{
                     .table = table,
                     .entry_count = table_summary.entry_count,
+                    .block_field_count = table_summary.block_field_count,
                 });
                 metadata.summary.gc_root_table_count += 1;
                 metadata.summary.gc_root_entry_count += table_summary.entry_count;
@@ -295,6 +314,22 @@ const CompilerCompatState = struct {
     fn visitGcRootBlockFields(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
         const metadata = self.startup_metadata orelse return;
         for (metadata.gc_root_tables.items) |table| table.visitBlockFields(visitor);
+    }
+
+    fn gcRootBlockFieldSlotCount(self: *const CompilerCompatState) usize {
+        return self.summary().gc_root_block_field_count;
+    }
+
+    fn gcRootBlockFieldSlotAt(self: *const CompilerCompatState, slot_index: usize) ?*RawValue {
+        const metadata = self.startup_metadata orelse return null;
+        var remaining = slot_index;
+        for (metadata.gc_root_tables.items) |table| {
+            if (remaining < table.block_field_count) {
+                return table.blockFieldSlotAt(remaining);
+            }
+            remaining -= table.block_field_count;
+        }
+        return null;
     }
 
     fn findCodeFragment(self: *const CompilerCompatState, pc: *const anyopaque) ?RegisteredCodeFragment {
@@ -508,6 +543,14 @@ pub export fn caml_initialize(slot: *RawValue, value: RawValue) void {
     slot.* = value;
 }
 
+pub export fn zort_gc_root_block_field_slot_count() usize {
+    return compiler_compat_state.gcRootBlockFieldSlotCount();
+}
+
+pub export fn zort_gc_root_block_field_slot_at(index: usize) ?*RawValue {
+    return compiler_compat_state.gcRootBlockFieldSlotAt(index);
+}
+
 fn decodeImmediateInt(raw: RawValue) i64 {
     const signed: isize = @bitCast(raw);
     return @as(i64, @intCast(signed >> 1));
@@ -645,8 +688,13 @@ test "compiler compat: state retains startup metadata and visits gc root block f
     try std.testing.expectEqual(@as(usize, 2), summary.gc_root_block_field_count);
     try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.frame_tables.items.len);
     try std.testing.expectEqual(@as(usize, 3), state.startup_metadata.?.gc_root_tables.items[0].entry_count);
+    try std.testing.expectEqual(@as(usize, 2), state.startup_metadata.?.gc_root_tables.items[0].block_field_count);
     try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.code_fragments.items.len);
     try std.testing.expectEqual(RegisteredCodeFragment.DigestPolicy.later, state.startup_metadata.?.code_fragments.items[0].digest_policy);
+    try std.testing.expectEqual(@as(usize, 2), state.gcRootBlockFieldSlotCount());
+    try std.testing.expectEqual(@as(RawValue, 0x11), state.gcRootBlockFieldSlotAt(0).?.*);
+    try std.testing.expectEqual(@as(RawValue, 0x13), state.gcRootBlockFieldSlotAt(1).?.*);
+    try std.testing.expect(state.gcRootBlockFieldSlotAt(2) == null);
     try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x18)) != null);
     try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x28)) == null);
 

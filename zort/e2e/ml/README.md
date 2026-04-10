@@ -25,7 +25,7 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` now runs five intentionally narrow fixtures against
+- `zig build e2e-ml-zort` now runs six intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
 - the compiler-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
@@ -37,6 +37,10 @@ Current status:
 - startup trace observability now distinguishes raw `gc_roots` table entries
   from scannable global blocks and their exposed field slots in the locked
   `aarch64-apple-darwin` compatibility layer
+- the compiler-compat shim now exports indexed access to those exposed
+  `gc_roots` block-field slots so host harnesses can prove the registered
+  startup metadata includes real collector-shaped root edges without teaching
+  the semantic kernel raw OCaml block layout
 - the compiler-compat startup path is now reference-counted on the locked
   `aarch64-apple-darwin` path:
   - the first `caml_startup` performs metadata registration and enters
@@ -75,7 +79,8 @@ Current cases:
 - `min_global_pair_root_zort.ml`: strict `-nostdlib -nopervasives`
   preallocated global-pair smoke intended to prove a compiler-emitted
   non-empty `gc_roots` block can finish startup under `zort` without allocator
-  slow paths
+  slow paths, and that its exposed block-field root slot still contains a
+  block raw value after startup metadata registration
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -118,7 +123,7 @@ The current `zort`-linked fixtures are intentionally narrow:
 - `min_global_pair_root_zort.ml` adds one compiler-emitted preallocated global
   pair and proves the startup shim can survive the corresponding no-allocation
   `caml_initialize` call while exposing a non-empty `gc_roots` block field
-  count
+  count and one host-visible block-field root slot
 - `min_external_startup.ml` adds one top-level external primitive on the same
   startup path
 
