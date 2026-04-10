@@ -198,6 +198,11 @@ compile_success_case \
   "$SCRIPT_DIR/ml/min_pure_startup_main.c"
 
 compile_success_case \
+  "min_global_pair_root_zort" \
+  "min_global_pair_root_zort.ml" \
+  "$SCRIPT_DIR/ml/min_global_pair_root_zort_main.c"
+
+compile_success_case \
   "min_pure_startup_reentrant" \
   "min_pure_startup.ml" \
   "$SCRIPT_DIR/ml/min_pure_startup_reentrant_main.c"

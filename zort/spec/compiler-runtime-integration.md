@@ -148,8 +148,12 @@ Current locked target:
 - existing compiler path:
   `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
 - compatibility artifact: `libzort-compiler-compat.dylib`
-- current proven scope: one strict `-nostdlib -nopervasives` top-level external
-  program links and runs under `zort`
+- current proven scope:
+  - strict pure-startup objects link and run under `zort`
+  - one strict compiler-emitted preallocated global-root fixture completes a
+    no-allocation `caml_initialize` startup call under `zort`
+  - one strict `-nostdlib -nopervasives` top-level external program links and
+    runs under `zort`
 
 ### Milestone 0: linkable startup
 
@@ -164,12 +168,17 @@ This milestone does not need effects, dynlink, or broad primitive coverage.
 
 Current status:
 
-- achieved for a single narrow smoke on `aarch64-apple-darwin`
-- the successful fixture is `e2e/ml/min_external_startup.ml`
+- achieved for a small cluster of narrow smokes on `aarch64-apple-darwin`
+- the current successful fixtures are:
+  - `e2e/ml/min_pure_startup.ml`
+  - `e2e/ml/min_global_pair_root_zort.ml`
+  - `e2e/ml/min_external_startup.ml`
 - the current shim covers only:
   - startup entrypoints
   - `caml_program` handoff
   - `caml_c_call`
+  - direct no-allocation `caml_initialize` stores into preallocated startup
+    blocks
   - `caml_call_realloc_stack` stubbed for the non-growing case
   - a single top-level external symbol
 - it does not yet cover stdlib startup, allocation, frame-descriptor ingestion,
@@ -191,10 +200,13 @@ This proves:
 
 Current status:
 
-- partially achieved through a top-level external primitive rather than pure
-  arithmetic/branching
-- the next useful no-allocation step is a pure emitted program or a slightly
-  richer external/control case that still avoids heap allocation
+- partially achieved through:
+  - strict pure emitted startup without externals
+  - a compiler-emitted no-allocation `caml_initialize` startup call into the
+    compatibility layer
+  - a top-level external primitive
+- the next useful no-allocation step is a slightly richer pure emitted control
+  case that still avoids heap allocation
 
 ### Milestone 2: allocation smoke
 

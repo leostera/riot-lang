@@ -25,12 +25,15 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` now runs four intentionally narrow fixtures against
+- `zig build e2e-ml-zort` now runs five intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
 - the compiler-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
   verifies that `caml_program` lands in a registered code fragment before
   entering `caml_start_program`
+- the locked `aarch64-apple-darwin` startup shim now also provides the minimal
+  no-allocation `caml_initialize` store path needed for compiler-emitted
+  preallocated global blocks to finish startup
 - startup trace observability now distinguishes raw `gc_roots` table entries
   from scannable global blocks and their exposed field slots in the locked
   `aarch64-apple-darwin` compatibility layer
@@ -69,6 +72,10 @@ Current cases:
 - `min_pure_shutdown_without_startup_fatal`: the same pure-startup object under
   a C host that calls `caml_shutdown` before any `caml_startup` to lock the
   unmatched-shutdown fatal path
+- `min_global_pair_root_zort.ml`: strict `-nostdlib -nopervasives`
+  preallocated global-pair smoke intended to prove a compiler-emitted
+  non-empty `gc_roots` block can finish startup under `zort` without allocator
+  slow paths
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
   `zort` compiler-compatibility shim
@@ -108,6 +115,10 @@ The current `zort`-linked fixtures are intentionally narrow:
 - `min_pure_shutdown_without_startup_fatal` keeps the same pure-startup object
   but proves embedders get a deterministic fatal before any startup-owned
   metadata or depth changes when they over-release the lifecycle
+- `min_global_pair_root_zort.ml` adds one compiler-emitted preallocated global
+  pair and proves the startup shim can survive the corresponding no-allocation
+  `caml_initialize` call while exposing a non-empty `gc_roots` block field
+  count
 - `min_external_startup.ml` adds one top-level external primitive on the same
   startup path
 

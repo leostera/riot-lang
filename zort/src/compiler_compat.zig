@@ -308,7 +308,13 @@ const CompilerCompatState = struct {
 
 const FakeDomainState = extern struct {
     pad0: [0x28]u8 = [_]u8{0} ** 0x28,
-    stack_anchor: usize = 0,
+    // The locked arm64 compiler-emitted startup path reads `current_stack`
+    // for the non-growing stack guard and `c_stack` for no-allocation C calls
+    // such as `caml_initialize`. Other domain-state fields stay outside this
+    // narrow compatibility shim until broader compiler/runtime support lands.
+    current_stack: usize = 0,
+    pad1: [0x10]u8 = [_]u8{0} ** 0x10,
+    c_stack: usize = 0,
 };
 
 extern fn caml_start_program(state: *FakeDomainState) callconv(.c) RawValue;
@@ -438,6 +444,10 @@ fn lifecycleFatal(err: CompilerCompatState.LifecycleError) noreturn {
     std.process.abort();
 }
 
+fn alignDown16(ptr: usize) usize {
+    return ptr & ~@as(usize, 0xf);
+}
+
 fn startupCommon() RawValue {
     const should_initialize = compiler_compat_state.beginStartup() catch |err| lifecycleFatal(err);
     if (should_initialize) resetObservabilityForFreshStartup();
@@ -451,6 +461,8 @@ fn startupCommon() RawValue {
     zort_metadata_registration_calls +%= 1;
     syncMetadataObservability();
 
+    var c_stack_anchor: usize = 0;
+    fake_domain.c_stack = alignDown16(@intFromPtr(&c_stack_anchor));
     const result = caml_start_program(&fake_domain);
     zort_start_program_calls +%= 1;
     zort_last_start_program_result = result;
@@ -488,6 +500,12 @@ pub export fn caml_shutdown() void {
     }
     syncLifecycleObservability();
     syncMetadataObservability();
+}
+
+pub export fn caml_initialize(slot: *RawValue, value: RawValue) void {
+    // This startup-only path covers compiler-emitted stores into preallocated
+    // out-of-heap blocks. It intentionally stays in the compatibility layer.
+    slot.* = value;
 }
 
 fn decodeImmediateInt(raw: RawValue) i64 {
@@ -712,6 +730,17 @@ test "compiler compat: startup ownership rejects invalid transitions" {
     _ = try state.beginShutdown();
 
     try std.testing.expectError(CompilerCompatState.LifecycleError.StartupAfterShutdown, state.beginStartup());
+}
+
+test "compiler compat: fake domain matches emitted startup offsets" {
+    try std.testing.expectEqual(@as(usize, 0x28), @offsetOf(FakeDomainState, "current_stack"));
+    try std.testing.expectEqual(@as(usize, 0x40), @offsetOf(FakeDomainState, "c_stack"));
+}
+
+test "compiler compat: caml_initialize stores into startup-owned slots" {
+    var slot: RawValue = raw_unit;
+    caml_initialize(&slot, 0x24);
+    try std.testing.expectEqual(@as(RawValue, 0x24), slot);
 }
 
 test "compiler compat: reregistering startup metadata replaces prior registrations" {

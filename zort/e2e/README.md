@@ -19,7 +19,9 @@ Current cases:
   in `-output-obj` mode and linked today against vendor `libasmrun` as the
   baseline runtime, with narrow `zort`-linked exceptions for compiler-compat
   bring-up. The `zort` path now also verifies fixture-local expected stdout,
-  expected startup-metadata traces, and a tiny per-case benchmark signal.
+  expected startup-metadata traces, a tiny per-case benchmark signal, and the
+  locked `aarch64-apple-darwin` no-allocation startup path for preallocated
+  global-root initialization.
 
 Run them with:
 
