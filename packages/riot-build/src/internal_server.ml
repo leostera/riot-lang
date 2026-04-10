@@ -221,8 +221,8 @@ and handle_get_package_info = fun state client_pid package_name ->
           (Protocol.ServerResponse (Protocol.PackageInfo {
             package = Package.synthetic
               ~name:package_name
-              ~path:((Path.of_string "" |> Result.expect ~msg:"Failed to create empty path"))
-              ~relative_path:((Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path"));
+              ~path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty path")
+              ~relative_path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path");
             sources = [];
             dependencies = []
           }))

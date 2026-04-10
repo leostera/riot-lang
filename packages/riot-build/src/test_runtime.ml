@@ -639,7 +639,7 @@ let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_
       ("RIOT_PACKAGE_NAME", suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
-    ~args:(("run-tests" :: extra_args)) in
+    ~args:("run-tests" :: extra_args) in
   Command.output cmd
 
 let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
@@ -650,7 +650,7 @@ let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra
       ("RIOT_PACKAGE_NAME", suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
-    ~args:(("list-tests" :: extra_args)) in
+    ~args:("list-tests" :: extra_args) in
   Command.output cmd
 
 let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args binary_path ->

@@ -591,12 +591,12 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
 
 let run_suite_binary_capture = fun ~extra_args binary_path ->
   let extra_args = remove_json_args extra_args @ [ "--json" ] in
-  let cmd = Command.make binary_path ~args:(("run-benchmarks" :: extra_args)) in
+  let cmd = Command.make binary_path ~args:("run-benchmarks" :: extra_args) in
   Command.output cmd
 
 let list_suite_binary_capture = fun ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
-  let cmd = Command.make binary_path ~args:(("list-benchmarks" :: extra_args)) in
+  let cmd = Command.make binary_path ~args:("list-benchmarks" :: extra_args) in
   Command.output cmd
 
 let parse_listed_benchmarks_output = fun stdout ->
