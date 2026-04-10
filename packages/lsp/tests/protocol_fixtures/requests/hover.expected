@@ -1,7 +1,5 @@
 {
-  "jsonrpc": "2.0",
   "id": 1,
-  "method": "textDocument/hover",
   "params": {
     "textDocument": {
       "uri": "file:///workspace/app.ml"
@@ -10,5 +8,7 @@
       "line": 0,
       "character": 13
     }
-  }
+  },
+  "jsonrpc": "2.0",
+  "method": "textDocument/hover"
 }
