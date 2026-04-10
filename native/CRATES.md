@@ -24,6 +24,12 @@ Tooling for generating OCaml bindings from Rust crates.
 
 A minimal foreign-dependency smoke test used by `packages/hello-foreign`.
 
+### `serde-json-bench`
+
+A tiny standalone benchmark binary for comparing Rust `serde_json` read and
+write throughput against Riot's `serde-json` benchmarks using the same fixture
+files.
+
 ## Current dependency shape
 
 ```text
