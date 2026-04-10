@@ -50,18 +50,56 @@ let relative_or_absolute = fun ~workspace_root path ->
 let workspace_roots = fun (workspace: Workspace.t) ->
   workspace.packages
   |> List.filter Package.is_workspace_member
-  |> List.map (fun (pkg: Package.t) -> pkg.path)
+  |> List.map (Workspace.package_root workspace)
   |> dedupe_paths
 
 let workspace_roots_for_package = fun (workspace: Workspace.t) package_name ->
   workspace.packages
   |> List.filter
     (fun (pkg: Package.t) -> Package.is_workspace_member pkg && String.equal pkg.name package_name)
-  |> List.map (fun (pkg: Package.t) -> pkg.path)
+  |> List.map (Workspace.package_root workspace)
+  |> dedupe_paths
+
+let target_files_for_package = fun ~(workspace:Workspace.t) ~(include_dev:bool) (pkg: Package.t) ->
+  let package_root = Workspace.package_root workspace pkg in
+  let sources =
+    if
+      List.is_empty pkg.sources.src
+      && List.is_empty pkg.sources.tests
+      && List.is_empty pkg.sources.examples
+      && List.is_empty pkg.sources.bench
+    then
+      Package.scan_sources ~package_path:package_root ()
+    else
+      pkg.sources
+  in
+  let scoped_sources =
+    if include_dev then
+      sources.src @ sources.tests @ sources.examples @ sources.bench
+    else
+      sources.src
+  in
+  scoped_sources
+  |> List.filter is_supported_source_file
+  |> List.map (fun relative -> Path.(package_root / relative))
+  |> dedupe_paths
+
+let workspace_target_files = fun ~(include_dev:bool) (workspace: Workspace.t) ->
+  workspace.packages
+  |> List.filter Package.is_workspace_member
+  |> List.concat_map (target_files_for_package ~workspace ~include_dev)
+  |> dedupe_paths
+
+let workspace_target_files_for_package = fun ~(include_dev:bool) (workspace: Workspace.t) package_name ->
+  workspace.packages
+  |> List.filter
+    (fun (pkg: Package.t) -> Package.is_workspace_member pkg && String.equal pkg.name package_name)
+  |> List.concat_map (target_files_for_package ~workspace ~include_dev)
   |> dedupe_paths
 
 let of_workspace = fun (workspace: Workspace.t) ->
-  let scope_of_path path =
+  let scope_of_package (pkg: Package.t) =
+    let path = Workspace.package_root workspace pkg in
     let package_toml = Path.(path / Path.v "riot.toml") in
     { package_root = path; config = Fmt_config.load package_toml }
   in
@@ -69,7 +107,7 @@ let of_workspace = fun (workspace: Workspace.t) ->
   {
     workspace_root = workspace.root;
     workspace_config = Fmt_config.load workspace_toml;
-    packages = workspace.packages |> List.map (fun (pkg: Package.t) -> scope_of_path pkg.path)
+    packages = workspace.packages |> List.map scope_of_package
   }
 
 let matches_ignore_pattern = fun ~root pattern path ->
@@ -163,7 +201,7 @@ let validate_explicit_targets = fun ~workspace roots ->
   in
   loop roots []
 
-let resolve_targets = fun ~workspace ?package_filter paths ->
+let resolve_targets = fun ~workspace ?package_filter ?(include_dev = false) paths ->
   let scope = of_workspace workspace in
   let collect_ordered_files roots =
     let explicit_files, directory_roots =
@@ -185,7 +223,21 @@ let resolve_targets = fun ~workspace ?package_filter paths ->
   in
   let roots =
     if List.is_empty paths then
-      resolve_search_roots ~workspace ?package_filter ()
+      match package_filter with
+      | Some package_name -> (
+          match workspace_target_files_for_package ~include_dev workspace package_name with
+          | [] -> (
+              match workspace_roots_for_package workspace package_name with
+              | [] -> Error (Check_error.UnknownPackage { package_name })
+              | _ -> Error Check_error.NoTargets
+            )
+          | files -> Ok files
+        )
+      | None -> (
+          match workspace_target_files ~include_dev workspace with
+          | [] -> Error Check_error.NoTargets
+          | files -> Ok files
+        )
     else
       validate_explicit_targets ~workspace paths |> Result.map (List.sort_uniq compare_paths)
   in

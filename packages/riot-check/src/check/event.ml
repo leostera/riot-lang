@@ -2,8 +2,41 @@ open Std
 
 type t =
   | Start of { target_count: int }
+  | WorkspacePrepared of { packages: (string * Path.t) list }
   | Package of { package_name: string }
   | PackageCached of { package_name: string }
+  | PackagePlanningStarted of { package_name: string; include_dev: bool }
+  | PackagePlanningFinished of {
+      package_name: string;
+      include_dev: bool;
+      group_count: int;
+      allowed_source_count: int
+    }
+  | PackageSourcePreparationStarted of {
+      package_name: string;
+      planning_root: Path.t;
+      allowed_source_count: int;
+      include_dev: bool
+    }
+  | PackageSourcePreparationFinished of {
+      package_name: string;
+      planning_root: Path.t;
+      produced_source_count: int;
+      generated_source_count: int
+    }
+  | PackageSourcePreparationFailed of { package_name: string; planning_root: Path.t; reason: string }
+  | PackageSessionSeedStarted of {
+      package_name: string;
+      ordered_source_count: int;
+      target_path_count: int
+    }
+  | PackageSessionSeedFinished of { package_name: string; prepared_source_count: int }
+  | PackageRootGroupingFinished of {
+      package_name: string;
+      root_group_count: int;
+      target_path_count: int
+    }
+  | Typ of { event: Typ.Event.t }
   | File of State.checked_file
   | Diagnostic of { path: Path.t; diagnostic_index: int; diagnostic: Diagnostic.t }
   | Summary of { summary: State.checked_summary }
@@ -62,6 +95,22 @@ let to_json = fun ~workspace_root event ->
     ("workspace_root", Data.Json.String (Path.to_string workspace_root));
     ("target_count", Data.Json.Int target_count);
   ]
+  | WorkspacePrepared { packages } -> Data.Json.Object [
+    ("type", Data.Json.String "check_workspace_prepared");
+    (
+      "packages",
+      Data.Json.Array (packages
+      |> List.map
+        (fun (package_name, package_root) ->
+          Data.Json.Object [
+            ("package_name", Data.Json.String package_name);
+            (
+              "package_root",
+              Data.Json.String (Scope.relative_or_absolute ~workspace_root package_root)
+            );
+          ]))
+    );
+  ]
   | Package { package_name } -> Data.Json.Object [
     ("type", Data.Json.String "check_package");
     ("package_name", Data.Json.String package_name);
@@ -70,6 +119,66 @@ let to_json = fun ~workspace_root event ->
     ("type", Data.Json.String "check_package_cached");
     ("package_name", Data.Json.String package_name);
   ]
+  | PackagePlanningStarted { package_name; include_dev } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_planning_start");
+    ("package_name", Data.Json.String package_name);
+    ("include_dev", Data.Json.Bool include_dev);
+  ]
+  | PackagePlanningFinished { package_name; include_dev; group_count; allowed_source_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_planning_finish");
+    ("package_name", Data.Json.String package_name);
+    ("include_dev", Data.Json.Bool include_dev);
+    ("group_count", Data.Json.Int group_count);
+    ("allowed_source_count", Data.Json.Int allowed_source_count);
+  ]
+  | PackageSourcePreparationStarted {
+    package_name;
+    planning_root;
+    allowed_source_count;
+    include_dev
+  } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_source_preparation_start");
+    ("package_name", Data.Json.String package_name);
+    ("planning_root", Data.Json.String (Path.to_string planning_root));
+    ("allowed_source_count", Data.Json.Int allowed_source_count);
+    ("include_dev", Data.Json.Bool include_dev);
+  ]
+  | PackageSourcePreparationFinished {
+    package_name;
+    planning_root;
+    produced_source_count;
+    generated_source_count
+  } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_source_preparation_finish");
+    ("package_name", Data.Json.String package_name);
+    ("planning_root", Data.Json.String (Path.to_string planning_root));
+    ("produced_source_count", Data.Json.Int produced_source_count);
+    ("generated_source_count", Data.Json.Int generated_source_count);
+  ]
+  | PackageSourcePreparationFailed { package_name; planning_root; reason } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_source_preparation_failed");
+    ("package_name", Data.Json.String package_name);
+    ("planning_root", Data.Json.String (Path.to_string planning_root));
+    ("reason", Data.Json.String reason);
+  ]
+  | PackageSessionSeedStarted { package_name; ordered_source_count; target_path_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_session_seed_start");
+    ("package_name", Data.Json.String package_name);
+    ("ordered_source_count", Data.Json.Int ordered_source_count);
+    ("target_path_count", Data.Json.Int target_path_count);
+  ]
+  | PackageSessionSeedFinished { package_name; prepared_source_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_session_seed_finish");
+    ("package_name", Data.Json.String package_name);
+    ("prepared_source_count", Data.Json.Int prepared_source_count);
+  ]
+  | PackageRootGroupingFinished { package_name; root_group_count; target_path_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_root_grouping_finish");
+    ("package_name", Data.Json.String package_name);
+    ("root_group_count", Data.Json.Int root_group_count);
+    ("target_path_count", Data.Json.Int target_path_count);
+  ]
+  | Typ { event } -> Typ.Event.to_json event
   | File checked_file -> Data.Json.Object [
     ("type", Data.Json.String "check_file");
     ("result", checked_file_to_json ~workspace_root checked_file);
