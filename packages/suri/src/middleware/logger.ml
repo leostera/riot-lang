@@ -30,4 +30,4 @@ let logger = fun ~conn ~next ->
     Log.warn msg
   else
     Log.info msg;
-    conn'
+  conn'

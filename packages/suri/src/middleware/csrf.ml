@@ -121,7 +121,7 @@ let verify_token = fun session request_token ->
             ()
           else
             ();
-            matches
+          matches
       | Option.None -> String.equal request_token stored_token
 
 (** {1 HTTP Method Classification} *)

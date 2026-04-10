@@ -38,20 +38,23 @@ let parse_http_date = fun date_str ->
           let days_from_years = (years_since_1970 * 365) + leap_years in
           (* Days in months *)
           let is_leap = (year mod 4 = 0 && year mod 100 != 0) || year mod 400 = 0 in
-          let days_in_month = [ 31; if is_leap then
+          let days_in_month = [
+            31;
+            if is_leap then
               29
             else
               28;
-              31;
-              30;
-              31;
-              30;
-              31;
-              31;
-              30;
-              31;
-              30;
-              31 ]
+            31;
+            30;
+            31;
+            30;
+            31;
+            31;
+            30;
+            31;
+            30;
+            31
+          ]
           in
           let days_from_months = List.take month days_in_month
           |> List.fold_left (fun acc days -> acc + days) 0 in
