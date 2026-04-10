@@ -13,7 +13,6 @@ type inline_node =
   | Raw_html of string
   | Link of { label: inline_node list; destination: string; title: string option }
   | Image of { alt: inline_node list; destination: string; title: string option }
-
 (** Parsed table row. *)
 type table_row = {
   (** Cell content for each table column. *)
@@ -27,7 +26,6 @@ and table_alignment =
   | Left
   | Center
   | Right
-
 (** Parsed block-level markdown content. *)
 type block_node =
   | Heading of { level: int; inlines: inline_node list; span: Ceibo.Span.t }
@@ -47,7 +45,6 @@ type block_node =
   | Raw_html of { html: string; span: Ceibo.Span.t }
   | Table of { header: table_row; rows: table_row list; span: Ceibo.Span.t }
   | Error_block of { message: string; span: Ceibo.Span.t }
-
 (** Markdown flavor.
 
     Use [Markdown] for baseline markdown parsing and [Gfm] when you want
@@ -56,7 +53,6 @@ type block_node =
 type flavor =
   Markdown
   | Gfm
-
 (** Result of parsing raw markdown source. *)
 type parsed = {
   (** Original source text. *)

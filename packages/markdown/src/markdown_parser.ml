@@ -106,7 +106,7 @@ let string_all_equal = fun char text ->
 
 let line_end = fun line -> line.start + String.length line.text
 
-let make_span = fun ~start ~len -> Ceibo.Span.make ~start ~end_:((start + len))
+let make_span = fun ~start ~len -> Ceibo.Span.make ~start ~end_:(start + len)
 
 let line_is_blank = fun line ->
   let len = String.length line in
@@ -793,7 +793,7 @@ let parse_fenced_code_block = fun lines start ->
                 else
                   String.concat "\n" code_lines ^ "\n"
               in
-              let span = make_span ~start:first.start ~len:((line_end first - first.start)) in
+              let span = make_span ~start:first.start ~len:(line_end first - first.start) in
               let found = { kind = "fence"; text = marker_text } in
               let diag = unclosed_fenced_code_block ~found ~opener:marker_text ~span in
               let children = (

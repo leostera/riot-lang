@@ -135,7 +135,6 @@ type fixture = {
   example: int option;
   section: string option;
 }
-
 (** High-level parse result returned by [parse] and [parse_gfm]. *)
 type parse_result = {
   (** Root green syntax tree. *)
