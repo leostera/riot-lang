@@ -522,7 +522,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           }
       | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
           Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-          |> Result.expect ~msg:(("Failed to materialize package exports for " ^ package.name));
+          |> Result.expect ~msg:("Failed to materialize package exports for " ^ package.name);
           let artifact = Riot_store.Store.save
             store
             ~package:package.name
@@ -531,7 +531,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             ~hash:package_hash
             ~sandbox_dir
             ~outs:package_outputs
-          |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ package.name)) in
+          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package.name) in
           if emit_visible_progress && List.length ocamlc_warnings > 0 then
             Telemetry.emit
               (

@@ -252,7 +252,7 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     store
     ~exports:runtime.export_entries
     ~target_dir:runtime.target_dir
-  |> Result.expect ~msg:(("Failed to materialize package exports for " ^ runtime.package.name));
+  |> Result.expect ~msg:("Failed to materialize package exports for " ^ runtime.package.name);
   let sandbox_dir = Sandbox.get_dir runtime.sandbox in
   let package_outputs =
     collect_package_artifact_outputs
@@ -269,7 +269,7 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ~hash:runtime.hash
     ~sandbox_dir
     ~outs:package_outputs
-  |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ runtime.package.name)) in
+  |> Result.expect ~msg:("Failed to save package hash artifact for " ^ runtime.package.name) in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
     |> Iter.Iterator.to_list
@@ -631,7 +631,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_graph
                 ~package
                 ~package_key
-                ~reason:(("needs " ^ String.concat ", " names));
+                ~reason:("needs " ^ String.concat ", " names);
               let _ = HashMap.remove pending_planning package_key in
               ()
             )
@@ -701,7 +701,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     package_graph
                     ~package
                     ~package_key
-                    ~reason:(("needs " ^ String.concat ", " names));
+                    ~reason:("needs " ^ String.concat ", " names);
                   let _ = HashMap.remove pending_planning package_key in
                   ()
               | Ok (Cached {

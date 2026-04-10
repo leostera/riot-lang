@@ -438,7 +438,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
             });
           let _ = Riot_store.Store.promote store artifact.Riot_store.Artifact.hash ~target_dir:sandbox_dir
           |> Result.expect
-            ~msg:(("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)) in
+            ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id) in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
           Telemetry.emit
@@ -558,7 +558,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                       ~sandbox_dir
                       ~outs:(List.map (Path.join sandbox_dir) outputs)
                     |> Result.expect
-                      ~msg:(("Failed to store action artifact for node " ^ G.Node_id.to_string node.id)) in
+                      ~msg:("Failed to store action artifact for node " ^ G.Node_id.to_string node.id) in
                     Telemetry.emit
                       Telemetry_events.(
                         ActionCompleted {
@@ -599,8 +599,8 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                           ~sandbox_dir
                           ~outs:abs_outputs
                         |> Result.expect
-                          ~msg:(("Failed to store action artifact for node "
-                          ^ G.Node_id.to_string node.id)) in
+                          ~msg:("Failed to store action artifact for node "
+                          ^ G.Node_id.to_string node.id) in
                         Telemetry.emit
                           Telemetry_events.(
                             ActionCompleted {
