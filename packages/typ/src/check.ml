@@ -51,6 +51,7 @@ type graph_source = {
 type graph_group = {
   id: module_id;
   module_name: string;
+  internal_name: Session.LocalModules.InternalName.t;
   sources: graph_source list;
   local_alias_names: string list;
   public_module_names: string list;
@@ -69,7 +70,7 @@ type external_ambient = {
 
 type package_graph = {
   groups: graph_group array;
-  group_ids_by_module_name: (string, module_id) Collections.HashMap.t;
+  candidate_ids_by_required_name: (string, module_id list) Collections.HashMap.t;
   external_ambient: external_ambient;
 }
 
@@ -181,15 +182,49 @@ let local_alias_names_for_group = fun module_name sources ->
   |> List.filter (fun alias_name -> not (Collections.HashSet.contains public_name_set alias_name)) in
   (alias_names, public_module_names)
 
+let visible_names_of_group = fun (group: graph_group) ->
+  dedupe_preserving_order
+    (group.module_name
+    :: (group.internal_name
+    |> Session.LocalModules.local_module_aliases_of_internal_name
+    |> List.map Session.LocalModules.AmbientName.to_string))
+
+let candidate_ids_by_required_name = fun groups ->
+  let by_name_rev = Collections.HashMap.with_capacity (Array.length groups * 4) in
+  groups |> Array.iter
+    (fun (group: graph_group) ->
+      visible_names_of_group group |> List.iter
+        (fun visible_name ->
+          let existing_rev =
+            match Collections.HashMap.get by_name_rev visible_name with
+            | Some existing_rev -> existing_rev
+            | None -> []
+          in
+          let _ = Collections.HashMap.insert by_name_rev visible_name (group.id :: existing_rev) in
+          ()));
+  let by_name = Collections.HashMap.with_capacity (Array.length groups * 4) in
+  Collections.HashMap.iter
+    (fun visible_name module_ids_rev ->
+      let _ = Collections.HashMap.insert by_name visible_name (List.rev module_ids_rev) in
+      ())
+    by_name_rev;
+  by_name
+
 let best_matching_local_module_ids = fun graph ~current_module_name ~required_module_name ->
-  let current_module_name = Session.LocalModules.InternalName.of_string current_module_name in
-  let required_module_name = Session.LocalModules.RequiredName.of_string required_module_name in
   let best_depth = ref None in
   let matches_rev = ref [] in
+  let candidate_ids =
+    match Collections.HashMap.get
+      graph.candidate_ids_by_required_name
+      (Session.LocalModules.RequiredName.to_string required_module_name) with
+    | Some candidate_ids -> candidate_ids
+    | None -> []
+  in
   let () =
-    graph.groups
-    |> Array.iter
-      (fun (group: graph_group) ->
+    candidate_ids
+    |> List.iter
+      (fun candidate_id ->
+        let group = graph.groups.(candidate_id) in
         if
           not
             (String.equal
@@ -199,7 +234,7 @@ let best_matching_local_module_ids = fun graph ~current_module_name ~required_mo
           match Session.LocalModules.contextual_match_depth
             ~current_module_name
             ~required_module_name
-            ~candidate_module_name:(Session.LocalModules.InternalName.of_string group.module_name) with
+            ~candidate_module_name:group.internal_name with
           | None -> ()
           | Some depth ->
               let current_best = Option.unwrap_or ~default:depth !best_depth in
@@ -214,24 +249,25 @@ let best_matching_local_module_ids = fun graph ~current_module_name ~required_mo
   List.rev !matches_rev
 
 let missing_requirements_of_source = fun graph config (source: prepared_source) ->
+  let current_module_name = Session.LocalModules.InternalName.of_string source.internal_module_name in
   let missing_rev = ref [] in
   let required_local_ids_rev = ref [] in
   let () =
     module_dependencies_of_source source
     |> List.iter
       (fun required_module_name ->
-        let local_ids = best_matching_local_module_ids
-          graph
-          ~current_module_name:source.internal_module_name
-          ~required_module_name in
+        let required_module_name = Session.LocalModules.RequiredName.of_string required_module_name in
+        let local_ids = best_matching_local_module_ids graph ~current_module_name ~required_module_name in
         if not (List.is_empty local_ids) then
           required_local_ids_rev := List.rev_append local_ids !required_local_ids_rev
         else if
           not
-            (LoadedModules.contains config.TypConfig.loaded_modules ~module_name:required_module_name)
+            (LoadedModules.contains
+              TypConfig.(config.loaded_modules)
+              ~module_name:(Session.LocalModules.RequiredName.to_string required_module_name))
         then
           missing_rev := Session.MissingRequirements.MissingModuleSummary {
-            module_name = required_module_name;
+            module_name = Session.LocalModules.RequiredName.to_string required_module_name;
             requested_by = [ source.source.source_id ]
           }
           :: !missing_rev)
@@ -262,15 +298,7 @@ let external_ambient_of_loaded_modules = fun (loaded_modules: LoadedModules.t) :
 let build_package_graph = fun ~config ~ordered_sources ->
   let grouped_sources = grouped_sources_by_internal_module ordered_sources in
   let grouped_sources_array = grouped_sources |> Array.of_list in
-  let group_ids_by_module_name = Collections.HashMap.with_capacity (List.length grouped_sources) in
-  let () =
-    grouped_sources
-    |> List.iteri
-      (fun module_id (module_name, _sources) ->
-        let _ = Collections.HashMap.insert group_ids_by_module_name module_name module_id in
-        ())
-  in
-  let external_ambient = external_ambient_of_loaded_modules config.TypConfig.loaded_modules in
+  let external_ambient = external_ambient_of_loaded_modules TypConfig.(config.loaded_modules) in
   let groups =
     grouped_sources_array
     |> Array.mapi
@@ -279,17 +307,22 @@ let build_package_graph = fun ~config ~ordered_sources ->
         {
           id = module_id;
           module_name;
+          internal_name = Session.LocalModules.InternalName.of_string module_name;
           sources = [];
           local_alias_names;
           public_module_names;
           dependency_ids = [||];
         })
   in
+  let graph = {
+    groups;
+    candidate_ids_by_required_name = candidate_ids_by_required_name groups;
+    external_ambient
+  } in
   let groups =
     Array.mapi
       (fun module_id (group: graph_group) ->
-        let module_name, sources = grouped_sources_array.(module_id) in
-        let graph = { groups; group_ids_by_module_name; external_ambient } in
+        let (_module_name, sources) = grouped_sources_array.(module_id) in
         let graph_sources =
           sources
           |> List.map
@@ -318,7 +351,7 @@ let build_package_graph = fun ~config ~ordered_sources ->
         { group with sources = graph_sources; dependency_ids })
       groups
   in
-  { groups; group_ids_by_module_name; external_ambient }
+  { graph with groups }
 
 let cycle_module_ids = fun path repeated_id ->
   let rec loop seen = function

@@ -130,6 +130,31 @@ let test_local_module_aliases_include_public_wrapper_spellings = fun _ctx ->
     ~actual:aliases;
   Ok ()
 
+let test_contextual_local_module_depth_prefers_deeper_shared_prefix = fun _ctx ->
+  let current_module_name = LocalModules.InternalName.of_string "Kernel_new__Net__Tcp_listener__Unix" in
+  let required_module_name = LocalModules.RequiredName.of_string "Addr" in
+  let candidate_module_name = LocalModules.InternalName.of_string "Kernel_new__Net__Tcp_listener__Addr" in
+  let depth = LocalModules.contextual_match_depth ~current_module_name ~required_module_name ~candidate_module_name in
+  Test.assert_equal ~expected:(Some 3) ~actual:depth;
+  Ok ()
+
+let test_contextual_local_module_depth_keeps_single_segment_suffixes = fun _ctx ->
+  let current_module_name = LocalModules.InternalName.of_string "Kernel_new__Net__Ip_addr" in
+  let required_module_name = LocalModules.RequiredName.of_string "Unix" in
+  let direct_candidate = LocalModules.InternalName.of_string "Kernel_new__Net__Ip_addr__Unix" in
+  let cousin_candidate = LocalModules.InternalName.of_string "Kernel_new__Net__Addr__Unix" in
+  let direct_depth = LocalModules.contextual_match_depth
+    ~current_module_name
+    ~required_module_name
+    ~candidate_module_name:direct_candidate in
+  let cousin_depth = LocalModules.contextual_match_depth
+    ~current_module_name
+    ~required_module_name
+    ~candidate_module_name:cousin_candidate in
+  Test.assert_equal ~expected:(Some 3) ~actual:direct_depth;
+  Test.assert_equal ~expected:(Some 2) ~actual:cousin_depth;
+  Ok ()
+
 let trace_debug = fun snapshot source_id ->
   match Query.analysis_of_source snapshot source_id with
   | None -> []
@@ -8948,6 +8973,8 @@ let () =
     ~main:(fun ~args ->
       let tests = [
         Test.case "local module aliases include public wrapper spellings" test_local_module_aliases_include_public_wrapper_spellings;
+        Test.case "contextual local module depth prefers deeper shared prefix" test_contextual_local_module_depth_prefers_deeper_shared_prefix;
+        Test.case "contextual local module depth keeps single segment suffixes" test_contextual_local_module_depth_keeps_single_segment_suffixes;
         Test.case "source id stays stable across updates" test_source_id_stays_stable_across_updates;
         Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
         Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
