@@ -1,40 +1,61 @@
-# Typ Performance Loop
+# Typ Rewrite Loop
 
 Goal:
 
 - keep `riot run riot -- check -p kernel-new --json` correct
-- drive cold-start wall-clock time under `100ms`
+- drive cold-start package checking under `100ms`
+- use the OCaml oracle corpus as the correctness rail while we rewrite
 
-Correct means the summary stays:
+Correct currently means:
 
 - `{"files":118,"read_failures":0,"diagnostics":0,"warnings":0}`
+
+## Target Architecture
+
+Build one strong package-check engine:
+
+- one authoritative package-check path
+- incremental by module group
+- type once, pair once, persist once
+- keep authoritative module typings loaded in memory as later groups type
+- snapshots stay for query/editor workflows, not package checks
+
+Core checker rules:
+
+- semantic identity uses ids, not strings
+- hot indexes use maps/arrays, not linear lists
+- no host-side reconstruction pass to recover authoritative module typings
+- no query/editor payload on the plain check path
+- no compatibility layers kept alive after a refactor lands
+
+When in doubt, match the spirit of `vendor/ocaml/typing`:
+
+- `Ident.t` / `Path.t` style semantic identity
+- `typemod` style incremental environment growth
+- one authoritative reusable module artifact
 
 ## Loop
 
 For every slice:
 
-1. Pick one concrete task.
-2. Read the relevant `packages/typ/docs/checker/*`.
-3. Read the relevant `vendor/ocaml/typing/*`.
-4. Ask:
-   - what does OCaml store once that `typ` recomputes?
-   - what hot path still uses names/paths where OCaml uses ids/descriptors?
-   - what structure are we still walking that OCaml skips by invariant?
-5. Implement the slice in `packages/typ`, plus `packages/riot-check` /
-   `packages/riot-lsp` only when required by the new `typ` API.
-6. Run the validation stack.
-7. Measure:
-
-   ```sh
-   time riot run riot -- check -p kernel-new --json
-   ```
-
-8. Compare runtime and semantic summary to the previous checkpoint.
-9. Commit only that slice with a conventional commit.
-10. Update this file.
-11. Repeat.
-
-Slices must stay small enough to measure, understand, and revert independently.
+1. Pick one architectural task that can materially move `kernel-new`.
+2. Read:
+   - `packages/typ/docs/checker/index.md`
+   - `packages/typ/docs/checker/fast_package_check.md`
+   - the relevant feature doc under `packages/typ/docs/checker/*`
+   - the matching `vendor/ocaml/typing/*` code
+3. Write down the OCaml comparison:
+   - what OCaml stores once that `typ` still rebuilds
+   - what OCaml keys by ids that `typ` still keys by strings
+   - what invariant lets OCaml skip work that `typ` still pays for
+4. Implement the slice in `packages/typ`.
+   Touch `packages/riot-check` or `packages/riot-lsp` only when the new `typ` API requires it.
+5. Validate.
+6. Measure `kernel-new`.
+7. Check oracle coverage on the affected surface.
+8. Commit that slice with a conventional commit.
+9. Update this file if the loop, benchmark, or architecture target changed.
+10. Repeat.
 
 ## Validation
 
@@ -45,20 +66,44 @@ riot fix ./packages/typ
 riot fix ./packages/riot-check
 riot fmt ./packages/typ
 riot fmt ./packages/riot-check
-riot build typ riot-check riot-lsp
+riot build typ riot-check riot-lsp riot-cli
 riot test -p typ
 riot test -p riot-lsp
-riot bench -p typ
-riot run riot -- check -p kernel-new
+riot run riot -- check -p kernel-new --json
 ```
 
 Notes:
 
 - `riot fix` may still report existing backlog; do not make it worse.
-- `riot bench -p typ` currently has no suites; keep running it anyway.
-- if `kernel-new` fails before `typ` runs, fix the consumer/planner path first.
-- if semantics change, inspect diagnostics and snapshot drift before deciding
-  whether the old or new behavior is correct.
+- if `kernel-new` fails before `typ` runs, fix the consumer path first.
+- if behavior changes, inspect the semantic result before approving snapshot churn.
+
+## Oracle
+
+The oracle corpus under `packages/typ/tests/fixtures/oracle` is the correctness rail for the rewrite.
+
+Always run:
+
+```sh
+env TYP_ORACLE_SKIP_SNAPSHOT=1 riot test typ:oracle_fixture_tests
+```
+
+Use focused runs while developing:
+
+```sh
+env TYP_ORACLE_SKIP_SNAPSHOT=1 TYP_ORACLE_START=1 TYP_ORACLE_END=200 riot test typ:oracle_fixture_tests
+```
+
+```sh
+env TYP_ORACLE_SKIP_SNAPSHOT=1 TYP_ORACLE_FILTER=polyvariant riot test typ:oracle_fixture_tests
+```
+
+Keep reporting two numbers:
+
+- corpus coverage: how much of the raw oracle corpus we actively exercise
+- typeable surface coverage: how much of the supported language surface is green
+
+If `ocamlc -i` emits an interface that `syn` cannot parse, turn that into a `syn` fixture.
 
 ## Performance
 
@@ -71,29 +116,27 @@ time riot run riot -- check -p kernel-new --json
 Always compare:
 
 - wall-clock runtime
+- emitted `check_summary` timing
 - semantic summary
-- `files`
-- `read_failures`
-- `diagnostics`
-- `warnings`
+- oracle pass/fail on the touched surface
 
-Use the no-deps floors when a slice touches checker internals:
+For event analysis, keep the JSON stream:
 
 ```sh
-cd /Users/leostera/Developer/github.com/leostera/riot/packages/riot-check/tests/workspace_fixtures/no_deps_single
-time riot check -p solo --json | grep check_summary
+riot run riot -- check -p kernel-new --json > /tmp/kernel-new.jsonl
 ```
 
+Use the direct built binary when profiling so wrapper overhead does not dominate:
+
 ```sh
-cd /Users/leostera/Developer/github.com/leostera/riot/packages/riot-check/tests/workspace_fixtures/no_deps_pair
-time riot check -p leaf --json | grep check_summary
+_build/debug/aarch64-apple-darwin/out/riot-cli/riot check -p kernel-new --json
 ```
 
 ## Xctrace
 
-Use `xctrace` when runtime events show a hot phase but not the hot code path.
+Use `xctrace` after event timing tells you which phase is hot.
 
-Record a bounded cold-start trace:
+Record:
 
 ```sh
 xcrun xctrace record \
@@ -102,10 +145,10 @@ xcrun xctrace record \
   --output /tmp/kernel-new.trace \
   --target-stdout /tmp/kernel-new.jsonl \
   --launch -- \
-  riot run riot -- check -p kernel-new --json
+  _build/debug/aarch64-apple-darwin/out/riot-cli/riot check -p kernel-new --json
 ```
 
-Export it:
+Export:
 
 ```sh
 xcrun xctrace export --input /tmp/kernel-new.trace --toc > /tmp/kernel-new-toc.xml
@@ -117,81 +160,29 @@ xcrun xctrace export \
 
 Look for:
 
-- GC / allocation-heavy stacks
-- structural compare (`compare_val`, polymorphic equality/compare)
-- list-based lookups (`List.mem`, `List.assoc_opt`, etc.)
-- repeated parser / CST work
-- time after `typ_prepare_snapshot_finish` in `riot-check`
+- repeated module-summary reconstruction
+- string/path hashing and structural compare
+- list-based lookup or merge churn
+- GC/allocation spikes
+- retained query payload on check-only paths
 
-Use `xctrace` after event-level timing, not instead of comparing against
-`vendor/ocaml/typing/*`.
+Use profiler output to choose the next architectural cut, not to justify micro-tweaks.
 
-## Current Items
+## Current Rewrite Priorities
 
-- [ ] remove the remaining pre-first-pair work in `Session.prepare_snapshot`
-- [ ] flatten snapshot/shared cache identities everywhere
-- [ ] cache the fully built initial infer env per semantic input
-- [ ] finish stopping rebuilds / requalification of ambient exports and type decls
-- [x] cache merged initial envs by ambient-surface identity instead of source id
-- [ ] cut `List.mem` / assoc / remove-assoc hot paths out of session checking
-- [ ] remove remaining solver-time / checker-time name resolution work
-
-## Checkpoints
-
-For each clean slice, record:
-
-- slice name
-- commit hash
-- `kernel-new` runtime
-- semantic summary
-- optional no-deps floors if checker internals changed
-
-Current attempted slice:
-
-- `Session.prepare_snapshot` deferred nested-module prefix discovery until direct local/loaded resolution leaves unresolved module names
-- commit hash: pending (`packages/typ/src/session/Session.ml` already had unrelated in-flight changes in this worktree)
-- `kernel-new` runtime: `real 8.52s` from `/usr/bin/time -p` under contention from a stuck `riot test -p typ` `session_tests` process; live JSON event timing moved total check time from `7368ms` to `6792ms` and `typ_prepare_snapshot` from `4822ms` to `282ms`
-- semantic summary: `{"files":118,"read_failures":0,"diagnostics":0,"warnings":0}`
-- no-deps single floor: `real 0.06s`, unchanged from `real 0.06s`
-- no-deps pair floor: `real 0.04s`, down from `real 0.05s`
-- notes: `riot run riot -- check -p kernel-new --json` kept the summary stable and moved the first `typ_module_pairing_start` to after `typ_prepare_snapshot_finish`; `riot build typ riot-check riot-lsp`, `riot test -p riot-lsp`, `riot bench -p typ`, and `riot run riot -- check -p kernel-new` passed; `riot test -p typ` still reported the existing snapshot drift from the current prelude/bootstrap worktree state and then remained busy in `session_tests` for >20 minutes, so the wall-clock benchmark should be treated as contended
-
-Latest measured slice:
-
-- `Snapshot` keyed local ambient + initial infer env caches by ambient surface
-- commit hash: pending (`packages/typ/src/session/Snapshot.ml` already had unrelated in-flight changes in this worktree)
-- `kernel-new` runtime: `real 6.05s` after the slice, down from `real 10.66s`
-- semantic summary: `{"files":118,"read_failures":0,"diagnostics":0,"warnings":0}`
-- no-deps single floor: `real 0.06s`, up from `real 0.05s`
-- no-deps pair floor: `real 0.05s`, unchanged from `real 0.05s`
-- notes: `riot test -p typ` still reports existing snapshot drift from the current prelude/bootstrap worktree state, but `riot build typ riot-check riot-lsp`, `riot test -p riot-lsp`, `riot bench -p typ`, `riot run riot -- check -p kernel-new`, and the live JSON summary all stayed semantically stable
-
-Previous measured slice:
-
-- `Snapshot` loaded ambient module surfaces cache
-- commit hash: pending (`packages/typ/src/infer/checker.ml`, `packages/typ/src/infer/checker.mli`, and `packages/typ/src/session/Snapshot.ml` already had unrelated in-flight changes)
-- `kernel-new` runtime: `real 10.66s` after the slice, down from `real 13.35s`
-- semantic summary: `{"files":118,"read_failures":0,"diagnostics":0,"warnings":0}`
-- no-deps single floor: `real 0.05s`, down from `real 0.08s`
-- no-deps pair floor: `real 0.05s`, down from `real 0.10s`
-- notes: `riot test -p typ` still has existing snapshot drift from the current prelude/bootstrap worktree state, but `riot build typ riot-check riot-lsp`, `riot test -p riot-lsp`, and the live `kernel-new` check all stayed semantically stable
-
-## Heuristics
-
-- prefer OCaml algorithmic parity over guessed micro-optimizations
-- move env work toward stored symbolic tables, not repeated flattening
-- move descriptor work toward ids, not names or paths
-- move solver work toward levels, pools, and local copy scopes
-- correctness fixes still need benchmarking
+1. finish replacing the old package-check orchestration with one incremental authoritative engine
+2. remove remaining string-heavy module identity from the package-check core
+3. remove list-heavy graph and merge work from hot paths
+4. split check payload from query/editor payload all the way through the package-check engine
+5. persist authoritative module typings exactly once, at module completion
+6. keep snapshot/query logic separate from the build-check path
 
 ## Do Not
 
-- do not optimize without checking the relevant OCaml typing code first
-- do not treat profiler output as a substitute for algorithmic comparison
-- do not land giant rewrites without checkpoints
-- do not keep semantically neutral slowdowns
-- do not ignore semantic-summary drift when runtime improves
-- do not let strings / `SurfacePath` leak deeper into hot paths
-- do not reintroduce flattened env reconstruction in lookup paths
-- do not mix unrelated work into one performance slice
-- do not commit a slice without recording its runtime
+- do not optimize before comparing against `vendor/ocaml/typing`
+- do not accept string ids or list scans in semantic hot paths
+- do not reintroduce dual package-check flows
+- do not carry query/editor payload through `riot check`
+- do not land compatibility scaffolding and call the rewrite done
+- do not trade correctness for speed
+- do not commit without recording `kernel-new` timing and oracle status

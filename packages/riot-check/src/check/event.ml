@@ -36,26 +36,11 @@ type t =
       root_group_count: int;
       target_path_count: int
     }
-  | PackageSnapshotPersistenceStarted of {
-      package_name: string;
-      root_target_count: int
-    }
-  | PackageSnapshotPersistenceFinished of {
-      package_name: string;
-      saved_module_count: int
-    }
-  | PackageSnapshotCheckedFilesStarted of {
-      package_name: string;
-      root_target_count: int
-    }
-  | PackageSnapshotCheckedFilesFinished of {
-      package_name: string;
-      checked_file_count: int
-    }
-  | PackageSnapshotReloadStarted of {
-      package_name: string;
-      root_target_count: int
-    }
+  | PackageSnapshotPersistenceStarted of { package_name: string; root_target_count: int }
+  | PackageSnapshotPersistenceFinished of { package_name: string; saved_module_count: int }
+  | PackageSnapshotCheckedFilesStarted of { package_name: string; root_target_count: int }
+  | PackageSnapshotCheckedFilesFinished of { package_name: string; checked_file_count: int }
+  | PackageSnapshotReloadStarted of { package_name: string; root_target_count: int }
   | PackageSnapshotReloadFinished of {
       package_name: string;
       rooted_module_count: int;
@@ -63,22 +48,10 @@ type t =
       public_module_typing_count: int;
       loaded_module_count: int
     }
-  | PackageCheckedGroupAssembleStarted of {
-      package_name: string;
-      target_path_count: int
-    }
-  | PackageCheckedGroupAssembleFinished of {
-      package_name: string;
-      checked_file_count: int
-    }
-  | PackageCheckedGroupEmitStarted of {
-      package_name: string;
-      checked_file_count: int
-    }
-  | PackageCheckedGroupEmitFinished of {
-      package_name: string;
-      checked_file_count: int
-    }
+  | PackageCheckedGroupAssembleStarted of { package_name: string; target_path_count: int }
+  | PackageCheckedGroupAssembleFinished of { package_name: string; checked_file_count: int }
+  | PackageCheckedGroupEmitStarted of { package_name: string; checked_file_count: int }
+  | PackageCheckedGroupEmitFinished of { package_name: string; checked_file_count: int }
   | Typ of { event: Typ.Event.t }
   | File of State.checked_file
   | Diagnostic of { path: Path.t; diagnostic_index: int; diagnostic: Diagnostic.t }

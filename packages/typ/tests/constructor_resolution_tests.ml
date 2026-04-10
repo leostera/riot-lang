@@ -49,8 +49,7 @@ let export_scheme = fun snapshot source_id name ->
           if SurfacePath.equal candidate_name (SurfacePath.of_string name) then
             Some scheme
           else
-            None)
-  |> Option.map TypePrinter.scheme_to_string
+            None) |> Option.map TypePrinter.scheme_to_string
   | Some FileSummary.NoExport
   | None -> None
 

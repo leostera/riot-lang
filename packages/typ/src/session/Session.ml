@@ -146,8 +146,7 @@ let remove_source_indexes = fun session (source: Source.t) ->
         ());
   session
 
-let loaded_modules_key = fun loaded_modules ->
-  LoadedModules.stable_key loaded_modules
+let loaded_modules_key = fun loaded_modules -> LoadedModules.stable_key loaded_modules
 
 let create_source = fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
@@ -273,10 +272,12 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
                 ~free_names:[ module_name ])
           env
       in
-      let env = LoadedModules.fold
-        (fun _module_name summary env -> add_summary_paths env summary)
-        loaded_modules
-        Syn.Deps.Env.empty in
+      let env =
+        LoadedModules.fold
+          (fun _module_name summary env -> add_summary_paths env summary)
+          loaded_modules
+          Syn.Deps.Env.empty
+      in
       let _ = Collections.HashMap.insert session.deps_envs_by_loaded_modules key env in
       (key, env)
 
@@ -685,11 +686,11 @@ let prepare_snapshot = fun session ~roots ->
   TypConfig.emit_event
     session.config
     (fun () ->
-        Event.PrepareSnapshotStarted {
-          roots;
-          root_modules = root_module_names session roots;
-          session_source_count = List.length session.sources;
-          loaded_module_count = LoadedModules.len session.config.loaded_modules
+      Event.PrepareSnapshotStarted {
+        roots;
+        root_modules = root_module_names session roots;
+        session_source_count = List.length session.sources;
+        loaded_module_count = LoadedModules.len session.config.loaded_modules
       });
   let rec hydrate_session session =
     let missing_modules = collect_missing_module_summaries session roots in

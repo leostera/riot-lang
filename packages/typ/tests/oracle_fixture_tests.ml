@@ -65,16 +65,14 @@ let oracle_name_filter = fun basename ->
   | _ -> true
 
 let skipped_fixture_basename = fun basename ->
-  contains_substring ~needle:"array_" basename
-  || contains_substring ~needle:"recursive_modules" basename
+  contains_substring ~needle:"array_" basename || contains_substring ~needle:"recursive_modules" basename
 
 let fixture_filter = fun path ->
   let basename = oracle_fixture_basename path in
   match Path.extension path with
-  | Some ".ml" when
-      oracle_range_filter basename
-      && oracle_name_filter basename
-      && not (skipped_fixture_basename basename) -> `keep
+  | Some ".ml" when oracle_range_filter basename
+  && oracle_name_filter basename
+  && not (skipped_fixture_basename basename) -> `keep
   | _ -> `skip
 
 let skip_snapshot_assertion = fun () ->
@@ -132,88 +130,95 @@ let check_source_text = fun ~filename text ->
   match Syn.build_cst parse_result with
   | Ok cst ->
       let config = Config.default in
-      let session = with_check_source_stage
-        ~filename
-        ~stage:"session_empty"
-        (fun () -> Session.empty ~config) in
+      let session =
+        with_check_source_stage ~filename ~stage:"session_empty" (fun () -> Session.empty ~config)
+      in
       let origin = Source.Path filename in
-      let module_name = with_check_source_stage
-        ~filename
-        ~stage:"infer_module_name"
-        (fun () -> Source.infer_module_name origin) in
+      let module_name =
+        with_check_source_stage
+          ~filename
+          ~stage:"infer_module_name"
+          (fun () -> Source.infer_module_name origin)
+      in
       let implicit_opens = [] in
-      let source_hash = with_check_source_stage
-        ~filename
-        ~stage:"source_hash"
-        (fun () -> Source.hash ~implicit_opens ~cst) in
-      let (session, source_id) = with_check_source_stage
-        ~filename
-        ~stage:"create_source"
-        (fun () ->
-          Session.create_source
-            session
-            ~kind:Source.File
-            ~module_name
-            ~implicit_opens
-            ~origin
-            ~source_hash
-            ~parse_result
-            ~cst) in
-      let source = with_check_source_stage
-        ~filename
-        ~stage:"make_prepared_source"
-        (fun () ->
-          Source.make_prepared
-            ~source_id
-            ~kind:Source.File
-            ~module_name
-            ~implicit_opens
-            ~origin
-            ~revision:0
-            ~source_hash
-            ~parse_result
-            ~cst) in
-      let fallback_analysis = with_check_source_stage
-        ~filename
-        ~stage:"fallback_source_analysis"
-        (fun () -> Session.SourceAnalysis.analyze ~config source) in
-      let _ = with_check_source_stage
-        ~filename
-        ~stage:"direct_module_pairing_from_fallback_analysis"
-        (fun () ->
-          Session.ModulePairing.of_sources
-            ~module_name
-            [ (source, fallback_analysis) ]) in
-      let prepared_snapshot = with_check_source_stage
-        ~filename
-        ~stage:"prepare_snapshot"
-        (fun () ->
-          Session.prepare_snapshot session ~roots:[ source_id ]) in
-      let analysis = with_check_source_stage
-        ~filename
-        ~stage:"query_analysis_of_source"
-        (fun () ->
-          match prepared_snapshot with
-          | Ok snapshot -> (
-              match Query.analysis_of_source snapshot source_id with
-              | Some analysis -> analysis
-              | None -> fallback_analysis
-            )
-          | Error _ -> fallback_analysis) in
-      let (item_tree, body_arena, origin_map) = with_check_source_stage
-        ~filename
-        ~stage:"extract_semantic_tree"
-        (fun () ->
-          match analysis.semantic_tree with
-          | Some semantic_tree -> (
+      let source_hash =
+        with_check_source_stage
+          ~filename
+          ~stage:"source_hash"
+          (fun () -> Source.hash ~implicit_opens ~cst)
+      in
+      let (session, source_id) =
+        with_check_source_stage
+          ~filename
+          ~stage:"create_source"
+          (fun () ->
+            Session.create_source
+              session
+              ~kind:Source.File
+              ~module_name
+              ~implicit_opens
+              ~origin
+              ~source_hash
+              ~parse_result
+              ~cst)
+      in
+      let source =
+        with_check_source_stage
+          ~filename
+          ~stage:"make_prepared_source"
+          (fun () ->
+            Source.make_prepared
+              ~source_id
+              ~kind:Source.File
+              ~module_name
+              ~implicit_opens
+              ~origin
+              ~revision:0
+              ~source_hash
+              ~parse_result
+              ~cst)
+      in
+      let fallback_analysis =
+        with_check_source_stage
+          ~filename
+          ~stage:"fallback_source_analysis"
+          (fun () -> Session.SourceAnalysis.analyze ~config source)
+      in
+      let _ =
+        with_check_source_stage
+          ~filename
+          ~stage:"direct_module_pairing_from_fallback_analysis"
+          (fun () -> Session.ModulePairing.of_sources ~module_name [ (source, fallback_analysis) ])
+      in
+      let prepared_snapshot =
+        with_check_source_stage
+          ~filename
+          ~stage:"prepare_snapshot"
+          (fun () -> Session.prepare_snapshot session ~roots:[ source_id ])
+      in
+      let analysis =
+        with_check_source_stage ~filename ~stage:"query_analysis_of_source"
+          (fun () ->
+            match prepared_snapshot with
+            | Ok snapshot -> (
+                match Query.analysis_of_source snapshot source_id with
+                | Some analysis -> analysis
+                | None -> fallback_analysis
+              )
+            | Error _ -> fallback_analysis)
+      in
+      let (item_tree, body_arena, origin_map) =
+        with_check_source_stage ~filename ~stage:"extract_semantic_tree"
+          (fun () ->
+            match analysis.semantic_tree with
+            | Some semantic_tree -> (
               Some semantic_tree.item_tree,
               Some semantic_tree.body_arena,
               Some semantic_tree.origin_map
             )
-          | None -> (None, None, None)) in
-      with_check_source_stage
-        ~filename
-        ~stage:"assemble_report"
+            | None -> (None, None, None))
+      in
+      with_check_source_stage ~filename ~stage:"assemble_report"
         (fun () ->
           {
             Check_result.source_id;
@@ -227,9 +232,8 @@ let check_source_text = fun ~filename text ->
             typing_diagnostics = analysis.typing_diagnostics;
             file_summary = analysis.file_summary;
             type_index = analysis.type_index;
-            exports =
-              Session.SourceAnalysis.exports analysis
-              |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
+            exports = Session.SourceAnalysis.exports analysis
+            |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
             item_traces = analysis.item_traces;
             expr_traces = analysis.expr_traces;
           })
@@ -333,9 +337,7 @@ let oracle_stdlib_path =
     | Some path -> path
     | None ->
         let ocamlc_path = oracle_ocamlc_path () in
-        let output = Command.make
-          (Path.to_string ocamlc_path)
-          ~args:[ "-where" ]
+        let output = Command.make (Path.to_string ocamlc_path) ~args:[ "-where" ]
         |> Command.output
         |> Result.expect ~msg:"expected ocamlc -where oracle invocation to spawn" in
         if output.status != 0 then
@@ -347,13 +349,10 @@ let oracle_stdlib_path =
                 str "\nstdout:\n";
                 str output.stdout;
               ]);
-        let path =
-          output.stdout
-          |> String.trim
-          |> Path.of_string
-          |> Result.expect ~msg:"ocamlc -where should return a valid UTF-8 path"
+        let path = output.stdout |> String.trim |> Path.of_string |> Result.expect ~msg:"ocamlc -where should return a valid UTF-8 path" in
+        let () =
+          cached := Some path
         in
-        let () = cached := Some path in
         path
 
 type oracle_command_result = {
@@ -443,10 +442,7 @@ let empty_oracle_signature_parts: oracle_signature_parts = {
   module_type_templates = [];
 }
 
-let merge_oracle_signature_parts = fun
-  (left: oracle_signature_parts)
-  (right: oracle_signature_parts)
-  ->
+let merge_oracle_signature_parts = fun (left: oracle_signature_parts) (right: oracle_signature_parts) ->
   {
     value_exports = left.value_exports @ right.value_exports;
     value_export_types = left.value_export_types @ right.value_export_types;
@@ -632,24 +628,14 @@ and signature_item_parts = fun ~fixture_filename ~source_text ~prefix item ->
       let name = qualify_name prefix (token_list_text declaration.name_tokens) in
       {
         empty_oracle_signature_parts
-        with value_exports = [
-          {
-            name;
-            scheme = core_type_text source_text declaration.type_
-          }
-        ];
+        with value_exports = [ { name; scheme = core_type_text source_text declaration.type_ } ];
         value_export_types = [ (name, declaration.type_) ]
       }
   | Cst.SignatureItem.ExternalDeclaration declaration ->
       let name = qualify_name prefix (token_list_text declaration.name_tokens) in
       {
         empty_oracle_signature_parts
-        with value_exports = [
-          {
-            name;
-            scheme = core_type_text source_text declaration.type_
-          }
-        ];
+        with value_exports = [ { name; scheme = core_type_text source_text declaration.type_ } ];
         value_export_types = [ (name, declaration.type_) ]
       }
   | Cst.SignatureItem.TypeDeclaration declaration ->
@@ -725,9 +711,8 @@ let run_interface_oracle = fun ~fixture_filename ~source_text ->
     | Ok (Cst.Interface interface) -> signature_items_parts
       ~fixture_filename
       ~source_text:interface_text
-      ~prefix:None
-      interface.items
-      |> expand_module_aliases
+      ~prefix:None interface.items
+    |> expand_module_aliases
     | Ok (Cst.Implementation _) -> panic
       (format
         Format.[
@@ -746,20 +731,23 @@ let run_interface_oracle = fun ~fixture_filename ~source_text ->
           str "\ninterface text:\n";
           str interface_text;
         ])
-    | Error (Syn.Cst_builder_error error) -> panic
-      (format
-        Format.[
-          str "failed to build CST from ocamlc -i output for ";
-          str (Path.to_string fixture_filename);
-          str "\nerror:\n";
-          str error.Syn.CstBuilder.message;
-          str "\nsyntax_kind: ";
-          str (Syn.SyntaxKind.to_string error.syntax_kind);
-          str "\ncontext: ";
-          str (String.concat " > " error.context);
-          str "\ninterface text:\n";
-          str interface_text;
-        ])
+    | Error (Syn.Cst_builder_error error) ->
+        panic
+          (
+            format
+              Format.[
+                str "failed to build CST from ocamlc -i output for ";
+                str (Path.to_string fixture_filename);
+                str "\nerror:\n";
+                str error.Syn.CstBuilder.message;
+                str "\nsyntax_kind: ";
+                str (Syn.SyntaxKind.to_string error.syntax_kind);
+                str "\ncontext: ";
+                str (String.concat " > " error.context);
+                str "\ninterface text:\n";
+                str interface_text;
+              ]
+          )
   in
   let value_exports = parts.value_exports |> List.sort compare_value_export |> List.sort_uniq compare_value_export in
   let value_export_types = parts.value_export_types in
@@ -786,14 +774,7 @@ let run_typedtree_oracle = fun ~fixture_filename ~source_text ->
   let result = run_oracle_command
     ~fixture_filename
     ~source_text
-    ~args:[
-      "-nopervasives";
-      "-nostdlib";
-      "-I";
-      Path.to_string stdlib_path;
-      "-dtypedtree";
-      "-c";
-    ] in
+    ~args:[ "-nopervasives"; "-nostdlib"; "-I"; Path.to_string stdlib_path; "-dtypedtree"; "-c"; ] in
   let output = result.output in
   if output.status != 0 then
     panic
@@ -838,8 +819,7 @@ let split_on_needle = fun ~needle text ->
   in
   loop 0 []
 
-let oracle_module_type_templates = fun (interface: oracle_interface) ->
-  interface.module_type_templates
+let oracle_module_type_templates = fun (interface: oracle_interface) -> interface.module_type_templates
 
 let oracle_module_type_template = fun (interface: oracle_interface) module_type_name ->
   oracle_module_type_templates interface |> List.find_opt
@@ -945,14 +925,14 @@ let rec normalize_core_type_with_constraints = fun (interface: oracle_interface)
   | Cst.CoreType.Parenthesized { inner; _ } ->
       normalize_core_type_with_constraints interface constraints inner
   | Cst.CoreType.Tuple { elements; _ } ->
-      elements
-      |> List.map
+      elements |> List.map
         (fun element ->
           match element with
-          | Cst.CoreType.Arrow _ ->
-              "(" ^ normalize_core_type_with_constraints interface constraints element ^ ")"
-          | _ -> normalize_core_type_with_constraints interface constraints element)
-      |> String.concat " * "
+          | Cst.CoreType.Arrow _ -> "("
+          ^ normalize_core_type_with_constraints interface constraints element
+          ^ ")"
+          | _ -> normalize_core_type_with_constraints interface constraints element) |> String.concat
+        " * "
   | Cst.CoreType.Arrow { label=None; parameter_type; result_type; _ } ->
       let (parameter_text, introduced_constraints) =
         match parameter_type with
@@ -961,9 +941,11 @@ let rec normalize_core_type_with_constraints = fun (interface: oracle_interface)
           constraints
           (Option.map Cst.Token.text module_name)
           package_type
-          |> (fun (text, introduced_constraints) -> ("(" ^ text ^ ")", introduced_constraints))
-        | Cst.CoreType.Arrow _ ->
-            ("(" ^ normalize_core_type_with_constraints interface constraints parameter_type ^ ")", [])
+        |> (fun (text, introduced_constraints) -> ("(" ^ text ^ ")", introduced_constraints))
+        | Cst.CoreType.Arrow _ -> (
+          "(" ^ normalize_core_type_with_constraints interface constraints parameter_type ^ ")",
+          []
+        )
         | _ -> (normalize_core_type_with_constraints interface constraints parameter_type, [])
       in
       let result_text = normalize_core_type_with_constraints
@@ -979,54 +961,48 @@ let rec normalize_core_type_with_constraints = fun (interface: oracle_interface)
         package_type in
       "(" ^ text ^ ")"
   | _ ->
-      core_type_text interface.text core_type
-      |> apply_core_type_constraints constraints
-      |> String.trim
+      core_type_text interface.text core_type |> apply_core_type_constraints constraints |> String.trim
 
-and normalize_package_type_constraints = fun
-  (interface: oracle_interface)
-  constraints
-  (package_type: Cst.package_type)
-  ->
-  package_type.constraints
-  |> List.map
+and normalize_package_type_constraints = fun (interface: oracle_interface) constraints (
+  package_type: Cst.package_type
+) ->
+  package_type.constraints |> List.map
     (fun (constraint_: Cst.module_type_constraint) ->
       let type_name =
         match constraint_.constrained_type with
         | Cst.CoreType.Constr { constructor_path; arguments=[]; _ } -> Syn.Cst.Ident.name constructor_path
-          |> Option.unwrap_or
-            ~default:(core_type_text interface.text constraint_.constrained_type |> String.trim)
+        |> Option.unwrap_or
+          ~default:(core_type_text interface.text constraint_.constrained_type |> String.trim)
         | _ -> core_type_text interface.text constraint_.constrained_type |> String.trim
       in
       let replacement = normalize_core_type_with_constraints interface constraints constraint_.replacement_type in
       (type_name, replacement))
 
-and normalize_package_type_with_constraints = fun
-  (interface: oracle_interface)
-  constraints
-  module_name
-  (package_type: Cst.package_type)
-  ->
+and normalize_package_type_with_constraints = fun (interface: oracle_interface) constraints module_name (
+  package_type: Cst.package_type
+) ->
   let package_constraints = normalize_package_type_constraints interface constraints package_type in
   let propagated_constraints =
     match module_name with
-    | Some module_name -> package_constraints |> List.map
-      (fun (type_name, replacement) -> (module_name ^ "." ^ type_name, replacement))
+    | Some module_name -> package_constraints
+    |> List.map (fun (type_name, replacement) -> (module_name ^ "." ^ type_name, replacement))
     | None -> []
   in
   let module_type_name = Syn.Cst.Ident.name package_type.module_type_path
   |> Option.unwrap_or ~default:(ident_text package_type.module_type_path) in
   match oracle_module_type_template interface module_type_name with
   | Some ({ parts; _ }: oracle_module_type_template) ->
-      let values_text = parts.value_exports
-      |> List.map
-        (fun ({ name; scheme }: oracle_value_export) ->
-          let scheme = scheme
-          |> apply_package_constraints package_constraints
-          |> apply_core_type_constraints constraints
-          |> String.trim in
-          "val " ^ name ^ " : " ^ scheme)
-      |> String.concat "; " in
+      let values_text =
+        parts.value_exports
+        |> List.map
+          (fun ({ name; scheme }: oracle_value_export) ->
+            let scheme = scheme
+            |> apply_package_constraints package_constraints
+            |> apply_core_type_constraints constraints
+            |> String.trim in
+            "val " ^ name ^ " : " ^ scheme)
+        |> String.concat "; "
+      in
       ("module sig " ^ values_text ^ " end", propagated_constraints)
   | None ->
       let fallback = "module " ^ module_type_name in
@@ -1309,7 +1285,7 @@ let typ_value_exports = fun (report: Check_result.t) ->
     (fun (name, scheme) ->
       {
         name = SurfacePath.to_string name;
-        scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme;
+        scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme
       })
   |> List.sort compare_value_export
 
@@ -1452,10 +1428,8 @@ let normalize_export_scheme_with_interface = fun (interface: oracle_interface) (
     match oracle_value_export_type interface name with
     | Some core_type -> normalize_core_type_with_constraints interface [] core_type
     | None -> scheme |> normalize_named_package_types interface
-  )
-  |> normalize_scheme_notation
-  |> qualify_local_type_names ~scope:(export_scope name) interface.type_names
-  |> expand_type_aliases interface.type_aliases
+  ) |> normalize_scheme_notation |> qualify_local_type_names ~scope:(export_scope name) interface.type_names |> expand_type_aliases
+    interface.type_aliases
 
 let normalized_oracle_exports_for_comparison = fun (interface: oracle_interface) exports ->
   exports
@@ -1601,26 +1575,36 @@ let with_oracle_stage = fun ~fixture_filename ~stage thunk ->
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let fixture_filename = stable_fixture_filename ctx in
-  let source_text = with_oracle_stage
-    ~fixture_filename
-    ~stage:"read_fixture"
-    (fun () -> Fs.read ctx.fixture_path |> Result.expect ~msg:"oracle fixture should exist") in
-  let report = with_oracle_stage
-    ~fixture_filename
-    ~stage:"typ_check_source"
-    (fun () -> check_source_text ~filename:fixture_filename source_text) in
-  let interface = with_oracle_stage
-    ~fixture_filename
-    ~stage:"ocamlc_interface_oracle"
-    (fun () -> run_interface_oracle ~fixture_filename ~source_text) in
-  let typedtree_text = with_oracle_stage
-    ~fixture_filename
-    ~stage:"ocamlc_typedtree_oracle"
-    (fun () -> run_typedtree_oracle ~fixture_filename ~source_text) in
-  let actual_json = with_oracle_stage
-    ~fixture_filename
-    ~stage:"report_json"
-    (fun () -> report_json report interface typedtree_text) in
+  let source_text =
+    with_oracle_stage
+      ~fixture_filename
+      ~stage:"read_fixture"
+      (fun () -> Fs.read ctx.fixture_path |> Result.expect ~msg:"oracle fixture should exist")
+  in
+  let report =
+    with_oracle_stage
+      ~fixture_filename
+      ~stage:"typ_check_source"
+      (fun () -> check_source_text ~filename:fixture_filename source_text)
+  in
+  let interface =
+    with_oracle_stage
+      ~fixture_filename
+      ~stage:"ocamlc_interface_oracle"
+      (fun () -> run_interface_oracle ~fixture_filename ~source_text)
+  in
+  let typedtree_text =
+    with_oracle_stage
+      ~fixture_filename
+      ~stage:"ocamlc_typedtree_oracle"
+      (fun () -> run_typedtree_oracle ~fixture_filename ~source_text)
+  in
+  let actual_json =
+    with_oracle_stage
+      ~fixture_filename
+      ~stage:"report_json"
+      (fun () -> report_json report interface typedtree_text)
+  in
   with_oracle_stage
     ~fixture_filename
     ~stage:"assert_no_error_diagnostics"
@@ -1644,7 +1628,9 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
       assert_json_equal
         ~label:"oracle type names mismatch"
         ~expected:(Data.Json.Array (List.map (fun name -> Data.Json.String name) interface.type_names))
-        ~actual:(Data.Json.Array (List.map (fun name -> Data.Json.String name) (typ_type_names report))));
+        ~actual:(Data.Json.Array (List.map
+          (fun name -> Data.Json.String name)
+          (typ_type_names report))));
   if skip_snapshot_assertion () then
     Ok ()
   else

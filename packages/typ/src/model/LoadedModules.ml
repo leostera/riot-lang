@@ -8,13 +8,14 @@ type t = {
   mutable stable_key_cache: string option;
 }
 
-let make = fun ~by_name ~count -> {
-  by_name;
-  count;
-  values_cache = None;
-  names_cache = None;
-  stable_key_cache = None;
-}
+let make = fun ~by_name ~count ->
+  {
+    by_name;
+    count;
+    values_cache = None;
+    names_cache = None;
+    stable_key_cache = None;
+  }
 
 let empty = make ~by_name:(Collections.HashMap.create ()) ~count:0
 
@@ -32,7 +33,8 @@ let of_list = fun summaries ->
 
 let len = fun loaded_modules -> loaded_modules.count
 
-let is_empty = fun loaded_modules -> Int.equal loaded_modules.count 0
+let is_empty = fun loaded_modules ->
+  Int.equal loaded_modules.count 0
 
 let get = fun loaded_modules ~module_name ->
   Collections.HashMap.get loaded_modules.by_name module_name
@@ -55,9 +57,7 @@ let merge = fun ~preferred ~fallback ~combine ->
     | None -> count := !count + 1
     | Some _ -> ()
   in
-  iter
-    (fun _module_name summary -> insert_summary summary)
-    preferred;
+  iter (fun _module_name summary -> insert_summary summary) preferred;
   iter
     (fun module_name summary ->
       match Collections.HashMap.get by_name module_name with

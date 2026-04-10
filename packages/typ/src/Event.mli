@@ -48,10 +48,7 @@ type kind =
       module_count: int;
       revision: int
     }
-  | ModuleTypingsCollectionStarted of {
-      roots: SourceId.t list;
-      rooted_module_count: int
-    }
+  | ModuleTypingsCollectionStarted of { roots: SourceId.t list; rooted_module_count: int }
   | ModuleTypingsCollectionFinished of {
       roots: SourceId.t list;
       rooted_module_count: int;

@@ -105,7 +105,11 @@ let render_exports = fun exports ->
   |> List.map
     (fun (name, scheme) ->
       format
-        Format.[ str (SurfacePath.to_string name); str " : "; str (TypePrinter.scheme_to_string scheme); ])
+        Format.[
+          str (SurfacePath.to_string name);
+          str " : ";
+          str (TypePrinter.scheme_to_string scheme);
+        ])
   |> String.concat ", "
 
 let to_string = fun summary ->

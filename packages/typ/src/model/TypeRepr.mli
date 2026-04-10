@@ -2,7 +2,6 @@ open Std
 
 (** Mutable prototype type representation used inside one inference query. *)
 type scheme
-
 type label =
   | Nolabel
   | Labelled of string

@@ -34,8 +34,7 @@ let type_decl_paths = fun type_decls ->
         SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string) |> List.sort
     String.compare
 
-let lookup_binding_path = fun lookup env path ->
-  lookup env (EntityId.of_string path) |> Option.map binding_path
+let lookup_binding_path = fun lookup env path -> lookup env (EntityId.of_string path) |> Option.map binding_path
 
 let lookup_binding_name = fun lookup env path ->
   lookup env (EntityId.of_string path) |> Option.map Env.Binding.name

@@ -86,7 +86,8 @@ let of_bindings = fun bindings ->
   { current = current_of_bindings bindings; same = same_of_bindings bindings; layer = Nothing }
 
 let of_entries = fun ~make_id ~provenance entries ->
-  entries |> List.map
+  entries
+  |> List.map
     (fun (surface_path, scheme) -> Binding.make ~id:(make_id surface_path) ~surface_path ~scheme ~provenance)
   |> of_bindings
 
@@ -229,8 +230,7 @@ let unique = fun env ->
 let canonicalize = fun env ->
   env |> unique |> bindings |> List.sort
     (fun left right ->
-      EntityId.compare (Binding.path left) (Binding.path right))
-  |> of_bindings
+      EntityId.compare (Binding.path left) (Binding.path right)) |> of_bindings
 
 let surface_sorted_bindings = fun env ->
   unique env |> bindings |> List.sort
@@ -305,8 +305,7 @@ let entries_for_module_alias = fun env ~alias_name ~module_path ->
   |> map
     (fun binding ->
       binding
-      |> Binding.with_path
-           (EntityId.prepend_name alias_name (Binding.path binding))
+      |> Binding.with_path (EntityId.prepend_name alias_name (Binding.path binding))
       |> Binding.with_provenance (Binding.ModuleAlias { alias_name; module_path }))
 
 let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
@@ -314,23 +313,18 @@ let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
 let ambient_names = fun (config: TypConfig.t) -> config.ambient |> List.map fst
 
 let export = fun config env ->
-  let hidden_names =
-    prelude_names config @ ambient_names config
-    |> List.map SurfacePath.to_string
-  in
+  let hidden_names = prelude_names config @ ambient_names config |> List.map SurfacePath.to_string in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
-  canonicalize env
-  |> bindings
-  |> List.filter
+  canonicalize env |> bindings |> List.filter
     (fun binding ->
-      not (Collections.HashSet.contains hidden_name_set (Binding.surface_path binding |> SurfacePath.to_string)))
-  |> of_bindings
+      not
+        (
+          Collections.HashSet.contains hidden_name_set
+            (Binding.surface_path binding |> SurfacePath.to_string)
+        )) |> of_bindings
 
 let export_with_forced_names = fun ~config ~forced_export_names env ->
-  let hidden_names =
-    prelude_names config @ ambient_names config
-    |> List.map SurfacePath.to_string
-  in
+  let hidden_names = prelude_names config @ ambient_names config |> List.map SurfacePath.to_string in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
   let forced_name_set = Collections.HashSet.of_list forced_export_names in
   canonicalize env |> bindings |> List.filter

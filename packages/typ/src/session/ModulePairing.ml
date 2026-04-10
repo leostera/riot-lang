@@ -301,8 +301,9 @@ let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) 
             String.equal left_value.name right_value.name)
           right.values
       with
-      | Some right_value ->
-          equal_type (TypeScheme.body left_value.scheme) (TypeScheme.body right_value.scheme)
+      | Some right_value -> equal_type
+        (TypeScheme.body left_value.scheme)
+        (TypeScheme.body right_value.scheme)
       | None -> false)
     left.values
 
@@ -317,8 +318,9 @@ let package_signature_includes = fun includes_type (actual: TypeRepr.package_sig
             String.equal actual_value.name expected_value.name)
           actual.values
       with
-      | Some actual_value ->
-          includes_type (TypeScheme.body actual_value.scheme) (TypeScheme.body expected_value.scheme)
+      | Some actual_value -> includes_type
+        (TypeScheme.body actual_value.scheme)
+        (TypeScheme.body expected_value.scheme)
       | None -> false)
     expected.values
 
@@ -466,7 +468,8 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
 
 let value_mismatches = fun ~visible_types interface_exports implementation_exports ->
   let find_implementation_scheme name =
-    implementation_exports |> List.find_map
+    implementation_exports
+    |> List.find_map
       (fun (candidate_name, candidate_scheme) ->
         if SurfacePath.equal name candidate_name then
           Some candidate_scheme

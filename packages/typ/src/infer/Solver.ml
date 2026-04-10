@@ -176,8 +176,7 @@ let same_poly_variant_bound = fun left right ->
   | _ -> false
 
 let sort_poly_variant_tags = fun tags ->
-  tags
-  |> List.sort
+  tags |> List.sort
     (fun (left: TypeRepr.poly_variant_tag) (right: TypeRepr.poly_variant_tag) ->
       String.compare left.name right.name)
 
@@ -188,33 +187,29 @@ let overwrite_type = fun target replacement ->
 let merge_poly_variant_tags = fun left_tags right_tags ->
   let rec loop merged payload_pairs left_tags right_tags =
     match (left_tags, right_tags) with
-    | ([], []) -> Some (List.rev merged, List.rev payload_pairs)
+    | ([], []) ->
+        Some (List.rev merged, List.rev payload_pairs)
     | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, []) ->
         loop (left_tag :: merged) payload_pairs rest_left []
     | ([], (right_tag: TypeRepr.poly_variant_tag) :: rest_right) ->
         loop (right_tag :: merged) payload_pairs [] rest_right
-    | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, (
-      right_tag: TypeRepr.poly_variant_tag
-    ) :: rest_right) ->
-        begin
-          match String.compare left_tag.name right_tag.name with
-          | 0 -> (
-              match (left_tag.payload_type, right_tag.payload_type) with
-              | (None, None) ->
-                  loop (left_tag :: merged) payload_pairs rest_left rest_right
-              | (Some left_payload, Some right_payload) ->
-                  loop
-                    ({ left_tag with payload_type = Some left_payload } :: merged)
-                    ((left_payload, right_payload) :: payload_pairs)
-                    rest_left
-                    rest_right
-              | _ -> None
-            )
-          | order when order < 0 ->
-              loop (left_tag :: merged) payload_pairs rest_left right_tags
-          | _ ->
-              loop (right_tag :: merged) payload_pairs left_tags rest_right
-        end
+    | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, (right_tag: TypeRepr.poly_variant_tag) :: rest_right) -> begin
+        match String.compare left_tag.name right_tag.name with
+        | 0 -> (
+            match (left_tag.payload_type, right_tag.payload_type) with
+            | (None, None) -> loop (left_tag :: merged) payload_pairs rest_left rest_right
+            | (Some left_payload, Some right_payload) -> loop
+              ({ left_tag with payload_type = Some left_payload } :: merged)
+              ((left_payload, right_payload) :: payload_pairs)
+              rest_left
+              rest_right
+            | _ -> None
+          )
+        | order when order < 0 ->
+            loop (left_tag :: merged) payload_pairs rest_left right_tags
+        | _ ->
+            loop (right_tag :: merged) payload_pairs left_tags rest_right
+      end
   in
   loop [] [] (sort_poly_variant_tags left_tags) (sort_poly_variant_tags right_tags)
 
@@ -223,25 +218,26 @@ let exact_tags_contain_upper_tags = fun exact_tags upper_tags ->
   let upper_tags = sort_poly_variant_tags upper_tags in
   let rec loop payload_pairs exact_tags upper_tags =
     match (exact_tags, upper_tags) with
-    | (_, []) -> Some (List.rev payload_pairs)
-    | ([], _ :: _) -> None
-    | ((exact_tag: TypeRepr.poly_variant_tag) :: rest_exact, (
-      upper_tag: TypeRepr.poly_variant_tag
-    ) :: rest_upper) ->
-        begin
-          match String.compare exact_tag.name upper_tag.name with
-          | 0 -> (
-              match (exact_tag.payload_type, upper_tag.payload_type) with
-              | (None, None) -> loop payload_pairs rest_exact rest_upper
-              | (Some exact_payload, Some upper_payload) ->
-                  loop ((exact_payload, upper_payload) :: payload_pairs) rest_exact rest_upper
-              | _ -> None
-            )
-          | order when order < 0 ->
-              loop payload_pairs rest_exact upper_tags
-          | _ ->
-              None
-        end
+    | (_, []) ->
+        Some (List.rev payload_pairs)
+    | ([], _ :: _) ->
+        None
+    | ((exact_tag: TypeRepr.poly_variant_tag) :: rest_exact, (upper_tag: TypeRepr.poly_variant_tag) :: rest_upper) -> begin
+        match String.compare exact_tag.name upper_tag.name with
+        | 0 -> (
+            match (exact_tag.payload_type, upper_tag.payload_type) with
+            | (None, None) -> loop payload_pairs rest_exact rest_upper
+            | (Some exact_payload, Some upper_payload) -> loop
+              ((exact_payload, upper_payload) :: payload_pairs)
+              rest_exact
+              rest_upper
+            | _ -> None
+          )
+        | order when order < 0 ->
+            loop payload_pairs rest_exact upper_tags
+        | _ ->
+            None
+      end
   in
   loop [] exact_tags upper_tags
 
@@ -353,64 +349,72 @@ let unify = fun (solver: t) ~left ~right ->
             bound=right_bound;
             tags=right_tags;
             inherited=right_inherited
-          } ->
-              begin
-                match (left_bound, right_bound) with
-                | (TypeRepr.UpperBound, TypeRepr.UpperBound) when left_inherited = [] && right_inherited = [] -> (
-                    match merge_poly_variant_tags left_tags right_tags with
-                    | None -> Error (mismatch left right)
-                    | Some (merged_tags, tag_pairs) ->
-                        let merged = TypeRepr.poly_variant
-                          ~bound:TypeRepr.UpperBound
-                          ~tags:merged_tags
-                          ~inherited:[] in
-                        let () = overwrite_type left merged in
-                        let () = overwrite_type right merged in
-                        loop (List.rev_append tag_pairs rest)
-                  )
-                | (TypeRepr.Exact, TypeRepr.UpperBound) when left_inherited = [] && right_inherited = [] -> (
-                    match exact_tags_contain_upper_tags left_tags right_tags with
-                    | None -> Error (mismatch left right)
-                    | Some tag_pairs ->
-                        let merged = TypeRepr.poly_variant
-                          ~bound:TypeRepr.Exact
-                          ~tags:(sort_poly_variant_tags left_tags)
-                          ~inherited:[] in
-                        let () = overwrite_type right merged in
-                        loop (List.rev_append tag_pairs rest)
-                  )
-                | (TypeRepr.UpperBound, TypeRepr.Exact) when left_inherited = [] && right_inherited = [] -> (
-                    match exact_tags_contain_upper_tags right_tags left_tags with
-                    | None -> Error (mismatch left right)
-                    | Some tag_pairs ->
-                        let merged = TypeRepr.poly_variant
-                          ~bound:TypeRepr.Exact
-                          ~tags:(sort_poly_variant_tags right_tags)
-                          ~inherited:[] in
-                        let () = overwrite_type left merged in
-                        loop (List.rev_append tag_pairs rest)
-                  )
-                | _ ->
-                    if
-                      not (same_poly_variant_bound left_bound right_bound)
-                      || List.length left_inherited != List.length right_inherited
-                    then
-                      Error (mismatch left right)
-                    else
-                      (
-                        match merge_poly_variant_tags left_tags right_tags with
-                        | None when same_poly_variant_bound left_bound right_bound -> Error (mismatch left right)
-                        | Some (merged_tags, tag_pairs) ->
-                            if not (List.length merged_tags = List.length left_tags && List.length merged_tags = List.length right_tags) then
-                              Error (mismatch left right)
-                            else
-                              loop
-                                (List.rev_append
-                                  tag_pairs
-                                  (List.rev_append (List.combine left_inherited right_inherited) rest))
-                        | None -> Error (mismatch left right)
-                      )
-              end
+          } -> begin
+              match (left_bound, right_bound) with
+              | (TypeRepr.UpperBound, TypeRepr.UpperBound) when left_inherited = []
+              && right_inherited = [] -> (
+                  match merge_poly_variant_tags left_tags right_tags with
+                  | None -> Error (mismatch left right)
+                  | Some (merged_tags, tag_pairs) ->
+                      let merged = TypeRepr.poly_variant
+                        ~bound:TypeRepr.UpperBound
+                        ~tags:merged_tags
+                        ~inherited:[] in
+                      let () = overwrite_type left merged in
+                      let () = overwrite_type right merged in
+                      loop (List.rev_append tag_pairs rest)
+                )
+              | (TypeRepr.Exact, TypeRepr.UpperBound) when left_inherited = []
+              && right_inherited = [] -> (
+                  match exact_tags_contain_upper_tags left_tags right_tags with
+                  | None -> Error (mismatch left right)
+                  | Some tag_pairs ->
+                      let merged = TypeRepr.poly_variant
+                        ~bound:TypeRepr.Exact
+                        ~tags:(sort_poly_variant_tags left_tags)
+                        ~inherited:[] in
+                      let () = overwrite_type right merged in
+                      loop (List.rev_append tag_pairs rest)
+                )
+              | (TypeRepr.UpperBound, TypeRepr.Exact) when left_inherited = []
+              && right_inherited = [] -> (
+                  match exact_tags_contain_upper_tags right_tags left_tags with
+                  | None -> Error (mismatch left right)
+                  | Some tag_pairs ->
+                      let merged = TypeRepr.poly_variant
+                        ~bound:TypeRepr.Exact
+                        ~tags:(sort_poly_variant_tags right_tags)
+                        ~inherited:[] in
+                      let () = overwrite_type left merged in
+                      loop (List.rev_append tag_pairs rest)
+                )
+              | _ ->
+                  if
+                    not (same_poly_variant_bound left_bound right_bound)
+                    || List.length left_inherited != List.length right_inherited
+                  then
+                    Error (mismatch left right)
+                  else
+                    (
+                      match merge_poly_variant_tags left_tags right_tags with
+                      | None when same_poly_variant_bound left_bound right_bound -> Error (mismatch
+                        left
+                        right)
+                      | Some (merged_tags, tag_pairs) ->
+                          if
+                            not
+                              (List.length merged_tags = List.length left_tags
+                              && List.length merged_tags = List.length right_tags)
+                          then
+                            Error (mismatch left right)
+                          else
+                            loop
+                              (List.rev_append
+                                tag_pairs
+                                (List.rev_append (List.combine left_inherited right_inherited) rest))
+                      | None -> Error (mismatch left right)
+                    )
+            end
           | TypeRepr.Tuple left_members, TypeRepr.Tuple right_members ->
               if List.length left_members != List.length right_members then
                 Error (Diagnostic.TupleArityMismatch {
@@ -432,7 +436,7 @@ let unify = fun (solver: t) ~left ~right ->
                 loop ((left_arg, right_arg) :: (left_res, right_res) :: rest)
           | TypeRepr.Var left_var, TypeRepr.Var right_var when left_var.id = right_var.id ->
               loop rest
-          | TypeRepr.Var { kind = Rigid; _ }, TypeRepr.Var { kind = Flexible; _ } ->
+          | TypeRepr.Var { kind=Rigid; _ }, TypeRepr.Var { kind=Flexible; _ } ->
               let right = TypeRepr.prune right in
               (
                 match TypeRepr.view right with
@@ -441,7 +445,7 @@ let unify = fun (solver: t) ~left ~right ->
                     loop rest
                 | _ -> Error (mismatch left right)
               )
-          | TypeRepr.Var { kind = Flexible; _ }, TypeRepr.Var { kind = Rigid; _ } ->
+          | TypeRepr.Var { kind=Flexible; _ }, TypeRepr.Var { kind=Rigid; _ } ->
               let left = TypeRepr.prune left in
               (
                 match TypeRepr.view left with
@@ -450,8 +454,8 @@ let unify = fun (solver: t) ~left ~right ->
                     loop rest
                 | _ -> Error (mismatch left right)
               )
-          | TypeRepr.Var { kind = Rigid; _ }, _
-          | _, TypeRepr.Var { kind = Rigid; _ } ->
+          | (TypeRepr.Var { kind=Rigid; _ }, _)
+          | (_, TypeRepr.Var { kind=Rigid; _ }) ->
               Error (mismatch left right)
           | (TypeRepr.Var var, _)
           | (_, TypeRepr.Var var) ->

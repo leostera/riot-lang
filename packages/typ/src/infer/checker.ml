@@ -112,9 +112,8 @@ let scheme_body = TypeScheme.body
 let prelude_env = fun (state: state) (config: TypConfig.t) ->
   Env.bind
     (Env.of_entries
-       ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
-       ~provenance:Binding.Prelude
-       config.prelude)
+      ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
+      ~provenance:Binding.Prelude config.prelude)
     (Env.of_type_decls LanguagePrelude.type_decls)
 
 let ambient_env = fun (state: state) (config: TypConfig.t) ->
@@ -122,8 +121,7 @@ let ambient_env = fun (state: state) (config: TypConfig.t) ->
   |> List.map (fun (name, scheme) -> (name, canonicalize_scheme state scheme)) in
   Env.of_entries
     ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
-    ~provenance:Binding.Ambient
-    ambient_entries
+    ~provenance:Binding.Ambient ambient_entries
 
 let ambient_type_env = fun (state: state) (_config: TypConfig.t) ->
   Env.of_type_decls (visible_type_decls state)
@@ -134,10 +132,8 @@ let static_ident_generator = fun () ->
     let local_id = !next_local_id in
     next_local_id := local_id - 1;
     match kind with
-    | `Predef ->
-        BindingId.predef ~stamp:local_id ~name:(binding_name_of_path path)
-    | `Persistent ->
-        BindingId.persistent path
+    | `Predef -> BindingId.predef ~stamp:local_id ~name:(binding_name_of_path path)
+    | `Persistent -> BindingId.persistent path
 
 let initial_env_of_config = fun ~(config:TypConfig.t) ->
   let make_id = static_ident_generator () in
@@ -241,12 +237,11 @@ let constructor_bindings = fun (state: state) env ~name ~scheme ~provenance ~con
     ~owner_type_constructor_id:head.type_constructor_id
     ~constructor_id
     ~inline_record_labels
-  | _ ->
-      Env.singleton
-        ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
-        ~name
-        ~scheme
-        ~provenance
+  | _ -> Env.singleton
+    ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
+    ~name
+    ~scheme
+    ~provenance
 
 let exception_bindings = fun (state: state) env (exception_item: ItemTree.exception_item) ->
   constructor_bindings
@@ -395,7 +390,7 @@ let substitute_type_vars = fun (state: state) ty mapping ->
               if Std.Ptr.equal value.scheme copied_scheme then
                 value
               else
-                  { value with scheme = copied_scheme })
+                { value with scheme = copied_scheme })
         in
         if List.for_all2 Std.Ptr.equal signature.values copied_values then
           ty
@@ -477,8 +472,7 @@ let normalize_rigid_type = fun (state: state) ->
         in
         let normalized_inherited = List.map loop inherited in
         if
-          List.for_all2 Std.Ptr.equal tags normalized_tags
-          && List.for_all2 Std.Ptr.equal inherited normalized_inherited
+          List.for_all2 Std.Ptr.equal tags normalized_tags && List.for_all2 Std.Ptr.equal inherited normalized_inherited
         then
           ty
         else
@@ -513,7 +507,7 @@ let normalize_rigid_type = fun (state: state) ->
           ty
         else
           TypeRepr.package ~values:normalized_values
-    | TypeRepr.Var { id; kind = TypeRepr.Rigid; _ } -> (
+    | TypeRepr.Var { id; kind=TypeRepr.Rigid; _ } -> (
         match State.lookup_rigid_equation state id with
         | Some replacement -> loop replacement
         | None -> ty
@@ -704,9 +698,7 @@ let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl)
     |> List.fold_left
       (fun acc (field: TypeDecl.label) ->
         let field_scheme =
-          TypeScheme.map_type_preserving
-            (fun ty -> substitute_type_vars state ty mapping)
-            field.field_type
+          TypeScheme.map_type_preserving (fun ty -> substitute_type_vars state ty mapping) field.field_type
         in
         Label_name_map.add (Env.Label_env.lookup_name field.name) field_scheme acc)
       Label_name_map.empty
@@ -883,9 +875,9 @@ let poly_variant_payload_for_expected_type = fun (state: state) expected_ty tag 
   | TypeRepr.Named { head={ type_constructor_id; _ }; _ } ->
       Option.and_then (visible_type_decl_by_id state type_constructor_id)
         (fun type_decl ->
-          Option.and_then
-            (poly_variant_candidate state type_decl)
-            (fun candidate -> Label_name_map.find_opt tag candidate.payloads))
+          Option.and_then (poly_variant_candidate state type_decl)
+            (fun candidate ->
+              Label_name_map.find_opt tag candidate.payloads))
   | TypeRepr.PolyVariant { tags; _ } ->
       let rec loop = function
         | [] -> None
@@ -896,7 +888,8 @@ let poly_variant_payload_for_expected_type = fun (state: state) expected_ty tag 
               loop rest
       in
       loop tags
-  | _ -> None
+  | _ ->
+      None
 
 let is_unresolved_type = fun ty ->
   match view ty with
@@ -1096,10 +1089,7 @@ let instantiate_constructor_entry = fun ?(pattern_mode = false) (state: state) e
 let field_types_of_labels = fun (state: state) labels ->
   labels |> List.fold_left
     (fun acc (label: TypeDecl.label) ->
-      Label_name_map.add
-        (Env.Label_env.lookup_name label.name)
-        label.field_type
-        acc)
+      Label_name_map.add (Env.Label_env.lookup_name label.name) label.field_type acc)
     Label_name_map.empty
 
 let missing_inline_record_fields = fun labels field_names ->
@@ -1677,12 +1667,14 @@ let try_unify = fun (state: state) ~origin left right ->
 let add_local_rigid_equation = fun (state: state) rigid_id replacement ->
   let replacement = normalize_rigid_type state replacement in
   if TypeRepr.occurs rigid_id replacement then
-    Error (Diagnostic.OccursCheckFailed { variable_id = rigid_id; in_type = TypePrinter.type_to_string replacement })
-  else
-    (
-      State.add_rigid_equation state rigid_id replacement;
-      Ok ()
-    )
+    Error (Diagnostic.OccursCheckFailed {
+      variable_id = rigid_id;
+      in_type = TypePrinter.type_to_string replacement
+    })
+  else (
+    State.add_rigid_equation state rigid_id replacement;
+    Ok ()
+  )
 
 let unify_gadt = fun (state: state) ~origin left right ->
   let rec loop = function
@@ -1708,12 +1700,13 @@ let unify_gadt = fun (state: state) ~origin left right ->
               loop ((left_element, right_element) :: rest)
           | (TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error)) ->
               loop ((left_ok, right_ok) :: (left_error, right_error) :: rest)
-          | (TypeRepr.Named { head = left_head; arguments = left_arguments }, TypeRepr.Named {
-            head = right_head;
-            arguments = right_arguments
+          | (TypeRepr.Named { head=left_head; arguments=left_arguments }, TypeRepr.Named {
+            head=right_head;
+            arguments=right_arguments
           }) ->
               if
-                not (TypeConstructorId.equal left_head.type_constructor_id right_head.type_constructor_id)
+                not
+                  (TypeConstructorId.equal left_head.type_constructor_id right_head.type_constructor_id)
                 || List.length left_arguments != List.length right_arguments
               then
                 Error (Diagnostic.ExpectedActual {
@@ -1732,10 +1725,10 @@ let unify_gadt = fun (state: state) ~origin left right ->
                 })
               else
                 loop (List.rev_append (List.combine left_members right_members) rest)
-          | (TypeRepr.Arrow { label = left_label; lhs = left_lhs; rhs = left_rhs }, TypeRepr.Arrow {
-            label = right_label;
-            lhs = right_lhs;
-            rhs = right_rhs
+          | (TypeRepr.Arrow { label=left_label; lhs=left_lhs; rhs=left_rhs }, TypeRepr.Arrow {
+            label=right_label;
+            lhs=right_lhs;
+            rhs=right_rhs
           }) ->
               if not (labels_match left_label right_label) then
                 Error (Diagnostic.ExpectedActual {
@@ -1744,12 +1737,12 @@ let unify_gadt = fun (state: state) ~origin left right ->
                 })
               else
                 loop ((left_lhs, right_lhs) :: (left_rhs, right_rhs) :: rest)
-          | (TypeRepr.Var { id = left_id; kind = TypeRepr.Rigid; _ }, _) -> (
+          | (TypeRepr.Var { id=left_id; kind=TypeRepr.Rigid; _ }, _) -> (
               match add_local_rigid_equation state left_id right with
               | Ok () -> loop rest
               | Error mismatch -> Error mismatch
             )
-          | (_, TypeRepr.Var { id = right_id; kind = TypeRepr.Rigid; _ }) -> (
+          | (_, TypeRepr.Var { id=right_id; kind=TypeRepr.Rigid; _ }) -> (
               match add_local_rigid_equation state right_id left with
               | Ok () -> loop rest
               | Error mismatch -> Error mismatch
@@ -1772,8 +1765,7 @@ let package_signature_of_type = fun ty ->
   | TypeRepr.Package signature -> Some signature
   | _ -> None
 
-let instantiate_package_signature = fun (_state: state) (signature: TypeRepr.package_signature) ->
-  signature
+let instantiate_package_signature = fun (_state: state) (signature: TypeRepr.package_signature) -> signature
 
 let check_module_pack_against_signature = fun (state: state) env ~origin module_path ((
   signature: TypeRepr.package_signature
@@ -2243,14 +2235,13 @@ let binding_ref_of_binding = fun binding ->
   Check_result.{
     entity_id = Binding.path binding;
     surface_path = Binding.surface_path binding;
-    provenance;
+    provenance
   }
 
 let export_binding_refs = fun env ->
   Env.unique env |> Env.bindings |> List.sort
     (fun left right ->
-      EntityId.compare (Binding.path left) (Binding.path right))
-  |> List.map binding_ref_of_binding
+      EntityId.compare (Binding.path left) (Binding.path right)) |> List.map binding_ref_of_binding
 
 let add_application_label_mismatch = fun (state: state) ~expr_id ~expected_label arguments ->
   add_diagnostic
@@ -2329,7 +2320,9 @@ let rec infer_match_case = fun (state: state) env scrutinee_ty result_ty (case: 
   let case_ty = infer_expr state case_env case.body_id in
   try_unify state ~origin:(origin_of_expr state case.body_id) result_ty case_ty
 
-and infer_match_case_against = fun (state: state) env scrutinee_ty expected_ty (case: BodyArena.match_case) ->
+and infer_match_case_against = fun (state: state) env scrutinee_ty expected_ty (
+  case: BodyArena.match_case
+) ->
   State.with_local_rigid_equations state
     (fun () ->
       let bindings = bind_pattern state env case.pattern_id scrutinee_ty in
@@ -2538,11 +2531,7 @@ and infer_expr = fun (state: state) env expr_id ->
               condition_ty
               TypeRepr.bool in
             let body_ty = infer_expr state env body_id in
-            let () = try_unify
-              state
-              ~origin:(origin_of_expr state body_id)
-              body_ty
-              TypeRepr.unit_ in
+            let () = try_unify state ~origin:(origin_of_expr state body_id) body_ty TypeRepr.unit_ in
             TypeRepr.unit_
         | BodyArena.EFor {
           iterator_pattern_id;
@@ -2961,7 +2950,8 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
                     expected_ty
                 | (parameter: BodyArena.function_parameter) :: rest -> (
                     match TypeRepr.view (normalize_rigid_type state current_expected) with
-                    | TypeRepr.Arrow { label; lhs; rhs } when labels_match label
+                    | TypeRepr.Arrow { label; lhs; rhs } when labels_match
+                      label
                       (type_label_of_body_label parameter.label) ->
                         let () =
                           match parameter.default_value_id with
@@ -3116,7 +3106,8 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
                 | (Some payload_id, None) ->
                     let _ = infer_expr state env payload_id in
                     ()
-                | (None, _) -> ()
+                | (None, _) ->
+                    ()
               in
               expected_ty
           | None ->
@@ -3184,9 +3175,9 @@ and infer_local_module_env = fun (state: state) env (local_scope: BodyArena.loca
   let introduced_entries = Env.introduced_entries env_with_local_types env_after_bindings in
   Env.bind local_type_env introduced_entries
 
-and check_local_module_pack_against_signature = fun (state: state) env ~origin (local_scope: BodyArena.local_module_scope) ((
-  signature: TypeRepr.package_signature
-)) ->
+and check_local_module_pack_against_signature = fun (state: state) env ~origin (
+  local_scope: BodyArena.local_module_scope
+) ((signature: TypeRepr.package_signature)) ->
   let signature = instantiate_package_signature state signature in
   let local_binding_names = local_module_pack_binding_names state local_scope in
   let local_type_env = Env.of_type_decls local_scope.type_decls in
@@ -3302,10 +3293,8 @@ and infer_recursive_group = fun (state: state) env bindings ->
                 | Some name ->
                     let entry =
                       match export_annotation_scheme with
-                      | Some annotation ->
-                          pattern_binding state binding.pattern_id ~name ~scheme:annotation
-                      | None ->
-                          generalized_pattern_binding state binding.pattern_id ~name placeholder_ty
+                      | Some annotation -> pattern_binding state binding.pattern_id ~name ~scheme:annotation
+                      | None -> generalized_pattern_binding state binding.pattern_id ~name placeholder_ty
                     in
                     Some (
                       binding,

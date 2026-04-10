@@ -95,15 +95,8 @@ type expr_desc =
   | EPolyVariant of { tag: string; payload: ExprArenaId.t option }
   | ECoerce of { value_id: ExprArenaId.t; target_type: TypeRepr.t }
   | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
-  | ELocalModulePack of {
-      local_scope: local_module_scope;
-      package_type: TypeRepr.t option
-    }
-  | ELocalModule of {
-      module_name: string;
-      local_scope: local_module_scope;
-      body_id: ExprArenaId.t
-    }
+  | ELocalModulePack of { local_scope: local_module_scope; package_type: TypeRepr.t option }
+  | ELocalModule of { module_name: string; local_scope: local_module_scope; body_id: ExprArenaId.t }
   | ELocalOpen of { module_path: SurfacePath.t; body_id: ExprArenaId.t }
   | EUnsupported of string
   | EHole of string
@@ -306,12 +299,19 @@ let render_expr_desc = function
     end_id;
     body_id
   } ->
-      "for " ^ PatternArenaId.to_string iterator_pattern_id ^ " = " ^ ExprArenaId.to_string start_id ^ (
+      "for "
+      ^ PatternArenaId.to_string iterator_pattern_id
+      ^ " = "
+      ^ ExprArenaId.to_string start_id
+      ^ (
         if descending then
           " downto "
         else
           " to "
-      ) ^ ExprArenaId.to_string end_id ^ " do " ^ ExprArenaId.to_string body_id
+      )
+      ^ ExprArenaId.to_string end_id
+      ^ " do "
+      ^ ExprArenaId.to_string body_id
   | EFun (parameters, body_id) ->
       "fun ["
       ^ (parameters |> List.map render_function_parameter |> String.concat ", ")
@@ -337,7 +337,12 @@ let render_expr_desc = function
   | EFieldAccess { receiver_id; label } ->
       "field " ^ ExprArenaId.to_string receiver_id ^ "." ^ label
   | EFieldAssign { receiver_id; label; value_id } ->
-      "field_assign " ^ ExprArenaId.to_string receiver_id ^ "." ^ label ^ " <- " ^ ExprArenaId.to_string value_id
+      "field_assign "
+      ^ ExprArenaId.to_string receiver_id
+      ^ "."
+      ^ label
+      ^ " <- "
+      ^ ExprArenaId.to_string value_id
   | EIndex (collection_id, index_id) ->
       "index " ^ ExprArenaId.to_string collection_id ^ " [" ^ ExprArenaId.to_string index_id ^ "]"
   | ELet (binding_ids, body_id) ->
@@ -416,13 +421,10 @@ let render_expr_desc = function
       ^ (
         match local_scope.type_decls with
         | [] -> ""
-        | type_decls ->
-            " types="
-            ^ (
-              type_decls
-              |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
-              |> String.concat ","
-            )
+        | type_decls -> " types="
+        ^ (type_decls
+        |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
+        |> String.concat ",")
       )
       ^ annotation
   | ELocalModule { module_name; local_scope; body_id } ->
@@ -437,13 +439,10 @@ let render_expr_desc = function
       ^ (
         match local_scope.type_decls with
         | [] -> ""
-        | type_decls ->
-            " types="
-            ^ (
-              type_decls
-              |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
-              |> String.concat ","
-            )
+        | type_decls -> " types="
+        ^ (type_decls
+        |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
+        |> String.concat ",")
       )
       ^ " in "
       ^ ExprArenaId.to_string body_id
@@ -511,10 +510,7 @@ let local_module_scope_to_json = fun (local_scope: local_module_scope) ->
       "binding_groups",
       Data.Json.Array (List.map local_module_binding_group_to_json local_scope.binding_groups)
     );
-    (
-      "type_decls",
-      Data.Json.Array (List.map local_module_type_decl_to_json local_scope.type_decls)
-    );
+    ("type_decls", Data.Json.Array (List.map local_module_type_decl_to_json local_scope.type_decls));
   ]
 
 let pattern_desc_to_json = function
@@ -756,7 +752,9 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "let");
     (
       "binding_ids",
-      Data.Json.Array (List.map (fun binding_id -> Data.Json.Int (BindingArenaId.to_int binding_id)) binding_ids)
+      Data.Json.Array (List.map
+        (fun binding_id -> Data.Json.Int (BindingArenaId.to_int binding_id))
+        binding_ids)
     );
     ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]

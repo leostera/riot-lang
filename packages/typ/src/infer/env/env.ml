@@ -214,13 +214,13 @@ let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
       TypeScheme.of_explicit ~quantified qualified_body
 
 let qualify_binding_with_scope = fun ~root (scope: module_scope) binding ->
-  binding
-  |> Binding.with_path
-       (if SurfacePath.is_empty root then
-          Binding.path binding
-        else
-          EntityId.qualify ~prefix:root (Binding.path binding))
-  |> Binding.with_scheme (qualify_scheme_with_scope ~root scope (Binding.scheme binding))
+  binding |> Binding.with_path
+    (
+      if SurfacePath.is_empty root then
+        Binding.path binding
+      else
+        EntityId.qualify ~prefix:root (Binding.path binding)
+    ) |> Binding.with_scheme (qualify_scheme_with_scope ~root scope (Binding.scheme binding))
 
 let empty_item_scope = {
   locals = Path_map.empty;
@@ -489,11 +489,7 @@ let of_entries = fun ~make_id ~provenance entries ->
   entries
   |> List.map
     (fun (surface_path, scheme) ->
-      Binding.make
-        ~id:(make_id surface_path)
-        ~surface_path
-        ~scheme:(TypeScheme.copy scheme)
-        ~provenance)
+      Binding.make ~id:(make_id surface_path) ~surface_path ~scheme:(TypeScheme.copy scheme) ~provenance)
   |> of_bindings
 
 let singleton = fun ~make_id ~name ~scheme ~provenance ->
@@ -507,20 +503,23 @@ let singleton = fun ~make_id ~name ~scheme ~provenance ->
     ]
 
 let singleton_constructor = fun ~make_id ~name ~scheme ~provenance ~owner_path ~owner_type_constructor_id ~constructor_id ~inline_record_labels ->
-  let binding =
-    Binding.make
-      ~id:(make_id (SurfacePath.of_name name))
-      ~surface_path:(SurfacePath.of_name name)
-      ~scheme
-      ~provenance
-  in
+  let binding = Binding.make
+    ~id:(make_id (SurfacePath.of_name name))
+    ~surface_path:(SurfacePath.of_name name)
+    ~scheme
+    ~provenance in
   {
     empty
     with values = Value_env.of_bindings [ binding ];
-    constructors = Constructor_env.singleton
-      ~owner_path
-      ~owner_type_constructor_id
-      ~constructor:{ TypeDecl.constructor_id; name; scheme; generalized = false; inline_record_labels }
+    constructors =
+      Constructor_env.singleton ~owner_path ~owner_type_constructor_id
+        ~constructor:{
+          TypeDecl.constructor_id;
+          name;
+          scheme;
+          generalized = false;
+          inline_record_labels;
+        };
   }
 
 let extend = fun env introduced -> bind env (of_bindings introduced)
@@ -569,7 +568,8 @@ let qualify = fun ~scope_path (env: t) ->
 
 let split_module_lookup_path = fun path ->
   EntityId.split_last path
-  |> Option.map (fun (module_path, name) -> (EntityId.surface_path module_path, EntityId.of_name name))
+  |> Option.map
+    (fun (module_path, name) -> (EntityId.surface_path module_path, EntityId.of_name name))
 
 let split_module_lookup_surface_path = fun path ->
   SurfacePath.split_last path
@@ -672,7 +672,8 @@ and bindings_with_prefix: SurfacePath.t -> module_table -> bindings = fun prefix
       in
       scope_bindings_with_prefix module_prefix binding.components)
 
-let bindings = fun env -> Value_env.bindings env.values @ bindings_with_prefix SurfacePath.empty env.modules
+let bindings = fun env ->
+  Value_env.bindings env.values @ bindings_with_prefix SurfacePath.empty env.modules
 
 let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSummary.type_decl list = fun prefix scope ->
   let local = Type_env.type_decls scope.types
@@ -729,11 +730,10 @@ let canonical_bindings = fun env ->
 let unique = fun env -> env |> visible_bindings |> of_bindings
 
 let render = fun env ->
-  visible_bindings env
-  |> List.sort
-       (fun left right ->
-         SurfacePath.compare (Binding.surface_path left) (Binding.surface_path right))
-  |> List.map Binding.render
+  visible_bindings env |> List.sort
+    (fun left right ->
+      SurfacePath.compare (Binding.surface_path left) (Binding.surface_path right)) |> List.map
+    Binding.render
 
 let names = fun env ->
   env
@@ -754,8 +754,8 @@ let hidden_name_set = fun (config: TypConfig.t) ->
     (List.map (fun (path, _) -> SurfacePath.to_string path) (config.prelude @ config.ambient))
 
 let is_hidden_export_binding = fun hidden_name_set binding ->
-  Collections.HashSet.contains hidden_name_set (Binding.surface_path binding |> SurfacePath.to_string)
-  && match Binding.provenance binding with
+  Collections.HashSet.contains hidden_name_set
+    (Binding.surface_path binding |> SurfacePath.to_string) && match Binding.provenance binding with
   | Binding.Prelude
   | Binding.Ambient -> true
   | Binding.LoweredPattern _

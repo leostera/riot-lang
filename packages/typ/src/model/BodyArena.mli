@@ -154,16 +154,9 @@ type expr_desc =
   | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
   (** Local first-class module pack lowered from `(module M)` where [M] comes
       from one surrounding [let module M = struct ... end in ...]. *)
-  | ELocalModulePack of {
-      local_scope: local_module_scope;
-      package_type: TypeRepr.t option
-    }
+  | ELocalModulePack of { local_scope: local_module_scope; package_type: TypeRepr.t option }
   (** Local module binding with a scoped module name available in the body. *)
-  | ELocalModule of {
-      module_name: string;
-      local_scope: local_module_scope;
-      body_id: ExprArenaId.t
-    }
+  | ELocalModule of { module_name: string; local_scope: local_module_scope; body_id: ExprArenaId.t }
   (** Local module open expression with the lowered body expression. *)
   | ELocalOpen of { module_path: SurfacePath.t; body_id: ExprArenaId.t }
   (** Unsupported semantic node that still reached the inferencer. *)

@@ -1,6 +1,11 @@
 open Std
 open Model
 
+type qualified_surface = {
+  exports: FileSummary.exports;
+  type_decls: FileSummary.type_decl list;
+}
+
 type local_type_decl_index = {
   by_path: (SurfacePath.t, FileSummary.type_decl) Collections.HashMap.t;
   by_id: (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t;
@@ -123,9 +128,9 @@ let rec qualify_type = fun local_types module_name ty ->
         signature.values
         |> List.map
           (fun (value: TypeRepr.package_value) ->
-            let qualified_scheme =
-              TypeScheme.map_type_preserving (qualify_type local_types module_name) value.scheme
-            in
+            let qualified_scheme = TypeScheme.map_type_preserving
+              (qualify_type local_types module_name)
+              value.scheme in
             if Std.Ptr.equal value.scheme qualified_scheme then
               value
             else
@@ -156,26 +161,13 @@ let qualify_scheme = fun ~type_decls ~module_name scheme ->
 let qualify_inline_record_labels = fun local_types module_name labels ->
   labels |> List.map
     (fun (label: TypeDecl.label) ->
-      let qualified_field_type =
-        TypeScheme.map_type_preserving
-          (qualify_type local_types module_name)
-          label.field_type
-      in
+      let qualified_field_type = TypeScheme.map_type_preserving
+        (qualify_type local_types module_name)
+        label.field_type in
       if Std.Ptr.equal label.field_type qualified_field_type then
         label
       else
         { label with field_type = qualified_field_type })
-
-let qualify_exports = fun ~module_name ~type_decls exports ->
-  let module_path = SurfacePath.of_name module_name in
-  let local_types = local_type_decl_index type_decls in
-  List.map
-    (fun (name, scheme) ->
-      (
-        SurfacePath.append_path module_path name,
-        qualify_scheme_with_local_types local_types ~module_name scheme
-      ))
-    exports
 
 let qualify_signature_exports = fun ~module_name ~type_decls exports ->
   let local_types = local_type_decl_index type_decls in
@@ -183,8 +175,7 @@ let qualify_signature_exports = fun ~module_name ~type_decls exports ->
   |> List.map
     (fun (name, scheme) -> (name, qualify_scheme_with_local_types local_types ~module_name scheme))
 
-let qualify_type_decls = fun ~module_name type_decls ->
-  let local_types = local_type_decl_index type_decls in
+let qualify_type_decls_with_local_types = fun local_types ~module_name type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
       let declaration = type_decl.declaration in
@@ -225,11 +216,9 @@ let qualify_type_decls = fun ~module_name type_decls ->
         declaration.labels
         |> List.map
           (fun (label: TypeDecl.label) ->
-            let qualified_field_type =
-              TypeScheme.map_type_preserving
-                (qualify_type local_types module_name)
-                label.field_type
-            in
+            let qualified_field_type = TypeScheme.map_type_preserving
+              (qualify_type local_types module_name)
+              label.field_type in
             if Std.Ptr.equal label.field_type qualified_field_type then
               label
             else
@@ -240,3 +229,93 @@ let qualify_type_decls = fun ~module_name type_decls ->
         declaration = { declaration with manifest; constructors; labels }
       })
     type_decls
+
+let qualify_signature_type_decls = fun ~module_name type_decls ->
+  let local_types = local_type_decl_index type_decls in
+  List.map
+    (fun (type_decl: FileSummary.type_decl) ->
+      let qualified_decls = qualify_type_decls_with_local_types
+        local_types
+        ~module_name
+        [ type_decl ] in
+      match qualified_decls with
+      | [ qualified_type_decl ] -> {
+        qualified_type_decl
+        with FileSummary.scope_path = type_decl.scope_path
+      }
+      | _ -> panic "expected one qualified type declaration")
+    type_decls
+
+let rebind_export_target = fun ~from_module_name ~to_module_name target ->
+  match target with
+  | ModuleTypings.Site _ -> target
+  | ModuleTypings.Export path ->
+      let from_prefix = SurfacePath.of_name from_module_name in
+      let to_prefix = SurfacePath.of_name to_module_name in
+      let rebound_path =
+        match SurfacePath.strip_prefix ~prefix:from_prefix path with
+        | Some suffix -> SurfacePath.append_path to_prefix suffix
+        | None -> path
+      in
+      ModuleTypings.Export rebound_path
+
+let rebind_value_definition = fun ~from_module_name ~to_module_name (
+  definition: ModuleTypings.value_definition
+) ->
+  {
+    definition
+    with target = rebind_export_target ~from_module_name ~to_module_name definition.target
+  }
+
+let rebind_module_typings = fun ~module_name typings ->
+  let type_decls = qualify_signature_type_decls ~module_name (ModuleTypings.type_decls typings) in
+  let value_definitions = ModuleTypings.value_definitions typings
+  |> List.map
+    (rebind_value_definition ~from_module_name:(ModuleTypings.module_name typings) ~to_module_name:module_name) in
+  match ModuleTypings.export_result typings with
+  | FileSummary.TrustedExport { exports } ->
+      let exports = qualify_signature_exports ~module_name ~type_decls exports in
+      let source_hash = ModuleTypings.synthetic_source_hash
+        ~module_name
+        ~export_result:(FileSummary.TrustedExport { exports })
+        ~type_decls
+        ~value_definitions
+        () in
+      ModuleTypings.trusted ~module_name ~source_hash ~type_decls ~value_definitions exports
+  | FileSummary.ErroredExport { exports } ->
+      let exports = qualify_signature_exports ~module_name ~type_decls exports in
+      let source_hash = ModuleTypings.synthetic_source_hash
+        ~module_name
+        ~export_result:(FileSummary.ErroredExport { exports })
+        ~type_decls
+        ~value_definitions
+        () in
+      ModuleTypings.errored ~module_name ~source_hash ~type_decls ~value_definitions exports
+  | FileSummary.NoExport ->
+      let source_hash = ModuleTypings.synthetic_source_hash
+        ~module_name
+        ~export_result:FileSummary.NoExport
+        ~type_decls
+        ~value_definitions
+        () in
+      ModuleTypings.missing ~module_name ~source_hash ~type_decls ~value_definitions ()
+
+let qualify_surface = fun ~module_name ~type_decls exports ->
+  let module_path = SurfacePath.of_name module_name in
+  let local_types = local_type_decl_index type_decls in
+  {
+    exports = List.map
+      (fun (name, scheme) ->
+        (
+          SurfacePath.append_path module_path name,
+          qualify_scheme_with_local_types local_types ~module_name scheme
+        ))
+      exports;
+    type_decls = qualify_type_decls_with_local_types local_types ~module_name type_decls
+  }
+
+let qualify_exports = fun ~module_name ~type_decls exports ->
+  (qualify_surface ~module_name ~type_decls exports).exports
+
+let qualify_type_decls = fun ~module_name type_decls ->
+  (qualify_surface ~module_name ~type_decls []).type_decls

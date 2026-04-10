@@ -31,7 +31,7 @@ let exports = fun analysis -> FileSummary.exports analysis.file_summary
 
 let completeness_of_file_summary = fun summary -> FileSummary.completeness summary
 
-let definition_site_of_origin_id = fun ~(source: Source.t) ~semantic_tree origin_id ->
+let definition_site_of_origin_id = fun ~(source:Source.t) ~semantic_tree origin_id ->
   match semantic_tree with
   | None -> None
   | Some (semantic_tree: SemanticTree.file) -> OriginMap.find semantic_tree.origin_map origin_id
@@ -64,14 +64,17 @@ let alias_target_path = fun ~alias_name ~module_path path ->
   let suffix = SurfacePath.strip_prefix ~prefix:alias_prefix path |> Option.unwrap_or ~default:path in
   SurfacePath.append_path module_path suffix
 
-let definition_target_of_binding_ref_in_tree = fun ~(source: Source.t) ~semantic_tree (binding_ref: Check_result.binding_ref) ->
+let definition_target_of_binding_ref_in_tree = fun ~(source:Source.t) ~semantic_tree (
+  binding_ref: Check_result.binding_ref
+) ->
   match binding_ref.provenance with
   | Check_result.LoweredPattern pat_id -> (
       match semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
         (SemanticTree.find_pattern semantic_tree pat_id)
-        (fun pattern -> definition_site_of_origin_id ~source ~semantic_tree:(Some semantic_tree) pattern.origin_id)
+        (fun pattern ->
+          definition_site_of_origin_id ~source ~semantic_tree:(Some semantic_tree) pattern.origin_id)
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.DeclaredValue { name; scope_path } -> (
@@ -98,9 +101,7 @@ let definition_target_of_binding_ref_in_tree = fun ~(source: Source.t) ~semantic
   | Check_result.Included { module_path } ->
       Some (ModuleTypings.Export (SurfacePath.append_path module_path binding_ref.surface_path))
   | Check_result.ModuleAlias { alias_name; module_path } ->
-      Some
-        (ModuleTypings.Export
-           (alias_target_path ~alias_name ~module_path binding_ref.surface_path))
+      Some (ModuleTypings.Export (alias_target_path ~alias_name ~module_path binding_ref.surface_path))
   | Check_result.Prelude
   | Check_result.TypeConstructor _ ->
       None
@@ -111,16 +112,14 @@ let definition_target_of_binding_ref = fun analysis binding_ref ->
     ~semantic_tree:analysis.semantic_tree
     binding_ref
 
-let export_definitions_of_bindings = fun ~(source: Source.t) ~semantic_tree export_bindings ->
+let export_definitions_of_bindings = fun ~(source:Source.t) ~semantic_tree export_bindings ->
   export_bindings
   |> List.filter_map
     (fun (binding_ref: Check_result.binding_ref) ->
       definition_target_of_binding_ref_in_tree ~source ~semantic_tree binding_ref
       |> Option.map
         (fun target ->
-          (
-            { export_name = binding_ref.surface_path; target }: ModuleTypings.value_definition
-          )))
+          ({ export_name = binding_ref.surface_path; target }: ModuleTypings.value_definition)))
 
 let export_definitions = fun analysis -> analysis.value_definitions
 
@@ -154,6 +153,12 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     not (Parser.(parsed.diagnostics) = [])
     || has_error_diagnostics semantic_tree.diagnostics
     || has_error_diagnostics inferred.diagnostics in
+  let item_traces, expr_traces =
+    if config.capture_traces then
+      (inferred.item_traces, inferred.expr_traces)
+    else
+      ([], [])
+  in
   let file_summary =
     if not has_errors then
       FileSummary.complete ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
@@ -169,7 +174,11 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     parse_diagnostics =
       Parser.(parsed.diagnostics);
     cst;
-    semantic_tree = if config.capture_traces then Some semantic_tree else None;
+    semantic_tree =
+      if config.capture_traces then
+        Some semantic_tree
+      else
+        None;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
     ambient_type_decls = config.ambient_type_decls;
@@ -177,6 +186,6 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     file_summary;
     value_definitions;
     type_index;
-    item_traces = inferred.item_traces;
-    expr_traces = inferred.expr_traces;
+    item_traces;
+    expr_traces;
   }

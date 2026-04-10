@@ -80,6 +80,8 @@ type t = {
   local_module_names_cache: (int, string list) Collections.HashMap.t;
   local_ambient_keys_cache: (int, local_ambient_cache_key) Collections.HashMap.t;
   ambient_surface_keys_cache: (int, ambient_surface_cache_key) Collections.HashMap.t;
+  persisted_module_typings_cache: (string, bool) Collections.HashMap.t;
+  qualified_module_surface_cache: (string, ModuleSurface.qualified_surface) Collections.HashMap.t;
   mutable all_module_results_cache: (string * ModulePairing.t) list option;
   mutable rooted_module_typings_cache: ModuleTypings.t list option;
 }
@@ -105,16 +107,46 @@ let signature_mismatch_subject mismatch =
 
 let signature_mismatch_message = Diagnostic.signature_mismatch_message
 
+let ensure_module_typings_persisted = fun (snapshot: t) ~module_name module_typings ->
+  match Collections.HashMap.get snapshot.persisted_module_typings_cache module_name with
+  | Some true -> ()
+  | Some false
+  | None -> (
+      match snapshot.analyses with
+      | [] -> ()
+      | slot :: _ -> (
+          match slot.config.store with
+          | None -> ()
+          | Some store ->
+              match Store.save_module_typings store module_typings with
+              | Ok () ->
+                  let _ = Collections.HashMap.insert
+                    snapshot.persisted_module_typings_cache
+                    module_name
+                    true in
+                  ()
+              | Error message ->
+                  let loaded_module_names = slot.config.loaded_modules
+                  |> LoadedModules.names
+                  |> List.sort String.compare in
+                  raise
+                    (Failure ("while persisting snapshot module typings for "
+                    ^ module_name
+                    ^ " loaded_modules=["
+                    ^ String.concat ", " loaded_module_names
+                    ^ "]: "
+                    ^ message))
+        )
+    )
+
 let digest_key = fun parts -> parts |> String.concat "\x1f" |> Crypto.hash_string |> Crypto.Digest.hex
 
 let cache_namespace_key_of_config = fun (config: TypConfig.t) ->
-  digest_key [
-    if config.capture_traces then
-      "capture=1"
-    else
-      "capture=0";
-    LoadedModules.stable_key config.loaded_modules;
-  ]
+  digest_key
+    [ if config.capture_traces then
+        "capture=1"
+      else
+        "capture=0"; LoadedModules.stable_key config.loaded_modules; ]
 
 let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_caches ->
   let analyses =
@@ -182,6 +214,8 @@ let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_cach
     local_module_names_cache = Collections.HashMap.with_capacity 64;
     local_ambient_keys_cache = Collections.HashMap.with_capacity 64;
     ambient_surface_keys_cache = Collections.HashMap.with_capacity 64;
+    persisted_module_typings_cache = Collections.HashMap.with_capacity 32;
+    qualified_module_surface_cache = Collections.HashMap.with_capacity 128;
     all_module_results_cache = None;
     rooted_module_typings_cache = None;
   }
@@ -194,6 +228,20 @@ let qualify_exports = fun module_name type_decls exports ->
 
 let qualify_type_decls = fun module_name type_decls ->
   ModuleSurface.qualify_type_decls ~module_name type_decls
+
+let qualified_module_surface_cache_key = fun ~module_name ~alias -> module_name ^ "\x1f" ^ alias
+
+let qualified_module_surface = fun (snapshot: t) ~module_name ~alias typings ->
+  let cache_key = qualified_module_surface_cache_key ~module_name ~alias in
+  match Collections.HashMap.get snapshot.qualified_module_surface_cache cache_key with
+  | Some surface -> surface
+  | None ->
+      let surface = ModuleSurface.qualify_surface
+        ~module_name:alias
+        ~type_decls:(ModuleTypings.type_decls typings)
+        (ModuleTypings.exports typings) in
+      let _ = Collections.HashMap.insert snapshot.qualified_module_surface_cache cache_key surface in
+      surface
 
 let module_names_of_slots = fun slots ->
   let rec loop order seen = function
@@ -231,18 +279,18 @@ let loaded_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
   match Collections.HashMap.get snapshot.shared_loaded_ambient_env_cache cache_key with
   | Some ambient -> ambient
   | None ->
-      let ambient = LoadedModules.fold
-        (fun module_name typings ambient ->
-          if String.equal module_name current_module_name then
-            ambient
-          else
-            ambient
-            @ qualify_exports
-              module_name
-              (ModuleTypings.type_decls typings)
-              (ModuleTypings.exports typings))
-        slot.config.loaded_modules
-        [] in
+      let ambient =
+        LoadedModules.fold
+          (fun module_name typings ambient_rev ->
+            if String.equal module_name current_module_name then
+              ambient_rev
+            else
+              let exports = (qualified_module_surface snapshot ~module_name ~alias:module_name typings).exports in
+              List.rev_append exports ambient_rev)
+          slot.config.loaded_modules
+          []
+        |> List.rev
+      in
       let _ = Collections.HashMap.insert snapshot.shared_loaded_ambient_env_cache cache_key ambient in
       ambient
 
@@ -252,15 +300,22 @@ let loaded_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
   match Collections.HashMap.get snapshot.shared_loaded_ambient_type_decls_cache cache_key with
   | Some ambient_type_decls -> ambient_type_decls
   | None ->
-      let ambient_type_decls = LoadedModules.fold
-        (fun module_name typings ambient_type_decls ->
-          if String.equal module_name current_module_name then
-            ambient_type_decls
-          else
-            ambient_type_decls
-            @ (ModuleTypings.type_decls typings |> qualify_type_decls module_name))
-        slot.config.loaded_modules
-        [] in
+      let ambient_type_decls =
+        LoadedModules.fold
+          (fun module_name typings type_decls_rev ->
+            if String.equal module_name current_module_name then
+              type_decls_rev
+            else
+              let qualified_type_decls = (qualified_module_surface
+                snapshot
+                ~module_name
+                ~alias:module_name
+                typings).type_decls in
+              List.rev_append qualified_type_decls type_decls_rev)
+          slot.config.loaded_modules
+          []
+        |> List.rev
+      in
       let _ = Collections.HashMap.insert snapshot.shared_loaded_ambient_type_decls_cache cache_key ambient_type_decls in
       ambient_type_decls
 
@@ -595,15 +650,16 @@ and local_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
   | None ->
       let ambient =
         local_module_names_for snapshot slot
-        |> List.map (fun module_name -> (module_name, module_result_for snapshot module_name))
-        |> List.map
-          (fun (module_name, result) ->
-            let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
-            let exports = ModuleTypings.exports result.ModulePairing.module_typings in
-            ambient_module_names_of_local_module_name module_name
-            |> List.map (fun alias -> qualify_exports alias type_decls exports)
-            |> List.flatten)
-        |> List.flatten
+        |> List.fold_left
+          (fun ambient_rev module_name ->
+            let typings = (module_result_for snapshot module_name).ModulePairing.module_typings in
+            ambient_module_names_of_local_module_name module_name |> List.fold_left
+              (fun ambient_rev alias ->
+                let exports = (qualified_module_surface snapshot ~module_name ~alias typings).exports in
+                List.rev_append exports ambient_rev)
+              ambient_rev)
+          []
+        |> List.rev
       in
       let _ = Collections.HashMap.insert snapshot.shared_local_ambient_env_cache cache_key ambient in
       ambient
@@ -615,14 +671,16 @@ and local_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
   | None ->
       let ambient_type_decls =
         local_module_names_for snapshot slot
-        |> List.map (fun module_name -> (module_name, module_result_for snapshot module_name))
-        |> List.map
-          (fun (module_name, result) ->
-            let type_decls = ModuleTypings.type_decls result.ModulePairing.module_typings in
-            ambient_module_names_of_local_module_name module_name
-            |> List.map (fun alias -> qualify_type_decls alias type_decls)
-            |> List.flatten)
-        |> List.flatten
+        |> List.fold_left
+          (fun type_decls_rev module_name ->
+            let typings = (module_result_for snapshot module_name).ModulePairing.module_typings in
+            ambient_module_names_of_local_module_name module_name |> List.fold_left
+              (fun type_decls_rev alias ->
+                let qualified_type_decls = (qualified_module_surface snapshot ~module_name ~alias typings).type_decls in
+                List.rev_append qualified_type_decls type_decls_rev)
+              type_decls_rev)
+          []
+        |> List.rev
       in
       let _ = Collections.HashMap.insert snapshot.shared_local_ambient_type_decls_cache cache_key ambient_type_decls in
       ambient_type_decls
@@ -697,26 +755,31 @@ and module_result_for = fun (snapshot: t) module_name ->
         | Finished _ -> false)
   in
   match Collections.HashMap.get snapshot.module_results_cache cache_key with
-  | Some result -> result
+  | Some result ->
+      let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
+      result
   | None -> (
       if module_is_in_progress then
         partial_module_result snapshot module_name
       else
         let shared_cache_hit =
           match Collections.HashMap.get snapshot.module_result_keys_cache module_name with
-          | Some (Some shared_cache_key) ->
-              Collections.HashMap.get snapshot.shared_module_result_cache shared_cache_key
+          | Some (Some shared_cache_key) -> Collections.HashMap.get
+            snapshot.shared_module_result_cache
+            shared_cache_key
           | Some None
           | None -> None
         in
         match shared_cache_hit with
         | Some result ->
+            let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
             let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
             result
         | None ->
             let shared_cache_key = module_result_shared_cache_key snapshot module_name in
             match Collections.HashMap.get snapshot.shared_module_result_cache shared_cache_key with
             | Some result ->
+                let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
                 result
             | None ->
@@ -730,10 +793,15 @@ and module_result_for = fun (snapshot: t) module_name ->
                     (fun () -> Event.ModulePairingStarted { module_name; source_ids })
                 );
                 let sources = slots
-                |> List.map (fun (slot: analysis_slot) -> (slot.source, force_analysis snapshot slot)) in
+                |> List.map
+                  (fun (slot: analysis_slot) -> (slot.source, force_analysis snapshot slot)) in
                 let result = ModulePairing.of_sources ~module_name sources in
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
-                let _ = Collections.HashMap.insert snapshot.shared_module_result_cache shared_cache_key result in
+                let _ = Collections.HashMap.insert
+                  snapshot.shared_module_result_cache
+                  shared_cache_key
+                  result in
+                let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
                 (
                   match slots with
                   | [] -> ()
@@ -752,7 +820,8 @@ and module_result_for = fun (snapshot: t) module_name ->
                             mismatch_subjects = result.ModulePairing.signature_mismatches
                             |> List.map signature_mismatch_subject
                             |> List.sort_uniq String.compare;
-                            mismatch_messages = result.ModulePairing.signature_mismatches |> List.map signature_mismatch_message;
+                            mismatch_messages = result.ModulePairing.signature_mismatches
+                            |> List.map signature_mismatch_message;
                           })
                 );
                 result
@@ -779,7 +848,9 @@ let analyses = fun snapshot ->
   rooted_slots snapshot |> List.filter_map
     (fun (slot: analysis_slot) ->
       match module_result_of_source snapshot slot.source_id with
-      | Some (_module_name, Some result) -> List.assoc_opt slot.source_id ModulePairing.(result.analyses_by_source)
+      | Some (_module_name, Some result) -> List.assoc_opt
+        slot.source_id
+        ModulePairing.(result.analyses_by_source)
       | Some (_, None)
       | None -> None)
 
@@ -791,39 +862,41 @@ let module_typings = fun snapshot ->
   (
     match snapshot.analyses with
     | [] -> ()
-    | slot :: _ ->
-        TypConfig.emit_event slot.config
-          (fun () ->
-            Event.ModuleTypingsCollectionStarted {
-              roots = snapshot.roots;
-              rooted_module_count = List.length rooted_module_names
-            })
+    | slot :: _ -> TypConfig.emit_event
+      slot.config
+      (fun () ->
+        Event.ModuleTypingsCollectionStarted {
+          roots = snapshot.roots;
+          rooted_module_count = List.length rooted_module_names
+        })
   );
   let module_typings =
     match snapshot.rooted_module_typings_cache with
     | Some module_typings -> module_typings
     | None ->
-        let module_typings = rooted_module_names
-        |> List.filter_map
-          (fun module_name ->
-            if List.mem module_name snapshot.module_names then
-              Some ModulePairing.((module_result_for snapshot module_name).module_typings)
-            else
-              None) in
+        let module_typings =
+          rooted_module_names
+          |> List.filter_map
+            (fun module_name ->
+              if List.mem module_name snapshot.module_names then
+                Some ModulePairing.((module_result_for snapshot module_name).module_typings)
+              else
+                None)
+        in
         snapshot.rooted_module_typings_cache <- Some module_typings;
         module_typings
   in
   (
     match snapshot.analyses with
     | [] -> ()
-    | slot :: _ ->
-        TypConfig.emit_event slot.config
-          (fun () ->
-            Event.ModuleTypingsCollectionFinished {
-              roots = snapshot.roots;
-              rooted_module_count = List.length rooted_module_names;
-              produced_module_count = List.length module_typings
-            })
+    | slot :: _ -> TypConfig.emit_event
+      slot.config
+      (fun () ->
+        Event.ModuleTypingsCollectionFinished {
+          roots = snapshot.roots;
+          rooted_module_count = List.length rooted_module_names;
+          produced_module_count = List.length module_typings
+        })
   );
   module_typings
 

@@ -618,9 +618,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
               (
                 List.map
                   (fun (label: TypeDecl.label) ->
-                    let resolved_field_type =
-                      TypeScheme.map_type_preserving resolve_type label.field_type
-                    in
+                    let resolved_field_type = TypeScheme.map_type_preserving resolve_type label.field_type in
                     if Std.Ptr.equal label.field_type resolved_field_type then
                       label
                     else
@@ -640,9 +638,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       declaration.labels
       |> List.map
         (fun (label: TypeDecl.label) ->
-          let resolved_field_type =
-            TypeScheme.map_type_preserving resolve_type label.field_type
-          in
+          let resolved_field_type = TypeScheme.map_type_preserving resolve_type label.field_type in
           if Std.Ptr.equal label.field_type resolved_field_type then
             label
           else
@@ -1013,7 +1009,11 @@ let canonicalize_type = fun visible_types ->
               ty
             else
               TypeRepr.of_desc
-                (TypeRepr.PolyVariant { bound; tags = canonical_tags; inherited = canonical_inherited })
+                (TypeRepr.PolyVariant {
+                  bound;
+                  tags = canonical_tags;
+                  inherited = canonical_inherited
+                })
           in
           exact_poly_variant_alias visible_types bound canonical_tags canonical_inherited
           |> Option.map
@@ -1063,11 +1063,7 @@ let canonicalize_inline_record_labels = fun visible_types labels ->
   labels
   |> List.map
     (fun (label: TypeDecl.label) ->
-      {
-        label
-        with field_type =
-          canonicalize_scheme visible_types label.field_type
-      })
+      { label with field_type = canonicalize_scheme visible_types label.field_type })
 
 let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl) ->
   let visible_types =
@@ -1128,10 +1124,7 @@ let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl
   let labels = declaration.labels
   |> List.map
     (fun (label: TypeDecl.label) ->
-      {
-        label
-        with field_type = canonicalize_scheme visible_types label.field_type
-      }) in
+      { label with field_type = canonicalize_scheme visible_types label.field_type }) in
   { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
 let type_decls_for_include = fun visible_types module_path ->

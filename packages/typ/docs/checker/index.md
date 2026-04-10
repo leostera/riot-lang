@@ -22,6 +22,8 @@ Start here:
   the contract between source syntax and semantic typing input
 - [engine.md](./engine.md)
   the library/runtime contract: sessions, snapshots, summaries, queries
+- [fast_package_check.md](./fast_package_check.md)
+  the target architecture for one incremental authoritative cold-check path
 
 Then read the feature slices:
 

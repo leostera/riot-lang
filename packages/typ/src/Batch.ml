@@ -58,9 +58,8 @@ let check_source = fun ~filename ~parse_result ~cst ->
     typing_diagnostics = analysis.typing_diagnostics;
     file_summary = analysis.file_summary;
     type_index = analysis.type_index;
-    exports =
-      Session.SourceAnalysis.exports analysis
-      |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
+    exports = Session.SourceAnalysis.exports analysis
+    |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
     item_traces = analysis.item_traces;
     expr_traces = analysis.expr_traces;
   }

@@ -169,7 +169,11 @@ let canonicalize_type_for_persistence = fun by_path ->
                 tags
             in
             let inherited2 = map_preserving loop inherited in
-            shell.TypeRepr.desc <- TypeRepr.PolyVariant { bound; tags = tags2; inherited = inherited2 };
+            shell.TypeRepr.desc <- TypeRepr.PolyVariant {
+              bound;
+              tags = tags2;
+              inherited = inherited2
+            };
             shell
         | TypeRepr.Tuple members ->
             let shell = prepare_shell ty in
@@ -223,10 +227,11 @@ let canonicalize_type_decl_for_persistence = fun canonicalize_type (type_decl: F
       }) in
   let labels = declaration.labels
   |> List.map
-    (fun (label: TypeDecl.label) -> {
-      label
-      with field_type = canonicalize_scheme_for_persistence canonicalize_type label.field_type
-    }) in
+    (fun (label: TypeDecl.label) ->
+      {
+        label
+        with field_type = canonicalize_scheme_for_persistence canonicalize_type label.field_type
+      }) in
   { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
 let canonicalize_export_result_for_persistence = fun canonicalize_type export_result ->
@@ -540,10 +545,17 @@ let exports_to_json = fun exports ->
           try scheme_to_json scheme with
           | Failure message -> raise
             (Failure (format
-              Format.[ str "module typings export "; str (SurfacePath.to_string name); str ": "; str
-                  message; ]))
+              Format.[
+                str "module typings export ";
+                str (SurfacePath.to_string name);
+                str ": ";
+                str message;
+              ]))
         in
-        Data.Json.Object [ ("name", Data.Json.String (SurfacePath.to_string name)); ("scheme", scheme_json); ])
+        Data.Json.Object [
+          ("name", Data.Json.String (SurfacePath.to_string name));
+          ("scheme", scheme_json);
+        ])
   )
 
 let label_decl_to_json = fun (label: TypeDecl.label) ->
@@ -964,16 +976,13 @@ let constructor_of_json = fun json ->
         parse_labels [] labels_json
     | None -> Ok None
   in
-  Ok (
-    {
+  Ok ({
       TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
       name;
       scheme;
       generalized;
-      inline_record_labels
-    }:
-      TypeDecl.constructor
-  )
+      inline_record_labels;
+    }: TypeDecl.constructor)
 
 let label_decl_of_json = fun json ->
   let* fields = get_object json in

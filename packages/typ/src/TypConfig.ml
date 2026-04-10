@@ -48,8 +48,7 @@ let with_ambient_visible_types = fun config ~ambient_visible_types ->
 let with_loaded_modules = fun config ~loaded_modules ->
   { config with loaded_modules = LoadedModules.of_list loaded_modules }
 
-let with_loaded_module_index = fun config ~loaded_modules ->
-  { config with loaded_modules }
+let with_loaded_module_index = fun config ~loaded_modules -> { config with loaded_modules }
 
 let with_store = fun config ~store -> { config with store }
 

@@ -2,10 +2,7 @@ open Std
 
 type t =
   | Unresolved of SurfacePath.t
-  | Resolved of {
-      binding_id: BindingId.t;
-      surface_path: SurfacePath.t;
-    }
+  | Resolved of { binding_id: BindingId.t; surface_path: SurfacePath.t }
   | Apply of t * t
 
 let empty = Unresolved SurfacePath.empty
@@ -24,18 +21,15 @@ let of_binding_id = fun binding_id ->
   resolved ~binding_id ~surface_path:(SurfacePath.of_name (BindingId.name binding_id))
 
 let binding_id = function
-  | Resolved { binding_id; _ } ->
-      Some binding_id
+  | Resolved { binding_id; _ } -> Some binding_id
   | Unresolved _
-  | Apply _ ->
-      None
+  | Apply _ -> None
 
 let rec surface_path = function
   | Unresolved surface_path
-  | Resolved { surface_path; _ } ->
-      surface_path
-  | Apply (callee, argument) ->
-      SurfacePath.of_string (to_string callee ^ "(" ^ to_string argument ^ ")")
+  | Resolved { surface_path; _ } -> surface_path
+  | Apply (callee, argument) -> SurfacePath.of_string
+    (to_string callee ^ "(" ^ to_string argument ^ ")")
 
 and to_string = fun entity -> surface_path entity |> SurfacePath.to_string
 
@@ -52,38 +46,32 @@ let compare = fun left right ->
   | (Unresolved left, Unresolved right) ->
       SurfacePath.compare left right
   | (Unresolved _, _) ->
-      -1
+      (-1)
   | (_, Unresolved _) ->
       1
   | (Resolved left, Resolved right) -> (
       match BindingId.compare left.binding_id right.binding_id with
-      | 0 ->
-          SurfacePath.compare left.surface_path right.surface_path
-      | order ->
-          order
+      | 0 -> SurfacePath.compare left.surface_path right.surface_path
+      | order -> order
     )
   | (Resolved _, _) ->
-      -1
+      (-1)
   | (_, Resolved _) ->
       1
   | (Apply (left_callee, left_argument), Apply (right_callee, right_argument)) -> (
       match compare left_callee right_callee with
-      | 0 ->
-          compare left_argument right_argument
-      | order ->
-          order
+      | 0 -> compare left_argument right_argument
+      | order -> order
     )
 
-let equal = fun left right -> Int.equal (compare left right) 0
+let equal = fun left right ->
+  Int.equal (compare left right) 0
 
 let with_surface_path = fun new_surface_path entity ->
   match entity with
-  | Unresolved _ ->
-      Unresolved new_surface_path
-  | Resolved { binding_id; _ } ->
-      Resolved { binding_id; surface_path = new_surface_path }
-  | Apply _ ->
-      Unresolved new_surface_path
+  | Unresolved _ -> Unresolved new_surface_path
+  | Resolved { binding_id; _ } -> Resolved { binding_id; surface_path = new_surface_path }
+  | Apply _ -> Unresolved new_surface_path
 
 let append_name = fun entity name ->
   of_surface_path (SurfacePath.append_name (surface_path entity) name)
@@ -93,8 +81,7 @@ let prepend_name = fun name entity ->
 
 let append_path = fun left right ->
   let right_segments = right |> surface_path |> SurfacePath.to_segments in
-  right_segments
-  |> List.fold_left append_name left
+  right_segments |> List.fold_left append_name left
 
 let qualify = fun ~prefix entity ->
   with_surface_path (SurfacePath.append_path prefix (surface_path entity)) entity

@@ -30,7 +30,9 @@ let bind_type_decls = fun type_decls introduced ->
         List.filter
           (fun (candidate: FileSummary.type_decl) ->
             not
-              (SurfacePath.equal (qualify_name candidate.scope_path candidate.declaration.type_name) key))
+              (SurfacePath.equal
+                (qualify_name candidate.scope_path candidate.declaration.type_name)
+                key))
           acc
       in
       acc @ [ type_decl ])
@@ -444,9 +446,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
               (
                 List.map
                   (fun (label: TypeDecl.label) ->
-                    let resolved_field_type =
-                      TypeScheme.map_type_preserving resolve_type label.field_type
-                    in
+                    let resolved_field_type = TypeScheme.map_type_preserving resolve_type label.field_type in
                     if Std.Ptr.equal label.field_type resolved_field_type then
                       label
                     else
@@ -466,9 +466,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       declaration.labels
       |> List.map
         (fun (label: TypeDecl.label) ->
-          let resolved_field_type =
-            TypeScheme.map_type_preserving resolve_type label.field_type
-          in
+          let resolved_field_type = TypeScheme.map_type_preserving resolve_type label.field_type in
           if Std.Ptr.equal label.field_type resolved_field_type then
             label
           else
@@ -693,8 +691,7 @@ let make_type = fun (state: t) desc ->
 let rigid_equations = fun (state: t) -> state.rigid_equations
 
 let lookup_rigid_equation = fun (state: t) rigid_id ->
-  state.rigid_equations
-  |> List.find_map
+  state.rigid_equations |> List.find_map
     (fun (candidate_id, replacement) ->
       if Int.equal candidate_id rigid_id then
         Some replacement
@@ -710,9 +707,10 @@ let with_local_rigid_equations = fun (state: t) f ->
     let result = f () in
     state.rigid_equations <- previous;
     result
-  with exn ->
-    state.rigid_equations <- previous;
-    raise exn
+  with
+  | exn ->
+      state.rigid_equations <- previous;
+      raise exn
 
 let resolve_named_type_head = fun (state: t) name ->
   VisibleTypes.resolve_named_type_head state.visible_types name
@@ -736,10 +734,8 @@ let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~
   let canonicalize_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
   let canonicalize_inline_record_labels labels = labels
   |> List.map
-    (fun (label: TypeDecl.label) -> {
-      label
-      with field_type = canonicalize_scheme_with canonicalize_type label.field_type
-    }) in
+    (fun (label: TypeDecl.label) ->
+      { label with field_type = canonicalize_scheme_with canonicalize_type label.field_type }) in
   let declaration = type_decl.declaration in
   let manifest =
     match declaration.manifest with
@@ -773,10 +769,8 @@ let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~
       }) in
   let labels = declaration.labels
   |> List.map
-    (fun (label: TypeDecl.label) -> {
-      label
-      with field_type = canonicalize_scheme_with canonicalize_type label.field_type
-    }) in
+    (fun (label: TypeDecl.label) ->
+      { label with field_type = canonicalize_scheme_with canonicalize_type label.field_type }) in
   { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
 let canonicalize_scheme_with_named_type_head = fun resolve_named_type_head scheme ->

@@ -77,8 +77,7 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
     let _ = Collections.HashMap.insert replacements (order_for_ty ty) shell in
     shell
   in
-  let rec copy_scheme scheme =
-    map_type_preserving copy scheme
+  let rec copy_scheme scheme = map_type_preserving copy scheme
   and copy ty =
     let ty = TypeRepr.prune ty in
     if TypeRepr.level ty < TypeRepr.generic_level then
@@ -172,8 +171,7 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
           remember_identity ty
     | TypeRepr.Var { link=Some linked; _ } ->
         let replacement = copy linked in
-        remember_replacement ty replacement
-  in
+        remember_replacement ty replacement in
   copy scheme_body
 
 let next_copy_generation =
@@ -219,8 +217,7 @@ let copy = fun scheme ->
     let _ = Collections.HashMap.insert replacements (order_for_ty ty) shell in
     shell
   in
-  let rec clone_scheme scheme =
-    map_type_preserving clone scheme
+  let rec clone_scheme scheme = map_type_preserving clone scheme
   and clone ty =
     let ty = TypeRepr.prune ty in
     match lookup_replacement ty with
@@ -277,7 +274,10 @@ let copy = fun scheme ->
               shell
           | TypeRepr.Named { head; arguments } ->
               let shell = prepare_shell ty in
-              shell.TypeRepr.desc <- TypeRepr.Named { head; arguments = map_preserving clone arguments };
+              shell.TypeRepr.desc <- TypeRepr.Named {
+                head;
+                arguments = map_preserving clone arguments
+              };
               shell
           | TypeRepr.PolyVariant { bound; tags; inherited } ->
               let shell = prepare_shell ty in
@@ -313,8 +313,7 @@ let copy = fun scheme ->
           | TypeRepr.Hole id ->
               TypeRepr.of_desc ~level (TypeRepr.Hole id)
         in
-        remember ty replacement
-  in
+        remember ty replacement in
   of_explicit ~quantified (clone original_body)
 
 let free_vars = fun scheme ->

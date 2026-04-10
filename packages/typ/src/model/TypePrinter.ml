@@ -10,15 +10,16 @@ type render_state = {
   rendered_aliases: int Collections.HashSet.t;
 }
 
-let make_render_state = fun () -> {
-  next_name = 0;
-  names = [];
-  generation = TypeRepr.next_walk_generation ();
-  next_order = 0;
-  aliases = Collections.HashMap.with_capacity 16;
-  states = Collections.HashMap.with_capacity 16;
-  rendered_aliases = Collections.HashSet.create ();
-}
+let make_render_state = fun () ->
+  {
+    next_name = 0;
+    names = [];
+    generation = TypeRepr.next_walk_generation ();
+    next_order = 0;
+    aliases = Collections.HashMap.with_capacity 16;
+    states = Collections.HashMap.with_capacity 16;
+    rendered_aliases = Collections.HashSet.create ();
+  }
 
 let pretty_name = fun index ->
   let suffix =
@@ -72,11 +73,13 @@ let rec visit_children = fun state ty ->
   | TypeRepr.Char
   | TypeRepr.Unit
   | TypeRepr.Hole _
-  | TypeRepr.Var { link=None; _ } -> ()
+  | TypeRepr.Var { link=None; _ } ->
+      ()
   | TypeRepr.Option element
   | TypeRepr.Array element
   | TypeRepr.List element
-  | TypeRepr.Seq element -> discover_recursive_aliases state element
+  | TypeRepr.Seq element ->
+      discover_recursive_aliases state element
   | TypeRepr.Result (ok_ty, error_ty) ->
       discover_recursive_aliases state ok_ty;
       discover_recursive_aliases state error_ty
@@ -104,8 +107,10 @@ and discover_recursive_aliases = fun state ty ->
   let ty = TypeRepr.prune ty in
   let key = order_for_ty state ty in
   match Collections.HashMap.get state.states key with
-  | Some 1 -> ignore (alias_for_ty state ty)
-  | Some 2 -> ()
+  | Some 1 ->
+      ignore (alias_for_ty state ty)
+  | Some 2 ->
+      ()
   | _ ->
       Collections.HashMap.insert state.states key 1 |> ignore;
       visit_children state ty;
@@ -212,7 +217,9 @@ and render_type_body = fun state nested active ty ->
       | [] -> SurfacePath.to_string name
       | [ argument ] -> render_type state true active argument ^ " " ^ SurfacePath.to_string name
       | arguments -> "("
-      ^ (arguments |> List.map (fun argument -> render_type state false active argument) |> String.concat ", ")
+      ^ (arguments
+      |> List.map (fun argument -> render_type state false active argument)
+      |> String.concat ", ")
       ^ ") "
       ^ SurfacePath.to_string name
     )

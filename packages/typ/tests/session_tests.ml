@@ -8,8 +8,9 @@ open Typ.Session
 let export_names = fun export ->
   match export with
   | Some (FileSummary.TrustedExport { exports })
-  | Some (FileSummary.ErroredExport { exports }) ->
-      List.map (fun (name, _scheme) -> SurfacePath.to_string name) exports
+  | Some (FileSummary.ErroredExport { exports }) -> List.map
+    (fun (name, _scheme) -> SurfacePath.to_string name)
+    exports
   | Some FileSummary.NoExport
   | None -> []
 
@@ -22,8 +23,7 @@ let export_scheme = fun snapshot source_id name ->
           if SurfacePath.equal (SurfacePath.of_string name) candidate_name then
             Some scheme
           else
-            None)
-  |> Option.map TypePrinter.scheme_to_string
+            None) |> Option.map TypePrinter.scheme_to_string
   | Some FileSummary.NoExport
   | None -> None
 
@@ -196,18 +196,17 @@ let exported_type_names = fun snapshot source_id ->
           if SurfacePath.is_empty type_decl.scope_path then
             type_decl.declaration.type_name
           else
-            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string)
+            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+            |> SurfacePath.to_string)
 
 let module_typings_export_names = fun typings ->
-  ModuleTypings.exports typings
-  |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
+  ModuleTypings.exports typings |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let file_summary_export_names = fun snapshot source_id ->
   match Query.file_summary_of snapshot source_id with
   | None -> []
-  | Some summary ->
-      FileSummary.exports summary
-      |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
+  | Some summary -> FileSummary.exports summary
+  |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
@@ -230,9 +229,7 @@ let with_typ_store = fun f ->
 
 let qualify_exports = fun module_name exports ->
   let module_path = SurfacePath.of_name module_name in
-  List.map
-    (fun (name, scheme) -> (SurfacePath.append_path module_path name, scheme))
-    exports
+  List.map (fun (name, scheme) -> (SurfacePath.append_path module_path name, scheme)) exports
 
 let qualify_type_decls = fun module_name type_decls ->
   List.map
@@ -337,6 +334,31 @@ let prepared_source = fun ~filename ~text ->
     ~source_hash:(Source.hash ~implicit_opens ~cst)
     ~parse_result
     ~cst
+
+let prepared_check_source = fun ~source_id ~filename ~internal_module_name ~local_module_name ~public_module_name ~text ->
+  let path = Path.v filename in
+  let origin = Source.Label filename in
+  let kind = Source.File in
+  let parse_result = Syn.parse ~filename:path text in
+  let cst = expect_cst ~filename parse_result in
+  let implicit_opens = [] in
+  let source = Source.make_prepared
+    ~source_id
+    ~kind
+    ~module_name:internal_module_name
+    ~implicit_opens
+    ~origin
+    ~revision:0
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst in
+  {
+    Check.display_path = path;
+    internal_module_name;
+    local_module_name;
+    public_module_name;
+    source;
+  }
 
 let check_source_text = fun ~filename text ->
   let parse_result = Syn.parse ~filename text in
@@ -1450,7 +1472,8 @@ let test_prepare_snapshot_nested_module_alias_canonicalizes_sibling_error_types 
         | Some typings -> ModuleTypings.type_decls typings
         |> List.map
           (fun (type_decl: FileSummary.type_decl) ->
-            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string)
+            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+            |> SurfacePath.to_string)
         | None -> []
       in
       if not (List.is_empty error_intf_diagnostics) then
@@ -2930,12 +2953,8 @@ let test_paired_modules_skip_signature_inclusion_for_errored_implementation = fu
   Test.assert_equal ~expected:true ~actual:(has_unbound_name snapshot impl_source_id);
   Test.assert_equal ~expected:false ~actual:(has_signature_error impl_source_id);
   Test.assert_equal ~expected:false ~actual:(has_signature_error intf_source_id);
-  Test.assert_equal
-    ~expected:[ "answer" ]
-    ~actual:(module_typings_export_names impl_typings);
-  Test.assert_equal
-    ~expected:[ "answer" ]
-    ~actual:(module_typings_export_names intf_typings);
+  Test.assert_equal ~expected:[ "answer" ] ~actual:(module_typings_export_names impl_typings);
+  Test.assert_equal ~expected:[ "answer" ] ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot impl_source_id "answer");
   Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot intf_source_id "answer");
   Test.assert_equal
@@ -2974,12 +2993,8 @@ let test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types
   Test.assert_equal ~expected:false ~actual:(has_signature_error intf_source_id);
   Test.assert_equal ~expected:false ~actual:(has_unsupported_syntax snapshot impl_source_id);
   Test.assert_equal ~expected:true ~actual:(has_unsupported_syntax snapshot intf_source_id);
-  Test.assert_equal
-    ~expected:[ "to_escape_seq" ]
-    ~actual:(module_typings_export_names impl_typings);
-  Test.assert_equal
-    ~expected:[ "to_escape_seq" ]
-    ~actual:(module_typings_export_names intf_typings);
+  Test.assert_equal ~expected:[ "to_escape_seq" ] ~actual:(module_typings_export_names impl_typings);
+  Test.assert_equal ~expected:[ "to_escape_seq" ] ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal
     ~expected:[ "to_escape_seq" ]
     ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -3597,6 +3612,116 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
             Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type;
             Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type;
             Ok ())
+
+let test_prepare_snapshot_persists_module_typings_as_modules_finish = fun _ctx ->
+  with_typ_store
+    (fun store ->
+      let config = Config.default |> Config.with_store ~store:(Some store) in
+      let session = Session.empty ~config in
+      let (session, _a_source_id) = create_source
+        session
+        ~kind:Source.File
+        ~origin:(Source.Label "a.ml")
+        ~text:"let answer = 42\n" in
+      let (session, b_source_id) = create_source
+        session
+        ~kind:Source.File
+        ~origin:(Source.Label "b.ml")
+        ~text:"let use = A.answer\n" in
+      match Session.prepare_snapshot session ~roots:[ b_source_id ] with
+      | Error missing -> Error (format
+        Format.[
+          str "expected store-backed snapshot preparation to succeed, got ";
+          str (Data.Json.to_string (Session.MissingRequirements.to_json missing));
+        ])
+      | Ok snapshot ->
+          let before_a = Store.load_module_typings store ~module_name:"A" in
+          let before_b = Store.load_module_typings store ~module_name:"B" in
+          let _ = Session.Snapshot.find_module_typings_by_name snapshot "B" in
+          let after_a = Store.load_module_typings store ~module_name:"A" in
+          let after_b = Store.load_module_typings store ~module_name:"B" in
+          if Option.is_some before_a || Option.is_some before_b then
+            Error "expected module typings store to start empty"
+          else
+            match (after_a, after_b) with
+            | (Some a_typings, Some b_typings) ->
+                Test.assert_equal
+                  ~expected:[ "answer" ]
+                  ~actual:(module_typings_export_names a_typings);
+                Test.assert_equal ~expected:[ "use" ] ~actual:(module_typings_export_names b_typings);
+                Ok ()
+            | (None, Some _) ->
+                Error "expected sibling dependency module typings to be persisted eagerly"
+            | (Some _, None) ->
+                Error "expected rooted module typings to be persisted eagerly"
+            | (None, None) ->
+                Error "expected module typings to be persisted during rooted snapshot forcing")
+
+let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
+  let adapter = prepared_check_source
+    ~source_id:(SourceId.of_int 0)
+    ~filename:"async/adapter.ml"
+    ~internal_module_name:"Kernel_new__Async__Adapter"
+    ~local_module_name:"Async.Adapter"
+    ~public_module_name:None
+    ~text:"let id value = value\n" in
+  let source = prepared_check_source
+    ~source_id:(SourceId.of_int 1)
+    ~filename:"async/source.ml"
+    ~internal_module_name:"Kernel_new__Async__Source"
+    ~local_module_name:"Async.Source"
+    ~public_module_name:None
+    ~text:"let run value = Adapter.id value\n" in
+  let config = Config.default |> Config.with_capture_traces ~capture_traces:false in
+  match Check.fold_package_sources
+    ~config
+    ~ordered_sources:[ source; adapter ]
+    ~init:[]
+    ~f:(fun groups (group: Check.finished_group) -> group :: groups) with
+  | Error Check.MissingRequirements { module_name; requirements } ->
+      Error (format
+        Format.[
+          str "unexpected missing requirements while checking ";
+          str module_name;
+          str ": ";
+          str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+        ])
+  | Error Check.MissingModuleTypings { module_name } ->
+      Error ("missing module typings for " ^ module_name)
+  | Error Check.MissingAnalysis { module_name; path } ->
+      Error ("missing analysis for " ^ module_name ^ " at " ^ Path.to_string path)
+  | Error Check.StoreFailure { module_name; reason } ->
+      Error ("store failure for " ^ module_name ^ ": " ^ reason)
+  | Ok (groups, loaded_modules) ->
+      let groups = List.rev groups in
+      let module_order = groups |> List.map (fun (group: Check.finished_group) -> group.module_name) in
+      let expected_order = [ "Kernel_new__Async__Adapter"; "Kernel_new__Async__Source" ] in
+      let source_group =
+        groups
+        |> List.find_opt
+          (fun (group: Check.finished_group) ->
+            String.equal group.module_name "Kernel_new__Async__Source")
+        |> Option.expect ~msg:"expected Async.Source group"
+      in
+      let source_analysis = source_group.checked_sources
+      |> List.find_opt
+        (fun (checked_source: Check.checked_source) -> Path.to_string checked_source.path = "async/source.ml")
+      |> Option.map (fun (checked_source: Check.checked_source) -> checked_source.analysis)
+      |> Option.expect ~msg:"expected Async.Source analysis" in
+      let export_names = FileSummary.exports source_analysis.file_summary
+      |> List.map (fun (name, _scheme) -> SurfacePath.to_string name) in
+      Test.assert_equal ~expected:expected_order ~actual:module_order;
+      Test.assert_equal
+        ~expected:[]
+        ~actual:(List.map Diagnostic.to_string source_analysis.typing_diagnostics);
+      Test.assert_equal ~expected:[ "run" ] ~actual:export_names;
+      Test.assert_equal
+        ~expected:true
+        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Adapter");
+      Test.assert_equal
+        ~expected:true
+        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Source");
+      Ok ()
 
 let test_prepare_snapshot_emits_structured_events = fun _ctx ->
   let events = ref [] in
@@ -8766,6 +8891,7 @@ let () =
         Test.case "prepare_snapshot uses internal local alias dependencies transitively" test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
         Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
         Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
+        Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
         Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;
         Test.case "prepare_snapshot wrapper module reexports unix exports to sibling modules" test_prepare_snapshot_wrapper_module_reexports_unix_exports_to_sibling_modules;
         Test.case "prepare_snapshot wrapper module preserves same-path nominal value types" test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types;
@@ -8802,6 +8928,7 @@ let () =
         Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
+        Test.case "prepare_snapshot persists module typings as modules finish" test_prepare_snapshot_persists_module_typings_as_modules_finish;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;

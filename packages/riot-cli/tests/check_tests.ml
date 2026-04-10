@@ -1178,7 +1178,9 @@ let test_check_package_filter_persists_interface_shaped_module_typings = fun _ct
               match colors_typings with
               | None -> Error "expected Colors module typings to be persisted"
               | Some typings ->
-                  let exports = Typ.Model.ModuleTypings.exports typings |> List.map fst in
+                  let exports =
+                    Typ.Model.ModuleTypings.exports typings
+                    |> List.map (fun (path, _scheme) -> Typ.Model.SurfacePath.to_string path) in
                   Test.assert_equal ~expected:[ "answer" ] ~actual:exports;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ()

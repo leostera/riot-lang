@@ -215,7 +215,8 @@ let with_nonrec_current_type_name_hidden = fun (state: state) (declaration: Cst.
         state.declared_type_names <- List.filter
           (fun (candidate_name, candidate_scope_path, _) ->
             not
-              (String.equal candidate_name type_name && SurfacePath.equal candidate_scope_path state.scope_path))
+              (String.equal candidate_name type_name
+              && SurfacePath.equal candidate_scope_path state.scope_path))
           state.declared_type_names
       in
       try
@@ -268,7 +269,10 @@ let rec module_path_segments_of_module_expression = fun (state: state) ->
   | _ -> None
 
 let rec unpacked_expression_of_module_expression = function
-  | Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } -> Some (expression, package_type)
+  | Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } -> Some (
+    expression,
+    package_type
+  )
   | Cst.ModuleExpression.Parenthesized { inner; _ }
   | Cst.ModuleExpression.Attribute { module_expression=inner; _ }
   | Cst.ModuleExpression.Constraint { module_expression=inner; _ } -> unpacked_expression_of_module_expression
@@ -401,9 +405,7 @@ let substitute_package_type =
           signature.values
           |> List.map
             (fun (value: TypeRepr.package_value) ->
-              let substituted_scheme =
-                TypeScheme.map_type_preserving (loop replacements) value.scheme
-              in
+              let substituted_scheme = TypeScheme.map_type_preserving (loop replacements) value.scheme in
               if Std.Ptr.equal value.scheme substituted_scheme then
                 value
               else
@@ -551,12 +553,13 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
       in
       let values = template.values
       |> List.map
-        (fun (value: TypeRepr.package_value) -> {
-          value
-          with scheme = TypeScheme.map_type_preserving
-            (substitute_package_type replacements)
-            value.scheme;
-        }) in
+        (fun (value: TypeRepr.package_value) ->
+          {
+            value
+            with scheme = TypeScheme.map_type_preserving
+              (substitute_package_type replacements)
+              value.scheme
+          }) in
       TypeRepr.package ~values
   | None -> TypeRepr.hole unsupported_core_type_hole_id
 
@@ -1053,9 +1056,7 @@ let lowered_type_declaration = fun (state: state) (declaration: Cst.TypeDeclarat
                   (fun (constructor: Cst.VariantConstructor.t) ->
                     let constructor_params = constructor_type_param_bindings params constructor in
                     let payload_type = variant_constructor_payload state constructor_params constructor in
-                    let generalized =
-                      Option.is_some (Cst.VariantConstructor.result_type constructor)
-                    in
+                    let generalized = Option.is_some (Cst.VariantConstructor.result_type constructor) in
                     let result_type =
                       match Cst.VariantConstructor.result_type constructor with
                       | Some result_type -> lower_core_type state constructor_params result_type
@@ -1070,9 +1071,8 @@ let lowered_type_declaration = fun (state: state) (declaration: Cst.TypeDeclarat
                       TypeDecl.name = Cst.VariantConstructor.name constructor;
                       scheme = constructor_scheme ~params:constructor_params ~result_type payload_type;
                       generalized;
-                      inline_record_labels
-                    }
-                    |> fun constructor ->
+                      inline_record_labels;
+                    } |> fun constructor ->
                       let () =
                         state.next_constructor_id <- state.next_constructor_id + 1
                       in
@@ -1126,7 +1126,10 @@ let lowered_type_declaration = fun (state: state) (declaration: Cst.TypeDeclarat
 let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
   match lowered_type_declaration state declaration with
   | Some lowered_declaration ->
-      let _ = add_item state ~syntax_node:(Cst.TypeDeclaration.syntax_node declaration) (`Type lowered_declaration) in
+      let _ = add_item
+        state
+        ~syntax_node:(Cst.TypeDeclaration.syntax_node declaration)
+        (`Type lowered_declaration) in
       ()
   | None -> ()
 
@@ -1316,9 +1319,7 @@ let lower_module_type_template =
       (fun (value: TypeRepr.package_value) ->
         {
           value
-          with scheme = TypeScheme.map_type_preserving
-            (substitute_package_type replacements)
-            value.scheme;
+          with scheme = TypeScheme.map_type_preserving (substitute_package_type replacements) value.scheme
         }) in
     { template with values }
   in
@@ -1608,14 +1609,18 @@ let rec lower_pattern = fun (state: state) pattern ->
   | Cst.Pattern.Or { syntax_node; alternatives; _ } ->
       let alternative_ids = List.map (lower_pattern state) alternatives in
       add_pattern state ~syntax_node ~label:"or_pattern" (BodyArena.POr alternative_ids)
-  | Cst.Pattern.Constructor { syntax_node; constructor_path; arguments; existentials; _ } ->
-      let lowered_existentials =
-        existentials
-        |> Option.map
-          (fun ({ Cst.binders; _ }: Cst.constructor_pattern_existentials) ->
-            fresh_local_abstract_type_params_from_binders state binders)
-        |> Option.unwrap_or ~default:[]
-      in
+  | Cst.Pattern.Constructor {
+    syntax_node;
+    constructor_path;
+    arguments;
+    existentials;
+    _
+  } ->
+      let lowered_existentials = existentials
+      |> Option.map
+        (fun ({ Cst.binders; _ }: Cst.constructor_pattern_existentials) ->
+          fresh_local_abstract_type_params_from_binders state binders)
+      |> Option.unwrap_or ~default:[] in
       with_local_abstract_type_params state lowered_existentials
         (fun () ->
           let argument_ids = List.map (lower_pattern state) arguments in
@@ -1987,8 +1992,11 @@ and lower_local_module_scope = fun (state: state) ~module_name module_expression
                           (binding_groups, type_decls)
                       | Cst.StructureItem.LetBinding binding ->
                           (
-                            binding_groups @ [
-                              { BodyArena.binding_ids = binding_ids_of_let_binding_group state binding }
+                            binding_groups
+                            @ [
+                              {
+                                BodyArena.binding_ids = binding_ids_of_let_binding_group state binding
+                              }
                             ],
                             type_decls
                           )
@@ -1997,13 +2005,13 @@ and lower_local_module_scope = fun (state: state) ~module_name module_expression
                           let rec collect declaration acc =
                             let acc =
                               match lowered_type_declaration state declaration with
-                              | Some lowered_declaration ->
-                                  acc @ [
-                                    {
-                                      FileSummary.scope_path = SurfacePath.empty;
-                                      declaration = lowered_declaration;
-                                    }
-                                  ]
+                              | Some lowered_declaration -> acc
+                              @ [
+                                {
+                                  FileSummary.scope_path = SurfacePath.empty;
+                                  declaration = lowered_declaration
+                                }
+                              ]
                               | None -> acc
                             in
                             match Cst.TypeDeclaration.next_and_declaration declaration with
@@ -2349,7 +2357,10 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.While while_expression ->
       let condition_id = lower_expr state while_expression.condition in
       let body_id = lower_expr state while_expression.body in
-      add_expr state ~syntax_node:while_expression.syntax_node ~label:"while_expression"
+      add_expr
+        state
+        ~syntax_node:while_expression.syntax_node
+        ~label:"while_expression"
         (BodyArena.EWhile { condition_id; body_id })
   | Cst.Expression.For for_expression ->
       let iterator_pattern_id = add_pattern
@@ -2580,7 +2591,8 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"prefix_operator"
-            (BodyArena.EVar (SurfacePath.of_name (prefix_operator_name (Cst.Token.text operator_token)))) in
+            (BodyArena.EVar (SurfacePath.of_name
+              (prefix_operator_name (Cst.Token.text operator_token)))) in
           let operand_id = lower_expr state operand in
           add_expr
             state

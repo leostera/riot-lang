@@ -65,9 +65,7 @@ let resolve_export_path =
       | Some (module_name, export_path) when not (SurfacePath.is_empty export_path) -> (
           match Session.Snapshot.find_module_typings_by_name snapshot module_name with
           | Some typings -> (
-              match ModuleTypings.find_value_definition
-                typings
-                ~export_name:export_path with
+              match ModuleTypings.find_value_definition typings ~export_name:export_path with
               | Some (ModuleTypings.Site definition) -> Some definition
               | Some (ModuleTypings.Export redirected) -> loop snapshot (path :: visited) redirected
               | None -> None
