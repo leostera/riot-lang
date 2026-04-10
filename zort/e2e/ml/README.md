@@ -25,7 +25,7 @@ Current workflow:
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
-- `zig build e2e-ml-zort` now runs six intentionally narrow fixtures against
+- `zig build e2e-ml-zort` now runs seven intentionally narrow fixtures against
   `zort`'s compiler-compatibility shim on `aarch64-apple-darwin`
 - the compiler-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
@@ -47,6 +47,8 @@ Current status:
     `caml_start_program`
   - nested `caml_startup` calls are ignored apart from the ownership count
   - `caml_shutdown` only tears metadata down on the final matching call
+  - calling `caml_shutdown` after a balanced nested startup/shutdown sequence
+    now emits the same deterministic OCaml-style fatal stderr line and aborts
   - calling `caml_startup` after a matched `caml_shutdown` now emits a
     deterministic OCaml-style fatal stderr line and aborts
   - calling `caml_shutdown` without a matching `caml_startup` now emits a
@@ -70,6 +72,10 @@ Current cases:
 - `min_pure_startup_reentrant`: the same strict pure-startup object under a C
   host that calls `caml_startup`/`caml_shutdown` twice to prove nested startup
   ownership and final teardown behavior in the compatibility layer
+- `min_pure_startup_reentrant_extra_shutdown_fatal`: the same pure-startup
+  object under a C host that performs a balanced nested startup/shutdown
+  sequence and then over-releases with one extra `caml_shutdown` to lock the
+  post-teardown fatal path
 - `min_pure_startup_after_shutdown_fatal`: the same pure-startup object under a
   C host that calls `caml_startup`, `caml_shutdown`, and then `caml_startup`
   again to lock the forbidden restart-after-shutdown fatal path
@@ -114,6 +120,9 @@ The current `zort`-linked fixtures are intentionally narrow:
   harness can prove bare startup reaches compiler-emitted code
 - `min_pure_startup_reentrant` keeps the same pure-startup object but proves
   nested startup ownership and final metadata teardown under an embedding host
+- `min_pure_startup_reentrant_extra_shutdown_fatal` keeps the same pure-startup
+  object but proves nested ownership still rejects a post-teardown
+  over-release with the OCaml-shaped fatal path
 - `min_pure_startup_after_shutdown_fatal` keeps the same pure-startup object
   but proves the shutdown latch is permanent for embedders that attempt a
   forbidden restart

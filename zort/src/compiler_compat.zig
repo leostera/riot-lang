@@ -780,6 +780,20 @@ test "compiler compat: startup ownership rejects invalid transitions" {
     try std.testing.expectError(CompilerCompatState.LifecycleError.StartupAfterShutdown, state.beginStartup());
 }
 
+test "compiler compat: startup ownership rejects extra shutdown after balanced nested shutdown" {
+    var state = CompilerCompatState.init(std.testing.allocator);
+    defer state.reset();
+
+    _ = try state.beginStartup();
+    _ = try state.beginStartup();
+    _ = try state.beginShutdown();
+    _ = try state.beginShutdown();
+
+    try std.testing.expect(state.shutdown_happened);
+    try std.testing.expectEqual(@as(usize, 0), state.startupDepth());
+    try std.testing.expectError(CompilerCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
+}
+
 test "compiler compat: fake domain matches emitted startup offsets" {
     try std.testing.expectEqual(@as(usize, 0x28), @offsetOf(FakeDomainState, "current_stack"));
     try std.testing.expectEqual(@as(usize, 0x40), @offsetOf(FakeDomainState, "c_stack"));

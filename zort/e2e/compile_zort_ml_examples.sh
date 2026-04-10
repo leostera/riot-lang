@@ -208,6 +208,11 @@ compile_success_case \
   "$SCRIPT_DIR/ml/min_pure_startup_reentrant_main.c"
 
 compile_fatal_case \
+  "min_pure_startup_reentrant_extra_shutdown_fatal" \
+  "min_pure_startup.ml" \
+  "$SCRIPT_DIR/ml/min_pure_startup_reentrant_extra_shutdown_fatal_main.c"
+
+compile_fatal_case \
   "min_pure_startup_after_shutdown_fatal" \
   "min_pure_startup.ml" \
   "$SCRIPT_DIR/ml/min_pure_startup_after_shutdown_fatal_main.c"
