@@ -1,0 +1,106 @@
+{
+  "body_arena": null,
+  "exports": [],
+  "expr_traces": null,
+  "file_summary": {
+    "completeness": "partial",
+    "export_result": {
+      "exports": [],
+      "tag": "no_export"
+    },
+    "source_id": 0
+  },
+  "filename": "packages/typ/tests/fixtures/oracle/0146_record_flagged.ml",
+  "item_traces": [],
+  "item_tree": null,
+  "lowering_diagnostics": [],
+  "origin_map": null,
+  "parse_diagnostics": [
+    {
+      "kind": {
+        "expected": "closing delimiter",
+        "fix": "add closing delimiter",
+        "found": {
+          "kind": "{",
+          "text": "{"
+        },
+        "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively.",
+        "id": "E0014",
+        "name": "unclosed-delimiter"
+      },
+      "span": {
+        "end": 164,
+        "start": 164
+      }
+    },
+    {
+      "kind": {
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": ":",
+          "text": ":"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module.",
+        "id": "E0005",
+        "name": "unexpected-structure-item"
+      },
+      "span": {
+        "end": 172,
+        "start": 171
+      }
+    },
+    {
+      "kind": {
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": ":",
+          "text": ":"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module.",
+        "id": "E0005",
+        "name": "unexpected-structure-item"
+      },
+      "span": {
+        "end": 185,
+        "start": 184
+      }
+    },
+    {
+      "kind": {
+        "expected": "matching opening delimiter before }",
+        "fix": "remove the extra }",
+        "found": {
+          "kind": "}",
+          "text": "}"
+        },
+        "hint": "This closing delimiter does not match any still-open delimiter in the current parse context.\n\nThis often means a list, tuple, record, array, or block was closed twice:\n  ```ocaml\n  let xs = [1; 2]]\n  let pair = (x, y))\n  let record = { x = 1 }}\n  ```\n\nFix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.\n",
+        "id": "E0043",
+        "name": "unexpected-closing-delimiter"
+      },
+      "span": {
+        "end": 191,
+        "start": 190
+      }
+    },
+    {
+      "kind": {
+        "expected": "matching opening delimiter before }",
+        "fix": "remove the extra }",
+        "found": {
+          "kind": "}",
+          "text": "}"
+        },
+        "hint": "This closing delimiter does not match any still-open delimiter in the current parse context.\n\nThis often means a list, tuple, record, array, or block was closed twice:\n  ```ocaml\n  let xs = [1; 2]]\n  let pair = (x, y))\n  let record = { x = 1 }}\n  ```\n\nFix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.\n",
+        "id": "E0043",
+        "name": "unexpected-closing-delimiter"
+      },
+      "span": {
+        "end": 192,
+        "start": 191
+      }
+    }
+  ],
+  "source_id": 0,
+  "type_index": [],
+  "typing_diagnostics": []
+}

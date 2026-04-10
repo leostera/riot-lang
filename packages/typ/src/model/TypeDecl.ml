@@ -3,7 +3,7 @@ open Std
 type label = {
   label_id: LabelId.t;
   name: string;
-  field_type: TypeRepr.t;
+  field_type: TypeScheme.t;
   mutable_: bool;
 }
 
@@ -11,6 +11,7 @@ type constructor = {
   constructor_id: ConstructorId.t;
   name: string;
   scheme: TypeScheme.t;
+  generalized: bool;
   inline_record_labels: label list option;
 }
 
@@ -85,7 +86,7 @@ let label_to_json = fun (label: label) ->
   Data.Json.Object [
     ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
     ("name", Data.Json.String label.name);
-    ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
+    ("field_type", Data.Json.String (TypePrinter.scheme_to_string label.field_type));
     ("mutable", Data.Json.Bool label.mutable_);
   ]
 
@@ -94,6 +95,7 @@ let constructor_to_json = fun (constructor: constructor) ->
     ("constructor_id", Data.Json.Int (ConstructorId.to_int constructor.constructor_id));
     ("name", Data.Json.String constructor.name);
     ("scheme", Data.Json.String (TypePrinter.scheme_to_string constructor.scheme));
+    ("generalized", Data.Json.Bool constructor.generalized);
   ] in
   let fields =
     match constructor.inline_record_labels with
@@ -203,7 +205,7 @@ let to_string = fun decl ->
                         Format.[
                           str label.name;
                           str " : ";
-                          str (TypePrinter.type_to_string label.field_type);
+                          str (TypePrinter.scheme_to_string label.field_type);
                         ])
                   |> String.concat "; " in
                   format Format.[ str " of { "; str rendered_labels; str " }" ]
@@ -214,6 +216,13 @@ let to_string = fun decl ->
                 str (ConstructorId.to_string constructor.constructor_id);
                 str " ";
                 str constructor.name;
+                str
+                  (
+                    if constructor.generalized then
+                      " generalized"
+                    else
+                      ""
+                  );
                 str inline_record;
                 str " : ";
                 str (TypePrinter.scheme_to_string constructor.scheme);
@@ -238,7 +247,7 @@ let to_string = fun decl ->
                 str label.name;
                 str " : ";
                 str mutability;
-                str (TypePrinter.type_to_string label.field_type);
+                str (TypePrinter.scheme_to_string label.field_type);
               ]) |> String.concat ", "
   in
   let manifest =

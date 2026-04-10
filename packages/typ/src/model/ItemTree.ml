@@ -164,7 +164,7 @@ let item_to_json = fun value ->
               Data.Json.Object [
                 ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
                 ("name", Data.Json.String label.name);
-                ("field_type", Data.Json.String (TypePrinter.type_to_string label.field_type));
+                ("field_type", Data.Json.String (TypePrinter.scheme_to_string label.field_type));
                 ("mutable", Data.Json.Bool label.mutable_);
               ])
             labels)

@@ -105,7 +105,7 @@ let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_
           ^ (labels
           |> List.map
             (fun (label: TypeDecl.label) ->
-              label.name ^ ":" ^ canonical_type_string visible_types label.field_type)
+              label.name ^ ":" ^ canonical_scheme_string visible_types label.field_type)
           |> String.concat ";")
           ^ "}"
           | None -> ""
@@ -122,7 +122,7 @@ let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_
             "mutable "
           else
             ""
-        ) ^ canonical_type_string visible_types label.field_type)
+        ) ^ canonical_scheme_string visible_types label.field_type)
     |> String.concat ";"
   in
   let manifest =
@@ -301,7 +301,8 @@ let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) 
             String.equal left_value.name right_value.name)
           right.values
       with
-      | Some right_value -> equal_type left_value.scheme right_value.scheme
+      | Some right_value ->
+          equal_type (TypeScheme.body left_value.scheme) (TypeScheme.body right_value.scheme)
       | None -> false)
     left.values
 
@@ -316,7 +317,8 @@ let package_signature_includes = fun includes_type (actual: TypeRepr.package_sig
             String.equal actual_value.name expected_value.name)
           actual.values
       with
-      | Some actual_value -> includes_type actual_value.scheme expected_value.scheme
+      | Some actual_value ->
+          includes_type (TypeScheme.body actual_value.scheme) (TypeScheme.body expected_value.scheme)
       | None -> false)
     expected.values
 
@@ -486,7 +488,7 @@ let scheme_equal = fun ~visible_types left right ->
 let label_equal = fun ~visible_types (left: TypeDecl.label) (right: TypeDecl.label) ->
   String.equal left.name right.name
   && Bool.equal left.mutable_ right.mutable_
-  && canonical_type_equal ~visible_types left.field_type right.field_type
+  && scheme_equal ~visible_types left.field_type right.field_type
 
 let inline_record_labels_equal = fun ~visible_types left right ->
   match (left, right) with

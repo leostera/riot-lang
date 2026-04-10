@@ -71,10 +71,10 @@ type label =
 type function_parameter = {
   (** Calling-convention label preserved from the source surface. *)
   label: label;
-  (** Whether an optional parameter had a source default (`?(x = expr)`). *)
-  has_default: bool;
   (** Semantic pattern bound for this parameter. *)
   pattern_id: PatId.t;
+  (** Lowered default expression for optional parameters such as `?(x = expr)`. *)
+  default_value_id: ExprId.t option;
 }
 type apply_argument = {
   (** Calling-convention label preserved from the call site. *)
@@ -86,6 +86,14 @@ type apply_argument = {
 }
 type local_module_binding_group = {
   binding_ids: BindingId.t list;
+}
+type local_module_scope = {
+  (** Value-binding groups introduced by the local module body. *)
+  binding_groups: local_module_binding_group list;
+  (** Local type declarations owned by the local module body. These stay
+      unqualified inside the scope and are qualified when the scope is attached
+      under a module name. *)
+  type_decls: FileSummary.type_decl list;
 }
 type expr_desc =
   (** Variable reference. *)
@@ -108,6 +116,8 @@ type expr_desc =
   | EArray of ExprId.t list
   (** Sequence expression evaluated left-to-right, returning the last type. *)
   | ESequence of ExprId.t list
+  (** While-loop with a boolean condition and a unit body. *)
+  | EWhile of { condition_id: ExprId.t; body_id: ExprId.t }
   (** Integer for-loop with a scoped iterator, integer bounds, and a unit body. *)
   | EFor of {
       iterator_pattern_id: PatId.t;
@@ -145,8 +155,14 @@ type expr_desc =
   (** Local first-class module pack lowered from `(module M)` where [M] comes
       from one surrounding [let module M = struct ... end in ...]. *)
   | ELocalModulePack of {
-      binding_groups: local_module_binding_group list;
+      local_scope: local_module_scope;
       package_type: TypeRepr.t option
+    }
+  (** Local module binding with a scoped module name available in the body. *)
+  | ELocalModule of {
+      module_name: string;
+      local_scope: local_module_scope;
+      body_id: ExprId.t
     }
   (** Local module open expression with the lowered body expression. *)
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }

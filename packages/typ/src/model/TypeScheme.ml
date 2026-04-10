@@ -1,21 +1,43 @@
 open Std
 
-type t = TypeRepr.t
+type t = TypeRepr.scheme
 
 let of_type = fun ty ->
   TypeRepr.seal_levels ty;
-  ty
+  TypeRepr.make_scheme ~quantified:(TypeRepr.generic_var_ids ty) ~body:ty
 
 let of_explicit = fun ~quantified body ->
   TypeRepr.generalize_ids quantified body;
   TypeRepr.seal_levels body;
-  body
+  TypeRepr.make_scheme ~quantified ~body
 
-let body = fun scheme -> scheme
+let body = fun scheme -> TypeRepr.scheme_body scheme
 
-let to_explicit = fun scheme -> (TypeRepr.generic_var_ids scheme, scheme)
+let to_explicit = fun scheme -> (TypeRepr.scheme_quantified scheme, TypeRepr.scheme_body scheme)
+
+let map_preserving = fun loop xs ->
+  let rec walk changed acc = function
+    | [] ->
+        if changed then
+          List.rev acc
+        else
+          xs
+    | x :: rest ->
+        let mapped_x = loop x in
+        walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
+  in
+  walk false [] xs
+
+let map_type_preserving = fun map_scheme_body scheme ->
+  let quantified, original_body = to_explicit scheme in
+  let mapped_body = map_scheme_body original_body in
+  if Std.Ptr.equal original_body mapped_body then
+    scheme
+  else
+    of_explicit ~quantified mapped_body
 
 let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
+  let scheme_body = body scheme in
   let generation = next_mark () in
   let next_order =
     let order = ref 0 in
@@ -48,21 +70,16 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
     let _ = Collections.HashMap.insert replacements (order_for_ty ty) ty in
     ty
   in
-  let rec map_preserving loop xs =
-    let rec walk changed acc = function
-      | [] ->
-          if changed then
-            List.rev acc
-          else
-            xs
-      | x :: rest ->
-          let mapped_x = loop x in
-          walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
-    in
-    walk false [] xs
-  in
   let generic_replacements = Collections.HashMap.with_capacity 16 in
-  let rec copy ty =
+  let prepare_shell ty =
+    let shell = make (TypeRepr.Hole (-1)) in
+    TypeRepr.set_level shell (TypeRepr.level ty);
+    let _ = Collections.HashMap.insert replacements (order_for_ty ty) shell in
+    shell
+  in
+  let rec copy_scheme scheme =
+    map_type_preserving copy scheme
+  and copy ty =
     let ty = TypeRepr.prune ty in
     if TypeRepr.level ty < TypeRepr.generic_level then
       ty
@@ -75,91 +92,74 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
     | (TypeRepr.Int | TypeRepr.Float | TypeRepr.Bool | TypeRepr.String | TypeRepr.Char | TypeRepr.Unit | TypeRepr.Hole _) ->
         remember_identity ty
     | TypeRepr.Option element ->
+        let shell = prepare_shell ty in
         let element' = copy element in
-        if Std.Ptr.equal element element' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Option element'))
+        shell.TypeRepr.desc <- TypeRepr.Option element';
+        shell
     | TypeRepr.Result (ok_ty, error_ty) ->
+        let shell = prepare_shell ty in
         let ok_ty' = copy ok_ty in
         let error_ty' = copy error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Result (ok_ty', error_ty')))
+        shell.TypeRepr.desc <- TypeRepr.Result (ok_ty', error_ty');
+        shell
     | TypeRepr.Array element ->
+        let shell = prepare_shell ty in
         let element' = copy element in
-        if Std.Ptr.equal element element' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Array element'))
+        shell.TypeRepr.desc <- TypeRepr.Array element';
+        shell
     | TypeRepr.List element ->
+        let shell = prepare_shell ty in
         let element' = copy element in
-        if Std.Ptr.equal element element' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.List element'))
+        shell.TypeRepr.desc <- TypeRepr.List element';
+        shell
     | TypeRepr.Seq element ->
+        let shell = prepare_shell ty in
         let element' = copy element in
-        if Std.Ptr.equal element element' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Seq element'))
+        shell.TypeRepr.desc <- TypeRepr.Seq element';
+        shell
     | TypeRepr.Package signature ->
-        let values' =
+        let shell = prepare_shell ty in
+        let values =
           map_preserving
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = copy value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let copied_scheme = copy_scheme value.scheme in
+              if Std.Ptr.equal value.scheme copied_scheme then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = copied_scheme })
             signature.values
         in
-        if Std.Ptr.equal signature.values values' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Package { values = values' }))
+        shell.TypeRepr.desc <- TypeRepr.Package { values };
+        shell
     | TypeRepr.Named { head; arguments } ->
+        let shell = prepare_shell ty in
         let arguments' = map_preserving copy arguments in
-        if Std.Ptr.equal arguments arguments' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Named { head; arguments = arguments' }))
+        shell.TypeRepr.desc <- TypeRepr.Named { head; arguments = arguments' };
+        shell
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
+        let shell = prepare_shell ty in
         let tags' =
           map_preserving
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
-              | Some payload_type ->
-                  let payload_type' = copy payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
-                    tag
-                  else
-                    { tag with payload_type = Some payload_type' }
+              | Some payload_type -> { tag with payload_type = Some (copy payload_type) }
               | None -> tag)
             tags
         in
         let inherited' = map_preserving copy inherited in
-        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
-          remember_identity ty
-        else
-          remember_replacement
-            ty
-            (make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' }))
+        shell.TypeRepr.desc <- TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' };
+        shell
     | TypeRepr.Tuple members ->
+        let shell = prepare_shell ty in
         let members' = map_preserving copy members in
-        if Std.Ptr.equal members members' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Tuple members'))
+        shell.TypeRepr.desc <- TypeRepr.Tuple members';
+        shell
     | TypeRepr.Arrow { label; lhs; rhs } ->
+        let shell = prepare_shell ty in
         let lhs' = copy lhs in
         let rhs' = copy rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
-          remember_identity ty
-        else
-          remember_replacement ty (make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' }))
+        shell.TypeRepr.desc <- TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' };
+        shell
     | TypeRepr.Var { id; link=None; _ } ->
         if TypeRepr.is_generic_var ty then
           match Collections.HashMap.get generic_replacements id with
@@ -174,7 +174,7 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
         let replacement = copy linked in
         remember_replacement ty replacement
   in
-  copy scheme
+  copy scheme_body
 
 let next_copy_generation =
   let generation = ref 0 in
@@ -184,7 +184,7 @@ let next_copy_generation =
     current
 
 let copy = fun scheme ->
-  let quantified, body = to_explicit scheme in
+  let quantified, original_body = to_explicit scheme in
   let generation = next_copy_generation () in
   let next_order =
     let order = ref 0 in
@@ -214,20 +214,14 @@ let copy = fun scheme ->
     let _ = Collections.HashMap.insert replacements (order_for_ty ty) replacement in
     replacement
   in
-  let rec map_preserving loop xs =
-    let rec walk changed acc = function
-      | [] ->
-          if changed then
-            List.rev acc
-          else
-            xs
-      | x :: rest ->
-          let mapped_x = loop x in
-          walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
-    in
-    walk false [] xs
+  let prepare_shell ty =
+    let shell = TypeRepr.shell ~level:(TypeRepr.level ty) () in
+    let _ = Collections.HashMap.insert replacements (order_for_ty ty) shell in
+    shell
   in
-  let rec clone ty =
+  let rec clone_scheme scheme =
+    map_type_preserving clone scheme
+  and clone ty =
     let ty = TypeRepr.prune ty in
     match lookup_replacement ty with
     | Some replacement -> replacement
@@ -248,46 +242,64 @@ let copy = fun scheme ->
           | TypeRepr.Unit ->
               TypeRepr.unit_
           | TypeRepr.Option element ->
-              TypeRepr.of_desc ~level (TypeRepr.Option (clone element))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Option (clone element);
+              shell
           | TypeRepr.Result (ok_ty, error_ty) ->
-              TypeRepr.of_desc ~level (TypeRepr.Result (clone ok_ty, clone error_ty))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Result (clone ok_ty, clone error_ty);
+              shell
           | TypeRepr.Array element ->
-              TypeRepr.of_desc ~level (TypeRepr.Array (clone element))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Array (clone element);
+              shell
           | TypeRepr.List element ->
-              TypeRepr.of_desc ~level (TypeRepr.List (clone element))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.List (clone element);
+              shell
           | TypeRepr.Seq element ->
-              TypeRepr.of_desc ~level (TypeRepr.Seq (clone element))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Seq (clone element);
+              shell
           | TypeRepr.Package signature ->
+              let shell = prepare_shell ty in
               let values =
                 map_preserving
-                  (fun (value: TypeRepr.package_value) -> { value with scheme = clone value.scheme })
+                  (fun (value: TypeRepr.package_value) ->
+                    let copied_scheme = clone_scheme value.scheme in
+                    if Std.Ptr.equal value.scheme copied_scheme then
+                      value
+                    else
+                      { value with scheme = copied_scheme })
                   signature.values
               in
-              TypeRepr.of_desc ~level (TypeRepr.Package { values })
+              shell.TypeRepr.desc <- TypeRepr.Package { values };
+              shell
           | TypeRepr.Named { head; arguments } ->
-              TypeRepr.of_desc
-                ~level
-                (TypeRepr.Named { head; arguments = map_preserving clone arguments })
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Named { head; arguments = map_preserving clone arguments };
+              shell
           | TypeRepr.PolyVariant { bound; tags; inherited } ->
+              let shell = prepare_shell ty in
               let tags =
                 tags
                 |> map_preserving
                   (fun (tag: TypeRepr.poly_variant_tag) ->
                     match tag.payload_type with
-                    | Some payload_type ->
-                        let payload_type' = clone payload_type in
-                        if Std.Ptr.equal payload_type payload_type' then
-                          tag
-                        else
-                          { tag with payload_type = Some payload_type' }
+                    | Some payload_type -> { tag with payload_type = Some (clone payload_type) }
                     | None -> tag)
               in
               let inherited = map_preserving clone inherited in
-              TypeRepr.of_desc ~level (TypeRepr.PolyVariant { bound; tags; inherited })
+              shell.TypeRepr.desc <- TypeRepr.PolyVariant { bound; tags; inherited };
+              shell
           | TypeRepr.Tuple members ->
-              TypeRepr.of_desc ~level (TypeRepr.Tuple (map_preserving clone members))
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Tuple (map_preserving clone members);
+              shell
           | TypeRepr.Arrow { label; lhs; rhs } ->
-              TypeRepr.of_desc ~level (TypeRepr.Arrow { label; lhs = clone lhs; rhs = clone rhs })
+              let shell = prepare_shell ty in
+              shell.TypeRepr.desc <- TypeRepr.Arrow { label; lhs = clone lhs; rhs = clone rhs };
+              shell
           | TypeRepr.Var { id; link=None; _ } -> (
               match Collections.HashMap.get var_replacements id with
               | Some replacement -> replacement
@@ -303,7 +315,7 @@ let copy = fun scheme ->
         in
         remember ty replacement
   in
-  of_explicit ~quantified (clone body)
+  of_explicit ~quantified (clone original_body)
 
 let free_vars = fun scheme ->
   let quantified, body = to_explicit scheme in

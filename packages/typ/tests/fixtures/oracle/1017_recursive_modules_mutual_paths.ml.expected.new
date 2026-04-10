@@ -1,0 +1,824 @@
+{
+  "comparison": {
+    "exports": {
+      "ocamlc": [
+        {
+          "name": "answer",
+          "scheme": "Left.t * Right.t"
+        }
+      ],
+      "typ": [
+        {
+          "name": "answer",
+          "scheme": "_?0 * _?1"
+        }
+      ]
+    },
+    "type_names": {
+      "ocamlc": [],
+      "typ": []
+    }
+  },
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "Left.t * Right.t"
+      }
+    ],
+    "interface_lines": [
+      "module rec Left : sig type t = This of Right.t | Done val done_ : t end",
+      "and Right : sig type t = That of Left.t | Stop val stop : t end",
+      "val answer : Left.t * Right.t"
+    ],
+    "interface_text": "module rec Left : sig type t = This of Right.t | Done val done_ : t end\nand Right : sig type t = That of Left.t | Stop val stop : t end\nval answer : Left.t * Right.t",
+    "type_names": [],
+    "typedtree_lines": [
+      "[",
+      "  structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[9,176+0]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[22,446+3])",
+      "    Tstr_recmodule",
+      "    [",
+      "      Left/4",
+      "        module_expr (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[12,248+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[15,314+3])",
+      "          Tmod_constraint",
+      "          module_expr (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[12,248+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[15,314+3])",
+      "            Tmod_structure",
+      "            [",
+      "              structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+33])",
+      "                Tstr_type Rec",
+      "                [",
+      "                  type_declaration t/28 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+33])",
+      "                    ptype_params =",
+      "                      []",
+      "                    ptype_constraints =",
+      "                      []",
+      "                    ptype_kind =",
+      "                      Ttype_variant",
+      "                        [",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+11]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+26])",
+      "                            This/29",
+      "                            [",
+      "                              core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+19]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+26])",
+      "                                Ttyp_constr \"Right/5.t\"",
+      "                                []",
+      "                            ]",
+      "                            None",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+27]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[13,261+33])",
+      "                            Done/30",
+      "                            []",
+      "                            None",
+      "                        ]",
+      "                    ptype_private = Public",
+      "                    ptype_manifest =",
+      "                      None",
+      "                ]",
+      "              structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+18])",
+      "                Tstr_value Nonrec",
+      "                [",
+      "                  <def>",
+      "                    pattern (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+11])",
+      "                      Tpat_var \"done_/31\"",
+      "                    expression (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+14]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[14,295+18])",
+      "                      Texp_construct \"Done\"",
+      "                      []",
+      "                ]",
+      "            ]",
+      "          module_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[9,176+18]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[12,248+3])",
+      "            Tmty_signature",
+      "            [",
+      "              signature_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+33])",
+      "                Tsig_type Rec",
+      "                [",
+      "                  type_declaration t/20 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+33])",
+      "                    ptype_params =",
+      "                      []",
+      "                    ptype_constraints =",
+      "                      []",
+      "                    ptype_kind =",
+      "                      Ttype_variant",
+      "                        [",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+11]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+26])",
+      "                            This/21",
+      "                            [",
+      "                              core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+19]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+26])",
+      "                                Ttyp_constr \"Right/5.t\"",
+      "                                []",
+      "                            ]",
+      "                            None",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+27]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[10,198+33])",
+      "                            Done/22",
+      "                            []",
+      "                            None",
+      "                        ]",
+      "                    ptype_private = Public",
+      "                    ptype_manifest =",
+      "                      None",
+      "                ]",
+      "              signature_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+15])",
+      "                Tsig_value",
+      "                value_description done_/23 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+15])",
+      "                  core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+14]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[11,232+15])",
+      "                    Ttyp_constr \"t/20\"",
+      "                    []",
+      "                  []",
+      "            ]",
+      "      Right/5",
+      "        module_expr (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[19,382+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[22,446+3])",
+      "          Tmod_constraint",
+      "          module_expr (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[19,382+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[22,446+3])",
+      "            Tmod_structure",
+      "            [",
+      "              structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+32])",
+      "                Tstr_type Rec",
+      "                [",
+      "                  type_declaration t/32 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+32])",
+      "                    ptype_params =",
+      "                      []",
+      "                    ptype_constraints =",
+      "                      []",
+      "                    ptype_kind =",
+      "                      Ttype_variant",
+      "                        [",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+11]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+25])",
+      "                            That/33",
+      "                            [",
+      "                              core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+19]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+25])",
+      "                                Ttyp_constr \"Left/4.t\"",
+      "                                []",
+      "                            ]",
+      "                            None",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+26]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[20,395+32])",
+      "                            Stop/34",
+      "                            []",
+      "                            None",
+      "                        ]",
+      "                    ptype_private = Public",
+      "                    ptype_manifest =",
+      "                      None",
+      "                ]",
+      "              structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+17])",
+      "                Tstr_value Nonrec",
+      "                [",
+      "                  <def>",
+      "                    pattern (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+6]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+10])",
+      "                      Tpat_var \"stop/35\"",
+      "                    expression (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+13]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[21,428+17])",
+      "                      Texp_construct \"Stop\"",
+      "                      []",
+      "                ]",
+      "            ]",
+      "          module_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[16,318+12]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[19,382+3])",
+      "            Tmty_signature",
+      "            [",
+      "              signature_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+32])",
+      "                Tsig_type Rec",
+      "                [",
+      "                  type_declaration t/24 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+32])",
+      "                    ptype_params =",
+      "                      []",
+      "                    ptype_constraints =",
+      "                      []",
+      "                    ptype_kind =",
+      "                      Ttype_variant",
+      "                        [",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+11]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+25])",
+      "                            That/25",
+      "                            [",
+      "                              core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+19]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+25])",
+      "                                Ttyp_constr \"Left/4.t\"",
+      "                                []",
+      "                            ]",
+      "                            None",
+      "                          (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+26]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[17,334+32])",
+      "                            Stop/26",
+      "                            []",
+      "                            None",
+      "                        ]",
+      "                    ptype_private = Public",
+      "                    ptype_manifest =",
+      "                      None",
+      "                ]",
+      "              signature_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+14])",
+      "                Tsig_value",
+      "                value_description stop/27 (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+2]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+14])",
+      "                  core_type (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+13]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[18,367+14])",
+      "                    Ttyp_constr \"t/24\"",
+      "                    []",
+      "                  []",
+      "            ]",
+      "    ]",
+      "  structure_item (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+0]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+37])",
+      "    Tstr_value Nonrec",
+      "    [",
+      "      <def>",
+      "        pattern (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+4]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+10])",
+      "          Tpat_var \"answer/52\"",
+      "        expression (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+13]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+37])",
+      "          Texp_tuple",
+      "          [",
+      "            Label: None",
+      "              expression (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+14]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+24])",
+      "                Texp_ident \"Left/4.done_\"",
+      "            Label: None",
+      "              expression (packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+26]..packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml[24,451+36])",
+      "                Texp_ident \"Right/5.stop\"",
+      "          ]",
+      "    ]",
+      "]"
+    ]
+  },
+  "typ": {
+    "body_arena": {
+      "bindings": [
+        {
+          "binding_id": 0,
+          "name": "answer",
+          "origin_id": 5,
+          "pattern_id": 0,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 2
+        }
+      ],
+      "expressions": [
+        {
+          "desc": {
+            "name": "Left.done_",
+            "tag": "var"
+          },
+          "expr_id": 0,
+          "origin_id": 2
+        },
+        {
+          "desc": {
+            "name": "Right.stop",
+            "tag": "var"
+          },
+          "expr_id": 1,
+          "origin_id": 3
+        },
+        {
+          "desc": {
+            "elements": [
+              0,
+              1
+            ],
+            "tag": "tuple"
+          },
+          "expr_id": 2,
+          "origin_id": 4
+        }
+      ],
+      "patterns": [
+        {
+          "desc": {
+            "name": "answer",
+            "tag": "var"
+          },
+          "origin_id": 1,
+          "pat_id": 0
+        }
+      ]
+    },
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "_?0 * _?1"
+      }
+    ],
+    "expr_traces": [
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 0,
+        "inferred_type": "_?0",
+        "origin": {
+          "label": "qualified_path_expression",
+          "span": {
+            "end": 475,
+            "start": 465
+          },
+          "syntax_kind": "FIELD_ACCESS_EXPR"
+        },
+        "origin_id": 2
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 1,
+        "inferred_type": "_?1",
+        "origin": {
+          "label": "qualified_path_expression",
+          "span": {
+            "end": 487,
+            "start": 476
+          },
+          "syntax_kind": "FIELD_ACCESS_EXPR"
+        },
+        "origin_id": 3
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 2,
+        "inferred_type": "_?0 * _?1",
+        "origin": {
+          "label": "tuple_expression",
+          "span": {
+            "end": 487,
+            "start": 465
+          },
+          "syntax_kind": "TUPLE_EXPR"
+        },
+        "origin_id": 4
+      }
+    ],
+    "file_summary": {
+      "completeness": "partial",
+      "export_result": {
+        "exports": [
+          {
+            "name": "answer",
+            "scheme": "_?0 * _?1"
+          }
+        ],
+        "tag": "errored_export"
+      },
+      "source_id": 0
+    },
+    "filename": "packages/typ/tests/fixtures/oracle/1017_recursive_modules_mutual_paths.ml",
+    "item_traces": [
+      {
+        "binding_names": [],
+        "exports_after": [],
+        "item_id": 0
+      },
+      {
+        "binding_names": [
+          "answer"
+        ],
+        "exports_after": [
+          {
+            "name": "answer",
+            "scheme": "_?0 * _?1"
+          }
+        ],
+        "item_id": 1
+      }
+    ],
+    "item_tree": [
+      {
+        "item_id": 0,
+        "origin_id": 0,
+        "scope_path": [],
+        "summary": "TYPE_MUTUAL_DECL",
+        "tag": "unsupported"
+      },
+      {
+        "binding_ids": [
+          0
+        ],
+        "item_id": 1,
+        "origin_id": 6,
+        "recursive": false,
+        "scope_path": [],
+        "tag": "value"
+      }
+    ],
+    "lowering_diagnostics": [
+      {
+        "context": "structure_item",
+        "id": "TYP1001",
+        "message": "unsupported structure item lowered using placeholder item: TYPE_MUTUAL_DECL",
+        "name": "unsupported-syntax",
+        "reason": null,
+        "recovery": "placeholder_item",
+        "severity": "error",
+        "syntax_kind": "TYPE_MUTUAL_DECL",
+        "syntax_span": {
+          "end": 449,
+          "start": 0
+        }
+      }
+    ],
+    "origin_map": [
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 0,
+        "semantic_id": {
+          "id": 0,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 449,
+          "start": 0
+        },
+        "syntax_kind": "TYPE_MUTUAL_DECL"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 1,
+        "semantic_id": {
+          "id": 0,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 461,
+          "start": 454
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "expr",
+        "label": "qualified_path_expression",
+        "origin_id": 2,
+        "semantic_id": {
+          "id": 0,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 475,
+          "start": 465
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "qualified_path_expression",
+        "origin_id": 3,
+        "semantic_id": {
+          "id": 1,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 487,
+          "start": 476
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "tuple_expression",
+        "origin_id": 4,
+        "semantic_id": {
+          "id": 2,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 487,
+          "start": 465
+        },
+        "syntax_kind": "TUPLE_EXPR"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 5,
+        "semantic_id": {
+          "id": 0,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 488,
+          "start": 449
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 6,
+        "semantic_id": {
+          "id": 1,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 488,
+          "start": 449
+        },
+        "syntax_kind": "LET_BINDING"
+      }
+    ],
+    "parse_diagnostics": [],
+    "source_id": 0,
+    "type_index": [
+      {
+        "expr_id": 0,
+        "inferred_type": "_?0",
+        "origin_id": 2,
+        "span": {
+          "end": 475,
+          "start": 465
+        }
+      },
+      {
+        "expr_id": 1,
+        "inferred_type": "_?1",
+        "origin_id": 3,
+        "span": {
+          "end": 487,
+          "start": 476
+        }
+      },
+      {
+        "expr_id": 2,
+        "inferred_type": "_?0 * _?1",
+        "origin_id": 4,
+        "span": {
+          "end": 487,
+          "start": 465
+        }
+      }
+    ],
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Left.done_",
+        "name": "unbound-name",
+        "name_text": "Left.done_",
+        "reference_span": {
+          "end": 475,
+          "start": 465
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Right.stop",
+        "name": "unbound-name",
+        "name_text": "Right.stop",
+        "reference_span": {
+          "end": 487,
+          "start": 476
+        },
+        "severity": "error"
+      }
+    ]
+  },
+  "typ_summary": {
+    "completeness": "partial",
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "_?0 * _?1"
+      }
+    ],
+    "type_names": []
+  }
+}

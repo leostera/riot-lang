@@ -58,6 +58,8 @@ let owner_type_constructor_id = fun entry -> entry.owner_type_constructor_id
 
 let scheme = fun entry -> entry.constructor.scheme
 
+let generalized = fun entry -> entry.constructor.generalized
+
 let inline_record_labels = fun entry -> entry.constructor.inline_record_labels
 
 let prepend_entry = fun index entry ->
@@ -229,7 +231,7 @@ let qualify_scheme_with_local_types = fun ~root type_decls scheme ->
             signature.values
             |> List.map
               (fun (value: TypeRepr.package_value) ->
-                let qualified_scheme = qualify_type value.scheme in
+                let qualified_scheme = TypeScheme.map_type_preserving qualify_type value.scheme in
                 if Std.Ptr.equal value.scheme qualified_scheme then
                   value
                 else
@@ -349,7 +351,7 @@ let qualify_inline_record_labels = fun ~root type_decls labels ->
             signature.values
             |> List.map
               (fun (value: TypeRepr.package_value) ->
-                let qualified_scheme = qualify_type value.scheme in
+                let qualified_scheme = TypeScheme.map_type_preserving qualify_type value.scheme in
                 if Std.Ptr.equal value.scheme qualified_scheme then
                   value
                 else
@@ -371,7 +373,7 @@ let qualify_inline_record_labels = fun ~root type_decls labels ->
     in
     labels |> List.map
       (fun (label: TypeDecl.label) ->
-        let qualified_field_type = qualify_type label.field_type in
+        let qualified_field_type = TypeScheme.map_type_preserving qualify_type label.field_type in
         if Std.Ptr.equal label.field_type qualified_field_type then
           label
         else

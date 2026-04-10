@@ -6,8 +6,8 @@ type label = {
   label_id: LabelId.t;
   (** Surface label name as it appears in record syntax. *)
   name: string;
-  (** Field type derived from the declaration. *)
-  field_type: TypeRepr.t;
+  (** Field scheme derived from the declaration. *)
+  field_type: TypeScheme.t;
   (** Whether the field was declared mutable. *)
   mutable_: bool;
 }
@@ -19,6 +19,9 @@ type constructor = {
   name: string;
   (** Constructor scheme derived from the declaration payload. *)
   scheme: TypeScheme.t;
+  (** Whether the declaration carried an explicit result type and therefore
+      behaves as a generalized constructor. *)
+  generalized: bool;
   (** Inline-record payload labels when the constructor was declared as
       [Ctor of { ... }]. *)
   inline_record_labels: label list option;

@@ -114,6 +114,9 @@ let export_definitions = fun analysis ->
             { export_name = IdentPath.to_string binding_ref.path; target }: ModuleTypings.value_definition
           )))
 
+let has_error_diagnostics = fun diagnostics ->
+  List.exists (fun diagnostic -> Typ_diagnostic.severity diagnostic = Typ_diagnostic.Error) diagnostics
+
 let analyze = fun ?initial_env ~config (source: Source.t) ->
   let parsed = source.parse_result in
   let cst = source.cst in
@@ -133,9 +136,12 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     else
       TypeIndex.empty
   in
-  let diagnostics = semantic_tree.diagnostics @ inferred.diagnostics in
+  let has_errors =
+    not (Parser.(parsed.diagnostics) = [])
+    || has_error_diagnostics semantic_tree.diagnostics
+    || has_error_diagnostics inferred.diagnostics in
   let file_summary =
-    if diagnostics = [] then
+    if not has_errors then
       FileSummary.complete ~source_id:source.source_id ~type_decls:inferred.type_decls inferred.exports
     else
       FileSummary.partial

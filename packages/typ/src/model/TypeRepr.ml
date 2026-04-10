@@ -1,12 +1,22 @@
 open Std
 
-type label =
+type scheme = {
+  quantified: int list;
+  body: t;
+}
+
+and label =
   | Nolabel
   | Labelled of string
   | Optional of string
 
-type var = {
+and var_kind =
+  | Flexible
+  | Rigid
+
+and var = {
   id: int;
+  kind: var_kind;
   mutable link: t option;
 }
 
@@ -17,7 +27,7 @@ and named_type_head = {
 
 and package_value = {
   name: string;
-  scheme: t;
+  scheme: scheme;
 }
 
 and package_signature = {
@@ -62,6 +72,7 @@ and t = {
   mutable mark_order: int;
   mutable aux_mark: int;
   mutable aux_order: int;
+  mutable walk_mark: int;
 }
 
 let max_level = fun xs ->
@@ -86,7 +97,7 @@ let poly_variant_max_level = fun tags inherited ->
 let package_signature_max_level = fun (signature: package_signature) ->
   signature.values |> List.fold_left
     (fun acc (value: package_value) ->
-      Int.max acc value.scheme.level)
+      Int.max acc value.scheme.body.level)
     0
 
 let level_of_desc = function
@@ -123,7 +134,10 @@ let of_desc = fun ?level desc ->
     mark_order = (-1);
     aux_mark = (-1);
     aux_order = (-1);
+    walk_mark = (-1);
   }
+
+let shell = fun ?level () -> of_desc ?level (Hole (-1))
 
 let int = of_desc Int
 
@@ -154,6 +168,12 @@ let named = fun ~head ~arguments -> of_desc (Named { head; arguments })
 let named_path = fun ~name ~arguments ->
   let head = named_head ~type_constructor_id:(TypeConstructorId.of_path name) ~name in
   named ~head ~arguments
+
+let make_scheme = fun ~quantified ~body -> { quantified; body }
+
+let scheme_quantified = fun scheme -> scheme.quantified
+
+let scheme_body = fun scheme -> scheme.body
 
 let package_value = fun ~name ~scheme -> { name; scheme }
 
@@ -208,7 +228,21 @@ let generic_level = Int.max_int
 let is_generic_level = fun level ->
   Int.equal level generic_level
 
-let make_var = fun ?(level = 0) id -> of_desc ~level (Var { id; link = None })
+let next_walk_generation =
+  let generation = ref 0 in
+  fun () ->
+    let current = !generation in
+    generation := current + 1;
+    current
+
+let make_var = fun ?(level = 0) id -> of_desc ~level (Var { id; kind = Flexible; link = None })
+
+let make_rigid_var = fun ?(level = 0) id -> of_desc ~level (Var { id; kind = Rigid; link = None })
+
+let is_rigid_var = fun ty ->
+  match view (prune ty) with
+  | Var { kind = Rigid; _ } -> true
+  | _ -> false
 
 let is_generic_var = fun ty ->
   let ty = prune ty in
@@ -265,67 +299,12 @@ let join_variance = fun left right ->
   | (Contravariant, Covariant) -> Invariant
 
 let free_vars =
-  let rec collect seen acc ty =
+  let rec collect generation seen acc ty =
     let ty = prune ty in
-    match ty.desc with
-    | Int
-    | Float
-    | Bool
-    | String
-    | Char
-    | Unit
-    | Hole _ ->
-        acc
-    | Option element ->
-        collect seen acc element
-    | Result (ok_ty, error_ty) ->
-        let acc = collect seen acc ok_ty in
-        collect seen acc error_ty
-    | Array element ->
-        collect seen acc element
-    | List element ->
-        collect seen acc element
-    | Seq element ->
-        collect seen acc element
-    | Package signature ->
-        List.fold_left
-          (fun acc (value: package_value) -> collect seen acc value.scheme)
-          acc
-          signature.values
-    | Named { arguments; _ } ->
-        List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
-    | PolyVariant { tags; inherited; _ } ->
-        let acc =
-          tags
-          |> List.fold_left
-            (fun acc (tag: poly_variant_tag) ->
-              match tag.payload_type with
-              | Some payload_type -> collect seen acc payload_type
-              | None -> acc)
-            acc
-        in
-        List.fold_left (fun acc inherited_type -> collect seen acc inherited_type) acc inherited
-    | Tuple members ->
-        List.fold_left (fun acc member -> collect seen acc member) acc members
-    | Arrow { lhs; rhs; _ } ->
-        let acc = collect seen acc lhs in
-        collect seen acc rhs
-    | Var { id; link=None; _ } ->
-        if Collections.HashSet.contains seen id then
-          acc
-        else (
-          Collections.HashSet.insert seen id |> ignore;
-          id :: acc
-        )
-    | Var { link=Some linked; _ } ->
-        collect seen acc linked
-  in
-  fun ty -> collect (Collections.HashSet.create ()) [] ty
-
-let seal_levels =
-  let rec loop ty =
-    let ty = prune ty in
-    let child_level =
+    if Int.equal ty.walk_mark generation then
+      acc
+    else (
+      ty.walk_mark <- generation;
       match ty.desc with
       | Int
       | Float
@@ -334,173 +313,248 @@ let seal_levels =
       | Char
       | Unit
       | Hole _ ->
-          0
-      | Option element
-      | Array element
-      | List element
-      | Seq element ->
-          loop element
+          acc
+      | Option element ->
+          collect generation seen acc element
       | Result (ok_ty, error_ty) ->
-          Int.max (loop ok_ty) (loop error_ty)
-      | Named { arguments; _ }
-      | Tuple arguments ->
-          List.fold_left
-            (fun acc argument ->
-              Int.max acc (loop argument))
-            0
-            arguments
+          let acc = collect generation seen acc ok_ty in
+          collect generation seen acc error_ty
+      | Array element ->
+          collect generation seen acc element
+      | List element ->
+          collect generation seen acc element
+      | Seq element ->
+          collect generation seen acc element
       | Package signature ->
-          signature.values |> List.fold_left
-            (fun acc (value: package_value) ->
-              Int.max acc (loop value.scheme))
-            0
+          List.fold_left
+            (fun acc (value: package_value) -> collect generation seen acc value.scheme.body)
+            acc
+            signature.values
+      | Named { arguments; _ } ->
+          List.fold_left (fun acc argument -> collect generation seen acc argument) acc arguments
       | PolyVariant { tags; inherited; _ } ->
-          let tag_level =
+          let acc =
             tags
             |> List.fold_left
               (fun acc (tag: poly_variant_tag) ->
                 match tag.payload_type with
-                | Some payload_type -> Int.max acc (loop payload_type)
+                | Some payload_type -> collect generation seen acc payload_type
                 | None -> acc)
-              0
+              acc
           in
-          Int.max tag_level
-            (
-              List.fold_left
-                (fun acc inherited_type ->
-                  Int.max acc (loop inherited_type))
-                0
-                inherited
-            )
+          List.fold_left (fun acc inherited_type -> collect generation seen acc inherited_type) acc inherited
+      | Tuple members ->
+          List.fold_left (fun acc member -> collect generation seen acc member) acc members
       | Arrow { lhs; rhs; _ } ->
-          Int.max (loop lhs) (loop rhs)
-      | Var { link=None; _ } ->
-          ty.level
+          let acc = collect generation seen acc lhs in
+          collect generation seen acc rhs
+      | Var { id; link=None; _ } ->
+          if Collections.HashSet.contains seen id then
+            acc
+          else (
+            Collections.HashSet.insert seen id |> ignore;
+            id :: acc
+          )
       | Var { link=Some linked; _ } ->
-          loop linked
-    in
-    let sealed_level =
-      match ty.desc with
-      | Var _ -> ty.level
-      | _ -> Int.max ty.level child_level
-    in
-    ty.level <- sealed_level;
-    sealed_level
+          collect generation seen acc linked
+    )
+  in
+  fun ty -> collect (next_walk_generation ()) (Collections.HashSet.create ()) [] ty
+
+let seal_levels =
+  let rec loop generation ty =
+    let ty = prune ty in
+    if Int.equal ty.walk_mark generation then
+      ty.level
+    else (
+      ty.walk_mark <- generation;
+      let child_level =
+        match ty.desc with
+        | Int
+        | Float
+        | Bool
+        | String
+        | Char
+        | Unit
+        | Hole _ ->
+            0
+        | Option element
+        | Array element
+        | List element
+        | Seq element ->
+            loop generation element
+        | Result (ok_ty, error_ty) ->
+            Int.max (loop generation ok_ty) (loop generation error_ty)
+        | Named { arguments; _ }
+        | Tuple arguments ->
+            List.fold_left
+              (fun acc argument ->
+                Int.max acc (loop generation argument))
+              0
+              arguments
+        | Package signature ->
+            signature.values |> List.fold_left
+              (fun acc (value: package_value) ->
+                Int.max acc (loop generation value.scheme.body))
+              0
+        | PolyVariant { tags; inherited; _ } ->
+            let tag_level =
+              tags
+              |> List.fold_left
+                (fun acc (tag: poly_variant_tag) ->
+                  match tag.payload_type with
+                  | Some payload_type -> Int.max acc (loop generation payload_type)
+                  | None -> acc)
+                0
+            in
+            Int.max tag_level
+              (
+                List.fold_left
+                  (fun acc inherited_type ->
+                    Int.max acc (loop generation inherited_type))
+                  0
+                  inherited
+              )
+        | Arrow { lhs; rhs; _ } ->
+            Int.max (loop generation lhs) (loop generation rhs)
+        | Var { link=None; _ } ->
+            ty.level
+        | Var { link=Some linked; _ } ->
+            loop generation linked
+      in
+      let sealed_level =
+        match ty.desc with
+        | Var _ -> ty.level
+        | _ -> Int.max ty.level child_level
+      in
+      ty.level <- sealed_level;
+      sealed_level
+    )
   in
   fun ty ->
-    let _ = loop ty in
+    let _ = loop (next_walk_generation ()) ty in
     ()
 
 let generalize_ids =
-  let rec loop generalized_ids ty =
+  let rec loop generation generalized_ids ty =
     let ty = prune ty in
-    match ty.desc with
-    | Int
-    | Float
-    | Bool
-    | String
-    | Char
-    | Unit
-    | Hole _ ->
-        ()
-    | Option element ->
-        loop generalized_ids element
-    | Result (ok_ty, error_ty) ->
-        loop generalized_ids ok_ty;
-        loop generalized_ids error_ty
-    | Array element ->
-        loop generalized_ids element
-    | List element ->
-        loop generalized_ids element
-    | Seq element ->
-        loop generalized_ids element
-    | Package signature ->
-        List.iter (fun (value: package_value) -> loop generalized_ids value.scheme) signature.values
-    | Named { arguments; _ } ->
-        List.iter (loop generalized_ids) arguments
-    | PolyVariant { tags; inherited; _ } ->
-        tags |> List.iter
-          (fun (tag: poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type -> loop generalized_ids payload_type
-            | None -> ());
-        List.iter (loop generalized_ids) inherited
-    | Tuple members ->
-        List.iter (loop generalized_ids) members
-    | Arrow { lhs; rhs; _ } ->
-        loop generalized_ids lhs;
-        loop generalized_ids rhs
-    | Var { id; link=None; _ } ->
-        if Collections.HashSet.contains generalized_ids id then
-          set_generic_var ty
-    | Var { link=Some linked; _ } ->
-        loop generalized_ids linked
+    if not (Int.equal ty.walk_mark generation) then (
+      ty.walk_mark <- generation;
+      match ty.desc with
+      | Int
+      | Float
+      | Bool
+      | String
+      | Char
+      | Unit
+      | Hole _ ->
+          ()
+      | Option element ->
+          loop generation generalized_ids element
+      | Result (ok_ty, error_ty) ->
+          loop generation generalized_ids ok_ty;
+          loop generation generalized_ids error_ty
+      | Array element ->
+          loop generation generalized_ids element
+      | List element ->
+          loop generation generalized_ids element
+      | Seq element ->
+          loop generation generalized_ids element
+      | Package signature ->
+          List.iter
+            (fun (value: package_value) -> loop generation generalized_ids value.scheme.body)
+            signature.values
+      | Named { arguments; _ } ->
+          List.iter (loop generation generalized_ids) arguments
+      | PolyVariant { tags; inherited; _ } ->
+          tags |> List.iter
+            (fun (tag: poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type -> loop generation generalized_ids payload_type
+              | None -> ());
+          List.iter (loop generation generalized_ids) inherited
+      | Tuple members ->
+          List.iter (loop generation generalized_ids) members
+      | Arrow { lhs; rhs; _ } ->
+          loop generation generalized_ids lhs;
+          loop generation generalized_ids rhs
+      | Var { id; link=None; _ } ->
+          if Collections.HashSet.contains generalized_ids id then
+            set_generic_var ty
+      | Var { link=Some linked; _ } ->
+          loop generation generalized_ids linked
+    )
   in
   fun ids ty ->
     if not (List.is_empty ids) then
       (
-        loop (Collections.HashSet.of_list ids) ty;
+        loop (next_walk_generation ()) (Collections.HashSet.of_list ids) ty;
         seal_levels ty
       )
 
 let generic_var_ids =
-  let rec collect seen acc ty =
+  let rec collect generation seen acc ty =
     let ty = prune ty in
-    match ty.desc with
-    | Int
-    | Float
-    | Bool
-    | String
-    | Char
-    | Unit
-    | Hole _ ->
-        acc
-    | Option element ->
-        collect seen acc element
-    | Result (ok_ty, error_ty) ->
-        let acc = collect seen acc ok_ty in
-        collect seen acc error_ty
-    | Array element ->
-        collect seen acc element
-    | List element ->
-        collect seen acc element
-    | Seq element ->
-        collect seen acc element
-    | Package signature ->
-        List.fold_left
-          (fun acc (value: package_value) -> collect seen acc value.scheme)
+    if Int.equal ty.walk_mark generation then
+      acc
+    else (
+      ty.walk_mark <- generation;
+      match ty.desc with
+      | Int
+      | Float
+      | Bool
+      | String
+      | Char
+      | Unit
+      | Hole _ ->
           acc
-          signature.values
-    | Named { arguments; _ } ->
-        List.fold_left (fun acc argument -> collect seen acc argument) acc arguments
-    | PolyVariant { tags; inherited; _ } ->
-        let acc =
-          tags
-          |> List.fold_left
-            (fun acc (tag: poly_variant_tag) ->
-              match tag.payload_type with
-              | Some payload_type -> collect seen acc payload_type
-              | None -> acc)
+      | Option element ->
+          collect generation seen acc element
+      | Result (ok_ty, error_ty) ->
+          let acc = collect generation seen acc ok_ty in
+          collect generation seen acc error_ty
+      | Array element ->
+          collect generation seen acc element
+      | List element ->
+          collect generation seen acc element
+      | Seq element ->
+          collect generation seen acc element
+      | Package signature ->
+          List.fold_left
+            (fun acc (value: package_value) -> collect generation seen acc value.scheme.body)
             acc
-        in
-        List.fold_left (fun acc inherited_type -> collect seen acc inherited_type) acc inherited
-    | Tuple members ->
-        List.fold_left (fun acc member -> collect seen acc member) acc members
-    | Arrow { lhs; rhs; _ } ->
-        let acc = collect seen acc lhs in
-        collect seen acc rhs
-    | Var { id; link=None; _ } ->
-        if is_generic_var ty && not (Collections.HashSet.contains seen id) then
-          (
-            Collections.HashSet.insert seen id |> ignore;
-            id :: acc
-          )
-        else
-          acc
-    | Var { link=Some linked; _ } ->
-        collect seen acc linked
+            signature.values
+      | Named { arguments; _ } ->
+          List.fold_left (fun acc argument -> collect generation seen acc argument) acc arguments
+      | PolyVariant { tags; inherited; _ } ->
+          let acc =
+            tags
+            |> List.fold_left
+              (fun acc (tag: poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type -> collect generation seen acc payload_type
+                | None -> acc)
+              acc
+          in
+          List.fold_left (fun acc inherited_type -> collect generation seen acc inherited_type) acc inherited
+      | Tuple members ->
+          List.fold_left (fun acc member -> collect generation seen acc member) acc members
+      | Arrow { lhs; rhs; _ } ->
+          let acc = collect generation seen acc lhs in
+          collect generation seen acc rhs
+      | Var { id; link=None; _ } ->
+          if is_generic_var ty && not (Collections.HashSet.contains seen id) then
+            (
+              Collections.HashSet.insert seen id |> ignore;
+              id :: acc
+            )
+          else
+            acc
+      | Var { link=Some linked; _ } ->
+          collect generation seen acc linked
+    )
   in
-  fun ty -> collect (Collections.HashSet.create ()) [] ty |> List.rev
+  fun ty -> collect (next_walk_generation ()) (Collections.HashSet.create ()) [] ty |> List.rev
 
 let mark_reachable_vars = fun ~generation ~next_order ty ->
   let rec loop = function
@@ -530,7 +584,7 @@ let mark_reachable_vars = fun ~generation ~next_order ty ->
                 element :: rest
             | Package signature ->
                 List.fold_right
-                  (fun (value: package_value) acc -> value.scheme :: acc)
+                  (fun (value: package_value) acc -> value.scheme.body :: acc)
                   signature.values
                   rest
             | Result (ok_ty, error_ty) ->
@@ -565,62 +619,71 @@ let add_variance = fun acc var_id variance ->
 let merge_variances = fun left right ->
   List.fold_left (fun acc (var_id, variance) -> add_variance acc var_id variance) left right
 
-let rec collect_variances = fun variance ty ->
+let collect_variances = fun variance ty ->
+  let generation = next_walk_generation () in
+  let rec loop variance ty =
   let ty = prune ty in
-  match ty.desc with
-  | Int
-  | Float
-  | Bool
-  | String
-  | Char
-  | Unit
-  | Hole _ ->
-      []
-  | Option element ->
-      collect_variances variance element
-  | Result (ok_ty, error_ty) ->
-      merge_variances (collect_variances variance ok_ty) (collect_variances variance error_ty)
-  | Array element ->
-      collect_variances Invariant element
-  | List element ->
-      collect_variances variance element
-  | Seq element ->
-      collect_variances variance element
-  | Package signature ->
-      List.fold_left
-        (fun acc (value: package_value) ->
-          merge_variances acc (collect_variances variance value.scheme))
+  if Int.equal ty.walk_mark generation then
+    []
+  else (
+    ty.walk_mark <- generation;
+    match ty.desc with
+    | Int
+    | Float
+    | Bool
+    | String
+    | Char
+    | Unit
+    | Hole _ ->
         []
-        signature.values
-  | Named { arguments; _ } ->
-      List.fold_left
-        (fun acc argument -> merge_variances acc (collect_variances Invariant argument))
-        []
-        arguments
-  | PolyVariant { tags; inherited; _ } ->
-      let acc =
-        tags
-        |> List.fold_left
-          (fun acc (tag: poly_variant_tag) ->
-            match tag.payload_type with
-            | Some payload_type -> merge_variances acc (collect_variances variance payload_type)
-            | None -> acc)
+    | Option element ->
+        loop variance element
+    | Result (ok_ty, error_ty) ->
+        merge_variances (loop variance ok_ty) (loop variance error_ty)
+    | Array element ->
+        loop Invariant element
+    | List element ->
+        loop variance element
+    | Seq element ->
+        loop variance element
+    | Package signature ->
+        List.fold_left
+          (fun acc (value: package_value) ->
+            merge_variances acc (loop variance value.scheme.body))
           []
-      in
-      List.fold_left
-        (fun acc inherited_type -> merge_variances acc (collect_variances variance inherited_type))
-        acc
-        inherited
-  | Tuple members ->
-      List.fold_left (fun acc member -> merge_variances acc (collect_variances variance member)) [] members
-  | Arrow { lhs; rhs; _ } ->
-      merge_variances
-        (collect_variances (flip_variance variance) lhs)
-        (collect_variances variance rhs)
-  | Var { id; link=None; _ } ->
-      [ (id, variance) ]
-  | Var { link=Some linked; _ } ->
-      collect_variances variance linked
+          signature.values
+    | Named { arguments; _ } ->
+        List.fold_left
+          (fun acc argument -> merge_variances acc (loop Invariant argument))
+          []
+          arguments
+    | PolyVariant { tags; inherited; _ } ->
+        let acc =
+          tags
+          |> List.fold_left
+            (fun acc (tag: poly_variant_tag) ->
+              match tag.payload_type with
+              | Some payload_type -> merge_variances acc (loop variance payload_type)
+              | None -> acc)
+            []
+        in
+        List.fold_left
+          (fun acc inherited_type -> merge_variances acc (loop variance inherited_type))
+          acc
+          inherited
+    | Tuple members ->
+        List.fold_left (fun acc member -> merge_variances acc (loop variance member)) [] members
+    | Arrow { lhs; rhs; _ } ->
+        merge_variances
+          (loop (flip_variance variance) lhs)
+          (loop variance rhs)
+    | Var { id; link=None; _ } ->
+        [ (id, variance) ]
+    | Var { link=Some linked; _ } ->
+        loop variance linked
+  )
+  in
+  loop variance ty
 
 let covariant_vars = fun ty ->
   collect_variances Covariant ty |> List.filter_map
@@ -646,16 +709,11 @@ let rec occurs = fun needle ty ->
   | List element -> occurs needle element
   | Seq element -> occurs needle element
   | Package signature -> List.exists
-    (fun (value: package_value) -> occurs needle value.scheme)
+    (fun (value: package_value) -> occurs needle value.scheme.body)
     signature.values
   | Named { arguments; _ } -> List.exists (occurs needle) arguments
-  | PolyVariant { tags; inherited; _ } ->
-      List.exists
-        (fun (tag: poly_variant_tag) ->
-          match tag.payload_type with
-          | Some payload_type -> occurs needle payload_type
-          | None -> false)
-        tags || List.exists (occurs needle) inherited
+  | PolyVariant _ ->
+      false
   | Tuple members -> List.exists (occurs needle) members
   | Arrow { lhs; rhs; _ } -> occurs needle lhs || occurs needle rhs
   | Var { id; link=None; _ } -> Int.equal id needle
@@ -695,7 +753,7 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
           | Package signature ->
               loop
                 (List.fold_right
-                  (fun (value: package_value) acc -> value.scheme :: acc)
+                  (fun (value: package_value) acc -> value.scheme.body :: acc)
                   signature.values
                   rest)
           | Result (ok_ty, error_ty) ->
@@ -703,19 +761,7 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
           | Named { arguments; _ }
           | Tuple arguments ->
               loop (List.fold_right (fun argument acc -> argument :: acc) arguments rest)
-          | PolyVariant { tags; inherited; _ } ->
-              let rest =
-                List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
-              in
-              let rest =
-                List.fold_right
-                  (fun (tag: poly_variant_tag) acc ->
-                    match tag.payload_type with
-                    | Some payload_type -> payload_type :: acc
-                    | None -> acc)
-                  tags
-                  rest
-              in
+          | PolyVariant _ ->
               loop rest
           | Arrow { lhs; rhs; _ } ->
               loop (lhs :: rhs :: rest)
@@ -760,7 +806,7 @@ let lower_level = fun ~generation ~level ~on_lower ty ->
                 element :: rest
             | Package signature ->
                 List.fold_right
-                  (fun (value: package_value) acc -> value.scheme :: acc)
+                  (fun (value: package_value) acc -> value.scheme.body :: acc)
                   signature.values
                   rest
             | Result (ok_ty, error_ty) ->
@@ -827,7 +873,7 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
                     element :: rest
                 | Package signature ->
                     List.fold_right
-                      (fun (value: package_value) acc -> value.scheme :: acc)
+                      (fun (value: package_value) acc -> value.scheme.body :: acc)
                       signature.values
                       rest
                 | Result (ok_ty, error_ty) ->
@@ -835,17 +881,8 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
                 | Named { arguments; _ }
                 | Tuple arguments ->
                     List.fold_right (fun argument acc -> argument :: acc) arguments rest
-                | PolyVariant { tags; inherited; _ } ->
-                    let rest =
-                      List.fold_right (fun inherited_type acc -> inherited_type :: acc) inherited rest
-                    in
-                    List.fold_right
-                      (fun (tag: poly_variant_tag) acc ->
-                        match tag.payload_type with
-                        | Some payload_type -> payload_type :: acc
-                        | None -> acc)
-                      tags
-                      rest
+                | PolyVariant _ ->
+                    rest
                 | Arrow { lhs; rhs; _ } ->
                     lhs :: rhs :: rest
               in

@@ -70,113 +70,115 @@ let resolve_named_type_head_for_persistence = fun by_path name ->
           (fun () -> qualified_external_head))
 
 let canonicalize_type_for_persistence = fun by_path ->
+  let replacements = ref [] in
+  let lookup_replacement ty =
+    List.find_map
+      (fun (candidate, replacement) ->
+        if Std.Ptr.equal candidate ty then
+          Some replacement
+        else
+          None)
+      !replacements
+  in
+  let remember_replacement ty replacement =
+    replacements := (ty, replacement) :: !replacements;
+    replacement
+  in
+  let remember_identity ty =
+    replacements := (ty, ty) :: !replacements;
+    ty
+  in
+  let prepare_shell ty =
+    let shell = TypeRepr.shell ~level:(TypeRepr.level ty) () in
+    replacements := (ty, shell) :: !replacements;
+    shell
+  in
   let rec loop ty =
     let ty = TypeRepr.prune ty in
-    match TypeRepr.view ty with
-    | TypeRepr.Int
-    | TypeRepr.Float
-    | TypeRepr.Bool
-    | TypeRepr.String
-    | TypeRepr.Char
-    | TypeRepr.Unit
-    | TypeRepr.Hole _
-    | TypeRepr.Var _ ->
-        ty
-    | TypeRepr.Option element ->
-        let element2 = loop element in
-        if Std.Ptr.equal element element2 then
-          ty
-        else
-          TypeRepr.option element2
-    | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty2 = loop ok_ty in
-        let error_ty2 = loop error_ty in
-        if Std.Ptr.equal ok_ty ok_ty2 && Std.Ptr.equal error_ty error_ty2 then
-          ty
-        else
-          TypeRepr.result ok_ty2 error_ty2
-    | TypeRepr.Array element ->
-        let element2 = loop element in
-        if Std.Ptr.equal element element2 then
-          ty
-        else
-          TypeRepr.array element2
-    | TypeRepr.List element ->
-        let element2 = loop element in
-        if Std.Ptr.equal element element2 then
-          ty
-        else
-          TypeRepr.list element2
-    | TypeRepr.Seq element ->
-        let element2 = loop element in
-        if Std.Ptr.equal element element2 then
-          ty
-        else
-          TypeRepr.seq element2
-    | TypeRepr.Package signature ->
-        let values =
-          signature.values
-          |> map_preserving
-            (fun (value: TypeRepr.package_value) ->
-              let scheme2 = loop value.scheme in
-              if Std.Ptr.equal value.scheme scheme2 then
-                value
-              else
-                { value with scheme = scheme2 })
-        in
-        if Std.Ptr.equal signature.values values then
-          ty
-        else
-          TypeRepr.package ~values
-    | TypeRepr.Named { head; arguments } ->
-        let arguments2 = map_preserving loop arguments in
-        let head2 = resolve_named_type_head_for_persistence by_path head.name
-        |> Option.unwrap_or ~default:head in
-        (
-          match BuiltinTypeConstructors.type_of_path head2.name arguments2 with
-          | Some builtin -> builtin
-          | None ->
-              if
-                Std.Ptr.equal arguments arguments2
-                && TypeConstructorId.equal head.type_constructor_id head2.type_constructor_id
-                && IdentPath.equal head.name head2.name
-              then
-                ty
-              else
-                TypeRepr.named ~head:head2 ~arguments:arguments2
-        )
-    | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags2 =
-          map_preserving
-            (fun (tag: TypeRepr.poly_variant_tag) ->
-              match tag.payload_type with
-              | Some payload_type ->
-                  let payload_type2 = loop payload_type in
-                  if Std.Ptr.equal payload_type payload_type2 then
-                    tag
+    match lookup_replacement ty with
+    | Some replacement -> replacement
+    | None ->
+        match TypeRepr.view ty with
+        | TypeRepr.Int
+        | TypeRepr.Float
+        | TypeRepr.Bool
+        | TypeRepr.String
+        | TypeRepr.Char
+        | TypeRepr.Unit
+        | TypeRepr.Hole _ ->
+            remember_identity ty
+        | TypeRepr.Var { link=None; _ } ->
+            remember_identity ty
+        | TypeRepr.Var { link=Some linked; _ } ->
+            let replacement = loop linked in
+            remember_replacement ty replacement
+        | TypeRepr.Option element ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Option (loop element);
+            shell
+        | TypeRepr.Result (ok_ty, error_ty) ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Result (loop ok_ty, loop error_ty);
+            shell
+        | TypeRepr.Array element ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Array (loop element);
+            shell
+        | TypeRepr.List element ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.List (loop element);
+            shell
+        | TypeRepr.Seq element ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Seq (loop element);
+            shell
+        | TypeRepr.Package signature ->
+            let shell = prepare_shell ty in
+            let values =
+              signature.values
+              |> map_preserving
+                (fun (value: TypeRepr.package_value) ->
+                  let scheme2 = TypeScheme.map_type_preserving loop value.scheme in
+                  if Std.Ptr.equal value.scheme scheme2 then
+                    value
                   else
-                    { tag with payload_type = Some payload_type2 }
-              | None -> tag)
-            tags
-        in
-        let inherited2 = map_preserving loop inherited in
-        if Std.Ptr.equal tags tags2 && Std.Ptr.equal inherited inherited2 then
-          ty
-        else
-          TypeRepr.poly_variant ~bound ~tags:tags2 ~inherited:inherited2
-    | TypeRepr.Tuple members ->
-        let members2 = map_preserving loop members in
-        if Std.Ptr.equal members members2 then
-          ty
-        else
-          TypeRepr.tuple members2
-    | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs2 = loop lhs in
-        let rhs2 = loop rhs in
-        if Std.Ptr.equal lhs lhs2 && Std.Ptr.equal rhs rhs2 then
-          ty
-        else
-          TypeRepr.arrow ~label ~lhs:lhs2 ~rhs:rhs2
+                    { value with scheme = scheme2 })
+            in
+            shell.TypeRepr.desc <- TypeRepr.Package { values };
+            shell
+        | TypeRepr.Named { head; arguments } ->
+            let arguments2 = map_preserving loop arguments in
+            let head2 = resolve_named_type_head_for_persistence by_path head.name
+            |> Option.unwrap_or ~default:head in
+            (
+              match BuiltinTypeConstructors.type_of_path head2.name arguments2 with
+              | Some builtin -> remember_replacement ty builtin
+              | None ->
+                  let shell = prepare_shell ty in
+                  shell.TypeRepr.desc <- TypeRepr.Named { head = head2; arguments = arguments2 };
+                  shell
+            )
+        | TypeRepr.PolyVariant { bound; tags; inherited } ->
+            let shell = prepare_shell ty in
+            let tags2 =
+              map_preserving
+                (fun (tag: TypeRepr.poly_variant_tag) ->
+                  match tag.payload_type with
+                  | Some payload_type -> { tag with payload_type = Some (loop payload_type) }
+                  | None -> tag)
+                tags
+            in
+            let inherited2 = map_preserving loop inherited in
+            shell.TypeRepr.desc <- TypeRepr.PolyVariant { bound; tags = tags2; inherited = inherited2 };
+            shell
+        | TypeRepr.Tuple members ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Tuple (map_preserving loop members);
+            shell
+        | TypeRepr.Arrow { label; lhs; rhs } ->
+            let shell = prepare_shell ty in
+            shell.TypeRepr.desc <- TypeRepr.Arrow { label; lhs = loop lhs; rhs = loop rhs };
+            shell
   in
   loop
 
@@ -221,7 +223,10 @@ let canonicalize_type_decl_for_persistence = fun canonicalize_type (type_decl: F
       }) in
   let labels = declaration.labels
   |> List.map
-    (fun (label: TypeDecl.label) -> { label with field_type = canonicalize_type label.field_type }) in
+    (fun (label: TypeDecl.label) -> {
+      label
+      with field_type = canonicalize_scheme_for_persistence canonicalize_type label.field_type
+    }) in
   { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
 let canonicalize_export_result_for_persistence = fun canonicalize_type export_result ->
@@ -543,7 +548,7 @@ let label_decl_to_json = fun (label: TypeDecl.label) ->
   Data.Json.Object [
     ("label_id", Data.Json.Int (LabelId.to_int label.label_id));
     ("name", Data.Json.String label.name);
-    ("field_type", type_to_json label.field_type);
+    ("field_type", scheme_to_json label.field_type);
     ("mutable", Data.Json.Bool label.mutable_);
   ]
 
@@ -917,9 +922,16 @@ let constructor_of_json = fun json ->
   let* constructor_id_json = field "constructor_id" fields in
   let* name_json = field "name" fields in
   let* scheme_json = field "scheme" fields in
+  let generalized_json = List.assoc_opt "generalized" fields in
   let* constructor_id = get_int constructor_id_json in
   let* name = get_string name_json in
   let* scheme = scheme_of_json scheme_json in
+  let* generalized =
+    match generalized_json with
+    | Some (Data.Json.Bool generalized) -> Ok generalized
+    | Some other -> error_expected "bool" other
+    | None -> Ok false
+  in
   let* inline_record_labels =
     match List.assoc_opt "inline_record_labels" fields with
     | Some labels_json ->
@@ -932,7 +944,7 @@ let constructor_of_json = fun json ->
           let* mutable_json = field "mutable" fields in
           let* label_id = get_int label_id_json in
           let* name = get_string name_json in
-          let* field_type = type_of_json field_type_json in
+          let* field_type = scheme_of_json field_type_json in
           let mutable_ =
             match mutable_json with
             | Data.Json.Bool mutable_ -> Ok mutable_
@@ -955,6 +967,7 @@ let constructor_of_json = fun json ->
       TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
       name;
       scheme;
+      generalized;
       inline_record_labels
     }:
       TypeDecl.constructor
@@ -968,7 +981,7 @@ let label_decl_of_json = fun json ->
   let* mutable_json = field "mutable" fields in
   let* label_id = get_int label_id_json in
   let* name = get_string name_json in
-  let* field_type = type_of_json field_type_json in
+  let* field_type = scheme_of_json field_type_json in
   let mutable_ =
     match mutable_json with
     | Data.Json.Bool mutable_ -> Ok mutable_

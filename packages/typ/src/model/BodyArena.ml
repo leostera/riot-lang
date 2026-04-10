@@ -44,8 +44,8 @@ type label =
 
 type function_parameter = {
   label: label;
-  has_default: bool;
   pattern_id: PatId.t;
+  default_value_id: ExprId.t option;
 }
 
 type apply_argument = {
@@ -56,6 +56,11 @@ type apply_argument = {
 
 type local_module_binding_group = {
   binding_ids: BindingId.t list;
+}
+
+type local_module_scope = {
+  binding_groups: local_module_binding_group list;
+  type_decls: FileSummary.type_decl list;
 }
 
 type expr_desc =
@@ -69,6 +74,7 @@ type expr_desc =
   | ETuple of ExprId.t list
   | EArray of ExprId.t list
   | ESequence of ExprId.t list
+  | EWhile of { condition_id: ExprId.t; body_id: ExprId.t }
   | EFor of {
       iterator_pattern_id: PatId.t;
       descending: bool;
@@ -90,8 +96,13 @@ type expr_desc =
   | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
   | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
   | ELocalModulePack of {
-      binding_groups: local_module_binding_group list;
+      local_scope: local_module_scope;
       package_type: TypeRepr.t option
+    }
+  | ELocalModule of {
+      module_name: string;
+      local_scope: local_module_scope;
+      body_id: ExprId.t
     }
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   | EUnsupported of string
@@ -186,7 +197,7 @@ let render_label = function
 
 let render_function_parameter = fun (parameter: function_parameter) ->
   render_label parameter.label ^ (
-    if parameter.has_default then
+    if Option.is_some parameter.default_value_id then
       "=default"
     else
       ""
@@ -286,6 +297,8 @@ let render_expr_desc = function
       "array [" ^ render_ids ExprId.to_string elements ^ "]"
   | ESequence elements ->
       "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
+  | EWhile { condition_id; body_id } ->
+      "while " ^ ExprId.to_string condition_id ^ " do " ^ ExprId.to_string body_id
   | EFor {
     iterator_pattern_id;
     descending;
@@ -388,19 +401,52 @@ let render_expr_desc = function
         | None -> ""
       in
       "pack " ^ IdentPath.to_string module_path ^ annotation
-  | ELocalModulePack { binding_groups; package_type } ->
+  | ELocalModulePack { local_scope; package_type } ->
       let annotation =
         match package_type with
         | Some package_type -> " : " ^ TypePrinter.type_to_string package_type
         | None -> ""
       in
       "local_pack "
-      ^ (binding_groups
+      ^ (local_scope.binding_groups
       |> List.map
         (fun (group: local_module_binding_group) ->
           "[" ^ render_ids BindingId.to_string group.binding_ids ^ "]")
       |> String.concat " ")
+      ^ (
+        match local_scope.type_decls with
+        | [] -> ""
+        | type_decls ->
+            " types="
+            ^ (
+              type_decls
+              |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
+              |> String.concat ","
+            )
+      )
       ^ annotation
+  | ELocalModule { module_name; local_scope; body_id } ->
+      "local_module "
+      ^ module_name
+      ^ " = "
+      ^ (local_scope.binding_groups
+      |> List.map
+        (fun (group: local_module_binding_group) ->
+          "[" ^ render_ids BindingId.to_string group.binding_ids ^ "]")
+      |> String.concat " ")
+      ^ (
+        match local_scope.type_decls with
+        | [] -> ""
+        | type_decls ->
+            " types="
+            ^ (
+              type_decls
+              |> List.map (fun (type_decl: FileSummary.type_decl) -> type_decl.declaration.type_name)
+              |> String.concat ","
+            )
+      )
+      ^ " in "
+      ^ ExprId.to_string body_id
   | ELocalOpen { module_path; body_id } ->
       "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
@@ -450,6 +496,24 @@ let local_module_binding_group_to_json = fun (group: local_module_binding_group)
       Data.Json.Array (List.map
         (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id))
         group.binding_ids)
+    );
+  ]
+
+let local_module_type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
+  Data.Json.Object [
+    ("scope_path", Data.Json.String (IdentPath.to_string type_decl.scope_path));
+    ("declaration", TypeDecl.to_json type_decl.declaration);
+  ]
+
+let local_module_scope_to_json = fun (local_scope: local_module_scope) ->
+  Data.Json.Object [
+    (
+      "binding_groups",
+      Data.Json.Array (List.map local_module_binding_group_to_json local_scope.binding_groups)
+    );
+    (
+      "type_decls",
+      Data.Json.Array (List.map local_module_type_decl_to_json local_scope.type_decls)
     );
   ]
 
@@ -573,8 +637,13 @@ let label_to_json = function
 let function_parameter_to_json = fun (parameter: function_parameter) ->
   Data.Json.Object [
     ("label", label_to_json parameter.label);
-    ("has_default", Data.Json.Bool parameter.has_default);
     ("pattern_id", Data.Json.Int (PatId.to_int parameter.pattern_id));
+    (
+      "default_value_id",
+      match parameter.default_value_id with
+      | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+      | None -> Data.Json.Null
+    );
   ]
 
 let apply_argument_to_json = fun (argument: apply_argument) ->
@@ -630,6 +699,11 @@ let expr_desc_to_json = function
       "elements",
       Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
     );
+  ]
+  | EWhile { condition_id; body_id } -> Data.Json.Object [
+    ("tag", Data.Json.String "while");
+    ("condition_id", Data.Json.Int (ExprId.to_int condition_id));
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
   ]
   | EFor {
     iterator_pattern_id;
@@ -729,13 +803,10 @@ let expr_desc_to_json = function
           | None -> Data.Json.Null
         );
       ]
-  | ELocalModulePack { binding_groups; package_type } ->
+  | ELocalModulePack { local_scope; package_type } ->
       Data.Json.Object [
         ("tag", Data.Json.String "local_module_pack");
-        (
-          "binding_groups",
-          Data.Json.Array (List.map local_module_binding_group_to_json binding_groups)
-        );
+        ("local_scope", local_module_scope_to_json local_scope);
         (
           "package_type",
           match package_type with
@@ -743,6 +814,12 @@ let expr_desc_to_json = function
           | None -> Data.Json.Null
         );
       ]
+  | ELocalModule { module_name; local_scope; body_id } -> Data.Json.Object [
+    ("tag", Data.Json.String "local_module");
+    ("module_name", Data.Json.String module_name);
+    ("local_scope", local_module_scope_to_json local_scope);
+    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+  ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
     ("module_path", Data.Json.String (IdentPath.to_string module_path));

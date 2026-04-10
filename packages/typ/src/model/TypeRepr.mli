@@ -1,12 +1,18 @@
 open Std
 
 (** Mutable prototype type representation used inside one inference query. *)
+type scheme
+
 type label =
   | Nolabel
   | Labelled of string
   | Optional of string
+type var_kind =
+  | Flexible
+  | Rigid
 type var = {
   id: int;
+  kind: var_kind;
   mutable link: t option;
 }
 
@@ -17,7 +23,7 @@ and named_type_head = {
 
 and package_value = {
   name: string;
-  scheme: t;
+  scheme: scheme;
 }
 
 and package_signature = {
@@ -62,6 +68,7 @@ and t = {
   mutable mark_order: int;
   mutable aux_mark: int;
   mutable aux_order: int;
+  mutable walk_mark: int;
 }
 val int: t
 
@@ -91,7 +98,13 @@ val named: head:named_type_head -> arguments:t list -> t
 
 val named_path: name:IdentPath.t -> arguments:t list -> t
 
-val package_value: name:string -> scheme:t -> package_value
+val make_scheme: quantified:int list -> body:t -> scheme
+
+val scheme_quantified: scheme -> int list
+
+val scheme_body: scheme -> t
+
+val package_value: name:string -> scheme:scheme -> package_value
 
 val package: values:package_value list -> t
 
@@ -106,6 +119,8 @@ val arrow: label:label -> lhs:t -> rhs:t -> t
 val hole: int -> t
 
 val of_desc: ?level:int -> desc -> t
+
+val shell: ?level:int -> unit -> t
 
 val prune: t -> t
 
@@ -139,7 +154,13 @@ val generic_level: int
 
 val is_generic_level: int -> bool
 
+val next_walk_generation: unit -> int
+
 val make_var: ?level:int -> int -> t
+
+val make_rigid_var: ?level:int -> int -> t
+
+val is_rigid_var: t -> bool
 
 val is_generic_var: t -> bool
 

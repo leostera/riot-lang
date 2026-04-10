@@ -1,7 +1,7 @@
 open Std
 
 (** Quantified type schemes exported from the prototype inferencer. *)
-type t = TypeRepr.t
+type t = TypeRepr.scheme
 val of_type: TypeRepr.t -> t
 
 val of_explicit: quantified:int list -> TypeRepr.t -> t
@@ -9,6 +9,8 @@ val of_explicit: quantified:int list -> TypeRepr.t -> t
 val body: t -> TypeRepr.t
 
 val to_explicit: t -> int list * TypeRepr.t
+
+val map_type_preserving: (TypeRepr.t -> TypeRepr.t) -> t -> t
 
 val instantiate:
   fresh_var:(unit -> TypeRepr.t) ->

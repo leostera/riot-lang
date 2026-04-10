@@ -188,7 +188,7 @@ let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
           let qualified_values =
             List.map
               (fun (value: TypeRepr.package_value) ->
-                let qualified_scheme = qualify_type value.scheme in
+                let qualified_scheme = TypeScheme.map_type_preserving qualify_type value.scheme in
                 if Std.Ptr.equal value.scheme qualified_scheme then
                   value
                 else
@@ -437,9 +437,15 @@ let bind_in_scope = fun (env: t) ~scope_path (introduced: t) ->
   if IdentPath.is_empty scope_path then
     bind env introduced
   else
+    let qualified_type_decls = Type_env.type_decls introduced.types
+    |> List.map (qualify_type_decl scope_path) in
+    let qualified_type_env = env_of_local_type_decls qualified_type_decls in
     {
       (bind_in_scope_modules env ~scope_path introduced)
-      with summary = Summary2.bind_in_scope env.summary ~scope_path introduced.summary
+      with summary = Summary2.bind_in_scope env.summary ~scope_path introduced.summary;
+      types = Type_env.bind env.types qualified_type_env.types;
+      constructors = env.constructors;
+      labels = Label_env.bind env.labels qualified_type_env.labels
     }
 
 let of_bindings = fun bindings ->
@@ -504,7 +510,7 @@ let singleton_constructor = fun ~make_ident ~name ~scheme ~provenance ~owner_pat
     constructors = Constructor_env.singleton
       ~owner_path
       ~owner_type_constructor_id
-      ~constructor:{ TypeDecl.constructor_id; name; scheme; inline_record_labels }
+      ~constructor:{ TypeDecl.constructor_id; name; scheme; generalized = false; inline_record_labels }
   }
 
 let extend = fun env introduced -> bind env (of_bindings introduced)
@@ -629,7 +635,8 @@ let lookup_owned_constructor = fun env path owner_type_constructor_id ->
       )
     | None -> None
 
-let lookup_record_decls = fun env label_name -> Label_env.lookup_all env.labels label_name |> dedupe_record_decls
+let lookup_record_decls = fun env label_name ->
+  Label_env.lookup_all env.labels (Label_env.lookup_name label_name) |> dedupe_record_decls
 
 let lookup_record_decl_by_owner = fun env owner_type_constructor_id ->
   Label_env.lookup_owned env.labels owner_type_constructor_id

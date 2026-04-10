@@ -10,6 +10,8 @@ val make_type: t -> TypeRepr.desc -> TypeRepr.t
 
 val fresh_var: t -> TypeRepr.t
 
+val fresh_rigid_var: t -> TypeRepr.t
+
 val next_mark: t -> int
 
 val group: ?expansive_roots:TypeRepr.t list -> TypeRepr.t list -> generalization_group

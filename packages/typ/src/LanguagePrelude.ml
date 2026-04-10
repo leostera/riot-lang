@@ -117,12 +117,14 @@ let type_decls = [ {
             TypeDecl.constructor_id = prelude_nil_constructor_id;
             name = "[]";
             scheme = list_nil;
+            generalized = false;
             inline_record_labels = None
           };
           {
             TypeDecl.constructor_id = prelude_cons_constructor_id;
             name = "::";
             scheme = list_cons;
+            generalized = false;
             inline_record_labels = None
           };
         ];
@@ -143,12 +145,14 @@ let type_decls = [ {
             TypeDecl.constructor_id = prelude_none_constructor_id;
             name = "None";
             scheme = option_none;
+            generalized = false;
             inline_record_labels = None
           };
           {
             TypeDecl.constructor_id = prelude_some_constructor_id;
             name = "Some";
             scheme = option_some;
+            generalized = false;
             inline_record_labels = None
           };
         ];
@@ -169,12 +173,14 @@ let type_decls = [ {
             TypeDecl.constructor_id = prelude_ok_constructor_id;
             name = "Ok";
             scheme = result_ok_constructor;
+            generalized = false;
             inline_record_labels = None
           };
           {
             TypeDecl.constructor_id = prelude_error_constructor_id;
             name = "Error";
             scheme = result_error_constructor;
+            generalized = false;
             inline_record_labels = None
           };
         ];

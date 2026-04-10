@@ -85,7 +85,13 @@ let boundary_level = fun (frame: frame) -> frame.boundary_level
 
 let mark_roots = fun (regions: t) roots ->
   let generation = next_mark regions in
-  let next_order () = 0 in
+  let next_order =
+    let order = ref 0 in
+    fun () ->
+      let current = !order in
+      order := current + 1;
+      current
+  in
   List.iter (TypeRepr.mark_reachable_vars ~generation ~next_order) roots;
   generation
 

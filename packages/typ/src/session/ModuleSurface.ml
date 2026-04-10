@@ -123,7 +123,9 @@ let rec qualify_type = fun local_types module_name ty ->
         signature.values
         |> List.map
           (fun (value: TypeRepr.package_value) ->
-            let qualified_scheme = qualify_type local_types module_name value.scheme in
+            let qualified_scheme =
+              TypeScheme.map_type_preserving (qualify_type local_types module_name) value.scheme
+            in
             if Std.Ptr.equal value.scheme qualified_scheme then
               value
             else
@@ -154,7 +156,11 @@ let qualify_scheme = fun ~type_decls ~module_name scheme ->
 let qualify_inline_record_labels = fun local_types module_name labels ->
   labels |> List.map
     (fun (label: TypeDecl.label) ->
-      let qualified_field_type = qualify_type local_types module_name label.field_type in
+      let qualified_field_type =
+        TypeScheme.map_type_preserving
+          (qualify_type local_types module_name)
+          label.field_type
+      in
       if Std.Ptr.equal label.field_type qualified_field_type then
         label
       else
@@ -219,7 +225,11 @@ let qualify_type_decls = fun ~module_name type_decls ->
         declaration.labels
         |> List.map
           (fun (label: TypeDecl.label) ->
-            let qualified_field_type = qualify_type local_types module_name label.field_type in
+            let qualified_field_type =
+              TypeScheme.map_type_preserving
+                (qualify_type local_types module_name)
+                label.field_type
+            in
             if Std.Ptr.equal label.field_type qualified_field_type then
               label
             else

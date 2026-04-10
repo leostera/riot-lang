@@ -35,6 +35,8 @@ val owner_type_constructor_id: entry -> TypeConstructorId.t
 
 val scheme: entry -> TypeScheme.t
 
+val generalized: entry -> bool
+
 val inline_record_labels: entry -> TypeDecl.label list option
 
 val qualify_entry: root:IdentPath.t -> type_decls:FileSummary.type_decl list -> entry -> entry

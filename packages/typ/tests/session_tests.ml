@@ -337,7 +337,7 @@ let scheme_has_named_path =
           tags || List.exists type_has_named_path inherited
     | TypeRepr.Arrow { lhs; rhs; _ } -> type_has_named_path lhs || type_has_named_path rhs
     | TypeRepr.Package signature -> List.exists
-      (fun (value: TypeRepr.package_value) -> type_has_named_path value.scheme)
+      (fun (value: TypeRepr.package_value) -> type_has_named_path (TypeScheme.body value.scheme))
       signature.values
     | TypeRepr.Int
     | TypeRepr.Float
