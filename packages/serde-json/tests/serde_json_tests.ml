@@ -161,31 +161,24 @@ let person_decode =
       })
     ~step:(fun reader builder field ->
       match field with
-      | Some Field_name ->
-          builder.name <- Some (De.read reader De.string)
-      | Some Field_age ->
-          builder.age <- Some (De.read reader De.int)
-      | Some Field_active ->
-          builder.active <- Some (De.read reader De.bool)
-      | Some Field_tags ->
-          builder.tags <- Some (De.read reader (De.list De.string))
-      | Some Field_nickname ->
-          builder.nickname <- Some (De.read reader (De.option De.string))
-      | Some Field_pet ->
-          builder.pet <- Some (De.read reader pet_decode)
-      | None ->
-          ignore (De.read reader De.skip_any))
+      | Some Field_name -> builder.name <- Some (De.read reader De.string)
+      | Some Field_age -> builder.age <- Some (De.read reader De.int)
+      | Some Field_active -> builder.active <- Some (De.read reader De.bool)
+      | Some Field_tags -> builder.tags <- Some (De.read reader (De.list De.string))
+      | Some Field_nickname -> builder.nickname <- Some (De.read reader (De.option De.string))
+      | Some Field_pet -> builder.pet <- Some (De.read reader pet_decode)
+      | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: person_builder) ->
       match (builder.name, builder.age, builder.active, builder.tags, builder.nickname, builder.pet) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet) ->
           ({
-            name;
-            age;
-            active;
-            tags;
-            nickname;
-            pet;
-          }: person)
+              name;
+              age;
+              active;
+              tags;
+              nickname;
+              pet;
+            }: person)
       | _ -> De.missing_field ())
 
 let person_encode = Ser.record
@@ -200,23 +193,14 @@ let person_encode = Ser.record
     ])
 
 let prefix_decode =
-  De.record_mut ~fields:prefix_fields
-    ~create:(fun () : prefix_builder ->
-      {
-        help = None;
-        hello = None;
-        hellsinborg = None;
-      })
+  De.record_mut ~fields:prefix_fields ~create:(fun () : prefix_builder ->
+    { help = None; hello = None; hellsinborg = None })
     ~step:(fun reader builder field ->
       match field with
-      | Some Prefix_help ->
-          builder.help <- Some (De.read reader De.int)
-      | Some Prefix_hello ->
-          builder.hello <- Some (De.read reader De.int)
-      | Some Prefix_hellsinborg ->
-          builder.hellsinborg <- Some (De.read reader De.int)
-      | None ->
-          ignore (De.read reader De.skip_any))
+      | Some Prefix_help -> builder.help <- Some (De.read reader De.int)
+      | Some Prefix_hello -> builder.hello <- Some (De.read reader De.int)
+      | Some Prefix_hellsinborg -> builder.hellsinborg <- Some (De.read reader De.int)
+      | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: prefix_builder) ->
       match (builder.help, builder.hello, builder.hellsinborg) with
       | (Some help, Some hello, Some hellsinborg) -> ({ help; hello; hellsinborg }: prefix_record)

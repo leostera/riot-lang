@@ -522,11 +522,7 @@ let read_field_tag_reader = fun state reader fields ->
   let rec fast start =
     match reader_scan_while reader ~continue:string_fast_continue with
     | `Stop (stop, '"') ->
-        let tag = De.Fields.match_slice
-          fields
-          reader.Input.view
-          ~offset:start
-          ~length:((stop - start)) in
+        let tag = De.Fields.match_slice fields reader.Input.view ~offset:start ~length:(stop - start) in
         reader.Input.pos <- stop;
         reader_advance reader;
         tag
@@ -801,10 +797,10 @@ let pow10 = function
   | 0 -> 1.
   | 1 -> 10.
   | 2 -> 100.
-  | 3 -> 1_000.
-  | 4 -> 10_000.
-  | 5 -> 100_000.
-  | 6 -> 1_000_000.
+  | 3 -> 1000.
+  | 4 -> 10000.
+  | 5 -> 100000.
+  | 6 -> 1000000.
   | 7 -> 10_000_000.
   | 8 -> 100_000_000.
   | 9 -> 1_000_000_000.
@@ -825,8 +821,7 @@ let rec reader_append_digits = fun state reader ->
       IO.Buffer.add_char state.scratch digit;
       reader_advance reader;
       reader_append_digits state reader
-  | _ ->
-      ()
+  | _ -> ()
 
 let parse_number_text_reader_slow = fun state reader ->
   reader_skip_whitespace reader;
@@ -916,14 +911,15 @@ let parse_number_text_reader = fun state reader ->
         None
     in
     let need_more () = !pos >= reader.Input.limit && not reader.Input.eof in
-    let advance () = pos := !pos + 1 in
+    let advance () =
+      pos := !pos + 1
+    in
     let rec advance_digits () =
       match current () with
       | Some digit when is_digit digit ->
           advance ();
           advance_digits ()
-      | _ ->
-          ()
+      | _ -> ()
     in
     (
       match current () with
@@ -938,10 +934,8 @@ let parse_number_text_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some digit when is_digit digit ->
-                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-            | _ ->
-                ()
+            | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | _ -> ()
           )
       | Some ('1' .. '9') ->
           advance ();
@@ -977,8 +971,7 @@ let parse_number_text_reader = fun state reader ->
             | None ->
                 unexpected_end state "digit after decimal point"
           )
-      | _ ->
-          ()
+      | _ -> ()
     );
     (
       match current () with
@@ -993,8 +986,7 @@ let parse_number_text_reader = fun state reader ->
                 advance ();
                 if need_more () then
                   raise Use_slow_number_path
-            | _ ->
-                ()
+            | _ -> ()
           );
           (
             match current () with
@@ -1010,17 +1002,13 @@ let parse_number_text_reader = fun state reader ->
             | None ->
                 unexpected_end state "digit after exponent"
           )
-      | _ ->
-          ()
+      | _ -> ()
     );
     if !pos >= reader.Input.limit then
       if reader.Input.eof then
         (
           reader.Input.pos <- !pos;
-          {
-            text = String.sub reader.Input.view !start (!pos - !start);
-            is_float = !is_float;
-          }
+          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
         )
       else
         raise Use_slow_number_path
@@ -1028,18 +1016,12 @@ let parse_number_text_reader = fun state reader ->
       match current () with
       | Some actual when is_value_delimiter (Some actual) ->
           reader.Input.pos <- !pos;
-          {
-            text = String.sub reader.Input.view !start (!pos - !start);
-            is_float = !is_float;
-          }
+          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
       | Some actual ->
           unexpected_character state actual "number delimiter"
       | None ->
           reader.Input.pos <- !pos;
-          {
-            text = String.sub reader.Input.view !start (!pos - !start);
-            is_float = !is_float;
-          }
+          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;
@@ -1061,14 +1043,15 @@ let parse_number_text_generic = fun state ->
     else
       None
   in
-  let advance () = pos := !pos + 1 in
+  let advance () =
+    pos := !pos + 1
+  in
   let rec advance_digits () =
     match current () with
     | Some digit when is_digit digit ->
         advance ();
         advance_digits ()
-    | _ ->
-        ()
+    | _ -> ()
   in
   (
     match current () with
@@ -1105,10 +1088,12 @@ let parse_number_text_generic = fun state ->
           | Some digit when is_digit digit ->
               advance ();
               advance_digits ()
-          | Some actual -> error_at
-            (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
-          | None -> unexpected_end state "digit after decimal point"
+          | Some actual ->
+              error_at
+                (Input.position state.input)
+                ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+          | None ->
+              unexpected_end state "digit after decimal point"
         )
     | _ -> ()
   );
@@ -1127,10 +1112,12 @@ let parse_number_text_generic = fun state ->
           | Some digit when is_digit digit ->
               advance ();
               advance_digits ()
-          | Some actual -> error_at
-            (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
-          | None -> unexpected_end state "digit after exponent"
+          | Some actual ->
+              error_at
+                (Input.position state.input)
+                ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
+          | None ->
+              unexpected_end state "digit after exponent"
         )
     | _ -> ()
   );
@@ -1141,10 +1128,7 @@ let parse_number_text_generic = fun state ->
       | None -> ()
     );
   Input.set_position state.input !pos;
-  {
-    text = String.sub input start (!pos - start);
-    is_float = !is_float;
-  }
+  { text = String.sub input start (!pos - start); is_float = !is_float }
 
 let parse_number_text = fun state ->
   match state.input with
@@ -1175,14 +1159,15 @@ let parse_int_generic = fun state ->
     else
       None
   in
-  let advance () = pos := !pos + 1 in
+  let advance () =
+    pos := !pos + 1
+  in
   let negative =
     match current () with
     | Some '-' ->
         advance ();
         true
-    | _ ->
-        false
+    | _ -> false
   in
   let limit =
     if negative then
@@ -1209,8 +1194,7 @@ let parse_int_generic = fun state ->
     | Some digit when is_digit digit ->
         advance_digit (Char.code digit - Char.code '0');
         advance_digits ()
-    | _ ->
-        ()
+    | _ -> ()
   in
   (
     match current () with
@@ -1218,22 +1202,17 @@ let parse_int_generic = fun state ->
         advance ();
         (
           match current () with
-          | Some digit when is_digit digit ->
-              error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-          | Some ('.' | 'e' | 'E') ->
-              invalid_field_type ()
-          | _ ->
-              ()
+          | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+          | _ -> ()
         )
     | Some ('1' .. '9' as digit) ->
         advance_digit (Char.code digit - Char.code '0');
         advance_digits ();
         (
           match current () with
-          | Some ('.' | 'e' | 'E') ->
-              invalid_field_type ()
-          | _ ->
-              ()
+          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+          | _ -> ()
         )
     | Some actual ->
         error_at
@@ -1245,10 +1224,8 @@ let parse_int_generic = fun state ->
   if not (is_value_delimiter (current ())) then
     (
       match current () with
-      | Some actual ->
-          unexpected_character state actual "number delimiter"
-      | None ->
-          ()
+      | Some actual -> unexpected_character state actual "number delimiter"
+      | None -> ()
     );
   Input.set_position state.input !pos;
   if negative then
@@ -1277,7 +1254,9 @@ let parse_int_reader = fun state reader ->
         None
     in
     let need_more () = !pos >= reader.Input.limit && not reader.Input.eof in
-    let advance () = pos := !pos + 1 in
+    let advance () =
+      pos := !pos + 1
+    in
     let negative =
       match current () with
       | Some '-' ->
@@ -1285,8 +1264,7 @@ let parse_int_reader = fun state reader ->
           if need_more () then
             raise Use_slow_number_path;
           true
-      | _ ->
-          false
+      | _ -> false
     in
     let limit =
       if negative then
@@ -1313,8 +1291,7 @@ let parse_int_reader = fun state reader ->
       | Some digit when is_digit digit ->
           advance_digit (Char.code digit - Char.code '0');
           advance_digits ()
-      | _ ->
-          ()
+      | _ -> ()
     in
     (
       match current () with
@@ -1324,12 +1301,9 @@ let parse_int_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some digit when is_digit digit ->
-                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-            | Some ('.' | 'e' | 'E') ->
-                invalid_field_type ()
-            | _ ->
-                ()
+            | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+            | _ -> ()
           )
       | Some ('1' .. '9' as digit) ->
           advance_digit (Char.code digit - Char.code '0');
@@ -1338,10 +1312,8 @@ let parse_int_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some ('.' | 'e' | 'E') ->
-                invalid_field_type ()
-            | _ ->
-                ()
+            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+            | _ -> ()
           )
       | Some actual ->
           error_at
@@ -1353,10 +1325,8 @@ let parse_int_reader = fun state reader ->
     if not (is_value_delimiter (current ())) then
       (
         match current () with
-        | Some actual ->
-            unexpected_character state actual "number delimiter"
-        | None ->
-            ()
+        | Some actual -> unexpected_character state actual "number delimiter"
+        | None -> ()
       );
     reader.Input.pos <- !pos;
     if negative then
@@ -1411,14 +1381,15 @@ let parse_float_generic = fun state ->
       else
         None
     in
-    let advance () = pos := !pos + 1 in
+    let advance () =
+      pos := !pos + 1
+    in
     let negative =
       match current () with
       | Some '-' ->
           advance ();
           true
-      | _ ->
-          false
+      | _ -> false
     in
     let significand = ref 0 in
     let scale = ref 0 in
@@ -1439,10 +1410,8 @@ let parse_float_generic = fun state ->
           advance ();
           (
             match current () with
-            | Some digit when is_digit digit ->
-                error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-            | _ ->
-                ()
+            | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | _ -> ()
           )
       | Some ('1' .. '9' as digit) ->
           saw_integer_digit := true;
@@ -1454,8 +1423,7 @@ let parse_float_generic = fun state ->
                 push_digit (Char.code digit - Char.code '0');
                 advance ();
                 true
-            | _ ->
-                false
+            | _ -> false
           ) do
             ()
           done
@@ -1485,8 +1453,7 @@ let parse_float_generic = fun state ->
                       scale := !scale + 1;
                       advance ();
                       true
-                  | _ ->
-                      false
+                  | _ -> false
                 ) do
                   ()
                 done
@@ -1497,23 +1464,18 @@ let parse_float_generic = fun state ->
             | None ->
                 unexpected_end state "digit after decimal point"
           )
-      | _ ->
-          ()
+      | _ -> ()
     );
     (
       match current () with
-      | Some ('e' | 'E') ->
-          raise Use_slow_number_path
-      | _ ->
-          ()
+      | Some ('e' | 'E') -> raise Use_slow_number_path
+      | _ -> ()
     );
     if not (is_value_delimiter (current ())) then
       (
         match current () with
-        | Some actual ->
-            unexpected_character state actual "number delimiter"
-        | None ->
-            ()
+        | Some actual -> unexpected_character state actual "number delimiter"
+        | None -> ()
       );
     Input.set_position state.input !pos;
     float_from_parts ~negative ~significand:!significand ~scale:!scale
@@ -1547,15 +1509,15 @@ let rec skip_value_reader = fun state reader ->
                 ()
               else
                 reader_expect_char state reader ',' "object delimiter";
-                skip_string_reader state reader;
-                reader_skip_whitespace reader;
-                reader_expect_char state reader ':' "':' after object key";
-                skip_value_reader state reader;
-                reader_skip_whitespace reader;
-                match reader_current_char reader with
-                | Some '}' -> reader_advance reader
-                | Some _ -> loop false
-                | None -> unexpected_end state "object"
+              skip_string_reader state reader;
+              reader_skip_whitespace reader;
+              reader_expect_char state reader ':' "':' after object key";
+              skip_value_reader state reader;
+              reader_skip_whitespace reader;
+              match reader_current_char reader with
+              | Some '}' -> reader_advance reader
+              | Some _ -> loop false
+              | None -> unexpected_end state "object"
             in
             loop true
       )
@@ -1571,12 +1533,12 @@ let rec skip_value_reader = fun state reader ->
                 ()
               else
                 reader_expect_char state reader ',' "array delimiter";
-                skip_value_reader state reader;
-                reader_skip_whitespace reader;
-                match reader_current_char reader with
-                | Some ']' -> reader_advance reader
-                | Some _ -> loop false
-                | None -> unexpected_end state "array"
+              skip_value_reader state reader;
+              reader_skip_whitespace reader;
+              match reader_current_char reader with
+              | Some ']' -> reader_advance reader
+              | Some _ -> loop false
+              | None -> unexpected_end state "array"
             in
             loop true
       )
@@ -1613,14 +1575,14 @@ let rec skip_value = fun state ->
                     ()
                   else
                     expect_char state ',' "object delimiter";
-                    skip_string state;
-                    expect_char state ':' "':' after object key";
-                    skip_value state;
-                    Input.skip_whitespace state.input;
-                    match Input.current_char state.input with
-                    | Some '}' -> Input.advance state.input
-                    | Some _ -> loop false
-                    | None -> unexpected_end state "object"
+                  skip_string state;
+                  expect_char state ':' "':' after object key";
+                  skip_value state;
+                  Input.skip_whitespace state.input;
+                  match Input.current_char state.input with
+                  | Some '}' -> Input.advance state.input
+                  | Some _ -> loop false
+                  | None -> unexpected_end state "object"
                 in
                 loop true
           )
@@ -1636,12 +1598,12 @@ let rec skip_value = fun state ->
                     ()
                   else
                     expect_char state ',' "array delimiter";
-                    skip_value state;
-                    Input.skip_whitespace state.input;
-                    match Input.current_char state.input with
-                    | Some ']' -> Input.advance state.input
-                    | Some _ -> loop false
-                    | None -> unexpected_end state "array"
+                  skip_value state;
+                  Input.skip_whitespace state.input;
+                  match Input.current_char state.input with
+                  | Some ']' -> Input.advance state.input
+                  | Some _ -> loop false
+                  | None -> unexpected_end state "array"
                 in
                 loop true
           )
@@ -1763,24 +1725,23 @@ and record_backend:
             while not !finished do
               if !first then
                 first := false
-              else
-                (
-                  reader_skip_whitespace reader;
-                  reader_expect_char state reader ',' "object delimiter"
-                );
-                let field = read_field_tag_reader state reader fields in
+              else (
                 reader_skip_whitespace reader;
-                reader_expect_char state reader ':' "':' after object key";
-                acc := step !acc field;
-                reader_skip_whitespace reader;
-                match reader_current_char reader with
-                | Some '}' ->
-                    reader_advance reader;
-                    finished := true
-                | Some _ ->
-                    ()
-                | None ->
-                    unexpected_end state "object"
+                reader_expect_char state reader ',' "object delimiter"
+              );
+              let field = read_field_tag_reader state reader fields in
+              reader_skip_whitespace reader;
+              reader_expect_char state reader ':' "':' after object key";
+              acc := step !acc field;
+              reader_skip_whitespace reader;
+              match reader_current_char reader with
+              | Some '}' ->
+                  reader_advance reader;
+                  finished := true
+              | Some _ ->
+                  ()
+              | None ->
+                  unexpected_end state "object"
             done;
             finish !acc
       )
@@ -1798,23 +1759,22 @@ and record_backend:
           while not !finished do
             if !first then
               first := false
-            else
-              (
-                Input.skip_whitespace state.input;
-                expect_char state ',' "object delimiter"
-              );
-              let field = read_field_tag state fields in
-              skip_then_expect_char state ':' "':' after object key";
-              acc := step !acc field;
+            else (
               Input.skip_whitespace state.input;
-              match Input.current_char state.input with
-              | Some '}' ->
-                  Input.advance state.input;
-                  finished := true
-              | Some _ ->
-                  ()
-              | None ->
-                  unexpected_end state "object"
+              expect_char state ',' "object delimiter"
+            );
+            let field = read_field_tag state fields in
+            skip_then_expect_char state ':' "':' after object key";
+            acc := step !acc field;
+            Input.skip_whitespace state.input;
+            match Input.current_char state.input with
+            | Some '}' ->
+                Input.advance state.input;
+                finished := true
+            | Some _ ->
+                ()
+            | None ->
+                unexpected_end state "object"
           done;
           finish !acc
 
@@ -1842,11 +1802,10 @@ and record_mut_backend:
             while not !finished do
               if !first then
                 first := false
-              else
-                (
-                  reader_skip_whitespace reader;
-                  reader_expect_char state reader ',' "object delimiter"
-                );
+              else (
+                reader_skip_whitespace reader;
+                reader_expect_char state reader ',' "object delimiter"
+              );
               let field = read_field_tag_reader state reader fields in
               reader_skip_whitespace reader;
               reader_expect_char state reader ':' "':' after object key";
@@ -1877,11 +1836,10 @@ and record_mut_backend:
           while not !finished do
             if !first then
               first := false
-            else
-              (
-                Input.skip_whitespace state.input;
-                expect_char state ',' "object delimiter"
-              );
+            else (
+              Input.skip_whitespace state.input;
+              expect_char state ',' "object delimiter"
+            );
             let field = read_field_tag state fields in
             skip_then_expect_char state ':' "':' after object key";
             step builder field;

@@ -81,11 +81,13 @@ type fixture = {
 }
 
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 1 }
+
 let large_bench_config: Bench.bench_config = { iterations = 3; warmup = 0 }
 
 let fixture_path = Path.v "packages/serde-json/bench/fixtures/large_payload.json"
-let large_fixture_path =
-  Path.v "_build/bench/serde-json/fixtures/large_payload_100mb.json"
+
+let large_fixture_path = Path.v "_build/bench/serde-json/fixtures/large_payload_100mb.json"
+
 let large_fixture_target_bytes = 100_000_000
 
 let human_size = fun bytes ->
@@ -182,24 +184,15 @@ let decode_vec = fun values decode ->
   loop values
 
 let child_decode =
-  De.record_mut ~fields:child_fields
-    ~create:(fun () : child_builder ->
-      {
-        owner = None;
-        score = None;
-        flags = None;
-      })
+  De.record_mut ~fields:child_fields ~create:(fun () : child_builder ->
+    { owner = None; score = None; flags = None })
     ~step:(fun reader builder next ->
       match next with
-      | Some Child_owner ->
-          builder.owner <- Some (De.read reader De.string)
-      | Some Child_score ->
-          builder.score <- Some (De.read reader De.float)
-      | Some Child_flags ->
-          builder.flags <- Some (De.read reader (De.list De.bool))
+      | Some Child_owner -> builder.owner <- Some (De.read reader De.string)
+      | Some Child_score -> builder.score <- Some (De.read reader De.float)
+      | Some Child_flags -> builder.flags <- Some (De.read reader (De.list De.bool))
       | Some Child_unknown
-      | None ->
-          ignore (De.read reader De.skip_any))
+      | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: child_builder) ->
       match (builder.owner, builder.score, builder.flags) with
       | (Some owner, Some score, Some flags) -> ({ owner; score; flags }: child)
@@ -219,56 +212,47 @@ let item_decode =
       })
     ~step:(fun reader builder next ->
       match next with
-      | Some Item_id ->
-          builder.id <- Some (De.read reader De.int)
-      | Some Item_name ->
-          builder.name <- Some (De.read reader De.string)
-      | Some Item_active ->
-          builder.active <- Some (De.read reader De.bool)
-      | Some Item_tags ->
-          builder.tags <- Some (De.read reader (De.list De.string))
-      | Some Item_metrics ->
-          builder.metrics <- Some (De.read reader (De.list De.int))
-      | Some Item_child ->
-          builder.child <- Some (De.read reader child_decode)
-      | Some Item_note ->
-          builder.note <- Some (De.read reader (De.option De.string))
+      | Some Item_id -> builder.id <- Some (De.read reader De.int)
+      | Some Item_name -> builder.name <- Some (De.read reader De.string)
+      | Some Item_active -> builder.active <- Some (De.read reader De.bool)
+      | Some Item_tags -> builder.tags <- Some (De.read reader (De.list De.string))
+      | Some Item_metrics -> builder.metrics <- Some (De.read reader (De.list De.int))
+      | Some Item_child -> builder.child <- Some (De.read reader child_decode)
+      | Some Item_note -> builder.note <- Some (De.read reader (De.option De.string))
       | Some Item_unknown
-      | None ->
-          ignore (De.read reader De.skip_any))
+      | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: item_builder) ->
-      match (builder.id, builder.name, builder.active, builder.tags, builder.metrics, builder.child, builder.note) with
+      match (
+        builder.id,
+        builder.name,
+        builder.active,
+        builder.tags,
+        builder.metrics,
+        builder.child,
+        builder.note
+      ) with
       | (Some id, Some name, Some active, Some tags, Some metrics, Some child, Some note) ->
           ({
-            id;
-            name;
-            active;
-            tags;
-            metrics;
-            child;
-            note;
-          }: item)
+              id;
+              name;
+              active;
+              tags;
+              metrics;
+              child;
+              note;
+            }: item)
       | _ -> De.missing_field ())
 
 let dataset_decode =
-  De.record_mut ~fields:dataset_fields
-    ~create:(fun () : dataset_builder ->
-      {
-        version = None;
-        source = None;
-        items = None;
-      })
+  De.record_mut ~fields:dataset_fields ~create:(fun () : dataset_builder ->
+    { version = None; source = None; items = None })
     ~step:(fun reader builder next ->
       match next with
-      | Some Dataset_version ->
-          builder.version <- Some (De.read reader De.int)
-      | Some Dataset_source ->
-          builder.source <- Some (De.read reader De.string)
-      | Some Dataset_items ->
-          builder.items <- Some (De.read reader (De.list item_decode))
+      | Some Dataset_version -> builder.version <- Some (De.read reader De.int)
+      | Some Dataset_source -> builder.source <- Some (De.read reader De.string)
+      | Some Dataset_items -> builder.items <- Some (De.read reader (De.list item_decode))
       | Some Dataset_unknown
-      | None ->
-          ignore (De.read reader De.skip_any))
+      | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: dataset_builder) ->
       match (builder.version, builder.source, builder.items) with
       | (Some version, Some source, Some items) -> ({ version; source; items }: dataset)
@@ -305,8 +289,7 @@ let dataset_encode = Ser.record
 let manual_bool_vec = fun values ->
   decode_vec values (fun value -> expect_bool (normalize_json value))
 
-let manual_int_vec = fun values ->
-  decode_vec values (fun value -> expect_int (normalize_json value))
+let manual_int_vec = fun values -> decode_vec values (fun value -> expect_int (normalize_json value))
 
 let manual_string_vec = fun values ->
   decode_vec values (fun value -> expect_string (normalize_json value))
@@ -353,14 +336,14 @@ and manual_item_of_json = fun json ->
             Ok (Some note))
   in
   Ok ({
-    id;
-    name;
-    active;
-    tags;
-    metrics;
-    child;
-    note;
-  }: item)
+      id;
+      name;
+      active;
+      tags;
+      metrics;
+      child;
+      note;
+    }: item)
 
 let manual_dataset_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -408,7 +391,7 @@ let parse_json = fun text -> Json.of_string text |> Result.expect ~msg:"expected
 
 let read_fixture_text = fun () ->
   Fs.read_to_string fixture_path
-  |> Result.expect ~msg:(("expected benchmark fixture at " ^ Path.to_string fixture_path))
+  |> Result.expect ~msg:("expected benchmark fixture at " ^ Path.to_string fixture_path)
 
 let load_fixture = fun () ->
   let text = read_fixture_text () in
@@ -426,14 +409,15 @@ let repeat_items = fun (items: item vec) ~count ->
     for index = 0 to count - 1 do
       let template: item = vec_get_exn items (index mod base_count) in
       let item: item = {
-        template with
-        id = template.id + index;
+        template
+        with id = template.id + index;
         name = template.name ^ "-" ^ Int.to_string index;
         note =
           match template.note with
           | None -> None
           | Some note -> Some (note ^ "-" ^ Int.to_string index);
-      } in
+      }
+      in
       Vector.push repeated item
     done;
     repeated
@@ -447,20 +431,15 @@ let dataset_with_target_size = fun (base_dataset: dataset) ~target_bytes ->
       let dataset: dataset = {
         version = base_dataset.version;
         source = base_dataset.source ^ "-100mb";
-        items = repeat_items base_dataset.items ~count:current_count;
+        items = repeat_items base_dataset.items ~count:current_count
       } in
-      let text =
-        Serde_json.to_string dataset_encode dataset
-        |> Result.expect ~msg:"expected generated 100MB benchmark fixture to serialize"
-      in
+      let text = Serde_json.to_string dataset_encode dataset |> Result.expect ~msg:"expected generated 100MB benchmark fixture to serialize" in
       if String.length text >= target_bytes then
         (dataset, text)
       else
-        let scaled_count =
-          max
-            (current_count + base_count)
-            ((current_count * target_bytes) / max 1 (String.length text))
-        in
+        let scaled_count = max
+          (current_count + base_count)
+          ((current_count * target_bytes) / max 1 (String.length text)) in
         grow scaled_count
     in
     grow base_count
@@ -468,38 +447,35 @@ let dataset_with_target_size = fun (base_dataset: dataset) ~target_bytes ->
 let ensure_fixture_parent_dir = fun path ->
   match Path.parent path with
   | None -> ()
-  | Some parent ->
-      Fs.create_dir_all parent
-      |> Result.expect ~msg:("expected benchmark fixture directory to be creatable: " ^ Path.to_string parent)
+  | Some parent -> Fs.create_dir_all parent
+  |> Result.expect
+    ~msg:("expected benchmark fixture directory to be creatable: " ^ Path.to_string parent)
 
 let ensure_large_fixture_text = fun base_fixture ->
   match Fs.exists large_fixture_path with
   | Ok true ->
-      let text =
-        Fs.read_to_string large_fixture_path
-        |> Result.expect ~msg:("expected large benchmark fixture at " ^ Path.to_string large_fixture_path)
-      in
+      let text = Fs.read_to_string large_fixture_path
+      |> Result.expect
+        ~msg:("expected large benchmark fixture at " ^ Path.to_string large_fixture_path) in
       if String.length text >= large_fixture_target_bytes then
         text
       else
         (
-          let (dataset, text) =
-            dataset_with_target_size base_fixture.dataset ~target_bytes:large_fixture_target_bytes
-          in
+          let (dataset, text) = dataset_with_target_size base_fixture.dataset ~target_bytes:large_fixture_target_bytes in
           ignore dataset;
           ensure_fixture_parent_dir large_fixture_path;
           Fs.write text large_fixture_path
-          |> Result.expect ~msg:("expected large benchmark fixture to be writable at " ^ Path.to_string large_fixture_path);
+          |> Result.expect
+            ~msg:("expected large benchmark fixture to be writable at " ^ Path.to_string large_fixture_path);
           text
         )
   | Ok false ->
-      let (dataset, text) =
-        dataset_with_target_size base_fixture.dataset ~target_bytes:large_fixture_target_bytes
-      in
+      let (dataset, text) = dataset_with_target_size base_fixture.dataset ~target_bytes:large_fixture_target_bytes in
       ignore dataset;
       ensure_fixture_parent_dir large_fixture_path;
       Fs.write text large_fixture_path
-      |> Result.expect ~msg:("expected large benchmark fixture to be writable at " ^ Path.to_string large_fixture_path);
+      |> Result.expect
+        ~msg:("expected large benchmark fixture to be writable at " ^ Path.to_string large_fixture_path);
       text
   | Error err ->
       panic ("expected benchmark fixture path to be accessible: " ^ IO.error_message err)
@@ -546,25 +522,25 @@ let io_reader_of_string = fun ?(chunk_size = 1) value ->
   IO.Reader.of_read_src (module Read) value
 
 let decode_serde_reader = fun text ->
-  match Serde_json.of_reader dataset_decode
-    (IO.Reader.from_string text |> IO.Reader.map_err ~fn:(fun () -> IO.Noop)) with
+  match
+    Serde_json.of_reader dataset_decode
+      (IO.Reader.from_string text |> IO.Reader.map_err ~fn:(fun () -> IO.Noop))
+  with
   | Ok value -> value
-  | Error err ->
-      panic ("expected serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
+  | Error err -> panic
+    ("expected serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_buffered = fun ~chunk_size text ->
   match Serde_json.of_reader dataset_decode (io_reader_of_string ~chunk_size text) with
   | Ok value -> value
-  | Error err ->
-      panic
-        ("expected buffered serde reader benchmark decode to succeed: "
-        ^ Serde.Error.to_string err)
+  | Error err -> panic
+    ("expected buffered serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_chunked = fun text ->
   match Serde_json.of_reader dataset_decode (io_reader_of_string ~chunk_size:1 text) with
   | Ok value -> value
-  | Error err ->
-      panic ("expected chunked serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
+  | Error err -> panic
+    ("expected chunked serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let load_large_fixture = fun base_fixture ->
   let text = ensure_large_fixture_text base_fixture in
@@ -593,7 +569,7 @@ let bench_decode_serde = fun fixture () -> ignore (decode_serde fixture.text)
 let bench_decode_serde_reader = fun fixture () -> ignore (decode_serde_reader fixture.text)
 
 let bench_decode_serde_reader_buffered = fun fixture () ->
-  ignore (decode_serde_reader_buffered ~chunk_size:4096 fixture.text)
+  ignore (decode_serde_reader_buffered ~chunk_size:4_096 fixture.text)
 
 let bench_decode_serde_reader_chunked = fun fixture () ->
   ignore (decode_serde_reader_chunked fixture.text)
