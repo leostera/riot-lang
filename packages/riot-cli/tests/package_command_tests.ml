@@ -23,6 +23,65 @@ let parse_update = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_new = fun args ->
+  match ArgParser.get_matches Riot_cli.New.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid utf-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system returned invalid utf-8 for "
+  ^ syscall
+  ^ ": "
+  ^ path
+  | Path.SystemError message -> message
+
+let with_current_dir_result = fun dir fn ->
+  match Env.current_dir () with
+  | Error err -> Error (path_error_message err)
+  | Ok original ->
+      match Env.set_current_dir dir with
+      | Error err -> Error (path_error_message err)
+      | Ok () ->
+          let restore () =
+            match Env.set_current_dir original with
+            | Ok () -> ()
+            | Error _ -> ()
+          in
+          (
+            try
+              let result = fn () in
+              let () = restore () in
+              result
+            with
+            | exn ->
+                let () = restore () in
+                raise exn
+          )
+
+let with_current_dir_exn_result = fun dir fn ->
+  match Env.current_dir () with
+  | Error err -> Error (Failure (path_error_message err))
+  | Ok original ->
+      match Env.set_current_dir dir with
+      | Error err -> Error (Failure (path_error_message err))
+      | Ok () ->
+          let restore () =
+            match Env.set_current_dir original with
+            | Ok () -> ()
+            | Error _ -> ()
+          in
+          (
+            try
+              let result = fn () in
+              let () = restore () in
+              result
+            with
+            | exn ->
+                let () = restore () in
+                raise exn
+          )
+
 let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
   with_tempdir_result "riot_cli_add_bootstrap"
     (fun tempdir ->
@@ -74,11 +133,25 @@ let test_update_outside_workspace_message = fun _ctx ->
   Test.assert_equal ~expected:"No riot.toml, so nothing to update" ~actual:Riot_cli.Update_cmd.no_workspace_message;
   Ok ()
 
+let test_new_outside_workspace_requires_init = fun _ctx ->
+  with_tempdir_result "riot_cli_new_requires_init"
+    (fun tempdir ->
+      let* matches = parse_new [ "new"; "hello-world" ] in
+      match with_current_dir_exn_result tempdir (fun () -> Riot_cli.New.run matches) with
+      | Ok () ->
+          Error "expected riot new to fail outside a workspace"
+      | Error (Failure message) ->
+          Test.assert_equal ~expected:Riot_cli.New.no_workspace_message ~actual:message;
+          Ok ()
+      | Error err ->
+          Error ("unexpected error kind: " ^ Exception.to_string err))
+
 let tests =
   Test.[
     case "package commands: add bootstraps an empty workspace outside a workspace" test_add_bootstraps_empty_workspace_outside_workspace;
     case "package commands: remove outside a workspace reports no riot.toml" test_remove_outside_workspace_message;
     case "package commands: update outside a workspace reports no riot.toml" test_update_outside_workspace_message;
+    case "package commands: new outside a workspace asks for riot init" test_new_outside_workspace_requires_init;
   ]
 
 let name = "Riot CLI Package Command Tests"
