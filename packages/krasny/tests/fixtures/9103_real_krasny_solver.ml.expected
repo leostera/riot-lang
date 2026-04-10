@@ -53,7 +53,7 @@ let solve ~width doc =
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->
-        let solved, column = solve_doc ~column ~indent:((indent + extra)) ~mode doc in
+        let solved, column = solve_doc ~column ~indent:(indent + extra) ~mode doc in
         (Doc.indent extra solved, column)
     | Doc.Group doc ->
         let mode =

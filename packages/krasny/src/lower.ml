@@ -56,7 +56,7 @@ let unsupported = fun ?(context = []) message ->
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
   let kind = Syn.Cst.syntax_kind syntax_node in
   unsupported_with_context_entries
-    ~context:((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))
+    ~context:(List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])
     message
 
 let extension_payload_context = [ "extension"; "payload" ]
@@ -402,14 +402,13 @@ let group_digits_from_left = fun ~group_size digits ->
     let rec loop index =
       if index >= length then
         IO.Buffer.contents buffer
-      else
-        (
-          if index > 0 then
-            IO.Buffer.add_char buffer '_';
-          let chunk_size = Int.min group_size (length - index) in
-          IO.Buffer.add_string buffer (String.sub digits index chunk_size);
-          loop (index + chunk_size)
-        )
+      else (
+        if index > 0 then
+          IO.Buffer.add_char buffer '_';
+        let chunk_size = Int.min group_size (length - index) in
+        IO.Buffer.add_string buffer (String.sub digits index chunk_size);
+        loop (index + chunk_size)
+      )
     in
     loop 0
 
@@ -1377,8 +1376,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, payload_multiline = inline_separator_or_multiline_block
           ~fallback_separator_doc:Doc.empty
           ~separator_token:(Some separator_token)
-          ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-          |> Option.map Syn.Cst.CoreType.syntax_node))
+          ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
+          |> Option.map Syn.Cst.CoreType.syntax_node)
           ~render_next:payload in
         let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
         let arrow_leading_trivia =
@@ -1444,8 +1443,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, _payload_multiline = inline_separator_or_multiline_block
           ~fallback_separator_doc:Doc.empty
           ~separator_token:(Some separator_token)
-          ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-          |> Option.map Syn.Cst.CoreType.syntax_node))
+          ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
+          |> Option.map Syn.Cst.CoreType.syntax_node)
           ~render_next:payload in
         Doc.concat [ head; payload_doc; ]
     | None, Some result_type ->
@@ -5132,17 +5131,17 @@ let make_lowerer =
     match Syn.CstBuilder.signature_items_of_module_type module_type with
     | Ok items -> items
     | Error error -> unsupported_with_context_entries
-      ~context:((Context_label "module_type"
+      ~context:(Context_label "module_type"
       :: Context_syntax_kind error.syntax_kind
-      :: List.map (fun label -> Context_label label) error.context))
+      :: List.map (fun label -> Context_label label) error.context)
       error.message
   and nested_structure_items_from_module_expression module_expression =
     match Syn.CstBuilder.structure_items_of_module_expression module_expression with
     | Ok items -> items
     | Error error -> unsupported_with_context_entries
-      ~context:((Context_label "module_expression"
+      ~context:(Context_label "module_expression"
       :: Context_syntax_kind error.syntax_kind
-      :: List.map (fun label -> Context_label label) error.context))
+      :: List.map (fun label -> Context_label label) error.context)
       error.message
   and render_module_type_constraint ~keyword (constraint_: Syn.Cst.module_type_constraint) =
     let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in

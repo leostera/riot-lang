@@ -79,7 +79,8 @@ let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.FileItem.t) on_file
             on_file path;
           Fs.Walker.Continue
       | Symlink
-      | Other -> Fs.Walker.Continue
+      | Other ->
+          Fs.Walker.Continue
     )
 
 let make_walker = fun ~roots ~should_ignore ->
