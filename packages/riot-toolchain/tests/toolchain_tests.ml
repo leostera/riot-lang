@@ -24,7 +24,7 @@ let sample_colored_ocaml_warning = String.concat
   ]
 
 let with_temp_dir = fun label f ->
-  match Fs.with_tempdir ~prefix:(("riot_toolchain_" ^ label)) (fun dir -> f dir) with
+  match Fs.with_tempdir ~prefix:("riot_toolchain_" ^ label) (fun dir -> f dir) with
   | Ok result -> result
   | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
 

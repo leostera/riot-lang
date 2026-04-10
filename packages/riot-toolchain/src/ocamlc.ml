@@ -75,7 +75,7 @@ module Diagnostic = struct
     else if String.equal (String.sub text start needle_len) needle then
       Some start
     else
-      find_substring_from text ~needle ~start:((start + 1))
+      find_substring_from text ~needle ~start:(start + 1)
 
   let find_substring = fun text needle -> find_substring_from text ~needle ~start:0
 
@@ -83,7 +83,7 @@ module Diagnostic = struct
     match find_substring line "[" with
     | None -> None
     | Some start -> (
-        match find_substring_from line ~needle:"]" ~start:((start + 1)) with
+        match find_substring_from line ~needle:"]" ~start:(start + 1) with
         | None -> None
         | Some stop -> Some (String.sub line (start + 1) (stop - start - 1))
       )
