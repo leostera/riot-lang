@@ -213,7 +213,7 @@ let () =
         let open Middleware in [
           request_id;
           logger;
-          runtime;
+          runner;
           head;
           body_parser ();
           method_override;
@@ -231,7 +231,7 @@ let () =
           Log.info "";
           Log.info "⭐ NEW MIDDLEWARE ACTIVE (5 features):";
           Log.info "  ✅ Head Handler - Auto HEAD support";
-          Log.info "  ✅ Runtime - X-Runtime timing header";
+          Log.info "  ✅ Runner - X-Runtime timing header";
           Log.info "  ✅ Method Override - Forms can DELETE/PUT";
           Log.info "  ✅ ETag - Content-based cache IDs";
           Log.info "  ✅ Conditional Get - 304 Not Modified";

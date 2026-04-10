@@ -973,7 +973,7 @@ module Head = Head
     preserving all headers. No configuration required. *)
 val head: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
-module Runtime = Runtime
+module Runner = Runner
 
 (** {b Request Timing Middleware}
     
@@ -987,7 +987,7 @@ module Runtime = Runtime
     {b Quick Start:}
     {[
       let app = Middleware.[
-        runtime;  (* Add timing header *)
+        runner;  (* Add timing header *)
         logger;
         router routes;
       ]
@@ -995,19 +995,19 @@ module Runtime = Runtime
     
     Clients receive: [X-Runtime: 0.0234] (seconds)
     
-    See {!Runtime} for full documentation. *)
-(** Runtime timing middleware.
+    See {!Runner} for full documentation. *)
+(** Request timing middleware.
     
     {[
       let app = Middleware.[
-        runtime;  (* Time requests *)
+        runner;  (* Time requests *)
         logger;
         router routes;
       ]
     ]}
     
     Adds [X-Runtime] header with processing time in seconds. *)
-val runtime: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val runner: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Method_override = Method_override
 

@@ -1,6 +1,6 @@
 open Std
 
-(** {1 Runtime Header Middleware}
+(** {1 Request Timing Middleware}
 
     Adds an X-Runtime header to responses showing request processing time.
 
@@ -8,7 +8,7 @@ open Std
 
     {[
       let app = Middleware.[
-        runtime;   (* Adds X-Runtime: 0.0234 *)
+        runner;   (* Adds X-Runtime: 0.0234 *)
         logger;
         router routes;
       ]
@@ -45,7 +45,7 @@ open Std
 
     {[
       let app = Middleware.[
-        runtime;    (* Start timer *)
+        runner;    (* Start timer *)
         logger;     (* This duration is included *)
         cors ~origins:["*"] ();
         router routes;
@@ -58,18 +58,18 @@ open Std
       let app = Middleware.[
         logger;
         cors ~origins:["*"] ();
-        runtime;    (* Only measures handler + router *)
+        runner;    (* Only measures handler + router *)
         router routes;
       ]
     ]} *)
 (** {1 Middleware} *)
-(** Runtime header middleware.
+(** Request timing middleware.
 
     Measures request processing time and adds X-Runtime header.
 
     {[
       let app = Middleware.[
-        runtime;
+        runner;
         router routes;
       ]
     ]}

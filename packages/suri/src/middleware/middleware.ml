@@ -61,10 +61,10 @@ module Head = Head
 
 let head = Head.middleware
 
-(** Convenience alias for Runtime.middleware *)
-module Runtime = Runtime
+(** Convenience alias for Runner.middleware *)
+module Runner = Runner
 
-let runtime = Runtime.middleware
+let runner = Runner.middleware
 
 (** Convenience alias for Method_override.middleware with default param *)
 module Method_override = Method_override
