@@ -31,13 +31,9 @@ end
 module Config: sig
   (** SSL/TLS policy for the connection. *)
   type ssl_mode =
-    | (** Never attempt TLS. Use this only in trusted local environments. *)
-      Disable
-    | (** Require TLS and fail if the server cannot negotiate it. *)
-      Require
-    | (** Prefer TLS, but fall back to plain text if the server does not support it. *)
-      Prefer
-
+    | Disable
+    | Require
+    | Prefer
   type t = {
     (** Database server hostname, IP address, or Unix-socket directory. *)
     host: string;

@@ -1011,25 +1011,25 @@ module Reader = struct
           else
             let name = Binary_reader.read_string reader
             |> Option.expect
-              ~msg:(("Protocol error: expected field name (field "
-              ^ string_of_int (field_count - n + 1))) in
+              ~msg:("Protocol error: expected field name (field "
+              ^ string_of_int (field_count - n + 1)) in
             let table_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected table_oid (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")")
             |> Oid.of_int in
             let column_attr = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected column_attr (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")")
             |> ColumnAttr.of_int in
             let type_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_oid (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")")
             |> TypeOid.of_int in
             let type_size = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_size (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")")
             |> TypeSize.of_int in
             let type_modifier = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_modifier (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")")
             |> TypeModifier.of_int in
             let format = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected format (field " ^ name ^ ")"))
+            |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")")
             |> Format.of_int in
             let field: Row.field = {
               Row.name;
@@ -1052,19 +1052,19 @@ module Reader = struct
           else
             let col_len = Binary_reader.read_int32 reader
             |> Option.expect
-              ~msg:(("Protocol error: expected column_length (col "
+              ~msg:("Protocol error: expected column_length (col "
               ^ string_of_int (col_count - n + 1)
-              ^ ")")) in
+              ^ ")") in
             if col_len = (-1) then
               read_columns (n - 1) (Row.Null :: acc)
             else
               let value = Binary_reader.read_cstring reader col_len
               |> Option.expect
-                ~msg:(("Protocol error: expected column_value (col "
+                ~msg:("Protocol error: expected column_value (col "
                 ^ string_of_int (col_count - n + 1)
                 ^ ", len="
                 ^ string_of_int col_len
-                ^ "). Buffer underrun - possible network issue.")) in
+                ^ "). Buffer underrun - possible network issue.") in
               read_columns (n - 1) (Row.Value value :: acc)
         in
         DataRow (read_columns col_count [])

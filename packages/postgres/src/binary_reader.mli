@@ -4,7 +4,6 @@
     The reader keeps an internal cursor so higher-level decoders can pull
     values in sequence without managing offsets manually.
 *)
-
 type t
 
 (** Create a reader over a byte buffer.
@@ -50,29 +49,17 @@ val read_string: t -> string option
 
     Returns [None] when fewer than [length] bytes remain.
 *)
-val read_bytes:
-  t ->
-  (** Number of bytes to read. *)
-  int ->
-  bytes option
+val read_bytes: t -> int -> bytes option
 
 (** Read a fixed-width C string.
 
     Use this for PostgreSQL fields encoded as null-terminated strings inside a
     known-width region.
 *)
-val read_cstring:
-  t ->
-  (** Width of the encoded field in bytes. *)
-  int ->
-  string option
+val read_cstring: t -> int -> string option
 
 (** Return the current read position in bytes. *)
 val position: t -> int
 
 (** Move the reader cursor to an absolute byte offset. *)
-val set_position:
-  t ->
-  (** Absolute byte offset to move to. *)
-  int ->
-  unit
+val set_position: t -> int -> unit
