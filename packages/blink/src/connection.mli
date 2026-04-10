@@ -2,7 +2,6 @@ open Std
 
 (** HTTP connection handle. *)
 type t
-
 (** Incremental message emitted while reading a response. *)
 type message =
   | Data of string

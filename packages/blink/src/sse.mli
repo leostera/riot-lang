@@ -1,7 +1,6 @@
 open Std
 
 (** Parse Server-Sent Events from an HTTP response stream. *)
-
 (** An SSE event. *)
 type event = {
   (** Event payload. *)

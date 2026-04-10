@@ -20,7 +20,6 @@ module SSE: module type of Sse
 
 (** Blink client error. *)
 type error = Error.t
-
 (** Streaming HTTP message from a connection. *)
 type message = Connection.message
 

@@ -2,10 +2,8 @@ open Std
 
 (** WebSocket connection handle. *)
 type t
-
 (** WebSocket operation error. *)
 type error = Error.t
-
 (** WebSocket message. *)
 type message =
   | Text of string
