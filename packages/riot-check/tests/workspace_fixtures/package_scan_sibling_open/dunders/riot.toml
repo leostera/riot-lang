@@ -1,6 +1,6 @@
 [package]
 name = "dunders"
-version = "0.0.1"
+version = "0.0.16"
 description = "riot-check package-scan sibling open fixture"
 license = "Apache-2.0"
 public = false

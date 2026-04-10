@@ -1,6 +1,6 @@
 [package]
 name = "binary_only"
-version = "0.0.1"
+version = "0.0.16"
 
 [[bin]]
 name = "main"
