@@ -397,7 +397,12 @@ let record_mut = fun ~fields ~create ~step ~finish ->
     run =
       fun backend state ->
         let reader = reader_of_backend backend state in
-        backend.record_mut state ~fields ~create ~step:(fun builder field -> step reader builder field) ~finish;
+        backend.record_mut
+          state
+          ~fields
+          ~create
+          ~step:(fun builder field -> step reader builder field)
+          ~finish;
   }
 
 let variant = fun cases ->
@@ -550,7 +555,10 @@ module De = struct
                 decode.run backend state;
           }
           in
-          backend.record_mut state ~fields ~create
+          backend.record_mut
+            state
+            ~fields
+            ~create
             ~step:(fun builder field -> step reader builder field)
             ~finish;
     }
