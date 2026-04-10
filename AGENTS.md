@@ -42,6 +42,8 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/fixme/AGENTS.md`: shared rule-authoring types used by riot-fix and generated `fixme-runner` providers
 - `packages/tty/AGENTS.md`: terminal control and rendering helpers
 - `packages/typ/AGENTS.md`: experimental lowered IR, prototype typing, and snapshot-driven type-analysis exploration
+- `compiler/asm/AGENTS.md`: typed assembly documents and per-ISA emission DSLs
+- `compiler/raml/AGENTS.md`: multi-backend compiler architecture, shared `Core_ir`, `JIR`/`ZIR` lowerings, and example-driven compiler work
 - `packages/gooey/AGENTS.md`: TUI primitives
 - `packages/minttea/AGENTS.md`: Elm-style TUI framework
 - `packages/sqlx/AGENTS.md`: high-level SQL API
