@@ -130,7 +130,9 @@ let report_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
     typing_diagnostics = analysis.typing_diagnostics;
     file_summary = analysis.file_summary;
     type_index = analysis.type_index;
-    exports = Typ_source_analysis.exports analysis;
+    exports =
+      Typ_source_analysis.exports analysis
+      |> List.map (fun (name, scheme) -> (Typ.Model.SurfacePath.to_string name, scheme));
     item_traces = analysis.item_traces;
     expr_traces = analysis.expr_traces;
   }
@@ -258,7 +260,7 @@ let merge_module_exports = fun preferred fallback ->
     match remaining with
     | [] -> List.rev acc
     | ((name, _) as export) :: tail ->
-        if List.mem name seen then
+        if List.exists (Typ.Model.SurfacePath.equal name) seen then
           loop seen acc tail
         else
           loop (name :: seen) (export :: acc) tail
@@ -266,11 +268,11 @@ let merge_module_exports = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let type_decl_key = fun (type_decl: Typ_file_summary.type_decl) ->
-  if Typ.Model.IdentPath.is_empty type_decl.scope_path then
+  if Typ.Model.SurfacePath.is_empty type_decl.scope_path then
     type_decl.declaration.type_name
   else
-    Typ.Model.IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
-    |> Typ.Model.IdentPath.to_string
+    Typ.Model.SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+    |> Typ.Model.SurfacePath.to_string
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -623,7 +625,7 @@ let package_typ_sources_from_planner = fun ~on_event ~include_dev ~(workspace:Wo
                                       |> Riot_model.Module_name.qualified_name in
                                       let source =
                                         let implicit_opens = analyzed.implicit_opens
-                                        |> List.map Typ.Model.IdentPath.of_string in
+                                        |> List.map Typ.Model.SurfacePath.of_string in
                                         Typ_source.make_prepared ~source_id
                                           ~kind:(
                                             match node.value.file with
@@ -773,24 +775,24 @@ let package_scan_ambient_of_loaded_modules = fun loaded_modules ->
   loaded_modules |> List.fold_left package_scan_ambient_with_typings package_scan_ambient_empty
 
 let relative_module_name = fun ~current_local_module_name module_name ->
-  let module_path = Typ.Model.IdentPath.of_string module_name in
-  let current_module_path = Typ.Model.IdentPath.of_string current_local_module_name in
-  let current_scope_path = current_module_path |> Typ.Model.IdentPath.split_last |> Option.map fst in
+  let module_path = Typ.Model.SurfacePath.of_string module_name in
+  let current_module_path = Typ.Model.SurfacePath.of_string current_local_module_name in
+  let current_scope_path = current_module_path |> Typ.Model.SurfacePath.split_last |> Option.map fst in
   let prefixes = [ current_module_path; (
       match current_scope_path with
-      | Some scope_path when not (Typ.Model.IdentPath.is_empty scope_path) -> scope_path
-      | _ -> Typ.Model.IdentPath.empty
+      | Some scope_path when not (Typ.Model.SurfacePath.is_empty scope_path) -> scope_path
+      | _ -> Typ.Model.SurfacePath.empty
     ); ]
   in
   prefixes |> List.find_map
     (fun prefix ->
-      if Typ.Model.IdentPath.is_empty prefix then
+      if Typ.Model.SurfacePath.is_empty prefix then
         None
       else
         module_path
-        |> Typ.Model.IdentPath.strip_prefix ~prefix
-        |> Option.filter (fun relative -> not (Typ.Model.IdentPath.is_empty relative))
-        |> Option.map Typ.Model.IdentPath.to_string)
+        |> Typ.Model.SurfacePath.strip_prefix ~prefix
+        |> Option.filter (fun relative -> not (Typ.Model.SurfacePath.is_empty relative))
+        |> Option.map Typ.Model.SurfacePath.to_string)
 
 let relative_ambient_exports_for_loaded_modules = fun ~current_local_module_name loaded_modules ->
   loaded_modules |> List.concat_map
@@ -1301,6 +1303,12 @@ let checked_group_for_ordered_sources_via_rooted_sessions = fun ?on_event ~packa
             in
             (session, config, accumulated_typings)
         | Ok snapshot ->
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotPersistenceStarted {
+                package_name;
+                root_target_count = List.length root_targets
+              }) in
             let () =
               match config.Typ.Config.store with
               | Some store -> (
@@ -1320,6 +1328,19 @@ let checked_group_for_ordered_sources_via_rooted_sessions = fun ?on_event ~packa
                 )
               | None -> ()
             in
+            let rooted_module_typings_after_persist = Typ_snapshot.module_typings snapshot in
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotPersistenceFinished {
+                package_name;
+                saved_module_count = List.length rooted_module_typings_after_persist
+              }) in
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotCheckedFilesStarted {
+                package_name;
+                root_target_count = List.length root_targets
+              }) in
             let () =
               target_prepared_sources
               |> List.iter
@@ -1335,7 +1356,19 @@ let checked_group_for_ordered_sources_via_rooted_sessions = fun ?on_event ~packa
                     )
                 )
             in
-            let module_typings = Typ_snapshot.module_typings snapshot in
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotCheckedFilesFinished {
+                package_name;
+                checked_file_count = List.length target_prepared_sources
+              }) in
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotReloadStarted {
+                package_name;
+                root_target_count = List.length root_targets
+              }) in
+            let module_typings = rooted_module_typings_after_persist in
             let local_alias_typings =
               root_targets
               |> List.filter_map
@@ -1367,23 +1400,43 @@ let checked_group_for_ordered_sources_via_rooted_sessions = fun ?on_event ~packa
             let loaded_modules = merge_loaded_module_typings
               (module_typings @ local_alias_typings)
               config.Typ.Config.loaded_modules in
+            let () = emit_event
+              ?on_event
+              (Check_event.PackageSnapshotReloadFinished {
+                package_name;
+                rooted_module_count = List.length module_typings;
+                local_alias_typing_count = List.length local_alias_typings;
+                public_module_typing_count = List.length public_module_typings;
+                loaded_module_count = List.length loaded_modules
+              }) in
             let config = Typ.Config.with_loaded_modules config ~loaded_modules in
             let session = Typ.Session.with_config session ~config in
             (session, config, merge_loaded_module_typings public_module_typings accumulated_typings))
       (session, config, [])
   in
-  {
-    checked_files =
-      target_paths |> List.map
-        (fun path ->
-          match List.assoc_opt (session_path_key path) !checked_by_path with
-          | Some checked_file -> checked_file
-          | None -> State.Unreadable {
-            path;
-            reason = "missing checked result for " ^ Path.to_string path
-          });
-    module_typings;
-  }
+  let () = emit_event
+    ?on_event
+    (Check_event.PackageCheckedGroupAssembleStarted {
+      package_name;
+      target_path_count = List.length target_paths
+    }) in
+  let checked_files =
+    target_paths |> List.map
+      (fun path ->
+        match List.assoc_opt (session_path_key path) !checked_by_path with
+        | Some checked_file -> checked_file
+        | None -> State.Unreadable {
+          path;
+          reason = "missing checked result for " ^ Path.to_string path
+        })
+  in
+  let () = emit_event
+    ?on_event
+    (Check_event.PackageCheckedGroupAssembleFinished {
+      package_name;
+      checked_file_count = List.length checked_files
+    }) in
+  { checked_files; module_typings }
 
 let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
   match Typ.Store.load_package_bundle store ~package_name:pkg.name with
@@ -1783,7 +1836,20 @@ let check_target_files = fun ~workspace ~scan_mode ~include_dev ?on_event ?on_re
                       config
                       ordered_sources
                       group_targets in
-                    checked_group.checked_files |> List.iter emit
+                    let () = emit_event
+                      ?on_event
+                      (Check_event.PackageCheckedGroupEmitStarted {
+                        package_name = pkg.name;
+                        checked_file_count = List.length checked_group.checked_files
+                      }) in
+                    let () = checked_group.checked_files |> List.iter emit in
+                    let () = emit_event
+                      ?on_event
+                      (Check_event.PackageCheckedGroupEmitFinished {
+                        package_name = pkg.name;
+                        checked_file_count = List.length checked_group.checked_files
+                      }) in
+                    ()
                 | Some ordered_sources ->
                     let () = emit_event
                       ?on_event

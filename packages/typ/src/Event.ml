@@ -34,6 +34,26 @@ type kind =
       loaded_module_count: int;
       revision: int
     }
+  | SnapshotMaterializationStarted of {
+      roots: SourceId.t list;
+      local_source_count: int;
+      revision: int
+    }
+  | SnapshotMaterializationFinished of {
+      roots: SourceId.t list;
+      local_source_count: int;
+      module_count: int;
+      revision: int
+    }
+  | ModuleTypingsCollectionStarted of {
+      roots: SourceId.t list;
+      rooted_module_count: int
+    }
+  | ModuleTypingsCollectionFinished of {
+      roots: SourceId.t list;
+      rooted_module_count: int;
+      produced_module_count: int
+    }
   | SourceAnalysisStarted of {
       source_id: SourceId.t;
       module_name: string;
@@ -144,6 +164,38 @@ let to_json = fun event ->
       ("local_source_count", Data.Json.Int local_source_count);
       ("loaded_module_count", Data.Json.Int loaded_module_count);
       ("revision", Data.Json.Int revision);
+    ]
+  | SnapshotMaterializationStarted { roots; local_source_count; revision } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_snapshot_materialization_start");
+      ("roots", source_ids_to_json roots);
+      ("local_source_count", Data.Json.Int local_source_count);
+      ("revision", Data.Json.Int revision);
+    ]
+  | SnapshotMaterializationFinished { roots; local_source_count; module_count; revision } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_snapshot_materialization_finish");
+      ("roots", source_ids_to_json roots);
+      ("local_source_count", Data.Json.Int local_source_count);
+      ("module_count", Data.Json.Int module_count);
+      ("revision", Data.Json.Int revision);
+    ]
+  | ModuleTypingsCollectionStarted { roots; rooted_module_count } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_module_typings_collection_start");
+      ("roots", source_ids_to_json roots);
+      ("rooted_module_count", Data.Json.Int rooted_module_count);
+    ]
+  | ModuleTypingsCollectionFinished { roots; rooted_module_count; produced_module_count } -> object_with_instant
+    instant_us
+    [
+      ("type", Data.Json.String "typ_module_typings_collection_finish");
+      ("roots", source_ids_to_json roots);
+      ("rooted_module_count", Data.Json.Int rooted_module_count);
+      ("produced_module_count", Data.Json.Int produced_module_count);
     ]
   | SourceAnalysisStarted {
     source_id;

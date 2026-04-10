@@ -36,6 +36,49 @@ type t =
       root_group_count: int;
       target_path_count: int
     }
+  | PackageSnapshotPersistenceStarted of {
+      package_name: string;
+      root_target_count: int
+    }
+  | PackageSnapshotPersistenceFinished of {
+      package_name: string;
+      saved_module_count: int
+    }
+  | PackageSnapshotCheckedFilesStarted of {
+      package_name: string;
+      root_target_count: int
+    }
+  | PackageSnapshotCheckedFilesFinished of {
+      package_name: string;
+      checked_file_count: int
+    }
+  | PackageSnapshotReloadStarted of {
+      package_name: string;
+      root_target_count: int
+    }
+  | PackageSnapshotReloadFinished of {
+      package_name: string;
+      rooted_module_count: int;
+      local_alias_typing_count: int;
+      public_module_typing_count: int;
+      loaded_module_count: int
+    }
+  | PackageCheckedGroupAssembleStarted of {
+      package_name: string;
+      target_path_count: int
+    }
+  | PackageCheckedGroupAssembleFinished of {
+      package_name: string;
+      checked_file_count: int
+    }
+  | PackageCheckedGroupEmitStarted of {
+      package_name: string;
+      checked_file_count: int
+    }
+  | PackageCheckedGroupEmitFinished of {
+      package_name: string;
+      checked_file_count: int
+    }
   | Typ of { event: Typ.Event.t }
   | File of State.checked_file
   | Diagnostic of { path: Path.t; diagnostic_index: int; diagnostic: Diagnostic.t }
@@ -177,6 +220,65 @@ let to_json = fun ~workspace_root event ->
     ("package_name", Data.Json.String package_name);
     ("root_group_count", Data.Json.Int root_group_count);
     ("target_path_count", Data.Json.Int target_path_count);
+  ]
+  | PackageSnapshotPersistenceStarted { package_name; root_target_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_persistence_start");
+    ("package_name", Data.Json.String package_name);
+    ("root_target_count", Data.Json.Int root_target_count);
+  ]
+  | PackageSnapshotPersistenceFinished { package_name; saved_module_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_persistence_finish");
+    ("package_name", Data.Json.String package_name);
+    ("saved_module_count", Data.Json.Int saved_module_count);
+  ]
+  | PackageSnapshotCheckedFilesStarted { package_name; root_target_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_checked_files_start");
+    ("package_name", Data.Json.String package_name);
+    ("root_target_count", Data.Json.Int root_target_count);
+  ]
+  | PackageSnapshotCheckedFilesFinished { package_name; checked_file_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_checked_files_finish");
+    ("package_name", Data.Json.String package_name);
+    ("checked_file_count", Data.Json.Int checked_file_count);
+  ]
+  | PackageSnapshotReloadStarted { package_name; root_target_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_reload_start");
+    ("package_name", Data.Json.String package_name);
+    ("root_target_count", Data.Json.Int root_target_count);
+  ]
+  | PackageSnapshotReloadFinished {
+    package_name;
+    rooted_module_count;
+    local_alias_typing_count;
+    public_module_typing_count;
+    loaded_module_count
+  } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_snapshot_reload_finish");
+    ("package_name", Data.Json.String package_name);
+    ("rooted_module_count", Data.Json.Int rooted_module_count);
+    ("local_alias_typing_count", Data.Json.Int local_alias_typing_count);
+    ("public_module_typing_count", Data.Json.Int public_module_typing_count);
+    ("loaded_module_count", Data.Json.Int loaded_module_count);
+  ]
+  | PackageCheckedGroupAssembleStarted { package_name; target_path_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_checked_group_assemble_start");
+    ("package_name", Data.Json.String package_name);
+    ("target_path_count", Data.Json.Int target_path_count);
+  ]
+  | PackageCheckedGroupAssembleFinished { package_name; checked_file_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_checked_group_assemble_finish");
+    ("package_name", Data.Json.String package_name);
+    ("checked_file_count", Data.Json.Int checked_file_count);
+  ]
+  | PackageCheckedGroupEmitStarted { package_name; checked_file_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_checked_group_emit_start");
+    ("package_name", Data.Json.String package_name);
+    ("checked_file_count", Data.Json.Int checked_file_count);
+  ]
+  | PackageCheckedGroupEmitFinished { package_name; checked_file_count } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_checked_group_emit_finish");
+    ("package_name", Data.Json.String package_name);
+    ("checked_file_count", Data.Json.Int checked_file_count);
   ]
   | Typ { event } -> Typ.Event.to_json event
   | File checked_file -> Data.Json.Object [

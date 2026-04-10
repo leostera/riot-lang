@@ -776,12 +776,34 @@ let prepare_snapshot = fun session ~roots ->
           loaded_module_count = List.length session.config.loaded_modules;
           revision = session.next_revision
         });
-    Ok (Snapshot.make_with_shared_caches
+    TypConfig.emit_event
+      session.config
+      (fun () ->
+        Event.SnapshotMaterializationStarted {
+          roots;
+          local_source_count = List.length sources;
+          revision = session.next_revision
+        });
+    let snapshot = Snapshot.make_with_shared_caches
       ~revision:session.next_revision
       ~roots
       ~config:session.config
       ~sources
-      ~shared_caches:session.shared_snapshot_caches)
+      ~shared_caches:session.shared_snapshot_caches in
+    let module_count = sources
+    |> List.map Source.module_name
+    |> List.sort_uniq String.compare
+    |> List.length in
+    TypConfig.emit_event
+      session.config
+      (fun () ->
+        Event.SnapshotMaterializationFinished {
+          roots;
+          local_source_count = List.length sources;
+          module_count;
+          revision = session.next_revision
+        });
+    Ok snapshot
   else (
     TypConfig.emit_event session.config
       (fun () ->

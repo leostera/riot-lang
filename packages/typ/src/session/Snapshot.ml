@@ -769,12 +769,37 @@ let file_summaries = fun snapshot ->
 
 let module_typings = fun snapshot ->
   let rooted_module_names = rooted_module_names snapshot in
-  rooted_module_names
+  (
+    match snapshot.analyses with
+    | [] -> ()
+    | slot :: _ ->
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.ModuleTypingsCollectionStarted {
+              roots = snapshot.roots;
+              rooted_module_count = List.length rooted_module_names
+            })
+  );
+  let module_typings = rooted_module_names
   |> List.filter_map
     (fun module_name ->
       module_results_for snapshot
       |> List.assoc_opt module_name
       |> Option.map (fun result -> ModulePairing.(result.module_typings)))
+  in
+  (
+    match snapshot.analyses with
+    | [] -> ()
+    | slot :: _ ->
+        TypConfig.emit_event slot.config
+          (fun () ->
+            Event.ModuleTypingsCollectionFinished {
+              roots = snapshot.roots;
+              rooted_module_count = List.length rooted_module_names;
+              produced_module_count = List.length module_typings
+            })
+  );
+  module_typings
 
 let find_module_typings = fun snapshot source_id ->
   if not (is_root snapshot source_id) then

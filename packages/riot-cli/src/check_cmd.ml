@@ -63,7 +63,17 @@ let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
   | Check.Event.PackageSourcePreparationFailed _
   | Check.Event.PackageSessionSeedStarted _
   | Check.Event.PackageSessionSeedFinished _
-  | Check.Event.PackageRootGroupingFinished _ ->
+  | Check.Event.PackageRootGroupingFinished _
+  | Check.Event.PackageSnapshotPersistenceStarted _
+  | Check.Event.PackageSnapshotPersistenceFinished _
+  | Check.Event.PackageSnapshotCheckedFilesStarted _
+  | Check.Event.PackageSnapshotCheckedFilesFinished _
+  | Check.Event.PackageSnapshotReloadStarted _
+  | Check.Event.PackageSnapshotReloadFinished _
+  | Check.Event.PackageCheckedGroupAssembleStarted _
+  | Check.Event.PackageCheckedGroupAssembleFinished _
+  | Check.Event.PackageCheckedGroupEmitStarted _
+  | Check.Event.PackageCheckedGroupEmitFinished _ ->
       ()
   | Check.Event.Typ { event=_ } ->
       ()

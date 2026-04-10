@@ -37,6 +37,26 @@ type kind =
       loaded_module_count: int;
       revision: int
     }
+  | SnapshotMaterializationStarted of {
+      roots: SourceId.t list;
+      local_source_count: int;
+      revision: int
+    }
+  | SnapshotMaterializationFinished of {
+      roots: SourceId.t list;
+      local_source_count: int;
+      module_count: int;
+      revision: int
+    }
+  | ModuleTypingsCollectionStarted of {
+      roots: SourceId.t list;
+      rooted_module_count: int
+    }
+  | ModuleTypingsCollectionFinished of {
+      roots: SourceId.t list;
+      rooted_module_count: int;
+      produced_module_count: int
+    }
   | SourceAnalysisStarted of {
       source_id: SourceId.t;
       module_name: string;
