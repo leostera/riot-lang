@@ -1,10 +1,36 @@
 # Now
 
+* kernel-new migration
+    * redefine the entire interface of all the collections in Kernel and Std
+
+* riot check kernel-new
+
+
+# Before Announcing
+
+* need a riot SKILLS for agents
+
 * keep workign on making docs.riot.ml look great and writing the docs 
 
-# Planned
+* riot run hello_world.ml should just work:
+  * parses files and detects pragmas like
+    #dep "std":
+  * creates a synthetic workspace, plans and builds and runs the script on the global cache
+
+* build lock should be acquired _after planning_ to allow for fully cached builds to finish immediately
+
+* reacahability analysis during planning -- if a module in a package isn't included/reached by any other module, it shouldn't be part of the build!
+
+* `riot check` should be able to type-check Riot! 
+
+* `riot lsp` doesn't use 200gb of ram
+
 
 # Next
+
+* little tool for git commit queues?
+
+* riot fmt should rename files for you to be consistent with snake_cased files -- this is the first step and then th next step is translating those automatically into CamelCased modules
 
 * how to make `riot test` more semantically aware? we can definitely build the graph of static dependencies into a test, could we use that to compute the tests that we _know_ need to be rerun?
 
@@ -24,16 +50,9 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 
 * enforce examples/binaries have a `val main : ~args:string list -> result` function by autoamtically wrapping/injecting a `let () = Actors.run ~main ~env:Std.Env.args ()` 
 
-* --release flag should also be usable in riot test and riot run
-
 * RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 
 * bug? how do we support creating projects without a .mli file and just generate it at build time for you?
-
-* redefine the entire interface of all the collections in Kernel and Std
-
-* riot build pipeline uses `syn` to cache at the CST level
-
 
 # Later
 
@@ -44,10 +63,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 * implement js targets
 
 * riot fix: allow for disabling specific rules like [@fix.disable "rule id"]
-
-* setup-riot: an installer-based github action that runs `curl https://get.riot.ml | sh -` and adds `~/.riot/bin` to PATH
-
-* `riot init` should include a Dockerfile, and a .github/workflows/ci.yml template, and it should include a test!
 
 * `riot trace` -- instrument and dump traces for tests and programs? is this worth doing?
 
