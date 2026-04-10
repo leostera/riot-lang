@@ -75,7 +75,7 @@ type package_graph = {
 }
 
 type engine_state = {
-  local_canonical_typings: LoadedModules.t;
+  loaded_modules: LoadedModules.t;
   public_module_typings: LoadedModules.t;
   local_typings_by_id: ModuleTypings.t option array;
   local_surfaces_by_id: local_module_surface option array;
@@ -416,18 +416,6 @@ let ordered_group_ids = fun graph ->
     (Ok [])
     graph.groups |> Result.map List.rev
 
-let merge_loaded_modules = fun loaded_modules new_typings ->
-  LoadedModules.merge
-    ~preferred:(LoadedModules.of_list new_typings)
-    ~fallback:loaded_modules
-    ~combine:(fun existing _incoming -> existing)
-
-let merge_public_module_typings = fun loaded_modules new_typings ->
-  LoadedModules.merge
-    ~preferred:(LoadedModules.of_list new_typings)
-    ~fallback:loaded_modules
-    ~combine:(fun existing _incoming -> existing)
-
 let persist_module_typings = fun store module_typings ->
   match Store.save_module_typings store module_typings with
   | Ok () -> Ok ()
@@ -528,18 +516,14 @@ let source_config = fun ~graph ~state ~base_config (source: graph_source) ->
                 local_type_decls_rev := List.rev_append surface.ambient_type_decls !local_type_decls_rev
             | None -> ())
       in
-      let loaded_modules =
-        LoadedModules.merge
-          ~preferred:state.local_canonical_typings
-          ~fallback:base_config.TypConfig.loaded_modules
-          ~combine:(fun existing _incoming -> existing)
-      in
-      let ambient = base_config.ambient @ graph.external_ambient.ambient_exports @ List.rev !local_exports_rev in
-      let ambient_type_decls = base_config.ambient_type_decls
+      let ambient = base_config.TypConfig.ambient
+      @ graph.external_ambient.ambient_exports
+      @ List.rev !local_exports_rev in
+      let ambient_type_decls = base_config.TypConfig.ambient_type_decls
       @ graph.external_ambient.ambient_type_decls
       @ List.rev !local_type_decls_rev in
       Ok (base_config
-      |> TypConfig.with_loaded_module_index ~loaded_modules
+      |> TypConfig.with_loaded_module_index ~loaded_modules:state.loaded_modules
       |> TypConfig.with_ambient ~ambient
       |> TypConfig.with_ambient_type_decls ~ambient_type_decls)
 
@@ -569,7 +553,7 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
   | Error _ as err -> err
   | Ok ordered_group_ids ->
       let initial_state = {
-        local_canonical_typings = LoadedModules.empty;
+        loaded_modules = LoadedModules.copy config.TypConfig.loaded_modules;
         public_module_typings = LoadedModules.empty;
         local_typings_by_id = Array.make (Array.length graph.groups) None;
         local_surfaces_by_id = Array.make (Array.length graph.groups) None
@@ -601,35 +585,18 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
                         match persist_module_views config ~module_name:group.module_name persisted_typings with
                         | Error _ as err -> err
                         | Ok () ->
-                            let local_canonical_typings = merge_loaded_modules
-                              state.local_canonical_typings
-                              [ module_typings ] in
-                            let public_module_typings_index = merge_public_module_typings
-                              state.public_module_typings
-                              public_module_typings in
-                            let local_typings_by_id = Array.copy state.local_typings_by_id in
-                            local_typings_by_id.(module_id) <- Some module_typings;
-                            let local_surfaces_by_id = Array.copy state.local_surfaces_by_id in
-                            local_surfaces_by_id.(module_id) <- Some (local_surface_of_typings
+                            LoadedModules.add state.loaded_modules module_typings;
+                            public_module_typings
+                            |> List.iter (LoadedModules.add state.public_module_typings);
+                            state.local_typings_by_id.(module_id) <- Some module_typings;
+                            state.local_surfaces_by_id.(module_id) <- Some (local_surface_of_typings
                               group.module_name
                               module_typings);
-                            let loaded_modules =
-                              LoadedModules.merge
-                                ~preferred:local_canonical_typings
-                                ~fallback:config.TypConfig.loaded_modules
-                                ~combine:(fun existing _incoming -> existing)
-                            in
                             let finished_group = {
                               module_name = group.module_name;
                               checked_sources;
                               module_typings;
-                              loaded_modules
-                            } in
-                            let state = {
-                              local_canonical_typings;
-                              public_module_typings = public_module_typings_index;
-                              local_typings_by_id;
-                              local_surfaces_by_id
+                              loaded_modules = state.loaded_modules
                             } in
                             Ok (f acc finished_group, state)
                       )
@@ -641,12 +608,9 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
       | Ok (acc, state) -> (
           match persist_package_bundle config ?package_name ?package_fingerprint state.public_module_typings with
           | Error _ as err -> err
-          | Ok () ->
-              let loaded_modules =
-                LoadedModules.merge
-                  ~preferred:state.local_canonical_typings
-                  ~fallback:config.TypConfig.loaded_modules
-                  ~combine:(fun existing _incoming -> existing)
-              in
-              Ok { acc; loaded_modules; public_module_typings = state.public_module_typings }
+          | Ok () -> Ok {
+            acc;
+            loaded_modules = state.loaded_modules;
+            public_module_typings = state.public_module_typings
+          }
         )

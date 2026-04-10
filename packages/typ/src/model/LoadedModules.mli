@@ -11,6 +11,15 @@ type t
 (** Empty loaded-module index. *)
 val empty: t
 
+(** Copy an index so callers can take ownership of later in-place updates
+    without mutating the original. *)
+val copy: t -> t
+
+(** Insert or replace one module typings in place.
+
+    This mutates the owned index directly and invalidates cached views. *)
+val add: t -> ModuleTypings.t -> unit
+
 (** Build an index from a list of module typings.
 
     When duplicates appear, later entries replace earlier ones. *)

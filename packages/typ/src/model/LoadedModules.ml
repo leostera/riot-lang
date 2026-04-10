@@ -2,7 +2,7 @@ open Std
 
 type t = {
   by_name: (string, ModuleTypings.t) Collections.HashMap.t;
-  count: int;
+  mutable count: int;
   mutable values_cache: ModuleTypings.t list option;
   mutable names_cache: string list option;
   mutable stable_key_cache: string option;
@@ -18,6 +18,27 @@ let make = fun ~by_name ~count ->
   }
 
 let empty = make ~by_name:(Collections.HashMap.create ()) ~count:0
+
+let invalidate_caches = fun loaded_modules ->
+  loaded_modules.values_cache <- None;
+  loaded_modules.names_cache <- None;
+  loaded_modules.stable_key_cache <- None
+
+let copy = fun loaded_modules ->
+  let by_name = Collections.HashMap.with_capacity loaded_modules.count in
+  Collections.HashMap.iter
+    (fun module_name summary ->
+      let _ = Collections.HashMap.insert by_name module_name summary in
+      ())
+    loaded_modules.by_name;
+  make ~by_name ~count:loaded_modules.count
+
+let add = fun loaded_modules summary ->
+  let module_name = ModuleTypings.module_name summary in
+  let previous = Collections.HashMap.insert loaded_modules.by_name module_name summary in
+  if Option.is_none previous then
+    loaded_modules.count <- loaded_modules.count + 1;
+  invalidate_caches loaded_modules
 
 let of_list = fun summaries ->
   let by_name = Collections.HashMap.with_capacity (List.length summaries) in
