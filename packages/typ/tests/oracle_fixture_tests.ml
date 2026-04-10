@@ -117,13 +117,11 @@ let toolchain_ocamlc_candidates = fun () ->
   if not (path_exists toolchains_root) then
     []
   else
-    let output =
-      Command.make
-        "find"
-        ~args:[ Path.to_string toolchains_root; "-name"; "ocamlc"; "-print" ]
-      |> Command.output
-      |> Result.expect ~msg:"expected toolchain oracle find command to spawn"
-    in
+    let output = Command.make
+      "find"
+      ~args:[ Path.to_string toolchains_root; "-name"; "ocamlc"; "-print" ]
+    |> Command.output
+    |> Result.expect ~msg:"expected toolchain oracle find command to spawn" in
     if output.status != 0 then
       []
     else
@@ -132,29 +130,24 @@ let toolchain_ocamlc_candidates = fun () ->
       |> List.filter_map (fun path -> Path.of_string path |> Result.to_option)
 
 let preferred_toolchain_ocamlc = fun ocamlc_paths ->
-  let host_tokens =
-    oracle_host_tokens ()
-    |> List.filter (fun token -> not (String.equal token "") && not (String.equal token "unknown"))
-  in
+  let host_tokens = oracle_host_tokens ()
+  |> List.filter (fun token -> not (String.equal token "") && not (String.equal token "unknown")) in
   let score_path path =
     let rendered = Path.to_string path in
-    host_tokens
-    |> List.filter (fun token -> contains_substring ~needle:token rendered)
-    |> List.length
+    host_tokens |> List.filter (fun token -> contains_substring ~needle:token rendered) |> List.length
   in
-  let best_score =
-    ocamlc_paths
-    |> List.map score_path
-    |> List.fold_left max 0
-  in
-  match ocamlc_paths |> List.filter (fun path -> Int.equal (score_path path) best_score) with
+  let best_score = ocamlc_paths |> List.map score_path |> List.fold_left max 0 in
+  match
+    ocamlc_paths |> List.filter
+      (fun path ->
+        Int.equal (score_path path) best_score)
+  with
   | [ ocamlc_path ] -> Some ocamlc_path
   | _ -> None
 
 let oracle_ocamlc_path = fun () ->
   match Env.var Env.String ~name:"TYP_OCAMLC_ORACLE" with
-  | Some path ->
-      Path.of_string path |> Result.expect ~msg:"TYP_OCAMLC_ORACLE must be a valid UTF-8 path"
+  | Some path -> Path.of_string path |> Result.expect ~msg:"TYP_OCAMLC_ORACLE must be a valid UTF-8 path"
   | None ->
       let ocamlc_paths = toolchain_ocamlc_candidates () in
       if List.is_empty ocamlc_paths then
@@ -175,21 +168,17 @@ type oracle_command_result = {
 
 let run_oracle_command = fun ~fixture_filename:_ ~source_text ~args ->
   let ocamlc_path = oracle_ocamlc_path () in
-  Fs.with_tempdir
-    ~prefix:"typ_oracle"
+  Fs.with_tempdir ~prefix:"typ_oracle"
     (fun tmpdir ->
       let oracle_filename = "Oracle_fixture.ml" in
       let source_path = Path.join tmpdir (Path.v oracle_filename) in
       Fs.write source_text source_path |> Result.expect ~msg:"oracle fixture temp source should be writable";
-      let output =
-        Command.make
-          (Path.to_string ocamlc_path)
-          ~args:(args @ [ Path.to_string source_path ])
-        |> Command.output
-        |> Result.expect ~msg:"expected ocamlc oracle invocation to spawn"
-      in
-      { output; source_path })
-  |> Result.expect ~msg:"oracle tempdir should be creatable"
+      let output = Command.make
+        (Path.to_string ocamlc_path)
+        ~args:(args @ [ Path.to_string source_path ])
+      |> Command.output
+      |> Result.expect ~msg:"expected ocamlc oracle invocation to spawn" in
+      { output; source_path }) |> Result.expect ~msg:"oracle tempdir should be creatable"
 
 let strip_identifier_stamps = fun text -> text
 
@@ -217,11 +206,10 @@ let parse_val_line = fun line ->
     None
   else
     match split_once line ':' with
-    | Some (left, right) ->
-        Some {
-          name = String.trim (String.sub left 4 (String.length left - 4));
-          scheme = String.trim right;
-        }
+    | Some (left, right) -> Some {
+      name = String.trim (String.sub left 4 (String.length left - 4));
+      scheme = String.trim right
+    }
     | None -> None
 
 let parse_type_name = fun line ->
@@ -233,11 +221,9 @@ let parse_type_name = fun line ->
       | Some (left, _right) -> left
       | None -> line
     in
-    let tokens =
-      String.sub signature 5 (String.length signature - 5)
-      |> String.split_on_char ' '
-      |> List.filter (fun token -> not (String.equal token ""))
-    in
+    let tokens = String.sub signature 5 (String.length signature - 5)
+    |> String.split_on_char ' '
+    |> List.filter (fun token -> not (String.equal token "")) in
     match List.rev tokens with
     | type_name :: _ -> Some type_name
     | [] -> None
@@ -248,12 +234,10 @@ let compare_value_export = fun left right ->
   | order -> order
 
 let run_interface_oracle = fun ~fixture_filename ~source_text ->
-  let result =
-    run_oracle_command
-      ~fixture_filename
-      ~source_text
-      ~args:[ "-nopervasives"; "-nostdlib"; "-i" ]
-  in
+  let result = run_oracle_command
+    ~fixture_filename
+    ~source_text
+    ~args:[ "-nopervasives"; "-nostdlib"; "-i" ] in
   let output = result.output in
   if output.status != 0 then
     panic
@@ -270,16 +254,14 @@ let run_interface_oracle = fun ~fixture_filename ~source_text ->
   {
     lines;
     value_exports = lines |> List.filter_map parse_val_line |> List.sort compare_value_export;
-    type_names = lines |> List.filter_map parse_type_name |> List.sort String.compare;
+    type_names = lines |> List.filter_map parse_type_name |> List.sort String.compare
   }
 
 let run_typedtree_oracle = fun ~fixture_filename ~source_text ->
-  let result =
-    run_oracle_command
-      ~fixture_filename
-      ~source_text
-      ~args:[ "-nopervasives"; "-nostdlib"; "-dtypedtree"; "-c" ]
-  in
+  let result = run_oracle_command
+    ~fixture_filename
+    ~source_text
+    ~args:[ "-nopervasives"; "-nostdlib"; "-dtypedtree"; "-c" ] in
   let output = result.output in
   if output.status != 0 then
     panic
@@ -293,7 +275,9 @@ let run_typedtree_oracle = fun ~fixture_filename ~source_text ->
           str output.stdout;
         ]);
   output.stderr
-  |> replace_all ~needle:(Path.to_string result.source_path) ~replacement:(Path.to_string fixture_filename)
+  |> replace_all
+    ~needle:(Path.to_string result.source_path)
+    ~replacement:(Path.to_string fixture_filename)
   |> strip_identifier_stamps
   |> split_nonempty_lines
 
@@ -304,11 +288,9 @@ let normalize_typ_scheme = fun scheme ->
 
 let typ_value_exports = fun (report: Check_result.t) ->
   FileSummary.exports report.file_summary
-  |> List.map (fun (name, scheme) ->
-    {
-      name;
-      scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme;
-    })
+  |> List.map
+    (fun (name, scheme) ->
+      { name; scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme })
   |> List.sort compare_value_export
 
 let typ_type_names = fun (report: Check_result.t) ->
@@ -334,14 +316,8 @@ let report_json = fun (report: Check_result.t) interface typedtree_lines ->
         (
           "exports",
           Data.Json.Object [
-            (
-              "ocamlc",
-              Data.Json.Array (List.map export_to_json interface.value_exports)
-            );
-            (
-              "typ",
-              Data.Json.Array (List.map export_to_json (typ_value_exports report))
-            );
+            ("ocamlc", Data.Json.Array (List.map export_to_json interface.value_exports));
+            ("typ", Data.Json.Array (List.map export_to_json (typ_value_exports report)));
           ]
         );
         (
@@ -362,18 +338,12 @@ let report_json = fun (report: Check_result.t) interface typedtree_lines ->
     (
       "ocamlc",
       Data.Json.Object [
-        (
-          "interface_text",
-          Data.Json.String (String.concat "\n" interface.lines)
-        );
+        ("interface_text", Data.Json.String (String.concat "\n" interface.lines));
         (
           "interface_lines",
           Data.Json.Array (List.map (fun line -> Data.Json.String line) interface.lines)
         );
-        (
-          "exports",
-          Data.Json.Array (List.map export_to_json interface.value_exports)
-        );
+        ("exports", Data.Json.Array (List.map export_to_json interface.value_exports));
         (
           "type_names",
           Data.Json.Array (List.map (fun name -> Data.Json.String name) interface.type_names)
@@ -388,11 +358,11 @@ let report_json = fun (report: Check_result.t) interface typedtree_lines ->
     (
       "typ_summary",
       Data.Json.Object [
-        ("completeness", Data.Json.String (FileSummary.completeness report.file_summary |> completeness_to_string));
         (
-          "exports",
-          Data.Json.Array (List.map export_to_json (typ_value_exports report))
+          "completeness",
+          Data.Json.String (FileSummary.completeness report.file_summary |> completeness_to_string)
         );
+        ("exports", Data.Json.Array (List.map export_to_json (typ_value_exports report)));
         (
           "type_names",
           Data.Json.Array (List.map (fun name -> Data.Json.String name) (typ_type_names report))
@@ -405,7 +375,9 @@ let assert_no_diagnostics = fun (report: Check_result.t) ->
   Test.assert_equal ~expected:[] ~actual:report.parse_diagnostics;
   Test.assert_equal ~expected:[] ~actual:report.lowering_diagnostics;
   Test.assert_equal ~expected:[] ~actual:report.typing_diagnostics;
-  Test.assert_equal ~expected:FileSummary.Complete ~actual:(FileSummary.completeness report.file_summary)
+  Test.assert_equal
+    ~expected:FileSummary.Complete
+    ~actual:(FileSummary.completeness report.file_summary)
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let fixture_filename = stable_fixture_filename ctx in
