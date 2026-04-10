@@ -244,8 +244,8 @@ let rec calculate_positions: layout_node -> Geometry.Point.t -> unit = fun node 
   node.computed_position <- origin;
   (* Calculate content origin (inside padding) *)
   let content_origin = Geometry.Point.make
-    ~x:((origin.x +. Float.of_int style.padding.left))
-    ~y:((origin.y +. Float.of_int style.padding.top)) in
+    ~x:(origin.x +. Float.of_int style.padding.left)
+    ~y:(origin.y +. Float.of_int style.padding.top) in
   (* Set final bounding box *)
   node.final_box <- Geometry.Rect.make
     ~x:origin.x

@@ -18,25 +18,25 @@ let () =
       let ui = Element.column
         [
           Element.container
-            ~style:((Style.empty
+            ~style:(Style.empty
             |> Style.height (Style.Fixed 3.0)
             |> Style.bg (`rgb (0, 0, 255))
-            |> Style.padding (Style.Padding.symmetric ~h:2 ~v:0)))
+            |> Style.padding (Style.Padding.symmetric ~h:2 ~v:0))
             [
-              Element.text ~style:((Style.empty |> Style.fg (`rgb (255, 255, 255)))) "HEADER (fixed 3 lines)"
+              Element.text ~style:(Style.empty |> Style.fg (`rgb (255, 255, 255))) "HEADER (fixed 3 lines)"
             ];
           Element.container
-            ~style:((Style.empty
+            ~style:(Style.empty
             |> Style.height Style.Grow
             |> Style.bg (`rgb (0, 255, 0))
-            |> Style.padding (Style.Padding.symmetric ~h:2 ~v:0)))
+            |> Style.padding (Style.Padding.symmetric ~h:2 ~v:0))
             [
-              Element.text ~style:((Style.empty |> Style.fg (`rgb (0, 0, 0)))) "CONTENT (flexible - fills remaining space)"
+              Element.text ~style:(Style.empty |> Style.fg (`rgb (0, 0, 0))) "CONTENT (flexible - fills remaining space)"
             ];
           Element.container
-            ~style:((Style.empty |> Style.height (Style.Fixed 1.0) |> Style.bg (`rgb (255, 0, 0))))
+            ~style:(Style.empty |> Style.height (Style.Fixed 1.0) |> Style.bg (`rgb (255, 0, 0)))
             [
-              Element.text ~style:((Style.empty |> Style.fg (`rgb (255, 255, 255)))) " FOOTER (fixed 1 line)"
+              Element.text ~style:(Style.empty |> Style.fg (`rgb (255, 255, 255))) " FOOTER (fixed 1 line)"
             ];
         ] in
       (* Layout and render *)
