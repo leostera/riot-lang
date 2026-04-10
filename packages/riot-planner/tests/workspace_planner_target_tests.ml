@@ -63,7 +63,7 @@ let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
   | Ok plan ->
       let names = package_names plan in
       let position name = List.find_index (String.equal name) names
-      |> Option.expect ~msg:(("missing package in plan: " ^ name)) in
+      |> Option.expect ~msg:("missing package in plan: " ^ name) in
       Test.assert_true (position "std" < position "kernel");
       Test.assert_true (position "kernel" < position "actors");
       Test.assert_true (position "actors" < position "riot-model");

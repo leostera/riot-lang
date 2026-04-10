@@ -44,7 +44,7 @@ let make_workspace = fun packages ->
 let node_for = fun graph package_name scope ->
   Package_graph.package_key ~package_name scope
   |> Package_graph.get_node_by_key graph
-  |> Option.expect ~msg:(("missing node: " ^ package_name))
+  |> Option.expect ~msg:("missing node: " ^ package_name)
 
 let dependency_keys_for_node = fun graph node ->
   Package_graph.get_dependencies_for_node graph node
@@ -149,7 +149,7 @@ let topological_sort_places_dependencies_before_dependents = fun _ctx ->
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
   let sorted = Package_graph.topological_sort graph |> List.map Package_graph.get_key in
   let position_of key = List.find_index (Package.key_equal key) sorted
-  |> Option.expect ~msg:(("missing key in topo sort: " ^ Package.key_to_string key)) in
+  |> Option.expect ~msg:("missing key in topo sort: " ^ Package.key_to_string key) in
   let std_runtime = Package_graph.package_key ~package_name:"std" Runtime in
   let kernel_runtime = Package_graph.package_key ~package_name:"kernel" Runtime in
   let actors_runtime = Package_graph.package_key ~package_name:"actors" Runtime in

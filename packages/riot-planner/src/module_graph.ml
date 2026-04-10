@@ -426,16 +426,14 @@ let wire_dependencies = fun t ->
     | [ _ ] -> []
     | component :: rest -> component :: strip_last_namespace rest
   in
-  let rec qualified_dependency_names = fun simple_name namespace_parts ->
+  let rec qualified_dependency_names simple_name namespace_parts =
     match namespace_parts with
     | [] -> [ simple_name ]
     | _ ->
-        let qualified_name =
-          Namespace.of_list namespace_parts
-          |> fun ns -> Namespace.append ns simple_name
-          |> Namespace.to_string
-        in
-        qualified_name :: qualified_dependency_names simple_name (strip_last_namespace namespace_parts)
+        let qualified_name = Namespace.of_list namespace_parts
+        |> fun ns -> Namespace.append ns simple_name |> Namespace.to_string in
+        qualified_name
+        :: qualified_dependency_names simple_name (strip_last_namespace namespace_parts)
   in
   let implicit_open_modules (open_modules: Module_node.t G.node list) =
     open_modules
@@ -472,15 +470,14 @@ let wire_dependencies = fun t ->
     else
       resolved_nodes
   in
-  let resolve_dependency_node_ids = fun dep_mod_name ->
+  let resolve_dependency_node_ids dep_mod_name =
     let simple_name = Module_name.to_string dep_mod_name in
     let namespace_parts = Module_name.namespace dep_mod_name |> Namespace.to_list in
     let candidate_names = qualified_dependency_names simple_name namespace_parts in
     let rec try_candidates = function
       | [] -> raise Not_found
       | candidate_name :: rest -> (
-          try Module_registry.get_by_qualified_name t.registry candidate_name
-          with
+          try Module_registry.get_by_qualified_name t.registry candidate_name with
           | Not_found -> try_candidates rest
         )
     in

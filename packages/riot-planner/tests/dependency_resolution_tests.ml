@@ -153,12 +153,10 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
         let fs_file_dir = Path.(fs_dir / Path.v "file") in
         let process_dir = Path.(src_dir / Path.v "process") in
         let env_dir = Path.(src_dir / Path.v "env") in
-        let create_dir path =
-          Fs.create_dir_all path |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
-        in
-        let write path contents =
-          Fs.write contents path |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
-        in
+        let create_dir path = Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path) in
+        let write path contents = Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path) in
         let _ = create_dir fs_file_dir in
         let _ = create_dir process_dir in
         let _ = create_dir env_dir in
@@ -172,23 +170,22 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
         let _ = write Path.(process_dir / Path.v "unix.ml") "let inherited : Fs.File.t option = None\n" in
         let _ = write Path.(env_dir / Path.v "env.ml") "include Unix\n" in
         let _ = write Path.(env_dir / Path.v "unix.ml") "let cwd = \".\"\n" in
-        let package = Riot_model.Package.make
-          ~name:"kernel-new"
-          ~path:package_root
-          ~relative_path:(Path.v "pkg")
+        let package = Riot_model.Package.make ~name:"kernel-new" ~path:package_root ~relative_path:(Path.v
+          "pkg")
           ~sources:{
-            src = [
-              Path.v "src/kernel_new.ml";
-              Path.v "src/fs/fs.ml";
-              Path.v "src/fs/fs.mli";
-              Path.v "src/fs/file/file.ml";
-              Path.v "src/fs/file/file.mli";
-              Path.v "src/fs/file/unix.ml";
-              Path.v "src/process/process.ml";
-              Path.v "src/process/unix.ml";
-              Path.v "src/env/env.ml";
-              Path.v "src/env/unix.ml";
-            ];
+            src =
+              [
+                Path.v "src/kernel_new.ml";
+                Path.v "src/fs/fs.ml";
+                Path.v "src/fs/fs.mli";
+                Path.v "src/fs/file/file.ml";
+                Path.v "src/fs/file/file.mli";
+                Path.v "src/fs/file/unix.ml";
+                Path.v "src/process/process.ml";
+                Path.v "src/process/unix.ml";
+                Path.v "src/env/env.ml";
+                Path.v "src/env/unix.ml";
+              ];
             native = [];
             tests = [];
             examples = [];
@@ -200,7 +197,8 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           Riot_model.Workspace.{
             name = None;
             root = tmpdir;
-            target_dir_root = Path.(tmpdir / Path.v "target");
+            target_dir_root =
+              Path.(tmpdir / Path.v "target");
             packages = [ package ];
             dependencies = [];
             dev_dependencies = [];
@@ -229,36 +227,37 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
             let find_ml qualified_name =
               let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
                 match node.value.kind with
-                | Riot_planner.Module_node.ML mod_ ->
-                    String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
                 | _ -> false
               in
               match List.find_opt matches (G.map graph ~fn:(fun x -> x)) with
               | Some (_node_id, node) -> Ok node
               | None -> Error ("expected module not found: " ^ qualified_name)
             in
-            match
-              (
-                find_ml "Kernel_new__Fs__File",
-                find_ml "Kernel_new__Fs__File__Unix",
-                find_ml "Kernel_new__Process__Unix",
-                G.topo_sort graph
-              )
-            with
+            match (
+              find_ml "Kernel_new__Fs__File",
+              find_ml "Kernel_new__Fs__File__Unix",
+              find_ml "Kernel_new__Process__Unix",
+              G.topo_sort graph
+            ) with
             | Ok file_node, Ok file_unix_node, Ok process_unix_node, Ok _ ->
-                let depends_on_file_unix =
-                  List.exists (G.Node_id.eq file_unix_node.id) file_node.deps in
-                let depends_on_process_unix =
-                  List.exists (G.Node_id.eq process_unix_node.id) file_node.deps in
+                let depends_on_file_unix = List.exists (G.Node_id.eq file_unix_node.id) file_node.deps in
+                let depends_on_process_unix = List.exists
+                  (G.Node_id.eq process_unix_node.id)
+                  file_node.deps in
                 if depends_on_file_unix && not depends_on_process_unix then
                   Ok ()
                 else
                   Error "expected Fs.File.File to depend on Fs.File.Unix only"
-            | Error msg, _, _, _
-            | _, Error msg, _, _
-            | _, _, Error msg, _ -> Error msg
+            | (Error msg, _, _, _)
+            | (_, Error msg, _, _)
+            | (_, _, Error msg, _) ->
+                Error msg
             | _, _, _, Error cycle_ids ->
-                Error ("unexpected cycle: " ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+                Error ("unexpected cycle: "
+                ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -272,12 +271,10 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
         let testing_dir = Path.(src_dir / Path.v "domains/admin/users/models/testing") in
         let models_dir = Path.(src_dir / Path.v "domains/admin/users/models") in
         let admin_dir = Path.(src_dir / Path.v "domains/admin") in
-        let create_dir path =
-          Fs.create_dir_all path |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
-        in
-        let write path contents =
-          Fs.write contents path |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
-        in
+        let create_dir path = Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path) in
+        let write path contents = Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path) in
         let _ = create_dir testing_dir in
         let _ = create_dir models_dir in
         let _ = create_dir admin_dir in
@@ -288,10 +285,8 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
         let _ = write Path.(testing_dir / Path.v "shared.ml") "let level = \"testing\"\n" in
         let _ = write Path.(testing_dir / Path.v "user.ml") "include Shared\n" in
         let _ = write Path.(testing_dir / Path.v "report.ml") "include Helpers\n" in
-        let package = Riot_model.Package.make
-          ~name:"deep-graph"
-          ~path:package_root
-          ~relative_path:(Path.v "pkg")
+        let package = Riot_model.Package.make ~name:"deep-graph" ~path:package_root ~relative_path:(Path.v
+          "pkg")
           ~sources:{
             src = [
               Path.v "src/shared.ml";
@@ -313,7 +308,8 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           Riot_model.Workspace.{
             name = None;
             root = tmpdir;
-            target_dir_root = Path.(tmpdir / Path.v "target");
+            target_dir_root =
+              Path.(tmpdir / Path.v "target");
             packages = [ package ];
             dependencies = [];
             dev_dependencies = [];
@@ -342,52 +338,55 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             let find_ml qualified_name =
               let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
                 match node.value.kind with
-                | Riot_planner.Module_node.ML mod_ ->
-                    String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
                 | _ -> false
               in
               match List.find_opt matches (G.map graph ~fn:(fun x -> x)) with
               | Some (_node_id, node) -> Ok node
               | None -> Error ("expected module not found: " ^ qualified_name)
             in
-            let depends_on (node: Riot_planner.Module_node.t G.node) (dependency: Riot_planner.Module_node.t G.node) =
-              List.exists (G.Node_id.eq dependency.id) node.deps
-            in
-            match
-              (
-                find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__User",
-                find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__Report",
-                find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__Shared",
-                find_ml "Deep_graph__Domains__Admin__Shared",
-                find_ml "Deep_graph__Shared",
-                find_ml "Deep_graph__Domains__Admin__Users__Models__Helpers",
-                find_ml "Deep_graph__Helpers",
-                G.topo_sort graph
-              )
-            with
+            let depends_on (node: Riot_planner.Module_node.t G.node) (
+              dependency: Riot_planner.Module_node.t G.node
+            ) = List.exists (G.Node_id.eq dependency.id) node.deps in
+            match (
+              find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__User",
+              find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__Report",
+              find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__Shared",
+              find_ml "Deep_graph__Domains__Admin__Shared",
+              find_ml "Deep_graph__Shared",
+              find_ml "Deep_graph__Domains__Admin__Users__Models__Helpers",
+              find_ml "Deep_graph__Helpers",
+              G.topo_sort graph
+            ) with
             | Ok user_node, Ok report_node, Ok testing_shared_node, Ok admin_shared_node, Ok root_shared_node, Ok models_helpers_node, Ok root_helpers_node, Ok _ ->
                 let user_depends_on_testing_shared = depends_on user_node testing_shared_node in
                 let user_depends_on_admin_shared = depends_on user_node admin_shared_node in
                 let user_depends_on_root_shared = depends_on user_node root_shared_node in
                 let report_depends_on_models_helpers = depends_on report_node models_helpers_node in
                 let report_depends_on_root_helpers = depends_on report_node root_helpers_node in
-                if user_depends_on_testing_shared
-                   && not user_depends_on_admin_shared
-                   && not user_depends_on_root_shared
-                   && report_depends_on_models_helpers
-                   && not report_depends_on_root_helpers then
+                if
+                  user_depends_on_testing_shared
+                  && not user_depends_on_admin_shared
+                  && not user_depends_on_root_shared
+                  && report_depends_on_models_helpers
+                  && not report_depends_on_root_helpers
+                then
                   Ok ()
                 else
                   Error "expected deep modules to prefer local and nearest ancestor namespaces"
-            | Error msg, _, _, _, _, _, _, _
-            | _, Error msg, _, _, _, _, _, _
-            | _, _, Error msg, _, _, _, _, _
-            | _, _, _, Error msg, _, _, _, _
-            | _, _, _, _, Error msg, _, _, _
-            | _, _, _, _, _, Error msg, _, _
-            | _, _, _, _, _, _, Error msg, _ -> Error msg
+            | (Error msg, _, _, _, _, _, _, _)
+            | (_, Error msg, _, _, _, _, _, _)
+            | (_, _, Error msg, _, _, _, _, _)
+            | (_, _, _, Error msg, _, _, _, _)
+            | (_, _, _, _, Error msg, _, _, _)
+            | (_, _, _, _, _, Error msg, _, _)
+            | (_, _, _, _, _, _, Error msg, _) ->
+                Error msg
             | _, _, _, _, _, _, _, Error cycle_ids ->
-                Error ("unexpected cycle: " ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+                Error ("unexpected cycle: "
+                ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

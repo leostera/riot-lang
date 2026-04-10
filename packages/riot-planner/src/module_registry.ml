@@ -8,10 +8,7 @@ type t = {
   by_qualified_name: (string, G.Node_id.t list) HashMap.t;
 }
 
-let create = fun () -> {
-  by_name = HashMap.create ();
-  by_qualified_name = HashMap.create ();
-}
+let create = fun () -> { by_name = HashMap.create (); by_qualified_name = HashMap.create () }
 
 let insert = fun table key node_id ->
   match HashMap.get table key with
