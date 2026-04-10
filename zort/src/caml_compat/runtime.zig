@@ -182,7 +182,7 @@ fn summarizeGcRootTable(table: [*]const RawValue) GcRootTableSummary {
     return summary;
 }
 
-const CompilerCompatState = struct {
+const CamlCompatState = struct {
     const LifecycleError = error{
         StartupAfterShutdown,
         ShutdownWithoutStartup,
@@ -209,18 +209,18 @@ const CompilerCompatState = struct {
     startup_depth: usize = 0,
     shutdown_happened: bool = false,
 
-    fn init(allocator: std.mem.Allocator) CompilerCompatState {
+    fn init(allocator: std.mem.Allocator) CamlCompatState {
         return .{
             .allocator = allocator,
         };
     }
 
-    fn reset(self: *CompilerCompatState) void {
+    fn reset(self: *CamlCompatState) void {
         if (self.startup_metadata) |*metadata| metadata.deinit(self.allocator);
         self.startup_metadata = null;
     }
 
-    fn registerStartupMetadata(self: *CompilerCompatState, tables: MetadataTables) !void {
+    fn registerStartupMetadata(self: *CamlCompatState, tables: MetadataTables) !void {
         self.reset();
         if (tables.isEmpty()) {
             return;
@@ -285,13 +285,13 @@ const CompilerCompatState = struct {
         self.startup_metadata = metadata;
     }
 
-    fn beginStartup(self: *CompilerCompatState) LifecycleError!bool {
+    fn beginStartup(self: *CamlCompatState) LifecycleError!bool {
         if (self.shutdown_happened) return error.StartupAfterShutdown;
         self.startup_depth +%= 1;
         return self.startup_depth == 1;
     }
 
-    fn beginShutdown(self: *CompilerCompatState) LifecycleError!bool {
+    fn beginShutdown(self: *CamlCompatState) LifecycleError!bool {
         if (self.startup_depth == 0) return error.ShutdownWithoutStartup;
         self.startup_depth -= 1;
         if (self.startup_depth > 0) return false;
@@ -299,28 +299,28 @@ const CompilerCompatState = struct {
         return true;
     }
 
-    fn startupDepth(self: *const CompilerCompatState) usize {
+    fn startupDepth(self: *const CamlCompatState) usize {
         return self.startup_depth;
     }
 
-    fn hasStartupMetadata(self: *const CompilerCompatState) bool {
+    fn hasStartupMetadata(self: *const CamlCompatState) bool {
         return self.startup_metadata != null;
     }
 
-    fn summary(self: *const CompilerCompatState) MetadataSummary {
+    fn summary(self: *const CamlCompatState) MetadataSummary {
         return if (self.startup_metadata) |metadata| metadata.summary else .{};
     }
 
-    fn visitGcRootBlockFields(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
+    fn visitGcRootBlockFields(self: *const CamlCompatState, visitor: RawRootSlotVisitor) void {
         const metadata = self.startup_metadata orelse return;
         for (metadata.gc_root_tables.items) |table| table.visitBlockFields(visitor);
     }
 
-    fn gcRootBlockFieldSlotCount(self: *const CompilerCompatState) usize {
+    fn gcRootBlockFieldSlotCount(self: *const CamlCompatState) usize {
         return self.summary().gc_root_block_field_count;
     }
 
-    fn gcRootBlockFieldSlotAt(self: *const CompilerCompatState, slot_index: usize) ?*RawValue {
+    fn gcRootBlockFieldSlotAt(self: *const CamlCompatState, slot_index: usize) ?*RawValue {
         const metadata = self.startup_metadata orelse return null;
         var remaining = slot_index;
         for (metadata.gc_root_tables.items) |table| {
@@ -332,7 +332,7 @@ const CompilerCompatState = struct {
         return null;
     }
 
-    fn findCodeFragment(self: *const CompilerCompatState, pc: *const anyopaque) ?RegisteredCodeFragment {
+    fn findCodeFragment(self: *const CamlCompatState, pc: *const anyopaque) ?RegisteredCodeFragment {
         const metadata = self.startup_metadata orelse return null;
         for (metadata.code_fragments.items) |fragment| {
             if (fragment.contains(pc)) return fragment;
@@ -365,7 +365,7 @@ comptime {
 }
 
 var fake_domain = FakeDomainState{};
-var compiler_compat_state = CompilerCompatState.init(std.heap.page_allocator);
+var caml_compat_state = CamlCompatState.init(std.heap.page_allocator);
 
 pub export var caml_globals_inited: usize = 0;
 pub export var @"caml_system$frametable": [1]usize = .{0};
@@ -449,13 +449,13 @@ fn resetObservabilityForFreshStartup() void {
 }
 
 fn syncLifecycleObservability() void {
-    zort_startup_depth = compiler_compat_state.startupDepth();
-    zort_shutdown_happened = @intFromBool(compiler_compat_state.shutdown_happened);
+    zort_startup_depth = caml_compat_state.startupDepth();
+    zort_shutdown_happened = @intFromBool(caml_compat_state.shutdown_happened);
 }
 
 fn syncMetadataObservability() void {
-    const summary = compiler_compat_state.summary();
-    zort_metadata_registered = @intFromBool(compiler_compat_state.hasStartupMetadata());
+    const summary = caml_compat_state.summary();
+    zort_metadata_registered = @intFromBool(caml_compat_state.hasStartupMetadata());
     zort_metadata_frametables = summary.frametable_count;
     zort_metadata_frame_descriptors = summary.frame_descriptor_count;
     zort_metadata_gc_root_tables = summary.gc_root_table_count;
@@ -465,10 +465,10 @@ fn syncMetadataObservability() void {
     zort_metadata_code_segments = summary.code_segment_count;
     zort_metadata_data_segments = summary.data_segment_count;
     zort_metadata_program_fragment_registered =
-        @intFromBool(compiler_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
+        @intFromBool(caml_compat_state.findCodeFragment(@ptrCast(&caml_program)) != null);
 }
 
-fn lifecycleFatal(err: CompilerCompatState.LifecycleError) noreturn {
+fn lifecycleFatal(err: CamlCompatState.LifecycleError) noreturn {
     const message = switch (err) {
         error.StartupAfterShutdown => "Fatal error: caml_startup was called after the runtime was shut down with caml_shutdown\n",
         error.ShutdownWithoutStartup => "Fatal error: a call to caml_shutdown has no corresponding call to caml_startup\n",
@@ -484,14 +484,14 @@ fn alignDown16(ptr: usize) usize {
 }
 
 fn startupCommon() RawValue {
-    const should_initialize = compiler_compat_state.beginStartup() catch |err| lifecycleFatal(err);
+    const should_initialize = caml_compat_state.beginStartup() catch |err| lifecycleFatal(err);
     if (should_initialize) resetObservabilityForFreshStartup();
     zort_startup_calls +%= 1;
     syncLifecycleObservability();
 
     if (!should_initialize) return raw_unit;
 
-    compiler_compat_state.registerStartupMetadata(MetadataTables.captureExtern()) catch
+    caml_compat_state.registerStartupMetadata(MetadataTables.captureExtern()) catch
         @panic("zort: out of memory while registering compiler metadata");
     zort_metadata_registration_calls +%= 1;
     syncMetadataObservability();
@@ -527,10 +527,10 @@ pub export fn caml_startup_pooled_exn(argv: ?*anyopaque) RawValue {
 }
 
 pub export fn caml_shutdown() void {
-    const should_cleanup = compiler_compat_state.beginShutdown() catch |err| lifecycleFatal(err);
+    const should_cleanup = caml_compat_state.beginShutdown() catch |err| lifecycleFatal(err);
     zort_shutdown_calls +%= 1;
     if (should_cleanup) {
-        compiler_compat_state.reset();
+        caml_compat_state.reset();
         caml_globals_inited = 0;
     }
     syncLifecycleObservability();
@@ -544,11 +544,11 @@ pub export fn caml_initialize(slot: *RawValue, value: RawValue) void {
 }
 
 pub export fn zort_gc_root_block_field_slot_count() usize {
-    return compiler_compat_state.gcRootBlockFieldSlotCount();
+    return caml_compat_state.gcRootBlockFieldSlotCount();
 }
 
 pub export fn zort_gc_root_block_field_slot_at(index: usize) ?*RawValue {
-    return compiler_compat_state.gcRootBlockFieldSlotAt(index);
+    return caml_compat_state.gcRootBlockFieldSlotAt(index);
 }
 
 fn decodeImmediateInt(raw: RawValue) i64 {
@@ -567,13 +567,13 @@ fn makeRawOutOfHeapHeader(wosize: usize, tag: u8) RawValue {
         @as(RawValue, tag);
 }
 
-test "compiler compat: primitive decodes tagged ints" {
+test "caml compat: primitive decodes tagged ints" {
     zort_last_emitted_int = -1;
     try std.testing.expectEqual(raw_unit, zort_emit_int(0x55));
     try std.testing.expectEqual(@as(i64, 42), zort_last_emitted_int);
 }
 
-test "compiler compat: summarize startup metadata tables" {
+test "caml compat: summarize startup metadata tables" {
     const frametable_a = [_]Intnat{ 2, 0, 0 };
     const frametable_b = [_]Intnat{ 1, 0 };
     const frametables = [_]?[*]const Intnat{
@@ -627,7 +627,7 @@ test "compiler compat: summarize startup metadata tables" {
     try std.testing.expectEqual(@as(usize, 1), summary.data_segment_count);
 }
 
-test "compiler compat: state retains startup metadata and visits gc root block fields" {
+test "caml compat: state retains startup metadata and visits gc root block fields" {
     const frametable = [_]Intnat{1};
     const frametables = [_]?[*]const Intnat{
         frametable[0..].ptr,
@@ -670,7 +670,7 @@ test "compiler compat: state retains startup metadata and visits gc root block f
         .{},
     };
 
-    var state = CompilerCompatState.init(std.testing.allocator);
+    var state = CamlCompatState.init(std.testing.allocator);
     defer state.reset();
     try state.registerStartupMetadata(.{
         .frametables = frametables[0..].ptr,
@@ -718,7 +718,7 @@ test "compiler compat: state retains startup metadata and visits gc root block f
     try std.testing.expectEqual(@as(RawValue, 0x13), seen.items[1]);
 }
 
-test "compiler compat: state reset clears registered startup metadata" {
+test "caml compat: state reset clears registered startup metadata" {
     const frametable = [_]Intnat{1};
     const frametables = [_]?[*]const Intnat{
         frametable[0..].ptr,
@@ -734,7 +734,7 @@ test "compiler compat: state reset clears registered startup metadata" {
         .{},
     };
 
-    var state = CompilerCompatState.init(std.testing.allocator);
+    var state = CamlCompatState.init(std.testing.allocator);
     try state.registerStartupMetadata(.{
         .frametables = frametables[0..].ptr,
         .globals = globals[0..].ptr,
@@ -749,8 +749,8 @@ test "compiler compat: state reset clears registered startup metadata" {
     try std.testing.expectEqual(MetadataSummary{}, state.summary());
 }
 
-test "compiler compat: startup ownership is reference counted until final shutdown" {
-    var state = CompilerCompatState.init(std.testing.allocator);
+test "caml compat: startup ownership is reference counted until final shutdown" {
+    var state = CamlCompatState.init(std.testing.allocator);
     defer state.reset();
 
     try std.testing.expect(try state.beginStartup());
@@ -768,20 +768,20 @@ test "compiler compat: startup ownership is reference counted until final shutdo
     try std.testing.expect(state.shutdown_happened);
 }
 
-test "compiler compat: startup ownership rejects invalid transitions" {
-    var state = CompilerCompatState.init(std.testing.allocator);
+test "caml compat: startup ownership rejects invalid transitions" {
+    var state = CamlCompatState.init(std.testing.allocator);
     defer state.reset();
 
-    try std.testing.expectError(CompilerCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
+    try std.testing.expectError(CamlCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
 
     _ = try state.beginStartup();
     _ = try state.beginShutdown();
 
-    try std.testing.expectError(CompilerCompatState.LifecycleError.StartupAfterShutdown, state.beginStartup());
+    try std.testing.expectError(CamlCompatState.LifecycleError.StartupAfterShutdown, state.beginStartup());
 }
 
-test "compiler compat: startup ownership rejects extra shutdown after balanced nested shutdown" {
-    var state = CompilerCompatState.init(std.testing.allocator);
+test "caml compat: startup ownership rejects extra shutdown after balanced nested shutdown" {
+    var state = CamlCompatState.init(std.testing.allocator);
     defer state.reset();
 
     _ = try state.beginStartup();
@@ -791,21 +791,21 @@ test "compiler compat: startup ownership rejects extra shutdown after balanced n
 
     try std.testing.expect(state.shutdown_happened);
     try std.testing.expectEqual(@as(usize, 0), state.startupDepth());
-    try std.testing.expectError(CompilerCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
+    try std.testing.expectError(CamlCompatState.LifecycleError.ShutdownWithoutStartup, state.beginShutdown());
 }
 
-test "compiler compat: fake domain matches emitted startup offsets" {
+test "caml compat: fake domain matches emitted startup offsets" {
     try std.testing.expectEqual(@as(usize, 0x28), @offsetOf(FakeDomainState, "current_stack"));
     try std.testing.expectEqual(@as(usize, 0x40), @offsetOf(FakeDomainState, "c_stack"));
 }
 
-test "compiler compat: caml_initialize stores into startup-owned slots" {
+test "caml compat: caml_initialize stores into startup-owned slots" {
     var slot: RawValue = raw_unit;
     caml_initialize(&slot, 0x24);
     try std.testing.expectEqual(@as(RawValue, 0x24), slot);
 }
 
-test "compiler compat: reregistering startup metadata replaces prior registrations" {
+test "caml compat: reregistering startup metadata replaces prior registrations" {
     const first_frametable = [_]Intnat{ 1, 0 };
     const second_frametable = [_]Intnat{ 2, 0, 0 };
     const first_frametables = [_]?[*]const Intnat{
@@ -835,7 +835,7 @@ test "compiler compat: reregistering startup metadata replaces prior registratio
         .{},
     };
 
-    var state = CompilerCompatState.init(std.testing.allocator);
+    var state = CamlCompatState.init(std.testing.allocator);
     defer state.reset();
 
     try state.registerStartupMetadata(.{

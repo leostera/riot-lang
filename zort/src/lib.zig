@@ -5,7 +5,6 @@ pub const build_options = @import("build_options");
 pub const Value = @import("value.zig").Value;
 pub const Tag = @import("value.zig").Tag;
 pub const HeapRef = @import("value.zig").HeapRef;
-pub const CompatValue = @import("compat.zig").CompatValue;
 pub const AtomicCounter = @import("atomic_primitives.zig").AtomicCounter;
 pub const AtomicFlag = @import("atomic_primitives.zig").AtomicFlag;
 pub const Error = @import("runtime.zig").Error;
@@ -70,7 +69,6 @@ test {
     std.testing.refAllDecls(@import("value.zig"));
     std.testing.refAllDecls(@import("atomic_primitives.zig"));
     std.testing.refAllDecls(@import("collector.zig"));
-    std.testing.refAllDecls(@import("compat.zig"));
     std.testing.refAllDecls(@import("control_kernel.zig"));
     std.testing.refAllDecls(@import("domain_registry.zig"));
     std.testing.refAllDecls(@import("event_sink.zig"));

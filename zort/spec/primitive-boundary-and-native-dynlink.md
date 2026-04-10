@@ -90,8 +90,8 @@
 
 ## zort compatibility boundary notes
 
-- zort now treats `src/api.zig` as a shim-only boundary.
-- The shim uses an explicit compat codec in `src/compat.zig`:
+- zort now treats `src/caml_compat/api.zig` as a shim-only boundary.
+- The shim uses an explicit compat codec in `src/caml_compat/codec.zig`:
   - compat ints use a tagged immediate encoding,
   - compat atoms use a distinct tagged immediate encoding,
   - heap values are exported as opaque handles, not raw pointers.
@@ -106,7 +106,7 @@
   - explicit lookup/arity errors.
 - External primitive dispatch is now explicitly callback-mediated:
   - `PrimitiveRegistry.callWithBoundary(...)` enters a callback boundary around primitive execution,
-  - exported shim entrypoints in `src/api.zig` use that path,
+  - exported shim entrypoints in `src/caml_compat/api.zig` use that path,
   - ambient parent-fiber handlers are therefore hidden from primitive-triggered `perform` unless the primitive installs its own local handler chain.
 - Internal runtime-owned dispatch can still use the naked `call(...)` path when callback mediation is not desired.
 - The shim is build-gated:

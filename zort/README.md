@@ -15,7 +15,7 @@ observability, not full OCaml runtime compatibility.
 - Managed fiber stacks with one-shot continuation capture/resume, `reperform`, explicit managed-stack growth policy, and deep-copy continuation stack snapshots for inspection
 - Explicit event sink, trace recorder, and GC/control instrumentation
 - Runtime services for named values, signal handlers, pending signals, blocking-section state, and owned alternate signal-stack lifecycle
-- Small optional compatibility shim (`api.zig`) for legacy `caml_*` entrypoints
+- Small optional OCaml compatibility shim (`src/caml_compat/api.zig`) for legacy `caml_*` entrypoints
 - Compile-time platform capabilities plus runtime permissions for Deno-style host access narrowing
 
 ## Current representation
@@ -26,12 +26,13 @@ observability, not full OCaml runtime compatibility.
 - Internal object kinds are semantic (`tuple`, `string`, `boxed_i64`,
   `boxed_f64`, `custom`) and are not centered on OCaml tag numbers.
 - Strings and bytes are allocated with an explicit trailing NUL sentinel.
-- OCaml-shaped compatibility encoding stays at the boundary in `compat.zig`.
+- OCaml-shaped compatibility encoding stays at the boundary in `src/caml_compat/codec.zig`.
 
 ## API entrypoints
 
 - Main library surface: `src/lib.zig`
-- Optional compatibility layer: `src/api.zig`
+- Separate OCaml compatibility boundary: `src/caml_compat.zig`
+- Optional shim entrypoints: `src/caml_compat/api.zig`
 - External primitive dispatch now goes through `PrimitiveRegistry.callWithBoundary(...)`, so shim-driven primitive calls use the same callback-boundary isolation as pending signal/finalizer delivery.
 - Mutable effect/fiber control-state setup now goes through `Runtime` helpers such as `pushEffectHandler`, `pushFiberFrame`, `pushFiberFrameRoot`, and `enterCallbackBoundary`.
 - `Runtime.controlKernel()` is now the read-only inspection seam for control state rather than the default mutation path.

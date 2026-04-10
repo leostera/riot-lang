@@ -1186,14 +1186,14 @@ pub const Runtime = struct {
     }
 
     fn prepareCompatAllocation(self: *Runtime, arity: usize, tag: Tag) void {
-        const kind, const words = switch (tag) {
-            .tuple => .{ .tuple, arity },
-            .string => .{ .string, arity },
-            .int64 => .{ .boxed_i64, 1 },
-            .double => .{ .boxed_f64, 1 },
-            .custom => .{ .custom, arity },
+        const compat_allocation = switch (tag) {
+            .tuple => CompatAllocation{ .kind = .tuple, .words = arity },
+            .string => CompatAllocation{ .kind = .string, .words = arity },
+            .int64 => CompatAllocation{ .kind = .boxed_i64, .words = 1 },
+            .double => CompatAllocation{ .kind = .boxed_f64, .words = 1 },
+            .custom => CompatAllocation{ .kind = .custom, .words = arity },
         };
-        self.prepareAllocation(kind, words);
+        self.prepareAllocation(compat_allocation.kind, compat_allocation.words);
     }
 
     fn prepareAllocation(self: *Runtime, kind: ObjectKind, words: usize) void {
@@ -1203,6 +1203,11 @@ pub const Runtime = struct {
         if (!self.heap_store.shouldCollectBeforeNurseryAlloc(words)) return;
         self.collectMinor();
     }
+
+    const CompatAllocation = struct {
+        kind: ObjectKind,
+        words: usize,
+    };
 
     fn quiesceAttachedDomainsForCollection(self: *Runtime) void {
         const Pause = struct {

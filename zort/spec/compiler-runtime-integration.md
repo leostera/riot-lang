@@ -147,7 +147,7 @@ Current locked target:
 - `aarch64-apple-darwin`
 - existing compiler path:
   `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
-- compatibility artifact: `libzort-compiler-compat.dylib`
+- compatibility artifact: `libzort-caml-compat.dylib`
 - current proven scope:
   - strict pure-startup objects link and run under `zort`
   - one strict compiler-emitted preallocated global-root fixture completes a
@@ -268,7 +268,7 @@ Need:
 
 Current `zort` status:
 
-- partially available through `src/compat.zig`,
+- partially available through `src/caml_compat/codec.zig`,
 - current shim is handle-oriented and API-driven,
 - compiler-emitted native code expects much lower-level ABI coupling than the
   current shim provides.
@@ -327,7 +327,7 @@ Need:
 Current `zort` status:
 
 - typed primitive registry exists in `src/primitive_registry.zig`,
-- compatibility shim exists in `src/api.zig`,
+- compatibility shim exists in `src/caml_compat/api.zig`,
 - compiler-emitted direct native symbol bridge is still missing.
 
 ### 7. Exception and control trampoline policy

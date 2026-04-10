@@ -9,9 +9,9 @@ OCAMLOPT=${OCAMLOPT:-"$HOME/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/b
 CC=${CC:-cc}
 BENCH_RUNS=${BENCH_RUNS:-25}
 if [ "$#" -gt 0 ]; then
-  ZORT_COMPAT_DYLIB=$1
+  ZORT_CAML_COMPAT_DYLIB=$1
 else
-  ZORT_COMPAT_DYLIB=${ZORT_COMPAT_DYLIB:-"$ZORT_DIR/zig-out/lib/libzort-compiler-compat.dylib"}
+  ZORT_CAML_COMPAT_DYLIB=${ZORT_CAML_COMPAT_DYLIB:-${ZORT_COMPAT_DYLIB:-"$ZORT_DIR/zig-out/lib/libzort-caml-compat.dylib"}}
 fi
 
 if [ ! -x "$OCAMLOPT" ]; then
@@ -19,8 +19,8 @@ if [ ! -x "$OCAMLOPT" ]; then
   exit 1
 fi
 
-if [ ! -f "$ZORT_COMPAT_DYLIB" ]; then
-  echo "missing zort compiler compat dylib at $ZORT_COMPAT_DYLIB" >&2
+if [ ! -f "$ZORT_CAML_COMPAT_DYLIB" ]; then
+  echo "missing zort caml compat dylib at $ZORT_CAML_COMPAT_DYLIB" >&2
   exit 1
 fi
 
@@ -95,8 +95,8 @@ compile_fixture() {
   $CC \
     "$host_stub" \
     "$ml_object" \
-    "$ZORT_COMPAT_DYLIB" \
-    -Wl,-rpath,"$(dirname "$ZORT_COMPAT_DYLIB")" \
+    "$ZORT_CAML_COMPAT_DYLIB" \
+    -Wl,-rpath,"$(dirname "$ZORT_CAML_COMPAT_DYLIB")" \
     -lm \
     -o "$exe"
 }

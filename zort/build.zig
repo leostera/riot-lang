@@ -61,7 +61,7 @@ pub fn build(b: *std.Build) void {
 
     if (compat_shim_enabled) {
         const compat_module = b.createModule(.{
-            .root_source_file = b.path("src/api.zig"),
+            .root_source_file = b.path("src/caml_compat.zig"),
             .target = target,
             .optimize = optimize,
         });
@@ -84,38 +84,38 @@ pub fn build(b: *std.Build) void {
         compat_step.dependOn(&compat_lib.step);
     }
 
-    const compiler_compat_supported =
+    const caml_compat_supported =
         target.result.cpu.arch == .aarch64 and target.result.os.tag == .macos;
-    if (compiler_compat_supported) {
-        const compiler_compat_module = b.createModule(.{
-            .root_source_file = b.path("src/compiler_compat.zig"),
+    if (caml_compat_supported) {
+        const caml_compat_module = b.createModule(.{
+            .root_source_file = b.path("src/caml_compat/runtime.zig"),
             .target = target,
             .optimize = optimize,
         });
-        compiler_compat_module.addAssemblyFile(b.path("src/compiler_compat_arm64_macos.S"));
-        const compiler_compat_lib = b.addLibrary(.{
-            .name = "zort-compiler-compat",
-            .root_module = compiler_compat_module,
+        caml_compat_module.addAssemblyFile(b.path("src/caml_compat/arm64_macos.S"));
+        const caml_compat_lib = b.addLibrary(.{
+            .name = "zort-caml-compat",
+            .root_module = caml_compat_module,
             .linkage = .dynamic,
             .use_llvm = true,
         });
-        compiler_compat_lib.linker_allow_shlib_undefined = true;
-        b.installArtifact(compiler_compat_lib);
+        caml_compat_lib.linker_allow_shlib_undefined = true;
+        b.installArtifact(caml_compat_lib);
 
-        const compiler_compat_tests = b.addTest(.{
-            .root_module = compiler_compat_module,
+        const caml_compat_tests = b.addTest(.{
+            .root_module = caml_compat_module,
             .use_llvm = true,
         });
-        const run_compiler_compat_tests = b.addRunArtifact(compiler_compat_tests);
-        test_step.dependOn(&run_compiler_compat_tests.step);
+        const run_caml_compat_tests = b.addRunArtifact(caml_compat_tests);
+        test_step.dependOn(&run_caml_compat_tests.step);
 
-        const compiler_compat_step = b.step("compiler-compat", "Build zort native compiler compatibility shim");
-        compiler_compat_step.dependOn(&compiler_compat_lib.step);
+        const caml_compat_step = b.step("caml-compat", "Build zort native OCaml compatibility shim");
+        caml_compat_step.dependOn(&caml_compat_lib.step);
 
         const e2e_ml_zort_step = b.step("e2e-ml-zort", "Compile and run minimal OCaml smoke programs against zort");
         const e2e_ml_zort_script = b.addSystemCommand(&.{ "sh", "e2e/compile_zort_ml_examples.sh" });
         e2e_ml_zort_script.setCwd(b.path("."));
-        e2e_ml_zort_script.addFileArg(compiler_compat_lib.getEmittedBin());
+        e2e_ml_zort_script.addFileArg(caml_compat_lib.getEmittedBin());
         e2e_ml_zort_step.dependOn(&e2e_ml_zort_script.step);
     }
 

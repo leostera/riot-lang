@@ -1,9 +1,9 @@
 const std = @import("std");
 pub const build_options = @import("build_options");
-const compat = @import("compat.zig");
-const primitive_registry = @import("primitive_registry.zig");
-const runtime = @import("runtime.zig");
-const value = @import("value.zig");
+const compat = @import("codec.zig");
+const primitive_registry = @import("../primitive_registry.zig");
+const runtime = @import("../runtime.zig");
+const value = @import("../value.zig");
 
 /// Legacy shim only.
 /// Prefer the idiomatic API from `lib.zig` (`Runtime`, `Value`, `Tag`).

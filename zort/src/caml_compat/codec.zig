@@ -1,6 +1,6 @@
 const std = @import("std");
-const runtime_mod = @import("runtime.zig");
-const value_mod = @import("value.zig");
+const runtime_mod = @import("../runtime.zig");
+const value_mod = @import("../value.zig");
 
 pub const Runtime = runtime_mod.Runtime;
 pub const Value = value_mod.Value;
