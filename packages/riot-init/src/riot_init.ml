@@ -10,7 +10,7 @@ let command =
     |> about "Initialize a new Riot workspace"
     |> args
       [
-        positional "path" |> help "Path for new workspace (default: current directory)";
+        positional "path" |> required false |> help "Path for new workspace (default: current directory)";
         flag "name" |> long "name" |> short 'n' |> help "Workspace name (default: directory basename)";
         flag "lib" |> long "lib" |> help "Create library package (default)";
         flag "bin" |> long "bin" |> help "Create binary package";

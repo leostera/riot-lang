@@ -160,11 +160,37 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
       | None ->
           Error "expected init completion event")
 
+let test_init_without_path_defaults_to_current_directory = fun _ctx ->
+  with_tempdir_result "riot_init_default_dot"
+    (fun tempdir ->
+      let workspace_root = Path.(tempdir / Path.v "default-dot") in
+      let* () = Fs.create_dir_all workspace_root |> Result.map_error IO.error_message in
+      let* events =
+        with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init" ])
+      in
+      let module_name = Riot_model.Module_name.(of_string "default-dot" |> to_string) in
+      let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
+      let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in
+      let* () = assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "default-dot"|} in
+      let* () = assert_exists
+        Path.(workspace_root / Path.v "packages" / Path.v "default-dot" / Path.v "tests" / Path.v test_file) in
+      match completion_event events with
+      | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; _ }) ->
+          if List.exists (fun step -> String.starts_with ~prefix:"cd " step) next_steps then
+            Error "expected init without a path to stay in the current directory"
+          else if next_steps = [ "riot build"; "riot test" ] then
+            Ok ()
+          else
+            Error "expected init without a path to keep local next steps"
+      | Some _ -> Error "expected final init event to be completion"
+      | None -> Error "expected init completion event")
+
 let tests =
   Test.[
     case "init scaffolds Docker, CI, and a starter test for libraries" test_init_scaffolds_library_workspace;
     case "init scaffolds Docker, CI, and a starter test for binaries" test_init_scaffolds_binary_workspace;
     case "init . scaffolds the current directory and records the workspace name" test_init_dot_scaffolds_current_directory;
+    case "init defaults to the current directory when no path is passed" test_init_without_path_defaults_to_current_directory;
   ]
 
 let () =
