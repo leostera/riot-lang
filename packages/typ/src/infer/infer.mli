@@ -13,7 +13,7 @@ module Solver: module type of Solver
 (** Result of inferring types for one semantic tree. *)
 type t = {
   (** File-local exports after filtering the configured prelude. *)
-  exports: Check_result.env;
+  exports: FileSummary.exports;
   (** Export-facing binding references used for definition queries. *)
   export_bindings: Check_result.binding_ref list;
   (** Exported lowered type declarations, including reexports. *)

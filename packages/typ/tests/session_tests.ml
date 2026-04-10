@@ -8,17 +8,32 @@ open Typ.Session
 let export_names = fun export ->
   match export with
   | Some (FileSummary.TrustedExport { exports })
-  | Some (FileSummary.ErroredExport { exports }) -> List.map fst exports
+  | Some (FileSummary.ErroredExport { exports }) ->
+      List.map (fun (name, _scheme) -> SurfacePath.to_string name) exports
   | Some FileSummary.NoExport
   | None -> []
 
 let export_scheme = fun snapshot source_id name ->
   match Query.export_of snapshot source_id with
   | Some (FileSummary.TrustedExport { exports })
-  | Some (FileSummary.ErroredExport { exports }) -> List.assoc_opt name exports
+  | Some (FileSummary.ErroredExport { exports }) ->
+      exports |> List.find_map
+        (fun (candidate_name, scheme) ->
+          if SurfacePath.equal (SurfacePath.of_string name) candidate_name then
+            Some scheme
+          else
+            None)
   |> Option.map TypePrinter.scheme_to_string
   | Some FileSummary.NoExport
   | None -> None
+
+let lookup_export = fun name exports ->
+  exports |> List.find_map
+    (fun (candidate_name, value) ->
+      if SurfacePath.equal candidate_name (SurfacePath.of_string name) then
+        Some value
+      else
+        None)
 
 let inferred_type_at = fun snapshot source_id offset ->
   Query.type_at snapshot source_id (Position.make ~offset) |> function
@@ -125,7 +140,7 @@ let trace_debug = fun snapshot source_id ->
           format
             Format.[
               str "item ";
-              str (ItemId.to_string trace.item_id);
+              str (ItemArenaId.to_string trace.item_id);
               str " -> [";
               str (String.concat ", " (List.map fst trace.exports_after));
               str "]";
@@ -136,7 +151,7 @@ let trace_debug = fun snapshot source_id ->
           format
             Format.[
               str "expr ";
-              str (ExprId.to_string trace.expr_id);
+              str (ExprArenaId.to_string trace.expr_id);
               str " -> [";
               str (String.concat ", " (List.map fst trace.env_before));
               str "]";
@@ -174,15 +189,21 @@ let exported_type_names = fun snapshot source_id ->
   | Some typings ->
       ModuleTypings.type_decls typings |> List.map
         (fun (type_decl: FileSummary.type_decl) ->
-          if IdentPath.is_empty type_decl.scope_path then
+          if SurfacePath.is_empty type_decl.scope_path then
             type_decl.declaration.type_name
           else
-            IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name |> IdentPath.to_string)
+            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string)
+
+let module_typings_export_names = fun typings ->
+  ModuleTypings.exports typings
+  |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let file_summary_export_names = fun snapshot source_id ->
   match Query.file_summary_of snapshot source_id with
   | None -> []
-  | Some summary -> FileSummary.exports summary |> List.map fst
+  | Some summary ->
+      FileSummary.exports summary
+      |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let prepare_snapshot_or_error = fun session ~roots ->
   match Session.prepare_snapshot session ~roots with
@@ -204,16 +225,16 @@ let with_typ_store = fun f ->
       f store) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let qualify_exports = fun module_name exports ->
-  let module_path = IdentPath.of_name module_name in
+  let module_path = SurfacePath.of_name module_name in
   List.map
-    (fun (name, scheme) -> (IdentPath.append_path module_path (IdentPath.of_string name), scheme))
+    (fun (name, scheme) -> (SurfacePath.append_path module_path name, scheme))
     exports
 
 let qualify_type_decls = fun module_name type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
       {
-        FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
+        FileSummary.scope_path = SurfacePath.prepend_name module_name type_decl.scope_path;
         declaration = type_decl.declaration
       })
     type_decls
@@ -603,7 +624,7 @@ let test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names
   let colors_text = "let answer = Helper.twice 21\n" in
   let colors_parse_result = Syn.parse ~filename:(Path.v "colors.ml") colors_text in
   let colors_cst = expect_cst ~filename:"colors.ml" colors_parse_result in
-  let implicit_opens = [ IdentPath.of_string "Colors__Aliases" ] in
+  let implicit_opens = [ SurfacePath.of_string "Colors__Aliases" ] in
   let (session, colors_source_id) = Session.create_source
     session
     ~kind:Source.File
@@ -1202,7 +1223,7 @@ let test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types
       let foo_impl_diagnostics = diagnostic_strings snapshot foo_impl_source_id in
       let foo_exports =
         match Session.Snapshot.find_module_typings_by_name snapshot "Foo" with
-        | Some typings -> ModuleTypings.exports typings |> List.map fst |> String.concat ", "
+        | Some typings -> module_typings_export_names typings |> String.concat ", "
         | None -> "<missing>"
       in
       if not (List.is_empty foo_intf_diagnostics) then
@@ -1336,7 +1357,7 @@ let test_prepare_snapshot_wrapper_module_preserves_local_result_error_surface = 
       let ip_addr_impl_diagnostics = diagnostic_strings snapshot ip_addr_impl_source_id in
       let ip_addr_exports =
         match Session.Snapshot.find_module_typings_by_name snapshot "Ip_addr" with
-        | Some typings -> ModuleTypings.exports typings |> List.map fst |> String.concat ", "
+        | Some typings -> module_typings_export_names typings |> String.concat ", "
         | None -> "<missing>"
       in
       if not (List.is_empty ip_addr_intf_diagnostics) then
@@ -1416,7 +1437,7 @@ let test_prepare_snapshot_nested_module_alias_canonicalizes_sibling_error_types 
       let net_error_to_string_type =
         match Session.Snapshot.find_module_typings_by_name snapshot "Net" with
         | Some typings -> ModuleTypings.exports typings
-        |> List.assoc_opt "TcpListener.error_to_string"
+        |> lookup_export "TcpListener.error_to_string"
         |> Option.map TypePrinter.scheme_to_string
         | None -> None
       in
@@ -1425,7 +1446,7 @@ let test_prepare_snapshot_nested_module_alias_canonicalizes_sibling_error_types 
         | Some typings -> ModuleTypings.type_decls typings
         |> List.map
           (fun (type_decl: FileSummary.type_decl) ->
-            IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name |> IdentPath.to_string)
+            SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string)
         | None -> []
       in
       if not (List.is_empty error_intf_diagnostics) then
@@ -1851,7 +1872,7 @@ let test_prepare_snapshot_planner_aliases_preserve_nested_constructor_owners = f
         end
       |ocaml}
   in
-  let fs_implicit_opens = [ IdentPath.of_string "Kernel_new__Fs__Aliases" ] in
+  let fs_implicit_opens = [ SurfacePath.of_string "Kernel_new__Fs__Aliases" ] in
   let (session, _fs_intf_source_id) = create_named_source session ~kind:Source.File ~module_name:"Kernel_new__Fs" ~filename:"fs.mli" ~implicit_opens:fs_implicit_opens
     ~text:{ocaml|
         module ReadDir = Read_dir
@@ -1871,7 +1892,7 @@ let test_prepare_snapshot_planner_aliases_preserve_nested_constructor_owners = f
         end
       |ocaml}
   in
-  let error_implicit_opens = [ IdentPath.of_string "Kernel_new__Aliases" ] in
+  let error_implicit_opens = [ SurfacePath.of_string "Kernel_new__Aliases" ] in
   let (session, error_source_id) = create_named_source session ~kind:Source.File ~module_name:"Kernel_new__Error" ~filename:"error.ml" ~implicit_opens:error_implicit_opens
     ~text:{ocaml|
         type t =
@@ -1894,13 +1915,13 @@ let test_prepare_snapshot_planner_aliases_preserve_nested_constructor_owners = f
           | Some typings -> ModuleTypings.type_decls typings
           |> List.map
             (fun (type_decl: FileSummary.type_decl) ->
-              IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
-              |> IdentPath.to_string)
+              SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+              |> SurfacePath.to_string)
           | None -> []
         in
         let fs_export_names =
           match Session.Snapshot.find_module_typings_by_name snapshot "Kernel_new__Fs" with
-          | Some typings -> ModuleTypings.exports typings |> List.map fst
+          | Some typings -> module_typings_export_names typings
           | None -> []
         in
         let error_semantic_tree =
@@ -2387,7 +2408,7 @@ let test_prepare_snapshot_net_wrapper_graph_preserves_ip_addr_exports = fun _ctx
       let tcp_stream_diagnostics = diagnostic_strings snapshot tcp_stream_unix_source_id in
       let ip_addr_exports =
         match Session.Snapshot.find_module_typings_by_name snapshot "Kernel_new__Net__Ip_addr" with
-        | Some typings -> ModuleTypings.exports typings |> List.map fst |> String.concat ", "
+        | Some typings -> module_typings_export_names typings |> String.concat ", "
         | None -> "<missing>"
       in
       let ip_addr_impl_exports = export_names (Query.export_of snapshot ip_addr_impl_source_id)
@@ -2623,7 +2644,7 @@ let test_implicit_opens_do_not_leak_into_module_exports = fun _ctx ->
     ~source_hash:(Source.hash ~implicit_opens:[] ~cst:aliases_cst)
     ~parse_result:aliases_parse_result
     ~cst:aliases_cst in
-  let implicit_opens = [ IdentPath.of_string "Colors__Aliases" ] in
+  let implicit_opens = [ SurfacePath.of_string "Colors__Aliases" ] in
   let (session, helper_source_id) = Session.create_source
     session
     ~kind:Source.File
@@ -2811,7 +2832,7 @@ let test_paired_modules_export_interface_shaped_module_typings = fun _ctx ->
   let export_names_for source_id =
     match Query.module_typings_of snapshot source_id with
     | None -> []
-    | Some typings -> ModuleTypings.exports typings |> List.map fst
+    | Some typings -> module_typings_export_names typings
   in
   Test.assert_equal ~expected:[ "answer" ] ~actual:(export_names_for impl_source_id);
   Test.assert_equal ~expected:[ "answer" ] ~actual:(export_names_for intf_source_id);
@@ -2870,8 +2891,8 @@ let test_paired_modules_report_signature_inclusion_mismatches = fun _ctx ->
   let intf_typings = Query.module_typings_of snapshot intf_source_id |> Option.expect ~msg:"missing interface typings" in
   Test.assert_equal ~expected:true ~actual:(has_signature_error impl_source_id);
   Test.assert_equal ~expected:true ~actual:(has_signature_error intf_source_id);
-  Test.assert_equal ~expected:[] ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
-  Test.assert_equal ~expected:[] ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+  Test.assert_equal ~expected:[] ~actual:(module_typings_export_names impl_typings);
+  Test.assert_equal ~expected:[] ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal ~expected:[] ~actual:(export_names (Query.export_of snapshot impl_source_id));
   Test.assert_equal ~expected:[] ~actual:(export_names (Query.export_of snapshot intf_source_id));
   Test.assert_equal ~expected:[] ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -2907,10 +2928,10 @@ let test_paired_modules_skip_signature_inclusion_for_errored_implementation = fu
   Test.assert_equal ~expected:false ~actual:(has_signature_error intf_source_id);
   Test.assert_equal
     ~expected:[ "answer" ]
-    ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+    ~actual:(module_typings_export_names impl_typings);
   Test.assert_equal
     ~expected:[ "answer" ]
-    ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+    ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot impl_source_id "answer");
   Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot intf_source_id "answer");
   Test.assert_equal
@@ -2951,10 +2972,10 @@ let test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types
   Test.assert_equal ~expected:true ~actual:(has_unsupported_syntax snapshot intf_source_id);
   Test.assert_equal
     ~expected:[ "to_escape_seq" ]
-    ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+    ~actual:(module_typings_export_names impl_typings);
   Test.assert_equal
     ~expected:[ "to_escape_seq" ]
-    ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+    ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal
     ~expected:[ "to_escape_seq" ]
     ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -2990,10 +3011,10 @@ let test_paired_modules_accept_manifest_alias_specialization = fun _ctx ->
   Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id);
   Test.assert_equal
     ~expected:[ "of_bytes"; "to_bytes" ]
-    ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+    ~actual:(module_typings_export_names impl_typings);
   Test.assert_equal
     ~expected:[ "of_bytes"; "to_bytes" ]
-    ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+    ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal
     ~expected:[ "of_bytes"; "to_bytes" ]
     ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -3038,10 +3059,10 @@ let test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion = fu
   Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id);
   Test.assert_equal
     ~expected:[ "default"; "normalize" ]
-    ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+    ~actual:(module_typings_export_names impl_typings);
   Test.assert_equal
     ~expected:[ "default"; "normalize" ]
-    ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+    ~actual:(module_typings_export_names intf_typings);
   Test.assert_equal
     ~expected:[ "default"; "normalize" ]
     ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -3350,10 +3371,10 @@ let test_paired_modules_include_sibling_exports_during_signature_inclusion = fun
     Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id);
     Test.assert_equal
       ~expected:[ "abs"; "answer" ]
-      ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+      ~actual:(module_typings_export_names impl_typings);
     Test.assert_equal
       ~expected:[ "abs"; "answer" ]
-      ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+      ~actual:(module_typings_export_names intf_typings);
     Test.assert_equal
       ~expected:[ "abs"; "answer" ]
       ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -3408,10 +3429,10 @@ let test_paired_modules_include_paired_sibling_exports_during_signature_inclusio
     Test.assert_equal ~expected:false ~actual:(has_signature_error snapshot intf_source_id);
     Test.assert_equal
       ~expected:[ "abs"; "answer"; "total" ]
-      ~actual:(ModuleTypings.exports impl_typings |> List.map fst);
+      ~actual:(module_typings_export_names impl_typings);
     Test.assert_equal
       ~expected:[ "abs"; "answer"; "total" ]
-      ~actual:(ModuleTypings.exports intf_typings |> List.map fst);
+      ~actual:(module_typings_export_names intf_typings);
     Test.assert_equal
       ~expected:[ "abs"; "answer"; "total" ]
       ~actual:(file_summary_export_names snapshot impl_source_id);
@@ -3474,7 +3495,7 @@ let test_source_input_hash_changes_with_implicit_opens = fun _ctx ->
     ~revision:1
     ~text:"let id x = x\n" in
   let source_with_opens = make_source_with_implicit_opens
-    ~implicit_opens:[ IdentPath.of_string "Colors__Aliases" ]
+    ~implicit_opens:[ SurfacePath.of_string "Colors__Aliases" ]
     ~source_id:(SourceId.of_int 1)
     ~kind:Source.File
     ~origin:(Source.Label "colors.ml")
@@ -3990,7 +4011,7 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
       let value = 1
     |ocaml}
   in
-  let implicit_opens = [ IdentPath.of_string "Aliases" ] in
+  let implicit_opens = [ SurfacePath.of_string "Aliases" ] in
   let left_text = {ocaml|
     let left = Base.value
   |ocaml}
@@ -4478,7 +4499,7 @@ let test_include_reexports_loaded_module_record_types = fun _ctx ->
     let exported_type_decls = ModuleTypings.type_decls consumer_summary
     |> List.map
       (fun (type_decl: FileSummary.type_decl) ->
-        (IdentPath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
+        (SurfacePath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
     let client_config = Config.default
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
@@ -4541,7 +4562,7 @@ let test_module_alias_reexports_loaded_module_record_types = fun _ctx ->
     let exported_type_decls = ModuleTypings.type_decls consumer_summary
     |> List.map
       (fun (type_decl: FileSummary.type_decl) ->
-        (IdentPath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
+        (SurfacePath.to_segments type_decl.scope_path, type_decl.declaration.type_name)) in
     let client_config = Config.default
     |> Config.with_loaded_modules ~loaded_modules:[ consumer_summary ] in
     let client_session = Session.empty ~config:client_config in
@@ -4703,7 +4724,7 @@ let test_include_module_type_of_canonicalizes_loaded_nominal_types = fun _ctx ->
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    match List.assoc_opt "spawn" (FileSummary.exports analysis.file_summary) with
+    match lookup_export "spawn" (FileSummary.exports analysis.file_summary) with
     | None -> Error "expected spawn export"
     | Some spawn_scheme ->
         if scheme_has_named_path spawn_scheme then
@@ -4757,7 +4778,7 @@ let test_include_module_type_of_loaded_modules_canonicalizes_nominal_types = fun
     | Some typings ->
         let exports = ModuleTypings.exports typings in
         (
-          match List.assoc_opt "spawn" exports with
+          match lookup_export "spawn" exports with
           | None ->
               Error "expected spawn export"
           | Some spawn_scheme when scheme_has_named_path spawn_scheme ->
@@ -5223,7 +5244,7 @@ let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    match List.assoc_opt "spawn" (FileSummary.exports analysis.file_summary) with
+    match lookup_export "spawn" (FileSummary.exports analysis.file_summary) with
     | None -> Error "expected spawn export"
     | Some spawn_scheme ->
         if scheme_has_named_path spawn_scheme then
@@ -5280,7 +5301,7 @@ let test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types =
   if not (List.is_empty diagnostics) then
     Error (String.concat "\n" diagnostics)
   else
-    match List.assoc_opt "close" (FileSummary.exports analysis.file_summary) with
+    match lookup_export "close" (FileSummary.exports analysis.file_summary) with
     | None -> Error "expected close export"
     | Some close_scheme ->
         if scheme_has_named_path close_scheme then
@@ -5333,7 +5354,7 @@ let close (): (unit, error) result = Ok ()
     match Query.module_typings_of snapshot source_id with
     | None -> Error "expected reader module typings"
     | Some typings -> (
-        match List.assoc_opt "close" (ModuleTypings.exports typings) with
+        match lookup_export "close" (ModuleTypings.exports typings) with
         | None ->
             Error "expected close export"
         | Some close_scheme when scheme_has_named_path close_scheme ->
@@ -5655,7 +5676,7 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
     | Some typings -> typings
     | None -> panic "expected std module typings"
   in
-  let std_exported_names = ModuleTypings.exports std_summary |> List.map fst in
+  let std_exported_names = module_typings_export_names std_summary in
   let client_config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ std_summary ] in
   let client_session = Session.empty ~config:client_config in
   let (client_session, client_source_id) = create_source
@@ -5716,9 +5737,9 @@ let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_inclu
     | Some typings -> typings
     | None -> panic "expected kernel module typings"
   in
-  let kernel_exported_names = ModuleTypings.exports kernel_summary |> List.map fst in
+  let kernel_exported_names = module_typings_export_names kernel_summary in
   let kernel_create_type = ModuleTypings.exports kernel_summary
-  |> List.assoc_opt "Sync.Cell.create"
+  |> lookup_export "Sync.Cell.create"
   |> Option.map TypePrinter.scheme_to_string in
   if not (List.equal String.equal kernel_exported_names [ "Sync.Cell.create" ]) then
     Error ("unexpected kernel exports: " ^ String.concat ", " kernel_exported_names)
@@ -5754,9 +5775,9 @@ let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_inclu
       | Some typings -> typings
       | None -> panic "expected std module typings"
     in
-    let std_exported_names = ModuleTypings.exports std_summary |> List.map fst in
+    let std_exported_names = module_typings_export_names std_summary in
     let std_create_type = ModuleTypings.exports std_summary
-    |> List.assoc_opt "Sync.Cell.create"
+    |> lookup_export "Sync.Cell.create"
     |> Option.map TypePrinter.scheme_to_string in
     if not (List.equal String.equal std_exported_names [ "Sync.Cell.create" ]) then
       Error ("unexpected std exports: " ^ String.concat ", " std_exported_names)

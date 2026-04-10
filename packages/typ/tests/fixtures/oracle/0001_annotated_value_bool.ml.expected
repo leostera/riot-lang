@@ -22,6 +22,28 @@
         }
       ]
     },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "answer",
+          "scheme": "bool"
+        },
+        {
+          "name": "value",
+          "scheme": "bool"
+        }
+      ],
+      "typ": [
+        {
+          "name": "answer",
+          "scheme": "bool"
+        },
+        {
+          "name": "value",
+          "scheme": "bool"
+        }
+      ]
+    },
     "type_names": {
       "ocamlc": [],
       "typ": []
@@ -38,45 +60,10 @@
         "scheme": "bool"
       }
     ],
-    "interface_lines": [
-      "val value : bool",
-      "val answer : bool"
-    ],
-    "interface_text": "val value : bool\nval answer : bool",
+    "interface_text": "val value : bool\nval answer : bool\n",
+    "type_aliases": [],
     "type_names": [],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+0]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+9])",
-      "          extra (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+9]) ghost",
-      "            Tpat_extra_constraint",
-      "            core_type (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+16])",
-      "              Ttyp_constr \"bool/5!\"",
-      "              []",
-      "          Tpat_var \"value/4\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23])",
-      "          extra (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23]) ghost",
-      "            Texp_constraint",
-      "            core_type (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+16])",
-      "              Ttyp_constr \"bool/5!\"",
-      "              []",
-      "          Texp_construct \"true\"",
-      "          []",
-      "    ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+0]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+18])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+10])",
-      "          Tpat_var \"answer/5\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+13]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+18])",
-      "          Texp_ident \"value/4\"",
-      "    ]",
-      "]"
-    ]
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+0]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+9])\n          extra (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+9]) ghost\n            Tpat_extra_constraint\n            core_type (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+16])\n              Ttyp_constr \"bool/5!\"\n              []\n          Tpat_var \"value/4\"\n        expression (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23])\n          extra (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+23]) ghost\n            Texp_constraint\n            core_type (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[9,154+16])\n              Ttyp_constr \"bool/5!\"\n              []\n          Texp_construct \"true\"\n          []\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+0]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+18])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+4]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+10])\n          Tpat_var \"answer/5\"\n        expression (packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+13]..packages/typ/tests/fixtures/oracle/0001_annotated_value_bool.ml[11,179+18])\n          Texp_ident \"value/4\"\n    ]\n]"
   },
   "typ": {
     "body_arena": {

@@ -18,7 +18,7 @@ type var = {
 
 and named_type_head = {
   type_constructor_id: TypeConstructorId.t;
-  name: IdentPath.t;
+  name: SurfacePath.t;
 }
 
 and package_value = {
@@ -92,11 +92,11 @@ val list: t -> t
 
 val seq: t -> t
 
-val named_head: type_constructor_id:TypeConstructorId.t -> name:IdentPath.t -> named_type_head
+val named_head: type_constructor_id:TypeConstructorId.t -> name:SurfacePath.t -> named_type_head
 
 val named: head:named_type_head -> arguments:t list -> t
 
-val named_path: name:IdentPath.t -> arguments:t list -> t
+val named_path: name:SurfacePath.t -> arguments:t list -> t
 
 val make_scheme: quantified:int list -> body:t -> scheme
 

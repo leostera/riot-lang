@@ -35,7 +35,7 @@ val create_source:
   t ->
   kind:Source.kind ->
   module_name:string ->
-  implicit_opens:IdentPath.t list ->
+  implicit_opens:SurfacePath.t list ->
   origin:Source.origin ->
   source_hash:Crypto.hash ->
   parse_result:Syn.Parser.parse_result ->

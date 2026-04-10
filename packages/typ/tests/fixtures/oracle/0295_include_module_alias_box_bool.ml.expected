@@ -3,6 +3,18 @@
     "exports": {
       "ocamlc": [
         {
+          "name": "Base.value",
+          "scheme": "t"
+        },
+        {
+          "name": "Derived.duplicate",
+          "scheme": "'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "t"
+        },
+        {
           "name": "answer",
           "scheme": "Derived.t * Derived.t"
         }
@@ -17,134 +29,99 @@
           "scheme": "'a -> 'a * 'a"
         },
         {
+          "name": "Derived.value",
+          "scheme": "bool"
+        },
+        {
           "name": "answer",
-          "scheme": "'a * 'a"
+          "scheme": "bool * bool"
+        }
+      ]
+    },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "Base.value",
+          "scheme": "bool"
+        },
+        {
+          "name": "Derived.duplicate",
+          "scheme": "'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "bool"
+        },
+        {
+          "name": "answer",
+          "scheme": "bool * bool"
+        }
+      ],
+      "typ": [
+        {
+          "name": "Base.value",
+          "scheme": "bool"
+        },
+        {
+          "name": "Derived.duplicate",
+          "scheme": "'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "bool"
+        },
+        {
+          "name": "answer",
+          "scheme": "bool * bool"
         }
       ]
     },
     "type_names": {
-      "ocamlc": [],
+      "ocamlc": [
+        "Base.t",
+        "Derived.t"
+      ],
       "typ": [
-        "t"
+        "Base.t",
+        "Derived.t"
       ]
     }
   },
   "ocamlc": {
     "exports": [
       {
+        "name": "Base.value",
+        "scheme": "t"
+      },
+      {
+        "name": "Derived.duplicate",
+        "scheme": "'a -> 'a * 'a"
+      },
+      {
+        "name": "Derived.value",
+        "scheme": "t"
+      },
+      {
         "name": "answer",
         "scheme": "Derived.t * Derived.t"
       }
     ],
-    "interface_lines": [
-      "module Base : sig type t = bool val value : t end",
-      "module Derived :",
-      "  sig type t = bool val value : t val duplicate : 'a -> 'a * 'a end",
-      "val answer : Derived.t * Derived.t"
+    "interface_text": "module Base : sig type t = bool val value : t end\nmodule Derived :\n  sig type t = bool val value : t val duplicate : 'a -> 'a * 'a end\nval answer : Derived.t * Derived.t\n",
+    "type_aliases": [
+      {
+        "manifest": "bool",
+        "name": "Base.t"
+      },
+      {
+        "manifest": "bool",
+        "name": "Derived.t"
+      }
     ],
-    "interface_text": "module Base : sig type t = bool val value : t end\nmodule Derived :\n  sig type t = bool val value : t val duplicate : 'a -> 'a * 'a end\nval answer : Derived.t * Derived.t",
-    "type_names": [],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[9,167+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[12,227+3])",
-      "    Tstr_module (Present)",
-      "    Base/6",
-      "      module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[9,167+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[12,227+3])",
-      "        Tmod_structure",
-      "        [",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])",
-      "            Tstr_type Rec",
-      "            [",
-      "              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])",
-      "                ptype_params =",
-      "                  []",
-      "                ptype_constraints =",
-      "                  []",
-      "                ptype_kind =",
-      "                  Ttype_abstract",
-      "                ptype_private = Public",
-      "                ptype_manifest =",
-      "                  Some",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+11]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])",
-      "                      Ttyp_constr \"bool/5!\"",
-      "                      []",
-      "            ]",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22])",
-      "            Tstr_value Nonrec",
-      "            [",
-      "              <def>",
-      "                pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+11])",
-      "                  extra (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+11]) ghost",
-      "                    Tpat_extra_constraint",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+15])",
-      "                      Ttyp_constr \"t/4\"",
-      "                      []",
-      "                  Tpat_var \"value/5\"",
-      "                expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+18]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22])",
-      "                  extra (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+18]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22]) ghost",
-      "                    Texp_constraint",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+15])",
-      "                      Ttyp_constr \"t/4\"",
-      "                      []",
-      "                  Texp_construct \"true\"",
-      "                  []",
-      "            ]",
-      "        ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[14,232+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[17,298+3])",
-      "    Tstr_module (Present)",
-      "    Derived/12",
-      "      module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[14,232+17]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[17,298+3])",
-      "        Tmod_structure",
-      "        [",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+14])",
-      "            Tstr_include            module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+10]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+14])",
-      "              Tmod_ident \"Base/6\"",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26])",
-      "            Tstr_value Nonrec",
-      "            [",
-      "              <def>",
-      "                pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+15])",
-      "                  Tpat_var \"duplicate/9\"",
-      "                expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+16]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26]) ghost",
-      "                  Texp_function",
-      "                  [",
-      "                    Nolabel",
-      "                    Param_pat",
-      "                      pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+16]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+17])",
-      "                        Tpat_var \"x/11\"",
-      "                  ]",
-      "                  Tfunction_body",
-      "                    expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+20]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26])",
-      "                      Texp_tuple",
-      "                      [",
-      "                        Label: None",
-      "                          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+21]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+22])",
-      "                            Texp_ident \"x/11\"",
-      "                        Label: None",
-      "                          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+24]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+25])",
-      "                            Texp_ident \"x/11\"",
-      "                      ]",
-      "            ]",
-      "        ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+4]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+10])",
-      "          Tpat_var \"answer/13\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+13]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])",
-      "          Texp_apply",
-      "          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+13]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+30])",
-      "            Texp_ident \"Derived/12.duplicate\"",
-      "          [",
-      "            <arg>",
-      "              Nolabel",
-      "              expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+31]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])",
-      "                Texp_ident \"Derived/12.value\"",
-      "          ]",
-      "    ]",
-      "]"
-    ]
+    "type_names": [
+      "Base.t",
+      "Derived.t"
+    ],
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[9,167+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[12,227+3])\n    Tstr_module (Present)\n    Base/6\n      module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[9,167+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[12,227+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])\n            Tstr_type Rec\n            [\n              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  Some\n                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+11]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[10,188+15])\n                      Ttyp_constr \"bool/5!\"\n                      []\n            ]\n          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+11])\n                  extra (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+11]) ghost\n                    Tpat_extra_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Tpat_var \"value/5\"\n                expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+18]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22])\n                  extra (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+18]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+22]) ghost\n                    Texp_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+14]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[11,204+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Texp_construct \"true\"\n                  []\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[14,232+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[17,298+3])\n    Tstr_module (Present)\n    Derived/12\n      module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[14,232+17]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[17,298+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+14])\n            Tstr_include            module_expr (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+10]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[15,256+14])\n              Tmod_ident \"Base/6\"\n          structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+2]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+6]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+15])\n                  Tpat_var \"duplicate/9\"\n                expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+16]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26]) ghost\n                  Texp_function\n                  [\n                    Nolabel\n                    Param_pat\n                      pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+16]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+17])\n                        Tpat_var \"x/11\"\n                  ]\n                  Tfunction_body\n                    expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+20]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+26])\n                      Texp_tuple\n                      [\n                        Label: None\n                          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+21]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+22])\n                            Texp_ident \"x/11\"\n                        Label: None\n                          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+24]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[16,271+25])\n                            Texp_ident \"x/11\"\n                      ]\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+0]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+4]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+10])\n          Tpat_var \"answer/13\"\n        expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+13]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])\n          Texp_apply\n          expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+13]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+30])\n            Texp_ident \"Derived/12.duplicate\"\n          [\n            <arg>\n              Nolabel\n              expression (packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+31]..packages/typ/tests/fixtures/oracle/0295_include_module_alias_box_bool.ml[19,303+44])\n                Texp_ident \"Derived/12.value\"\n          ]\n    ]\n]"
   },
   "typ": {
     "body_arena": {
@@ -223,7 +200,7 @@
             "body_id": 3,
             "parameters": [
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
@@ -307,7 +284,7 @@
     "exports": [
       {
         "name": "answer",
-        "scheme": "'a. 'a * 'a"
+        "scheme": "bool * bool"
       },
       {
         "name": "Base.value",
@@ -316,6 +293,10 @@
       {
         "name": "Derived.duplicate",
         "scheme": "'a. 'a -> 'a * 'a"
+      },
+      {
+        "name": "Derived.value",
+        "scheme": "bool"
       }
     ],
     "expr_traces": [
@@ -490,7 +471,7 @@
           },
           {
             "name": "x",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",
@@ -502,6 +483,10 @@
           },
           {
             "name": "Base.value",
+            "scheme": "bool"
+          },
+          {
+            "name": "Derived.value",
             "scheme": "bool"
           }
         ],
@@ -593,7 +578,7 @@
           },
           {
             "name": "x",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",
@@ -605,6 +590,10 @@
           },
           {
             "name": "Base.value",
+            "scheme": "bool"
+          },
+          {
+            "name": "Derived.value",
             "scheme": "bool"
           }
         ],
@@ -696,7 +685,7 @@
           },
           {
             "name": "x",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",
@@ -708,6 +697,10 @@
           },
           {
             "name": "Base.value",
+            "scheme": "bool"
+          },
+          {
+            "name": "Derived.value",
             "scheme": "bool"
           }
         ],
@@ -807,6 +800,10 @@
           },
           {
             "name": "Base.value",
+            "scheme": "bool"
+          },
+          {
+            "name": "Derived.value",
             "scheme": "bool"
           }
         ],
@@ -911,10 +908,14 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
         "expr_id": 5,
-        "inferred_type": "'a -> 'a * 'a",
+        "inferred_type": "bool -> bool * bool",
         "origin": {
           "label": "qualified_path_expression",
           "span": {
@@ -1014,10 +1015,14 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
         "expr_id": 6,
-        "inferred_type": "_?0",
+        "inferred_type": "bool",
         "origin": {
           "label": "qualified_path_expression",
           "span": {
@@ -1117,10 +1122,14 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
         "expr_id": 7,
-        "inferred_type": "'a * 'a",
+        "inferred_type": "bool * bool",
         "origin": {
           "label": "apply_expression",
           "span": {
@@ -1133,12 +1142,12 @@
       }
     ],
     "file_summary": {
-      "completeness": "partial",
+      "completeness": "complete",
       "export_result": {
         "exports": [
           {
             "name": "answer",
-            "scheme": "'a. 'a * 'a"
+            "scheme": "bool * bool"
           },
           {
             "name": "Base.value",
@@ -1147,9 +1156,13 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
-        "tag": "errored_export"
+        "tag": "trusted_export"
       },
       "source_id": 0
     },
@@ -1173,10 +1186,16 @@
         "item_id": 1
       },
       {
-        "binding_names": [],
+        "binding_names": [
+          "Derived.value"
+        ],
         "exports_after": [
           {
             "name": "Base.value",
+            "scheme": "bool"
+          },
+          {
+            "name": "Derived.value",
             "scheme": "bool"
           }
         ],
@@ -1194,6 +1213,10 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
         "item_id": 3
@@ -1205,7 +1228,7 @@
         "exports_after": [
           {
             "name": "answer",
-            "scheme": "'a. 'a * 'a"
+            "scheme": "bool * bool"
           },
           {
             "name": "Base.value",
@@ -1214,6 +1237,10 @@
           {
             "name": "Derived.duplicate",
             "scheme": "'a. 'a -> 'a * 'a"
+          },
+          {
+            "name": "Derived.value",
+            "scheme": "bool"
           }
         ],
         "item_id": 4
@@ -1650,7 +1677,7 @@
       },
       {
         "expr_id": 6,
-        "inferred_type": "_?0",
+        "inferred_type": "bool",
         "origin_id": 16,
         "span": {
           "end": 347,
@@ -1659,7 +1686,7 @@
       },
       {
         "expr_id": 5,
-        "inferred_type": "'a -> 'a * 'a",
+        "inferred_type": "bool -> bool * bool",
         "origin_id": 15,
         "span": {
           "end": 333,
@@ -1677,7 +1704,7 @@
       },
       {
         "expr_id": 7,
-        "inferred_type": "'a * 'a",
+        "inferred_type": "bool * bool",
         "origin_id": 17,
         "span": {
           "end": 347,
@@ -1685,22 +1712,10 @@
         }
       }
     ],
-    "typing_diagnostics": [
-      {
-        "id": "TYP2001",
-        "message": "unbound name: Derived.value",
-        "name": "unbound-name",
-        "name_text": "Derived.value",
-        "reference_span": {
-          "end": 347,
-          "start": 333
-        },
-        "severity": "error"
-      }
-    ]
+    "typing_diagnostics": []
   },
   "typ_summary": {
-    "completeness": "partial",
+    "completeness": "complete",
     "exports": [
       {
         "name": "Base.value",
@@ -1711,12 +1726,17 @@
         "scheme": "'a -> 'a * 'a"
       },
       {
+        "name": "Derived.value",
+        "scheme": "bool"
+      },
+      {
         "name": "answer",
-        "scheme": "'a * 'a"
+        "scheme": "bool * bool"
       }
     ],
     "type_names": [
-      "t"
+      "Base.t",
+      "Derived.t"
     ]
   }
 }

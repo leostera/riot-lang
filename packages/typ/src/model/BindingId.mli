@@ -1,19 +1,28 @@
 open Std
 
-(** Stable identifier for one lowered binding node. *)
+(** Semantic identity for one binder visible to the type checker. *)
 type t
 
-(** Total order over binding IDs for maps, sets, and deterministic rendering. *)
-val compare: t -> t -> int
+(** Build one local binder identity. *)
+val local: stamp:int -> name:string -> t
 
-(** Equality over binding IDs. *)
+(** Build one prelude-owned binder identity. *)
+val predef: stamp:int -> name:string -> t
+
+(** Build one persistent binder identity from its exported surface path. *)
+val persistent: SurfacePath.t -> t
+
+(** Recover the printable binder name. *)
+val name: t -> string
+
+(** Recover the local/predef stamp when one exists. *)
+val stamp: t -> int option
+
+(** Structural equality over semantic binder identities. *)
 val equal: t -> t -> bool
 
-(** Build a binding ID from its current integer representation. *)
-val of_int: int -> t
+(** Total order over semantic binder identities. *)
+val compare: t -> t -> int
 
-(** Expose the current integer representation for JSON and debug output. *)
-val to_int: t -> int
-
-(** Render a readable [binding#N] label. *)
+(** Render a readable debug label. *)
 val to_string: t -> string

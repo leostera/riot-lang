@@ -9,32 +9,32 @@ type pattern_desc =
   | PString of string
   | PChar of string
   | PUnit
-  | PTuple of PatId.t list
-  | POr of PatId.t list
-  | PConstructor of { constructor: IdentPath.t; arguments: PatId.t list }
+  | PTuple of PatternArenaId.t list
+  | POr of PatternArenaId.t list
+  | PConstructor of { constructor: SurfacePath.t; arguments: PatternArenaId.t list }
   | PRecord of { fields: record_pattern_field list; open_: bool }
-  | PList of PatId.t list
-  | PAlias of { pattern_id: PatId.t; alias: string }
+  | PList of PatternArenaId.t list
+  | PAlias of { pattern_id: PatternArenaId.t; alias: string }
   | PFirstClassModule of { module_name: string option; package_type: TypeRepr.t option }
-  | PPolyVariant of { tag: string; payload: PatId.t option }
+  | PPolyVariant of { tag: string; payload: PatternArenaId.t option }
   | PUnsupported of string
 
 and record_pattern_field = {
   label: string;
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
 }
 
 type pattern_node = {
-  pat_id: PatId.t;
+  pat_id: PatternArenaId.t;
   origin_id: OriginId.t;
   annotation: TypeRepr.t option;
   desc: pattern_desc;
 }
 
 type match_case = {
-  pattern_id: PatId.t;
-  guard_id: ExprId.t option;
-  body_id: ExprId.t;
+  pattern_id: PatternArenaId.t;
+  guard_id: ExprArenaId.t option;
+  body_id: ExprArenaId.t;
 }
 
 type label =
@@ -44,18 +44,18 @@ type label =
 
 type function_parameter = {
   label: label;
-  pattern_id: PatId.t;
-  default_value_id: ExprId.t option;
+  pattern_id: PatternArenaId.t;
+  default_value_id: ExprArenaId.t option;
 }
 
 type apply_argument = {
   label: label;
   implicit: bool;
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
 }
 
 type local_module_binding_group = {
-  binding_ids: BindingId.t list;
+  binding_ids: BindingArenaId.t list;
 }
 
 type local_module_scope = {
@@ -64,37 +64,37 @@ type local_module_scope = {
 }
 
 type expr_desc =
-  | EVar of IdentPath.t
+  | EVar of SurfacePath.t
   | EInt of string
   | EFloat of string
   | EBool of bool
   | EString of string
   | EChar of string
   | EUnit
-  | ETuple of ExprId.t list
-  | EArray of ExprId.t list
-  | ESequence of ExprId.t list
-  | EWhile of { condition_id: ExprId.t; body_id: ExprId.t }
+  | ETuple of ExprArenaId.t list
+  | EArray of ExprArenaId.t list
+  | ESequence of ExprArenaId.t list
+  | EWhile of { condition_id: ExprArenaId.t; body_id: ExprArenaId.t }
   | EFor of {
-      iterator_pattern_id: PatId.t;
+      iterator_pattern_id: PatternArenaId.t;
       descending: bool;
-      start_id: ExprId.t;
-      end_id: ExprId.t;
-      body_id: ExprId.t
+      start_id: ExprArenaId.t;
+      end_id: ExprArenaId.t;
+      body_id: ExprArenaId.t
     }
-  | EFun of function_parameter list * ExprId.t
-  | EApply of ExprId.t * apply_argument list
-  | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
-  | EFieldAccess of { receiver_id: ExprId.t; label: string }
-  | EFieldAssign of { receiver_id: ExprId.t; label: string; value_id: ExprId.t }
-  | EIndex of ExprId.t * ExprId.t
-  | ELet of BindingId.t list * ExprId.t
-  | EIf of ExprId.t * ExprId.t * ExprId.t
-  | EMatch of ExprId.t * match_case list
-  | ETry of ExprId.t * match_case list
-  | EPolyVariant of { tag: string; payload: ExprId.t option }
-  | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
-  | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
+  | EFun of function_parameter list * ExprArenaId.t
+  | EApply of ExprArenaId.t * apply_argument list
+  | ERecord of { base_id: ExprArenaId.t option; fields: record_expr_field list }
+  | EFieldAccess of { receiver_id: ExprArenaId.t; label: string }
+  | EFieldAssign of { receiver_id: ExprArenaId.t; label: string; value_id: ExprArenaId.t }
+  | EIndex of ExprArenaId.t * ExprArenaId.t
+  | ELet of BindingArenaId.t list * ExprArenaId.t
+  | EIf of ExprArenaId.t * ExprArenaId.t * ExprArenaId.t
+  | EMatch of ExprArenaId.t * match_case list
+  | ETry of ExprArenaId.t * match_case list
+  | EPolyVariant of { tag: string; payload: ExprArenaId.t option }
+  | ECoerce of { value_id: ExprArenaId.t; target_type: TypeRepr.t }
+  | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
   | ELocalModulePack of {
       local_scope: local_module_scope;
       package_type: TypeRepr.t option
@@ -102,31 +102,31 @@ type expr_desc =
   | ELocalModule of {
       module_name: string;
       local_scope: local_module_scope;
-      body_id: ExprId.t
+      body_id: ExprArenaId.t
     }
-  | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
+  | ELocalOpen of { module_path: SurfacePath.t; body_id: ExprArenaId.t }
   | EUnsupported of string
   | EHole of string
 
 and record_expr_field = {
   label: string;
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
 }
 
 and expr_node = {
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   origin_id: OriginId.t;
   desc: expr_desc;
 }
 
 and binding = {
-  binding_id: BindingId.t;
+  binding_id: BindingArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   name: string option;
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
   annotation: TypeScheme.t option;
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
   recursive: bool;
 }
 
@@ -154,15 +154,15 @@ let of_lists = fun ~patterns ~expressions ~bindings ->
   let bindings_by_id = Collections.HashMap.with_capacity (List.length bindings) in
   patterns |> List.iter
     (fun (node: pattern_node) ->
-      let _ = Collections.HashMap.insert patterns_by_id (PatId.to_int node.pat_id) node in
+      let _ = Collections.HashMap.insert patterns_by_id (PatternArenaId.to_int node.pat_id) node in
       ());
   expressions |> List.iter
     (fun (node: expr_node) ->
-      let _ = Collections.HashMap.insert expressions_by_id (ExprId.to_int node.expr_id) node in
+      let _ = Collections.HashMap.insert expressions_by_id (ExprArenaId.to_int node.expr_id) node in
       ());
   bindings |> List.iter
     (fun (node: binding) ->
-      let _ = Collections.HashMap.insert bindings_by_id (BindingId.to_int node.binding_id) node in
+      let _ = Collections.HashMap.insert bindings_by_id (BindingArenaId.to_int node.binding_id) node in
       ());
   {
     patterns;
@@ -180,13 +180,13 @@ let expressions = fun arena -> arena.expressions
 let bindings = fun arena -> arena.bindings
 
 let find_pattern = fun arena pat_id ->
-  Collections.HashMap.get arena.patterns_by_id (PatId.to_int pat_id)
+  Collections.HashMap.get arena.patterns_by_id (PatternArenaId.to_int pat_id)
 
 let find_expr = fun arena expr_id ->
-  Collections.HashMap.get arena.expressions_by_id (ExprId.to_int expr_id)
+  Collections.HashMap.get arena.expressions_by_id (ExprArenaId.to_int expr_id)
 
 let find_binding = fun arena binding_id ->
-  Collections.HashMap.get arena.bindings_by_id (BindingId.to_int binding_id)
+  Collections.HashMap.get arena.bindings_by_id (BindingArenaId.to_int binding_id)
 
 let render_ids = fun render ids -> ids |> List.map render |> String.concat ", "
 
@@ -201,7 +201,7 @@ let render_function_parameter = fun (parameter: function_parameter) ->
       "=default"
     else
       ""
-  ) ^ ":" ^ PatId.to_string parameter.pattern_id
+  ) ^ ":" ^ PatternArenaId.to_string parameter.pattern_id
 
 let render_apply_argument = fun (argument: apply_argument) ->
   render_label argument.label ^ (
@@ -209,13 +209,13 @@ let render_apply_argument = fun (argument: apply_argument) ->
       "(implicit)"
     else
       ""
-  ) ^ ":" ^ ExprId.to_string argument.value_id
+  ) ^ ":" ^ ExprArenaId.to_string argument.value_id
 
 let render_record_pattern_field = fun (field: record_pattern_field) ->
-  field.label ^ "=" ^ PatId.to_string field.pattern_id
+  field.label ^ "=" ^ PatternArenaId.to_string field.pattern_id
 
 let render_record_expr_field = fun (field: record_expr_field) ->
-  field.label ^ "=" ^ ExprId.to_string field.value_id
+  field.label ^ "=" ^ ExprArenaId.to_string field.value_id
 
 let render_pattern_desc = function
   | PVar name ->
@@ -235,14 +235,14 @@ let render_pattern_desc = function
   | PUnit ->
       "unit"
   | PTuple elements ->
-      "tuple [" ^ render_ids PatId.to_string elements ^ "]"
+      "tuple [" ^ render_ids PatternArenaId.to_string elements ^ "]"
   | POr alternatives ->
-      "or [" ^ render_ids PatId.to_string alternatives ^ "]"
+      "or [" ^ render_ids PatternArenaId.to_string alternatives ^ "]"
   | PConstructor { constructor; arguments } ->
       "constructor "
-      ^ IdentPath.to_string constructor
+      ^ SurfacePath.to_string constructor
       ^ " ["
-      ^ render_ids PatId.to_string arguments
+      ^ render_ids PatternArenaId.to_string arguments
       ^ "]"
   | PRecord { fields; open_ } ->
       "record { "
@@ -253,9 +253,9 @@ let render_pattern_desc = function
       else
         ""
   | PList elements ->
-      "list [" ^ render_ids PatId.to_string elements ^ "]"
+      "list [" ^ render_ids PatternArenaId.to_string elements ^ "]"
   | PAlias { pattern_id; alias } ->
-      "alias " ^ alias ^ " = " ^ PatId.to_string pattern_id
+      "alias " ^ alias ^ " = " ^ PatternArenaId.to_string pattern_id
   | PFirstClassModule { module_name; package_type } ->
       let binding =
         match module_name with
@@ -270,7 +270,7 @@ let render_pattern_desc = function
       "module (" ^ binding ^ annotation ^ ")"
   | PPolyVariant { tag; payload } -> (
       match payload with
-      | Some pattern_id -> "poly_variant `" ^ tag ^ " " ^ PatId.to_string pattern_id
+      | Some pattern_id -> "poly_variant `" ^ tag ^ " " ^ PatternArenaId.to_string pattern_id
       | None -> "poly_variant `" ^ tag
     )
   | PUnsupported summary ->
@@ -278,7 +278,7 @@ let render_pattern_desc = function
 
 let render_expr_desc = function
   | EVar name ->
-      "var " ^ IdentPath.to_string name
+      "var " ^ SurfacePath.to_string name
   | EInt digits ->
       "int " ^ digits
   | EFloat digits ->
@@ -292,13 +292,13 @@ let render_expr_desc = function
   | EUnit ->
       "unit"
   | ETuple elements ->
-      "tuple [" ^ render_ids ExprId.to_string elements ^ "]"
+      "tuple [" ^ render_ids ExprArenaId.to_string elements ^ "]"
   | EArray elements ->
-      "array [" ^ render_ids ExprId.to_string elements ^ "]"
+      "array [" ^ render_ids ExprArenaId.to_string elements ^ "]"
   | ESequence elements ->
-      "sequence [" ^ render_ids ExprId.to_string elements ^ "]"
+      "sequence [" ^ render_ids ExprArenaId.to_string elements ^ "]"
   | EWhile { condition_id; body_id } ->
-      "while " ^ ExprId.to_string condition_id ^ " do " ^ ExprId.to_string body_id
+      "while " ^ ExprArenaId.to_string condition_id ^ " do " ^ ExprArenaId.to_string body_id
   | EFor {
     iterator_pattern_id;
     descending;
@@ -306,27 +306,27 @@ let render_expr_desc = function
     end_id;
     body_id
   } ->
-      "for " ^ PatId.to_string iterator_pattern_id ^ " = " ^ ExprId.to_string start_id ^ (
+      "for " ^ PatternArenaId.to_string iterator_pattern_id ^ " = " ^ ExprArenaId.to_string start_id ^ (
         if descending then
           " downto "
         else
           " to "
-      ) ^ ExprId.to_string end_id ^ " do " ^ ExprId.to_string body_id
+      ) ^ ExprArenaId.to_string end_id ^ " do " ^ ExprArenaId.to_string body_id
   | EFun (parameters, body_id) ->
       "fun ["
       ^ (parameters |> List.map render_function_parameter |> String.concat ", ")
       ^ "] -> "
-      ^ ExprId.to_string body_id
+      ^ ExprArenaId.to_string body_id
   | EApply (callee_id, arguments) ->
       "apply "
-      ^ ExprId.to_string callee_id
+      ^ ExprArenaId.to_string callee_id
       ^ " ["
       ^ (arguments |> List.map render_apply_argument |> String.concat ", ")
       ^ "]"
   | ERecord { base_id; fields } ->
       let base =
         match base_id with
-        | Some expr_id -> "base=" ^ ExprId.to_string expr_id ^ " "
+        | Some expr_id -> "base=" ^ ExprArenaId.to_string expr_id ^ " "
         | None -> ""
       in
       "record "
@@ -335,20 +335,20 @@ let render_expr_desc = function
       ^ (fields |> List.map render_record_expr_field |> String.concat ", ")
       ^ " }"
   | EFieldAccess { receiver_id; label } ->
-      "field " ^ ExprId.to_string receiver_id ^ "." ^ label
+      "field " ^ ExprArenaId.to_string receiver_id ^ "." ^ label
   | EFieldAssign { receiver_id; label; value_id } ->
-      "field_assign " ^ ExprId.to_string receiver_id ^ "." ^ label ^ " <- " ^ ExprId.to_string value_id
+      "field_assign " ^ ExprArenaId.to_string receiver_id ^ "." ^ label ^ " <- " ^ ExprArenaId.to_string value_id
   | EIndex (collection_id, index_id) ->
-      "index " ^ ExprId.to_string collection_id ^ " [" ^ ExprId.to_string index_id ^ "]"
+      "index " ^ ExprArenaId.to_string collection_id ^ " [" ^ ExprArenaId.to_string index_id ^ "]"
   | ELet (binding_ids, body_id) ->
-      "let [" ^ render_ids BindingId.to_string binding_ids ^ "] in " ^ ExprId.to_string body_id
+      "let [" ^ render_ids BindingArenaId.to_string binding_ids ^ "] in " ^ ExprArenaId.to_string body_id
   | EIf (condition_id, then_id, else_id) ->
       "if "
-      ^ ExprId.to_string condition_id
+      ^ ExprArenaId.to_string condition_id
       ^ " then "
-      ^ ExprId.to_string then_id
+      ^ ExprArenaId.to_string then_id
       ^ " else "
-      ^ ExprId.to_string else_id
+      ^ ExprArenaId.to_string else_id
   | EMatch (scrutinee_id, cases) ->
       let cases_text =
         cases
@@ -356,18 +356,18 @@ let render_expr_desc = function
           (fun (case: match_case) ->
             let guard_text =
               match case.guard_id with
-              | Some guard_id -> " when " ^ ExprId.to_string guard_id
+              | Some guard_id -> " when " ^ ExprArenaId.to_string guard_id
               | None -> ""
             in
             "("
-            ^ PatId.to_string case.pattern_id
+            ^ PatternArenaId.to_string case.pattern_id
             ^ guard_text
             ^ " -> "
-            ^ ExprId.to_string case.body_id
+            ^ ExprArenaId.to_string case.body_id
             ^ ")")
         |> String.concat ", "
       in
-      "match " ^ ExprId.to_string scrutinee_id ^ " with [" ^ cases_text ^ "]"
+      "match " ^ ExprArenaId.to_string scrutinee_id ^ " with [" ^ cases_text ^ "]"
   | ETry (body_id, cases) ->
       let cases_text =
         cases
@@ -375,32 +375,32 @@ let render_expr_desc = function
           (fun (case: match_case) ->
             let guard_text =
               match case.guard_id with
-              | Some guard_id -> " when " ^ ExprId.to_string guard_id
+              | Some guard_id -> " when " ^ ExprArenaId.to_string guard_id
               | None -> ""
             in
             "("
-            ^ PatId.to_string case.pattern_id
+            ^ PatternArenaId.to_string case.pattern_id
             ^ guard_text
             ^ " -> "
-            ^ ExprId.to_string case.body_id
+            ^ ExprArenaId.to_string case.body_id
             ^ ")")
         |> String.concat ", "
       in
-      "try " ^ ExprId.to_string body_id ^ " with [" ^ cases_text ^ "]"
+      "try " ^ ExprArenaId.to_string body_id ^ " with [" ^ cases_text ^ "]"
   | EPolyVariant { tag; payload } -> (
       match payload with
-      | Some expr_id -> "poly_variant `" ^ tag ^ " " ^ ExprId.to_string expr_id
+      | Some expr_id -> "poly_variant `" ^ tag ^ " " ^ ExprArenaId.to_string expr_id
       | None -> "poly_variant `" ^ tag
     )
   | ECoerce { value_id; target_type } ->
-      "coerce " ^ ExprId.to_string value_id ^ " :> " ^ TypePrinter.type_to_string target_type
+      "coerce " ^ ExprArenaId.to_string value_id ^ " :> " ^ TypePrinter.type_to_string target_type
   | EModulePack { module_path; package_type } ->
       let annotation =
         match package_type with
         | Some package_type -> " : " ^ TypePrinter.type_to_string package_type
         | None -> ""
       in
-      "pack " ^ IdentPath.to_string module_path ^ annotation
+      "pack " ^ SurfacePath.to_string module_path ^ annotation
   | ELocalModulePack { local_scope; package_type } ->
       let annotation =
         match package_type with
@@ -411,7 +411,7 @@ let render_expr_desc = function
       ^ (local_scope.binding_groups
       |> List.map
         (fun (group: local_module_binding_group) ->
-          "[" ^ render_ids BindingId.to_string group.binding_ids ^ "]")
+          "[" ^ render_ids BindingArenaId.to_string group.binding_ids ^ "]")
       |> String.concat " ")
       ^ (
         match local_scope.type_decls with
@@ -432,7 +432,7 @@ let render_expr_desc = function
       ^ (local_scope.binding_groups
       |> List.map
         (fun (group: local_module_binding_group) ->
-          "[" ^ render_ids BindingId.to_string group.binding_ids ^ "]")
+          "[" ^ render_ids BindingArenaId.to_string group.binding_ids ^ "]")
       |> String.concat " ")
       ^ (
         match local_scope.type_decls with
@@ -446,9 +446,9 @@ let render_expr_desc = function
             )
       )
       ^ " in "
-      ^ ExprId.to_string body_id
+      ^ ExprArenaId.to_string body_id
   | ELocalOpen { module_path; body_id } ->
-      "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
+      "local_open " ^ SurfacePath.to_string module_path ^ " (" ^ ExprArenaId.to_string body_id ^ ")"
   | EUnsupported summary ->
       "unsupported(" ^ summary ^ ")"
   | EHole summary ->
@@ -460,33 +460,33 @@ let render_binding = fun (binding: binding) ->
     | Some name -> name
     | None -> "_"
   in
-  let qualified_name = IdentPath.to_string (IdentPath.append_name binding.scope_path name) in
+  let qualified_name = SurfacePath.to_string (SurfacePath.append_name binding.scope_path name) in
   "  "
-  ^ BindingId.to_string binding.binding_id
+  ^ BindingArenaId.to_string binding.binding_id
   ^ " "
   ^ qualified_name
   ^ " "
-  ^ PatId.to_string binding.pattern_id
+  ^ PatternArenaId.to_string binding.pattern_id
   ^ (
     match binding.annotation with
     | Some annotation -> " : " ^ TypePrinter.scheme_to_string annotation
     | None -> ""
   )
   ^ " "
-  ^ ExprId.to_string binding.value_id
+  ^ ExprArenaId.to_string binding.value_id
   ^ " recursive="
   ^ Bool.to_string binding.recursive
 
 let record_pattern_field_to_json = fun (field: record_pattern_field) ->
   Data.Json.Object [
     ("label", Data.Json.String field.label);
-    ("pattern_id", Data.Json.Int (PatId.to_int field.pattern_id));
+    ("pattern_id", Data.Json.Int (PatternArenaId.to_int field.pattern_id));
   ]
 
 let record_expr_field_to_json = fun (field: record_expr_field) ->
   Data.Json.Object [
     ("label", Data.Json.String field.label);
-    ("value_id", Data.Json.Int (ExprId.to_int field.value_id));
+    ("value_id", Data.Json.Int (ExprArenaId.to_int field.value_id));
   ]
 
 let local_module_binding_group_to_json = fun (group: local_module_binding_group) ->
@@ -494,14 +494,14 @@ let local_module_binding_group_to_json = fun (group: local_module_binding_group)
     (
       "binding_ids",
       Data.Json.Array (List.map
-        (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id))
+        (fun binding_id -> Data.Json.Int (BindingArenaId.to_int binding_id))
         group.binding_ids)
     );
   ]
 
 let local_module_type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   Data.Json.Object [
-    ("scope_path", Data.Json.String (IdentPath.to_string type_decl.scope_path));
+    ("scope_path", Data.Json.String (SurfacePath.to_string type_decl.scope_path));
     ("declaration", TypeDecl.to_json type_decl.declaration);
   ]
 
@@ -533,10 +533,10 @@ let pattern_desc_to_json = function
   ]
   | PConstructor { constructor; arguments } -> Data.Json.Object [
     ("tag", Data.Json.String "constructor");
-    ("constructor", Data.Json.String (IdentPath.to_string constructor));
+    ("constructor", Data.Json.String (SurfacePath.to_string constructor));
     (
       "arguments",
-      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) arguments)
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatternArenaId.to_int pat_id)) arguments)
     );
   ]
   | PRecord { fields; open_ } -> Data.Json.Object [
@@ -548,12 +548,12 @@ let pattern_desc_to_json = function
     ("tag", Data.Json.String "list");
     (
       "elements",
-      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) elements)
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatternArenaId.to_int pat_id)) elements)
     );
   ]
   | PAlias { pattern_id; alias } -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
-    ("pattern_id", Data.Json.Int (PatId.to_int pattern_id));
+    ("pattern_id", Data.Json.Int (PatternArenaId.to_int pattern_id));
     ("alias", Data.Json.String alias)
   ]
   | PFirstClassModule { module_name; package_type } ->
@@ -575,7 +575,7 @@ let pattern_desc_to_json = function
         (
           "payload",
           match payload with
-          | Some pattern_id -> Data.Json.Int (PatId.to_int pattern_id)
+          | Some pattern_id -> Data.Json.Int (PatternArenaId.to_int pattern_id)
           | None -> Data.Json.Null
         );
       ]
@@ -596,14 +596,14 @@ let pattern_desc_to_json = function
     ("tag", Data.Json.String "tuple");
     (
       "elements",
-      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) elements)
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatternArenaId.to_int pat_id)) elements)
     );
   ]
   | POr alternatives -> Data.Json.Object [
     ("tag", Data.Json.String "or");
     (
       "alternatives",
-      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatId.to_int pat_id)) alternatives)
+      Data.Json.Array (List.map (fun pat_id -> Data.Json.Int (PatternArenaId.to_int pat_id)) alternatives)
     );
   ]
   | PUnsupported summary -> Data.Json.Object [
@@ -614,12 +614,12 @@ let pattern_desc_to_json = function
 let match_case_to_json = fun (case: match_case) ->
   let guard_fields =
     match case.guard_id with
-    | Some guard_id -> [ ("guard_id", Data.Json.Int (ExprId.to_int guard_id)); ]
+    | Some guard_id -> [ ("guard_id", Data.Json.Int (ExprArenaId.to_int guard_id)); ]
     | None -> []
   in
   Data.Json.Object ([
-    ("pattern_id", Data.Json.Int (PatId.to_int case.pattern_id));
-    ("body_id", Data.Json.Int (ExprId.to_int case.body_id));
+    ("pattern_id", Data.Json.Int (PatternArenaId.to_int case.pattern_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int case.body_id));
   ]
   @ guard_fields)
 
@@ -637,11 +637,11 @@ let label_to_json = function
 let function_parameter_to_json = fun (parameter: function_parameter) ->
   Data.Json.Object [
     ("label", label_to_json parameter.label);
-    ("pattern_id", Data.Json.Int (PatId.to_int parameter.pattern_id));
+    ("pattern_id", Data.Json.Int (PatternArenaId.to_int parameter.pattern_id));
     (
       "default_value_id",
       match parameter.default_value_id with
-      | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+      | Some expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)
       | None -> Data.Json.Null
     );
   ]
@@ -650,13 +650,13 @@ let apply_argument_to_json = fun (argument: apply_argument) ->
   Data.Json.Object [
     ("label", label_to_json argument.label);
     ("implicit", Data.Json.Bool argument.implicit);
-    ("value_id", Data.Json.Int (ExprId.to_int argument.value_id));
+    ("value_id", Data.Json.Int (ExprArenaId.to_int argument.value_id));
   ]
 
 let expr_desc_to_json = function
   | EVar name -> Data.Json.Object [
     ("tag", Data.Json.String "var");
-    ("name", Data.Json.String (IdentPath.to_string name))
+    ("name", Data.Json.String (SurfacePath.to_string name))
   ]
   | EInt digits -> Data.Json.Object [
     ("tag", Data.Json.String "int");
@@ -683,27 +683,27 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "tuple");
     (
       "elements",
-      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)) elements)
     );
   ]
   | EArray elements -> Data.Json.Object [
     ("tag", Data.Json.String "array");
     (
       "elements",
-      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)) elements)
     );
   ]
   | ESequence elements -> Data.Json.Object [
     ("tag", Data.Json.String "sequence");
     (
       "elements",
-      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprId.to_int expr_id)) elements)
+      Data.Json.Array (List.map (fun expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)) elements)
     );
   ]
   | EWhile { condition_id; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "while");
-    ("condition_id", Data.Json.Int (ExprId.to_int condition_id));
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("condition_id", Data.Json.Int (ExprArenaId.to_int condition_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | EFor {
     iterator_pattern_id;
@@ -713,67 +713,67 @@ let expr_desc_to_json = function
     body_id
   } -> Data.Json.Object [
     ("tag", Data.Json.String "for");
-    ("iterator_pattern_id", Data.Json.Int (PatId.to_int iterator_pattern_id));
+    ("iterator_pattern_id", Data.Json.Int (PatternArenaId.to_int iterator_pattern_id));
     ("descending", Data.Json.Bool descending);
-    ("start_id", Data.Json.Int (ExprId.to_int start_id));
-    ("end_id", Data.Json.Int (ExprId.to_int end_id));
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("start_id", Data.Json.Int (ExprArenaId.to_int start_id));
+    ("end_id", Data.Json.Int (ExprArenaId.to_int end_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | EFun (parameters, body_id) -> Data.Json.Object [
     ("tag", Data.Json.String "fun");
     ("parameters", Data.Json.Array (List.map function_parameter_to_json parameters));
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | EApply (callee_id, arguments) -> Data.Json.Object [
     ("tag", Data.Json.String "apply");
-    ("callee_id", Data.Json.Int (ExprId.to_int callee_id));
+    ("callee_id", Data.Json.Int (ExprArenaId.to_int callee_id));
     ("arguments", Data.Json.Array (List.map apply_argument_to_json arguments));
   ]
   | ERecord { base_id; fields } ->
       Data.Json.Object [ ("tag", Data.Json.String "record"); (
           "base_id",
           match base_id with
-          | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+          | Some expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)
           | None -> Data.Json.Null
         ); ("fields", Data.Json.Array (List.map record_expr_field_to_json fields)); ]
   | EFieldAccess { receiver_id; label } -> Data.Json.Object [
     ("tag", Data.Json.String "field_access");
-    ("receiver_id", Data.Json.Int (ExprId.to_int receiver_id));
+    ("receiver_id", Data.Json.Int (ExprArenaId.to_int receiver_id));
     ("label", Data.Json.String label);
   ]
   | EFieldAssign { receiver_id; label; value_id } -> Data.Json.Object [
     ("tag", Data.Json.String "field_assign");
-    ("receiver_id", Data.Json.Int (ExprId.to_int receiver_id));
+    ("receiver_id", Data.Json.Int (ExprArenaId.to_int receiver_id));
     ("label", Data.Json.String label);
-    ("value_id", Data.Json.Int (ExprId.to_int value_id));
+    ("value_id", Data.Json.Int (ExprArenaId.to_int value_id));
   ]
   | EIndex (collection_id, index_id) -> Data.Json.Object [
     ("tag", Data.Json.String "index");
-    ("collection_id", Data.Json.Int (ExprId.to_int collection_id));
-    ("index_id", Data.Json.Int (ExprId.to_int index_id));
+    ("collection_id", Data.Json.Int (ExprArenaId.to_int collection_id));
+    ("index_id", Data.Json.Int (ExprArenaId.to_int index_id));
   ]
   | ELet (binding_ids, body_id) -> Data.Json.Object [
     ("tag", Data.Json.String "let");
     (
       "binding_ids",
-      Data.Json.Array (List.map (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id)) binding_ids)
+      Data.Json.Array (List.map (fun binding_id -> Data.Json.Int (BindingArenaId.to_int binding_id)) binding_ids)
     );
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | EIf (condition_id, then_id, else_id) -> Data.Json.Object [
     ("tag", Data.Json.String "if");
-    ("condition_id", Data.Json.Int (ExprId.to_int condition_id));
-    ("then_id", Data.Json.Int (ExprId.to_int then_id));
-    ("else_id", Data.Json.Int (ExprId.to_int else_id));
+    ("condition_id", Data.Json.Int (ExprArenaId.to_int condition_id));
+    ("then_id", Data.Json.Int (ExprArenaId.to_int then_id));
+    ("else_id", Data.Json.Int (ExprArenaId.to_int else_id));
   ]
   | EMatch (scrutinee_id, cases) -> Data.Json.Object [
     ("tag", Data.Json.String "match");
-    ("scrutinee_id", Data.Json.Int (ExprId.to_int scrutinee_id));
+    ("scrutinee_id", Data.Json.Int (ExprArenaId.to_int scrutinee_id));
     ("cases", Data.Json.Array (List.map match_case_to_json cases));
   ]
   | ETry (body_id, cases) -> Data.Json.Object [
     ("tag", Data.Json.String "try");
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
     ("cases", Data.Json.Array (List.map match_case_to_json cases));
   ]
   | EPolyVariant { tag; payload } ->
@@ -783,19 +783,19 @@ let expr_desc_to_json = function
         (
           "payload",
           match payload with
-          | Some expr_id -> Data.Json.Int (ExprId.to_int expr_id)
+          | Some expr_id -> Data.Json.Int (ExprArenaId.to_int expr_id)
           | None -> Data.Json.Null
         );
       ]
   | ECoerce { value_id; target_type } -> Data.Json.Object [
     ("tag", Data.Json.String "coerce");
-    ("value_id", Data.Json.Int (ExprId.to_int value_id));
+    ("value_id", Data.Json.Int (ExprArenaId.to_int value_id));
     ("target_type", Data.Json.String (TypePrinter.type_to_string target_type));
   ]
   | EModulePack { module_path; package_type } ->
       Data.Json.Object [
         ("tag", Data.Json.String "module_pack");
-        ("module_path", Data.Json.String (IdentPath.to_string module_path));
+        ("module_path", Data.Json.String (SurfacePath.to_string module_path));
         (
           "package_type",
           match package_type with
@@ -818,12 +818,12 @@ let expr_desc_to_json = function
     ("tag", Data.Json.String "local_module");
     ("module_name", Data.Json.String module_name);
     ("local_scope", local_module_scope_to_json local_scope);
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | ELocalOpen { module_path; body_id } -> Data.Json.Object [
     ("tag", Data.Json.String "local_open");
-    ("module_path", Data.Json.String (IdentPath.to_string module_path));
-    ("body_id", Data.Json.Int (ExprId.to_int body_id));
+    ("module_path", Data.Json.String (SurfacePath.to_string module_path));
+    ("body_id", Data.Json.Int (ExprArenaId.to_int body_id));
   ]
   | EUnsupported summary -> Data.Json.Object [
     ("tag", Data.Json.String "unsupported");
@@ -843,7 +843,7 @@ let pattern_node_to_json = fun (node: pattern_node) ->
     | None -> []
   in
   Data.Json.Object ([
-    ("pat_id", Data.Json.Int (PatId.to_int node.pat_id));
+    ("pat_id", Data.Json.Int (PatternArenaId.to_int node.pat_id));
     ("origin_id", Data.Json.Int (OriginId.to_int node.origin_id));
     ("desc", pattern_desc_to_json node.desc);
   ]
@@ -851,7 +851,7 @@ let pattern_node_to_json = fun (node: pattern_node) ->
 
 let expr_node_to_json = fun (node: expr_node) ->
   Data.Json.Object [
-    ("expr_id", Data.Json.Int (ExprId.to_int node.expr_id));
+    ("expr_id", Data.Json.Int (ExprArenaId.to_int node.expr_id));
     ("origin_id", Data.Json.Int (OriginId.to_int node.origin_id));
     ("desc", expr_desc_to_json node.desc);
   ]
@@ -870,16 +870,16 @@ let binding_to_json = fun (binding: binding) ->
     | None -> []
   in
   Data.Json.Object ([
-    ("binding_id", Data.Json.Int (BindingId.to_int binding.binding_id));
+    ("binding_id", Data.Json.Int (BindingArenaId.to_int binding.binding_id));
     ("origin_id", Data.Json.Int (OriginId.to_int binding.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments binding.scope_path
+      Data.Json.Array (SurfacePath.to_segments binding.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("name", name_json);
-    ("pattern_id", Data.Json.Int (PatId.to_int binding.pattern_id));
-    ("value_id", Data.Json.Int (ExprId.to_int binding.value_id));
+    ("pattern_id", Data.Json.Int (PatternArenaId.to_int binding.pattern_id));
+    ("value_id", Data.Json.Int (ExprArenaId.to_int binding.value_id));
     ("recursive", Data.Json.Bool binding.recursive);
   ]
   @ annotation_fields)
@@ -896,7 +896,7 @@ let to_string = fun arena ->
     arena.patterns
     |> List.map
       (fun (node: pattern_node) ->
-        "  " ^ PatId.to_string node.pat_id ^ " " ^ OriginId.to_string node.origin_id ^ (
+        "  " ^ PatternArenaId.to_string node.pat_id ^ " " ^ OriginId.to_string node.origin_id ^ (
           match node.annotation with
           | Some annotation -> " : " ^ TypePrinter.type_to_string annotation
           | None -> ""
@@ -907,7 +907,7 @@ let to_string = fun arena ->
   |> List.map
     (fun (node: expr_node) ->
       "  "
-      ^ ExprId.to_string node.expr_id
+      ^ ExprArenaId.to_string node.expr_id
       ^ " "
       ^ OriginId.to_string node.origin_id
       ^ " "

@@ -2,12 +2,12 @@ open Std
 open Model
 
 type local_type_decl_index = {
-  by_path: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
+  by_path: (SurfacePath.t, FileSummary.type_decl) Collections.HashMap.t;
   by_id: (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t;
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
 
 let local_type_decl_index = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity (List.length type_decls) in
@@ -24,11 +24,11 @@ let qualify_local_head = fun local_types module_name (head: TypeRepr.named_type_
   match Collections.HashMap.get local_types.by_id head.type_constructor_id with
   | Some type_decl -> {
     head
-    with name = IdentPath.prepend_name module_name (type_decl_key type_decl)
+    with name = SurfacePath.prepend_name module_name (type_decl_key type_decl)
   }
   | None -> (
       match Collections.HashMap.get local_types.by_path head.name with
-      | Some _ -> { head with name = IdentPath.prepend_name module_name head.name }
+      | Some _ -> { head with name = SurfacePath.prepend_name module_name head.name }
       | None -> head
     )
 
@@ -167,12 +167,12 @@ let qualify_inline_record_labels = fun local_types module_name labels ->
         { label with field_type = qualified_field_type })
 
 let qualify_exports = fun ~module_name ~type_decls exports ->
-  let module_path = IdentPath.of_name module_name in
+  let module_path = SurfacePath.of_name module_name in
   let local_types = local_type_decl_index type_decls in
   List.map
     (fun (name, scheme) ->
       (
-        IdentPath.append_path module_path (IdentPath.of_string name),
+        SurfacePath.append_path module_path name,
         qualify_scheme_with_local_types local_types ~module_name scheme
       ))
     exports
@@ -236,7 +236,7 @@ let qualify_type_decls = fun ~module_name type_decls ->
               { label with field_type = qualified_field_type })
       in
       {
-        FileSummary.scope_path = IdentPath.prepend_name module_name type_decl.scope_path;
+        FileSummary.scope_path = SurfacePath.prepend_name module_name type_decl.scope_path;
         declaration = { declaration with manifest; constructors; labels }
       })
     type_decls

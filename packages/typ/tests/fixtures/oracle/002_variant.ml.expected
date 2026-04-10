@@ -14,6 +14,20 @@
         }
       ]
     },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "pick",
+          "scheme": "bool -> color"
+        }
+      ],
+      "typ": [
+        {
+          "name": "pick",
+          "scheme": "bool -> color"
+        }
+      ]
+    },
     "type_names": {
       "ocamlc": [
         "color"
@@ -30,69 +44,12 @@
         "scheme": "bool -> color"
       }
     ],
-    "interface_lines": [
-      "type color = Red | Blue",
-      "val pick : bool -> color"
-    ],
-    "interface_text": "type color = Red | Blue\nval pick : bool -> color",
+    "interface_text": "type color = Red | Blue\nval pick : bool -> color\n",
+    "type_aliases": [],
     "type_names": [
       "color"
     ],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
-      "    Tstr_type Rec",
-      "    [",
-      "      type_declaration color/4 (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
-      "        ptype_params =",
-      "          []",
-      "        ptype_constraints =",
-      "          []",
-      "        ptype_kind =",
-      "          Ttype_variant",
-      "            [",
-      "              (packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+7])",
-      "                Red/5",
-      "                []",
-      "                None",
-      "              (packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])",
-      "                Blue/6",
-      "                []",
-      "                None",
-      "            ]",
-      "        ptype_private = Public",
-      "        ptype_manifest =",
-      "          None",
-      "    ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+8])",
-      "          Tpat_var \"pick/7\"",
-      "        expression (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8]) ghost",
-      "          Texp_function",
-      "          [",
-      "            Nolabel",
-      "            Param_pat",
-      "              pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+13])",
-      "                Tpat_var \"flag/9\"",
-      "          ]",
-      "          Tfunction_body",
-      "            expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
-      "              Texp_ifthenelse",
-      "              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+5]..packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+9])",
-      "                Texp_ident \"flag/9\"",
-      "              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+7])",
-      "                Texp_construct \"Red\"",
-      "                []",
-      "              Some",
-      "                expression (packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])",
-      "                  Texp_construct \"Blue\"",
-      "                  []",
-      "    ]",
-      "]"
-    ]
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])\n    Tstr_type Rec\n    [\n      type_declaration color/4 (packages/typ/tests/fixtures/oracle/002_variant.ml[1,0+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])\n        ptype_params =\n          []\n        ptype_constraints =\n          []\n        ptype_kind =\n          Ttype_variant\n            [\n              (packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[2,13+7])\n                Red/5\n                []\n                None\n              (packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[3,21+8])\n                Blue/6\n                []\n                None\n            ]\n        ptype_private = Public\n        ptype_manifest =\n          None\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+0]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+8])\n          Tpat_var \"pick/7\"\n        expression (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+9]..packages/typ/tests/fixtures/oracle/002_variant.ml[5,31+13])\n                Tpat_var \"flag/9\"\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+2]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])\n              Texp_ifthenelse\n              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+5]..packages/typ/tests/fixtures/oracle/002_variant.ml[6,47+9])\n                Texp_ident \"flag/9\"\n              expression (packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[7,62+7])\n                Texp_construct \"Red\"\n                []\n              Some\n                expression (packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+4]..packages/typ/tests/fixtures/oracle/002_variant.ml[9,77+8])\n                  Texp_construct \"Blue\"\n                  []\n    ]\n]"
   },
   "typ": {
     "body_arena": {
@@ -147,7 +104,7 @@
             "body_id": 3,
             "parameters": [
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
@@ -717,11 +674,13 @@
           "constructors": [
             {
               "constructor_id": 0,
+              "generalized": false,
               "name": "Red",
               "scheme": "color"
             },
             {
               "constructor_id": 1,
+              "generalized": false,
               "name": "Blue",
               "scheme": "color"
             }

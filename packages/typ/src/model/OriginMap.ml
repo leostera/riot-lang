@@ -1,10 +1,10 @@
 open Std
 
 type semantic_id =
-  | Item of ItemId.t
-  | Binding of BindingId.t
-  | Expr of ExprId.t
-  | Pattern of PatId.t
+  | Item of ItemArenaId.t
+  | Binding of BindingArenaId.t
+  | Expr of ExprArenaId.t
+  | Pattern of PatternArenaId.t
 
 type kind =
   | ItemKind
@@ -30,10 +30,10 @@ type t = {
 
 let semantic_id_key = fun value ->
   match value with
-  | Item item_id -> ItemId.to_int item_id lsl 2
-  | Binding binding_id -> (BindingId.to_int binding_id lsl 2) lor 1
-  | Expr expr_id -> (ExprId.to_int expr_id lsl 2) lor 2
-  | Pattern pat_id -> (PatId.to_int pat_id lsl 2) lor 3
+  | Item item_id -> ItemArenaId.to_int item_id lsl 2
+  | Binding binding_id -> (BindingArenaId.to_int binding_id lsl 2) lor 1
+  | Expr expr_id -> (ExprArenaId.to_int expr_id lsl 2) lor 2
+  | Pattern pat_id -> (PatternArenaId.to_int pat_id lsl 2) lor 3
 
 let empty = {
   origins = [];
@@ -67,10 +67,10 @@ let kind_of_semantic_id = fun value ->
 
 let semantic_id_equal = fun left right ->
   match (left, right) with
-  | Item left, Item right -> ItemId.equal left right
-  | Binding left, Binding right -> BindingId.equal left right
-  | Expr left, Expr right -> ExprId.equal left right
-  | Pattern left, Pattern right -> PatId.equal left right
+  | Item left, Item right -> ItemArenaId.equal left right
+  | Binding left, Binding right -> BindingArenaId.equal left right
+  | Expr left, Expr right -> ExprArenaId.equal left right
+  | Pattern left, Pattern right -> PatternArenaId.equal left right
   | _ -> false
 
 let find = fun origins origin_id ->
@@ -96,28 +96,28 @@ let kind_to_string = fun value ->
 
 let semantic_id_to_string = fun value ->
   match value with
-  | Item item_id -> ItemId.to_string item_id
-  | Binding binding_id -> BindingId.to_string binding_id
-  | Expr expr_id -> ExprId.to_string expr_id
-  | Pattern pat_id -> PatId.to_string pat_id
+  | Item item_id -> ItemArenaId.to_string item_id
+  | Binding binding_id -> BindingArenaId.to_string binding_id
+  | Expr expr_id -> ExprArenaId.to_string expr_id
+  | Pattern pat_id -> PatternArenaId.to_string pat_id
 
 let semantic_id_to_json = fun value ->
   match value with
   | Item item_id -> Data.Json.Object [
     ("tag", Data.Json.String "item");
-    ("id", Data.Json.Int (ItemId.to_int item_id));
+    ("id", Data.Json.Int (ItemArenaId.to_int item_id));
   ]
   | Binding binding_id -> Data.Json.Object [
     ("tag", Data.Json.String "binding");
-    ("id", Data.Json.Int (BindingId.to_int binding_id));
+    ("id", Data.Json.Int (BindingArenaId.to_int binding_id));
   ]
   | Expr expr_id -> Data.Json.Object [
     ("tag", Data.Json.String "expr");
-    ("id", Data.Json.Int (ExprId.to_int expr_id));
+    ("id", Data.Json.Int (ExprArenaId.to_int expr_id));
   ]
   | Pattern pat_id -> Data.Json.Object [
     ("tag", Data.Json.String "pattern");
-    ("id", Data.Json.Int (PatId.to_int pat_id));
+    ("id", Data.Json.Int (PatternArenaId.to_int pat_id));
   ]
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->

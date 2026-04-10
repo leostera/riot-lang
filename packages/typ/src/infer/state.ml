@@ -17,7 +17,7 @@ type t = {
   mutable rigid_equations: (int * TypeRepr.t) list;
 }
 
-let qualify_name = IdentPath.append_name
+let qualify_name = SurfacePath.append_name
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
   qualify_name type_decl.scope_path type_decl.declaration.type_name
@@ -30,7 +30,7 @@ let bind_type_decls = fun type_decls introduced ->
         List.filter
           (fun (candidate: FileSummary.type_decl) ->
             not
-              (IdentPath.equal (qualify_name candidate.scope_path candidate.declaration.type_name) key))
+              (SurfacePath.equal (qualify_name candidate.scope_path candidate.declaration.type_name) key))
           acc
       in
       acc @ [ type_decl ])
@@ -40,7 +40,7 @@ let bind_type_decls = fun type_decls introduced ->
 let prefix_type_decls = fun prefix type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path })
+      { type_decl with scope_path = SurfacePath.append_path prefix type_decl.scope_path })
     type_decls
 
 let same_named_head left right = TypeConstructorId.equal
@@ -72,7 +72,7 @@ let resolve_named_type_decl_in_index = Collections.HashMap.get
 
 let same_named_type_head left right =
   TypeConstructorId.equal TypeRepr.(left.type_constructor_id) TypeRepr.(right.type_constructor_id)
-  && IdentPath.equal TypeRepr.(left.name) TypeRepr.(right.name)
+  && SurfacePath.equal TypeRepr.(left.name) TypeRepr.(right.name)
 
 let nonrec_resolvers = fun by_path (type_decl: FileSummary.type_decl) ->
   let current_id = type_decl.declaration.type_constructor_id in

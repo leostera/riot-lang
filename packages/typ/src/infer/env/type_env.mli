@@ -14,14 +14,14 @@ val visible_type_decls: t -> FileSummary.type_decl list
 
 val bind: t -> t -> t
 
-val add_open: root:IdentPath.t -> t -> t -> t
+val add_open: root:SurfacePath.t -> t -> t -> t
 
-val lookup: t -> IdentPath.t -> FileSummary.type_decl option
+val lookup: t -> SurfacePath.t -> FileSummary.type_decl option
 
 val lookup_by_id: t -> TypeConstructorId.t -> FileSummary.type_decl option
 
-val qualify_entries: IdentPath.t -> t -> t
+val qualify_entries: SurfacePath.t -> t -> t
 
-val entries_for_include: t -> IdentPath.t -> t
+val entries_for_include: t -> SurfacePath.t -> t
 
-val entries_for_module_alias: t -> alias_name:string -> module_path:IdentPath.t -> t
+val entries_for_module_alias: t -> alias_name:string -> module_path:SurfacePath.t -> t

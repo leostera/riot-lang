@@ -10,9 +10,15 @@ module Value_env = Value_env
 module Name_map = Collections.Map.Make (String)
 
 module Path_map = Collections.Map.Make (struct
-  type t = IdentPath.t
+  type t = SurfacePath.t
 
-  let compare = IdentPath.compare
+  let compare = SurfacePath.compare
+end)
+
+module Entity_map = Collections.Map.Make (struct
+  type t = EntityId.t
+
+  let compare = EntityId.compare
 end)
 
 type bindings = Binding.t list
@@ -50,9 +56,9 @@ type scope_locals = {
 
 type item_scope = {
   locals: scope_locals Path_map.t;
-  opens: IdentPath.t list Path_map.t;
+  opens: SurfacePath.t list Path_map.t;
   mutable locals_cache: t Path_map.t;
-  mutable opens_cache: IdentPath.t list Path_map.t;
+  mutable opens_cache: SurfacePath.t list Path_map.t;
 }
 
 let empty_module_scope = {
@@ -75,7 +81,7 @@ let empty = {
 let empty_summary = Summary2.empty
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
 
 let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
   let local_type_decls = Type_env.type_decls scope.types in
@@ -139,7 +145,7 @@ let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
             match Collections.HashMap.get by_id head.type_constructor_id with
             | Some type_decl -> {
               head
-              with name = IdentPath.append_path root (type_decl_key type_decl)
+              with name = SurfacePath.append_path root (type_decl_key type_decl)
             }
             | None -> head
           in
@@ -208,14 +214,12 @@ let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
       TypeScheme.of_explicit ~quantified qualified_body
 
 let qualify_binding_with_scope = fun ~root (scope: module_scope) binding ->
-  let path =
-    if IdentPath.is_empty root then
-      Binding.path binding
-    else
-      IdentPath.append_path root (Binding.path binding)
-  in
   binding
-  |> Binding.with_path path
+  |> Binding.with_path
+       (if SurfacePath.is_empty root then
+          Binding.path binding
+        else
+          EntityId.qualify ~prefix:root (Binding.path binding))
   |> Binding.with_scheme (qualify_scheme_with_scope ~root scope (Binding.scheme binding))
 
 let empty_item_scope = {
@@ -255,15 +259,9 @@ let module_scope_of_env: t -> module_scope = fun env ->
   }
 
 let binding_name_of_path = fun path ->
-  match IdentPath.last_name path with
+  match SurfacePath.last_name path with
   | Some name -> name
   | None -> ""
-
-let summary_ident_of_ident = fun ident ->
-  { Summary2.local_id = Binding.ident_local_id ident; name = Binding.ident_name ident }
-
-let ident_of_summary_ident = fun (ident: Summary2.ident) ->
-  Binding.make_ident ~local_id:ident.local_id ~name:ident.name
 
 let summary_provenance_of_provenance = fun value ->
   match value with
@@ -301,7 +299,7 @@ let provenance_of_summary_provenance = fun value ->
 
 let summary_binding_of_binding = fun binding ->
   {
-    Summary2.ident = summary_ident_of_ident (Binding.ident binding);
+    Summary2.ident = Binding.id binding;
     path = Binding.path binding;
     scheme = Binding.scheme binding;
     provenance = summary_provenance_of_provenance (Binding.provenance binding)
@@ -309,13 +307,13 @@ let summary_binding_of_binding = fun binding ->
 
 let binding_of_summary_binding = fun (binding: Summary2.binding) ->
   Binding.make
-    ~ident:(ident_of_summary_ident binding.ident)
-    ~path:binding.path
+    ~id:binding.ident
+    ~surface_path:(EntityId.surface_path binding.path)
     ~scheme:binding.scheme
     ~provenance:(provenance_of_summary_provenance binding.provenance)
 
 let qualify_type_decl = fun prefix (type_decl: FileSummary.type_decl) ->
-  { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path }
+  { type_decl with scope_path = SurfacePath.append_path prefix type_decl.scope_path }
 
 let dedupe_record_decls = fun record_decls ->
   let seen = Collections.HashSet.with_capacity (List.length record_decls) in
@@ -363,11 +361,11 @@ and bind_module_tables: module_table -> module_table -> module_table = fun exist
     introduced
     existing
 
-let rec insert_scope_at_path: module_table -> module_path:IdentPath.t -> module_scope -> module_table = fun modules ~module_path introduced ->
-  match IdentPath.uncons module_path with
+let rec insert_scope_at_path: module_table -> module_path:SurfacePath.t -> module_scope -> module_table = fun modules ~module_path introduced ->
+  match SurfacePath.uncons module_path with
   | None -> modules
   | Some (name, tail) ->
-      if IdentPath.is_empty tail then
+      if SurfacePath.is_empty tail then
         let binding =
           match Name_map.find_opt name modules with
           | Some existing -> { name; components = bind_scopes existing.components introduced }
@@ -389,7 +387,7 @@ let rec insert_scope_at_path: module_table -> module_path:IdentPath.t -> module_
         } in
         Name_map.add name binding modules
 
-let bind_in_scope_modules: t -> scope_path:IdentPath.t -> t -> t = fun env ~scope_path introduced ->
+let bind_in_scope_modules: t -> scope_path:SurfacePath.t -> t -> t = fun env ~scope_path introduced ->
   {
     env
     with modules = insert_scope_at_path
@@ -399,10 +397,10 @@ let bind_in_scope_modules: t -> scope_path:IdentPath.t -> t -> t = fun env ~scop
   }
 
 let split_relative_binding = fun binding ->
-  match IdentPath.split_last (Binding.path binding) with
-  | Some (scope_path, name) when not (IdentPath.is_empty scope_path) -> Some (
-    scope_path,
-    Binding.with_path (IdentPath.of_name name) binding
+  match EntityId.split_last (Binding.path binding) with
+  | Some (scope_path, name) when not (EntityId.is_empty scope_path) -> Some (
+    EntityId.surface_path scope_path,
+    Binding.with_path (EntityId.of_name name) binding
   )
   | _ -> None
 
@@ -434,7 +432,7 @@ let bind = fun (env: t) (introduced: t) ->
   }
 
 let bind_in_scope = fun (env: t) ~scope_path (introduced: t) ->
-  if IdentPath.is_empty scope_path then
+  if SurfacePath.is_empty scope_path then
     bind env introduced
   else
     let qualified_type_decls = Type_env.type_decls introduced.types
@@ -465,9 +463,9 @@ let of_bindings = fun bindings ->
 let of_type_decls = fun type_decls ->
   type_decls |> List.fold_left
     (fun env (type_decl: FileSummary.type_decl) ->
-      let local_decl = { type_decl with scope_path = IdentPath.empty } in
+      let local_decl = { type_decl with scope_path = SurfacePath.empty } in
       let introduced = env_of_local_type_decls [ local_decl ] in
-      if IdentPath.is_empty type_decl.scope_path then
+      if SurfacePath.is_empty type_decl.scope_path then
         bind_scopes (module_scope_of_env env) (module_scope_of_env introduced) |> fun merged ->
           {
             env
@@ -487,23 +485,35 @@ let of_type_decls = fun type_decls ->
         bind_in_scope_modules env ~scope_path:type_decl.scope_path introduced)
     { empty with summary = Summary2.snapshot ~bindings:[] ~type_decls }
 
-let of_entries = fun ~make_ident ~provenance entries ->
+let of_entries = fun ~make_id ~provenance entries ->
   entries
   |> List.map
-    (fun (path, scheme) ->
+    (fun (surface_path, scheme) ->
       Binding.make
-        ~ident:(make_ident (binding_name_of_path path))
-        ~path
+        ~id:(make_id surface_path)
+        ~surface_path
         ~scheme:(TypeScheme.copy scheme)
         ~provenance)
   |> of_bindings
 
-let singleton = fun ~make_ident ~name ~scheme ~provenance ->
+let singleton = fun ~make_id ~name ~scheme ~provenance ->
   of_bindings
-    [ Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance ]
+    [
+      Binding.make
+        ~id:(make_id (SurfacePath.of_name name))
+        ~surface_path:(SurfacePath.of_name name)
+        ~scheme
+        ~provenance;
+    ]
 
-let singleton_constructor = fun ~make_ident ~name ~scheme ~provenance ~owner_path ~owner_type_constructor_id ~constructor_id ~inline_record_labels ->
-  let binding = Binding.make ~ident:(make_ident name) ~path:(IdentPath.of_name name) ~scheme ~provenance in
+let singleton_constructor = fun ~make_id ~name ~scheme ~provenance ~owner_path ~owner_type_constructor_id ~constructor_id ~inline_record_labels ->
+  let binding =
+    Binding.make
+      ~id:(make_id (SurfacePath.of_name name))
+      ~surface_path:(SurfacePath.of_name name)
+      ~scheme
+      ~provenance
+  in
   {
     empty
     with values = Value_env.of_bindings [ binding ];
@@ -515,14 +525,14 @@ let singleton_constructor = fun ~make_ident ~name ~scheme ~provenance ~owner_pat
 
 let extend = fun env introduced -> bind env (of_bindings introduced)
 
-let rec lookup_module_scope_in: module_table -> IdentPath.t -> module_scope option = fun modules module_path ->
-  match IdentPath.uncons module_path with
+let rec lookup_module_scope_in: module_table -> SurfacePath.t -> module_scope option = fun modules module_path ->
+  match SurfacePath.uncons module_path with
   | None -> None
   | Some (name, tail) -> (
       match Name_map.find_opt name modules with
       | None -> None
       | Some binding ->
-          if IdentPath.is_empty tail then
+          if SurfacePath.is_empty tail then
             Some binding.components
           else
             lookup_module_scope_in binding.components.modules tail
@@ -548,7 +558,7 @@ let with_local_open = fun (env: t) module_path ->
   | None -> env
 
 let qualify = fun ~scope_path (env: t) ->
-  if IdentPath.is_empty scope_path then
+  if SurfacePath.is_empty scope_path then
     env
   else
     {
@@ -558,11 +568,15 @@ let qualify = fun ~scope_path (env: t) ->
     }
 
 let split_module_lookup_path = fun path ->
-  IdentPath.split_last path
-  |> Option.map (fun (module_path, name) -> (module_path, IdentPath.of_name name))
+  EntityId.split_last path
+  |> Option.map (fun (module_path, name) -> (EntityId.surface_path module_path, EntityId.of_name name))
+
+let split_module_lookup_surface_path = fun path ->
+  SurfacePath.split_last path
+  |> Option.map (fun (module_path, name) -> (module_path, SurfacePath.of_name name))
 
 let lookup = fun env path ->
-  if IdentPath.is_bare path then
+  if EntityId.is_bare path then
     Value_env.lookup env.values path
   else
     match split_module_lookup_path path with
@@ -574,7 +588,7 @@ let lookup = fun env path ->
     | None -> None
 
 let lookup_all = fun env path ->
-  if IdentPath.is_bare path then
+  if EntityId.is_bare path then
     Value_env.lookup_all env.values path
   else
     match split_module_lookup_path path with
@@ -587,22 +601,22 @@ let lookup_all = fun env path ->
     | None -> []
 
 let lookup_type = fun env path ->
-  if IdentPath.is_bare path then
+  if SurfacePath.is_bare path then
     Type_env.lookup env.types path
   else
-    match split_module_lookup_path path with
+    match split_module_lookup_surface_path path with
     | Some (module_path, name) -> Option.and_then
       (lookup_module_scope env module_path)
       (fun scope -> Type_env.lookup scope.types name |> Option.map (qualify_type_decl module_path))
     | None -> None
 
 let lookup_constructors = fun env path ->
-  if IdentPath.is_bare path then
-    match IdentPath.last_name path with
+  if SurfacePath.is_bare path then
+    match SurfacePath.last_name path with
     | Some name -> Constructor_env.lookup_all env.constructors name
     | None -> []
   else
-    match IdentPath.split_last path with
+    match SurfacePath.split_last path with
     | Some (module_path, name) -> (
         match lookup_module_scope env module_path with
         | Some scope -> Constructor_env.lookup_all scope.constructors name
@@ -616,14 +630,14 @@ let lookup_constructors = fun env path ->
 
 let lookup_owned_constructor = fun env path owner_type_constructor_id ->
   let lookup_local constructors path =
-    match IdentPath.last_name path with
+    match SurfacePath.last_name path with
     | Some name -> Constructor_env.lookup_owned constructors name owner_type_constructor_id
     | None -> None
   in
-  if IdentPath.is_bare path then
+  if SurfacePath.is_bare path then
     lookup_local env.constructors path
   else
-    match split_module_lookup_path path with
+    match split_module_lookup_surface_path path with
     | Some (module_path, name) -> (
         match lookup_module_scope env module_path with
         | Some scope -> lookup_local scope.constructors name
@@ -641,49 +655,49 @@ let lookup_record_decls = fun env label_name ->
 let lookup_record_decl_by_owner = fun env owner_type_constructor_id ->
   Label_env.lookup_owned env.labels owner_type_constructor_id
 
-let rec scope_bindings_with_prefix: IdentPath.t -> module_scope -> bindings = fun prefix scope ->
+let rec scope_bindings_with_prefix: SurfacePath.t -> module_scope -> bindings = fun prefix scope ->
   let values = Value_env.bindings scope.values
   |> List.map (qualify_binding_with_scope ~root:prefix scope) in
   let modules = bindings_with_prefix prefix scope.modules in
   values @ modules
 
-and bindings_with_prefix: IdentPath.t -> module_table -> bindings = fun prefix modules ->
+and bindings_with_prefix: SurfacePath.t -> module_table -> bindings = fun prefix modules ->
   Name_map.bindings modules |> List.concat_map
     (fun (_, binding) ->
       let module_prefix =
-        if IdentPath.is_empty prefix then
-          IdentPath.of_name binding.name
+        if SurfacePath.is_empty prefix then
+          SurfacePath.of_name binding.name
         else
-          IdentPath.append_name prefix binding.name
+          SurfacePath.append_name prefix binding.name
       in
       scope_bindings_with_prefix module_prefix binding.components)
 
-let bindings = fun env -> Value_env.bindings env.values @ bindings_with_prefix IdentPath.empty env.modules
+let bindings = fun env -> Value_env.bindings env.values @ bindings_with_prefix SurfacePath.empty env.modules
 
-let rec scope_type_decls_with_prefix: IdentPath.t -> module_scope -> FileSummary.type_decl list = fun prefix scope ->
+let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSummary.type_decl list = fun prefix scope ->
   let local = Type_env.type_decls scope.types
   |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path }) in
+      { type_decl with scope_path = SurfacePath.append_path prefix type_decl.scope_path }) in
   let nested = module_type_decls_with_prefix prefix scope.modules in
   local @ nested
 
-and module_type_decls_with_prefix: IdentPath.t -> module_table -> FileSummary.type_decl list = fun prefix modules ->
+and module_type_decls_with_prefix: SurfacePath.t -> module_table -> FileSummary.type_decl list = fun prefix modules ->
   Name_map.bindings modules |> List.concat_map
     (fun (_, binding) ->
       let module_prefix =
-        if IdentPath.is_empty prefix then
-          IdentPath.of_name binding.name
+        if SurfacePath.is_empty prefix then
+          SurfacePath.of_name binding.name
         else
-          IdentPath.append_name prefix binding.name
+          SurfacePath.append_name prefix binding.name
       in
       scope_type_decls_with_prefix module_prefix binding.components)
 
 let type_decls = fun env ->
-  Type_env.type_decls env.types @ module_type_decls_with_prefix IdentPath.empty env.modules
+  Type_env.type_decls env.types @ module_type_decls_with_prefix SurfacePath.empty env.modules
 
 let visible_type_decls = fun env ->
-  Type_env.visible_type_decls env.types @ module_type_decls_with_prefix IdentPath.empty env.modules
+  Type_env.visible_type_decls env.types @ module_type_decls_with_prefix SurfacePath.empty env.modules
 
 let types = fun env -> env.types
 
@@ -693,7 +707,7 @@ let visible_bindings = fun env ->
   let seen = Collections.HashSet.with_capacity 32 in
   bindings env |> List.filter
     (fun binding ->
-      let path = Binding.path binding in
+      let path = Binding.surface_path binding in
       if Collections.HashSet.contains seen path then
         false
       else (
@@ -704,35 +718,43 @@ let visible_bindings = fun env ->
 let visible_binding_map = fun env ->
   visible_bindings env |> List.fold_left
     (fun acc binding ->
-      Path_map.add (Binding.path binding) binding acc)
-    Path_map.empty
+      Entity_map.add (Binding.path binding) binding acc)
+    Entity_map.empty
 
 let canonical_bindings = fun env ->
   visible_bindings env |> List.sort
     (fun left right ->
-      IdentPath.compare (Binding.path left) (Binding.path right))
+      EntityId.compare (Binding.path left) (Binding.path right))
 
 let unique = fun env -> env |> visible_bindings |> of_bindings
 
-let render = fun env -> env |> canonical_bindings |> List.map Binding.render
+let render = fun env ->
+  visible_bindings env
+  |> List.sort
+       (fun left right ->
+         SurfacePath.compare (Binding.surface_path left) (Binding.surface_path right))
+  |> List.map Binding.render
 
 let names = fun env ->
-  env |> canonical_bindings |> List.map (fun binding -> Binding.path binding |> IdentPath.to_string)
+  env
+  |> canonical_bindings
+  |> List.map (fun binding -> Binding.surface_path binding |> SurfacePath.to_string)
 
 let introduced_names = fun before after ->
   let before_bindings = visible_binding_map before in
   visible_bindings after |> List.filter_map
     (fun binding ->
       let path = Binding.path binding in
-      match Path_map.find_opt path before_bindings with
+      match Entity_map.find_opt path before_bindings with
       | Some previous when Binding.same previous binding -> None
-      | _ -> Some (IdentPath.to_string path))
+      | _ -> Some (Binding.surface_path binding |> SurfacePath.to_string))
 
 let hidden_name_set = fun (config: TypConfig.t) ->
-  Collections.HashSet.of_list (List.map fst (config.prelude @ config.ambient))
+  Collections.HashSet.of_list
+    (List.map (fun (path, _) -> SurfacePath.to_string path) (config.prelude @ config.ambient))
 
 let is_hidden_export_binding = fun hidden_name_set binding ->
-  Collections.HashSet.contains hidden_name_set (Binding.path binding)
+  Collections.HashSet.contains hidden_name_set (Binding.surface_path binding |> SurfacePath.to_string)
   && match Binding.provenance binding with
   | Binding.Prelude
   | Binding.Ambient -> true
@@ -755,8 +777,7 @@ let export_with_forced_names = fun ~config ~forced_export_names env ->
   let forced_name_set = Collections.HashSet.of_list forced_export_names in
   env |> canonical_bindings |> List.filter
     (fun binding ->
-      let path = Binding.path binding in
-      let name = IdentPath.to_string path in
+      let name = Binding.surface_path binding |> SurfacePath.to_string in
       not (is_hidden_export_binding hidden_name_set binding)
       || Collections.HashSet.contains forced_name_set name) |> of_bindings
 
@@ -764,7 +785,7 @@ let introduced_entries = fun before after ->
   let before_bindings = visible_binding_map before in
   visible_bindings after |> List.filter
     (fun binding ->
-      match Path_map.find_opt (Binding.path binding) before_bindings with
+      match Entity_map.find_opt (Binding.path binding) before_bindings with
       | Some previous -> not (Binding.same previous binding)
       | None -> true) |> of_bindings
 
@@ -795,10 +816,10 @@ let entries_for_include = fun env module_path ->
 
 let export_names_for_module_alias = fun env ~alias_name ~module_path ->
   match lookup_module_scope env module_path with
-  | Some scope -> scope_bindings_with_prefix (IdentPath.of_name alias_name) scope
+  | Some scope -> scope_bindings_with_prefix (SurfacePath.of_name alias_name) scope
   |> of_bindings
   |> canonical_bindings
-  |> List.map (fun binding -> Binding.path binding |> IdentPath.to_string)
+  |> List.map (fun binding -> Binding.surface_path binding |> SurfacePath.to_string)
   | None -> []
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
@@ -879,7 +900,7 @@ let scope_locals_for = fun scope scope_path ->
   | Some env -> env
   | None ->
       let env =
-        IdentPath.prefixes scope_path
+        SurfacePath.prefixes scope_path
         |> List.fold_left
           (fun acc key ->
             match Path_map.find_opt key scope.locals with
@@ -907,7 +928,7 @@ let scope_opens_for = fun scope scope_path ->
   | Some opens -> opens
   | None ->
       let opens =
-        IdentPath.prefixes scope_path
+        SurfacePath.prefixes scope_path
         |> List.fold_left
           (fun acc key ->
             match Path_map.find_opt key scope.opens with

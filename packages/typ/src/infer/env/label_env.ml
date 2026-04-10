@@ -10,7 +10,7 @@ module Owner_map = Collections.Map.Make (struct
 end)
 
 type record_decl = {
-  owner_path: IdentPath.t;
+  owner_path: SurfacePath.t;
   owner_type_constructor_id: TypeConstructorId.t;
   param_ids: int list;
   labels: TypeDecl.label list;
@@ -28,7 +28,7 @@ type components = {
 
 type layer =
   | Nothing
-  | Open of { root: IdentPath.t; components: components; next: t }
+  | Open of { root: SurfacePath.t; components: components; next: t }
   | Map of { map_record_decl: record_decl -> record_decl; next: t }
 
 and t = {
@@ -79,7 +79,7 @@ let record_decl_of_type_decl = fun (type_decl: FileSummary.type_decl) ->
           Name_map.empty
       in
       Some {
-        owner_path = IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name;
+        owner_path = SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name;
         owner_type_constructor_id = type_decl.declaration.type_constructor_id;
         param_ids = type_decl.declaration.param_ids;
         labels;
@@ -135,7 +135,7 @@ let map_components = fun map_record_decl components ->
   }
 
 let qualify_record_decl = fun root record_decl ->
-  { record_decl with owner_path = IdentPath.append_path root record_decl.owner_path }
+  { record_decl with owner_path = SurfacePath.append_path root record_decl.owner_path }
 
 let of_type_decls = fun type_decls ->
   let record_decls = type_decls |> List.filter_map record_decl_of_type_decl in

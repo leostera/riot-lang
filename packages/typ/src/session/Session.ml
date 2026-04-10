@@ -237,7 +237,7 @@ let module_segments_of_export_name = fun export_name ->
       rest
     | _ -> List.rev acc
   in
-  IdentPath.of_string export_name |> IdentPath.to_segments |> loop []
+  SurfacePath.to_segments export_name |> loop []
 
 let nested_module_prefixes_of_typings = fun module_typings ->
   let export_prefixes =
@@ -253,7 +253,7 @@ let nested_module_prefixes_of_typings = fun module_typings ->
     ModuleTypings.type_decls module_typings
     |> List.filter_map
       (fun (type_decl: FileSummary.type_decl) ->
-        match IdentPath.to_segments type_decl.scope_path with
+        match SurfacePath.to_segments type_decl.scope_path with
         | head :: _ when String.length head > 0 && is_uppercase_ascii head.[0] -> Some head
         | _ -> None)
   in
@@ -281,12 +281,12 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
         in
         ModuleTypings.type_decls summary |> List.fold_left
           (fun env (type_decl: FileSummary.type_decl) ->
-            if IdentPath.is_empty type_decl.scope_path then
+            if SurfacePath.is_empty type_decl.scope_path then
               env
             else
               Syn.Deps.Env.add_path
                 env
-                ~path:(module_name :: IdentPath.to_segments type_decl.scope_path)
+                ~path:(module_name :: SurfacePath.to_segments type_decl.scope_path)
                 ~free_names:[ module_name ])
           env
       in
@@ -358,7 +358,7 @@ let collect_missing_module_summaries = fun session roots ->
   let loaded_module_names = session.config.loaded_modules
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
-  let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map IdentPath.to_string in
+  let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map SurfacePath.to_string in
   let implicit_open_source_ids source = implicit_open_module_names source
   |> List.concat_map
     (fun module_name ->
@@ -558,7 +558,7 @@ let local_source_closure = fun session roots ->
   |> List.map ModuleTypings.module_name
   |> Collections.HashSet.of_list in
   let implicit_open_source_ids (source: Source.t) = source.implicit_opens
-  |> List.map IdentPath.to_string
+  |> List.map SurfacePath.to_string
   |> List.concat_map
     (fun module_name ->
       local_source_ids_for_module_in_scope session ~current_module_name:(Source.module_name source) module_name) in
@@ -630,7 +630,7 @@ let local_module_cycles = fun session roots ->
       let _ = Collections.HashMap.insert source_ids_by_module_name current_module_name
         ((source.source_id :: existing_source_ids) |> List.sort_uniq SourceId.compare)
       in
-      let dependencies = (source.implicit_opens |> List.map IdentPath.to_string)
+      let dependencies = (source.implicit_opens |> List.map SurfacePath.to_string)
       @ module_dependencies session ~deps_env_key ~deps_env source in
       dependencies
       |> List.concat_map

@@ -7,7 +7,7 @@ let list_type_constructor_id = TypeConstructorId.make ~owner:builtin_owner ~loca
 let exn_type_constructor_id = TypeConstructorId.make ~owner:builtin_owner ~local_id:(-2)
 
 let normalized_segments = fun path ->
-  match IdentPath.to_segments path with
+  match SurfacePath.to_segments path with
   | ["Stdlib";builtin_name] -> [ builtin_name ]
   | other -> other
 

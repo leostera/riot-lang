@@ -14,34 +14,34 @@ let rgb_blend_scheme = TypeScheme.of_type
     ~lhs:TypeRepr.int
     ~rhs:(TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.int))
 
-let make_ident =
+let make_id =
   let next_local_id = ref 0 in
-  fun name ->
+  fun path ->
     let local_id = !next_local_id in
     (next_local_id := local_id + 1);
-    Env.Binding.make_ident ~local_id ~name
+    BindingId.local ~stamp:local_id ~name:(SurfacePath.to_string path)
 
-let binding_path = fun binding -> Env.Binding.path binding |> IdentPath.to_string
+let binding_path = fun binding -> Env.Binding.surface_path binding |> SurfacePath.to_string
 
 let binding_paths = fun bindings -> bindings |> List.map binding_path |> List.sort String.compare
 
 let type_decl_paths = fun type_decls ->
   type_decls |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      if IdentPath.is_empty type_decl.scope_path then
+      if SurfacePath.is_empty type_decl.scope_path then
         type_decl.declaration.type_name
       else
-        IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name |> IdentPath.to_string) |> List.sort
+        SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name |> SurfacePath.to_string) |> List.sort
     String.compare
 
 let lookup_binding_path = fun lookup env path ->
-  lookup env (IdentPath.of_string path) |> Option.map binding_path
+  lookup env (EntityId.of_string path) |> Option.map binding_path
 
 let lookup_binding_name = fun lookup env path ->
-  lookup env (IdentPath.of_string path) |> Option.map Env.Binding.name
+  lookup env (EntityId.of_string path) |> Option.map Env.Binding.name
 
 let nested_shade_type_decl = {
-  FileSummary.scope_path = IdentPath.of_name "Colors";
+  FileSummary.scope_path = SurfacePath.of_name "Colors";
   declaration =
     {
       TypeDecl.type_constructor_id = TypeConstructorId.make ~owner:"env2-test" ~local_id:(-9_000);
@@ -58,14 +58,14 @@ let nested_shade_type_decl = {
 let make_env = fun () ->
   Env.bind
     (Env.of_entries
-      ~make_ident
+      ~make_id
       ~provenance:Env.Binding.Ambient [
-        (IdentPath.of_string "Colors.to_string", int_to_string_scheme);
-        (IdentPath.of_string "Colors.RGB.blend", rgb_blend_scheme);
+        (SurfacePath.of_string "Colors.to_string", int_to_string_scheme);
+        (SurfacePath.of_string "Colors.RGB.blend", rgb_blend_scheme);
       ])
     (Env.of_type_decls [ nested_shade_type_decl ])
   |> fun env ->
-    Env.with_local_open env (IdentPath.of_name "Colors")
+    Env.with_local_open env (SurfacePath.of_name "Colors")
 
 let alpha_scheme = TypeScheme.of_type
   (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.int)
@@ -133,7 +133,7 @@ let infer_exports = fun source_text ->
     ~cst in
   let semantic_tree = Lower.lower_source_file ~source cst in
   let inferred = Infer.infer_file ~config:Config.default ~source semantic_tree in
-  inferred.exports |> List.map fst
+  inferred.exports |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let infer_export_scheme = fun source_text name ->
   let source_id = SourceId.of_int 0 in
@@ -169,7 +169,12 @@ let infer_export_scheme = fun source_text name ->
     ~cst in
   let semantic_tree = Lower.lower_source_file ~source cst in
   let inferred = Infer.infer_file ~config:Config.default ~source semantic_tree in
-  List.assoc_opt name inferred.exports |> Option.map TypePrinter.scheme_to_string
+  inferred.exports |> List.find_map
+    (fun (export_name, scheme) ->
+      if SurfacePath.equal export_name (SurfacePath.of_string name) then
+        Some (TypePrinter.scheme_to_string scheme)
+      else
+        None)
 
 let test_summary2_roundtrip = fun _ctx ->
   let env = make_env () in
@@ -192,10 +197,10 @@ let test_env_replay_matches_lookup = fun _ctx ->
   let actual_to_string = lookup_binding_path Env.lookup replayed "to_string" in
   let expected_blend = lookup_binding_name Env.lookup env "RGB.blend" in
   let actual_blend = lookup_binding_name Env.lookup replayed "RGB.blend" in
-  let replayed_shade = Env.lookup_type replayed (IdentPath.of_string "Colors.shade")
+  let replayed_shade = Env.lookup_type replayed (SurfacePath.of_string "Colors.shade")
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
-      (IdentPath.to_string type_decl.scope_path, type_decl.declaration.type_name)) in
+      (SurfacePath.to_string type_decl.scope_path, type_decl.declaration.type_name)) in
   if not (expected_to_string = actual_to_string) then
     expected_optional_error "env2 lookup mismatch for to_string: expected" expected_to_string actual_to_string
   else if not (expected_blend = actual_blend) then
@@ -220,7 +225,7 @@ let test_builtin_type_constructors_only_expose_syntax_backed_names = fun _ctx ->
   ]
   in
   match List.find_opt
-    (fun name -> Option.is_some (BuiltinTypeConstructors.head_of_path (IdentPath.of_name name)))
+    (fun name -> Option.is_some (BuiltinTypeConstructors.head_of_path (SurfacePath.of_name name)))
     forbidden with
   | None -> Ok ()
   | Some name -> Error (format
@@ -231,13 +236,13 @@ let test_bind_in_scope_keeps_local_module_names = fun _ctx ->
   |> fun env ->
     Env.bind_in_scope
       env
-      ~scope_path:(IdentPath.of_name "Helpers")
-      (Env.singleton ~make_ident ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
+      ~scope_path:(SurfacePath.of_name "Helpers")
+      (Env.singleton ~make_id ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
     |> fun env ->
       Env.bind_in_scope
         env
-        ~scope_path:(IdentPath.of_name "Helpers")
-        (Env.singleton ~make_ident ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
+        ~scope_path:(SurfacePath.of_name "Helpers")
+        (Env.singleton ~make_id ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
   let actual = Env.names env in
   let expected = [ "Helpers.id"; "Helpers.wrap" ] in
   if actual = expected then
@@ -250,14 +255,14 @@ let test_include_entries_strip_module_prefix_once = fun _ctx ->
   |> fun env ->
     Env.bind_in_scope
       env
-      ~scope_path:(IdentPath.of_name "Helpers")
-      (Env.singleton ~make_ident ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
+      ~scope_path:(SurfacePath.of_name "Helpers")
+      (Env.singleton ~make_id ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
     |> fun env ->
       Env.bind_in_scope
         env
-        ~scope_path:(IdentPath.of_name "Helpers")
-        (Env.singleton ~make_ident ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
-  let actual = Env.entries_for_include env (IdentPath.of_name "Helpers") |> Env.names in
+        ~scope_path:(SurfacePath.of_name "Helpers")
+        (Env.singleton ~make_id ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
+  let actual = Env.entries_for_include env (SurfacePath.of_name "Helpers") |> Env.names in
   let expected = [ "id"; "wrap" ] in
   if actual = expected then
     Ok ()
@@ -269,17 +274,17 @@ let test_module_alias_entries_prefix_once = fun _ctx ->
   |> fun env ->
     Env.bind_in_scope
       env
-      ~scope_path:(IdentPath.of_name "Helpers")
-      (Env.singleton ~make_ident ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
+      ~scope_path:(SurfacePath.of_name "Helpers")
+      (Env.singleton ~make_id ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
     |> fun env ->
       Env.bind_in_scope
         env
-        ~scope_path:(IdentPath.of_name "Helpers")
-        (Env.singleton ~make_ident ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
+        ~scope_path:(SurfacePath.of_name "Helpers")
+        (Env.singleton ~make_id ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
   let actual = Env.entries_for_module_alias
     env
     ~alias_name:"Util"
-    ~module_path:(IdentPath.of_name "Helpers")
+    ~module_path:(SurfacePath.of_name "Helpers")
   |> Env.names in
   let expected = [ "Util.id"; "Util.wrap" ] in
   if actual = expected then
@@ -288,9 +293,9 @@ let test_module_alias_entries_prefix_once = fun _ctx ->
     expected_names_error "expected alias entries" expected actual
 
 let test_item_scope_replay_keeps_module_paths_stable = fun _ctx ->
-  let scope_path = IdentPath.of_name "Helpers" in
+  let scope_path = SurfacePath.of_name "Helpers" in
   let introduced_id = Env.singleton
-    ~make_ident
+    ~make_id
     ~name:"id"
     ~scheme:alpha_scheme
     ~provenance:Env.Binding.Ambient in
@@ -301,8 +306,8 @@ let test_item_scope_replay_keeps_module_paths_stable = fun _ctx ->
     item_env
     [
       Env.Binding.make
-        ~ident:(make_ident "wrap")
-        ~path:(IdentPath.of_name "wrap")
+        ~id:(make_id (SurfacePath.of_name "wrap"))
+        ~surface_path:(SurfacePath.of_name "wrap")
         ~scheme:beta_scheme
         ~provenance:Env.Binding.Ambient;
     ] in
@@ -320,13 +325,13 @@ let test_export_render_keeps_nested_module_paths_stable = fun _ctx ->
   |> fun env ->
     Env.bind_in_scope
       env
-      ~scope_path:(IdentPath.of_name "Helpers")
-      (Env.singleton ~make_ident ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
+      ~scope_path:(SurfacePath.of_name "Helpers")
+      (Env.singleton ~make_id ~name:"id" ~scheme:alpha_scheme ~provenance:Env.Binding.Ambient)
     |> fun env ->
       Env.bind_in_scope
         env
-        ~scope_path:(IdentPath.of_name "Helpers")
-        (Env.singleton ~make_ident ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
+        ~scope_path:(SurfacePath.of_name "Helpers")
+        (Env.singleton ~make_id ~name:"wrap" ~scheme:beta_scheme ~provenance:Env.Binding.Ambient) in
   let config = {
     Config.default
     with prelude = [];
@@ -379,7 +384,7 @@ let test_direct_infer_poly_variant_expression_uses_named_alias = fun _ctx ->
 
 let test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type = fun _ctx ->
   let actual = infer_export_scheme "let blue = `rgb (0, 0, 255)\n" "blue" in
-  let expected = Some "[ `rgb of int * int * int ]" in
+  let expected = Some "[ > `rgb of int * int * int ]" in
   if actual = expected then
     Ok ()
   else

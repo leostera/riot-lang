@@ -7,10 +7,10 @@ type definition_site = {
 
 type value_definition_target =
   | Site of definition_site
-  | Export of IdentPath.t
+  | Export of SurfacePath.t
 
 type value_definition = {
-  export_name: string;
+  export_name: SurfacePath.t;
   target: value_definition_target;
 }
 
@@ -24,7 +24,7 @@ type t = {
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
 
 let map_preserving = fun loop xs ->
   let rec walk changed acc = function
@@ -52,7 +52,7 @@ let local_type_decl_index = fun type_decls ->
 
 let resolve_named_type_head_for_persistence = fun by_path name ->
   let qualified_external_head =
-    match IdentPath.to_segments name with
+    match SurfacePath.to_segments name with
     | _ :: _ :: _ -> Some (TypeRepr.named_head
       ~type_constructor_id:(TypeConstructorId.of_path name)
       ~name)
@@ -345,7 +345,7 @@ let value_definitions = fun summary -> summary.value_definitions
 let find_value_definition = fun summary ~export_name ->
   summary.value_definitions |> List.find_map
     (fun (definition: value_definition) ->
-      if String.equal export_name definition.export_name then
+      if SurfacePath.equal export_name definition.export_name then
         Some definition.target
       else
         None)
@@ -481,7 +481,7 @@ let rec type_to_json = fun ty ->
       Data.Json.Object [
         ("tag", Data.Json.String "named");
         ("type_constructor_id", TypeConstructorId.to_json type_constructor_id);
-        ("name", Data.Json.String (IdentPath.to_string name));
+        ("name", Data.Json.String (SurfacePath.to_string name));
         ("arguments", Data.Json.Array (List.map type_to_json arguments));
       ]
   | TypeRepr.PolyVariant { bound; tags; inherited } ->
@@ -539,9 +539,11 @@ let exports_to_json = fun exports ->
         let scheme_json =
           try scheme_to_json scheme with
           | Failure message -> raise
-            (Failure (format Format.[ str "module typings export "; str name; str ": "; str message ]))
+            (Failure (format
+              Format.[ str "module typings export "; str (SurfacePath.to_string name); str ": "; str
+                  message; ]))
         in
-        Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_json); ])
+        Data.Json.Object [ ("name", Data.Json.String (SurfacePath.to_string name)); ("scheme", scheme_json); ])
   )
 
 let label_decl_to_json = fun (label: TypeDecl.label) ->
@@ -599,7 +601,7 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
   let fields = [
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments type_decl.scope_path
+      Data.Json.Array (SurfacePath.to_segments type_decl.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("type_constructor_id", TypeConstructorId.to_json type_decl.declaration.type_constructor_id);
@@ -673,12 +675,12 @@ let value_definition_target_to_json = fun value ->
   ]
   | Export path -> Data.Json.Object [
     ("tag", Data.Json.String "export");
-    ("path", Data.Json.String (IdentPath.to_string path));
+    ("path", Data.Json.String (SurfacePath.to_string path));
   ]
 
 let value_definition_to_json = fun (definition: value_definition) ->
   Data.Json.Object [
-    ("export_name", Data.Json.String definition.export_name);
+    ("export_name", Data.Json.String (SurfacePath.to_string definition.export_name));
     ("target", value_definition_target_to_json definition.target);
   ]
 
@@ -783,7 +785,7 @@ let rec type_of_json = fun json ->
       let* type_constructor_id = TypeConstructorId.of_json type_constructor_json in
       let* name_json = field "name" fields in
       let* name = get_string name_json in
-      let name = IdentPath.of_string name in
+      let name = SurfacePath.of_string name in
       let* arguments_json = field "arguments" fields in
       let* arguments_json = get_array arguments_json in
       let rec loop acc = function
@@ -893,7 +895,7 @@ let exports_of_json = fun json ->
         let* scheme_json = field "scheme" fields in
         let* name = get_string name_json in
         let* scheme = scheme_of_json scheme_json in
-        loop ((name, scheme) :: acc) rest
+        loop ((SurfacePath.of_string name, scheme) :: acc) rest
   in
   loop [] values
 
@@ -1109,7 +1111,7 @@ let type_decl_of_json = fun json ->
   let* nonrec_ = nonrec_ in
   let* manifest = manifest in
   Ok {
-    FileSummary.scope_path = IdentPath.of_segments scope_path;
+    FileSummary.scope_path = SurfacePath.of_segments scope_path;
     declaration =
       {
         TypeDecl.type_constructor_id = type_constructor_id;
@@ -1193,7 +1195,7 @@ let value_definition_target_of_json = fun json ->
   | "export" ->
       let* path_json = field "path" fields in
       let* path = get_string path_json in
-      Ok (Export (IdentPath.of_string path))
+      Ok (Export (SurfacePath.of_string path))
   | other ->
       Error (format Format.[ str "unknown module typings value definition target tag "; str other ])
 
@@ -1203,7 +1205,7 @@ let value_definition_of_json = fun json ->
   let* target_json = field "target" fields in
   let* export_name = get_string export_name_json in
   let* target = value_definition_target_of_json target_json in
-  Ok { export_name; target }
+  Ok { export_name = SurfacePath.of_string export_name; target }
 
 let value_definitions_of_json = fun value ->
   match value with

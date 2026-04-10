@@ -18,7 +18,7 @@ let owner = fun value -> value.owner
 
 let local_id = fun value -> value.local_id
 
-let of_path = fun path -> make ~owner:("$path:" ^ IdentPath.to_string path) ~local_id:0
+let of_path = fun path -> make ~owner:("$path:" ^ SurfacePath.to_string path) ~local_id:0
 
 let of_int = fun value -> make ~owner:"$legacy" ~local_id:value
 

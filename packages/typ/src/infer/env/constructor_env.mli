@@ -8,7 +8,7 @@ val empty: t
 val of_type_decls: FileSummary.type_decl list -> t
 
 val singleton:
-  owner_path:IdentPath.t ->
+  owner_path:SurfacePath.t ->
   owner_type_constructor_id:TypeConstructorId.t ->
   constructor:TypeDecl.constructor ->
   t
@@ -17,7 +17,7 @@ val local_only: t -> t
 
 val bind: t -> t -> t
 
-val add_open: root:IdentPath.t -> type_decls:FileSummary.type_decl list -> t -> t -> t
+val add_open: root:SurfacePath.t -> type_decls:FileSummary.type_decl list -> t -> t -> t
 
 val entries: t -> entry list
 
@@ -29,7 +29,7 @@ val name: entry -> string
 
 val constructor_id: entry -> ConstructorId.t
 
-val owner_path: entry -> IdentPath.t
+val owner_path: entry -> SurfacePath.t
 
 val owner_type_constructor_id: entry -> TypeConstructorId.t
 
@@ -39,4 +39,4 @@ val generalized: entry -> bool
 
 val inline_record_labels: entry -> TypeDecl.label list option
 
-val qualify_entry: root:IdentPath.t -> type_decls:FileSummary.type_decl list -> entry -> entry
+val qualify_entry: root:SurfacePath.t -> type_decls:FileSummary.type_decl list -> entry -> entry

@@ -35,11 +35,11 @@ module SharedCaches = struct
     source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
     initial_env_cache: (ambient_surface_cache_key, Infer.Env.t) Collections.HashMap.t;
     loaded_ambient_env_cache:
-      (loaded_ambient_cache_key, (IdentPath.t * TypeScheme.t) list) Collections.HashMap.t;
+      (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
     loaded_ambient_type_decls_cache:
       (loaded_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
     local_ambient_env_cache:
-      (local_ambient_cache_key, (IdentPath.t * TypeScheme.t) list) Collections.HashMap.t;
+      (local_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
     local_ambient_type_decls_cache:
       (local_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
   }
@@ -68,11 +68,11 @@ type t = {
   shared_source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
   shared_initial_env_cache: (ambient_surface_cache_key, Infer.Env.t) Collections.HashMap.t;
   shared_loaded_ambient_env_cache:
-    (loaded_ambient_cache_key, (IdentPath.t * TypeScheme.t) list) Collections.HashMap.t;
+    (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
   shared_loaded_ambient_type_decls_cache:
     (loaded_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
   shared_local_ambient_env_cache:
-    (local_ambient_cache_key, (IdentPath.t * TypeScheme.t) list) Collections.HashMap.t;
+    (local_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
   shared_local_ambient_type_decls_cache:
     (local_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
   source_analysis_keys_cache: (int, source_analysis_cache_key option) Collections.HashMap.t;
@@ -287,7 +287,7 @@ let required_local_module_names = fun (slot: analysis_slot) ->
       | _ -> true
   in
   let names = module_dependencies_of_source slot.source
-  @ (slot.source.implicit_opens |> List.map IdentPath.to_string |> List.filter should_include_implicit_open) in
+  @ (slot.source.implicit_opens |> List.map SurfacePath.to_string |> List.filter should_include_implicit_open) in
   names |> List.sort_uniq String.compare
 
 let dedupe_preserving_order = fun names ->

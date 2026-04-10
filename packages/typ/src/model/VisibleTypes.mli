@@ -16,11 +16,11 @@ val type_decls: t -> FileSummary.type_decl list
 
 val by_id: t -> (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t
 
-val lookup: t -> IdentPath.t -> FileSummary.type_decl option
+val lookup: t -> SurfacePath.t -> FileSummary.type_decl option
 
 val lookup_by_id: t -> TypeConstructorId.t -> FileSummary.type_decl option
 
-val resolve_named_type_head: t -> IdentPath.t -> TypeRepr.named_type_head option
+val resolve_named_type_head: t -> SurfacePath.t -> TypeRepr.named_type_head option
 
 val find_type_expansion: t -> TypeRepr.named_type_head -> FileSummary.type_decl option
 
@@ -36,7 +36,7 @@ val canonicalize_inline_record_labels: t -> TypeDecl.label list -> TypeDecl.labe
 
 val canonicalize_type_decl: t -> FileSummary.type_decl -> FileSummary.type_decl
 
-val type_decls_for_include: t -> IdentPath.t -> FileSummary.type_decl list
+val type_decls_for_include: t -> SurfacePath.t -> FileSummary.type_decl list
 
 val type_decls_for_module_alias:
-  t -> alias_name:string -> module_path:IdentPath.t -> FileSummary.type_decl list
+  t -> alias_name:string -> module_path:SurfacePath.t -> FileSummary.type_decl list

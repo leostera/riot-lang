@@ -227,7 +227,9 @@ let check_source_text = fun ~filename text ->
             typing_diagnostics = analysis.typing_diagnostics;
             file_summary = analysis.file_summary;
             type_index = analysis.type_index;
-            exports = Session.SourceAnalysis.exports analysis;
+            exports =
+              Session.SourceAnalysis.exports analysis
+              |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
             item_traces = analysis.item_traces;
             expr_traces = analysis.expr_traces;
           })
@@ -1302,19 +1304,22 @@ let is_value_export_name = fun name ->
 
 let typ_value_exports = fun (report: Check_result.t) ->
   FileSummary.exports report.file_summary
-  |> List.filter (fun (name, _scheme) -> is_value_export_name name)
+  |> List.filter (fun (name, _scheme) -> is_value_export_name (SurfacePath.to_string name))
   |> List.map
     (fun (name, scheme) ->
-      { name; scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme })
+      {
+        name = SurfacePath.to_string name;
+        scheme = TypePrinter.scheme_to_string scheme |> normalize_typ_scheme;
+      })
   |> List.sort compare_value_export
 
 let typ_type_names = fun (report: Check_result.t) ->
   FileSummary.type_decls report.file_summary |> List.map
     (fun ({ declaration; scope_path }: FileSummary.type_decl) ->
-      if IdentPath.is_empty scope_path then
+      if SurfacePath.is_empty scope_path then
         declaration.type_name
       else
-        IdentPath.append_name scope_path declaration.type_name |> IdentPath.to_string) |> List.sort
+        SurfacePath.append_name scope_path declaration.type_name |> SurfacePath.to_string) |> List.sort
     String.compare
 
 let completeness_to_string = function

@@ -2,7 +2,7 @@ open Std
 open Model
 
 type entry = {
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   origin_id: OriginId.t;
   span: Syn.Ceibo.Span.t;
   inferred_type: TypeRepr.t;
@@ -11,7 +11,7 @@ type entry = {
 type t = entry list
 
 type traced_expr = {
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   origin_id: OriginId.t;
   inferred_type: TypeRepr.t;
 }
@@ -53,7 +53,7 @@ let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
 
 let entry_to_json = fun (entry: entry) ->
   Data.Json.Object [
-    ("expr_id", Data.Json.Int (ExprId.to_int entry.expr_id));
+    ("expr_id", Data.Json.Int (ExprArenaId.to_int entry.expr_id));
     ("origin_id", Data.Json.Int (OriginId.to_int entry.origin_id));
     ("span", span_to_json entry.span);
     ("inferred_type", Data.Json.String (TypePrinter.type_to_string entry.inferred_type));

@@ -22,7 +22,7 @@ and var = {
 
 and named_type_head = {
   type_constructor_id: TypeConstructorId.t;
-  name: IdentPath.t;
+  name: SurfacePath.t;
 }
 
 and package_value = {

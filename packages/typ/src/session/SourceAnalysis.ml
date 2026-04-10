@@ -44,9 +44,9 @@ let declared_value_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_pat
     (
       function
       | ItemTree.DeclaredValue item when String.equal name item.value_name
-      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && SurfacePath.equal scope_path item.scope_path -> Some item.origin_id
       | ItemTree.ExtensionConstructor item when String.equal name item.constructor_name
-      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && SurfacePath.equal scope_path item.scope_path -> Some item.origin_id
       | _ -> None
     )
 
@@ -55,14 +55,14 @@ let exception_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_path ~na
     (
       function
       | ItemTree.Exception item when String.equal name item.exception_name
-      && IdentPath.equal scope_path item.scope_path -> Some item.origin_id
+      && SurfacePath.equal scope_path item.scope_path -> Some item.origin_id
       | _ -> None
     )
 
 let alias_target_path = fun ~alias_name ~module_path path ->
-  let alias_prefix = IdentPath.of_name alias_name in
-  let suffix = IdentPath.strip_prefix ~prefix:alias_prefix path |> Option.unwrap_or ~default:path in
-  IdentPath.append_path module_path suffix
+  let alias_prefix = SurfacePath.of_name alias_name in
+  let suffix = SurfacePath.strip_prefix ~prefix:alias_prefix path |> Option.unwrap_or ~default:path in
+  SurfacePath.append_path module_path suffix
 
 let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.binding_ref) ->
   match binding_ref.provenance with
@@ -91,14 +91,16 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Ambient ->
-      if IdentPath.is_bare binding_ref.path then
+      if SurfacePath.is_bare binding_ref.surface_path then
         None
       else
-        Some (ModuleTypings.Export binding_ref.path)
+        Some (ModuleTypings.Export binding_ref.surface_path)
   | Check_result.Included { module_path } ->
-      Some (ModuleTypings.Export (IdentPath.append_path module_path binding_ref.path))
+      Some (ModuleTypings.Export (SurfacePath.append_path module_path binding_ref.surface_path))
   | Check_result.ModuleAlias { alias_name; module_path } ->
-      Some (ModuleTypings.Export (alias_target_path ~alias_name ~module_path binding_ref.path))
+      Some
+        (ModuleTypings.Export
+           (alias_target_path ~alias_name ~module_path binding_ref.surface_path))
   | Check_result.Prelude
   | Check_result.TypeConstructor _ ->
       None
@@ -111,7 +113,7 @@ let export_definitions = fun analysis ->
       |> Option.map
         (fun target ->
           (
-            { export_name = IdentPath.to_string binding_ref.path; target }: ModuleTypings.value_definition
+            { export_name = binding_ref.surface_path; target }: ModuleTypings.value_definition
           )))
 
 let has_error_diagnostics = fun diagnostics ->

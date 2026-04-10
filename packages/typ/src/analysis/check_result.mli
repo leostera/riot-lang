@@ -4,22 +4,23 @@ open Model
 (** Shared output types for a single prototype type-check run. *)
 type env = (string * TypeScheme.t) list
 type binding_provenance =
-  | LoweredPattern of PatId.t
+  | LoweredPattern of PatternArenaId.t
   | Prelude
   | Ambient
-  | TypeConstructor of { type_name: string; scope_path: IdentPath.t }
-  | Exception of { name: string; scope_path: IdentPath.t }
-  | DeclaredValue of { name: string; scope_path: IdentPath.t }
-  | Included of { module_path: IdentPath.t }
-  | ModuleAlias of { alias_name: string; module_path: IdentPath.t }
+  | TypeConstructor of { type_name: string; scope_path: SurfacePath.t }
+  | Exception of { name: string; scope_path: SurfacePath.t }
+  | DeclaredValue of { name: string; scope_path: SurfacePath.t }
+  | Included of { module_path: SurfacePath.t }
+  | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
 type binding_ref = {
-  path: IdentPath.t;
+  entity_id: EntityId.t;
+  surface_path: SurfacePath.t;
   provenance: binding_provenance;
 }
 (** Environment snapshot captured before an expression is inferred. *)
 type expr_trace = {
   (** Expression traced by this snapshot. *)
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   (** Source origin attached to the expression. *)
   origin_id: OriginId.t;
   (** Visible environment before the expression was inferred. *)
@@ -32,7 +33,7 @@ type expr_trace = {
 (** Export-facing snapshot captured after a top-level item finishes. *)
 type item_trace = {
   (** Item traced by this snapshot. *)
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   (** Names introduced by the item compared with the previous export state. *)
   binding_names: string list;
   (** Export environment visible after the item was processed. *)

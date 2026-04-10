@@ -43,7 +43,13 @@ let inferred_type_at = fun snapshot source_id offset ->
 let export_scheme = fun snapshot source_id name ->
   match Query.export_of snapshot source_id with
   | Some (FileSummary.TrustedExport { exports })
-  | Some (FileSummary.ErroredExport { exports }) -> List.assoc_opt name exports
+  | Some (FileSummary.ErroredExport { exports }) ->
+      exports |> List.find_map
+        (fun (candidate_name, scheme) ->
+          if SurfacePath.equal candidate_name (SurfacePath.of_string name) then
+            Some scheme
+          else
+            None)
   |> Option.map TypePrinter.scheme_to_string
   | Some FileSummary.NoExport
   | None -> None

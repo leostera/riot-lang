@@ -49,7 +49,7 @@ let source_span = fun (source: Source.t) ->
   Syn.Cst.syntax_node_of_source_file source.cst |> Syn.Cst.token_body_span
 
 let qualified_name = fun scope_path name ->
-  IdentPath.append_name scope_path name
+  SurfacePath.append_name scope_path name
 
 let type_decl_key = ModuleSurface.type_decl_key
 
@@ -91,7 +91,7 @@ let manifest_signature_string = fun visible_types ->
 
 let type_decl_signature_string = fun visible_types (type_decl: FileSummary.type_decl) ->
   let decl = type_decl.declaration in
-  let key = type_decl_key type_decl |> IdentPath.to_string in
+  let key = type_decl_key type_decl |> SurfacePath.to_string in
   let param_variances = decl.param_variances
   |> List.map TypeDecl.variance_to_string
   |> String.concat "," in
@@ -223,12 +223,12 @@ let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
         (
           function
           | ItemTree.DeclaredValue item when String.equal export_name
-            (qualified_name item.scope_path item.value_name |> IdentPath.to_string) -> OriginMap.find
+            (qualified_name item.scope_path item.value_name |> SurfacePath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
           |> Option.map (fun (origin: OriginMap.origin) -> origin.span)
           | ItemTree.ExtensionConstructor item when String.equal export_name
-            (qualified_name item.scope_path item.constructor_name |> IdentPath.to_string) -> OriginMap.find
+            (qualified_name item.scope_path item.constructor_name |> SurfacePath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
           |> Option.map (fun (origin: OriginMap.origin) -> origin.span)
@@ -243,7 +243,7 @@ let find_type_decl_span = fun (analysis: SourceAnalysis.t) type_name ->
         (
           function
           | ItemTree.Type item when String.equal type_name
-            (qualified_name item.scope_path item.declaration.type_name |> IdentPath.to_string) -> OriginMap.find
+            (qualified_name item.scope_path item.declaration.type_name |> SurfacePath.to_string) -> OriginMap.find
             semantic_tree.origin_map
             item.origin_id
           |> Option.map (fun (origin: OriginMap.origin) -> origin.span)
@@ -465,17 +465,29 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
   includes_type actual_body expected_body
 
 let value_mismatches = fun ~visible_types interface_exports implementation_exports ->
+  let find_implementation_scheme name =
+    implementation_exports |> List.find_map
+      (fun (candidate_name, candidate_scheme) ->
+        if SurfacePath.equal name candidate_name then
+          Some candidate_scheme
+        else
+          None)
+  in
   interface_exports |> List.filter_map
     (fun (name, expected_scheme) ->
-      match List.assoc_opt name implementation_exports with
-      | None -> Some (Diagnostic.MissingValue { name })
+      match find_implementation_scheme name with
+      | None -> Some (Diagnostic.MissingValue { name = SurfacePath.to_string name })
       | Some actual_scheme ->
           let expected = canonical_scheme_string visible_types expected_scheme in
           let actual = canonical_scheme_string visible_types actual_scheme in
           if scheme_includes ~visible_types actual_scheme expected_scheme then
             None
           else
-            Some (Diagnostic.ValueTypeMismatch { name; expected; actual }))
+            Some (Diagnostic.ValueTypeMismatch {
+              name = SurfacePath.to_string name;
+              expected;
+              actual
+            }))
 
 let canonical_type_equal = fun ~visible_types left right ->
   rigid_type_equal
@@ -516,7 +528,7 @@ let manifest_aliases_decl_self = fun ~visible_types (type_decl: FileSummary.type
   | TypeRepr.Named { head; arguments=[] } -> TypeConstructorId.equal
     head.type_constructor_id
     type_decl.declaration.type_constructor_id
-  || IdentPath.equal head.name (type_decl_key type_decl)
+  || SurfacePath.equal head.name (type_decl_key type_decl)
   | _ -> false
 
 let normalized_manifest = fun ~visible_types (type_decl: FileSummary.type_decl) ->
@@ -579,15 +591,15 @@ let type_decl_mismatches = fun ~visible_types interface_decls implementation_dec
       match
         implementation_decls |> List.find_opt
           (fun (implementation_decl: FileSummary.type_decl) ->
-            IdentPath.equal key (type_decl_key implementation_decl))
+            SurfacePath.equal key (type_decl_key implementation_decl))
       with
-      | None -> Some (Diagnostic.MissingTypeDeclaration { name = IdentPath.to_string key })
+      | None -> Some (Diagnostic.MissingTypeDeclaration { name = SurfacePath.to_string key })
       | Some implementation_decl ->
           if type_decl_matches ~visible_types interface_decl implementation_decl then
             None
           else
             Some (Diagnostic.TypeDeclarationMismatch {
-              name = IdentPath.to_string key;
+              name = SurfacePath.to_string key;
               expected = type_decl_signature_string visible_types interface_decl;
               actual = type_decl_signature_string visible_types implementation_decl
             }))

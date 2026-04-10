@@ -1,7 +1,7 @@
 open Std
 open Model
 
-type env = (IdentPath.t * TypeScheme.t) list
+type env = (SurfacePath.t * TypeScheme.t) list
 
 type t = {
   prelude: env;

@@ -16,7 +16,7 @@ let sample_typings = fun () ->
   ModuleTypings.trusted
     ~module_name:"Std"
     ~source_hash:(Crypto.hash_string "std-typings")
-    [ ("answer", TypeScheme.of_type TypeRepr.int) ]
+    [ (SurfacePath.of_name "answer", TypeScheme.of_type TypeRepr.int) ]
 
 let legacy_module_typings_name_namespace = "typ/v2/module-typings/by-name"
 
@@ -41,7 +41,10 @@ let test_store_roundtrips_current_namespace = fun _ctx ->
                 store
                 ~package_name:"std" with
               | Some loaded_module, Some loaded_package ->
-                  let loaded_exports = ModuleTypings.exports loaded_module |> List.map fst in
+                  let loaded_exports =
+                    ModuleTypings.exports loaded_module
+                    |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
+                  in
                   let package_modules = loaded_package.typings |> List.map ModuleTypings.module_name in
                   if not (List.equal String.equal loaded_exports [ "answer" ]) then
                     Error (format

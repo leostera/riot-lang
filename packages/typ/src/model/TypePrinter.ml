@@ -209,12 +209,12 @@ and render_type_body = fun state nested active ty ->
       "(module sig " ^ values ^ " end)"
   | TypeRepr.Named { head={ name; _ }; arguments } -> (
       match arguments with
-      | [] -> IdentPath.to_string name
-      | [ argument ] -> render_type state true active argument ^ " " ^ IdentPath.to_string name
+      | [] -> SurfacePath.to_string name
+      | [ argument ] -> render_type state true active argument ^ " " ^ SurfacePath.to_string name
       | arguments -> "("
       ^ (arguments |> List.map (fun argument -> render_type state false active argument) |> String.concat ", ")
       ^ ") "
-      ^ IdentPath.to_string name
+      ^ SurfacePath.to_string name
     )
   | TypeRepr.PolyVariant { bound; tags; inherited } ->
       let members = (tags |> List.map (fun tag -> render_poly_variant_tag state active tag))

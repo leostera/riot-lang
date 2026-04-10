@@ -1,7 +1,7 @@
 open Std
 open Model
 
-type env = (IdentPath.t * TypeScheme.t) list
+type env = (SurfacePath.t * TypeScheme.t) list
 
 let monomorphic = TypeScheme.of_type
 
@@ -10,7 +10,7 @@ let var = TypeRepr.make_var
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
 let qualified = fun module_name name ->
-  IdentPath.append_name (IdentPath.of_name module_name) name
+  SurfacePath.append_name (SurfacePath.of_name module_name) name
 
 let polymorphic_eq =
   let lhs = var 0 in
@@ -65,9 +65,9 @@ let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 
 let prelude_cons_constructor_id = ConstructorId.of_int (-2)
 
-let prelude_option_type_constructor_id = TypeConstructorId.of_path (IdentPath.of_name "option")
+let prelude_option_type_constructor_id = TypeConstructorId.of_path (SurfacePath.of_name "option")
 
-let prelude_result_type_constructor_id = TypeConstructorId.of_path (IdentPath.of_name "result")
+let prelude_result_type_constructor_id = TypeConstructorId.of_path (SurfacePath.of_name "result")
 
 let prelude_none_constructor_id = ConstructorId.of_int (-3)
 
@@ -78,33 +78,33 @@ let prelude_ok_constructor_id = ConstructorId.of_int (-5)
 let prelude_error_constructor_id = ConstructorId.of_int (-6)
 
 let bindings = [
-  (IdentPath.of_name "[]", list_nil);
-  (IdentPath.of_name "::", list_cons);
-  (IdentPath.of_name "+", int_binop);
-  (IdentPath.of_name "-", int_binop);
-  (IdentPath.of_name "*", int_binop);
-  (IdentPath.of_name "/", int_binop);
-  (IdentPath.of_name "+.", float_binop);
-  (IdentPath.of_name "-.", float_binop);
-  (IdentPath.of_name "*.", float_binop);
-  (IdentPath.of_name "/.", float_binop);
-  (IdentPath.of_name "=", polymorphic_eq);
-  (IdentPath.of_name "!=", polymorphic_eq);
-  (IdentPath.of_name "<", polymorphic_compare);
-  (IdentPath.of_name "<=", polymorphic_compare);
-  (IdentPath.of_name ">", polymorphic_compare);
-  (IdentPath.of_name ">=", polymorphic_compare);
-  (IdentPath.of_name "&&", bool_binop);
-  (IdentPath.of_name "||", bool_binop);
-  (IdentPath.of_name "|>", polymorphic_pipe);
+  (SurfacePath.of_name "[]", list_nil);
+  (SurfacePath.of_name "::", list_cons);
+  (SurfacePath.of_name "+", int_binop);
+  (SurfacePath.of_name "-", int_binop);
+  (SurfacePath.of_name "*", int_binop);
+  (SurfacePath.of_name "/", int_binop);
+  (SurfacePath.of_name "+.", float_binop);
+  (SurfacePath.of_name "-.", float_binop);
+  (SurfacePath.of_name "*.", float_binop);
+  (SurfacePath.of_name "/.", float_binop);
+  (SurfacePath.of_name "=", polymorphic_eq);
+  (SurfacePath.of_name "!=", polymorphic_eq);
+  (SurfacePath.of_name "<", polymorphic_compare);
+  (SurfacePath.of_name "<=", polymorphic_compare);
+  (SurfacePath.of_name ">", polymorphic_compare);
+  (SurfacePath.of_name ">=", polymorphic_compare);
+  (SurfacePath.of_name "&&", bool_binop);
+  (SurfacePath.of_name "||", bool_binop);
+  (SurfacePath.of_name "|>", polymorphic_pipe);
   (
-    IdentPath.of_name "^",
+    SurfacePath.of_name "^",
     monomorphic (arrow TypeRepr.string (arrow TypeRepr.string TypeRepr.string))
   );
 ]
 
 let type_decls = [ {
-    FileSummary.scope_path = IdentPath.empty;
+    FileSummary.scope_path = SurfacePath.empty;
     declaration =
       {
         TypeDecl.type_constructor_id = prelude_list_type_constructor_id;
@@ -132,7 +132,7 @@ let type_decls = [ {
         manifest = None;
       };
   }; {
-    FileSummary.scope_path = IdentPath.empty;
+    FileSummary.scope_path = SurfacePath.empty;
     declaration =
       {
         TypeDecl.type_constructor_id = prelude_option_type_constructor_id;
@@ -160,7 +160,7 @@ let type_decls = [ {
         manifest = None;
       };
   }; {
-    FileSummary.scope_path = IdentPath.empty;
+    FileSummary.scope_path = SurfacePath.empty;
     declaration =
       {
         TypeDecl.type_constructor_id = prelude_result_type_constructor_id;

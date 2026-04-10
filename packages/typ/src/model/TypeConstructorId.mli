@@ -11,7 +11,7 @@ val owner: t -> string
 
 val local_id: t -> int
 
-val of_path: IdentPath.t -> t
+val of_path: SurfacePath.t -> t
 
 val of_int: int -> t
 

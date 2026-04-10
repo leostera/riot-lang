@@ -2,12 +2,12 @@ open Std
 
 type t = {
   type_decls: FileSummary.type_decl list;
-  by_path: (IdentPath.t, FileSummary.type_decl) Collections.HashMap.t;
+  by_path: (SurfacePath.t, FileSummary.type_decl) Collections.HashMap.t;
   by_id: (TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t;
 }
 
 let qualify_name = fun scope_path name ->
-  IdentPath.append_name scope_path name
+  SurfacePath.append_name scope_path name
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
   qualify_name type_decl.scope_path type_decl.declaration.type_name
@@ -17,7 +17,7 @@ let bind_type_decls = fun type_decls introduced ->
     (fun acc (type_decl: FileSummary.type_decl) ->
       let key = type_decl_key type_decl in
       let acc =
-        List.filter (fun candidate -> not (IdentPath.equal (type_decl_key candidate) key)) acc
+        List.filter (fun candidate -> not (SurfacePath.equal (type_decl_key candidate) key)) acc
       in
       acc @ [ type_decl ])
     type_decls
@@ -26,14 +26,14 @@ let bind_type_decls = fun type_decls introduced ->
 let aliases_for_type_decls = fun type_decls module_path ->
   type_decls |> List.filter_map
     (fun (type_decl: FileSummary.type_decl) ->
-      match IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path with
+      match SurfacePath.strip_prefix ~prefix:module_path type_decl.scope_path with
       | Some scope_path -> Some { type_decl with scope_path }
       | None -> None)
 
 let prefix_type_decls = fun prefix type_decls ->
   List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path })
+      { type_decl with scope_path = SurfacePath.append_path prefix type_decl.scope_path })
     type_decls
 
 let map_preserving = fun loop xs ->
@@ -113,7 +113,7 @@ let rebase_type_decl_refs = fun type_decls ->
           in
           if
             Std.Ptr.equal arguments arguments2
-            && IdentPath.equal head.name head2.name
+            && SurfacePath.equal head.name head2.name
             && TypeConstructorId.equal head.type_constructor_id head2.type_constructor_id
           then
             ty
@@ -383,7 +383,7 @@ let instantiate_alias_manifest = fun ~make (type_decl: FileSummary.type_decl) ar
 let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_head ->
   let same_head left right =
     TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
-    && IdentPath.equal left.TypeRepr.name right.TypeRepr.name in
+    && SurfacePath.equal left.TypeRepr.name right.TypeRepr.name in
   let builtin_type_of_head (head: TypeRepr.named_type_head) arguments =
     Option.and_then (BuiltinTypeConstructors.head_of_path head.TypeRepr.name)
       (fun builtin_head ->
@@ -986,7 +986,7 @@ let canonicalize_type = fun visible_types ->
           in
           if
             Std.Ptr.equal arguments canonical_arguments
-            && IdentPath.equal head.name canonical_head.name
+            && SurfacePath.equal head.name canonical_head.name
             && TypeConstructorId.equal head.type_constructor_id canonical_head.type_constructor_id
           then
             ty
@@ -1139,5 +1139,5 @@ let type_decls_for_include = fun visible_types module_path ->
 
 let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
   aliases_for_type_decls visible_types.type_decls module_path
-  |> prefix_type_decls (IdentPath.of_name alias_name)
+  |> prefix_type_decls (SurfacePath.of_name alias_name)
   |> rebase_type_decl_refs

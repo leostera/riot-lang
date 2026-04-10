@@ -127,10 +127,10 @@ talk about.
 
 At a minimum:
 
-- `ItemId`
-- `BindingId`
-- `ExprId`
-- `PatId`
+- `ItemArenaId`
+- `BindingArenaId`
+- `ExprArenaId`
+- `PatternArenaId`
 - `OriginId`
 
 These ids are the real semantic handles.

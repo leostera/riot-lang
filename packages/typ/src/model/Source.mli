@@ -23,7 +23,7 @@ type t = {
   module_name: string;
   (** Semantic equivalent of host-side compiler `-open` flags applied before
       checking this source. *)
-  implicit_opens: IdentPath.t list;
+  implicit_opens: SurfacePath.t list;
   (** Host-owned origin label. *)
   origin: origin;
   (** Stable typing-input hash for this source revision. *)
@@ -37,7 +37,7 @@ type t = {
 }
 
 (** Compute the stable hash for one prepared typing input. *)
-val hash: implicit_opens:IdentPath.t list -> cst:Syn.Cst.source_file -> Crypto.hash
+val hash: implicit_opens:SurfacePath.t list -> cst:Syn.Cst.source_file -> Crypto.hash
 
 (** Build one logical source record from host-prepared parse and CST
     artifacts. *)
@@ -45,7 +45,7 @@ val make_prepared:
   source_id:SourceId.t ->
   kind:kind ->
   module_name:string ->
-  implicit_opens:IdentPath.t list ->
+  implicit_opens:SurfacePath.t list ->
   origin:origin ->
   revision:int ->
   source_hash:Crypto.hash ->

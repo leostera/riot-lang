@@ -7,7 +7,7 @@ val equal: t -> t -> bool
 
 val of_int: int -> t
 
-val of_path: IdentPath.t -> t
+val of_path: SurfacePath.t -> t
 
 val to_int: t -> int
 

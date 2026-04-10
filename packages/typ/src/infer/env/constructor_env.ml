@@ -10,7 +10,7 @@ module Owner_map = Collections.Map.Make (struct
 end)
 
 type entry = {
-  owner_path: IdentPath.t;
+  owner_path: SurfacePath.t;
   owner_type_constructor_id: TypeConstructorId.t;
   constructor: TypeDecl.constructor;
 }
@@ -27,7 +27,7 @@ type components = {
 type layer =
   | Nothing
   | Open of {
-      root: IdentPath.t;
+      root: SurfacePath.t;
       type_decls: FileSummary.type_decl list;
       components: components;
       next: t
@@ -118,7 +118,7 @@ let map_components = fun map_entry components ->
   }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
 
 let qualify_scheme_with_local_types = fun ~root type_decls scheme ->
   if List.is_empty type_decls then
@@ -181,7 +181,7 @@ let qualify_scheme_with_local_types = fun ~root type_decls scheme ->
             match Collections.HashMap.get by_id head.type_constructor_id with
             | Some type_decl -> {
               head
-              with name = IdentPath.append_path root (type_decl_key type_decl)
+              with name = SurfacePath.append_path root (type_decl_key type_decl)
             }
             | None -> head
           in
@@ -270,7 +270,7 @@ let qualify_inline_record_labels = fun ~root type_decls labels ->
             match Collections.HashMap.get by_id head.type_constructor_id with
             | Some type_decl -> {
               head
-              with name = IdentPath.append_path root (type_decl_key type_decl)
+              with name = SurfacePath.append_path root (type_decl_key type_decl)
             }
             | None -> head
           in
@@ -384,7 +384,7 @@ let qualify_entry = fun ~root ~type_decls entry ->
   let qualified_inline_record_labels = entry.constructor.inline_record_labels
   |> Option.map (qualify_inline_record_labels ~root type_decls) in
   {
-    owner_path = IdentPath.append_path root entry.owner_path;
+    owner_path = SurfacePath.append_path root entry.owner_path;
     owner_type_constructor_id = entry.owner_type_constructor_id;
     constructor = {
       entry.constructor
@@ -398,7 +398,7 @@ let of_type_decls = fun type_decls ->
     type_decls
     |> List.concat_map
       (fun (type_decl: FileSummary.type_decl) ->
-        let owner_path = IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name in
+        let owner_path = SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name in
         type_decl.declaration.constructors
         |> List.map
           (fun constructor ->

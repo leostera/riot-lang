@@ -3,13 +3,13 @@ open Std
 (** Source origins for one semantic snapshot. *)
 type semantic_id =
   (** Top-level item semantic identity. *)
-  | Item of ItemId.t
+  | Item of ItemArenaId.t
   (** Lowered binding semantic identity. *)
-  | Binding of BindingId.t
+  | Binding of BindingArenaId.t
   (** Lowered expression semantic identity. *)
-  | Expr of ExprId.t
+  | Expr of ExprArenaId.t
   (** Lowered pattern semantic identity. *)
-  | Pattern of PatId.t
+  | Pattern of PatternArenaId.t
 type kind =
   (** Origin attached to one top-level item. *)
   | ItemKind
@@ -57,16 +57,16 @@ val find: t -> OriginId.t -> origin option
 val find_by_semantic_id: t -> semantic_id -> origin option
 
 (** Convenience lookup for item origins. *)
-val find_item: t -> ItemId.t -> origin option
+val find_item: t -> ItemArenaId.t -> origin option
 
 (** Convenience lookup for binding origins. *)
-val find_binding: t -> BindingId.t -> origin option
+val find_binding: t -> BindingArenaId.t -> origin option
 
 (** Convenience lookup for expression origins. *)
-val find_expr: t -> ExprId.t -> origin option
+val find_expr: t -> ExprArenaId.t -> origin option
 
 (** Convenience lookup for pattern origins. *)
-val find_pattern: t -> PatId.t -> origin option
+val find_pattern: t -> PatternArenaId.t -> origin option
 
 (** Encode all origins as structured JSON for snapshot tests and tooling. *)
 val to_json: t -> Data.Json.t

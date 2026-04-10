@@ -22,6 +22,28 @@
         }
       ]
     },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "answer",
+          "scheme": "char"
+        },
+        {
+          "name": "value",
+          "scheme": "char"
+        }
+      ],
+      "typ": [
+        {
+          "name": "answer",
+          "scheme": "char"
+        },
+        {
+          "name": "value",
+          "scheme": "char"
+        }
+      ]
+    },
     "type_names": {
       "ocamlc": [],
       "typ": []
@@ -38,44 +60,10 @@
         "scheme": "char"
       }
     ],
-    "interface_lines": [
-      "val value : char",
-      "val answer : char"
-    ],
-    "interface_text": "val value : char\nval answer : char",
+    "interface_text": "val value : char\nval answer : char\n",
+    "type_aliases": [],
     "type_names": [],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+0]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+9])",
-      "          extra (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+9]) ghost",
-      "            Tpat_extra_constraint",
-      "            core_type (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+16])",
-      "              Ttyp_constr \"char/2!\"",
-      "              []",
-      "          Tpat_var \"value/4\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22])",
-      "          extra (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22]) ghost",
-      "            Texp_constraint",
-      "            core_type (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+16])",
-      "              Ttyp_constr \"char/2!\"",
-      "              []",
-      "          Texp_constant Const_char 71",
-      "    ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+0]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+18])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+10])",
-      "          Tpat_var \"answer/5\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+13]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+18])",
-      "          Texp_ident \"value/4\"",
-      "    ]",
-      "]"
-    ]
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+0]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+9])\n          extra (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+9]) ghost\n            Tpat_extra_constraint\n            core_type (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+16])\n              Ttyp_constr \"char/2!\"\n              []\n          Tpat_var \"value/4\"\n        expression (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22])\n          extra (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+19]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+22]) ghost\n            Texp_constraint\n            core_type (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+12]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[9,154+16])\n              Ttyp_constr \"char/2!\"\n              []\n          Texp_constant Const_char 71\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+0]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+18])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+4]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+10])\n          Tpat_var \"answer/5\"\n        expression (packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+13]..packages/typ/tests/fixtures/oracle/0002_annotated_value_char.ml[11,178+18])\n          Texp_ident \"value/4\"\n    ]\n]"
   },
   "typ": {
     "body_arena": {

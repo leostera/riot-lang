@@ -51,23 +51,23 @@ let definition_target_of_position = fun (analysis: Session.SourceAnalysis.t) pos
     (fun (entry: Analysis.TypeIndex.entry) ->
       analysis.expr_traces |> List.find_map
         (fun (trace: Analysis.Check_result.expr_trace) ->
-          if ExprId.equal trace.expr_id entry.expr_id then
+          if ExprArenaId.equal trace.expr_id entry.expr_id then
             trace.resolved_binding
           else
             None))
 
 let resolve_export_path =
   let rec loop snapshot visited path =
-    if List.exists (IdentPath.equal path) visited then
+    if List.exists (SurfacePath.equal path) visited then
       None
     else
-      match IdentPath.uncons path with
-      | Some (module_name, export_path) when not (IdentPath.is_empty export_path) -> (
+      match SurfacePath.uncons path with
+      | Some (module_name, export_path) when not (SurfacePath.is_empty export_path) -> (
           match Session.Snapshot.find_module_typings_by_name snapshot module_name with
           | Some typings -> (
               match ModuleTypings.find_value_definition
                 typings
-                ~export_name:(IdentPath.to_string export_path) with
+                ~export_name:export_path with
               | Some (ModuleTypings.Site definition) -> Some definition
               | Some (ModuleTypings.Export redirected) -> loop snapshot (path :: visited) redirected
               | None -> None

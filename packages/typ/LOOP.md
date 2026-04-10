@@ -191,7 +191,7 @@ Previous measured slice:
 - do not land giant rewrites without checkpoints
 - do not keep semantically neutral slowdowns
 - do not ignore semantic-summary drift when runtime improves
-- do not let strings / `IdentPath` leak deeper into hot paths
+- do not let strings / `SurfacePath` leak deeper into hot paths
 - do not reintroduce flattened env reconstruction in lookup paths
 - do not mix unrelated work into one performance slice
 - do not commit a slice without recording its runtime

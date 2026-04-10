@@ -1,73 +1,66 @@
 open Std
 open Model
 
-type ident = {
-  local_id: int;
-  name: string;
-}
-
-let make_ident = fun ~local_id ~name -> { local_id; name }
-
-let ident_name = fun ident -> ident.name
-
-let ident_local_id = fun ident -> ident.local_id
-
-let same_ident = fun left right ->
-  Int.equal left.local_id right.local_id
-
-let compare_ident = fun left right ->
-  Int.compare left.local_id right.local_id
-
 type provenance =
-  | LoweredPattern of PatId.t
+  | LoweredPattern of PatternArenaId.t
   | Prelude
   | Ambient
-  | TypeConstructor of { type_name: string; scope_path: IdentPath.t }
-  | Exception of { name: string; scope_path: IdentPath.t }
-  | DeclaredValue of { name: string; scope_path: IdentPath.t }
-  | Included of { module_path: IdentPath.t }
-  | ModuleAlias of { alias_name: string; module_path: IdentPath.t }
+  | TypeConstructor of { type_name: string; scope_path: SurfacePath.t }
+  | Exception of { name: string; scope_path: SurfacePath.t }
+  | DeclaredValue of { name: string; scope_path: SurfacePath.t }
+  | Included of { module_path: SurfacePath.t }
+  | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
 
 type t = {
-  ident: ident;
+  id: BindingId.t;
   name: string;
-  path: IdentPath.t;
+  path: EntityId.t;
   scheme: TypeScheme.t;
   provenance: provenance;
 }
 
-let path_name = fun path ->
-  match IdentPath.last_name path with
+let path_name = fun surface_path ->
+  match SurfacePath.last_name surface_path with
   | Some name -> name
   | None -> ""
 
-let make = fun ~ident ~path ~scheme ~provenance ->
+let make = fun ~id ~surface_path ~scheme ~provenance ->
   {
-    ident;
-    name = path_name path;
-    path;
+    id;
+    name = path_name surface_path;
+    path = EntityId.resolved ~binding_id:id ~surface_path;
     scheme;
     provenance;
   }
 
-let ident = fun binding -> binding.ident
+let with_path = fun path binding ->
+  {
+    binding with
+    name = path_name (EntityId.surface_path path);
+    path;
+  }
 
-let same = fun left right -> same_ident left.ident right.ident
+let id = fun binding -> binding.id
 
-let compare = fun left right -> compare_ident left.ident right.ident
+let same = fun left right -> BindingId.equal left.id right.id
+
+let compare = fun left right -> BindingId.compare left.id right.id
 
 let name = fun binding -> binding.name
 
 let path = fun binding -> binding.path
 
+let surface_path = fun binding -> EntityId.surface_path binding.path
+
 let scheme = fun binding -> binding.scheme
 
 let provenance = fun binding -> binding.provenance
 
-let with_path = fun path binding -> { binding with name = path_name path; path }
+let with_surface_path = fun surface_path binding ->
+  with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
 
 let with_scheme = fun scheme binding -> { binding with scheme }
 
 let with_provenance = fun provenance binding -> { binding with provenance }
 
-let render = fun binding -> (IdentPath.to_string binding.path, binding.scheme)
+let render = fun binding -> (SurfacePath.to_string (surface_path binding), binding.scheme)

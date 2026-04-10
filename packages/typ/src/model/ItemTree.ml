@@ -1,24 +1,24 @@
 open Std
 
 type type_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   declaration: TypeDecl.t;
 }
 
 type exception_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   exception_name: string;
   scheme: TypeScheme.t;
 }
 
 type extension_constructor_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   constructor_id: ConstructorId.t;
   constructor_name: string;
   scheme: TypeScheme.t;
@@ -26,48 +26,48 @@ type extension_constructor_item = {
 }
 
 type value_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
-  binding_ids: BindingId.t list;
+  scope_path: SurfacePath.t;
+  binding_ids: BindingArenaId.t list;
   recursive: bool;
 }
 
 type declared_value_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   value_name: string;
   scheme: TypeScheme.t;
 }
 
 type unsupported_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   summary: string;
 }
 
 type open_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
-  module_path: IdentPath.t;
+  scope_path: SurfacePath.t;
+  module_path: SurfacePath.t;
 }
 
 type include_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
-  module_path: IdentPath.t;
+  scope_path: SurfacePath.t;
+  module_path: SurfacePath.t;
 }
 
 type module_alias_item = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   origin_id: OriginId.t;
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   alias_name: string;
-  module_path: IdentPath.t;
+  module_path: SurfacePath.t;
 }
 
 type item =
@@ -106,7 +106,7 @@ let of_list = fun items ->
     items |> List.iter
       (fun item ->
         let _ = Collections.HashMap.insert items_by_id
-          (item_id_of_item item |> ItemId.to_int)
+          (item_id_of_item item |> ItemArenaId.to_int)
           item
         in
         ())
@@ -116,28 +116,28 @@ let of_list = fun items ->
 let items = fun items -> items.items
 
 let find_item = fun items item_id ->
-  Collections.HashMap.get items.items_by_id (ItemId.to_int item_id)
+  Collections.HashMap.get items.items_by_id (ItemArenaId.to_int item_id)
 
 let item_to_json = fun value ->
   match value with
   | Type (item: type_item) -> Data.Json.Object [
     ("tag", Data.Json.String "type");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("declaration", TypeDecl.to_json item.declaration);
   ]
   | Exception (item: exception_item) -> Data.Json.Object [
     ("tag", Data.Json.String "exception");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("exception_name", Data.Json.String item.exception_name);
@@ -146,11 +146,11 @@ let item_to_json = fun value ->
   | ExtensionConstructor (item: extension_constructor_item) ->
       Data.Json.Object [
         ("tag", Data.Json.String "extension_constructor");
-        ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+        ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
         ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
         (
           "scope_path",
-          Data.Json.Array (IdentPath.to_segments item.scope_path
+          Data.Json.Array (SurfacePath.to_segments item.scope_path
           |> List.map (fun segment -> Data.Json.String segment))
         );
         ("constructor_id", Data.Json.Int (ConstructorId.to_int item.constructor_id));
@@ -173,28 +173,28 @@ let item_to_json = fun value ->
       ]
   | Value (item: value_item) -> Data.Json.Object [
     ("tag", Data.Json.String "value");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     (
       "binding_ids",
       Data.Json.Array (List.map
-        (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id))
+        (fun binding_id -> Data.Json.Int (BindingArenaId.to_int binding_id))
         item.binding_ids)
     );
     ("recursive", Data.Json.Bool item.recursive);
   ]
   | DeclaredValue (item: declared_value_item) -> Data.Json.Object [
     ("tag", Data.Json.String "declared_value");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("value_name", Data.Json.String item.value_name);
@@ -202,45 +202,45 @@ let item_to_json = fun value ->
   ]
   | Open (item: open_item) -> Data.Json.Object [
     ("tag", Data.Json.String "open");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
-    ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
+    ("module_path", Data.Json.String (SurfacePath.to_string item.module_path));
   ]
   | Include (item: include_item) -> Data.Json.Object [
     ("tag", Data.Json.String "include");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
-    ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
+    ("module_path", Data.Json.String (SurfacePath.to_string item.module_path));
   ]
   | ModuleAlias (item: module_alias_item) -> Data.Json.Object [
     ("tag", Data.Json.String "module_alias");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("alias_name", Data.Json.String item.alias_name);
-    ("module_path", Data.Json.String (IdentPath.to_string item.module_path));
+    ("module_path", Data.Json.String (SurfacePath.to_string item.module_path));
   ]
   | Unsupported (item: unsupported_item) -> Data.Json.Object [
     ("tag", Data.Json.String "unsupported");
-    ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
+    ("item_id", Data.Json.Int (ItemArenaId.to_int item.item_id));
     ("origin_id", Data.Json.Int (OriginId.to_int item.origin_id));
     (
       "scope_path",
-      Data.Json.Array (IdentPath.to_segments item.scope_path
+      Data.Json.Array (SurfacePath.to_segments item.scope_path
       |> List.map (fun segment -> Data.Json.String segment))
     );
     ("summary", Data.Json.String item.summary);
@@ -250,10 +250,10 @@ let to_json = fun items -> Data.Json.Array (List.map item_to_json items.items)
 
 let to_string = fun items ->
   let scope_prefix_of scope_path =
-    if IdentPath.is_empty scope_path then
+    if SurfacePath.is_empty scope_path then
       ""
     else
-      format Format.[ str (IdentPath.to_string scope_path); str " " ]
+      format Format.[ str (SurfacePath.to_string scope_path); str " " ]
   in
   match items.items with
   | [] -> "  none\n"
@@ -264,7 +264,7 @@ let to_string = fun items ->
           | Type (item: type_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " type ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
@@ -274,7 +274,7 @@ let to_string = fun items ->
           | Exception (item: exception_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " exception ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
@@ -286,7 +286,7 @@ let to_string = fun items ->
           | ExtensionConstructor (item: extension_constructor_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " extension_constructor ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
@@ -299,7 +299,7 @@ let to_string = fun items ->
               format
                 Format.[
                   str "  ";
-                  str (ItemId.to_string item.item_id);
+                  str (ItemArenaId.to_string item.item_id);
                   str " value ";
                   str (scope_prefix_of item.scope_path);
                   str (OriginId.to_string item.origin_id);
@@ -307,13 +307,13 @@ let to_string = fun items ->
                   bool item.recursive;
                   str " bindings=[";
                   str
-                    (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ");
+                    (item.binding_ids |> List.map BindingArenaId.to_string |> String.concat ", ");
                   str "]";
                 ]
           | DeclaredValue (item: declared_value_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " declared_value ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
@@ -325,39 +325,39 @@ let to_string = fun items ->
           | Open (item: open_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " open ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
               str " ";
-              str (IdentPath.to_string item.module_path);
+              str (SurfacePath.to_string item.module_path);
             ]
           | Include (item: include_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " include ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
               str " ";
-              str (IdentPath.to_string item.module_path);
+              str (SurfacePath.to_string item.module_path);
             ]
           | ModuleAlias (item: module_alias_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " module_alias ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);
               str " ";
               str item.alias_name;
               str " = ";
-              str (IdentPath.to_string item.module_path);
+              str (SurfacePath.to_string item.module_path);
             ]
           | Unsupported (item: unsupported_item) -> format
             Format.[
               str "  ";
-              str (ItemId.to_string item.item_id);
+              str (ItemArenaId.to_string item.item_id);
               str " unsupported ";
               str (scope_prefix_of item.scope_path);
               str (OriginId.to_string item.origin_id);

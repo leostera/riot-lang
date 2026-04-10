@@ -6,7 +6,7 @@ open Syn
 type state = {
   source: Source.t;
   source_owner: string;
-  mutable scope_path: IdentPath.t;
+  mutable scope_path: SurfacePath.t;
   mutable next_origin_id: int;
   mutable next_pattern_id: int;
   mutable next_expr_id: int;
@@ -25,11 +25,11 @@ type state = {
   mutable bindings: BodyArena.binding list;
   mutable items: ItemTree.item list;
   mutable diagnostics: Typ_diagnostic.t list;
-  mutable declared_type_names: (string * IdentPath.t * TypeConstructorId.t) list;
-  mutable module_type_templates: (IdentPath.t * module_type_template) list;
-  mutable local_module_aliases: (string * IdentPath.t) list;
+  mutable declared_type_names: (string * SurfacePath.t * TypeConstructorId.t) list;
+  mutable module_type_templates: (SurfacePath.t * module_type_template) list;
+  mutable local_module_aliases: (string * SurfacePath.t) list;
   mutable local_module_binding_groups: (string * BodyArena.local_module_scope) list;
-  mutable local_module_functors: (IdentPath.t * local_module_functor) list;
+  mutable local_module_functors: (SurfacePath.t * local_module_functor) list;
 }
 
 and module_type_template = {
@@ -59,18 +59,18 @@ let fresh_lowered_type_var_id = fun (state: state) ->
   state.next_lowered_type_var_id <- current - 1;
   current
 
-let ident_path = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> IdentPath.of_segments
+let ident_path = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> SurfacePath.of_segments
 
 let resolve_local_module_alias_path = fun (state: state) path ->
-  match IdentPath.to_segments path with
+  match SurfacePath.to_segments path with
   | head :: tail -> (
       match List.assoc_opt head state.local_module_aliases with
-      | Some resolved_path -> tail |> List.fold_left IdentPath.append_name resolved_path
+      | Some resolved_path -> tail |> List.fold_left SurfacePath.append_name resolved_path
       | None -> path
     )
   | [] -> path
 
-let path_text = fun path -> path |> ident_path |> IdentPath.to_string
+let path_text = fun path -> path |> ident_path |> SurfacePath.to_string
 
 let last_path_segment_text = fun path ->
   match List.rev (Cst.Ident.segments path) with
@@ -78,7 +78,7 @@ let last_path_segment_text = fun path ->
   | [] -> ""
 
 let qualify_scoped_name = fun scope_path name ->
-  IdentPath.append_name scope_path name
+  SurfacePath.append_name scope_path name
 
 let register_local_module_functor = fun (state: state) name template ->
   let path = qualify_scoped_name state.scope_path name in
@@ -89,14 +89,14 @@ let resolve_local_module_functor = fun (state: state) path ->
     state.local_module_functors
     |> List.find_map
       (fun (template_path, template) ->
-        if IdentPath.equal template_path candidate_path then
+        if SurfacePath.equal template_path candidate_path then
           Some template
         else
           None)
   in
-  if IdentPath.is_bare path then
-    match IdentPath.last_name path with
-    | Some name -> IdentPath.prefixes state.scope_path
+  if SurfacePath.is_bare path then
+    match SurfacePath.last_name path with
+    | Some name -> SurfacePath.prefixes state.scope_path
     |> List.rev
     |> List.find_map (fun scope_path -> lookup (qualify_scoped_name scope_path name))
     | None -> None
@@ -115,7 +115,7 @@ let resolve_named_type_name = fun (state: state) name ->
         if
           List.exists
             (fun (candidate_name, candidate_scope_path, _) ->
-              String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path)
+              String.equal candidate_name name && SurfacePath.equal candidate_scope_path scope_path)
             state.declared_type_names
         then
           let type_constructor_id =
@@ -123,7 +123,7 @@ let resolve_named_type_name = fun (state: state) name ->
             |> List.find_map
               (fun (candidate_name, candidate_scope_path, candidate_id) ->
                 if
-                  String.equal candidate_name name && IdentPath.equal candidate_scope_path scope_path
+                  String.equal candidate_name name && SurfacePath.equal candidate_scope_path scope_path
                 then
                   Some candidate_id
                 else
@@ -136,18 +136,18 @@ let resolve_named_type_name = fun (state: state) name ->
         else
           loop rest
   in
-  IdentPath.prefixes state.scope_path |> List.rev |> loop
+  SurfacePath.prefixes state.scope_path |> List.rev |> loop
 
 let resolve_named_type_path = fun (state: state) path ->
   let external_head () = TypeRepr.named_head
     ~type_constructor_id:(TypeConstructorId.of_path path)
     ~name:path in
-  match IdentPath.split_last path with
+  match SurfacePath.split_last path with
   | Some (scope_path, type_name) ->
       state.declared_type_names |> List.find_map
         (fun (candidate_name, candidate_scope_path, candidate_id) ->
           if
-            String.equal candidate_name type_name && IdentPath.equal candidate_scope_path scope_path
+            String.equal candidate_name type_name && SurfacePath.equal candidate_scope_path scope_path
           then
             Some (TypeRepr.named_head ~type_constructor_id:candidate_id ~name:path)
           else
@@ -168,14 +168,14 @@ let resolve_module_type_template = fun (state: state) path ->
     state.module_type_templates
     |> List.find_map
       (fun (template_path, template) ->
-        if IdentPath.equal template_path candidate_path then
+        if SurfacePath.equal template_path candidate_path then
           Some template
         else
           None)
   in
-  if IdentPath.is_bare path then
-    match IdentPath.last_name path with
-    | Some name -> IdentPath.prefixes state.scope_path
+  if SurfacePath.is_bare path then
+    match SurfacePath.last_name path with
+    | Some name -> SurfacePath.prefixes state.scope_path
     |> List.rev
     |> List.find_map (fun scope_path -> lookup (qualify_scoped_name scope_path name))
     | None -> None
@@ -187,7 +187,7 @@ let register_declared_type_name = fun (state: state) name ->
     state.declared_type_names |> List.find_map
       (fun (candidate_name, candidate_scope_path, candidate_id) ->
         if
-          String.equal candidate_name name && IdentPath.equal candidate_scope_path state.scope_path
+          String.equal candidate_name name && SurfacePath.equal candidate_scope_path state.scope_path
         then
           Some candidate_id
         else
@@ -215,7 +215,7 @@ let with_nonrec_current_type_name_hidden = fun (state: state) (declaration: Cst.
         state.declared_type_names <- List.filter
           (fun (candidate_name, candidate_scope_path, _) ->
             not
-              (String.equal candidate_name type_name && IdentPath.equal candidate_scope_path state.scope_path))
+              (String.equal candidate_name type_name && SurfacePath.equal candidate_scope_path state.scope_path))
           state.declared_type_names
       in
       try
@@ -243,13 +243,13 @@ let rec module_path_segments_of_expr = fun (state: state) ->
       if List.is_empty segments || not (List.for_all is_module_name segments) then
         None
       else
-        Some (resolve_local_module_alias_path state (IdentPath.of_segments segments))
+        Some (resolve_local_module_alias_path state (SurfacePath.of_segments segments))
   | Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
       match module_path_segments_of_expr state receiver with
       | Some path ->
           let field_name = Cst.Token.text field_name in
           if is_module_name field_name then
-            Some (IdentPath.append_name path field_name)
+            Some (SurfacePath.append_name path field_name)
           else
             None
       | None -> None
@@ -326,7 +326,7 @@ let builtin_type_of_name = fun name arguments ->
   | ("exn", []) -> Some (TypeRepr.named
     ~head:(TypeRepr.named_head
       ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
-      ~name:(IdentPath.of_name "exn"))
+      ~name:(SurfacePath.of_name "exn"))
     ~arguments:[])
   | ("array", [ argument ]) -> Some (TypeRepr.array argument)
   | ("list", [ argument ]) -> Some (TypeRepr.list argument)
@@ -500,7 +500,7 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
             match resolved_head with
             | Some head -> TypeRepr.named ~head ~arguments
             | None -> (
-                match builtin_type_of_name (IdentPath.to_string name) arguments with
+                match builtin_type_of_name (SurfacePath.to_string name) arguments with
                 | Some builtin -> builtin
                 | None -> TypeRepr.named_path ~name ~arguments
               )
@@ -526,10 +526,10 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
         match constraint_.constrained_type with
         | Cst.CoreType.Constr { constructor_path; arguments=[]; _ } ->
             let constrained_path = ident_path constructor_path in
-            let constrained_name = IdentPath.last_name constrained_path in
+            let constrained_name = SurfacePath.last_name constrained_path in
             template.abstract_types |> List.find_map
               (fun ((type_name, (head: TypeRepr.named_type_head))) ->
-                if IdentPath.equal head.name constrained_path then
+                if SurfacePath.equal head.name constrained_path then
                   Some head
                 else
                   match constrained_name with
@@ -615,7 +615,7 @@ let make_state = fun source ->
   {
     source;
     source_owner = source_owner source;
-    scope_path = IdentPath.empty;
+    scope_path = SurfacePath.empty;
     next_origin_id = 0;
     next_pattern_id = 0;
     next_expr_id = 0;
@@ -664,7 +664,7 @@ let add_origin = fun (state: state) ~semantic_id ~label syntax_node ->
   origin_id
 
 let add_pattern = fun (state: state) ~syntax_node ~label desc ->
-  let pat_id = PatId.of_int state.next_pattern_id in
+  let pat_id = PatternArenaId.of_int state.next_pattern_id in
   let () =
     state.next_pattern_id <- state.next_pattern_id + 1
   in
@@ -679,7 +679,7 @@ let annotate_pattern = fun (state: state) pat_id annotation ->
   let rec loop acc = function
     | [] -> List.rev acc
     | ((node: BodyArena.pattern_node) as current_node) :: rest ->
-        if PatId.equal node.pat_id pat_id then
+        if PatternArenaId.equal node.pat_id pat_id then
           List.rev_append acc ({ current_node with annotation = Some annotation } :: rest)
         else
           loop (current_node :: acc) rest
@@ -687,7 +687,7 @@ let annotate_pattern = fun (state: state) pat_id annotation ->
   state.patterns <- loop [] state.patterns
 
 let add_expr = fun (state: state) ~syntax_node ~label desc ->
-  let expr_id = ExprId.of_int state.next_expr_id in
+  let expr_id = ExprArenaId.of_int state.next_expr_id in
   let () =
     state.next_expr_id <- state.next_expr_id + 1
   in
@@ -699,7 +699,7 @@ let add_expr = fun (state: state) ~syntax_node ~label desc ->
   expr_id
 
 let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~annotation ~value_id ~recursive ->
-  let binding_id = BindingId.of_int state.next_binding_id in
+  let binding_id = BindingArenaId.of_int state.next_binding_id in
   let () =
     state.next_binding_id <- state.next_binding_id + 1
   in
@@ -721,7 +721,7 @@ let add_binding = fun (state: state) ~syntax_node ~name ~pattern_id ~annotation 
   binding_id
 
 let add_item = fun (state: state) ~syntax_node item ->
-  let item_id = ItemId.of_int state.next_item_id in
+  let item_id = ItemArenaId.of_int state.next_item_id in
   let () =
     state.next_item_id <- state.next_item_id + 1
   in
@@ -1135,7 +1135,7 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
   let exn_type = TypeRepr.named
     ~head:(TypeRepr.named_head
       ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
-      ~name:(IdentPath.of_name "exn"))
+      ~name:(SurfacePath.of_name "exn"))
     ~arguments:[] in
   let payload_type =
     match declaration.rhs with
@@ -1155,8 +1155,8 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
 let extension_target_result_type = fun (state: state) type_params (extension: Cst.TypeExtension.t) ->
   let owner_path = ident_path (Cst.TypeExtension.type_name extension) in
   let result_path =
-    if IdentPath.is_bare owner_path && not (IdentPath.is_empty state.scope_path) then
-      IdentPath.append_path state.scope_path owner_path
+    if SurfacePath.is_bare owner_path && not (SurfacePath.is_empty state.scope_path) then
+      SurfacePath.append_path state.scope_path owner_path
     else
       owner_path
   in
@@ -1288,10 +1288,10 @@ let lower_module_type_template =
       match constraint_.constrained_type with
       | Cst.CoreType.Constr { constructor_path; arguments=[]; _ } ->
           let constrained_path = ident_path constructor_path in
-          let constrained_name = IdentPath.last_name constrained_path in
+          let constrained_name = SurfacePath.last_name constrained_path in
           template.abstract_types |> List.find_map
             (fun ((type_name, (head: TypeRepr.named_type_head))) ->
-              if IdentPath.equal head.name constrained_path then
+              if SurfacePath.equal head.name constrained_path then
                 Some head
               else
                 match constrained_name with
@@ -1477,7 +1477,7 @@ let with_local_module_binding_groups = fun (state: state) ~module_name ~local_sc
       raise error
 
 let local_module_scope_for_path = fun (state: state) module_path ->
-  match IdentPath.to_segments module_path with
+  match SurfacePath.to_segments module_path with
   | [ module_name ] -> List.assoc_opt module_name state.local_module_binding_groups
   | _ -> None
 
@@ -1670,7 +1670,7 @@ let rec lower_pattern = fun (state: state) pattern ->
         ~syntax_node
         ~label:"cons_pattern"
         (BodyArena.PConstructor {
-          constructor = IdentPath.of_name "::";
+          constructor = SurfacePath.of_name "::";
           arguments = [ head_id; tail_id ]
         })
   | Cst.Pattern.Alias { syntax_node; pattern; name_token; _ } ->
@@ -1819,7 +1819,7 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body_anno
               state
               ~syntax_node
               ~label:"synthetic_function_argument"
-              (BodyArena.EVar (IdentPath.of_name synthetic_name)) in
+              (BodyArena.EVar (SurfacePath.of_name synthetic_name)) in
             let match_id = add_expr
               state
               ~syntax_node
@@ -1940,7 +1940,7 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
 
 and lower_local_module_scope = fun (state: state) ~module_name module_expression ->
   let with_local_scope f =
-    let scope_path = IdentPath.append_name state.scope_path module_name in
+    let scope_path = SurfacePath.append_name state.scope_path module_name in
     let previous_scope_path = state.scope_path in
     let previous_declared_type_names = state.declared_type_names in
     let previous_module_type_templates = state.module_type_templates in
@@ -2000,7 +2000,7 @@ and lower_local_module_scope = fun (state: state) ~module_name module_expression
                               | Some lowered_declaration ->
                                   acc @ [
                                     {
-                                      FileSummary.scope_path = IdentPath.empty;
+                                      FileSummary.scope_path = SurfacePath.empty;
                                       declaration = lowered_declaration;
                                     }
                                   ]
@@ -2041,7 +2041,7 @@ and lower_apply = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"implicit_labeled_argument"
-            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
+            (BodyArena.EVar (SurfacePath.of_name (Cst.Token.text label_token)))
         in
         {
           BodyArena.label = BodyArena.Labeled (Cst.Token.text label_token);
@@ -2056,7 +2056,7 @@ and lower_apply = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"implicit_optional_argument"
-            (BodyArena.EVar (IdentPath.of_name (Cst.Token.text label_token)))
+            (BodyArena.EVar (SurfacePath.of_name (Cst.Token.text label_token)))
         in
         {
           BodyArena.label = BodyArena.Optional (Cst.Token.text label_token);
@@ -2083,7 +2083,7 @@ and lower_infix = fun (state: state) (infix: Cst.infix_expression) ->
     state
     ~syntax_node
     ~label:"infix_operator"
-    (BodyArena.EVar (IdentPath.of_name operator_name)) in
+    (BodyArena.EVar (SurfacePath.of_name operator_name)) in
   let left_id = lower_expr state infix.left in
   let right_id = lower_expr state infix.right in
   add_expr
@@ -2103,14 +2103,14 @@ and lower_list_expression = fun (state: state) (list_expression: Cst.list_expres
     state
     ~syntax_node:list_expression.syntax_node
     ~label:"list_nil_expression"
-    (BodyArena.EVar (IdentPath.of_name "[]")) in
+    (BodyArena.EVar (SurfacePath.of_name "[]")) in
   list_expression.elements |> List.rev |> List.fold_left
     (fun tail_id element ->
       let cons_id = add_expr
         state
         ~syntax_node:list_expression.syntax_node
         ~label:"list_cons_expression"
-        (BodyArena.EVar (IdentPath.of_name "::")) in
+        (BodyArena.EVar (SurfacePath.of_name "::")) in
       let head_id = lower_expr state element in
       add_expr
         state
@@ -2155,7 +2155,7 @@ and lower_let_operator_expression = fun (state: state) (let_operator: Cst.let_op
         state
         ~syntax_node
         ~label:"binding_operator_expression"
-        (BodyArena.EVar (IdentPath.of_name (lower_binding_operator_name binding))) in
+        (BodyArena.EVar (SurfacePath.of_name (lower_binding_operator_name binding))) in
       let bound_value_id = lower_expr state binding.bound_value in
       let parameter_id = lower_pattern state binding.binding_pattern in
       let body_id = lower_expr state let_operator.body in
@@ -2207,7 +2207,7 @@ and lower_expr = fun (state: state) expression ->
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
       match module_path_segments_of_expr state receiver with
       | Some module_path ->
-          let qualified_name = IdentPath.append_name module_path (Cst.Token.text field_name) in
+          let qualified_name = SurfacePath.append_name module_path (Cst.Token.text field_name) in
           add_expr
             state
             ~syntax_node
@@ -2262,7 +2262,7 @@ and lower_expr = fun (state: state) expression ->
         state
         ~syntax_node
         ~label:"operator_expression"
-        (BodyArena.EVar (IdentPath.of_name operator))
+        (BodyArena.EVar (SurfacePath.of_name operator))
   | Cst.Expression.Literal literal -> (
       match literal with
       | Cst.Literal.Int integer -> add_expr
@@ -2580,7 +2580,7 @@ and lower_expr = fun (state: state) expression ->
             state
             ~syntax_node
             ~label:"prefix_operator"
-            (BodyArena.EVar (IdentPath.of_name (prefix_operator_name (Cst.Token.text operator_token)))) in
+            (BodyArena.EVar (SurfacePath.of_name (prefix_operator_name (Cst.Token.text operator_token)))) in
           let operand_id = lower_expr state operand in
           add_expr
             state
@@ -2753,7 +2753,7 @@ and lower_include_statement = fun (state: state) (include_statement: Cst.include
   match include_statement.target with
   | Cst.ModuleExpression module_expression -> (
       match module_path_segments_of_module_expression state module_expression with
-      | Some path when IdentPath.is_empty path ->
+      | Some path when SurfacePath.is_empty path ->
           ()
       | Some module_path ->
           let _ = add_item state ~syntax_node (`Include module_path) in
@@ -2814,7 +2814,7 @@ and lower_module_binding = fun (state: state) ~syntax_node ~module_name ~module_
       | Some callee_path, Some argument_path -> (
           match resolve_local_module_functor state callee_path with
           | Some template ->
-              let nested_scope_path = IdentPath.append_name state.scope_path module_name in
+              let nested_scope_path = SurfacePath.append_name state.scope_path module_name in
               lower_functor_application ~nested_scope_path template argument_path
           | None -> add_unsupported_structure_item state syntax_node
         )
@@ -2822,13 +2822,13 @@ and lower_module_binding = fun (state: state) ~syntax_node ~module_name ~module_
     )
   | _ -> (
       match module_path_segments_of_module_expression state module_expression with
-      | Some path when IdentPath.is_empty path ->
+      | Some path when SurfacePath.is_empty path ->
           ()
       | Some module_path ->
           let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
           ()
       | None ->
-          let nested_scope_path = IdentPath.append_name state.scope_path module_name in
+          let nested_scope_path = SurfacePath.append_name state.scope_path module_name in
           lower_module_items_under_scope ~nested_scope_path ~result_module_type:module_type module_expression
     )
 
@@ -2871,7 +2871,7 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
     match Cst.ModuleSignature.definition declaration with
     | Cst.ModuleSignature.Alias module_expression -> (
         match module_path_segments_of_module_expression state module_expression with
-        | Some path when IdentPath.is_empty path ->
+        | Some path when SurfacePath.is_empty path ->
             ()
         | Some module_path ->
             let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
@@ -2880,7 +2880,7 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
             add_unsupported_signature_item state syntax_node
       )
     | Cst.ModuleSignature.Signature module_type ->
-        let nested_scope_path = IdentPath.append_name state.scope_path module_name in
+        let nested_scope_path = SurfacePath.append_name state.scope_path module_name in
         with_scope
           state
           nested_scope_path

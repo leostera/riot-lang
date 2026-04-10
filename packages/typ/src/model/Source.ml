@@ -13,7 +13,7 @@ type t = {
   source_id: SourceId.t;
   kind: kind;
   module_name: string;
-  implicit_opens: IdentPath.t list;
+  implicit_opens: SurfacePath.t list;
   origin: origin;
   source_hash: Crypto.hash;
   revision: int;
@@ -42,7 +42,7 @@ let hash = fun ~implicit_opens ~cst ->
   H.write state "\x1f";
   implicit_opens |> List.iter
     (fun module_path ->
-      H.write state (IdentPath.to_string module_path);
+      H.write state (SurfacePath.to_string module_path);
       H.write state "\x1f");
   H.finish state
 

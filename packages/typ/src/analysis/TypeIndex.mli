@@ -4,7 +4,7 @@ open Model
 (** Query-oriented index of inferred expression types for one analyzed source. *)
 type entry = {
   (** Expression indexed by this entry. *)
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   (** Source origin attached to the expression. *)
   origin_id: OriginId.t;
   (** Source span used for position-based lookup. *)
@@ -17,7 +17,7 @@ type t
 (** Minimal traced expression payload used to build the type index. *)
 type traced_expr = {
   (** Expression traced by inference. *)
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   (** Source origin attached to the expression. *)
   origin_id: OriginId.t;
   (** Final inferred type for the expression. *)

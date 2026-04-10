@@ -14,7 +14,7 @@ let env_to_json = fun env ->
 
 let item_trace_to_json = fun (trace: Check_result.item_trace) ->
   Json.Object [
-    ("item_id", Json.Int (ItemId.to_int trace.item_id));
+    ("item_id", Json.Int (ItemArenaId.to_int trace.item_id));
     ("binding_names", Json.Array (List.map (fun name -> Json.String name) trace.binding_names));
     ("exports_after", env_to_json trace.exports_after);
   ]
@@ -33,7 +33,7 @@ let expr_trace_to_json = fun origin_map (trace: Check_result.expr_trace) ->
     | None -> Json.Null
   in
   Json.Object [
-    ("expr_id", Json.Int (ExprId.to_int trace.expr_id));
+    ("expr_id", Json.Int (ExprArenaId.to_int trace.expr_id));
     ("origin_id", Json.Int (OriginId.to_int trace.origin_id));
     ("origin", origin_json);
     ("env_before", env_to_json trace.env_before);

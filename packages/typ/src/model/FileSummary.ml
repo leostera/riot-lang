@@ -1,11 +1,11 @@
 open Std
 
 type type_decl = {
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   declaration: TypeDecl.t;
 }
 
-type exports = (string * TypeScheme.t) list
+type exports = (SurfacePath.t * TypeScheme.t) list
 
 type completeness =
   | Complete
@@ -67,7 +67,7 @@ let exports_to_json = fun exports ->
   |> List.map
     (fun (name, scheme) ->
       Data.Json.Object [
-        ("name", Data.Json.String name);
+        ("name", Data.Json.String (SurfacePath.to_string name));
         ("scheme", Data.Json.String (TypePrinter.scheme_to_string scheme));
       ]))
 
@@ -104,7 +104,8 @@ let render_exports = fun exports ->
   | _ -> exports
   |> List.map
     (fun (name, scheme) ->
-      format Format.[ str name; str " : "; str (TypePrinter.scheme_to_string scheme); ])
+      format
+        Format.[ str (SurfacePath.to_string name); str " : "; str (TypePrinter.scheme_to_string scheme); ])
   |> String.concat ", "
 
 let to_string = fun summary ->

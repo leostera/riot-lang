@@ -3,6 +3,14 @@
     "exports": {
       "ocamlc": [
         {
+          "name": "Alias.value",
+          "scheme": "t"
+        },
+        {
+          "name": "Source.value",
+          "scheme": "t"
+        },
+        {
           "name": "answer",
           "scheme": "Alias.t"
         }
@@ -22,89 +30,78 @@
         }
       ]
     },
-    "type_names": {
-      "ocamlc": [],
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "Alias.value",
+          "scheme": "char"
+        },
+        {
+          "name": "Source.value",
+          "scheme": "char"
+        },
+        {
+          "name": "answer",
+          "scheme": "char"
+        }
+      ],
       "typ": [
-        "t",
-        "t"
+        {
+          "name": "Alias.value",
+          "scheme": "char"
+        },
+        {
+          "name": "Source.value",
+          "scheme": "char"
+        },
+        {
+          "name": "answer",
+          "scheme": "char"
+        }
+      ]
+    },
+    "type_names": {
+      "ocamlc": [
+        "Alias.t",
+        "Source.t"
+      ],
+      "typ": [
+        "Alias.t",
+        "Source.t"
       ]
     }
   },
   "ocamlc": {
     "exports": [
       {
+        "name": "Alias.value",
+        "scheme": "t"
+      },
+      {
+        "name": "Source.value",
+        "scheme": "t"
+      },
+      {
         "name": "answer",
         "scheme": "Alias.t"
       }
     ],
-    "interface_lines": [
-      "module Source : sig type t = char val value : t end",
-      "module Alias = Source",
-      "val answer : Alias.t"
+    "interface_text": "module Source : sig type t = char val value : t end\nmodule Alias = Source\nval answer : Alias.t\n",
+    "type_aliases": [
+      {
+        "manifest": "char",
+        "name": "Alias.t"
+      },
+      {
+        "manifest": "char",
+        "name": "Source.t"
+      }
     ],
-    "interface_text": "module Source : sig type t = char val value : t end\nmodule Alias = Source\nval answer : Alias.t",
-    "type_names": [],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[9,158+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[12,219+3])",
-      "    Tstr_module (Present)",
-      "    Source/6",
-      "      module_expr (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[9,158+16]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[12,219+3])",
-      "        Tmod_structure",
-      "        [",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])",
-      "            Tstr_type Rec",
-      "            [",
-      "              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])",
-      "                ptype_params =",
-      "                  []",
-      "                ptype_constraints =",
-      "                  []",
-      "                ptype_kind =",
-      "                  Ttype_abstract",
-      "                ptype_private = Public",
-      "                ptype_manifest =",
-      "                  Some",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+11]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])",
-      "                      Ttyp_constr \"char/2!\"",
-      "                      []",
-      "            ]",
-      "          structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21])",
-      "            Tstr_value Nonrec",
-      "            [",
-      "              <def>",
-      "                pattern (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+6]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+11])",
-      "                  extra (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+6]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+11]) ghost",
-      "                    Tpat_extra_constraint",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+14]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+15])",
-      "                      Ttyp_constr \"t/4\"",
-      "                      []",
-      "                  Tpat_var \"value/5\"",
-      "                expression (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+18]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21])",
-      "                  extra (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+18]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21]) ghost",
-      "                    Texp_constraint",
-      "                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+14]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+15])",
-      "                      Ttyp_constr \"t/4\"",
-      "                      []",
-      "                  Texp_constant Const_char 61",
-      "            ]",
-      "        ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+21])",
-      "    Tstr_module (Absent)",
-      "    Alias/7",
-      "      module_expr (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+15]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+21])",
-      "        Tmod_ident \"Source/6\"",
-      "  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+24])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+4]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+10])",
-      "          Tpat_var \"answer/8\"",
-      "        expression (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+13]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+24])",
-      "          Texp_ident \"Alias/7.value\"",
-      "    ]",
-      "]"
-    ]
+    "type_names": [
+      "Alias.t",
+      "Source.t"
+    ],
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[9,158+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[12,219+3])\n    Tstr_module (Present)\n    Source/6\n      module_expr (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[9,158+16]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[12,219+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])\n            Tstr_type Rec\n            [\n              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  Some\n                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+11]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[10,181+15])\n                      Ttyp_constr \"char/2!\"\n                      []\n            ]\n          structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+2]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+6]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+11])\n                  extra (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+6]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+11]) ghost\n                    Tpat_extra_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+14]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Tpat_var \"value/5\"\n                expression (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+18]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21])\n                  extra (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+18]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+21]) ghost\n                    Texp_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+14]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[11,197+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Texp_constant Const_char 61\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+21])\n    Tstr_module (Absent)\n    Alias/7\n      module_expr (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+15]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[14,224+21])\n        Tmod_ident \"Source/6\"\n  structure_item (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+0]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+24])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+4]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+10])\n          Tpat_var \"answer/8\"\n        expression (packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+13]..packages/typ/tests/fixtures/oracle/0300_module_alias_alias_box_char.ml[16,247+24])\n          Texp_ident \"Alias/7.value\"\n    ]\n]"
   },
   "typ": {
     "body_arena": {
@@ -717,8 +714,8 @@
       }
     ],
     "type_names": [
-      "t",
-      "t"
+      "Alias.t",
+      "Source.t"
     ]
   }
 }

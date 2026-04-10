@@ -12,7 +12,7 @@ module Env = Super.Env
 open Env
 
 type t = {
-  exports: Check_result.env;
+  exports: FileSummary.exports;
   export_bindings: Check_result.binding_ref list;
   type_decls: FileSummary.type_decl list;
   item_traces: Check_result.item_trace list;
@@ -48,10 +48,10 @@ let has_surface_entries = fun env visible_types module_path ->
   || not (List.is_empty (type_decls_for_include visible_types module_path))
 
 let resolve_module_path_in_scope = fun env visible_types scope_path module_path ->
-  if IdentPath.is_empty scope_path || not (IdentPath.is_bare module_path) then
+  if SurfacePath.is_empty scope_path || not (SurfacePath.is_bare module_path) then
     module_path
   else
-    let scoped_module_path = IdentPath.append_path scope_path module_path in
+    let scoped_module_path = SurfacePath.append_path scope_path module_path in
     if has_surface_entries env visible_types module_path then
       module_path
     else if has_surface_entries env visible_types scoped_module_path then
@@ -78,7 +78,10 @@ let fresh_var = fun (state: state) -> Solver.fresh_var state.solver
 let fresh_rigid_var = State.fresh_rigid_var
 
 let fresh_binding_ident = fun state name ->
-  Binding.make_ident ~local_id:(State.fresh_binding_local_id state) ~name
+  BindingId.local ~stamp:(State.fresh_binding_local_id state) ~name
+
+let binding_name_of_path = fun path ->
+  SurfacePath.last_name path |> Option.unwrap_or ~default:(SurfacePath.to_string path)
 
 let fresh_hole = State.fresh_hole
 
@@ -108,26 +111,36 @@ let scheme_body = TypeScheme.body
 
 let prelude_env = fun (state: state) (config: TypConfig.t) ->
   Env.bind
-    (Env.of_entries ~make_ident:(fresh_binding_ident state) ~provenance:Binding.Prelude config.prelude)
+    (Env.of_entries
+       ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
+       ~provenance:Binding.Prelude
+       config.prelude)
     (Env.of_type_decls LanguagePrelude.type_decls)
 
 let ambient_env = fun (state: state) (config: TypConfig.t) ->
   let ambient_entries = config.ambient
   |> List.map (fun (name, scheme) -> (name, canonicalize_scheme state scheme)) in
-  Env.of_entries ~make_ident:(fresh_binding_ident state) ~provenance:Binding.Ambient ambient_entries
+  Env.of_entries
+    ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
+    ~provenance:Binding.Ambient
+    ambient_entries
 
 let ambient_type_env = fun (state: state) (_config: TypConfig.t) ->
   Env.of_type_decls (visible_type_decls state)
 
 let static_ident_generator = fun () ->
   let next_local_id = ref (-1) in
-  fun name ->
+  fun kind path ->
     let local_id = !next_local_id in
     next_local_id := local_id - 1;
-    Binding.make_ident ~local_id ~name
+    match kind with
+    | `Predef ->
+        BindingId.predef ~stamp:local_id ~name:(binding_name_of_path path)
+    | `Persistent ->
+        BindingId.persistent path
 
 let initial_env_of_config = fun ~(config:TypConfig.t) ->
-  let make_ident = static_ident_generator () in
+  let make_id = static_ident_generator () in
   let visible_types = config.ambient_visible_types in
   let prelude = config.prelude
   |> List.map (fun (path, scheme) -> (path, VisibleTypes.canonicalize_scheme visible_types scheme)) in
@@ -135,16 +148,16 @@ let initial_env_of_config = fun ~(config:TypConfig.t) ->
   |> List.map (fun (path, scheme) -> (path, VisibleTypes.canonicalize_scheme visible_types scheme)) in
   Env.bind
     (Env.bind
-      (Env.of_entries ~make_ident ~provenance:Binding.Prelude prelude)
-      (Env.of_entries ~make_ident ~provenance:Binding.Ambient ambient))
+      (Env.of_entries ~make_id:(make_id `Predef) ~provenance:Binding.Prelude prelude)
+      (Env.of_entries ~make_id:(make_id `Persistent) ~provenance:Binding.Ambient ambient))
     (Env.of_type_decls config.ambient_type_decls)
 
 let view = fun ty -> TypeRepr.view (TypeRepr.prune ty)
 
 let pattern_binding = fun (state: state) pat_id ~name ~scheme ->
   Binding.make
-    ~ident:(fresh_binding_ident state name)
-    ~path:(IdentPath.of_name name)
+    ~id:(fresh_binding_ident state name)
+    ~surface_path:(SurfacePath.of_name name)
     ~scheme
     ~provenance:(Binding.LoweredPattern pat_id)
 
@@ -165,7 +178,7 @@ let env_of_module_scope = fun scope ->
 
 let type_item_env = fun (_state: state) (type_item: ItemTree.type_item) ->
   Env.of_type_decls
-    [ { FileSummary.scope_path = IdentPath.empty; declaration = type_item.declaration } ]
+    [ { FileSummary.scope_path = SurfacePath.empty; declaration = type_item.declaration } ]
 
 let resolve_named_type_head_in_env = fun (state: state) env name ->
   Env.lookup_type env name
@@ -197,9 +210,9 @@ let resolve_named_type_decl_in_env = fun (state: state) env name ->
       State.visible_type_decl state name)
 
 let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSummary.type_decl) ->
-  let current_decl_name = IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name in
+  let current_decl_name = SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name in
   let resolve_named_type_head name =
-    if not type_decl.declaration.nonrec_ && IdentPath.equal name current_decl_name then
+    if not type_decl.declaration.nonrec_ && SurfacePath.equal name current_decl_name then
       Some (TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
     else
       resolve_named_type_head_in_env state env name
@@ -220,7 +233,7 @@ let constructor_bindings = fun (state: state) env ~name ~scheme ~provenance ~con
   let owner_ty = owner_result_type (TypeScheme.body scheme) in
   match TypeRepr.view (TypeRepr.prune owner_ty) with
   | TypeRepr.Named { head; _ } -> Env.singleton_constructor
-    ~make_ident:(fresh_binding_ident state)
+    ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
     ~name
     ~scheme
     ~provenance
@@ -228,7 +241,12 @@ let constructor_bindings = fun (state: state) env ~name ~scheme ~provenance ~con
     ~owner_type_constructor_id:head.type_constructor_id
     ~constructor_id
     ~inline_record_labels
-  | _ -> Env.singleton ~make_ident:(fresh_binding_ident state) ~name ~scheme ~provenance
+  | _ ->
+      Env.singleton
+        ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
+        ~name
+        ~scheme
+        ~provenance
 
 let exception_bindings = fun (state: state) env (exception_item: ItemTree.exception_item) ->
   constructor_bindings
@@ -241,7 +259,7 @@ let exception_bindings = fun (state: state) env (exception_item: ItemTree.except
       scope_path = exception_item.scope_path
     })
     ~constructor_id:(ConstructorId.of_path
-      (IdentPath.append_name exception_item.scope_path exception_item.exception_name))
+      (SurfacePath.append_name exception_item.scope_path exception_item.exception_name))
     ~inline_record_labels:None
 
 let extension_constructor_bindings = fun (state: state) env (
@@ -263,7 +281,7 @@ let declared_value_bindings = fun (state: state) env (
   declared_value_item: ItemTree.declared_value_item
 ) ->
   Env.singleton
-    ~make_ident:(fresh_binding_ident state)
+    ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
     ~name:declared_value_item.value_name
     ~scheme:(canonicalize_scheme_heads_in_env state env declared_value_item.scheme)
     ~provenance:(Binding.DeclaredValue {
@@ -635,20 +653,20 @@ let record_decl_matches_owner = fun (record_decl: record_type_decl) owner ->
   TypeConstructorId.equal (Env.Label_env.owner_type_constructor_id record_decl) owner.type_constructor_id
 
 let explicit_record_field_module_path = fun field_name ->
-  match IdentPath.split_last (IdentPath.of_string field_name) with
-  | Some (module_path, _label_name) when not (IdentPath.is_empty module_path) -> Some module_path
+  match SurfacePath.split_last (SurfacePath.of_string field_name) with
+  | Some (module_path, _label_name) when not (SurfacePath.is_empty module_path) -> Some module_path
   | _ -> None
 
 let record_decl_matches_explicit_field_owners = fun (record_decl: record_type_decl) field_names ->
   let owner_module_path =
-    match IdentPath.split_last (Env.Label_env.owner_path record_decl) with
+    match SurfacePath.split_last (Env.Label_env.owner_path record_decl) with
     | Some (module_path, _type_name) -> module_path
-    | None -> IdentPath.empty
+    | None -> SurfacePath.empty
   in
   List.for_all
     (fun field_name ->
       match explicit_record_field_module_path field_name with
-      | Some module_path -> IdentPath.equal module_path owner_module_path
+      | Some module_path -> SurfacePath.equal module_path owner_module_path
       | None -> true)
     field_names
 
@@ -771,7 +789,7 @@ let poly_variant_candidate_payload = fun candidate tag ->
 
 let compare_poly_variant_candidates = fun left right ->
   match Int.compare (poly_variant_tag_count left) (poly_variant_tag_count right) with
-  | 0 -> IdentPath.compare (type_decl_path left.type_decl) (type_decl_path right.type_decl)
+  | 0 -> SurfacePath.compare (type_decl_path left.type_decl) (type_decl_path right.type_decl)
   | order -> order
 
 let best_poly_variant_candidate_for_tags = fun (state: state) tags ->
@@ -1096,7 +1114,7 @@ let missing_inline_record_fields = fun labels field_names ->
         Some label.name)
 
 let pattern_name = fun path ->
-  IdentPath.last_name path |> Option.unwrap_or ~default:(IdentPath.to_string path)
+  SurfacePath.last_name path |> Option.unwrap_or ~default:(SurfacePath.to_string path)
 
 let coverage_witness_of_constructor = fun (constructor: coverage_constructor) arguments ->
   match constructor.key with
@@ -1447,9 +1465,9 @@ let rec is_nonexpansive_expr = fun (state: state) expr_id ->
                   true
               | Some "infix_expression" -> (
                   match SemanticTree.find_expr state.file callee_id with
-                  | Some { desc=BodyArena.EVar name; _ } when IdentPath.equal
+                  | Some { desc=BodyArena.EVar name; _ } when SurfacePath.equal
                     name
-                    (IdentPath.of_name "::") -> true
+                    (SurfacePath.of_name "::") -> true
                   | _ -> false
                 )
               | _ ->
@@ -1542,7 +1560,7 @@ let diagnostic_span = fun origin ->
   | None -> empty_span
 
 let zero_arity_named_type = fun (state: state) name ->
-  let path = IdentPath.of_name name in
+  let path = SurfacePath.of_name name in
   match BuiltinTypeConstructors.head_of_path path with
   | Some head -> make_type state (TypeRepr.Named { head; arguments = [] })
   | None -> TypeRepr.named_path ~name:path ~arguments:[]
@@ -1766,7 +1784,7 @@ let check_module_pack_against_signature = fun (state: state) env ~origin module_
       let scope_env = env_of_module_scope scope in
       signature.values |> List.iter
         (fun (value: TypeRepr.package_value) ->
-          match Env.Value_env.lookup (Env.scope_values scope) (IdentPath.of_name value.name) with
+          match Env.Value_env.lookup (Env.scope_values scope) (EntityId.of_name value.name) with
           | Some binding ->
               let actual_ty = instantiate
                 state
@@ -1777,13 +1795,13 @@ let check_module_pack_against_signature = fun (state: state) env ~origin module_
             state
             (Typ_diagnostic.UnboundName {
               reference_span = diagnostic_span origin;
-              name = IdentPath.append_name module_path value.name |> IdentPath.to_string
+              name = SurfacePath.append_name module_path value.name |> SurfacePath.to_string
             }))
   | None -> add_diagnostic
     state
     (Typ_diagnostic.UnboundName {
       reference_span = diagnostic_span origin;
-      name = IdentPath.to_string module_path
+      name = SurfacePath.to_string module_path
     })
 
 let local_module_pack_binding_names = fun (state: state) (local_scope: BodyArena.local_module_scope) ->
@@ -2185,11 +2203,12 @@ let record_expr_trace = fun (state: state) expr_id origin_id env_before inferred
   in
   let resolved_binding =
     match SemanticTree.find_expr state.file expr_id with
-    | Some { desc=BodyArena.EVar name; _ } -> Env.lookup env_before name
+    | Some { desc=BodyArena.EVar name; _ } -> Env.lookup env_before (EntityId.of_surface_path name)
     |> Option.map
       (fun binding ->
-        {
-          Check_result.path = Binding.path binding;
+        Check_result.{
+          entity_id = Binding.path binding;
+          surface_path = Binding.surface_path binding;
           provenance = binding_provenance (Binding.provenance binding)
         })
     | _ -> None
@@ -2221,12 +2240,17 @@ let binding_ref_of_binding = fun binding ->
       module_path
     }
   in
-  { Check_result.path = Binding.path binding; provenance }
+  Check_result.{
+    entity_id = Binding.path binding;
+    surface_path = Binding.surface_path binding;
+    provenance;
+  }
 
 let export_binding_refs = fun env ->
   Env.unique env |> Env.bindings |> List.sort
     (fun left right ->
-      IdentPath.compare (Binding.path left) (Binding.path right)) |> List.map binding_ref_of_binding
+      EntityId.compare (Binding.path left) (Binding.path right))
+  |> List.map binding_ref_of_binding
 
 let add_application_label_mismatch = fun (state: state) ~expr_id ~expected_label arguments ->
   add_diagnostic
@@ -2432,7 +2456,7 @@ and infer_expr = fun (state: state) env expr_id ->
       let inferred_type =
         match expr.desc with
         | BodyArena.EVar name -> (
-            match Env.lookup env name with
+            match Env.lookup env (EntityId.of_surface_path name) with
             | Some binding ->
                 let scheme = canonicalize_scheme_in_env state env (Binding.scheme binding) in
                 instantiate state scheme
@@ -2453,7 +2477,7 @@ and infer_expr = fun (state: state) env expr_id ->
                           state
                           (Typ_diagnostic.UnboundName {
                             reference_span = diagnostic_span (origin_of_expr state expr_id);
-                            name = IdentPath.to_string name
+                            name = SurfacePath.to_string name
                           }) in
                         hole
                   )
@@ -2463,7 +2487,7 @@ and infer_expr = fun (state: state) env expr_id ->
                       state
                       (Typ_diagnostic.UnboundName {
                         reference_span = diagnostic_span (origin_of_expr state expr_id);
-                        name = IdentPath.to_string name
+                        name = SurfacePath.to_string name
                       }) in
                     hole
               )
@@ -2783,7 +2807,7 @@ and infer_expr = fun (state: state) env expr_id ->
               (TypeRepr.Named {
                 head = TypeRepr.named_head
                   ~type_constructor_id:BuiltinTypeConstructors.exn_type_constructor_id
-                  ~name:(IdentPath.of_name "exn");
+                  ~name:(SurfacePath.of_name "exn");
                 arguments = []
               }) in
             let result_ty = fresh_var state in
@@ -3178,7 +3202,7 @@ and check_local_module_pack_against_signature = fun (state: state) env ~origin (
           state
           (Typ_diagnostic.UnboundName { reference_span = diagnostic_span origin; name = value.name })
       else
-        match Env.lookup local_env (IdentPath.of_name value.name) with
+        match Env.lookup local_env (EntityId.of_name value.name) with
         | Some binding ->
             let actual_ty = instantiate
               state
@@ -3357,7 +3381,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
   in
   let initial_scope = source.implicit_opens
   |> List.fold_left
-    (fun scope module_path -> Env.register_open scope ~scope_path:IdentPath.empty ~module_path)
+    (fun scope module_path -> Env.register_open scope ~scope_path:SurfacePath.empty ~module_path)
     Env.empty_item_scope in
   let rec loop export_state type_decls scope = function
     | [] -> (export_state, type_decls, scope)
@@ -3393,7 +3417,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
               |> Option.unwrap_or ~default:(List.hd introduced_type_decls)
             in
             let introduced = Env.of_type_decls
-              [ { introduced_type_decl with scope_path = IdentPath.empty } ] in
+              [ { introduced_type_decl with scope_path = SurfacePath.empty } ] in
             let visible_exports_before =
               if state.config.capture_traces then
                 Some (Env.export config export_state)
@@ -3401,7 +3425,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
                 None
             in
             let (export_state, scope) =
-              if IdentPath.is_empty type_item.scope_path then
+              if SurfacePath.is_empty type_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3435,7 +3459,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
                 None
             in
             let (export_state, scope) =
-              if IdentPath.is_empty exception_item.scope_path then
+              if SurfacePath.is_empty exception_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3469,7 +3493,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
                 None
             in
             let (export_state, scope) =
-              if IdentPath.is_empty extension_item.scope_path then
+              if SurfacePath.is_empty extension_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3504,7 +3528,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
             let env_after_item = infer_binding_group state item_env value_item.binding_ids in
             let introduced = Env.introduced_entries item_env env_after_item in
             let (export_state, scope) =
-              if IdentPath.is_empty value_item.scope_path then
+              if SurfacePath.is_empty value_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3538,7 +3562,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
                 None
             in
             let (export_state, scope) =
-              if IdentPath.is_empty declared_value_item.scope_path then
+              if SurfacePath.is_empty declared_value_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3598,7 +3622,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
             let introduced_type_decls = type_decls_for_include state.visible_types module_path
             |> prefix_type_decls include_item.scope_path in
             let (export_state, scope) =
-              if IdentPath.is_empty include_item.scope_path then
+              if SurfacePath.is_empty include_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3654,7 +3678,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
               ~module_path
             |> prefix_type_decls module_alias_item.scope_path in
             let (export_state, scope) =
-              if IdentPath.is_empty module_alias_item.scope_path then
+              if SurfacePath.is_empty module_alias_item.scope_path then
                 (Env.bind export_state introduced, scope)
               else
                 (
@@ -3663,11 +3687,11 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
                 )
             in
             let forced_export_names =
-              if IdentPath.is_empty module_alias_item.scope_path then
+              if SurfacePath.is_empty module_alias_item.scope_path then
                 alias_export_names
               else
                 List.map
-                  (fun name -> qualify_name module_alias_item.scope_path name |> IdentPath.to_string)
+                  (fun name -> qualify_name module_alias_item.scope_path name |> SurfacePath.to_string)
                   alias_export_names
             in
             let () =
@@ -3717,7 +3741,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
     initial_scope
     (ItemTree.items file.item_tree) in
   let final_env =
-    Env.for_item_scope exports scope ~scope_path:IdentPath.empty
+    Env.for_item_scope exports scope ~scope_path:SurfacePath.empty
     |> fun env ->
       Env.bind env (Env.of_type_decls type_decls)
   in
@@ -3730,7 +3754,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
     |> List.fold_left
       (fun acc item ->
         match item with
-        | ItemTree.Value { scope_path; binding_ids; _ } when IdentPath.is_empty scope_path ->
+        | ItemTree.Value { scope_path; binding_ids; _ } when SurfacePath.is_empty scope_path ->
             binding_ids |> List.fold_left
               (fun acc binding_id ->
                 match SemanticTree.find_binding state.file binding_id with
@@ -3755,7 +3779,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
           | Some annotation_scheme -> annotation_scheme
           | None -> canonicalize_generalized_scheme_in_env state final_env scheme
         in
-        (name, scheme))
+        (SurfacePath.of_string name, scheme))
   in
   {
     exports;

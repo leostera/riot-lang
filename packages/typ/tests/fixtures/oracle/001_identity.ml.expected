@@ -22,6 +22,28 @@
         }
       ]
     },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "const",
+          "scheme": "'a -> 'b -> 'a"
+        },
+        {
+          "name": "id",
+          "scheme": "'a -> 'a"
+        }
+      ],
+      "typ": [
+        {
+          "name": "const",
+          "scheme": "'a -> 'b -> 'a"
+        },
+        {
+          "name": "id",
+          "scheme": "'a -> 'a"
+        }
+      ]
+    },
     "type_names": {
       "ocamlc": [],
       "typ": []
@@ -38,56 +60,10 @@
         "scheme": "'a -> 'a"
       }
     ],
-    "interface_lines": [
-      "val id : 'a -> 'a",
-      "val const : 'a -> 'b -> 'a"
-    ],
-    "interface_text": "val id : 'a -> 'a\nval const : 'a -> 'b -> 'a",
+    "interface_text": "val id : 'a -> 'a\nval const : 'a -> 'b -> 'a\n",
+    "type_aliases": [],
     "type_names": [],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+6])",
-      "          Tpat_var \"id/4\"",
-      "        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12]) ghost",
-      "          Texp_function",
-      "          [",
-      "            Nolabel",
-      "            Param_pat",
-      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+8])",
-      "                Tpat_var \"x/6\"",
-      "          ]",
-      "          Tfunction_body",
-      "            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+11]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])",
-      "              Texp_ident \"x/6\"",
-      "    ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+9])",
-      "          Tpat_var \"const/7\"",
-      "        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17]) ghost",
-      "          Texp_function",
-      "          [",
-      "            Nolabel",
-      "            Param_pat",
-      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+11])",
-      "                Tpat_var \"x/9\"",
-      "            Nolabel",
-      "            Param_pat",
-      "              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+12]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+13])",
-      "                Tpat_any",
-      "          ]",
-      "          Tfunction_body",
-      "            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+16]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])",
-      "              Texp_ident \"x/9\"",
-      "    ]",
-      "]"
-    ]
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+6])\n          Tpat_var \"id/4\"\n        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+7]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+8])\n                Tpat_var \"x/6\"\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+11]..packages/typ/tests/fixtures/oracle/001_identity.ml[1,0+12])\n              Texp_ident \"x/6\"\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+0]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+4]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+9])\n          Tpat_var \"const/7\"\n        expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+10]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+11])\n                Tpat_var \"x/9\"\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+12]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+13])\n                Tpat_any\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+16]..packages/typ/tests/fixtures/oracle/001_identity.ml[3,14+17])\n              Texp_ident \"x/9\"\n    ]\n]"
   },
   "typ": {
     "body_arena": {
@@ -125,7 +101,7 @@
             "body_id": 0,
             "parameters": [
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
@@ -150,14 +126,14 @@
             "body_id": 2,
             "parameters": [
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
                 "pattern_id": 3
               },
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
@@ -299,7 +275,7 @@
           },
           {
             "name": "x",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",
@@ -497,7 +473,7 @@
           },
           {
             "name": "x",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",

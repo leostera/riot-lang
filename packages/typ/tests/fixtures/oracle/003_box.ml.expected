@@ -14,6 +14,20 @@
         }
       ]
     },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "unbox",
+          "scheme": "'a box -> 'a"
+        }
+      ],
+      "typ": [
+        {
+          "name": "unbox",
+          "scheme": "'a box -> 'a"
+        }
+      ]
+    },
     "type_names": {
       "ocamlc": [
         "box"
@@ -30,67 +44,12 @@
         "scheme": "'a box -> 'a"
       }
     ],
-    "interface_lines": [
-      "type 'a box = Box of 'a",
-      "val unbox : 'a box -> 'a"
-    ],
-    "interface_text": "type 'a box = Box of 'a\nval unbox : 'a box -> 'a",
+    "interface_text": "type 'a box = Box of 'a\nval unbox : 'a box -> 'a\n",
+    "type_aliases": [],
     "type_names": [
       "box"
     ],
-    "typedtree_lines": [
-      "[",
-      "  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
-      "    Tstr_type Rec",
-      "    [",
-      "      type_declaration box/4 (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
-      "        ptype_params =",
-      "          [",
-      "            core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+5]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+7])",
-      "              Ttyp_var a",
-      "          ]",
-      "        ptype_constraints =",
-      "          []",
-      "        ptype_kind =",
-      "          Ttype_variant",
-      "            [",
-      "              (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+14]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
-      "                Box/5",
-      "                [",
-      "                  core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+21]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])",
-      "                    Ttyp_var a",
-      "                ]",
-      "                None",
-      "            ]",
-      "        ptype_private = Public",
-      "        ptype_manifest =",
-      "          None",
-      "    ]",
-      "  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+0]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])",
-      "    Tstr_value Nonrec",
-      "    [",
-      "      <def>",
-      "        pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+4]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+9])",
-      "          Tpat_var \"unbox/6\"",
-      "        expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29]) ghost",
-      "          Texp_function",
-      "          [",
-      "            Nolabel",
-      "            Param_pat",
-      "              pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+21])",
-      "                Tpat_construct \"Box\"",
-      "                [",
-      "                  pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+15]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+20])",
-      "                    Tpat_var \"value/8\"",
-      "                ]",
-      "                None",
-      "          ]",
-      "          Tfunction_body",
-      "            expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+24]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])",
-      "              Texp_ident \"value/8\"",
-      "    ]",
-      "]"
-    ]
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])\n    Tstr_type Rec\n    [\n      type_declaration box/4 (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+0]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])\n        ptype_params =\n          [\n            core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+5]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+7])\n              Ttyp_var a\n          ]\n        ptype_constraints =\n          []\n        ptype_kind =\n          Ttype_variant\n            [\n              (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+14]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])\n                Box/5\n                [\n                  core_type (packages/typ/tests/fixtures/oracle/003_box.ml[1,0+21]..packages/typ/tests/fixtures/oracle/003_box.ml[1,0+23])\n                    Ttyp_var a\n                ]\n                None\n            ]\n        ptype_private = Public\n        ptype_manifest =\n          None\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+0]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+4]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+9])\n          Tpat_var \"unbox/6\"\n        expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+10]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+21])\n                Tpat_construct \"Box\"\n                [\n                  pattern (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+15]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+20])\n                    Tpat_var \"value/8\"\n                ]\n                None\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/003_box.ml[3,25+24]..packages/typ/tests/fixtures/oracle/003_box.ml[3,25+29])\n              Texp_ident \"value/8\"\n    ]\n]"
   },
   "typ": {
     "body_arena": {
@@ -119,7 +78,7 @@
             "body_id": 0,
             "parameters": [
               {
-                "has_default": false,
+                "default_value_id": null,
                 "label": {
                   "tag": "positional"
                 },
@@ -245,7 +204,7 @@
           },
           {
             "name": "value",
-            "scheme": "'a. 'a"
+            "scheme": "'a"
           },
           {
             "name": "|>",
@@ -403,6 +362,7 @@
           "constructors": [
             {
               "constructor_id": 0,
+              "generalized": false,
               "name": "Box",
               "scheme": "'a. 'a -> 'a box"
             }

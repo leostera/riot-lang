@@ -4,22 +4,23 @@ open Model
 type env = (string * TypeScheme.t) list
 
 type binding_provenance =
-  | LoweredPattern of PatId.t
+  | LoweredPattern of PatternArenaId.t
   | Prelude
   | Ambient
-  | TypeConstructor of { type_name: string; scope_path: IdentPath.t }
-  | Exception of { name: string; scope_path: IdentPath.t }
-  | DeclaredValue of { name: string; scope_path: IdentPath.t }
-  | Included of { module_path: IdentPath.t }
-  | ModuleAlias of { alias_name: string; module_path: IdentPath.t }
+  | TypeConstructor of { type_name: string; scope_path: SurfacePath.t }
+  | Exception of { name: string; scope_path: SurfacePath.t }
+  | DeclaredValue of { name: string; scope_path: SurfacePath.t }
+  | Included of { module_path: SurfacePath.t }
+  | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
 
 type binding_ref = {
-  path: IdentPath.t;
+  entity_id: EntityId.t;
+  surface_path: SurfacePath.t;
   provenance: binding_provenance;
 }
 
 type expr_trace = {
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   origin_id: OriginId.t;
   env_before: env;
   resolved_binding: binding_ref option;
@@ -27,7 +28,7 @@ type expr_trace = {
 }
 
 type item_trace = {
-  item_id: ItemId.t;
+  item_id: ItemArenaId.t;
   binding_names: string list;
   exports_after: env;
 }

@@ -22,17 +22,17 @@ val empty: file
 (** Find one origin entry by [OriginId]. *)
 val find_origin: file -> OriginId.t -> OriginMap.origin option
 
-(** Find one top-level item by [ItemId]. *)
-val find_item: file -> ItemId.t -> ItemTree.item option
+(** Find one top-level item by [ItemArenaId]. *)
+val find_item: file -> ItemArenaId.t -> ItemTree.item option
 
-(** Find one binding by [BindingId]. *)
-val find_binding: file -> BindingId.t -> BodyArena.binding option
+(** Find one binding by [BindingArenaId]. *)
+val find_binding: file -> BindingArenaId.t -> BodyArena.binding option
 
-(** Find one pattern by [PatId]. *)
-val find_pattern: file -> PatId.t -> BodyArena.pattern_node option
+(** Find one pattern by [PatternArenaId]. *)
+val find_pattern: file -> PatternArenaId.t -> BodyArena.pattern_node option
 
-(** Find one expression by [ExprId]. *)
-val find_expr: file -> ExprId.t -> BodyArena.expr_node option
+(** Find one expression by [ExprArenaId]. *)
+val find_expr: file -> ExprArenaId.t -> BodyArena.expr_node option
 
 (** Render the wrapped semantic layers as debug text. *)
 val to_string: file -> string

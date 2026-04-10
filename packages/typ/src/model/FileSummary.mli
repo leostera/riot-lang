@@ -8,11 +8,11 @@ open Std
     semantic layers. *)
 type type_decl = {
   (** Lexical module path that owns the declaration, empty at top level. *)
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   (** Lowered declaration summary exported by the source. *)
   declaration: TypeDecl.t;
 }
-type exports = (string * TypeScheme.t) list
+type exports = (SurfacePath.t * TypeScheme.t) list
 type completeness =
   | Complete
   | Partial

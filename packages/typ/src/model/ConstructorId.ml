@@ -9,7 +9,7 @@ let equal = Int.equal
 let of_int = fun value -> value
 
 let of_path = fun path ->
-  let text = IdentPath.to_string path in
+  let text = SurfacePath.to_string path in
   let length = String.length text in
   let rec loop index acc =
     if index >= length then

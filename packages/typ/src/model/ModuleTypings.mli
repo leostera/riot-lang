@@ -12,9 +12,9 @@ type definition_site = {
 }
 type value_definition_target =
   | Site of definition_site
-  | Export of IdentPath.t
+  | Export of SurfacePath.t
 type value_definition = {
-  export_name: string;
+  export_name: SurfacePath.t;
   target: value_definition_target;
 }
 type t
@@ -115,7 +115,7 @@ val type_decls: t -> FileSummary.type_decl list
 val value_definitions: t -> value_definition list
 
 (** Find one exported definition target by export name. *)
-val find_value_definition: t -> export_name:string -> value_definition_target option
+val find_value_definition: t -> export_name:SurfacePath.t -> value_definition_target option
 
 module Json: sig
   (** Encode module typings as structured JSON. *)

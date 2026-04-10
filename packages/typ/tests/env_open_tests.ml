@@ -14,24 +14,24 @@ let rgb_blend_scheme = TypeScheme.of_type
     ~lhs:TypeRepr.int
     ~rhs:(TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.int))
 
-let make_ident =
+let make_id =
   let next_local_id = ref 0 in
-  fun name ->
+  fun path ->
     let local_id = !next_local_id in
     (next_local_id := local_id + 1);
-    Env.Binding.make_ident ~local_id ~name
+    BindingId.local ~stamp:local_id ~name:(SurfacePath.to_string path)
 
 let lookup_name = fun env name ->
-  Env.lookup env (IdentPath.of_string name) |> Option.map Env.Binding.name
+  Env.lookup env (EntityId.of_string name) |> Option.map Env.Binding.name
 
 let test_local_open_exposes_nested_modules = fun _ctx ->
   let ambient = Env.of_entries
-    ~make_ident
+    ~make_id
     ~provenance:Env.Binding.Ambient [
-      (IdentPath.of_string "Colors.to_string", int_to_string_scheme);
-      (IdentPath.of_string "Colors.RGB.blend", rgb_blend_scheme);
+      (SurfacePath.of_string "Colors.to_string", int_to_string_scheme);
+      (SurfacePath.of_string "Colors.RGB.blend", rgb_blend_scheme);
     ] in
-  let opened = Env.with_local_open ambient (IdentPath.of_name "Colors") in
+  let opened = Env.with_local_open ambient (SurfacePath.of_name "Colors") in
   let to_string_name = lookup_name opened "to_string" in
   let blend_name = lookup_name opened "RGB.blend" in
   if not (Option.equal String.equal to_string_name (Some "to_string")) then

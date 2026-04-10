@@ -19,21 +19,21 @@ type pattern_desc =
   (** Unit pattern. *)
   | PUnit
   (** Tuple pattern with child pattern IDs. *)
-  | PTuple of PatId.t list
+  | PTuple of PatternArenaId.t list
   (** Or-pattern with child pattern IDs in source order. *)
-  | POr of PatId.t list
+  | POr of PatternArenaId.t list
   (** Constructor pattern with a stable constructor name and lowered payloads. *)
-  | PConstructor of { constructor: IdentPath.t; arguments: PatId.t list }
+  | PConstructor of { constructor: SurfacePath.t; arguments: PatternArenaId.t list }
   (** Record pattern with lowered field patterns and explicit openness. *)
   | PRecord of { fields: record_pattern_field list; open_: bool }
   (** List pattern with lowered element patterns. *)
-  | PList of PatId.t list
+  | PList of PatternArenaId.t list
   (** Alias pattern that binds the matched value under an extra name. *)
-  | PAlias of { pattern_id: PatId.t; alias: string }
+  | PAlias of { pattern_id: PatternArenaId.t; alias: string }
   (** Unpack pattern that binds one packaged module under a module name. *)
   | PFirstClassModule of { module_name: string option; package_type: TypeRepr.t option }
   (** Lenient polymorphic-variant pattern with an optional payload pattern. *)
-  | PPolyVariant of { tag: string; payload: PatId.t option }
+  | PPolyVariant of { tag: string; payload: PatternArenaId.t option }
   (** Recovery pattern preserved after unsupported surface syntax. *)
   | PUnsupported of string
 
@@ -41,11 +41,11 @@ and record_pattern_field = {
   (** Stable field label name as it appeared in the source. *)
   label: string;
   (** Lowered child pattern bound for this field. *)
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
 }
 type pattern_node = {
   (** Best-effort stable pattern identifier. *)
-  pat_id: PatId.t;
+  pat_id: PatternArenaId.t;
   (** Source origin for this pattern node. *)
   origin_id: OriginId.t;
   (** Optional explicit type annotation preserved from the source pattern. *)
@@ -55,11 +55,11 @@ type pattern_node = {
 }
 type match_case = {
   (** Pattern tested by this case. *)
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
   (** Optional guard expression evaluated after the pattern binds. *)
-  guard_id: ExprId.t option;
+  guard_id: ExprArenaId.t option;
   (** Body expression evaluated when the pattern matches. *)
-  body_id: ExprId.t;
+  body_id: ExprArenaId.t;
 }
 type label =
   (** Ordinary unlabeled argument or parameter. *)
@@ -72,9 +72,9 @@ type function_parameter = {
   (** Calling-convention label preserved from the source surface. *)
   label: label;
   (** Semantic pattern bound for this parameter. *)
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
   (** Lowered default expression for optional parameters such as `?(x = expr)`. *)
-  default_value_id: ExprId.t option;
+  default_value_id: ExprArenaId.t option;
 }
 type apply_argument = {
   (** Calling-convention label preserved from the call site. *)
@@ -82,10 +82,10 @@ type apply_argument = {
   (** Whether this optional argument used implicit forwarding syntax (`?label`). *)
   implicit: bool;
   (** Lowered argument value expression. *)
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
 }
 type local_module_binding_group = {
-  binding_ids: BindingId.t list;
+  binding_ids: BindingArenaId.t list;
 }
 type local_module_scope = {
   (** Value-binding groups introduced by the local module body. *)
@@ -97,7 +97,7 @@ type local_module_scope = {
 }
 type expr_desc =
   (** Variable reference. *)
-  | EVar of IdentPath.t
+  | EVar of SurfacePath.t
   (** Integer literal expression. *)
   | EInt of string
   (** Floating-point literal expression. *)
@@ -111,47 +111,47 @@ type expr_desc =
   (** Unit expression. *)
   | EUnit
   (** Tuple expression with child expression IDs. *)
-  | ETuple of ExprId.t list
+  | ETuple of ExprArenaId.t list
   (** Array expression with child expression IDs. *)
-  | EArray of ExprId.t list
+  | EArray of ExprArenaId.t list
   (** Sequence expression evaluated left-to-right, returning the last type. *)
-  | ESequence of ExprId.t list
+  | ESequence of ExprArenaId.t list
   (** While-loop with a boolean condition and a unit body. *)
-  | EWhile of { condition_id: ExprId.t; body_id: ExprId.t }
+  | EWhile of { condition_id: ExprArenaId.t; body_id: ExprArenaId.t }
   (** Integer for-loop with a scoped iterator, integer bounds, and a unit body. *)
   | EFor of {
-      iterator_pattern_id: PatId.t;
+      iterator_pattern_id: PatternArenaId.t;
       descending: bool;
-      start_id: ExprId.t;
-      end_id: ExprId.t;
-      body_id: ExprId.t
+      start_id: ExprArenaId.t;
+      end_id: ExprArenaId.t;
+      body_id: ExprArenaId.t
     }
   (** Function expression with parameter patterns and one body expression. *)
-  | EFun of function_parameter list * ExprId.t
+  | EFun of function_parameter list * ExprArenaId.t
   (** Application with one callee and labeled or positional arguments. *)
-  | EApply of ExprId.t * apply_argument list
+  | EApply of ExprArenaId.t * apply_argument list
   (** Record literal or record update with lowered field expressions. *)
-  | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
+  | ERecord of { base_id: ExprArenaId.t option; fields: record_expr_field list }
   (** Record field access off one receiver expression. *)
-  | EFieldAccess of { receiver_id: ExprId.t; label: string }
+  | EFieldAccess of { receiver_id: ExprArenaId.t; label: string }
   (** Record field assignment returning unit. *)
-  | EFieldAssign of { receiver_id: ExprId.t; label: string; value_id: ExprId.t }
+  | EFieldAssign of { receiver_id: ExprArenaId.t; label: string; value_id: ExprArenaId.t }
   (** Indexed access into one collection expression at one index expression. *)
-  | EIndex of ExprId.t * ExprId.t
+  | EIndex of ExprArenaId.t * ExprArenaId.t
   (** Let-expression with local binding IDs and one body expression. *)
-  | ELet of BindingId.t list * ExprId.t
+  | ELet of BindingArenaId.t list * ExprArenaId.t
   (** Conditional expression. *)
-  | EIf of ExprId.t * ExprId.t * ExprId.t
+  | EIf of ExprArenaId.t * ExprArenaId.t * ExprArenaId.t
   (** Match expression with normalized cases. *)
-  | EMatch of ExprId.t * match_case list
+  | EMatch of ExprArenaId.t * match_case list
   (** Try-expression with normalized exception handler cases. *)
-  | ETry of ExprId.t * match_case list
+  | ETry of ExprArenaId.t * match_case list
   (** Lenient polymorphic-variant expression with an optional payload. *)
-  | EPolyVariant of { tag: string; payload: ExprId.t option }
+  | EPolyVariant of { tag: string; payload: ExprArenaId.t option }
   (** Explicit coercion expression lowered from `(expr :> target)`. *)
-  | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
+  | ECoerce of { value_id: ExprArenaId.t; target_type: TypeRepr.t }
   (** First-class module pack expression lowered from `(module M [: S])`. *)
-  | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
+  | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
   (** Local first-class module pack lowered from `(module M)` where [M] comes
       from one surrounding [let module M = struct ... end in ...]. *)
   | ELocalModulePack of {
@@ -162,10 +162,10 @@ type expr_desc =
   | ELocalModule of {
       module_name: string;
       local_scope: local_module_scope;
-      body_id: ExprId.t
+      body_id: ExprArenaId.t
     }
   (** Local module open expression with the lowered body expression. *)
-  | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
+  | ELocalOpen of { module_path: SurfacePath.t; body_id: ExprArenaId.t }
   (** Unsupported semantic node that still reached the inferencer. *)
   | EUnsupported of string
   (** Recovery hole introduced during lowering. *)
@@ -175,12 +175,12 @@ and record_expr_field = {
   (** Stable field label name as it appeared in the source. *)
   label: string;
   (** Lowered child expression used for this field. *)
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
 }
 
 and expr_node = {
   (** Best-effort stable expression identifier. *)
-  expr_id: ExprId.t;
+  expr_id: ExprArenaId.t;
   (** Source origin for this expression node. *)
   origin_id: OriginId.t;
   (** Semantic payload for the expression. *)
@@ -189,19 +189,19 @@ and expr_node = {
 
 and binding = {
   (** Stable binding identifier. *)
-  binding_id: BindingId.t;
+  binding_id: BindingArenaId.t;
   (** Source origin for this binding. *)
   origin_id: OriginId.t;
   (** Lexical module path that owns this binding, empty at top level. *)
-  scope_path: IdentPath.t;
+  scope_path: SurfacePath.t;
   (** Simple binder name when one exists. *)
   name: string option;
   (** Pattern bound by this binding. *)
-  pattern_id: PatId.t;
+  pattern_id: PatternArenaId.t;
   (** Optional explicit type annotation preserved from the binding source. *)
   annotation: TypeScheme.t option;
   (** Value expression assigned by this binding. *)
-  value_id: ExprId.t;
+  value_id: ExprArenaId.t;
   (** Whether the binding participates in a recursive group. *)
   recursive: bool;
 }
@@ -223,14 +223,14 @@ val expressions: t -> expr_node list
 (** Enumerate all stored bindings. *)
 val bindings: t -> binding list
 
-(** Find one pattern node by [PatId]. *)
-val find_pattern: t -> PatId.t -> pattern_node option
+(** Find one pattern node by [PatternArenaId]. *)
+val find_pattern: t -> PatternArenaId.t -> pattern_node option
 
-(** Find one expression node by [ExprId]. *)
-val find_expr: t -> ExprId.t -> expr_node option
+(** Find one expression node by [ExprArenaId]. *)
+val find_expr: t -> ExprArenaId.t -> expr_node option
 
-(** Find one binding node by [BindingId]. *)
-val find_binding: t -> BindingId.t -> binding option
+(** Find one binding node by [BindingArenaId]. *)
+val find_binding: t -> BindingArenaId.t -> binding option
 
 (** Encode the arena as structured JSON for snapshot tests and tooling. *)
 val to_json: t -> Data.Json.t

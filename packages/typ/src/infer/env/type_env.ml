@@ -18,7 +18,7 @@ type components = {
 
 type layer =
   | Nothing
-  | Open of { root: IdentPath.t; components: components; next: t }
+  | Open of { root: SurfacePath.t; components: components; next: t }
   | Map of { map_decl: FileSummary.type_decl -> FileSummary.type_decl; next: t }
 
 and t = {
@@ -142,7 +142,7 @@ let type_decls =
 let local_only = fun env -> env |> type_decls |> of_type_decls
 
 let qualify_type_decl = fun prefix (type_decl: FileSummary.type_decl) ->
-  { type_decl with scope_path = IdentPath.append_path prefix type_decl.scope_path }
+  { type_decl with scope_path = SurfacePath.append_path prefix type_decl.scope_path }
 
 let visible_type_decls =
   let rec collect env =
@@ -209,7 +209,7 @@ let rec lookup_name = fun env name ->
     )
 
 let lookup = fun env path ->
-  match IdentPath.bare_name path with
+  match SurfacePath.bare_name path with
   | Some name -> lookup_name env name
   | None -> None
 
@@ -235,9 +235,9 @@ let entries_for_include = fun env module_path ->
   type_decls env
   |> List.filter_map
     (fun (type_decl: FileSummary.type_decl) ->
-      IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path
+      SurfacePath.strip_prefix ~prefix:module_path type_decl.scope_path
       |> Option.map (fun scope_path -> { type_decl with scope_path }))
   |> of_type_decls
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
-  entries_for_include env module_path |> qualify_entries (IdentPath.of_name alias_name)
+  entries_for_include env module_path |> qualify_entries (SurfacePath.of_name alias_name)

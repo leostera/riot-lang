@@ -1,0 +1,4017 @@
+{
+  "comparison": {
+    "exports": {
+      "ocamlc": [
+        {
+          "name": "Prim.add_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Prim.eq",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.lt",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.raise_",
+          "scheme": "exn -> 'a"
+        },
+        {
+          "name": "Prim.sub_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "answer",
+          "scheme": "int"
+        },
+        {
+          "name": "run",
+          "scheme": "unit -> int"
+        }
+      ],
+      "typ": [
+        {
+          "name": "Prim.add_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Prim.eq",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.lt",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.raise_",
+          "scheme": "exn -> 'a"
+        },
+        {
+          "name": "Prim.sub_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "answer",
+          "scheme": "int"
+        },
+        {
+          "name": "run",
+          "scheme": "unit -> int"
+        }
+      ]
+    },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "Prim.add_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Prim.eq",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.lt",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.raise_",
+          "scheme": "exn -> 'a"
+        },
+        {
+          "name": "Prim.sub_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "answer",
+          "scheme": "int"
+        },
+        {
+          "name": "run",
+          "scheme": "unit -> int"
+        }
+      ],
+      "typ": [
+        {
+          "name": "Prim.add_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "Prim.eq",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.lt",
+          "scheme": "'a -> 'a -> bool"
+        },
+        {
+          "name": "Prim.raise_",
+          "scheme": "exn -> 'a"
+        },
+        {
+          "name": "Prim.sub_int",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "answer",
+          "scheme": "int"
+        },
+        {
+          "name": "run",
+          "scheme": "unit -> int"
+        }
+      ]
+    },
+    "type_names": {
+      "ocamlc": [
+        "counter"
+      ],
+      "typ": [
+        "counter"
+      ]
+    }
+  },
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "Prim.add_int",
+        "scheme": "int -> int -> int"
+      },
+      {
+        "name": "Prim.eq",
+        "scheme": "'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.lt",
+        "scheme": "'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.raise_",
+        "scheme": "exn -> 'a"
+      },
+      {
+        "name": "Prim.sub_int",
+        "scheme": "int -> int -> int"
+      },
+      {
+        "name": "answer",
+        "scheme": "int"
+      },
+      {
+        "name": "run",
+        "scheme": "unit -> int"
+      }
+    ],
+    "interface_text": "module Prim :\n  sig\n    external add_int : int -> int -> int = \"%addint\"\n    external sub_int : int -> int -> int = \"%subint\"\n    external eq : 'a -> 'a -> bool = \"%equal\"\n    external lt : 'a -> 'a -> bool = \"%lessthan\"\n    external raise_ : exn -> 'a = \"%raise\"\n  end\ntype counter = { mutable value : int; }\nval run : unit -> int\nval answer : int\n",
+    "type_aliases": [],
+    "type_names": [
+      "counter"
+    ],
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[9,165+0]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[15,420+3])\n    Tstr_module (Present)\n    Prim/9\n      module_expr (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[9,165+14]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[15,420+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+50])\n            Tstr_primitive\n            value_description add_int/4 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+50])\n              core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+38])\n                Ttyp_arrow\n                Nolabel\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+24])\n                  Ttyp_constr \"int/1!\"\n                  []\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+38])\n                  Ttyp_arrow\n                  Nolabel\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+31])\n                    Ttyp_constr \"int/1!\"\n                    []\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+35]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[10,186+38])\n                    Ttyp_constr \"int/1!\"\n                    []\n              [\n                \"%addint\"\n              ]\n          structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+50])\n            Tstr_primitive\n            value_description sub_int/5 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+50])\n              core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+38])\n                Ttyp_arrow\n                Nolabel\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+24])\n                  Ttyp_constr \"int/1!\"\n                  []\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+38])\n                  Ttyp_arrow\n                  Nolabel\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+31])\n                    Ttyp_constr \"int/1!\"\n                    []\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+35]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[11,237+38])\n                    Ttyp_constr \"int/1!\"\n                    []\n              [\n                \"%subint\"\n              ]\n          structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+43])\n            Tstr_primitive\n            value_description eq/6 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+43])\n              core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+32])\n                Ttyp_arrow\n                Nolabel\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+18])\n                  Ttyp_var a\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+22]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+32])\n                  Ttyp_arrow\n                  Nolabel\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+22]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+24])\n                    Ttyp_var a\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[12,288+32])\n                    Ttyp_constr \"bool/5!\"\n                    []\n              [\n                \"%equal\"\n              ]\n          structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+46])\n            Tstr_primitive\n            value_description lt/7 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+46])\n              core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+32])\n                Ttyp_arrow\n                Nolabel\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+18])\n                  Ttyp_var a\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+22]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+32])\n                  Ttyp_arrow\n                  Nolabel\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+22]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+24])\n                    Ttyp_var a\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+28]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[13,332+32])\n                    Ttyp_constr \"bool/5!\"\n                    []\n              [\n                \"%lessthan\"\n              ]\n          structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+40])\n            Tstr_primitive\n            value_description raise_/8 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+2]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+40])\n              core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+20]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+29])\n                Ttyp_arrow\n                Nolabel\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+20]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+23])\n                  Ttyp_constr \"exn/7!\"\n                  []\n                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+27]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[14,379+29])\n                  Ttyp_var a\n              [\n                \"%raise\"\n              ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+8]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+46])\n    Tstr_type Rec\n    [\n      type_declaration counter/10 (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+8]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+46])\n        ptype_params =\n          []\n        ptype_constraints =\n          []\n        ptype_kind =\n          Ttype_record\n            [\n              (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+25]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+44])\n                Mutable\n                Nonatomic\n                value/11                core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+41]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+44])\n                  Ttyp_poly\n                  core_type (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+41]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[18,426+44])\n                    Ttyp_constr \"int/1!\"\n                    []\n            ]\n        ptype_private = Public\n        ptype_manifest =\n          None\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+8]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+21])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+12]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+15])\n          Tpat_var \"run/12\"\n        expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+21]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+16]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[20,474+18])\n                Tpat_construct \"()\"\n                []\n                None\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+10]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+21])\n              Texp_let Nonrec\n              [\n                <def>\n                  pattern (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+14]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+19])\n                    Tpat_var \"state/14\"\n                  expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+22]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+35])\n                    Texp_record\n                      fields =\n                        [\n                          \"value\"\n                            expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+32]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[21,495+33])\n                              Texp_constant Const_int 0\n                        ]\n                      representation =\n                        Record_regular\n                      extended_expression =\n                        None\n              ]\n              expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+10]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+21])\n                Texp_sequence\n                expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+10]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[24,616+14])\n                  Texp_for \"i/15\" Up\n                  expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+18]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+19])\n                    Texp_constant Const_int 0\n                  expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+23]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[22,534+24])\n                    Texp_constant Const_int 2\n                  expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+12]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+53])\n                    Texp_setfield\n                    expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+12]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+17])\n                      Texp_ident \"state/14\"\n                    \"value\"\n                    expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+27]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+53])\n                      Texp_apply\n                      expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+27]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+39])\n                        Texp_ident \"Prim/9.add_int\"\n                      [\n                        <arg>\n                          Nolabel\n                          expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+40]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+51])\n                            Texp_field\n                            expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+40]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+45])\n                              Texp_ident \"state/14\"\n                            \"value\"\n                        <arg>\n                          Nolabel\n                          expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+52]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[23,562+53])\n                            Texp_ident \"i/15\"\n                      ]\n                expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+10]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+21])\n                  Texp_field\n                  expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+10]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[25,632+15])\n                    Texp_ident \"state/14\"\n                  \"value\"\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+8]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+27])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+12]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+18])\n          Tpat_var \"answer/17\"\n        expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+27])\n          Texp_apply\n          expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+21]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+24])\n            Texp_ident \"run/12\"\n          [\n            <arg>\n              Nolabel\n              expression (packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+25]..packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml[27,655+27])\n                Texp_construct \"()\"\n                []\n          ]\n    ]\n]"
+  },
+  "typ": {
+    "body_arena": {
+      "bindings": [
+        {
+          "binding_id": 0,
+          "name": "state",
+          "origin_id": 11,
+          "pattern_id": 2,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 1
+        },
+        {
+          "binding_id": 1,
+          "name": "run",
+          "origin_id": 28,
+          "pattern_id": 0,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 16
+        },
+        {
+          "binding_id": 2,
+          "name": "answer",
+          "origin_id": 34,
+          "pattern_id": 4,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 19
+        }
+      ],
+      "expressions": [
+        {
+          "desc": {
+            "digits": "0",
+            "tag": "int"
+          },
+          "expr_id": 0,
+          "origin_id": 9
+        },
+        {
+          "desc": {
+            "base_id": null,
+            "fields": [
+              {
+                "label": "value",
+                "value_id": 0
+              }
+            ],
+            "tag": "record"
+          },
+          "expr_id": 1,
+          "origin_id": 10
+        },
+        {
+          "desc": {
+            "digits": "0",
+            "tag": "int"
+          },
+          "expr_id": 2,
+          "origin_id": 13
+        },
+        {
+          "desc": {
+            "digits": "2",
+            "tag": "int"
+          },
+          "expr_id": 3,
+          "origin_id": 14
+        },
+        {
+          "desc": {
+            "name": "state",
+            "tag": "var"
+          },
+          "expr_id": 4,
+          "origin_id": 15
+        },
+        {
+          "desc": {
+            "name": "Prim.add_int",
+            "tag": "var"
+          },
+          "expr_id": 5,
+          "origin_id": 16
+        },
+        {
+          "desc": {
+            "name": "state",
+            "tag": "var"
+          },
+          "expr_id": 6,
+          "origin_id": 17
+        },
+        {
+          "desc": {
+            "label": "value",
+            "receiver_id": 6,
+            "tag": "field_access"
+          },
+          "expr_id": 7,
+          "origin_id": 18
+        },
+        {
+          "desc": {
+            "name": "i",
+            "tag": "var"
+          },
+          "expr_id": 8,
+          "origin_id": 19
+        },
+        {
+          "desc": {
+            "arguments": [
+              {
+                "implicit": false,
+                "label": {
+                  "tag": "positional"
+                },
+                "value_id": 7
+              },
+              {
+                "implicit": false,
+                "label": {
+                  "tag": "positional"
+                },
+                "value_id": 8
+              }
+            ],
+            "callee_id": 5,
+            "tag": "apply"
+          },
+          "expr_id": 9,
+          "origin_id": 20
+        },
+        {
+          "desc": {
+            "label": "value",
+            "receiver_id": 4,
+            "tag": "field_assign",
+            "value_id": 9
+          },
+          "expr_id": 10,
+          "origin_id": 21
+        },
+        {
+          "desc": {
+            "body_id": 10,
+            "descending": false,
+            "end_id": 3,
+            "iterator_pattern_id": 3,
+            "start_id": 2,
+            "tag": "for"
+          },
+          "expr_id": 11,
+          "origin_id": 22
+        },
+        {
+          "desc": {
+            "name": "state",
+            "tag": "var"
+          },
+          "expr_id": 12,
+          "origin_id": 23
+        },
+        {
+          "desc": {
+            "label": "value",
+            "receiver_id": 12,
+            "tag": "field_access"
+          },
+          "expr_id": 13,
+          "origin_id": 24
+        },
+        {
+          "desc": {
+            "elements": [
+              11,
+              13
+            ],
+            "tag": "sequence"
+          },
+          "expr_id": 14,
+          "origin_id": 25
+        },
+        {
+          "desc": {
+            "binding_ids": [
+              0
+            ],
+            "body_id": 14,
+            "tag": "let"
+          },
+          "expr_id": 15,
+          "origin_id": 26
+        },
+        {
+          "desc": {
+            "body_id": 15,
+            "parameters": [
+              {
+                "default_value_id": null,
+                "label": {
+                  "tag": "positional"
+                },
+                "pattern_id": 1
+              }
+            ],
+            "tag": "fun"
+          },
+          "expr_id": 16,
+          "origin_id": 27
+        },
+        {
+          "desc": {
+            "name": "run",
+            "tag": "var"
+          },
+          "expr_id": 17,
+          "origin_id": 31
+        },
+        {
+          "desc": {
+            "tag": "unit"
+          },
+          "expr_id": 18,
+          "origin_id": 32
+        },
+        {
+          "desc": {
+            "arguments": [
+              {
+                "implicit": false,
+                "label": {
+                  "tag": "positional"
+                },
+                "value_id": 18
+              }
+            ],
+            "callee_id": 17,
+            "tag": "apply"
+          },
+          "expr_id": 19,
+          "origin_id": 33
+        }
+      ],
+      "patterns": [
+        {
+          "desc": {
+            "name": "run",
+            "tag": "var"
+          },
+          "origin_id": 6,
+          "pat_id": 0
+        },
+        {
+          "desc": {
+            "tag": "unit"
+          },
+          "origin_id": 7,
+          "pat_id": 1
+        },
+        {
+          "desc": {
+            "name": "state",
+            "tag": "var"
+          },
+          "origin_id": 8,
+          "pat_id": 2
+        },
+        {
+          "desc": {
+            "name": "i",
+            "tag": "var"
+          },
+          "origin_id": 12,
+          "pat_id": 3
+        },
+        {
+          "desc": {
+            "name": "answer",
+            "tag": "var"
+          },
+          "origin_id": 30,
+          "pat_id": 4
+        }
+      ]
+    },
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "int"
+      },
+      {
+        "name": "run",
+        "scheme": "unit -> int"
+      },
+      {
+        "name": "Prim.add_int",
+        "scheme": "int -> int -> int"
+      },
+      {
+        "name": "Prim.eq",
+        "scheme": "'a. 'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.lt",
+        "scheme": "'a. 'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.raise_",
+        "scheme": "'a. exn -> 'a"
+      },
+      {
+        "name": "Prim.sub_int",
+        "scheme": "int -> int -> int"
+      }
+    ],
+    "expr_traces": [
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 0,
+        "inferred_type": "int",
+        "origin": {
+          "label": "int_literal",
+          "span": {
+            "end": 528,
+            "start": 526
+          },
+          "syntax_kind": "INT_LITERAL"
+        },
+        "origin_id": 9
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 1,
+        "inferred_type": "counter",
+        "origin": {
+          "label": "record_expression",
+          "span": {
+            "end": 530,
+            "start": 516
+          },
+          "syntax_kind": "RECORD_EXPR"
+        },
+        "origin_id": 10
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 2,
+        "inferred_type": "int",
+        "origin": {
+          "label": "int_literal",
+          "span": {
+            "end": 553,
+            "start": 551
+          },
+          "syntax_kind": "INT_LITERAL"
+        },
+        "origin_id": 13
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 3,
+        "inferred_type": "int",
+        "origin": {
+          "label": "int_literal",
+          "span": {
+            "end": 558,
+            "start": 556
+          },
+          "syntax_kind": "INT_LITERAL"
+        },
+        "origin_id": 14
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 4,
+        "inferred_type": "counter",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 579,
+            "start": 561
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 15
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 5,
+        "inferred_type": "int -> int -> int",
+        "origin": {
+          "label": "qualified_path_expression",
+          "span": {
+            "end": 601,
+            "start": 588
+          },
+          "syntax_kind": "FIELD_ACCESS_EXPR"
+        },
+        "origin_id": 16
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 6,
+        "inferred_type": "counter",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 607,
+            "start": 601
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 17
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 7,
+        "inferred_type": "int",
+        "origin": {
+          "label": "field_access_expression",
+          "span": {
+            "end": 613,
+            "start": 601
+          },
+          "syntax_kind": "FIELD_ACCESS_EXPR"
+        },
+        "origin_id": 18
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 8,
+        "inferred_type": "int",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 615,
+            "start": 613
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 19
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 9,
+        "inferred_type": "int",
+        "origin": {
+          "label": "apply_expression",
+          "span": {
+            "end": 615,
+            "start": 588
+          },
+          "syntax_kind": "APPLY_EXPR"
+        },
+        "origin_id": 20
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "i",
+            "scheme": "int"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 10,
+        "inferred_type": "unit",
+        "origin": {
+          "label": "field_assign_expression",
+          "span": {
+            "end": 615,
+            "start": 561
+          },
+          "syntax_kind": "ASSIGN_EXPR"
+        },
+        "origin_id": 21
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 11,
+        "inferred_type": "unit",
+        "origin": {
+          "label": "for_expression",
+          "span": {
+            "end": 630,
+            "start": 533
+          },
+          "syntax_kind": "FOR_EXPR"
+        },
+        "origin_id": 22
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 12,
+        "inferred_type": "counter",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 647,
+            "start": 631
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 23
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 13,
+        "inferred_type": "int",
+        "origin": {
+          "label": "field_access_expression",
+          "span": {
+            "end": 653,
+            "start": 631
+          },
+          "syntax_kind": "FIELD_ACCESS_EXPR"
+        },
+        "origin_id": 24
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "state",
+            "scheme": "counter"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 14,
+        "inferred_type": "int",
+        "origin": {
+          "label": "sequence_expression",
+          "span": {
+            "end": 653,
+            "start": 533
+          },
+          "syntax_kind": "SEQUENCE_EXPR"
+        },
+        "origin_id": 25
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 15,
+        "inferred_type": "int",
+        "origin": {
+          "label": "let_expression",
+          "span": {
+            "end": 653,
+            "start": 494
+          },
+          "syntax_kind": "LET_EXPR"
+        },
+        "origin_id": 26
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 16,
+        "inferred_type": "unit -> int",
+        "origin": {
+          "label": "fun_expression",
+          "span": {
+            "end": 653,
+            "start": 472
+          },
+          "syntax_kind": "LET_BINDING"
+        },
+        "origin_id": 27
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 17,
+        "inferred_type": "unit -> int",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 679,
+            "start": 675
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 31
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 18,
+        "inferred_type": "unit",
+        "origin": {
+          "label": "unit_literal",
+          "span": {
+            "end": 682,
+            "start": 679
+          },
+          "syntax_kind": "UNIT_LITERAL"
+        },
+        "origin_id": 32
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "expr_id": 19,
+        "inferred_type": "int",
+        "origin": {
+          "label": "apply_expression",
+          "span": {
+            "end": 682,
+            "start": 675
+          },
+          "syntax_kind": "APPLY_EXPR"
+        },
+        "origin_id": 33
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "answer",
+            "scheme": "int"
+          },
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "filename": "packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2.ml",
+    "item_traces": [
+      {
+        "binding_names": [
+          "Prim.add_int"
+        ],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 0
+      },
+      {
+        "binding_names": [
+          "Prim.sub_int"
+        ],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 1
+      },
+      {
+        "binding_names": [
+          "Prim.eq"
+        ],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 2
+      },
+      {
+        "binding_names": [
+          "Prim.lt"
+        ],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 3
+      },
+      {
+        "binding_names": [
+          "Prim.raise_"
+        ],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 4
+      },
+      {
+        "binding_names": [],
+        "exports_after": [
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 5
+      },
+      {
+        "binding_names": [
+          "run"
+        ],
+        "exports_after": [
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 6
+      },
+      {
+        "binding_names": [
+          "answer"
+        ],
+        "exports_after": [
+          {
+            "name": "answer",
+            "scheme": "int"
+          },
+          {
+            "name": "run",
+            "scheme": "unit -> int"
+          },
+          {
+            "name": "Prim.add_int",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "Prim.eq",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.lt",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "Prim.raise_",
+            "scheme": "'a. exn -> 'a"
+          },
+          {
+            "name": "Prim.sub_int",
+            "scheme": "int -> int -> int"
+          }
+        ],
+        "item_id": 7
+      }
+    ],
+    "item_tree": [
+      {
+        "item_id": 0,
+        "origin_id": 0,
+        "scheme": "int -> int -> int",
+        "scope_path": [
+          "Prim"
+        ],
+        "tag": "declared_value",
+        "value_name": "add_int"
+      },
+      {
+        "item_id": 1,
+        "origin_id": 1,
+        "scheme": "int -> int -> int",
+        "scope_path": [
+          "Prim"
+        ],
+        "tag": "declared_value",
+        "value_name": "sub_int"
+      },
+      {
+        "item_id": 2,
+        "origin_id": 2,
+        "scheme": "'a. 'a -> 'a -> bool",
+        "scope_path": [
+          "Prim"
+        ],
+        "tag": "declared_value",
+        "value_name": "eq"
+      },
+      {
+        "item_id": 3,
+        "origin_id": 3,
+        "scheme": "'a. 'a -> 'a -> bool",
+        "scope_path": [
+          "Prim"
+        ],
+        "tag": "declared_value",
+        "value_name": "lt"
+      },
+      {
+        "item_id": 4,
+        "origin_id": 4,
+        "scheme": "'a. exn -> 'a",
+        "scope_path": [
+          "Prim"
+        ],
+        "tag": "declared_value",
+        "value_name": "raise_"
+      },
+      {
+        "declaration": {
+          "constructors": [],
+          "labels": [
+            {
+              "field_type": "int",
+              "label_id": 0,
+              "mutable": true,
+              "name": "value"
+            }
+          ],
+          "nonrec": false,
+          "param_variances": [],
+          "type_constructor_id": {
+            "local_id": 0,
+            "owner": "packages/typ/tests/fixtures/oracle/0443_for_loop_loop_count_2"
+          },
+          "type_name": "counter"
+        },
+        "item_id": 5,
+        "origin_id": 5,
+        "scope_path": [],
+        "tag": "type"
+      },
+      {
+        "binding_ids": [
+          1
+        ],
+        "item_id": 6,
+        "origin_id": 29,
+        "recursive": false,
+        "scope_path": [],
+        "tag": "value"
+      },
+      {
+        "binding_ids": [
+          2
+        ],
+        "item_id": 7,
+        "origin_id": 35,
+        "recursive": false,
+        "scope_path": [],
+        "tag": "value"
+      }
+    ],
+    "lowering_diagnostics": [],
+    "origin_map": [
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 0,
+        "semantic_id": {
+          "id": 0,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 236,
+          "start": 185
+        },
+        "syntax_kind": "EXTERNAL_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 1,
+        "semantic_id": {
+          "id": 1,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 287,
+          "start": 236
+        },
+        "syntax_kind": "EXTERNAL_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 2,
+        "semantic_id": {
+          "id": 2,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 331,
+          "start": 287
+        },
+        "syntax_kind": "EXTERNAL_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 3,
+        "semantic_id": {
+          "id": 3,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 378,
+          "start": 331
+        },
+        "syntax_kind": "EXTERNAL_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 4,
+        "semantic_id": {
+          "id": 4,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 419,
+          "start": 378
+        },
+        "syntax_kind": "EXTERNAL_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 5,
+        "semantic_id": {
+          "id": 5,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 472,
+          "start": 423
+        },
+        "syntax_kind": "TYPE_DECL"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 6,
+        "semantic_id": {
+          "id": 0,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 489,
+          "start": 485
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "pattern",
+        "label": "unit_pattern",
+        "origin_id": 7,
+        "semantic_id": {
+          "id": 1,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 492,
+          "start": 489
+        },
+        "syntax_kind": "UNIT_LITERAL"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 8,
+        "semantic_id": {
+          "id": 2,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 514,
+          "start": 508
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "expr",
+        "label": "int_literal",
+        "origin_id": 9,
+        "semantic_id": {
+          "id": 0,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 528,
+          "start": 526
+        },
+        "syntax_kind": "INT_LITERAL"
+      },
+      {
+        "kind": "expr",
+        "label": "record_expression",
+        "origin_id": 10,
+        "semantic_id": {
+          "id": 1,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 530,
+          "start": 516
+        },
+        "syntax_kind": "RECORD_EXPR"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 11,
+        "semantic_id": {
+          "id": 0,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 494
+        },
+        "syntax_kind": "LET_EXPR"
+      },
+      {
+        "kind": "pattern",
+        "label": "for_iterator_pattern",
+        "origin_id": 12,
+        "semantic_id": {
+          "id": 3,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 630,
+          "start": 533
+        },
+        "syntax_kind": "FOR_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "int_literal",
+        "origin_id": 13,
+        "semantic_id": {
+          "id": 2,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 553,
+          "start": 551
+        },
+        "syntax_kind": "INT_LITERAL"
+      },
+      {
+        "kind": "expr",
+        "label": "int_literal",
+        "origin_id": 14,
+        "semantic_id": {
+          "id": 3,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 558,
+          "start": 556
+        },
+        "syntax_kind": "INT_LITERAL"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 15,
+        "semantic_id": {
+          "id": 4,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 579,
+          "start": 561
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "qualified_path_expression",
+        "origin_id": 16,
+        "semantic_id": {
+          "id": 5,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 601,
+          "start": 588
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 17,
+        "semantic_id": {
+          "id": 6,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 607,
+          "start": 601
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "field_access_expression",
+        "origin_id": 18,
+        "semantic_id": {
+          "id": 7,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 613,
+          "start": 601
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 19,
+        "semantic_id": {
+          "id": 8,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 615,
+          "start": 613
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "apply_expression",
+        "origin_id": 20,
+        "semantic_id": {
+          "id": 9,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 615,
+          "start": 588
+        },
+        "syntax_kind": "APPLY_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "field_assign_expression",
+        "origin_id": 21,
+        "semantic_id": {
+          "id": 10,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 615,
+          "start": 561
+        },
+        "syntax_kind": "ASSIGN_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "for_expression",
+        "origin_id": 22,
+        "semantic_id": {
+          "id": 11,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 630,
+          "start": 533
+        },
+        "syntax_kind": "FOR_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 23,
+        "semantic_id": {
+          "id": 12,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 647,
+          "start": 631
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "field_access_expression",
+        "origin_id": 24,
+        "semantic_id": {
+          "id": 13,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 631
+        },
+        "syntax_kind": "FIELD_ACCESS_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "sequence_expression",
+        "origin_id": 25,
+        "semantic_id": {
+          "id": 14,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 533
+        },
+        "syntax_kind": "SEQUENCE_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "let_expression",
+        "origin_id": 26,
+        "semantic_id": {
+          "id": 15,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 494
+        },
+        "syntax_kind": "LET_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "fun_expression",
+        "origin_id": 27,
+        "semantic_id": {
+          "id": 16,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 472
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 28,
+        "semantic_id": {
+          "id": 1,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 472
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 29,
+        "semantic_id": {
+          "id": 6,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 653,
+          "start": 472
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 30,
+        "semantic_id": {
+          "id": 4,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 673,
+          "start": 666
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 31,
+        "semantic_id": {
+          "id": 17,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 679,
+          "start": 675
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "unit_literal",
+        "origin_id": 32,
+        "semantic_id": {
+          "id": 18,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 682,
+          "start": 679
+        },
+        "syntax_kind": "UNIT_LITERAL"
+      },
+      {
+        "kind": "expr",
+        "label": "apply_expression",
+        "origin_id": 33,
+        "semantic_id": {
+          "id": 19,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 682,
+          "start": 675
+        },
+        "syntax_kind": "APPLY_EXPR"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 34,
+        "semantic_id": {
+          "id": 2,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 682,
+          "start": 653
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 35,
+        "semantic_id": {
+          "id": 7,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 682,
+          "start": 653
+        },
+        "syntax_kind": "LET_BINDING"
+      }
+    ],
+    "parse_diagnostics": [],
+    "source_id": 0,
+    "type_index": [
+      {
+        "expr_id": 0,
+        "inferred_type": "int",
+        "origin_id": 9,
+        "span": {
+          "end": 528,
+          "start": 526
+        }
+      },
+      {
+        "expr_id": 2,
+        "inferred_type": "int",
+        "origin_id": 13,
+        "span": {
+          "end": 553,
+          "start": 551
+        }
+      },
+      {
+        "expr_id": 3,
+        "inferred_type": "int",
+        "origin_id": 14,
+        "span": {
+          "end": 558,
+          "start": 556
+        }
+      },
+      {
+        "expr_id": 8,
+        "inferred_type": "int",
+        "origin_id": 19,
+        "span": {
+          "end": 615,
+          "start": 613
+        }
+      },
+      {
+        "expr_id": 18,
+        "inferred_type": "unit",
+        "origin_id": 32,
+        "span": {
+          "end": 682,
+          "start": 679
+        }
+      },
+      {
+        "expr_id": 17,
+        "inferred_type": "unit -> int",
+        "origin_id": 31,
+        "span": {
+          "end": 679,
+          "start": 675
+        }
+      },
+      {
+        "expr_id": 6,
+        "inferred_type": "counter",
+        "origin_id": 17,
+        "span": {
+          "end": 607,
+          "start": 601
+        }
+      },
+      {
+        "expr_id": 19,
+        "inferred_type": "int",
+        "origin_id": 33,
+        "span": {
+          "end": 682,
+          "start": 675
+        }
+      },
+      {
+        "expr_id": 7,
+        "inferred_type": "int",
+        "origin_id": 18,
+        "span": {
+          "end": 613,
+          "start": 601
+        }
+      },
+      {
+        "expr_id": 5,
+        "inferred_type": "int -> int -> int",
+        "origin_id": 16,
+        "span": {
+          "end": 601,
+          "start": 588
+        }
+      },
+      {
+        "expr_id": 1,
+        "inferred_type": "counter",
+        "origin_id": 10,
+        "span": {
+          "end": 530,
+          "start": 516
+        }
+      },
+      {
+        "expr_id": 12,
+        "inferred_type": "counter",
+        "origin_id": 23,
+        "span": {
+          "end": 647,
+          "start": 631
+        }
+      },
+      {
+        "expr_id": 4,
+        "inferred_type": "counter",
+        "origin_id": 15,
+        "span": {
+          "end": 579,
+          "start": 561
+        }
+      },
+      {
+        "expr_id": 13,
+        "inferred_type": "int",
+        "origin_id": 24,
+        "span": {
+          "end": 653,
+          "start": 631
+        }
+      },
+      {
+        "expr_id": 9,
+        "inferred_type": "int",
+        "origin_id": 20,
+        "span": {
+          "end": 615,
+          "start": 588
+        }
+      },
+      {
+        "expr_id": 10,
+        "inferred_type": "unit",
+        "origin_id": 21,
+        "span": {
+          "end": 615,
+          "start": 561
+        }
+      },
+      {
+        "expr_id": 11,
+        "inferred_type": "unit",
+        "origin_id": 22,
+        "span": {
+          "end": 630,
+          "start": 533
+        }
+      },
+      {
+        "expr_id": 14,
+        "inferred_type": "int",
+        "origin_id": 25,
+        "span": {
+          "end": 653,
+          "start": 533
+        }
+      },
+      {
+        "expr_id": 15,
+        "inferred_type": "int",
+        "origin_id": 26,
+        "span": {
+          "end": 653,
+          "start": 494
+        }
+      },
+      {
+        "expr_id": 16,
+        "inferred_type": "unit -> int",
+        "origin_id": 27,
+        "span": {
+          "end": 653,
+          "start": 472
+        }
+      }
+    ],
+    "typing_diagnostics": []
+  },
+  "typ_summary": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "Prim.add_int",
+        "scheme": "int -> int -> int"
+      },
+      {
+        "name": "Prim.eq",
+        "scheme": "'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.lt",
+        "scheme": "'a -> 'a -> bool"
+      },
+      {
+        "name": "Prim.raise_",
+        "scheme": "exn -> 'a"
+      },
+      {
+        "name": "Prim.sub_int",
+        "scheme": "int -> int -> int"
+      },
+      {
+        "name": "answer",
+        "scheme": "int"
+      },
+      {
+        "name": "run",
+        "scheme": "unit -> int"
+      }
+    ],
+    "type_names": [
+      "counter"
+    ]
+  }
+}
