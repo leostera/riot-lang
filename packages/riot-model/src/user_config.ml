@@ -155,7 +155,7 @@ let rec collect_registries = fun ~path acc fields ->
       | [] ->
           Ok acc
       | (name, Toml.Table nested_fields) :: rest -> (
-          match collect_registries ~path:((name :: path)) acc nested_fields with
+          match collect_registries ~path:(name :: path) acc nested_fields with
           | Ok acc -> loop acc rest
           | Error _ as err -> err
         )

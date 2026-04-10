@@ -352,7 +352,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
           let external_packages = List.concat_map fst external_results in
           let external_errors = List.concat_map snd external_results in
           Ok (
-            Workspace.make ~root:package_root ~packages:((package :: external_packages)) (),
+            Workspace.make ~root:package_root ~packages:(package :: external_packages) (),
             external_errors
           )
     )

@@ -35,6 +35,8 @@ val make:
 
 val dependencies_for_scope: Package.dependency_scope -> t -> Package.dependency list
 
+val package_root: t -> Package.t -> Path.t
+
 val find_package_for_path: t -> path:Path.t -> Package.t option
 
 (** Get a unique project identifier for the workspace by replacing / with - in

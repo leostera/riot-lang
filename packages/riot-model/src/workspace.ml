@@ -332,10 +332,16 @@ let dependencies_for_scope = fun scope (workspace: t) ->
   | Package.Dev -> workspace.dev_dependencies
   | Package.Build -> workspace.build_dependencies
 
+let package_root = fun (workspace: t) (pkg: Package.t) ->
+  if Package.is_workspace_member pkg then
+    Path.normalize Path.(workspace.root / pkg.relative_path)
+  else
+    Path.normalize pkg.path
+
 let find_package_for_path = fun (workspace: t) ~path ->
   let path = Path.normalize path in
   let contains_path (pkg: Package.t) =
-    let package_root = Path.normalize pkg.path in
+    let package_root = package_root workspace pkg in
     Path.equal path package_root || match Path.strip_prefix path ~prefix:package_root with
     | Ok _ -> true
     | Error _ -> false
@@ -343,8 +349,8 @@ let find_package_for_path = fun (workspace: t) ~path ->
   workspace.packages |> List.filter contains_path |> List.sort
     (fun (left: Package.t) (right: Package.t) ->
       Int.compare
-        (String.length (Path.to_string right.path))
-        (String.length (Path.to_string left.path))) |> function
+        (String.length (Path.to_string (package_root workspace right)))
+        (String.length (Path.to_string (package_root workspace left)))) |> function
   | pkg :: _ -> Some pkg
   | [] -> None
 

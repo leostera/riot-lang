@@ -558,9 +558,9 @@ let test_workspace_manager_resolves_member_path_dependencies_relative_to_package
   with_tempdir "riot_model_workspace_paths"
     (fun root ->
       let write path content = Fs.write content path
-      |> Result.expect ~msg:(("expected write to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected write to succeed: " ^ Path.to_string path) in
       let mkdir path = Fs.create_dir_all path
-      |> Result.expect ~msg:(("expected mkdir to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected mkdir to succeed: " ^ Path.to_string path) in
       mkdir Path.(root / Path.v "packages/app/src");
       mkdir Path.(root / Path.v "packages/vendor/src");
       mkdir Path.(root / Path.v "packages/kernel/src");
@@ -611,9 +611,9 @@ let test_workspace_manager_reports_member_manifest_decode_errors = fun _ctx ->
   with_tempdir "riot_model_workspace_member_decode_error"
     (fun root ->
       let write path content = Fs.write content path
-      |> Result.expect ~msg:(("expected write to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected write to succeed: " ^ Path.to_string path) in
       let mkdir path = Fs.create_dir_all path
-      |> Result.expect ~msg:(("expected mkdir to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected mkdir to succeed: " ^ Path.to_string path) in
       mkdir Path.(root / Path.v "packages/app/src");
       write Path.(root / Path.v "riot.toml")
         {|
@@ -648,9 +648,9 @@ let test_workspace_manager_skips_missing_path_dependencies_with_registry_fallbac
   with_tempdir "riot_model_workspace_missing_path_fallback"
     (fun root ->
       let write path content = Fs.write content path
-      |> Result.expect ~msg:(("expected write to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected write to succeed: " ^ Path.to_string path) in
       let mkdir path = Fs.create_dir_all path
-      |> Result.expect ~msg:(("expected mkdir to succeed: " ^ Path.to_string path)) in
+      |> Result.expect ~msg:("expected mkdir to succeed: " ^ Path.to_string path) in
       mkdir Path.(root / Path.v "packages/app/src");
       write Path.(root / Path.v "riot.toml")
         {|

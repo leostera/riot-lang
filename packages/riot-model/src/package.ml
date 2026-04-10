@@ -264,6 +264,8 @@ let synthetic = fun ~name ~path ~relative_path -> make ~name ~path ~relative_pat
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
 
+let root_module_name = fun (pkg: t) -> Module_name.(of_string pkg.name |> to_string)
+
 let key_of_string = fun value -> Key value
 
 let key_to_string = fun (Key value) -> value
@@ -1550,7 +1552,7 @@ let from_toml:
                       let runtime_binaries = merge_binaries ~declared:binaries ~autodiscovered:main_binaries in
                       let all_binaries = merge_binaries
                         ~declared:runtime_binaries
-                        ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
+                        ~autodiscovered:(test_binaries @ example_binaries @ bench_binaries) in
                       let commands =
                         match List.assoc_opt "command" items with
                         | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml
@@ -2580,4 +2582,14 @@ std = {}
       Ok ()
     else
       Error "expected build graph dependencies to exclude build-only deps" [@test]
+
+  let test_root_module_name_sanitizes_hyphenated_package_names (): (unit, string) result =
+    let pkg = synthetic
+      ~name:"kernel-new"
+      ~path:(Path.v "/tmp/kernel-new")
+      ~relative_path:(Path.v "packages/kernel-new") in
+    if String.equal (root_module_name pkg) "Kernel_new" then
+      Ok ()
+    else
+      Error "expected hyphenated package names to sanitize to a valid root module name" [@test]
 end

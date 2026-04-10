@@ -144,6 +144,8 @@ val scan_sources: package_path:Path.t -> ?excluded_relpaths:Path.t list -> unit 
 
 val synthetic: name:string -> path:Path.t -> relative_path:Path.t -> t
 
+val root_module_name: t -> string
+
 val key_of_string: string -> key
 
 val key_to_string: key -> string
