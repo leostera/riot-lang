@@ -382,18 +382,18 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     in
     match
       Riot_build.list_benchmarks
-        ?on_suite:((
+        ?on_suite:(
           if output_mode = Build.Json then
             Some on_suite
           else
             None
-        ))
-        ?on_suite_error:((
+        )
+        ?on_suite_error:(
           if output_mode = Build.Json then
             Some on_suite_error
           else
             None
-        ))
+        )
         {
           workspace;
           package_filter = request.package_filter;

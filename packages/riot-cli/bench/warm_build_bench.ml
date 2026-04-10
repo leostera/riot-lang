@@ -6,7 +6,7 @@ let current_dir = fun () -> Env.current_dir () |> Result.expect ~msg:"Failed to 
 
 let set_current_dir = fun path ->
   Env.set_current_dir path
-  |> Result.expect ~msg:(("Failed to change directory to " ^ Path.to_string path))
+  |> Result.expect ~msg:("Failed to change directory to " ^ Path.to_string path)
 
 let with_current_dir = fun path fn ->
   let original = current_dir () in

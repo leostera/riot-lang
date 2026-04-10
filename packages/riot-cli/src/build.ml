@@ -565,13 +565,13 @@ let build_command = fun ?workspace ?(prepared = false) ?(scope = Runtime) ?(prof
   | Ok { workspace; workspace_manager } ->
       run_request
         (
-          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:((package_opt
-          |> Option.to_list))
-            ~targets:((
+          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:(package_opt
+          |> Option.to_list)
+            ~targets:(
               match target_arch with
               | Some target -> Riot_build.Pattern target
               | None -> Riot_build.Host
-            ))
+            )
             ()
         )
 
@@ -579,11 +579,11 @@ let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?
   run_request
     (
       make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:package_names
-        ~targets:((
+        ~targets:(
           match target_arch with
           | Some target -> Riot_build.Pattern target
           | None -> Riot_build.Host
-        ))
+        )
         ()
     )
 

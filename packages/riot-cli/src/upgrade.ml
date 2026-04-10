@@ -370,11 +370,11 @@ let run = fun matches ->
       |> Result.map_error (fun message -> Failure message) in
       match
         resolve_archive_source
-          ?version:((
+          ?version:(
             match latest_metadata with
             | Some metadata -> Some metadata.release_id
             | None -> version
-          ))
+          )
           ~target
           ()
       with

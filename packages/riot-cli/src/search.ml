@@ -87,5 +87,5 @@ let run = fun matches ->
             |> fun items -> Data.Json.Array items |> Data.Json.to_string |> println
           else
             write_human_results ~query:request.query results;
-            Ok ()
+          Ok ()
     )

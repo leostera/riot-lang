@@ -39,9 +39,7 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
         "\n"
         (List.map
           (fun message ->
-            format_prefixed_block
-              ~prefix:(("      \027[1;33mWarning\027[0m " ^ package.name ^ ": "))
-              message)
+            format_prefixed_block ~prefix:("      \027[1;33mWarning\027[0m " ^ package.name ^ ": ") message)
           messages)
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
@@ -64,7 +62,7 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
       "      \027[1;31mFailed\027[0m "
       ^ package.name
       ^ "\n"
-      ^ format_prefixed_block ~prefix:(("      \027[1;31mError\027[0m " ^ package.name ^ ": ")) error_msg
+      ^ format_prefixed_block ~prefix:("      \027[1;31mError\027[0m " ^ package.name ^ ": ") error_msg
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
       "     \027[1;33mSkipped\027[0m " ^ package.name ^ " (" ^ reason ^ ")"
   | Telemetry_events.CacheHit { package; _ } ->

@@ -86,7 +86,7 @@ let zero_pad_left = fun width value ->
 let bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = zero_pad_left digits_width (octal_string value) in
-  bytes_set_string dst ~offset ~width:((width - 1)) trimmed;
+  bytes_set_string dst ~offset ~width:(width - 1) trimmed;
   IO.Bytes.set dst (offset + width - 1) '\000'
 
 let compute_checksum = fun header ->

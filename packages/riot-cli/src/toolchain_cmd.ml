@@ -77,7 +77,7 @@ let run_install = fun workspace ->
           ^ " new, "
           ^ Int.to_string skipped
           ^ " existing)");
-        Ok ()
+      Ok ()
   | Error msg ->
       println "";
       println ("❌ " ^ msg);

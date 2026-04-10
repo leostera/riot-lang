@@ -537,9 +537,12 @@ let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_s
   event: Riot_build.test_event
 ) ->
   match event with
-  | Riot_build.Build _ -> ()
-  | Riot_build.NoSuitesFound { package_name; suite_name } -> print_empty_hint package_name suite_name
-  | Riot_build.RunningSuite _ -> ()
+  | Riot_build.Build _ ->
+      ()
+  | Riot_build.NoSuitesFound { package_name; suite_name } ->
+      print_empty_hint package_name suite_name
+  | Riot_build.RunningSuite _ ->
+      ()
   | Riot_build.SuiteCompleted {
     suite;
     stdout;
@@ -556,7 +559,8 @@ let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_s
     failed;
     skipped;
     failed_tests=_
-  } -> print_summary ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
+  } ->
+      print_summary ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
 
 let write_test_error = fun err -> println ("error: " ^ Riot_build.test_error_message err)
 
@@ -656,18 +660,18 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           in
           match
             Riot_build.list_tests
-              ?on_suite:((
+              ?on_suite:(
                 if output_mode = Build.Json then
                   Some on_suite
                 else
                   None
-              ))
-              ?on_suite_error:((
+              )
+              ?on_suite_error:(
                 if output_mode = Build.Json then
                   Some on_suite_error
                 else
                   None
-              ))
+              )
               {
                 workspace;
                 package_filter = request.package_filter;

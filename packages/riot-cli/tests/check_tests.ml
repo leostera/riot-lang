@@ -155,7 +155,7 @@ let test_check_accepts_path_argument = fun _ctx ->
       let expected = Path.v "packages/app/src/app.ml" in
       Test.assert_equal
         ~expected:[ expected ]
-        ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
+        ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
       Ok ()
 
 let test_check_accepts_multiple_paths = fun _ctx ->
@@ -163,14 +163,14 @@ let test_check_accepts_multiple_paths = fun _ctx ->
   | Error err -> Error ("expected check args to parse: " ^ err)
   | Ok matches ->
       let expected = [ Path.v "packages/app/src/app.ml"; Path.v "packages/kernel/src/kernel.ml" ] in
-      Test.assert_equal ~expected ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
+      Test.assert_equal ~expected ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
       Ok ()
 
 let test_check_accepts_no_path_without_explain = fun _ctx ->
   match parse_check [ "check" ] with
   | Error err -> Error ("expected check args to parse: " ^ err)
   | Ok matches ->
-      Test.assert_equal ~expected:[] ~actual:((ArgParser.get_many matches "path" |> List.map Path.v));
+      Test.assert_equal ~expected:[] ~actual:(ArgParser.get_many matches "path" |> List.map Path.v);
       Ok ()
 
 let test_check_json_streams_single_explicit_file_without_duplicates = fun _ctx ->
@@ -345,18 +345,18 @@ let test_check_json_includes_typ_event_diagnostics = fun _ctx ->
                   events
                   |> List.find_opt
                     (fun json ->
-                      match
-                        Data.Json.get_field "type" json,
-                        Data.Json.get_field "typing_diagnostic_count" json
-                      with
-                      | (Some (Data.Json.String "typ_source_analysis_finish"), Some (Data.Json.Int count)) when count > 0 -> true
+                      match Data.Json.get_field "type" json, Data.Json.get_field
+                        "typing_diagnostic_count"
+                        json with
+                      | (Some (Data.Json.String "typ_source_analysis_finish"), Some (Data.Json.Int count)) when count
+                      > 0 -> true
                       | _ -> false)
                   |> Option.expect ~msg:"missing errored typ_source_analysis_finish event"
                 in
                 let typing_diagnostic_count =
                   match Data.Json.get_field "typing_diagnostic_count" analysis_finish with
                   | Some (Data.Json.Int count) -> count
-                  | _ -> -1
+                  | _ -> (-1)
                 in
                 let typing_diagnostics =
                   match Data.Json.get_field "typing_diagnostics" analysis_finish with
@@ -519,7 +519,8 @@ let test_check_explicit_file_handles_hyphenated_package_names = fun _ctx ->
           match write_file kernel_new_source "let new_runtime = 2\n" with
           | Error err -> Error err
           | Ok () ->
-              let matches = parse_check [ "check"; "--json"; "packages/kernel-new/src/kernel_new.ml" ]
+              let matches = parse_check
+                [ "check"; "--json"; "packages/kernel-new/src/kernel_new.ml" ]
               |> Result.expect ~msg:"parse check args" in
               let stdout, stdout_contents = make_capture_writer () in
               let stderr, stderr_contents = make_capture_writer () in
@@ -641,8 +642,8 @@ path = "src/kernel_new.ml"
                                     |> Path.strip_prefix ~prefix:(Path.normalize workspace_root)
                                     |> Result.map Path.to_string
                                     |> Result.unwrap_or
-                                      ~default:((Riot_check.Check.State.checked_file_path checked_file
-                                      |> Path.to_string)))
+                                      ~default:(Riot_check.Check.State.checked_file_path checked_file
+                                      |> Path.to_string))
                                     | _ -> None
                                   )
                               in
@@ -710,12 +711,12 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
                     |> List.sort compare
                   in
                   Test.assert_equal
-                    ~expected:(([
+                    ~expected:([
                       Data.Json.String "packages/colors/examples/blend_demo.ml";
                       Data.Json.String "packages/colors/src/colors.ml";
                       Data.Json.String "packages/colors/src/helper.ml";
                     ]
-                    |> List.sort compare))
+                    |> List.sort compare)
                     ~actual:file_paths;
                   let diagnostic_count =
                     events
