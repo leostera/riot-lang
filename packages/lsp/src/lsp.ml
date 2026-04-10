@@ -946,9 +946,7 @@ module Initialize = struct
         Json.bool
         capabilities.document_formatting_provider
         fields in
-      let fields =
-        Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields
-      in
+      let fields = Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields in
       let fields = Encode.field_opt
         "codeActionProvider"
         code_action_provider_to_json
