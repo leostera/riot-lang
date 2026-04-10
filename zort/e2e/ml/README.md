@@ -31,6 +31,9 @@ Current status:
   `gc_roots`, and code/data segment tables in compatibility-owned state and
   verifies that `caml_program` lands in a registered code fragment before
   entering `caml_start_program`
+- startup trace observability now distinguishes raw `gc_roots` table entries
+  from scannable global blocks and their exposed field slots in the locked
+  `aarch64-apple-darwin` compatibility layer
 - the compiler-compat startup path is now reference-counted on the locked
   `aarch64-apple-darwin` path:
   - the first `caml_startup` performs metadata registration and enters

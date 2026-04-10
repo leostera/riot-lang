@@ -4,6 +4,13 @@ const builtin = @import("builtin");
 const RawValue = usize;
 const raw_unit: RawValue = 1;
 const Intnat = isize;
+const raw_immediate_mask: RawValue = 1;
+const raw_header_tag_bits: usize = 8;
+const raw_header_color_bits: usize = 2;
+const raw_header_color_shift: usize = raw_header_tag_bits;
+const raw_header_wosize_shift: usize = raw_header_tag_bits + raw_header_color_bits;
+const raw_header_tag_mask: RawValue = (@as(RawValue, 1) << raw_header_tag_bits) - 1;
+const raw_no_scan_tag: u8 = 251;
 
 const Segment = extern struct {
     begin: ?*const anyopaque = null,
@@ -15,6 +22,8 @@ const MetadataSummary = struct {
     frame_descriptor_count: usize = 0,
     gc_root_table_count: usize = 0,
     gc_root_entry_count: usize = 0,
+    gc_root_block_count: usize = 0,
+    gc_root_block_field_count: usize = 0,
     code_segment_count: usize = 0,
     data_segment_count: usize = 0,
 };
@@ -61,10 +70,10 @@ const RegisteredGcRootTable = struct {
     table: [*]const RawValue,
     entry_count: usize,
 
-    fn visitEntries(self: RegisteredGcRootTable, visitor: RawRootSlotVisitor) void {
+    fn visitBlockFields(self: RegisteredGcRootTable, visitor: RawRootSlotVisitor) void {
         var root_index: usize = 0;
         while (self.table[root_index] != 0) : (root_index += 1) {
-            visitor.visit(&self.table[root_index]);
+            visitRawBlockFieldRoots(self.table[root_index], visitor);
         }
     }
 };
@@ -91,12 +100,69 @@ const RegisteredCodeFragment = struct {
 
 const RawRootSlotVisitor = struct {
     ctx: ?*anyopaque,
-    visit_fn: *const fn (?*anyopaque, *const RawValue) void,
+    visit_fn: *const fn (?*anyopaque, *RawValue) void,
 
-    fn visit(self: RawRootSlotVisitor, slot: *const RawValue) void {
+    fn visit(self: RawRootSlotVisitor, slot: *RawValue) void {
         self.visit_fn(self.ctx, slot);
     }
 };
+
+const GcRootTableSummary = struct {
+    entry_count: usize = 0,
+    block_count: usize = 0,
+    block_field_count: usize = 0,
+};
+
+// Raw OCaml block decoding is intentionally trapped inside the locked compiler
+// compatibility layer. The semantic kernel must not learn this ABI layout.
+fn rawValueIsBlock(raw: RawValue) bool {
+    return raw != 0 and (raw & raw_immediate_mask) == 0;
+}
+
+fn rawBlockFieldBase(raw: RawValue) [*]RawValue {
+    return @ptrFromInt(raw);
+}
+
+fn rawBlockHeader(raw: RawValue) RawValue {
+    const fields = rawBlockFieldBase(raw);
+    return (fields - 1)[0];
+}
+
+fn rawBlockTag(raw: RawValue) u8 {
+    return @as(u8, @truncate(rawBlockHeader(raw) & raw_header_tag_mask));
+}
+
+fn rawBlockWordSize(raw: RawValue) usize {
+    return @as(usize, @intCast(rawBlockHeader(raw) >> raw_header_wosize_shift));
+}
+
+fn rawBlockHasScannableFields(raw: RawValue) bool {
+    return rawValueIsBlock(raw) and rawBlockTag(raw) < raw_no_scan_tag;
+}
+
+fn visitRawBlockFieldRoots(raw: RawValue, visitor: RawRootSlotVisitor) void {
+    if (!rawBlockHasScannableFields(raw)) return;
+
+    const fields = rawBlockFieldBase(raw);
+    var field_index: usize = 0;
+    while (field_index < rawBlockWordSize(raw)) : (field_index += 1) {
+        visitor.visit(&fields[field_index]);
+    }
+}
+
+fn summarizeGcRootTable(table: [*]const RawValue) GcRootTableSummary {
+    var summary = GcRootTableSummary{};
+
+    while (table[summary.entry_count] != 0) : (summary.entry_count += 1) {
+        const raw = table[summary.entry_count];
+        if (!rawBlockHasScannableFields(raw)) continue;
+
+        summary.block_count += 1;
+        summary.block_field_count += rawBlockWordSize(raw);
+    }
+
+    return summary;
+}
 
 const CompilerCompatState = struct {
     const LifecycleError = error{
@@ -162,15 +228,16 @@ const CompilerCompatState = struct {
         if (tables.globals) |globals| {
             var global_index: usize = 0;
             while (globals[global_index]) |table| : (global_index += 1) {
-                var entry_count: usize = 0;
-                while (table[entry_count] != 0) : (entry_count += 1) {}
+                const table_summary = summarizeGcRootTable(table);
 
                 try metadata.gc_root_tables.append(self.allocator, .{
                     .table = table,
-                    .entry_count = entry_count,
+                    .entry_count = table_summary.entry_count,
                 });
                 metadata.summary.gc_root_table_count += 1;
-                metadata.summary.gc_root_entry_count += entry_count;
+                metadata.summary.gc_root_entry_count += table_summary.entry_count;
+                metadata.summary.gc_root_block_count += table_summary.block_count;
+                metadata.summary.gc_root_block_field_count += table_summary.block_field_count;
             }
         }
 
@@ -225,9 +292,9 @@ const CompilerCompatState = struct {
         return if (self.startup_metadata) |metadata| metadata.summary else .{};
     }
 
-    fn visitGcRootTableEntries(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
+    fn visitGcRootBlockFields(self: *const CompilerCompatState, visitor: RawRootSlotVisitor) void {
         const metadata = self.startup_metadata orelse return;
-        for (metadata.gc_root_tables.items) |table| table.visitEntries(visitor);
+        for (metadata.gc_root_tables.items) |table| table.visitBlockFields(visitor);
     }
 
     fn findCodeFragment(self: *const CompilerCompatState, pc: *const anyopaque) ?RegisteredCodeFragment {
@@ -274,6 +341,8 @@ pub export var zort_metadata_frametables: usize = 0;
 pub export var zort_metadata_frame_descriptors: usize = 0;
 pub export var zort_metadata_gc_root_tables: usize = 0;
 pub export var zort_metadata_gc_root_entries: usize = 0;
+pub export var zort_metadata_gc_root_blocks: usize = 0;
+pub export var zort_metadata_gc_root_block_fields: usize = 0;
 pub export var zort_metadata_code_segments: usize = 0;
 pub export var zort_metadata_data_segments: usize = 0;
 pub export var zort_metadata_program_fragment_registered: usize = 0;
@@ -301,11 +370,10 @@ fn summarizeMetadata(
     var global_index: usize = 0;
     while (globals[global_index]) |table| : (global_index += 1) {
         summary.gc_root_table_count += 1;
-
-        var root_index: usize = 0;
-        while (table[root_index] != 0) : (root_index += 1) {
-            summary.gc_root_entry_count += 1;
-        }
+        const table_summary = summarizeGcRootTable(table);
+        summary.gc_root_entry_count += table_summary.entry_count;
+        summary.gc_root_block_count += table_summary.block_count;
+        summary.gc_root_block_field_count += table_summary.block_field_count;
     }
 
     summary.code_segment_count = countSegments(code_segments);
@@ -332,6 +400,8 @@ fn resetObservabilityForFreshStartup() void {
     zort_metadata_frame_descriptors = 0;
     zort_metadata_gc_root_tables = 0;
     zort_metadata_gc_root_entries = 0;
+    zort_metadata_gc_root_blocks = 0;
+    zort_metadata_gc_root_block_fields = 0;
     zort_metadata_code_segments = 0;
     zort_metadata_data_segments = 0;
     zort_metadata_program_fragment_registered = 0;
@@ -349,6 +419,8 @@ fn syncMetadataObservability() void {
     zort_metadata_frame_descriptors = summary.frame_descriptor_count;
     zort_metadata_gc_root_tables = summary.gc_root_table_count;
     zort_metadata_gc_root_entries = summary.gc_root_entry_count;
+    zort_metadata_gc_root_blocks = summary.gc_root_block_count;
+    zort_metadata_gc_root_block_fields = summary.gc_root_block_field_count;
     zort_metadata_code_segments = summary.code_segment_count;
     zort_metadata_data_segments = summary.data_segment_count;
     zort_metadata_program_fragment_registered =
@@ -428,6 +500,12 @@ pub export fn zort_emit_int(raw: RawValue) callconv(.c) RawValue {
     return raw_unit;
 }
 
+fn makeRawOutOfHeapHeader(wosize: usize, tag: u8) RawValue {
+    return (@as(RawValue, wosize) << raw_header_wosize_shift) |
+        (@as(RawValue, 3) << raw_header_color_shift) |
+        @as(RawValue, tag);
+}
+
 test "compiler compat: primitive decodes tagged ints" {
     zort_last_emitted_int = -1;
     try std.testing.expectEqual(raw_unit, zort_emit_int(0x55));
@@ -443,7 +521,17 @@ test "compiler compat: summarize startup metadata tables" {
         null,
     };
 
-    const roots_a = [_]RawValue{ 0x10, 0x20, 0 };
+    const TupleBlock = extern struct {
+        header: RawValue,
+        fields: [2]RawValue,
+    };
+
+    const root_block = TupleBlock{
+        .header = makeRawOutOfHeapHeader(2, 0),
+        .fields = .{ 0x11, 0x13 },
+    };
+
+    const roots_a = [_]RawValue{ @intFromPtr(root_block.fields[0..].ptr), 0 };
     const roots_b = [_]RawValue{0};
     const globals = [_]?[*]const RawValue{
         roots_a[0..].ptr,
@@ -471,18 +559,43 @@ test "compiler compat: summarize startup metadata tables" {
     try std.testing.expectEqual(@as(usize, 2), summary.frametable_count);
     try std.testing.expectEqual(@as(usize, 3), summary.frame_descriptor_count);
     try std.testing.expectEqual(@as(usize, 2), summary.gc_root_table_count);
-    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
+    try std.testing.expectEqual(@as(usize, 1), summary.gc_root_entry_count);
+    try std.testing.expectEqual(@as(usize, 1), summary.gc_root_block_count);
+    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_block_field_count);
     try std.testing.expectEqual(@as(usize, 2), summary.code_segment_count);
     try std.testing.expectEqual(@as(usize, 1), summary.data_segment_count);
 }
 
-test "compiler compat: state retains startup metadata and visits gc root entries" {
+test "compiler compat: state retains startup metadata and visits gc root block fields" {
     const frametable = [_]Intnat{1};
     const frametables = [_]?[*]const Intnat{
         frametable[0..].ptr,
         null,
     };
-    const roots = [_]RawValue{ 0x10, 0x20, 0 };
+    const TupleBlock = extern struct {
+        header: RawValue,
+        fields: [2]RawValue,
+    };
+    const StringBlock = extern struct {
+        header: RawValue,
+        fields: [1]RawValue,
+    };
+
+    const tuple_block = TupleBlock{
+        .header = makeRawOutOfHeapHeader(2, 0),
+        .fields = .{ 0x11, 0x13 },
+    };
+    const string_block = StringBlock{
+        .header = makeRawOutOfHeapHeader(1, 252),
+        .fields = .{0x99},
+    };
+
+    const roots = [_]RawValue{
+        @intFromPtr(tuple_block.fields[0..].ptr),
+        raw_unit,
+        @intFromPtr(string_block.fields[0..].ptr),
+        0,
+    };
     const globals = [_]?[*]const RawValue{
         roots[0..].ptr,
         null,
@@ -509,8 +622,11 @@ test "compiler compat: state retains startup metadata and visits gc root entries
     try std.testing.expect(state.hasStartupMetadata());
     try std.testing.expectEqual(@as(usize, 1), summary.frametable_count);
     try std.testing.expectEqual(@as(usize, 1), summary.gc_root_table_count);
-    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_entry_count);
+    try std.testing.expectEqual(@as(usize, 3), summary.gc_root_entry_count);
+    try std.testing.expectEqual(@as(usize, 1), summary.gc_root_block_count);
+    try std.testing.expectEqual(@as(usize, 2), summary.gc_root_block_field_count);
     try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.frame_tables.items.len);
+    try std.testing.expectEqual(@as(usize, 3), state.startup_metadata.?.gc_root_tables.items[0].entry_count);
     try std.testing.expectEqual(@as(usize, 1), state.startup_metadata.?.code_fragments.items.len);
     try std.testing.expectEqual(RegisteredCodeFragment.DigestPolicy.later, state.startup_metadata.?.code_fragments.items[0].digest_policy);
     try std.testing.expect(state.findCodeFragment(@ptrFromInt(0x18)) != null);
@@ -520,20 +636,20 @@ test "compiler compat: state retains startup metadata and visits gc root entries
     defer seen.deinit(std.testing.allocator);
 
     const Collect = struct {
-        fn visit(ctx: ?*anyopaque, slot: *const RawValue) void {
+        fn visit(ctx: ?*anyopaque, slot: *RawValue) void {
             const items: *std.ArrayListUnmanaged(RawValue) = @ptrCast(@alignCast(ctx.?));
             items.append(std.testing.allocator, slot.*) catch unreachable;
         }
     };
 
-    state.visitGcRootTableEntries(.{
+    state.visitGcRootBlockFields(.{
         .ctx = &seen,
         .visit_fn = Collect.visit,
     });
 
     try std.testing.expectEqual(@as(usize, 2), seen.items.len);
-    try std.testing.expectEqual(@as(RawValue, 0x10), seen.items[0]);
-    try std.testing.expectEqual(@as(RawValue, 0x20), seen.items[1]);
+    try std.testing.expectEqual(@as(RawValue, 0x11), seen.items[0]);
+    try std.testing.expectEqual(@as(RawValue, 0x13), seen.items[1]);
 }
 
 test "compiler compat: state reset clears registered startup metadata" {
@@ -542,7 +658,7 @@ test "compiler compat: state reset clears registered startup metadata" {
         frametable[0..].ptr,
         null,
     };
-    const roots = [_]RawValue{ 0x10, 0 };
+    const roots = [_]RawValue{ raw_unit, 0 };
     const globals = [_]?[*]const RawValue{
         roots[0..].ptr,
         null,
@@ -609,8 +725,8 @@ test "compiler compat: reregistering startup metadata replaces prior registratio
         second_frametable[0..].ptr,
         null,
     };
-    const first_roots = [_]RawValue{ 0x10, 0 };
-    const second_roots = [_]RawValue{ 0x20, 0x30, 0 };
+    const first_roots = [_]RawValue{ raw_unit, 0 };
+    const second_roots = [_]RawValue{ raw_unit, 3, 0 };
     const first_globals = [_]?[*]const RawValue{
         first_roots[0..].ptr,
         null,
