@@ -20,7 +20,6 @@ type id =
   | String of string
   | Number of int
   | Null
-
 (** Method parameters. *)
 type params =
   | Positional of Json.t list
@@ -28,7 +27,6 @@ type params =
   | Named of (string * Json.t) list
   (** Named parameters encoded as a JSON object. *)
   | NoParams
-
 (** Typed request lowered into a JSON-RPC method name and params. *)
 type prerequest = {
   (** Method name to invoke. *)
@@ -36,7 +34,6 @@ type prerequest = {
   (** Method parameters. *)
   params: params;
 }
-
 (** JSON-RPC request or notification. *)
 type request = {
   (** Protocol version. *)
@@ -48,7 +45,6 @@ type request = {
   (** Request identifier, or [None] for notifications. *)
   id: id option;
 }
-
 (** Client-side JSON-RPC error. *)
 type error =
   | ParseError of { raw_input: string; parse_error: string }
@@ -62,8 +58,7 @@ type error =
   | InternalError of { context: string; details: string }
   (** Internal client error such as transport or serialization failure. *)
   | UnknownServerError of { code: int; message: string; data: Json.t option }
-  (** Server returned an untyped JSON-RPC error object. *)
-
+(** Server returned an untyped JSON-RPC error object. *)
 (** JSON-RPC response wrapper. *)
 type 'res response = {
   (** Protocol version. *)
@@ -73,10 +68,8 @@ type 'res response = {
   (** Identifier matching the originating request. *)
   id: id;
 }
-
 (** Batch request containing multiple JSON-RPC requests. *)
 type batch_request = request list
-
 (** Batch response containing multiple JSON-RPC responses. *)
 type 'res batch_response = 'res response list
 
@@ -97,28 +90,14 @@ val id_of_json: Json.t -> (id, string) result
     Use this when you need a plain request value without going through a typed
     [ApplicationProtocol].
 *)
-val request:
-  (** Method name. *)
-  method_:string ->
-  (** Optional parameters. *)
-  ?params:params ->
-  (** Optional request identifier. *)
-  ?id:id ->
-  unit ->
-  request
+val request: method_:string -> ?params:params -> ?id:id -> unit -> request
 
 (** Create a JSON-RPC notification.
 
     Notifications do not carry an identifier and therefore do not expect a
     response.
 *)
-val notification:
-  (** Method name. *)
-  method_:string ->
-  (** Optional parameters. *)
-  ?params:params ->
-  unit ->
-  request
+val notification: method_:string -> ?params:params -> unit -> request
 
 (** Return `true` if the request is a notification.
 
@@ -130,11 +109,7 @@ val notification:
 val is_notification: request -> bool
 
 (** Create a successful response wrapper. *)
-val ok:
-  (** Optional response identifier. Defaults to [Null]. *)
-  ?id:id ->
-  'res ->
-  'res response
+val ok: ?id:id -> 'res -> 'res response
 
 (** Bridge between typed application values and JSON-RPC wire values.
 
@@ -144,7 +119,6 @@ val ok:
 module type ApplicationProtocol = sig
   (** Application-specific request type. *)
   type request
-
   (** Application-specific response type. *)
   type response
 
@@ -193,24 +167,10 @@ module Client: sig
     ('req, 'res) t
 
   (** Send a raw method/params call and wait for the typed response. *)
-  val call:
-    ('req, 'res) t ->
-    (** Method name. *)
-    method_:string ->
-    (** Optional parameters. *)
-    ?params:params ->
-    unit ->
-    ('res, error) result
+  val call: ('req, 'res) t -> method_:string -> ?params:params -> unit -> ('res, error) result
 
   (** Send a raw notification. *)
-  val notify:
-    ('req, 'res) t ->
-    (** Method name. *)
-    method_:string ->
-    (** Optional parameters. *)
-    ?params:params ->
-    unit ->
-    (unit, error) result
+  val notify: ('req, 'res) t -> method_:string -> ?params:params -> unit -> (unit, error) result
 
   (** Send a batch of typed requests and wait for all responses. *)
   val call_batch: ('req, 'res) t -> 'req list -> ('res response list, error) result
@@ -239,7 +199,6 @@ module Server: sig
     method_: string;
     fn: ('res -> unit) -> 'req -> unit;
   }
-
   (** Typed server configuration. *)
   type ('request, 'response) t
 
@@ -253,11 +212,5 @@ module Server: sig
 
       Use the reply callback to emit zero or more raw response strings.
   *)
-  val handle_message:
-    ('req, 'res) t ->
-    (** Called with each raw response string that should be sent back. *)
-    (string -> unit) ->
-    (** Raw incoming JSON-RPC message. *)
-    string ->
-    unit
+  val handle_message: ('req, 'res) t -> (string -> unit) -> string -> unit
 end
