@@ -9,12 +9,10 @@ type content_type = {
   (** Additional content-type parameters. *)
   parameters: (string * string) List.t;
 }
-
 (** MIME content disposition. *)
 type content_disposition =
   | Inline of { filename: string Option.t }
   | Attachment of { filename: string Option.t }
-
 (** Content-transfer encoding. *)
 type encoding =
   | SevenBit
@@ -23,7 +21,6 @@ type encoding =
   | QuotedPrintable
   | Base64
   | Other of string
-
 (** Parsed MIME header. *)
 type header =
   | ContentType of content_type
@@ -32,7 +29,6 @@ type header =
   | ContentId of string
   | ContentDescription of string
   | Other of string * string
-
 (** One MIME body part. *)
 type part = {
   (** Parsed part headers. *)
@@ -40,7 +36,6 @@ type part = {
   (** Raw part content. *)
   content: string;
 }
-
 (** Parsed MIME entity. *)
 type t =
   | SinglePart of part
@@ -51,12 +46,7 @@ type t =
     Use this when you already have the raw message split into headers and body,
     for example after parsing an email message or multipart HTTP payload.
 *)
-val parse:
-  (** Raw header name/value pairs. *)
-  headers:(string * string) List.t ->
-  (** Raw entity body. *)
-  body:string ->
-  (t, string) Result.t
+val parse: headers:(string * string) List.t -> body:string -> (t, string) Result.t
 
 (** Return all attachment parts reachable in the MIME tree.
 

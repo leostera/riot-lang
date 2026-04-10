@@ -429,16 +429,15 @@ let base64_decode = fun s ->
         let v4 = char_to_value (String.get s (i + 3)) in
         if v1 = (-2) || v2 = (-2) || v3 = (-2) || v4 = (-2) then
           Error "Invalid base64 character"
-        else
-          (
-            if v1 >= 0 && v2 >= 0 then
-              Buffer.add_char buf (Char.chr ((v1 lsl 2) lor (v2 lsr 4) land 0xff));
-            if v2 >= 0 && v3 >= 0 then
-              Buffer.add_char buf (Char.chr ((v2 lsl 4) lor (v3 lsr 2) land 0xff));
-            if v3 >= 0 && v4 >= 0 then
-              Buffer.add_char buf (Char.chr ((v3 lsl 6) lor v4 land 0xff));
-            decode_chunk (i + 4)
-          )
+        else (
+          if v1 >= 0 && v2 >= 0 then
+            Buffer.add_char buf (Char.chr ((v1 lsl 2) lor (v2 lsr 4) land 0xff));
+          if v2 >= 0 && v3 >= 0 then
+            Buffer.add_char buf (Char.chr ((v2 lsl 4) lor (v3 lsr 2) land 0xff));
+          if v3 >= 0 && v4 >= 0 then
+            Buffer.add_char buf (Char.chr ((v3 lsl 6) lor v4 land 0xff));
+          decode_chunk (i + 4)
+        )
       else
         Ok ()
   in
