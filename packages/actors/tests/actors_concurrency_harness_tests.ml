@@ -75,15 +75,14 @@ let sender = fun ~receiver ~sender_id ~messages_per_sender ~seed ->
         send receiver (Harness_sender_done sender_id);
         Result.Ok ()
       )
-    else
-      (
-        if int_eq (Kernel.Random.State.int rng 4) 0 then
-          yield ();
-        send receiver (Harness_data (sender_id, seq));
-        if int_eq (Kernel.Random.State.int rng 3) 0 then
-          yield ();
-        loop (Int.succ seq)
-      )
+    else (
+      if int_eq (Kernel.Random.State.int rng 4) 0 then
+        yield ();
+      send receiver (Harness_data (sender_id, seq));
+      if int_eq (Kernel.Random.State.int rng 3) 0 then
+        yield ();
+      loop (Int.succ seq)
+    )
   in
   loop 1
 

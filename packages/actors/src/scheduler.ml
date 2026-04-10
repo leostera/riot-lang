@@ -1045,7 +1045,7 @@ let attempt_steal = fun t (worker: worker) ->
       increment t.counters.steals
     else
       increment t.counters.failed_steals;
-      did_steal
+    did_steal
 
 let reactor_poll_timeout_nanos = fun t ->
   let configured = Config.resolution_to_nanos t.config.timer_resolution in
@@ -1088,7 +1088,7 @@ let process_timers = fun t ->
                       deregister_io_in_reactor
                         t
                         source
-                        ~context:(("for timed out process " ^ Pid.to_string (Process.pid proc)))
+                        ~context:("for timed out process " ^ Pid.to_string (Process.pid proc))
                   | _ -> ()
                 );
               if Process.is_alive proc then
@@ -1147,7 +1147,7 @@ let poll_io = fun t ->
               deregister_io_in_reactor
                 t
                 source
-                ~context:(("for process " ^ Pid.to_string (Process.pid proc)));
+                ~context:("for process " ^ Pid.to_string (Process.pid proc));
               if Process.is_alive proc then
                 (
                   Process.add_ready_token proc token source;
