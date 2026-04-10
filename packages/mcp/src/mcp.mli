@@ -9,20 +9,16 @@ open Std
 
 (** MCP protocol version string, for example `"2024-11-05"`. *)
 type protocol_version = string
-
 (** JSON payload type used by MCP messages. *)
 type json = Data.Json.t
-
 (** {1 JSON-RPC Base Types} *)
 
 (** JSON-RPC request identifier used by MCP. *)
 type request_id =
   | String of string
   | Number of int
-
 (** JSON-RPC error code. *)
 type error_code = int
-
 (** JSON-RPC error object returned by MCP peers. *)
 type error = {
   (** Numeric error code. *)
@@ -32,7 +28,6 @@ type error = {
   (** Optional structured error data. *)
   data: json option;
 }
-
 (** {1 Peer Identity} *)
 
 (** Information about the connecting client. *)
@@ -40,13 +35,11 @@ type client_info = {
   name: string;
   version: string;
 }
-
 (** Information about the server. *)
 type server_info = {
   name: string;
   version: string;
 }
-
 (** {1 Capabilities} *)
 
 (** Tool capability marker.
@@ -55,7 +48,6 @@ type server_info = {
     grow without reshaping callers.
 *)
 type tool_capability = unit
-
 (** Resource capability flags. *)
 type resource_capability = {
   (** Whether resource subscriptions are supported. *)
@@ -63,13 +55,10 @@ type resource_capability = {
   (** Whether clients can be notified when resource lists change. *)
   list_changed: bool option;
 }
-
 (** Prompt capability marker. *)
 type prompt_capability = unit
-
 (** Sampling capability marker. *)
 type sampling_capability = unit
-
 (** Capabilities advertised by a client. *)
 type client_capabilities = {
   tools: tool_capability option;
@@ -77,19 +66,16 @@ type client_capabilities = {
   prompts: prompt_capability option;
   sampling: sampling_capability option;
 }
-
 (** Capabilities advertised by a server. *)
 type server_capabilities = {
   tools: tool_capability option;
   resources: resource_capability option;
   prompts: prompt_capability option;
 }
-
 (** {1 Tools} *)
 
 (** JSON Schema describing tool input parameters. *)
 type tool_input_schema = json
-
 (** Tool definition exposed by an MCP server. *)
 type tool = {
   (** Tool name used in MCP requests. *)
@@ -99,17 +85,14 @@ type tool = {
   (** Input schema describing accepted tool arguments. *)
   input_schema: tool_input_schema;
 }
-
 (** {1 Resources} *)
 
 (** Resource URI. *)
 type resource_uri = string
-
 (** Resource payload returned by the server. *)
 type resource_contents =
   | TextContent of { text: string; mime_type: string option }
   | BlobContent of { data: string; mime_type: string }
-
 (** Resource descriptor. *)
 type resource = {
   uri: resource_uri;
@@ -117,7 +100,6 @@ type resource = {
   description: string option;
   mime_type: string option;
 }
-
 (** {1 Prompts} *)
 
 (** Prompt argument definition. *)
@@ -126,21 +108,18 @@ type prompt_argument = {
   description: string option;
   required: bool option;
 }
-
 (** Prompt definition exposed by a server. *)
 type prompt = {
   name: string;
   description: string option;
   arguments: prompt_argument list option;
 }
-
 (** {1 Messages} *)
 
 (** Content carried by a chat-style MCP message. *)
 type message_content =
   | Text of string
   | Resource of resource_contents
-
 (** Chat-style message used by sampling flows. *)
 type message = {
   (** Sender role, usually `"user"` or `"assistant"`. *)
@@ -148,7 +127,6 @@ type message = {
   (** Message payload. *)
   content: message_content;
 }
-
 (** {1 Requests} *)
 
 (** Well-known MCP request methods plus a custom escape hatch. *)
@@ -165,7 +143,6 @@ type request_method =
   | CompleteSampling
   | Ping
   | Custom of string
-
 (** Decoded parameters for each supported request method. *)
 type request_params =
   | InitializeParams of {
@@ -193,7 +170,6 @@ type request_params =
     }
   | PingParams
   | CustomParams of json
-
 (** MCP request envelope. *)
 type request = {
   (** Always `"2.0"`. *)
@@ -202,7 +178,6 @@ type request = {
   method_name: string;
   params: request_params option;
 }
-
 (** {1 Responses} *)
 
 (** Successful response payload for each supported request type. *)
@@ -228,7 +203,6 @@ type response_result =
     }
   | PingResult
   | CustomResult of json
-
 (** MCP response envelope. *)
 type response =
   | SuccessResponse of {
@@ -243,7 +217,6 @@ type response =
       id: request_id;
       error: error;
     }
-
 (** {1 Notifications} *)
 
 (** Well-known notification methods plus a custom escape hatch. *)
@@ -254,7 +227,6 @@ type notification_method =
   | Progress
   | LogMessage
   | CustomNotification of string
-
 (** Decoded notification parameters. *)
 type notification_params =
   | ResourceListChangedParams
@@ -263,7 +235,6 @@ type notification_params =
   | ProgressParams of { progress_token: string; progress: float; total: float option }
   | LogMessageParams of { level: string; logger: string option; data: json option; message: string }
   | CustomNotificationParams of json
-
 (** MCP notification envelope. *)
 type notification = {
   (** Always `"2.0"`. *)
@@ -271,9 +242,7 @@ type notification = {
   method_name: string;
   params: notification_params option;
 }
-
 (** {1 Serialization} *)
-
 (** Encode a request as JSON. *)
 val request_to_json: request -> json
 
@@ -293,14 +262,8 @@ val notification_to_json: notification -> json
 val notification_of_json: json -> (notification, string) result
 
 (** {1 Helpers} *)
-
 (** Build a request envelope from a method tag and optional params. *)
-val make_request:
-  (** Optional decoded params for the request. *)
-  ?params:request_params ->
-  request_id ->
-  request_method ->
-  request
+val make_request: ?params:request_params -> request_id -> request_method -> request
 
 (** Build a successful response envelope. *)
 val make_success: request_id -> response_result -> response
@@ -312,11 +275,7 @@ val make_success: request_id -> response_result -> response
 val make_error: request_id -> error_code -> string -> response
 
 (** Build a notification envelope from a method tag and optional params. *)
-val make_notification:
-  (** Optional decoded params for the notification. *)
-  ?params:notification_params ->
-  notification_method ->
-  notification
+val make_notification: ?params:notification_params -> notification_method -> notification
 
 (** Standard JSON-RPC parse error code.
 
