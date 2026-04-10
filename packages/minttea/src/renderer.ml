@@ -152,43 +152,42 @@ let print_frame = fun state frame ->
       (* Alt screen: always position at top-left *)
       Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1)
     )
-  else
-    (
-      (* Inline mode: move cursor up to start of previous render if we had lines *)
-      if state.lines_rendered > 1 then
-        (
-          (* Move up to first line of previous render *)
-          Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1))
-        );
-      Buffer.add_string output "\r"
-    );
-    (* Add the frame content (which includes EraseLineRight from ansi_emitter) *)
-    Buffer.add_string output frame;
-    (* Count lines in frame for tracking - count newlines directly for performance *)
-    let line_count =
-      let count = Cell.create 1 in
-      String.iter
-        (fun c ->
-          if c = '\n' then
-            count := !count + 1)
-        frame;
-      !count
-    in
-    (* If new content is shorter than previous, clear remaining lines below *)
-    if line_count < state.lines_rendered then
-      (Buffer.add_string output (Tty.Escape_seq.erase_display_seq 0));
-    state.lines_rendered <- line_count;
-    if state.is_altscreen_active then
+  else (
+    (* Inline mode: move cursor up to start of previous render if we had lines *)
+    if state.lines_rendered > 1 then
       (
-        (* In alt-screen, position at start of last line *)
-        Buffer.add_string output (Tty.Escape_seq.cursor_position_seq line_count 1)
+        (* Move up to first line of previous render *)
+        Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1))
       );
-    let final_output = Buffer.contents output in
-    (* Log frame for debugging *)
-    state.frame_count <- state.frame_count + 1;
-    log_frame state.frame_count final_output;
-    (* Write everything in one go *)
-    write_output state final_output
+    Buffer.add_string output "\r"
+  );
+  (* Add the frame content (which includes EraseLineRight from ansi_emitter) *)
+  Buffer.add_string output frame;
+  (* Count lines in frame for tracking - count newlines directly for performance *)
+  let line_count =
+    let count = Cell.create 1 in
+    String.iter
+      (fun c ->
+        if c = '\n' then
+          count := !count + 1)
+      frame;
+    !count
+  in
+  (* If new content is shorter than previous, clear remaining lines below *)
+  if line_count < state.lines_rendered then
+    (Buffer.add_string output (Tty.Escape_seq.erase_display_seq 0));
+  state.lines_rendered <- line_count;
+  if state.is_altscreen_active then
+    (
+      (* In alt-screen, position at start of last line *)
+      Buffer.add_string output (Tty.Escape_seq.cursor_position_seq line_count 1)
+    );
+  let final_output = Buffer.contents output in
+  (* Log frame for debugging *)
+  state.frame_count <- state.frame_count + 1;
+  log_frame state.frame_count final_output;
+  (* Write everything in one go *)
+  write_output state final_output
 
 let rec loop = fun state ->
   Log.trace "[RENDERER] Waiting for message...";

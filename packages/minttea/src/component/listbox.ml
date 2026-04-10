@@ -243,17 +243,17 @@ let view = fun t ->
               end)
           items
       end;
-      (* Show filter input at bottom if active *)
-      if t.filtering_active then
-        begin
-          add_string buf "\n\n/";
-          add_string buf t.filter_query;
-          add_char buf '_'
-        end
-      else if t.filter_query != "" then
-        begin
-          add_string buf "\n\nFilter: ";
-          add_string buf t.filter_query;
-          add_string buf " (press ESC to clear)"
-        end;
-      contents buf
+    (* Show filter input at bottom if active *)
+    if t.filtering_active then
+      begin
+        add_string buf "\n\n/";
+        add_string buf t.filter_query;
+        add_char buf '_'
+      end
+    else if t.filter_query != "" then
+      begin
+        add_string buf "\n\nFilter: ";
+        add_string buf t.filter_query;
+        add_string buf " (press ESC to clear)"
+      end;
+    contents buf

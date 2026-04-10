@@ -231,4 +231,4 @@ let view = fun tbl ->
             end)
         tbl.rows
     end;
-    B.contents buf
+  B.contents buf

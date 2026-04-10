@@ -49,7 +49,7 @@ let view = fun model ->
   in
   Element.column
     [
-      Element.text ~style:((Style.empty |> Style.fg (`rgb (0, 255, 255)) |> Style.bold)) "Downloading...";
+      Element.text ~style:(Style.empty |> Style.fg (`rgb (0, 255, 255)) |> Style.bold) "Downloading...";
       progress_view;
       Element.text instructions;
     ]
