@@ -43,6 +43,7 @@ let roundtrip_fixture = fun relpath ->
     match Path.to_string relpath with
     | "requests/initialize.json" -> roundtrip_request Lsp.Initialize.request json
     | "requests/shutdown.json" -> roundtrip_request Lsp.Shutdown.request json
+    | "requests/hover.json" -> roundtrip_request Lsp.Text_document_methods.Hover.request json
     | "requests/formatting.json" -> roundtrip_request Lsp.Text_document_methods.Formatting.request json
     | "requests/code_action.json" -> roundtrip_request
       Lsp.Text_document_methods.Code_action.request
@@ -63,6 +64,7 @@ let roundtrip_fixture = fun relpath ->
       json
     | "responses/initialize.json" -> roundtrip_response Lsp.Initialize.request json
     | "responses/shutdown.json" -> roundtrip_response Lsp.Shutdown.request json
+    | "responses/hover.json" -> roundtrip_response Lsp.Text_document_methods.Hover.request json
     | "responses/formatting.json" -> roundtrip_response
       Lsp.Text_document_methods.Formatting.request
       json

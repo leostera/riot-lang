@@ -198,6 +198,61 @@ module Range = struct
     Ok { start_; end_ }
 end
 
+module Markup_kind = struct
+  type t =
+    | Plain_text
+    | Markdown
+
+  let to_string = function
+    | Plain_text -> "plaintext"
+    | Markdown -> "markdown"
+
+  let of_string = function
+    | "plaintext" -> Ok Plain_text
+    | "markdown" -> Ok Markdown
+    | value -> Error ("invalid markup kind: " ^ value)
+
+  let to_json = fun value -> Json.string (to_string value)
+
+  let of_json = fun value ->
+    let* value = Decode.string "markupKind" value in
+    of_string value
+end
+
+module Markup_content = struct
+  type t = {
+    kind: Markup_kind.t;
+    value: string;
+  }
+
+  let to_json = fun { kind; value } ->
+    Json.obj [ ("kind", Markup_kind.to_json kind); ("value", Json.string value) ]
+
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "markupContent" value in
+    let* kind = Decode.required "markupContent" "kind" (ignore_context Markup_kind.of_json) fields in
+    let* value = Decode.required "markupContent" "value" Decode.string fields in
+    Ok { kind; value }
+end
+
+module Hover_result = struct
+  type t = {
+    contents: Markup_content.t;
+    range: Range.t option;
+  }
+
+  let to_json = fun { contents; range } ->
+    let fields = [ ("contents", Markup_content.to_json contents) ] in
+    let fields = Encode.field_opt "range" Range.to_json range fields in
+    Json.obj (List.rev fields)
+
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "hover" value in
+    let* contents = Decode.required "hover" "contents" (ignore_context Markup_content.of_json) fields in
+    let* range = Decode.optional "hover" "range" (ignore_context Range.of_json) fields in
+    Ok { contents; range }
+end
+
 module Diagnostic = struct
   type severity =
     | Error
@@ -819,6 +874,7 @@ module Initialize = struct
       position_encoding: string option;
       text_document_sync: text_document_sync option;
       document_formatting_provider: bool option;
+      hover_provider: bool option;
       code_action_provider: code_action_provider option;
       experimental: json option;
     }
@@ -890,6 +946,9 @@ module Initialize = struct
         Json.bool
         capabilities.document_formatting_provider
         fields in
+      let fields =
+        Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields
+      in
       let fields = Encode.field_opt
         "codeActionProvider"
         code_action_provider_to_json
@@ -917,6 +976,7 @@ module Initialize = struct
         "documentFormattingProvider"
         Decode.bool
         fields in
+      let* hover_provider = Decode.optional "serverCapabilities" "hoverProvider" Decode.bool fields in
       let* code_action_provider = Decode.optional
         "serverCapabilities"
         "codeActionProvider"
@@ -927,6 +987,7 @@ module Initialize = struct
         position_encoding;
         text_document_sync;
         document_formatting_provider;
+        hover_provider;
         code_action_provider;
         experimental;
       }
@@ -1171,6 +1232,57 @@ module Text_document_requests = struct
       ~name:"textDocument/publishDiagnostics"
       ~params_of_jsonrpc
       ~params_to_jsonrpc
+  end
+
+  module Hover = struct
+    type params = {
+      text_document: Text_document.identifier;
+      position: Position.t;
+    }
+
+    type result = Hover_result.t option
+
+    let params_to_jsonrpc = fun { text_document; position } ->
+      Params.named
+        [
+          ("textDocument", Text_document.Identifier.to_json text_document);
+          ("position", Position.to_json position);
+        ]
+
+    let params_of_jsonrpc =
+      Params.object_params "textDocument/hover"
+        (fun fields ->
+          let* text_document = Decode.required
+            "textDocument/hover"
+            "textDocument"
+            (ignore_context Text_document.Identifier.of_json)
+            fields in
+          let* position = Decode.required
+            "textDocument/hover"
+            "position"
+            (ignore_context Position.of_json)
+            fields in
+          Ok { text_document; position })
+
+    let result_to_json = function
+      | None -> Json.Null
+      | Some hover -> Hover_result.to_json hover
+
+    let result_of_json = function
+      | Json.Null ->
+          Ok None
+      | Json.Object _ as value ->
+          let* hover = Hover_result.of_json value in
+          Ok (Some hover)
+      | value ->
+          Error (unsupported_json_kind "textDocument/hover result object" value)
+
+    let request = Method.request
+      ~name:"textDocument/hover"
+      ~params_of_jsonrpc
+      ~params_to_jsonrpc
+      ~result_of_json
+      ~result_to_json
   end
 
   module Formatting = struct
