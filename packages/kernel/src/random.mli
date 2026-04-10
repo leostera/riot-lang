@@ -105,7 +105,7 @@ val int_in_range: min:int -> max:int -> int
     @raise Invalid_argument if [min > max].
 
     @since 5.2 *)
-val int32: Int32.t -> Int32.t
+val int32: int32 -> int32
 
 (** [Random.int32 bound] returns a random integer between 0 (inclusive)
      and [bound] (exclusive).  [bound] must be greater than 0.
@@ -122,7 +122,7 @@ val int32_in_range: min:int32 -> max:int32 -> int32
     @raise Invalid_argument if [min > max].
 
     @since 5.2 *)
-val int64: Int64.t -> Int64.t
+val int64: int64 -> int64
 
 (** [Random.int64 bound] returns a random integer between 0 (inclusive)
      and [bound] (exclusive).  [bound] must be greater than 0.
@@ -148,12 +148,12 @@ val float: float -> float
 val bool: unit -> bool
 
 (** [Random.bool ()] returns [true] or [false] with probability 0.5 each. *)
-val bits32: unit -> Int32.t
+val bits32: unit -> int32
 
 (** [Random.bits32 ()] returns 32 random bits as an integer between
     {!Int32.min_int} and {!Int32.max_int}.
     @since 4.14 *)
-val bits64: unit -> Int64.t
+val bits64: unit -> int64
 
 (** [Random.bits64 ()] returns 64 random bits as an integer between
     {!Int64.min_int} and {!Int64.max_int}.
@@ -189,11 +189,11 @@ module State: sig
 
   val int_in_range: t -> min:int -> max:int -> int
 
-  val int32: t -> Int32.t -> Int32.t
+  val int32: t -> int32 -> int32
 
   val int32_in_range: t -> min:int32 -> max:int32 -> int32
 
-  val int64: t -> Int64.t -> Int64.t
+  val int64: t -> int64 -> int64
 
   val int64_in_range: t -> min:int64 -> max:int64 -> int64
 
@@ -201,9 +201,9 @@ module State: sig
 
   val bool: t -> bool
 
-  val bits32: t -> Int32.t
+  val bits32: t -> int32
 
-  val bits64: t -> Int64.t
+  val bits64: t -> int64
 
   (** These functions are the same as the basic functions, except that they
       use (and update) the given PRNG state instead of the default one.

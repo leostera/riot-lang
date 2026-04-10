@@ -48,7 +48,7 @@ let write_all_vectored: type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, err
     if Iovec.length bufs > 0 then
       let* n = W.write_owned_vectored dst ~bufs in
       let rest = len - n in
-      write_loop (Iovec.sub bufs ~pos:n ~len:((len - n))) rest
+      write_loop (Iovec.sub bufs ~pos:n ~len:(len - n)) rest
     else
       Ok ()
   in

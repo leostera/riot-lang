@@ -9,11 +9,11 @@ let create = fun () -> { data = [||]; length = 0 }
 
 let with_capacity = fun capacity -> { data = Array.make capacity (Obj.magic 0); length = 0 }
 
-let[@inline] capacity = fun vector -> Array.length vector.data
+let capacity = fun vector -> Array.length vector.data
 
-let[@inline] len = fun vector -> vector.length
+let len = fun vector -> vector.length
 
-let[@inline] is_empty = fun vector -> vector.length = 0
+let is_empty = fun vector -> vector.length = 0
 
 let resize = fun vector new_capacity ->
   let old_data = vector.data in
@@ -53,7 +53,8 @@ let get = fun vector index ->
   else
     None
 
-let[@inline] get_unchecked = fun vector index -> Array.unsafe_get vector.data index
+let get_unchecked = fun vector index ->
+  Array.unsafe_get vector.data index
 
 let set = fun vector index value ->
   if index < 0 || index >= vector.length then
@@ -61,7 +62,7 @@ let set = fun vector index value ->
   else
     Array.unsafe_set vector.data index value
 
-let[@inline] set_unchecked = fun vector index value ->
+let set_unchecked = fun vector index value ->
   Array.unsafe_set vector.data index value
 
 let insert = fun vector index value ->
@@ -77,16 +78,18 @@ let insert = fun vector index value ->
 let remove = fun vector index ->
   if index < 0 || index >= vector.length then
     None
-  else (
-    let value = Array.unsafe_get vector.data index in
-    Array.blit vector.data (index + 1) vector.data index (vector.length - index - 1);
-    vector.length <- vector.length - 1;
-    Some value
-  )
+  else
+    (
+      let value = Array.unsafe_get vector.data index in
+      Array.blit vector.data (index + 1) vector.data index (vector.length - index - 1);
+      vector.length <- vector.length - 1;
+      Some value
+    )
 
 let clear = fun vector -> vector.length <- 0
 
-let to_array = fun vector -> Array.sub vector.data 0 vector.length
+let to_array = fun vector ->
+  Array.sub vector.data 0 vector.length
 
 let iter = fun f vector ->
   let data = vector.data in
@@ -95,24 +98,26 @@ let iter = fun f vector ->
   done
 
 let append = fun vector1 vector2 ->
-  if vector2.length > 0 then (
-    reserve vector1 vector2.length;
-    Array.blit vector2.data 0 vector1.data vector1.length vector2.length;
-    vector1.length <- vector1.length + vector2.length;
-    vector2.length <- 0
-  )
+  if vector2.length > 0 then
+    (
+      reserve vector1 vector2.length;
+      Array.blit vector2.data 0 vector1.data vector1.length vector2.length;
+      vector1.length <- vector1.length + vector2.length;
+      vector2.length <- 0
+    )
 
 let split_off = fun vector index ->
   if index < 0 || index > vector.length then
     panic "Index out of bounds"
-  else (
-    let elements_to_move = vector.length - index in
-    let new_vector = with_capacity elements_to_move in
-    Array.blit vector.data index new_vector.data 0 elements_to_move;
-    new_vector.length <- elements_to_move;
-    vector.length <- index;
-    new_vector
-  )
+  else
+    (
+      let elements_to_move = vector.length - index in
+      let new_vector = with_capacity elements_to_move in
+      Array.blit vector.data index new_vector.data 0 elements_to_move;
+      new_vector.length <- elements_to_move;
+      vector.length <- index;
+      new_vector
+    )
 
 let sort = fun vector ->
   if vector.length > 0 then

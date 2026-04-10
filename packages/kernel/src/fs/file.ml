@@ -63,11 +63,11 @@ end
 let close = fun fd -> Fd.close fd
 
 let read = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - 1)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
   IO.unix_syscall (fun () -> UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
 
 let write = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - 1)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
   IO.unix_syscall (fun () -> UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
 
 external std_sys_readv: Unix.file_descr -> IO.Iovec.t -> int = "kernel_unix_readv"

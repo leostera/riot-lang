@@ -1,5 +1,4 @@
 open Std
-module Api = Fixme
 
 let package_name = "kernel"
 
@@ -32,7 +31,7 @@ explicit `Kernel.format Kernel.Format.[ ... ]` form instead of assuming imports.
 |}
 
 let explanation =
-  Api.Explanation.{ rule_id = package_rule_id; message = rule_description; body = rule_explain }
+  Fixme.Explanation.{ rule_id = package_rule_id; message = rule_description; body = rule_explain }
 
 let explanations = fun () -> [ explanation ]
 
@@ -169,7 +168,7 @@ let is_concat_expression = fun expr ->
   | _ -> false
 
 let contains_comments = fun expr ->
-  Api.Traversal.find_tokens
+  Fixme.Traversal.find_tokens
     (fun token ->
       match Syn.Ceibo.Red.SyntaxToken.kind token with
       | Syn.SyntaxKind.COMMENT
@@ -192,12 +191,12 @@ let open_statement_brings_format = fun stmt ->
     )
   | None -> false
 
-let structure_items = fun (ctx: Api.Rule.context) ->
+let structure_items = fun (ctx: Fixme.Rule.context) ->
   match ctx.cst with
   | Syn.Cst.Implementation implementation -> implementation.items
   | Syn.Cst.Interface _ -> []
 
-let has_local_format_scope = fun (ctx: Api.Rule.context) expr ->
+let has_local_format_scope = fun (ctx: Fixme.Rule.context) expr ->
   let expr_start = (expression_span expr).start in
   structure_items ctx |> List.exists
     (fun item ->
@@ -206,7 +205,7 @@ let has_local_format_scope = fun (ctx: Api.Rule.context) expr ->
       | Syn.Cst.StructureItem.OpenStatement stmt -> open_statement_brings_format stmt
       | _ -> false)
 
-let format_call_for_expression = fun (ctx: Api.Rule.context) expr ->
+let format_call_for_expression = fun (ctx: Fixme.Rule.context) expr ->
   if is_kernel_source_path ctx.file_path then
     ("Format.format", "Format")
   else if has_local_format_scope ctx expr then
@@ -229,21 +228,20 @@ let replacement_text = fun ctx expr ->
     ]
 
 let make_fix = fun ctx expr ->
-  Api.Fix.make
+  Fixme.Fix.make
     ~title:"Rewrite string concatenation as Kernel.Format fragments"
     ~operations:[
-      Api.Fix.replace_node_with_text
+      Fixme.Fix.replace_node_with_text
         ~target:(Syn.Cst.Expression.syntax_node expr)
         ~text:(replacement_text ctx expr);
     ]
 
 let make_diagnostic = fun ctx expr ->
-  Api.Diagnostic.make
-    ~severity:Warning
-    ~kind:(Api.Diagnostic.Known { rule_id = package_rule_id; message = rule_description })
-    ~span:(expression_span expr)
-    ~suggestion:"Replace this `^` chain with `Kernel.Format` fragments."
-    ~fix:(make_fix ctx expr)
+  Fixme.Diagnostic.make ~severity:Warning ~kind:(Fixme.Diagnostic.Known {
+    rule_id = package_rule_id;
+    message = rule_description
+  }) ~span:(expression_span expr) ~suggestion:"Replace this `^` chain with `Kernel.Format` fragments."
+    (* ~fix:(make_fix ctx expr) *)
     ()
 
 let should_rewrite_chain = fun expr ->
@@ -253,7 +251,7 @@ let should_rewrite_chain = fun expr ->
   && not (contains_comments expr)
 
 let concat_chain_roots = fun ctx ->
-  let expressions = structure_items ctx |> List.concat_map Api.Traversal.expressions_of_structure_item in
+  let expressions = structure_items ctx |> List.concat_map Fixme.Traversal.expressions_of_structure_item in
   let rec loop covered acc remaining =
     match remaining with
     | [] -> List.rev acc
@@ -269,11 +267,11 @@ let concat_chain_roots = fun ctx ->
   in
   loop [] [] expressions
 
-let check_tree = fun (ctx: Api.Rule.context) _red_root ->
+let check_tree = fun (ctx: Fixme.Rule.context) _red_root ->
   concat_chain_roots ctx |> List.filter should_rewrite_chain |> List.map (make_diagnostic ctx)
 
 let rule = fun () ->
-  Api.Rule.make
+  Fixme.Rule.make
     ~id:package_rule_id
     ~description:rule_description
     ~explain:rule_explain

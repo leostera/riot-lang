@@ -3,14 +3,14 @@ open IO
 
 type t = bytes
 
-let of_bytes = fun bytes -> bytes
+let of_bytes: bytes -> t = fun bytes -> bytes
 
-let to_bytes = fun h -> h
+let to_bytes: t -> bytes = fun hash -> hash
 
-let length = fun h -> Bytes.length h
+let length: t -> int = fun hash -> Bytes.length hash
 
-let equal = fun a b ->
+let equal: t -> t -> bool = fun a b ->
   Bytes.equal a b
 
-let compare = fun a b ->
+let compare: t -> t -> int = fun a b ->
   Bytes.compare a b

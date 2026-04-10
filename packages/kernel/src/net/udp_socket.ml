@@ -46,7 +46,7 @@ let local_addr = fun fd ->
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let recv = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   try
     Ok (
       retry_eintr
@@ -57,7 +57,7 @@ let recv = fun fd ?(pos = 0) ?len buf ->
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let recv_from = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   try
     let bytes_read, from_addr =
       retry_eintr
@@ -69,7 +69,7 @@ let recv_from = fun fd ?(pos = 0) ?len buf ->
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let send = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   try
     Ok (
       retry_eintr
@@ -80,7 +80,7 @@ let send = fun fd ?(pos = 0) ?len buf ->
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let send_to = fun fd addr ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((Bytes.length buf - pos)) in
+  let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   try
     let _sock_type, sock_addr = Addr.to_unix addr in
     Ok (
