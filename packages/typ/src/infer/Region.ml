@@ -21,9 +21,7 @@ let current_level = fun (regions: t) -> regions.current_level
 
 let next_mark = fun (regions: t) ->
   let generation = regions.current_mark in
-  let () =
-    regions.current_mark <- generation + 1
-  in
+  regions.current_mark <- generation + 1;
   generation
 
 let rec frame_for_level = fun level frames ->
@@ -36,7 +34,7 @@ let rec frame_for_level = fun level frames ->
         frame_for_level level rest
 
 let add_to_pool = fun (regions: t) ~level node ->
-  let () =
+  (
     match frame_for_level level regions.frames with
     | Some frame ->
         if TypeRepr.pool_level node = Some frame.level then
@@ -46,7 +44,7 @@ let add_to_pool = fun (regions: t) ~level node ->
           frame.nodes <- node :: frame.nodes
         )
     | None -> TypeRepr.set_pool_level node None
-  in
+  );
   node
 
 let track_node = fun (regions: t) node -> add_to_pool regions ~level:(TypeRepr.level node) node
@@ -54,16 +52,11 @@ let track_node = fun (regions: t) node -> add_to_pool regions ~level:(TypeRepr.l
 let exit_region = fun (regions: t) (child: frame) ->
   match regions.frames with
   | frame :: rest when Std.Ptr.equal frame child ->
-      let () =
-        child.nodes
-        |> List.iter
-          (fun node ->
-            if TypeRepr.pool_level node = Some child.level then
-              TypeRepr.set_pool_level node None)
-      in
-      let () =
-        regions.frames <- rest
-      in
+      child.nodes |> List.iter
+        (fun node ->
+          if TypeRepr.pool_level node = Some child.level then
+            TypeRepr.set_pool_level node None);
+      regions.frames <- rest;
       regions.current_level <- child.boundary_level
   | _ -> raise (Failure "Region.exit_region")
 
@@ -73,20 +66,16 @@ let with_region_finalize = fun (regions: t) ~finalize f ->
     boundary_level = regions.current_level;
     nodes = []
   } in
-  let () =
-    regions.current_level <- child.level
-  in
-  let () =
-    regions.frames <- child :: regions.frames
-  in
+  regions.current_level <- child.level;
+  regions.frames <- child :: regions.frames;
   try
     let result = f child in
     let result = finalize child result in
-    let () = exit_region regions child in
+    exit_region regions child;
     result
   with
   | exn ->
-      let () = exit_region regions child in
+      exit_region regions child;
       raise exn
 
 let with_region = fun (regions: t) f ->
@@ -97,7 +86,7 @@ let boundary_level = fun (frame: frame) -> frame.boundary_level
 let mark_roots = fun (regions: t) roots ->
   let generation = next_mark regions in
   let next_order () = 0 in
-  let () = List.iter (TypeRepr.mark_reachable_vars ~generation ~next_order) roots in
+  List.iter (TypeRepr.mark_reachable_vars ~generation ~next_order) roots;
   generation
 
 let iter_owned_nodes = fun (frame: frame) f ->
@@ -122,12 +111,10 @@ let local_reachable_vars = fun (regions: t) (frame: frame) ty ->
     let order = ref 0 in
     fun () ->
       let current = !order in
-      let () =
-        order := current + 1
-      in
+      order := current + 1;
       current
   in
-  let () = TypeRepr.mark_reachable_vars ~generation ~next_order ty in
+  TypeRepr.mark_reachable_vars ~generation ~next_order ty;
   frame.nodes |> List.filter_map
     (fun node ->
       let node = TypeRepr.prune node in

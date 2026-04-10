@@ -7,7 +7,6 @@ open Model
 type completeness = FileSummary.completeness =
   | Complete
   | Partial
-
 (** One source analyzed within one immutable snapshot. *)
 type t = {
   (** Logical source revision analyzed by this record. *)
@@ -39,7 +38,7 @@ type t = {
 }
 
 (** Parse, lower, and infer one [Source.t] inside the given host configuration. *)
-val analyze: config:TypConfig.t -> Source.t -> t
+val analyze: ?initial_env:Infer.Env.t -> config:TypConfig.t -> Source.t -> t
 
 (** Extract the export environment, or [[]] when no export was produced. *)
 val exports: t -> FileSummary.exports

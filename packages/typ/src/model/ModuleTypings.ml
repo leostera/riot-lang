@@ -41,11 +41,13 @@ let map_preserving = fun loop xs ->
 
 let local_type_decl_index = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity (List.length type_decls) in
-  (List.iter
+  (
+    List.iter
       (fun (type_decl: FileSummary.type_decl) ->
         let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
         ())
-      type_decls);
+      type_decls
+  );
   by_path
 
 let resolve_named_type_head_for_persistence = fun by_path name ->
@@ -128,10 +130,8 @@ let canonicalize_type_for_persistence = fun by_path ->
           TypeRepr.package ~values
     | TypeRepr.Named { head; arguments } ->
         let arguments2 = map_preserving loop arguments in
-        let head2 =
-          resolve_named_type_head_for_persistence by_path head.name
-          |> Option.unwrap_or ~default:head
-        in
+        let head2 = resolve_named_type_head_for_persistence by_path head.name
+        |> Option.unwrap_or ~default:head in
         (
           match BuiltinTypeConstructors.type_of_path head2.name arguments2 with
           | Some builtin -> builtin
@@ -265,9 +265,7 @@ let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
     | Some exports -> FileSummary.ErroredExport { exports }
     | None -> FileSummary.NoExport
   in
-  let (export_result, type_decls) = canonicalize_payload_for_persistence
-    ~export_result
-    ~type_decls in
+  let (export_result, type_decls) = canonicalize_payload_for_persistence ~export_result ~type_decls in
   {
     module_name;
     source_hash;
@@ -306,7 +304,7 @@ let to_file_summary = fun ~source_id summary ->
     FileSummary.source_id;
     completeness = summary.completeness;
     export_result = summary.export_result;
-    type_decls = summary.type_decls;
+    type_decls = summary.type_decls
   }
 
 let module_name = fun summary -> summary.module_name
@@ -317,17 +315,20 @@ let export_result = fun summary -> summary.export_result
 
 let completeness = fun summary -> summary.completeness
 
-let export_status = fun summary -> match summary.export_result with
-  | FileSummary.TrustedExport _ ->
-      (
-        match summary.completeness with
-        | FileSummary.Complete -> FileSummary.Trusted
-        | FileSummary.Partial -> FileSummary.Errored
-      )
-  | FileSummary.ErroredExport _ -> FileSummary.Errored
-  | FileSummary.NoExport -> FileSummary.Missing
+let export_status = fun summary ->
+  match summary.export_result with
+  | FileSummary.TrustedExport _ -> (
+      match summary.completeness with
+      | FileSummary.Complete -> FileSummary.Trusted
+      | FileSummary.Partial -> FileSummary.Errored
+    )
+  | FileSummary.ErroredExport _ ->
+      FileSummary.Errored
+  | FileSummary.NoExport ->
+      FileSummary.Missing
 
-let exports = fun value -> match value with
+let exports = fun value ->
+  match value with
   | { export_result=FileSummary.TrustedExport { exports }; _ }
   | { export_result=FileSummary.ErroredExport { exports }; _ } -> exports
   | { export_result=FileSummary.NoExport; _ } -> []
@@ -344,7 +345,8 @@ let find_value_definition = fun summary ~export_name ->
       else
         None)
 
-let rec json_type_name = fun value -> match value with
+let rec json_type_name = fun value ->
+  match value with
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -355,21 +357,26 @@ let rec json_type_name = fun value -> match value with
   | Embed t -> json_type_name t
 
 let error_expected = fun expected actual ->
-  Error (format Format.[ str "expected "; str expected; str " but got "; str (json_type_name actual) ])
+  Error (format
+    Format.[ str "expected "; str expected; str " but got "; str (json_type_name actual) ])
 
-let get_object = fun value -> match value with
+let get_object = fun value ->
+  match value with
   | Data.Json.Object fields -> Ok fields
   | other -> error_expected "object" other
 
-let get_array = fun value -> match value with
+let get_array = fun value ->
+  match value with
   | Data.Json.Array values -> Ok values
   | other -> error_expected "array" other
 
-let get_string = fun value -> match value with
+let get_string = fun value ->
+  match value with
   | Data.Json.String value -> Ok value
   | other -> error_expected "string" other
 
-let get_int = fun value -> match value with
+let get_int = fun value ->
+  match value with
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
 
@@ -403,7 +410,8 @@ let ( let* ) result f =
   | Ok value -> f value
   | Error _ as err -> err
 
-let label_to_json = fun value -> match value with
+let label_to_json = fun value ->
+  match value with
   | TypeRepr.Nolabel -> Data.Json.Object [ ("tag", Data.Json.String "nolabel") ]
   | TypeRepr.Labelled label -> Data.Json.Object [
     ("tag", Data.Json.String "labeled");
@@ -525,8 +533,8 @@ let exports_to_json = fun exports ->
       (fun (name, scheme) ->
         let scheme_json =
           try scheme_to_json scheme with
-          | Failure message ->
-              raise (Failure (format Format.[ str "module typings export "; str name; str ": "; str message ]))
+          | Failure message -> raise
+            (Failure (format Format.[ str "module typings export "; str name; str ": "; str message ]))
         in
         Data.Json.Object [ ("name", Data.Json.String name); ("scheme", scheme_json); ])
   )
@@ -553,7 +561,8 @@ let constructor_to_json = fun (constructor: TypeDecl.constructor) ->
   in
   Data.Json.Object fields
 
-let manifest_to_json = fun value -> match value with
+let manifest_to_json = fun value ->
+  match value with
   | TypeDecl.Alias manifest_type -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
     ("type", type_to_json manifest_type);
@@ -616,7 +625,8 @@ let type_decl_to_json = fun (type_decl: FileSummary.type_decl) ->
 
 let type_decls_to_json = fun type_decls -> Data.Json.Array (List.map type_decl_to_json type_decls)
 
-let export_result_to_json = fun value -> match value with
+let export_result_to_json = fun value ->
+  match value with
   | FileSummary.TrustedExport { exports } -> Data.Json.Object [
     ("tag", Data.Json.String "trusted_export");
     ("exports", exports_to_json exports);
@@ -638,7 +648,8 @@ let completeness_to_json = fun value ->
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
-let source_origin_to_json = fun value -> match value with
+let source_origin_to_json = fun value ->
+  match value with
   | Source.Path path -> Data.Json.Object [
     ("tag", Data.Json.String "path");
     ("value", Data.Json.String (Path.to_string path));
@@ -648,7 +659,8 @@ let source_origin_to_json = fun value -> match value with
     ("value", Data.Json.String label);
   ]
 
-let value_definition_target_to_json = fun value -> match value with
+let value_definition_target_to_json = fun value ->
+  match value with
   | Site { origin; span } -> Data.Json.Object [
     ("tag", Data.Json.String "site");
     ("origin", source_origin_to_json origin);
@@ -686,7 +698,8 @@ let synthetic_source_hash = fun ~module_name ~export_result ~type_decls ?(value_
   payload_to_json ~completeness ~export_result ~type_decls ~value_definitions
   |> Data.Json.to_string
   |> fun json ->
-      Crypto.hash_string (format Format.[ str "typ-module-typings\x1f"; str module_name; str "\x1f"; str json ])
+    Crypto.hash_string
+      (format Format.[ str "typ-module-typings\x1f"; str module_name; str "\x1f"; str json ])
 
 let label_of_json = fun json ->
   let* fields = get_object json in
@@ -786,8 +799,8 @@ let rec type_of_json = fun json ->
         | "exact" -> Ok TypeRepr.Exact
         | "upper" -> Ok TypeRepr.UpperBound
         | "lower" -> Ok TypeRepr.LowerBound
-        | other ->
-            Error (format Format.[ str "unknown module typings structural poly-variant bound "; str other ])
+        | other -> Error (format
+          Format.[ str "unknown module typings structural poly-variant bound "; str other ])
       in
       let* bound = bound in
       let* tags_json = get_array tags_json in
@@ -995,8 +1008,8 @@ let manifest_of_json = fun json ->
         | "exact" -> Ok TypeDecl.Exact
         | "upper" -> Ok TypeDecl.UpperBound
         | "lower" -> Ok TypeDecl.LowerBound
-        | other ->
-            Error (format Format.[ str "unknown module typings poly-variant bound "; str other ])
+        | other -> Error (format
+          Format.[ str "unknown module typings poly-variant bound "; str other ])
       in
       let* bound = bound in
       let* tags_json = get_array tags_json in
@@ -1142,9 +1155,10 @@ let source_origin_of_json = fun json ->
   | "path" -> (
       match Path.of_string value with
       | Ok path -> Ok (Source.Path path)
-      | Error (Path.InvalidUtf8 { path }) -> Error (format Format.[ str "invalid utf-8 path "; str path ])
-      | Error (Path.SystemInvalidUtf8 { syscall; path }) ->
-          Error (format Format.[ str "invalid utf-8 path from "; str syscall; str ": "; str path ])
+      | Error (Path.InvalidUtf8 { path }) -> Error (format
+        Format.[ str "invalid utf-8 path "; str path ])
+      | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error (format
+        Format.[ str "invalid utf-8 path from "; str syscall; str ": "; str path ])
       | Error (Path.SystemError message) -> Error message
     )
   | "label" ->
@@ -1178,7 +1192,8 @@ let value_definition_of_json = fun json ->
   let* target = value_definition_target_of_json target_json in
   Ok { export_name; target }
 
-let value_definitions_of_json = fun value -> match value with
+let value_definitions_of_json = fun value ->
+  match value with
   | Data.Json.Array values ->
       let rec loop acc = function
         | [] -> Ok (List.rev acc)

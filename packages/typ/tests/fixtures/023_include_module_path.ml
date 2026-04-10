@@ -1,3 +1,7 @@
+type 'a option =
+  | None
+  | Some of 'a
+
 module Helpers = struct
   let id x = x
   let wrap value = Some value

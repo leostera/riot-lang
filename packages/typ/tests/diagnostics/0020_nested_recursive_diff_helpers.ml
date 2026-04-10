@@ -3,6 +3,10 @@ type t =
   | Int of int
   | Array of t list
 
+type 'a option =
+  | None
+  | Some of 'a
+
 let rec diff_at_path path a b =
   match (a, b) with
   | Null, Null -> []

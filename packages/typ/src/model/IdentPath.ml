@@ -8,15 +8,18 @@ type t =
 
 let empty = Bare ""
 
-let is_empty = function
+let is_empty = fun value ->
+  match value with
   | Bare "" -> true
   | _ -> false
 
-let is_bare = function
+let is_bare = fun value ->
+  match value with
   | Bare name when not (String.equal name "") -> true
   | _ -> false
 
-let bare_name = function
+let bare_name = fun value ->
+  match value with
   | Bare name when not (String.equal name "") -> Some name
   | _ -> None
 
@@ -103,17 +106,20 @@ let rec append_path = fun left right ->
   | (Bare name, other) -> Qualified (name, other)
   | (Qualified (module_name, tail), other) -> Qualified (module_name, append_path tail other)
 
-let rec last_name = function
+let rec last_name = fun value ->
+  match value with
   | Bare "" -> None
   | Bare name -> Some name
   | Qualified (_, tail) -> last_name tail
 
-let uncons = function
+let uncons = fun value ->
+  match value with
   | Bare "" -> None
   | Bare name -> Some (name, empty)
   | Qualified (module_name, tail) -> Some (module_name, tail)
 
-let rec split_last = function
+let rec split_last = fun value ->
+  match value with
   | Bare "" -> None
   | Bare _ -> None
   | Qualified (module_name, Bare name) -> Some (Bare module_name, name)

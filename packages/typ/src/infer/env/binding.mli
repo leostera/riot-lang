@@ -13,14 +13,14 @@ val same_ident: ident -> ident -> bool
 val compare_ident: ident -> ident -> int
 
 type provenance =
-  | Lowered_pattern of PatId.t
+  | LoweredPattern of PatId.t
   | Prelude
   | Ambient
-  | Type_constructor of { type_name: string; scope_path: IdentPath.t }
+  | TypeConstructor of { type_name: string; scope_path: IdentPath.t }
   | Exception of { name: string; scope_path: IdentPath.t }
-  | Declared_value of { name: string; scope_path: IdentPath.t }
+  | DeclaredValue of { name: string; scope_path: IdentPath.t }
   | Included of { module_path: IdentPath.t }
-  | Module_alias of { alias_name: string; module_path: IdentPath.t }
+  | ModuleAlias of { alias_name: string; module_path: IdentPath.t }
 type t
 val make: ident:ident -> path:IdentPath.t -> scheme:TypeScheme.t -> provenance:provenance -> t
 

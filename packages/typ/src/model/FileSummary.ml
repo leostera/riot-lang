@@ -39,25 +39,24 @@ let partial = fun ~source_id ?(type_decls = []) ?exports () ->
   in
   { source_id; completeness = Partial; export_result; type_decls }
 
-let trusted = fun ~source_id ?(type_decls = []) exports ->
-  complete ~source_id ~type_decls exports
+let trusted = fun ~source_id ?(type_decls = []) exports -> complete ~source_id ~type_decls exports
 
-let errored = fun ~source_id ?(type_decls = []) exports ->
-  partial ~source_id ~type_decls ~exports ()
+let errored = fun ~source_id ?(type_decls = []) exports -> partial ~source_id ~type_decls ~exports ()
 
-let missing = fun ~source_id ?(type_decls = []) () ->
-  partial ~source_id ~type_decls ()
+let missing = fun ~source_id ?(type_decls = []) () -> partial ~source_id ~type_decls ()
 
-let exports = fun value -> match value with
+let exports = fun value ->
+  match value with
   | { export_result=TrustedExport { exports }; _ }
   | { export_result=ErroredExport { exports }; _ } -> exports
   | { export_result=NoExport; _ } -> []
 
 let completeness = fun summary -> summary.completeness
 
-let export_status = fun value -> match value with
-  | { completeness = Complete; export_result=TrustedExport _; _ } -> Trusted
-  | { completeness = Partial; export_result=TrustedExport _; _ }
+let export_status = fun value ->
+  match value with
+  | { completeness=Complete; export_result=TrustedExport _; _ } -> Trusted
+  | { completeness=Partial; export_result=TrustedExport _; _ }
   | { export_result=ErroredExport _; _ } -> Errored
   | { export_result=NoExport; _ } -> Missing
 
@@ -102,16 +101,11 @@ let to_json = fun summary ->
 let render_exports = fun exports ->
   match exports with
   | [] -> "none"
-  | _ ->
-      exports
-      |> List.map
-        (fun (name, scheme) ->
-          format Format.[
-            str name;
-            str " : ";
-            str (TypePrinter.scheme_to_string scheme);
-          ])
-      |> String.concat ", "
+  | _ -> exports
+  |> List.map
+    (fun (name, scheme) ->
+      format Format.[ str name; str " : "; str (TypePrinter.scheme_to_string scheme); ])
+  |> String.concat ", "
 
 let to_string = fun summary ->
   let completeness =
@@ -120,31 +114,31 @@ let to_string = fun summary ->
     | Partial -> "partial"
   in
   match summary.export_result with
-  | TrustedExport { exports } ->
-      format Format.[
-        str "  ";
-        str (SourceId.to_string summary.source_id);
-        str " ";
-        str completeness;
-        str " trusted [";
-        str (render_exports exports);
-        str "]\n";
-      ]
-  | ErroredExport { exports } ->
-      format Format.[
-        str "  ";
-        str (SourceId.to_string summary.source_id);
-        str " ";
-        str completeness;
-        str " errored [";
-        str (render_exports exports);
-        str "]\n";
-      ]
-  | NoExport ->
-      format Format.[
-        str "  ";
-        str (SourceId.to_string summary.source_id);
-        str " ";
-        str completeness;
-        str " no-export\n";
-      ]
+  | TrustedExport { exports } -> format
+    Format.[
+      str "  ";
+      str (SourceId.to_string summary.source_id);
+      str " ";
+      str completeness;
+      str " trusted [";
+      str (render_exports exports);
+      str "]\n";
+    ]
+  | ErroredExport { exports } -> format
+    Format.[
+      str "  ";
+      str (SourceId.to_string summary.source_id);
+      str " ";
+      str completeness;
+      str " errored [";
+      str (render_exports exports);
+      str "]\n";
+    ]
+  | NoExport -> format
+    Format.[
+      str "  ";
+      str (SourceId.to_string summary.source_id);
+      str " ";
+      str completeness;
+      str " no-export\n";
+    ]

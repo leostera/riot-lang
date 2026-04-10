@@ -329,34 +329,43 @@ let export_to_json = fun (export: oracle_value_export) ->
 let report_json = fun (report: Check_result.t) interface typedtree_lines ->
   Data.Json.Object [
     (
-      "typ",
+      "comparison",
       Data.Json.Object [
-        ("completeness", Data.Json.String (FileSummary.completeness report.file_summary |> completeness_to_string));
-        (
-          "parse_diagnostics",
-          Data.Json.Array (List.map Syn.Diagnostic.to_json report.parse_diagnostics)
-        );
-        (
-          "lowering_diagnostics",
-          Data.Json.Array (List.map Diagnostic.to_json report.lowering_diagnostics)
-        );
-        (
-          "typing_diagnostics",
-          Data.Json.Array (List.map Diagnostic.to_json report.typing_diagnostics)
-        );
         (
           "exports",
-          Data.Json.Array (List.map export_to_json (typ_value_exports report))
+          Data.Json.Object [
+            (
+              "ocamlc",
+              Data.Json.Array (List.map export_to_json interface.value_exports)
+            );
+            (
+              "typ",
+              Data.Json.Array (List.map export_to_json (typ_value_exports report))
+            );
+          ]
         );
         (
           "type_names",
-          Data.Json.Array (List.map (fun name -> Data.Json.String name) (typ_type_names report))
+          Data.Json.Object [
+            (
+              "ocamlc",
+              Data.Json.Array (List.map (fun name -> Data.Json.String name) interface.type_names)
+            );
+            (
+              "typ",
+              Data.Json.Array (List.map (fun name -> Data.Json.String name) (typ_type_names report))
+            );
+          ]
         );
       ]
     );
     (
       "ocamlc",
       Data.Json.Object [
+        (
+          "interface_text",
+          Data.Json.String (String.concat "\n" interface.lines)
+        );
         (
           "interface_lines",
           Data.Json.Array (List.map (fun line -> Data.Json.String line) interface.lines)
@@ -372,6 +381,21 @@ let report_json = fun (report: Check_result.t) interface typedtree_lines ->
         (
           "typedtree_lines",
           Data.Json.Array (List.map (fun line -> Data.Json.String line) typedtree_lines)
+        );
+      ]
+    );
+    ("typ", Report.to_json report);
+    (
+      "typ_summary",
+      Data.Json.Object [
+        ("completeness", Data.Json.String (FileSummary.completeness report.file_summary |> completeness_to_string));
+        (
+          "exports",
+          Data.Json.Array (List.map export_to_json (typ_value_exports report))
+        );
+        (
+          "type_names",
+          Data.Json.Array (List.map (fun name -> Data.Json.String name) (typ_type_names report))
         );
       ]
     );

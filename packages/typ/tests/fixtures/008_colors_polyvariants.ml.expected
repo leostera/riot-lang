@@ -73,6 +73,7 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -97,12 +98,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 6
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -119,12 +122,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 2
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -181,6 +186,7 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -237,6 +243,7 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -293,6 +300,7 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -317,12 +325,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 27
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -339,12 +349,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 23
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -361,12 +373,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 21
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -383,12 +397,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 17
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -405,12 +421,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 15
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -427,12 +445,14 @@
         "desc": {
           "arguments": [
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
               "value_id": 11
             },
             {
+              "implicit": false,
               "label": {
                 "tag": "positional"
               },
@@ -468,6 +488,7 @@
           "body_id": 35,
           "parameters": [
             {
+              "has_default": false,
               "label": {
                 "tag": "positional"
               },
@@ -669,7 +690,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -692,44 +713,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -800,7 +789,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -823,22 +812,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -849,22 +822,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -935,7 +892,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -958,22 +915,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -984,22 +925,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1070,7 +995,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1093,22 +1018,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1119,22 +1028,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1205,7 +1098,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1228,22 +1121,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1254,22 +1131,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1340,7 +1201,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1363,22 +1224,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1389,22 +1234,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1475,7 +1304,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1498,22 +1327,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1524,22 +1337,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1610,7 +1407,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1633,22 +1430,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1659,22 +1440,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1745,7 +1510,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1768,22 +1533,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1794,22 +1543,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -1880,7 +1613,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -1903,22 +1636,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -1929,22 +1646,6 @@
         {
           "name": "i",
           "scheme": "int"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2015,7 +1716,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2038,22 +1739,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2070,24 +1755,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2158,7 +1827,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2181,22 +1850,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2213,24 +1866,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2301,7 +1938,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2324,22 +1961,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2356,24 +1977,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2444,7 +2049,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2467,22 +2072,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2499,24 +2088,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2587,7 +2160,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2610,22 +2183,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2642,24 +2199,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2730,7 +2271,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2753,22 +2294,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2785,24 +2310,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -2873,7 +2382,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -2896,22 +2405,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -2928,24 +2421,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3016,7 +2493,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3039,22 +2516,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3071,24 +2532,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3159,7 +2604,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3182,22 +2627,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3214,24 +2643,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3302,7 +2715,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3325,22 +2738,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3357,24 +2754,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3445,7 +2826,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3468,22 +2849,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3500,24 +2865,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3588,7 +2937,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3611,22 +2960,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3643,24 +2976,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3731,7 +3048,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3754,22 +3071,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3786,24 +3087,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -3874,7 +3159,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -3897,22 +3182,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -3929,24 +3198,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4017,7 +3270,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4040,22 +3293,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4072,24 +3309,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4160,7 +3381,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4183,22 +3404,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4215,24 +3420,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4303,7 +3492,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4326,22 +3515,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4358,24 +3531,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4446,7 +3603,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4469,22 +3626,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4501,24 +3642,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4589,7 +3714,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4612,22 +3737,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4644,24 +3753,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4732,7 +3825,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4755,22 +3848,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4787,24 +3864,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -4875,7 +3936,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -4898,22 +3959,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -4930,24 +3975,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5018,7 +4047,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5041,22 +4070,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -5073,24 +4086,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5161,7 +4158,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5184,22 +4181,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -5216,24 +4197,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5304,7 +4269,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5327,22 +4292,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -5359,24 +4308,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5447,7 +4380,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5470,22 +4403,6 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
@@ -5502,24 +4419,8 @@
           "scheme": "int"
         },
         {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
           "name": "r",
           "scheme": "int"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5590,7 +4491,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5613,44 +4514,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "t",
@@ -5721,7 +4590,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5744,44 +4613,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "|>",
@@ -5848,7 +4685,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -5871,44 +4708,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "to_string",
@@ -5979,7 +4784,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -6002,44 +4807,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "to_string",
@@ -6110,7 +4883,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -6133,44 +4906,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "to_string",
@@ -6241,7 +4982,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -6264,44 +5005,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "to_string",
@@ -6372,7 +5081,7 @@
         },
         {
           "name": "::",
-          "scheme": "'a. 'a -> ('a list) -> 'a list"
+          "scheme": "'a. 'a -> 'a list -> 'a list"
         },
         {
           "name": "<",
@@ -6395,44 +5104,12 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
-          "name": "Error",
-          "scheme": "'a 'b. 'a -> ('b, 'a) result"
-        },
-        {
-          "name": "None",
-          "scheme": "'a. 'a option"
-        },
-        {
-          "name": "Ok",
-          "scheme": "'a 'b. 'a -> ('a, 'b) result"
-        },
-        {
-          "name": "Some",
-          "scheme": "'a. 'a -> 'a option"
-        },
-        {
           "name": "[]",
           "scheme": "'a. 'a list"
         },
         {
           "name": "^",
           "scheme": "string -> string -> string"
-        },
-        {
-          "name": "max",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "min",
-          "scheme": "'a. 'a -> 'a -> 'a"
-        },
-        {
-          "name": "not",
-          "scheme": "bool -> bool"
-        },
-        {
-          "name": "raise",
-          "scheme": "'a. exn -> 'a"
         },
         {
           "name": "to_string",
@@ -6461,6 +5138,7 @@
     }
   ],
   "file_summary": {
+    "completeness": "partial",
     "export_result": {
       "exports": [
         {
@@ -6543,6 +5221,7 @@
             }
           ]
         },
+        "nonrec": false,
         "param_variances": [],
         "type_constructor_id": {
           "local_id": 0,

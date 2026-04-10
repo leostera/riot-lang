@@ -55,5 +55,3 @@ module Batch: module type of Batch
 module Check: module type of Check
 
 module Config: module type of TypConfig
-
-module OCamlStdlib: module type of OCamlStdlib

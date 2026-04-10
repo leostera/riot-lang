@@ -18,14 +18,16 @@ let diagnostics = fun snapshot source_id ->
   @ (analysis.typing_diagnostics |> List.map (fun diagnostic -> Typing diagnostic))
 
 let file_summary_of = fun snapshot source_id ->
-  match analysis_of_source snapshot source_id with
-  | Some analysis -> Some analysis.file_summary
-  | None -> None
+  Option.map
+    (fun (analysis: Session.SourceAnalysis.t) -> analysis.file_summary)
+    (analysis_of_source snapshot source_id)
 
 let module_typings_of = Session.Snapshot.find_module_typings
 
 let export_of = fun snapshot source_id ->
-  file_summary_of snapshot source_id |> Option.map (fun summary -> summary.FileSummary.export_result)
+  Option.map
+    (fun summary -> FileSummary.(summary.export_result))
+    (file_summary_of snapshot source_id)
 
 let semantic_tree_of_source = fun snapshot source_id ->
   match analysis_of_source snapshot source_id with
@@ -33,21 +35,20 @@ let semantic_tree_of_source = fun snapshot source_id ->
   | None -> None
 
 let source_file_of_source = fun snapshot source_id ->
-  match analysis_of_source snapshot source_id with
-  | Some analysis -> Some analysis.cst
-  | None -> None
+  Option.map
+    (fun (analysis: Session.SourceAnalysis.t) -> analysis.cst)
+    (analysis_of_source snapshot source_id)
 
 let type_at = fun snapshot source_id position ->
   match analysis_of_source snapshot source_id with
   | None -> None
-  | Some analysis ->
-      Analysis.TypeIndex.find_at analysis.type_index position |> function
-      | Some entry -> Some entry.inferred_type
-      | None -> None
+  | Some analysis -> Option.map
+    (fun (entry: Analysis.TypeIndex.entry) -> entry.inferred_type)
+    (Analysis.TypeIndex.find_at analysis.type_index position)
 
 let definition_target_of_position = fun (analysis: Session.SourceAnalysis.t) position ->
   Option.and_then (Analysis.TypeIndex.find_at analysis.type_index position)
-    (fun entry ->
+    (fun (entry: Analysis.TypeIndex.entry) ->
       analysis.expr_traces |> List.find_map
         (fun (trace: Analysis.Check_result.expr_trace) ->
           if ExprId.equal trace.expr_id entry.expr_id then

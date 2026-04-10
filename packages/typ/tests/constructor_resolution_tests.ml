@@ -79,7 +79,7 @@ let offset_of_substring = fun text needle ->
 let expect_substring_offset = fun source needle ->
   match offset_of_substring source needle with
   | Some offset -> offset
-  | None -> Result.expect ~msg:(("expected substring in test source: " ^ needle)) (Error ())
+  | None -> Result.expect ~msg:("expected substring in test source: " ^ needle) (Error ())
 
 let expect_optional_string = fun ~label ~expected ~actual ->
   if actual = expected then

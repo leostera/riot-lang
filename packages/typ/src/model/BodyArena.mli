@@ -84,6 +84,9 @@ type apply_argument = {
   (** Lowered argument value expression. *)
   value_id: ExprId.t;
 }
+type local_module_binding_group = {
+  binding_ids: BindingId.t list;
+}
 type expr_desc =
   (** Variable reference. *)
   | EVar of IdentPath.t
@@ -121,6 +124,8 @@ type expr_desc =
   | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
   (** Record field access off one receiver expression. *)
   | EFieldAccess of { receiver_id: ExprId.t; label: string }
+  (** Record field assignment returning unit. *)
+  | EFieldAssign of { receiver_id: ExprId.t; label: string; value_id: ExprId.t }
   (** Indexed access into one collection expression at one index expression. *)
   | EIndex of ExprId.t * ExprId.t
   (** Let-expression with local binding IDs and one body expression. *)
@@ -137,6 +142,12 @@ type expr_desc =
   | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
   (** First-class module pack expression lowered from `(module M [: S])`. *)
   | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
+  (** Local first-class module pack lowered from `(module M)` where [M] comes
+      from one surrounding [let module M = struct ... end in ...]. *)
+  | ELocalModulePack of {
+      binding_groups: local_module_binding_group list;
+      package_type: TypeRepr.t option
+    }
   (** Local module open expression with the lowered body expression. *)
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   (** Unsupported semantic node that still reached the inferencer. *)

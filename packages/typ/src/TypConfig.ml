@@ -14,13 +14,13 @@ type t = {
   on_event: (Event.t -> unit) option;
 }
 
-let default_prelude = LanguagePrelude.bindings @ OCamlStdlib.root_bindings
+let default_prelude = LanguagePrelude.bindings
 
-let default_ambient_type_decls = LanguagePrelude.type_decls @ OCamlStdlib.root_type_decls
+let default_ambient_type_decls = LanguagePrelude.type_decls
 
 let default = {
   prelude = default_prelude;
-  loaded_modules = BootstrapModules.summaries;
+  loaded_modules = [];
   store = None;
   capture_traces = true;
   ambient = [];

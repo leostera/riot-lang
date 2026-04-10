@@ -5,10 +5,11 @@ open Typ.Diagnostics
 open Typ.Model
 open Typ.Session
 
-let label_to_json = function
+let label_to_json = fun value ->
+  match value with
   | BodyArena.Positional -> Data.Json.String "positional"
-  | BodyArena.Labeled label -> Data.Json.String ("labeled:" ^ label)
-  | BodyArena.Optional label -> Data.Json.String ("optional:" ^ label)
+  | BodyArena.Labeled label -> Data.Json.String (format Format.[ str "labeled:"; str label ])
+  | BodyArena.Optional label -> Data.Json.String (format Format.[ str "optional:"; str label ])
 
 let pattern_name = fun arena pattern_id ->
   match BodyArena.find_pattern arena pattern_id with
@@ -27,14 +28,19 @@ let check_source_text = fun ~filename text ->
   match Syn.build_cst parse_result with
   | Ok cst -> Check.check_source ~filename ~parse_result ~cst
   | Error (Syn.Parse_diagnostics diagnostics) -> panic
-    ("expected CST for "
-    ^ Path.to_string filename
-    ^ ": "
-    ^ String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics))
+    (format
+      Format.[
+        str "expected CST for ";
+        str (Path.to_string filename);
+        str ": ";
+        str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
+      ])
   | Error (Syn.Cst_builder_error error) -> panic
-    ("expected CST for " ^ Path.to_string filename ^ ": " ^ error.message)
+    (format
+      Format.[ str "expected CST for "; str (Path.to_string filename); str ": "; str error.message; ])
 
-let manifest_to_json = function
+let manifest_to_json = fun value ->
+  match value with
   | TypeDecl.Alias manifest_type -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
     ("type", Data.Json.String (TypePrinter.type_to_string manifest_type));
@@ -68,7 +74,8 @@ let manifest_to_json = function
         );
       ]
 
-let type_item_summary_to_json = function
+let type_item_summary_to_json = fun value ->
+  match value with
   | ItemTree.Type type_item ->
       let fields = [
         ("tag", Data.Json.String "type");

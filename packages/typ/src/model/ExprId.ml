@@ -10,4 +10,4 @@ let of_int = fun value -> value
 
 let to_int = fun value -> value
 
-let to_string = fun expr_id -> "expr#" ^ Int.to_string expr_id
+let to_string = fun expr_id -> format Format.[ str "expr#"; int expr_id ]

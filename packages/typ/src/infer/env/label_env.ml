@@ -152,9 +152,10 @@ let current_record_decls = fun current ->
       let owner_id = record_decl.owner_type_constructor_id in
       if Collections.HashSet.contains dedupe owner_id then
         false
-      else
-        let () = Collections.HashSet.insert dedupe owner_id |> ignore in
-        true)
+      else (
+        Collections.HashSet.insert dedupe owner_id |> ignore;
+        true
+      ))
 
 let rec visible_components = fun env ->
   let current = current_visible_components env in
@@ -238,7 +239,7 @@ let rec lookup_all_label = fun env label_name ->
   | Map { map_record_decl; next } ->
       current @ (lookup_all_label next label_name |> List.map map_record_decl)
 
-let lookup_all = fun env label_name -> lookup_all_label env label_name
+let lookup_all = lookup_all_label
 
 let rec lookup_owned = fun env owner_type_constructor_id ->
   match Owner_map.find_opt owner_type_constructor_id env.by_owner with
@@ -262,9 +263,10 @@ let visible_record_decls = fun env ->
     let owner_id = record_decl.owner_type_constructor_id in
     if Collections.HashSet.contains seen owner_id then
       acc
-    else
-      let () = Collections.HashSet.insert seen owner_id |> ignore in
+    else (
+      Collections.HashSet.insert seen owner_id |> ignore;
       record_decl :: acc
+    )
   in
   let rec gather acc env =
     let acc = current_record_decls env.current |> List.fold_left add_record_decl acc in

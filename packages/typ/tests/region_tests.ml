@@ -36,9 +36,12 @@ let test_local_reachable_vars_include_nested_escaped_vars = fun _ctx ->
       if locals = [ 0; 1 ] then
         Ok ()
       else
-        Error ("expected outer region locals [0; 1], got ["
-        ^ String.concat ", " (List.map string_of_int locals)
-        ^ "]"))
+        Error (format
+          Format.[
+            str "expected outer region locals [0; 1], got [";
+            str (String.concat ", " (List.map string_of_int locals));
+            str "]";
+          ]))
 
 let () =
   Actors.run

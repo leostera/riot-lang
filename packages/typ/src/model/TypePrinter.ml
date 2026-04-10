@@ -22,12 +22,8 @@ let name_for_var = fun state id ->
   | Some name -> name
   | None ->
       let name = pretty_name state.next_name in
-      let () =
-        state.next_name <- state.next_name + 1
-      in
-      let () =
-        state.names <- (id, name) :: state.names
-      in
+      state.next_name <- state.next_name + 1;
+      state.names <- (id, name) :: state.names;
       name
 
 let render_arrow_label = function
@@ -131,13 +127,20 @@ let rec render_type = fun state ~nested ty ->
           text
   | TypeRepr.Arrow { label; lhs; rhs } ->
       let text = render_arrow_label label
-      ^ render_type state ~nested:true lhs
+      ^ render_arrow_argument_type state lhs
       ^ " -> "
       ^ render_type state ~nested:false rhs in
       if nested then
         "(" ^ text ^ ")"
       else
         text
+
+and render_arrow_argument_type = fun state ty ->
+  match TypeRepr.view (TypeRepr.prune ty) with
+  | TypeRepr.Arrow _
+  | TypeRepr.Tuple _
+  | TypeRepr.PolyVariant _ -> "(" ^ render_type state ~nested:false ty ^ ")"
+  | _ -> render_type state ~nested:false ty
 
 and render_poly_variant_tag = fun state (tag: TypeRepr.poly_variant_tag) ->
   match tag.payload_type with

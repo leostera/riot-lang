@@ -86,7 +86,8 @@ type t = {
   items_by_id: (int, item) Collections.HashMap.t;
 }
 
-let item_id_of_item = function
+let item_id_of_item = fun value ->
+  match value with
   | Type (item: type_item) -> item.item_id
   | Exception (item: exception_item) -> item.item_id
   | ExtensionConstructor (item: extension_constructor_item) -> item.item_id
@@ -101,16 +102,15 @@ let empty = { items = []; items_by_id = Collections.HashMap.with_capacity 32 }
 
 let of_list = fun items ->
   let items_by_id = Collections.HashMap.with_capacity (List.length items) in
-  let () =
-    items
-    |> List.iter
+  (
+    items |> List.iter
       (fun item ->
         let _ = Collections.HashMap.insert items_by_id
           (item_id_of_item item |> ItemId.to_int)
           item
         in
         ())
-  in
+  );
   { items; items_by_id }
 
 let items = fun items -> items.items
@@ -118,7 +118,8 @@ let items = fun items -> items.items
 let find_item = fun items item_id ->
   Collections.HashMap.get items.items_by_id (ItemId.to_int item_id)
 
-let item_to_json = function
+let item_to_json = fun value ->
+  match value with
   | Type (item: type_item) -> Data.Json.Object [
     ("tag", Data.Json.String "type");
     ("item_id", Data.Json.Int (ItemId.to_int item.item_id));
@@ -248,147 +249,119 @@ let item_to_json = function
 let to_json = fun items -> Data.Json.Array (List.map item_to_json items.items)
 
 let to_string = fun items ->
+  let scope_prefix_of scope_path =
+    if IdentPath.is_empty scope_path then
+      ""
+    else
+      format Format.[ str (IdentPath.to_string scope_path); str " " ]
+  in
   match items.items with
   | [] -> "  none\n"
   | _ ->
       items.items |> List.map
         (
           function
-          | Type (item: type_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " type "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ TypeDecl.to_string item.declaration
-          | Exception (item: exception_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " exception "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ item.exception_name
-              ^ " : "
-              ^ TypePrinter.scheme_to_string item.scheme
-          | ExtensionConstructor (item: extension_constructor_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " extension_constructor "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ item.constructor_name
-              ^ " : "
-              ^ TypePrinter.scheme_to_string item.scheme
+          | Type (item: type_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " type ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str (TypeDecl.to_string item.declaration);
+            ]
+          | Exception (item: exception_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " exception ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str item.exception_name;
+              str " : ";
+              str (TypePrinter.scheme_to_string item.scheme);
+            ]
+          | ExtensionConstructor (item: extension_constructor_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " extension_constructor ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str item.constructor_name;
+              str " : ";
+              str (TypePrinter.scheme_to_string item.scheme);
+            ]
           | Value (item: value_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " value "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " recursive="
-              ^ Bool.to_string item.recursive
-              ^ " bindings=["
-              ^ (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ")
-              ^ "]"
-          | DeclaredValue (item: declared_value_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " declared_value "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ item.value_name
-              ^ " : "
-              ^ TypePrinter.scheme_to_string item.scheme
-          | Open (item: open_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " open "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ IdentPath.to_string item.module_path
-          | Include (item: include_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " include "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ IdentPath.to_string item.module_path
-          | ModuleAlias (item: module_alias_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " module_alias "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ item.alias_name
-              ^ " = "
-              ^ IdentPath.to_string item.module_path
-          | Unsupported (item: unsupported_item) ->
-              let scope_prefix =
-                if IdentPath.is_empty item.scope_path then
-                  ""
-                else
-                  IdentPath.to_string item.scope_path ^ " "
-              in
-              "  "
-              ^ ItemId.to_string item.item_id
-              ^ " unsupported "
-              ^ scope_prefix
-              ^ OriginId.to_string item.origin_id
-              ^ " "
-              ^ item.summary
-        ) |> String.concat "\n" |> fun text -> text ^ "\n"
+              format
+                Format.[
+                  str "  ";
+                  str (ItemId.to_string item.item_id);
+                  str " value ";
+                  str (scope_prefix_of item.scope_path);
+                  str (OriginId.to_string item.origin_id);
+                  str " recursive=";
+                  bool item.recursive;
+                  str " bindings=[";
+                  str
+                    (item.binding_ids |> List.map BindingId.to_string |> String.concat ", ");
+                  str "]";
+                ]
+          | DeclaredValue (item: declared_value_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " declared_value ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str item.value_name;
+              str " : ";
+              str (TypePrinter.scheme_to_string item.scheme);
+            ]
+          | Open (item: open_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " open ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str (IdentPath.to_string item.module_path);
+            ]
+          | Include (item: include_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " include ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str (IdentPath.to_string item.module_path);
+            ]
+          | ModuleAlias (item: module_alias_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " module_alias ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str item.alias_name;
+              str " = ";
+              str (IdentPath.to_string item.module_path);
+            ]
+          | Unsupported (item: unsupported_item) -> format
+            Format.[
+              str "  ";
+              str (ItemId.to_string item.item_id);
+              str " unsupported ";
+              str (scope_prefix_of item.scope_path);
+              str (OriginId.to_string item.origin_id);
+              str " ";
+              str item.summary;
+            ]
+        ) |> String.concat "\n" |> fun text -> format Format.[ str text; str "\n" ]

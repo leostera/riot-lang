@@ -10,4 +10,4 @@ let of_int = fun value -> value
 
 let to_int = fun value -> value
 
-let to_string = fun source_id -> "source#" ^ Int.to_string source_id
+let to_string = fun source_id -> format Format.[ str "source#"; int source_id ]

@@ -19,14 +19,14 @@ let compare_ident = fun left right ->
   Int.compare left.local_id right.local_id
 
 type provenance =
-  | Lowered_pattern of PatId.t
+  | LoweredPattern of PatId.t
   | Prelude
   | Ambient
-  | Type_constructor of { type_name: string; scope_path: IdentPath.t }
+  | TypeConstructor of { type_name: string; scope_path: IdentPath.t }
   | Exception of { name: string; scope_path: IdentPath.t }
-  | Declared_value of { name: string; scope_path: IdentPath.t }
+  | DeclaredValue of { name: string; scope_path: IdentPath.t }
   | Included of { module_path: IdentPath.t }
-  | Module_alias of { alias_name: string; module_path: IdentPath.t }
+  | ModuleAlias of { alias_name: string; module_path: IdentPath.t }
 
 type t = {
   ident: ident;

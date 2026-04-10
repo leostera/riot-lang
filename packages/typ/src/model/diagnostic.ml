@@ -103,7 +103,8 @@ type t =
   | UnsupportedSemanticExpression of { expression_span: Syn.Ceibo.Span.t; summary: string }
   | RecursiveGroupRequiresSimpleVariableBinders of { binding_span: Syn.Ceibo.Span.t }
 
-let code = function
+let code = fun value ->
+  match value with
   | CstBuilderError _ -> "TYP1011"
   | UnsupportedSyntax _ -> "TYP1001"
   | IgnoredPatternTypeConstraint _ -> "TYP1004"
@@ -123,7 +124,8 @@ let code = function
   | UnsupportedSemanticExpression _ -> "TYP2010"
   | RecursiveGroupRequiresSimpleVariableBinders _ -> "TYP2004"
 
-let name = function
+let name = fun value ->
+  match value with
   | CstBuilderError _ -> "cst-builder-error"
   | UnsupportedSyntax _ -> "unsupported-syntax"
   | IgnoredPatternTypeConstraint _ -> "ignored-pattern-type-constraint"
@@ -143,7 +145,8 @@ let name = function
   | UnsupportedSemanticExpression _ -> "unsupported-semantic-expression"
   | RecursiveGroupRequiresSimpleVariableBinders _ -> "recursive-group-requires-simple-variable-binders"
 
-let severity = function
+let severity = fun value ->
+  match value with
   | CstBuilderError _
   | UnsupportedSyntax _
   | IgnoredPatternTypeConstraint _
@@ -163,11 +166,13 @@ let severity = function
   | NonexhaustiveMatch _
   | RedundantMatchCase _ -> Warning
 
-let severity_to_string = function
+let severity_to_string = fun value ->
+  match value with
   | Error -> "error"
   | Warning -> "warning"
 
-let primary_span = function
+let primary_span = fun value ->
+  match value with
   | CstBuilderError { builder_error } -> builder_error.span
   | UnsupportedSyntax { syntax_span; _ } -> syntax_span
   | IgnoredPatternTypeConstraint { constraint_span } -> constraint_span
@@ -187,7 +192,8 @@ let primary_span = function
   | UnsupportedSemanticExpression { expression_span; _ } -> expression_span
   | RecursiveGroupRequiresSimpleVariableBinders { binding_span } -> binding_span
 
-let supported_literal_to_string = function
+let supported_literal_to_string = fun value ->
+  match value with
   | IntLiteral -> "int"
   | FloatLiteral -> "float"
   | BoolLiteral -> "bool"
@@ -195,39 +201,49 @@ let supported_literal_to_string = function
   | CharLiteral -> "char"
   | UnitLiteral -> "unit"
 
-let unsupported_context_tag = function
+let unsupported_context_tag = fun value ->
+  match value with
   | StructureItem -> "structure_item"
   | SignatureItem -> "signature_item"
   | Pattern -> "pattern"
   | Expression -> "expression"
 
-let unsupported_context_to_string = function
+let unsupported_context_to_string = fun value ->
+  match value with
   | StructureItem -> "structure item"
   | SignatureItem -> "signature item"
   | Pattern -> "pattern"
   | Expression -> "expression"
 
-let unsupported_recovery_tag = function
+let unsupported_recovery_tag = fun value ->
+  match value with
   | PlaceholderItem -> "placeholder_item"
   | RecoveryPattern -> "recovery_pattern"
   | HoleExpression -> "hole_expression"
 
-let unsupported_recovery_to_string = function
+let unsupported_recovery_to_string = fun value ->
+  match value with
   | PlaceholderItem -> "placeholder item"
   | RecoveryPattern -> "recovery pattern"
   | HoleExpression -> "type hole"
 
-let unsupported_reason_to_string = function
-  | LiteralOutsideSupportedSubset { supported_literals } -> "literal kind is outside the currently supported subset (supported: "
-  ^ String.concat ", " (List.map supported_literal_to_string supported_literals)
-  ^ ")"
+let unsupported_reason_to_string = fun value ->
+  match value with
+  | LiteralOutsideSupportedSubset { supported_literals } -> format
+    Format.[
+      str "literal kind is outside the currently supported subset (supported: ";
+      str (String.concat ", " (List.map supported_literal_to_string supported_literals));
+      str ")";
+    ]
 
-let application_label_to_string = function
+let application_label_to_string = fun value ->
+  match value with
   | PositionalArgument -> "positional"
-  | LabeledArgument label -> "~" ^ label
-  | OptionalArgument label -> "?" ^ label
+  | LabeledArgument label -> format Format.[ str "~"; str label ]
+  | OptionalArgument label -> format Format.[ str "?"; str label ]
 
-let record_context_to_string = function
+let record_context_to_string = fun value ->
+  match value with
   | RecordConstruction -> "record construction"
   | RecordUpdate -> "record update"
   | RecordPattern -> "record pattern"
@@ -241,46 +257,62 @@ let render_binding_names = fun names ->
   | [] -> "(none)"
   | _ -> render_record_labels names
 
-let signature_mismatch_name = function
-  | MissingValue { name } -> "value " ^ name
-  | ValueTypeMismatch { name; _ } -> "value " ^ name
-  | MissingTypeDeclaration { name } -> "type " ^ name
-  | TypeDeclarationMismatch { name; _ } -> "type " ^ name
+let signature_mismatch_name = fun value ->
+  match value with
+  | MissingValue { name } -> format Format.[ str "value "; str name ]
+  | ValueTypeMismatch { name; _ } -> format Format.[ str "value "; str name ]
+  | MissingTypeDeclaration { name } -> format Format.[ str "type "; str name ]
+  | TypeDeclarationMismatch { name; _ } -> format Format.[ str "type "; str name ]
 
-let signature_mismatch_message = function
-  | MissingValue { name } -> "signature inclusion failed: implementation does not export value " ^ name
-  | ValueTypeMismatch { name; expected; actual } -> "signature inclusion failed: value "
-  ^ name
-  ^ " has type "
-  ^ actual
-  ^ " but the interface requires "
-  ^ expected
-  | MissingTypeDeclaration { name } -> "signature inclusion failed: implementation does not export type "
-  ^ name
-  | TypeDeclarationMismatch { name; expected; actual } -> "signature inclusion failed: type "
-  ^ name
-  ^ " does not match the interface (expected "
-  ^ expected
-  ^ ", got "
-  ^ actual
-  ^ ")"
+let signature_mismatch_message = fun value ->
+  match value with
+  | MissingValue { name } -> format
+    Format.[ str "signature inclusion failed: implementation does not export value "; str name ]
+  | ValueTypeMismatch { name; expected; actual } -> format
+    Format.[
+      str "signature inclusion failed: value ";
+      str name;
+      str " has type ";
+      str actual;
+      str " but the interface requires ";
+      str expected
+    ]
+  | MissingTypeDeclaration { name } -> format
+    Format.[ str "signature inclusion failed: implementation does not export type "; str name ]
+  | TypeDeclarationMismatch { name; expected; actual } -> format
+    Format.[
+      str "signature inclusion failed: type ";
+      str name;
+      str " does not match the interface (expected ";
+      str expected;
+      str ", got ";
+      str actual;
+      str ")"
+    ]
 
-let rec match_witness_to_string = function
+let rec match_witness_to_string = fun value ->
+  match value with
   | WildcardWitness -> "_"
   | BoolWitness value -> Bool.to_string value
   | UnitWitness -> "()"
-  | TupleWitness elements -> "(" ^ String.concat ", " (List.map match_witness_to_string elements) ^ ")"
-  | ConstructorWitness { name="::"; arguments=[head;tail] } -> match_witness_atom_to_string head
-  ^ " :: "
-  ^ match_witness_atom_to_string tail
+  | TupleWitness elements -> format
+    Format.[ str "("; str (String.concat ", " (List.map match_witness_to_string elements)); str ")" ]
+  | ConstructorWitness { name="::"; arguments=[head;tail] } -> format
+    Format.[
+      str (match_witness_atom_to_string head);
+      str " :: ";
+      str (match_witness_atom_to_string tail);
+    ]
   | ConstructorWitness { name; arguments=[] } -> name
-  | ConstructorWitness { name; arguments=[ argument ] } -> name
-  ^ " "
-  ^ match_witness_atom_to_string argument
-  | ConstructorWitness { name; arguments } -> name
-  ^ " ("
-  ^ String.concat ", " (List.map match_witness_to_string arguments)
-  ^ ")"
+  | ConstructorWitness { name; arguments=[ argument ] } -> format
+    Format.[ str name; str " "; str (match_witness_atom_to_string argument) ]
+  | ConstructorWitness { name; arguments } -> format
+    Format.[
+      str name;
+      str " (";
+      str (String.concat ", " (List.map match_witness_to_string arguments));
+      str ")"
+    ]
 
 and match_witness_atom_to_string = function
   | WildcardWitness as witness -> match_witness_to_string witness
@@ -289,9 +321,10 @@ and match_witness_atom_to_string = function
   | ConstructorWitness { arguments=[]; _ } as witness -> match_witness_to_string witness
   | witness -> "(" ^ match_witness_to_string witness ^ ")"
 
-let message = function
+let message = fun value ->
+  match value with
   | CstBuilderError { builder_error } ->
-      "Syn.build_cst failed before lowering: " ^ builder_error.message
+      format Format.[ str "Syn.build_cst failed before lowering: "; str (builder_error.message) ]
   | UnsupportedSyntax {
     syntax_kind;
     context;
@@ -299,12 +332,15 @@ let message = function
     reason=None;
     _
   } ->
-      "unsupported "
-      ^ unsupported_context_to_string context
-      ^ " lowered using "
-      ^ unsupported_recovery_to_string recovery
-      ^ ": "
-      ^ Syn.SyntaxKind.to_string syntax_kind
+      format
+        Format.[
+          str "unsupported ";
+          str (unsupported_context_to_string context);
+          str " lowered using ";
+          str (unsupported_recovery_to_string recovery);
+          str ": ";
+          str (Syn.SyntaxKind.to_string syntax_kind);
+        ]
   | UnsupportedSyntax {
     syntax_kind;
     context;
@@ -312,15 +348,18 @@ let message = function
     reason=Some reason;
     _
   } ->
-      "unsupported "
-      ^ unsupported_context_to_string context
-      ^ " lowered using "
-      ^ unsupported_recovery_to_string recovery
-      ^ ": "
-      ^ Syn.SyntaxKind.to_string syntax_kind
-      ^ " ("
-      ^ unsupported_reason_to_string reason
-      ^ ")"
+      format
+        Format.[
+          str "unsupported ";
+          str (unsupported_context_to_string context);
+          str " lowered using ";
+          str (unsupported_recovery_to_string recovery);
+          str ": ";
+          str (Syn.SyntaxKind.to_string syntax_kind);
+          str " (";
+          str (unsupported_reason_to_string reason);
+          str ")";
+        ]
   | IgnoredPatternTypeConstraint _ ->
       "type-constrained pattern lowered without its annotation"
   | ParameterLoweredAsPositional _ ->
@@ -334,66 +373,96 @@ let message = function
   | UnsupportedInterfaceFile _ ->
       "interface files are not lowered by the prototype yet"
   | UnboundName { name; _ } ->
-      "unbound name: " ^ name
+      format Format.[ str "unbound name: "; str name ]
   | TypeMismatch { mismatch=ExpectedActual { expected; actual }; _ } ->
-      "type mismatch: expected " ^ expected ^ " but got " ^ actual
+      format Format.[ str "type mismatch: expected "; str expected; str " but got "; str actual ]
   | TypeMismatch { mismatch=TupleArityMismatch { left; right; left_arity; right_arity }; _ } ->
-      "type mismatch: tuple arity mismatch ("
-      ^ Int.to_string left_arity
-      ^ " vs "
-      ^ Int.to_string right_arity
-      ^ ") between "
-      ^ left
-      ^ " and "
-      ^ right
+      format
+        Format.[
+          str "type mismatch: tuple arity mismatch (";
+          int left_arity;
+          str " vs ";
+          int right_arity;
+          str ") between ";
+          str left;
+          str " and ";
+          str right
+        ]
   | TypeMismatch { mismatch=OccursCheckFailed { variable_id; in_type }; _ } ->
-      "type mismatch: occurs check failed for type variable "
-      ^ Int.to_string variable_id
-      ^ " in "
-      ^ in_type
+      format
+        Format.[
+          str "type mismatch: occurs check failed for type variable ";
+          int variable_id;
+          str " in ";
+          str in_type
+        ]
   | ApplicationLabelMismatch { expected_label; actual_labels=[]; _ } ->
-      "application is missing an argument for " ^ application_label_to_string expected_label
+      format
+        Format.[
+          str "application is missing an argument for ";
+          str (application_label_to_string expected_label)
+        ]
   | ApplicationLabelMismatch { expected_label; actual_labels; _ } ->
-      "application label mismatch: expected "
-      ^ application_label_to_string expected_label
-      ^ " but remaining arguments were "
-      ^ String.concat ", " (List.map application_label_to_string actual_labels)
+      format
+        Format.[
+          str "application label mismatch: expected ";
+          str (application_label_to_string expected_label);
+          str " but remaining arguments were ";
+          str (String.concat ", " (List.map application_label_to_string actual_labels));
+        ]
   | RecordResolutionError { context; reason; _ } -> (
       match reason with
-      | UnknownRecordLabels labels -> record_context_to_string context
-      ^ " uses unknown record labels: "
-      ^ render_record_labels labels
-      | AmbiguousRecordLabels labels -> record_context_to_string context
-      ^ " is ambiguous for record labels: "
-      ^ render_record_labels labels
-      | MissingRecordFields labels -> record_context_to_string context
-      ^ " is missing record fields: "
-      ^ render_record_labels labels
-      | IncompatibleRecordLabels labels -> record_context_to_string context
-      ^ " labels do not belong to a single record type: "
-      ^ render_record_labels labels
+      | UnknownRecordLabels labels -> format
+        Format.[
+          str (record_context_to_string context);
+          str " uses unknown record labels: ";
+          str (render_record_labels labels)
+        ]
+      | AmbiguousRecordLabels labels -> format
+        Format.[
+          str (record_context_to_string context);
+          str " is ambiguous for record labels: ";
+          str (render_record_labels labels)
+        ]
+      | MissingRecordFields labels -> format
+        Format.[
+          str (record_context_to_string context);
+          str " is missing record fields: ";
+          str (render_record_labels labels)
+        ]
+      | IncompatibleRecordLabels labels -> format
+        Format.[
+          str (record_context_to_string context);
+          str " labels do not belong to a single record type: ";
+          str (render_record_labels labels)
+        ]
     )
   | OrPatternBindingsMismatch { expected_names; actual_names; _ } ->
-      "or-pattern alternatives must bind the same names (expected: "
-      ^ render_binding_names expected_names
-      ^ "; actual: "
-      ^ render_binding_names actual_names
-      ^ ")"
+      format
+        Format.[
+          str "or-pattern alternatives must bind the same names (expected: ";
+          str (render_binding_names expected_names);
+          str "; actual: ";
+          str (render_binding_names actual_names);
+          str ")";
+        ]
   | NonexhaustiveMatch { witness; _ } ->
-      "non-exhaustive match: missing case " ^ match_witness_to_string witness
+      format
+        Format.[ str "non-exhaustive match: missing case "; str (match_witness_to_string witness) ]
   | RedundantMatchCase _ ->
       "match case is redundant"
   | SignatureInclusionError { mismatch; _ } ->
       signature_mismatch_message mismatch
   | UnsupportedSemanticExpression { summary; _ } ->
-      "unsupported semantic expression reached inference: " ^ summary
+      format Format.[ str "unsupported semantic expression reached inference: "; str summary ]
   | RecursiveGroupRequiresSimpleVariableBinders _ ->
       "recursive groups currently require simple function bindings"
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
-let mismatch_to_json = function
+let mismatch_to_json = fun value ->
+  match value with
   | ExpectedActual { expected; actual } -> Data.Json.Object [
     ("tag", Data.Json.String "expected_actual");
     ("expected", Data.Json.String expected);
@@ -414,7 +483,8 @@ let mismatch_to_json = function
 
 let supported_literal_to_json = fun literal -> Data.Json.String (supported_literal_to_string literal)
 
-let application_label_to_json = function
+let application_label_to_json = fun value ->
+  match value with
   | PositionalArgument -> Data.Json.Object [ ("tag", Data.Json.String "positional"); ]
   | LabeledArgument label -> Data.Json.Object [
     ("tag", Data.Json.String "labeled");
@@ -425,13 +495,15 @@ let application_label_to_json = function
     ("label", Data.Json.String label);
   ]
 
-let record_context_to_json = function
+let record_context_to_json = fun value ->
+  match value with
   | RecordConstruction -> Data.Json.String "construction"
   | RecordUpdate -> Data.Json.String "update"
   | RecordPattern -> Data.Json.String "pattern"
   | RecordFieldAccess -> Data.Json.String "field_access"
 
-let record_resolution_reason_to_json = function
+let record_resolution_reason_to_json = fun value ->
+  match value with
   | UnknownRecordLabels labels -> Data.Json.Object [
     ("tag", Data.Json.String "unknown_labels");
     ("labels", Data.Json.Array (List.map (fun label -> Data.Json.String label) labels));
@@ -451,7 +523,8 @@ let record_resolution_reason_to_json = function
 
 let names_to_json = fun names -> Data.Json.Array (List.map (fun name -> Data.Json.String name) names)
 
-let rec match_witness_to_json = function
+let rec match_witness_to_json = fun value ->
+  match value with
   | WildcardWitness -> Data.Json.Object [ ("tag", Data.Json.String "wildcard") ]
   | BoolWitness value -> Data.Json.Object [
     ("tag", Data.Json.String "bool");
@@ -468,7 +541,8 @@ let rec match_witness_to_json = function
     ("arguments", Data.Json.Array (List.map match_witness_to_json arguments));
   ]
 
-let signature_mismatch_to_json = function
+let signature_mismatch_to_json = fun value ->
+  match value with
   | MissingValue { name } -> Data.Json.Object [
     ("tag", Data.Json.String "missing_value");
     ("name", Data.Json.String name);
@@ -490,7 +564,8 @@ let signature_mismatch_to_json = function
     ("actual", Data.Json.String actual);
   ]
 
-let unsupported_reason_to_json = function
+let unsupported_reason_to_json = fun value ->
+  match value with
   | LiteralOutsideSupportedSubset { supported_literals } -> Data.Json.Object [
     ("tag", Data.Json.String "literal_outside_supported_subset");
     ("supported_literals", Data.Json.Array (List.map supported_literal_to_json supported_literals));
@@ -504,7 +579,8 @@ let cst_builder_error_to_json = fun (error: Syn.CstBuilder.error) ->
     ("context", Data.Json.Array (List.map (fun value -> Data.Json.String value) error.context));
   ]
 
-let fields_to_json = function
+let fields_to_json = fun value ->
+  match value with
   | CstBuilderError { builder_error } ->
       [ ("builder_error", cst_builder_error_to_json builder_error); ]
   | UnsupportedSyntax {
@@ -591,10 +667,13 @@ let to_json = fun diagnostic ->
   @ fields_to_json diagnostic)
 
 let to_string = fun diagnostic ->
-  severity_to_string (severity diagnostic)
-  ^ " "
-  ^ code diagnostic
-  ^ " @ "
-  ^ Syn.Ceibo.Span.to_string (primary_span diagnostic)
-  ^ ": "
-  ^ message diagnostic
+  format
+    Format.[
+      str (severity_to_string (severity diagnostic));
+      str " ";
+      str (code diagnostic);
+      str " @ ";
+      str (Syn.Ceibo.Span.to_string (primary_span diagnostic));
+      str ": ";
+      str (message diagnostic);
+    ]

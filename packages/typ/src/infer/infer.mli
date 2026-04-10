@@ -31,4 +31,6 @@ type t = {
     The host configuration supplies only the intrinsic prelude plus ambient
     module summaries, so one-shot and session-based callers share the same
     inference rules without hardcoding package/library APIs in the inferencer. *)
-val infer_file: config:TypConfig.t -> source:Source.t -> SemanticTree.file -> t
+val initial_env_of_config: config:TypConfig.t -> Env.t
+
+val infer_file: ?initial_env:Env.t -> config:TypConfig.t -> source:Source.t -> SemanticTree.file -> t

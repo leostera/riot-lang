@@ -9,7 +9,7 @@ let diagnostics_dir = Path.v "packages/typ/tests/diagnostics"
 
 let diagnostic_marker_path = fun path ->
   match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:((ext ^ ".diagnostic"))
+  | Some ext -> Path.add_extension path ~ext:(ext ^ ".diagnostic")
   | None -> Path.add_extension path ~ext:"diagnostic"
 
 let filter_diagnostic_fixture = fun path ->

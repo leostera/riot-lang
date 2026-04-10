@@ -41,6 +41,7 @@ type kind =
       source_id: SourceId.t;
       module_name: string;
       mode: analysis_mode;
+      local_module_names: string list;
       loaded_module_count: int;
       ambient_binding_count: int;
       ambient_type_decl_count: int

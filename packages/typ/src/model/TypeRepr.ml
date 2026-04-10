@@ -173,9 +173,7 @@ let rec prune = fun ty ->
   match ty.desc with
   | Var ({ link=Some linked; _ } as var) ->
       let linked = prune linked in
-      let () =
-        var.link <- Some linked
-      in
+      var.link <- Some linked;
       linked
   | _ -> ty
 
@@ -233,9 +231,10 @@ let union = fun left right ->
       (fun acc value ->
         if Collections.HashSet.contains seen value then
           acc
-        else
-          let () = Collections.HashSet.insert seen value |> ignore in
-          value :: acc)
+        else (
+          Collections.HashSet.insert seen value |> ignore;
+          value :: acc
+        ))
       left
       right
 
@@ -314,9 +313,10 @@ let free_vars =
     | Var { id; link=None; _ } ->
         if Collections.HashSet.contains seen id then
           acc
-        else
-          let () = Collections.HashSet.insert seen id |> ignore in
+        else (
+          Collections.HashSet.insert seen id |> ignore;
           id :: acc
+        )
     | Var { link=Some linked; _ } ->
         collect seen acc linked
   in
@@ -384,9 +384,7 @@ let seal_levels =
       | Var _ -> ty.level
       | _ -> Int.max ty.level child_level
     in
-    let () =
-      ty.level <- sealed_level
-    in
+    ty.level <- sealed_level;
     sealed_level
   in
   fun ty ->
@@ -408,7 +406,7 @@ let generalize_ids =
     | Option element ->
         loop generalized_ids element
     | Result (ok_ty, error_ty) ->
-        let () = loop generalized_ids ok_ty in
+        loop generalized_ids ok_ty;
         loop generalized_ids error_ty
     | Array element ->
         loop generalized_ids element
@@ -421,19 +419,16 @@ let generalize_ids =
     | Named { arguments; _ } ->
         List.iter (loop generalized_ids) arguments
     | PolyVariant { tags; inherited; _ } ->
-        let () =
-          tags
-          |> List.iter
-            (fun (tag: poly_variant_tag) ->
-              match tag.payload_type with
-              | Some payload_type -> loop generalized_ids payload_type
-              | None -> ())
-        in
+        tags |> List.iter
+          (fun (tag: poly_variant_tag) ->
+            match tag.payload_type with
+            | Some payload_type -> loop generalized_ids payload_type
+            | None -> ());
         List.iter (loop generalized_ids) inherited
     | Tuple members ->
         List.iter (loop generalized_ids) members
     | Arrow { lhs; rhs; _ } ->
-        let () = loop generalized_ids lhs in
+        loop generalized_ids lhs;
         loop generalized_ids rhs
     | Var { id; link=None; _ } ->
         if Collections.HashSet.contains generalized_ids id then
@@ -444,7 +439,7 @@ let generalize_ids =
   fun ids ty ->
     if not (List.is_empty ids) then
       (
-        let () = loop (Collections.HashSet.of_list ids) ty in
+        loop (Collections.HashSet.of_list ids) ty;
         seal_levels ty
       )
 
@@ -496,8 +491,10 @@ let generic_var_ids =
         collect seen acc rhs
     | Var { id; link=None; _ } ->
         if is_generic_var ty && not (Collections.HashSet.contains seen id) then
-          let () = Collections.HashSet.insert seen id |> ignore in
-          id :: acc
+          (
+            Collections.HashSet.insert seen id |> ignore;
+            id :: acc
+          )
         else
           acc
     | Var { link=Some linked; _ } ->
@@ -512,11 +509,9 @@ let mark_reachable_vars = fun ~generation ~next_order ty ->
         let ty = prune ty in
         if Int.equal ty.mark generation then
           loop rest
-        else
-          let () =
-            ty.mark <- generation;
-            ty.mark_order <- next_order ()
-          in
+        else (
+          ty.mark <- generation;
+          ty.mark_order <- next_order ();
           let rest =
             match ty.desc with
             | Int
@@ -558,6 +553,7 @@ let mark_reachable_vars = fun ~generation ~next_order ty ->
                 lhs :: rhs :: rest
           in
           loop rest
+        )
   in
   loop [ ty ]
 
@@ -673,10 +669,12 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
         if Int.equal (mark ty) generation then
           loop rest
         else if ty.level < minimum_level then
-          let () = set_mark ty generation in
-          loop rest
-        else
-          let () = set_mark ty generation in
+          (
+            set_mark ty generation;
+            loop rest
+          )
+        else (
+          set_mark ty generation;
           match ty.desc with
           | Var { id; link=None; _ } when Int.equal id needle ->
               true
@@ -721,6 +719,7 @@ let occurs_check = fun ~generation ~needle ~minimum_level ty ->
               loop rest
           | Arrow { lhs; rhs; _ } ->
               loop (lhs :: rhs :: rest)
+        )
   in
   loop [ ty ]
 
@@ -732,17 +731,17 @@ let lower_level = fun ~generation ~level ~on_lower ty ->
         if Int.equal (mark ty) generation then
           loop rest
         else if ty.level < level then
-          let () = set_mark ty generation in
-          loop rest
-        else
-          let () = set_mark ty generation in
-          let () =
-            if ty.level > level then
-              (
-                ty.level <- level;
-                on_lower ty
-              )
-          in
+          (
+            set_mark ty generation;
+            loop rest
+          )
+        else (
+          set_mark ty generation;
+          if ty.level > level then
+            (
+              ty.level <- level;
+              on_lower ty
+            );
           let rest =
             match ty.desc with
             | Int
@@ -784,6 +783,7 @@ let lower_level = fun ~generation ~level ~on_lower ty ->
                 lhs :: rhs :: rest
           in
           loop rest
+        )
   in
   loop [ ty ]
 
@@ -795,20 +795,20 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
         if Int.equal (mark ty) generation then
           loop rest
         else if ty.level < level then
-          let () = set_mark ty generation in
-          loop rest
-        else
-          let () = set_mark ty generation in
+          (
+            set_mark ty generation;
+            loop rest
+          )
+        else (
+          set_mark ty generation;
           match ty.desc with
           | Var { id; link=None; _ } when Int.equal id needle -> true
           | _ ->
-              let () =
-                if ty.level > level then
-                  (
-                    ty.level <- level;
-                    on_lower ty
-                  )
-              in
+              if ty.level > level then
+                (
+                  ty.level <- level;
+                  on_lower ty
+                );
               let rest =
                 match ty.desc with
                 | Int
@@ -850,5 +850,6 @@ let occurs_or_lower = fun ~generation ~needle ~level ~on_lower ty ->
                     lhs :: rhs :: rest
               in
               loop rest
+        )
   in
   loop [ ty ]

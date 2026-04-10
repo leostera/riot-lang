@@ -74,6 +74,150 @@ let empty = {
 
 let empty_summary = Summary2.empty
 
+let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
+  IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
+
+let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
+  let local_type_decls = Type_env.type_decls scope.types in
+  if List.is_empty local_type_decls then
+    scheme
+  else
+    let by_id = Collections.HashMap.with_capacity (List.length local_type_decls) in
+    let () =
+      local_type_decls
+      |> List.iter
+        (fun (type_decl: FileSummary.type_decl) ->
+          let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
+          ())
+    in
+    let rec qualify_type ty =
+      let ty = TypeRepr.prune ty in
+      match TypeRepr.view ty with
+      | TypeRepr.Int
+      | TypeRepr.Float
+      | TypeRepr.Bool
+      | TypeRepr.String
+      | TypeRepr.Char
+      | TypeRepr.Unit
+      | TypeRepr.Hole _
+      | TypeRepr.Var _ ->
+          ty
+      | TypeRepr.Option element ->
+          let qualified_element = qualify_type element in
+          if Std.Ptr.equal element qualified_element then
+            ty
+          else
+            TypeRepr.option qualified_element
+      | TypeRepr.Result (ok_ty, error_ty) ->
+          let qualified_ok_ty = qualify_type ok_ty in
+          let qualified_error_ty = qualify_type error_ty in
+          if Std.Ptr.equal ok_ty qualified_ok_ty && Std.Ptr.equal error_ty qualified_error_ty then
+            ty
+          else
+            TypeRepr.result qualified_ok_ty qualified_error_ty
+      | TypeRepr.Array element ->
+          let qualified_element = qualify_type element in
+          if Std.Ptr.equal element qualified_element then
+            ty
+          else
+            TypeRepr.array qualified_element
+      | TypeRepr.List element ->
+          let qualified_element = qualify_type element in
+          if Std.Ptr.equal element qualified_element then
+            ty
+          else
+            TypeRepr.list qualified_element
+      | TypeRepr.Seq element ->
+          let qualified_element = qualify_type element in
+          if Std.Ptr.equal element qualified_element then
+            ty
+          else
+            TypeRepr.seq qualified_element
+      | TypeRepr.Named { head; arguments } ->
+          let qualified_arguments = List.map qualify_type arguments in
+          let qualified_head =
+            match Collections.HashMap.get by_id head.type_constructor_id with
+            | Some type_decl -> {
+              head
+              with name = IdentPath.append_path root (type_decl_key type_decl)
+            }
+            | None -> head
+          in
+          if
+            Std.Ptr.equal head qualified_head && List.for_all2 Std.Ptr.equal arguments qualified_arguments
+          then
+            ty
+          else
+            TypeRepr.named ~head:qualified_head ~arguments:qualified_arguments
+      | TypeRepr.PolyVariant { bound; tags; inherited } ->
+          let qualified_tags =
+            List.map
+              (fun (tag: TypeRepr.poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type ->
+                    let qualified_payload_type = qualify_type payload_type in
+                    if Std.Ptr.equal payload_type qualified_payload_type then
+                      tag
+                    else
+                      { tag with payload_type = Some qualified_payload_type }
+                | None -> tag)
+              tags
+          in
+          let qualified_inherited = List.map qualify_type inherited in
+          if
+            List.for_all2 Std.Ptr.equal tags qualified_tags
+            && List.for_all2 Std.Ptr.equal inherited qualified_inherited
+          then
+            ty
+          else
+            TypeRepr.poly_variant ~bound ~tags:qualified_tags ~inherited:qualified_inherited
+      | TypeRepr.Tuple members ->
+          let qualified_members = List.map qualify_type members in
+          if List.for_all2 Std.Ptr.equal members qualified_members then
+            ty
+          else
+            TypeRepr.tuple qualified_members
+      | TypeRepr.Arrow { label; lhs; rhs } ->
+          let qualified_lhs = qualify_type lhs in
+          let qualified_rhs = qualify_type rhs in
+          if Std.Ptr.equal lhs qualified_lhs && Std.Ptr.equal rhs qualified_rhs then
+            ty
+          else
+            TypeRepr.arrow ~label ~lhs:qualified_lhs ~rhs:qualified_rhs
+      | TypeRepr.Package signature ->
+          let qualified_values =
+            List.map
+              (fun (value: TypeRepr.package_value) ->
+                let qualified_scheme = qualify_type value.scheme in
+                if Std.Ptr.equal value.scheme qualified_scheme then
+                  value
+                else
+                  { value with scheme = qualified_scheme })
+              signature.values
+          in
+          if List.for_all2 Std.Ptr.equal signature.values qualified_values then
+            ty
+          else
+            TypeRepr.package ~values:qualified_values
+    in
+    let quantified, body = TypeScheme.to_explicit scheme in
+    let qualified_body = qualify_type body in
+    if Std.Ptr.equal body qualified_body then
+      scheme
+    else
+      TypeScheme.of_explicit ~quantified qualified_body
+
+let qualify_binding_with_scope = fun ~root (scope: module_scope) binding ->
+  let path =
+    if IdentPath.is_empty root then
+      Binding.path binding
+    else
+      IdentPath.append_path root (Binding.path binding)
+  in
+  binding
+  |> Binding.with_path path
+  |> Binding.with_scheme (qualify_scheme_with_scope ~root scope (Binding.scheme binding))
+
 let empty_item_scope = {
   locals = Path_map.empty;
   opens = Path_map.empty;
@@ -97,8 +241,7 @@ let summary_bind = fun summary (env: t) ->
 let summary_bind_in_scope = fun summary ~scope_path (env: t) ->
   Summary2.bind_in_scope summary ~scope_path env.summary
 
-let summary_open = fun summary module_path ->
-  Summary2.open_ summary module_path
+let summary_open = Summary2.open_
 
 let summary_qualify = fun summary ~scope_path -> Summary2.qualify summary ~scope_path
 
@@ -122,34 +265,36 @@ let summary_ident_of_ident = fun ident ->
 let ident_of_summary_ident = fun (ident: Summary2.ident) ->
   Binding.make_ident ~local_id:ident.local_id ~name:ident.name
 
-let summary_provenance_of_provenance = function
-  | Binding.Lowered_pattern pat_id -> Summary2.Lowered_pattern pat_id
+let summary_provenance_of_provenance = fun value ->
+  match value with
+  | Binding.LoweredPattern pat_id -> Summary2.LoweredPattern pat_id
   | Binding.Prelude -> Summary2.Prelude
   | Binding.Ambient -> Summary2.Ambient
-  | Binding.Type_constructor { type_name; scope_path } -> Summary2.Type_constructor {
+  | Binding.TypeConstructor { type_name; scope_path } -> Summary2.TypeConstructor {
     type_name;
     scope_path
   }
   | Binding.Exception { name; scope_path } -> Summary2.Exception { name; scope_path }
-  | Binding.Declared_value { name; scope_path } -> Summary2.Declared_value { name; scope_path }
+  | Binding.DeclaredValue { name; scope_path } -> Summary2.DeclaredValue { name; scope_path }
   | Binding.Included { module_path } -> Summary2.Included { module_path }
-  | Binding.Module_alias { alias_name; module_path } -> Summary2.Module_alias {
+  | Binding.ModuleAlias { alias_name; module_path } -> Summary2.ModuleAlias {
     alias_name;
     module_path
   }
 
-let provenance_of_summary_provenance = function
-  | Summary2.Lowered_pattern pat_id -> Binding.Lowered_pattern pat_id
+let provenance_of_summary_provenance = fun value ->
+  match value with
+  | Summary2.LoweredPattern pat_id -> Binding.LoweredPattern pat_id
   | Summary2.Prelude -> Binding.Prelude
   | Summary2.Ambient -> Binding.Ambient
-  | Summary2.Type_constructor { type_name; scope_path } -> Binding.Type_constructor {
+  | Summary2.TypeConstructor { type_name; scope_path } -> Binding.TypeConstructor {
     type_name;
     scope_path
   }
   | Summary2.Exception { name; scope_path } -> Binding.Exception { name; scope_path }
-  | Summary2.Declared_value { name; scope_path } -> Binding.Declared_value { name; scope_path }
+  | Summary2.DeclaredValue { name; scope_path } -> Binding.DeclaredValue { name; scope_path }
   | Summary2.Included { module_path } -> Binding.Included { module_path }
-  | Summary2.Module_alias { alias_name; module_path } -> Binding.Module_alias {
+  | Summary2.ModuleAlias { alias_name; module_path } -> Binding.ModuleAlias {
     alias_name;
     module_path
   }
@@ -179,9 +324,10 @@ let dedupe_record_decls = fun record_decls ->
       let owner_id = Label_env.owner_type_constructor_id record_decl in
       if Collections.HashSet.contains seen owner_id then
         false
-      else
-        let () = Collections.HashSet.insert seen owner_id |> ignore in
-        true)
+      else (
+        Collections.HashSet.insert seen owner_id |> ignore;
+        true
+      ))
 
 let merge_visible_module_tables: module_table -> module_table -> module_table = fun dominant rest ->
   Name_map.fold
@@ -385,7 +531,11 @@ let with_local_open = fun (env: t) module_path ->
         summary = Summary2.open_ env.summary module_path;
         values = Value_env.add_open ~root:module_path scope.values env.values;
         types = Type_env.add_open ~root:module_path scope.types env.types;
-        constructors = Constructor_env.add_open ~root:module_path scope.constructors env.constructors;
+        constructors = Constructor_env.add_open
+          ~root:module_path
+          ~type_decls:(Type_env.type_decls scope.types)
+          scope.constructors
+          env.constructors;
         labels = Label_env.add_open ~root:module_path scope.labels env.labels;
         modules = merge_visible_module_tables env.modules scope.modules;
       }
@@ -410,12 +560,11 @@ let lookup = fun env path ->
     Value_env.lookup env.values path
   else
     match split_module_lookup_path path with
-    | Some (module_path, name) ->
-        Option.and_then (lookup_module_scope env module_path)
-          (fun scope ->
-            Value_env.lookup scope.values name |> Option.map
-              (fun binding ->
-                Binding.with_path (IdentPath.append_path module_path (Binding.path binding)) binding))
+    | Some (module_path, name) -> Option.and_then
+      (lookup_module_scope env module_path)
+      (fun scope ->
+        Value_env.lookup scope.values name
+        |> Option.map (qualify_binding_with_scope ~root:module_path scope))
     | None -> None
 
 let lookup_all = fun env path ->
@@ -425,10 +574,8 @@ let lookup_all = fun env path ->
     match split_module_lookup_path path with
     | Some (module_path, name) -> (
         match lookup_module_scope env module_path with
-        | Some scope ->
-            Value_env.lookup_all scope.values name |> List.map
-              (fun binding ->
-                Binding.with_path (IdentPath.append_path module_path (Binding.path binding)) binding)
+        | Some scope -> Value_env.lookup_all scope.values name
+        |> List.map (qualify_binding_with_scope ~root:module_path scope)
         | None -> []
       )
     | None -> []
@@ -453,6 +600,10 @@ let lookup_constructors = fun env path ->
     | Some (module_path, name) -> (
         match lookup_module_scope env module_path with
         | Some scope -> Constructor_env.lookup_all scope.constructors name
+        |> List.map
+          (Constructor_env.qualify_entry
+            ~root:module_path
+            ~type_decls:(Type_env.type_decls scope.types))
         | None -> []
       )
     | None -> []
@@ -470,6 +621,10 @@ let lookup_owned_constructor = fun env path owner_type_constructor_id ->
     | Some (module_path, name) -> (
         match lookup_module_scope env module_path with
         | Some scope -> lookup_local scope.constructors name
+        |> Option.map
+          (Constructor_env.qualify_entry
+            ~root:module_path
+            ~type_decls:(Type_env.type_decls scope.types))
         | None -> None
       )
     | None -> None
@@ -480,15 +635,8 @@ let lookup_record_decl_by_owner = fun env owner_type_constructor_id ->
   Label_env.lookup_owned env.labels owner_type_constructor_id
 
 let rec scope_bindings_with_prefix: IdentPath.t -> module_scope -> bindings = fun prefix scope ->
-  let values =
-    Value_env.bindings scope.values
-    |> List.map
-      (fun binding ->
-        if IdentPath.is_empty prefix then
-          binding
-        else
-          Binding.with_path (IdentPath.append_path prefix (Binding.path binding)) binding)
-  in
+  let values = Value_env.bindings scope.values
+  |> List.map (qualify_binding_with_scope ~root:prefix scope) in
   let modules = bindings_with_prefix prefix scope.modules in
   values @ modules
 
@@ -541,9 +689,10 @@ let visible_bindings = fun env ->
       let path = Binding.path binding in
       if Collections.HashSet.contains seen path then
         false
-      else
-        let () = Collections.HashSet.insert seen path |> ignore in
-        true)
+      else (
+        Collections.HashSet.insert seen path |> ignore;
+        true
+      ))
 
 let visible_binding_map = fun env ->
   visible_bindings env |> List.fold_left
@@ -580,12 +729,12 @@ let is_hidden_export_binding = fun hidden_name_set binding ->
   && match Binding.provenance binding with
   | Binding.Prelude
   | Binding.Ambient -> true
-  | Binding.Lowered_pattern _
-  | Binding.Type_constructor _
+  | Binding.LoweredPattern _
+  | Binding.TypeConstructor _
   | Binding.Exception _
-  | Binding.Declared_value _
+  | Binding.DeclaredValue _
   | Binding.Included _
-  | Binding.Module_alias _ -> false
+  | Binding.ModuleAlias _ -> false
 
 let export = fun config env ->
   let hidden_name_set = hidden_name_set config in
@@ -663,58 +812,58 @@ let summary_cache: (summary, t) Collections.HashMap.t = Collections.HashMap.with
 let summary_relative_cache: ((summary * summary), t) Collections.HashMap.t = Collections.HashMap.with_capacity
   128
 
-let env_of_summary =
-  let env_of_delta delta = bind
-    (of_bindings (List.map binding_of_summary_binding delta.Summary2.bindings))
-    (of_type_decls delta.type_decls) in
-  let rec loop summary =
-    match Collections.HashMap.get summary_cache summary with
-    | Some cached -> cached
-    | None ->
-        let resolved =
+let cache_and_return cache key value =
+  let _ = Collections.HashMap.insert cache key value in
+  value
+
+let env_of_summary_delta (Summary2.{ bindings; type_decls; _ }) = bind
+  (of_bindings (List.map binding_of_summary_binding bindings))
+  (of_type_decls type_decls)
+
+let rec env_of_summary summary =
+  match Collections.HashMap.get summary_cache summary with
+  | Some cached -> cached
+  | None ->
+      cache_and_return summary_cache summary
+        (
           match summary with
           | Summary2.Empty -> empty
-          | Summary2.Snapshot delta -> env_of_delta delta
-          | Summary2.Bind (summary, introduced) -> bind (loop summary) (loop introduced)
-          | Summary2.Bind_in_scope (summary, scope_path, introduced) -> bind_in_scope
-            (loop summary)
+          | Summary2.Snapshot delta -> env_of_summary_delta delta
+          | Summary2.Bind (summary, introduced) -> bind
+            (env_of_summary summary)
+            (env_of_summary introduced)
+          | Summary2.BindInScope (summary, scope_path, introduced) -> bind_in_scope
+            (env_of_summary summary)
             ~scope_path
-            (loop introduced)
-          | Summary2.Open (summary, module_path) -> with_local_open (loop summary) module_path
-          | Summary2.Qualify (summary, scope_path) -> qualify ~scope_path (loop summary)
-        in
-        let _ = Collections.HashMap.insert summary_cache summary resolved in
-        resolved
-  in
-  loop
+            (env_of_summary introduced)
+          | Summary2.Open (summary, module_path) -> with_local_open (env_of_summary summary) module_path
+          | Summary2.Qualify (summary, scope_path) -> qualify ~scope_path (env_of_summary summary)
+        )
 
-let env_of_summary_relative =
-  let env_of_delta delta = bind
-    (of_bindings (List.map binding_of_summary_binding delta.Summary2.bindings))
-    (of_type_decls delta.type_decls) in
-  let rec loop (env: t) summary =
-    let key = (env.summary, summary) in
-    match Collections.HashMap.get summary_relative_cache key with
-    | Some cached -> cached
-    | None ->
-        let resolved =
+let rec env_of_summary_relative: t -> Summary2.t -> t = fun env summary ->
+  let key = (env.summary, summary) in
+  match Collections.HashMap.get summary_relative_cache key with
+  | Some cached -> cached
+  | None ->
+      cache_and_return summary_relative_cache key
+        (
           match summary with
           | Summary2.Empty -> env
-          | Summary2.Snapshot delta -> bind env (env_of_delta delta)
+          | Summary2.Snapshot delta -> bind env (env_of_summary_delta delta)
           | Summary2.Bind (summary, introduced) -> bind
-            (loop env summary)
+            (env_of_summary_relative env summary)
             (env_of_summary introduced)
-          | Summary2.Bind_in_scope (summary, scope_path, introduced) -> bind_in_scope
-            (loop env summary)
+          | Summary2.BindInScope (summary, scope_path, introduced) -> bind_in_scope
+            (env_of_summary_relative env summary)
             ~scope_path
             (env_of_summary introduced)
-          | Summary2.Open (summary, module_path) -> with_local_open (loop env summary) module_path
-          | Summary2.Qualify (summary, scope_path) -> qualify ~scope_path (loop env summary)
-        in
-        let _ = Collections.HashMap.insert summary_relative_cache key resolved in
-        resolved
-  in
-  loop
+          | Summary2.Open (summary, module_path) -> with_local_open
+            (env_of_summary_relative env summary)
+            module_path
+          | Summary2.Qualify (summary, scope_path) -> qualify
+            ~scope_path
+            (env_of_summary_relative env summary)
+        )
 
 let scope_locals_of_summary = fun summary -> { summary; env = env_of_summary summary }
 
@@ -731,9 +880,7 @@ let scope_locals_for = fun scope scope_path ->
             | None -> acc)
           empty
       in
-      let () =
-        scope.locals_cache <- Path_map.add scope_path env scope.locals_cache
-      in
+      (scope.locals_cache <- Path_map.add scope_path env scope.locals_cache);
       env
 
 let register_entries = fun scope ~scope_path (env: t) ->
@@ -761,9 +908,7 @@ let scope_opens_for = fun scope scope_path ->
             | None -> acc)
           []
       in
-      let () =
-        scope.opens_cache <- Path_map.add scope_path opens scope.opens_cache
-      in
+      (scope.opens_cache <- Path_map.add scope_path opens scope.opens_cache);
       opens
 
 let register_open = fun scope ~scope_path ~module_path ->

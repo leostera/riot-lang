@@ -25,9 +25,7 @@ let make_type = fun (solver: t) desc -> TypeRepr.of_desc desc |> track_node solv
 
 let fresh_var = fun (solver: t) ->
   let id = solver.next_type_var_id in
-  let () =
-    solver.next_type_var_id <- id + 1
-  in
+  solver.next_type_var_id <- id + 1;
   TypeRepr.make_var ~level:(Region.current_level solver.regions) id |> track_node solver
 
 let group = fun ?(expansive_roots = []) roots -> { roots; expansive_roots }
@@ -62,7 +60,7 @@ let lower_expansive_var = fun (solver: t) (frame: frame) ~variance_of_named ty -
           if not should_process || TypeRepr.level ty <= boundary_level then
             lower rest
           else
-            let () =
+            (
               match variance with
               | TypeDecl.Covariant -> ()
               | TypeDecl.Contravariant
@@ -72,77 +70,72 @@ let lower_expansive_var = fun (solver: t) (frame: frame) ~variance_of_named ty -
                       TypeRepr.set_level ty boundary_level;
                       Region.add_to_pool solver.regions ~level:boundary_level ty |> ignore
                     )
-            in
-            let rest =
-              match TypeRepr.view ty with
-              | TypeRepr.Int
-              | TypeRepr.Float
-              | TypeRepr.Bool
-              | TypeRepr.String
-              | TypeRepr.Char
-              | TypeRepr.Unit
-              | TypeRepr.Hole _
-              | TypeRepr.Var _ ->
+            );
+          let rest =
+            match TypeRepr.view ty with
+            | TypeRepr.Int
+            | TypeRepr.Float
+            | TypeRepr.Bool
+            | TypeRepr.String
+            | TypeRepr.Char
+            | TypeRepr.Unit
+            | TypeRepr.Hole _
+            | TypeRepr.Var _ ->
+                rest
+            | TypeRepr.Option element
+            | TypeRepr.List element
+            | TypeRepr.Seq element ->
+                (variance, element) :: rest
+            | TypeRepr.Result (ok_ty, error_ty) ->
+                (variance, ok_ty) :: (variance, error_ty) :: rest
+            | TypeRepr.Array element ->
+                (TypeDecl.Invariant, element) :: rest
+            | TypeRepr.Named { head; arguments } ->
+                let parameter_variances = variance_of_named head arguments in
+                let rec add_arguments acc arguments parameter_variances =
+                  match (arguments, parameter_variances) with
+                  | (argument :: rest_arguments, parameter_variance :: rest_variances) -> add_arguments
+                    ((TypeDecl.compose_variance variance parameter_variance, argument) :: acc)
+                    rest_arguments
+                    rest_variances
+                  | _ -> acc
+                in
+                add_arguments rest arguments parameter_variances
+            | TypeRepr.PolyVariant { tags; inherited; _ } ->
+                let rest =
+                  List.fold_left (fun acc inherited_type -> (variance, inherited_type) :: acc) rest inherited
+                in
+                tags |> List.fold_left
+                  (fun acc (tag: TypeRepr.poly_variant_tag) ->
+                    match tag.payload_type with
+                    | Some payload_type -> (variance, payload_type) :: acc
+                    | None -> acc)
                   rest
-              | TypeRepr.Option element
-              | TypeRepr.List element
-              | TypeRepr.Seq element ->
-                  (variance, element) :: rest
-              | TypeRepr.Result (ok_ty, error_ty) ->
-                  (variance, ok_ty) :: (variance, error_ty) :: rest
-              | TypeRepr.Array element ->
-                  (TypeDecl.Invariant, element) :: rest
-              | TypeRepr.Named { head; arguments } ->
-                  let parameter_variances = variance_of_named head arguments in
-                  let rec add_arguments acc arguments parameter_variances =
-                    match (arguments, parameter_variances) with
-                    | (argument :: rest_arguments, parameter_variance :: rest_variances) -> add_arguments
-                      ((TypeDecl.compose_variance variance parameter_variance, argument) :: acc)
-                      rest_arguments
-                      rest_variances
-                    | _ -> acc
-                  in
-                  add_arguments rest arguments parameter_variances
-              | TypeRepr.PolyVariant { tags; inherited; _ } ->
-                  let rest =
-                    List.fold_left
-                      (fun acc inherited_type -> (variance, inherited_type) :: acc)
-                      rest
-                      inherited
-                  in
-                  tags |> List.fold_left
-                    (fun acc (tag: TypeRepr.poly_variant_tag) ->
-                      match tag.payload_type with
-                      | Some payload_type -> (variance, payload_type) :: acc
-                      | None -> acc)
-                    rest
-              | TypeRepr.Tuple members ->
-                  List.fold_left (fun acc member -> (variance, member) :: acc) rest members
-              | TypeRepr.Arrow { lhs; rhs; _ } ->
-                  (TypeDecl.flip_variance variance, lhs) :: (variance, rhs) :: rest
-              | TypeRepr.Package signature ->
-                  List.fold_left
-                    (fun acc (value: TypeRepr.package_value) -> (variance, value.scheme) :: acc)
-                    rest
-                    signature.values
-            in
-            lower rest
+            | TypeRepr.Tuple members ->
+                List.fold_left (fun acc member -> (variance, member) :: acc) rest members
+            | TypeRepr.Arrow { lhs; rhs; _ } ->
+                (TypeDecl.flip_variance variance, lhs) :: (variance, rhs) :: rest
+            | TypeRepr.Package signature ->
+                List.fold_left
+                  (fun acc (value: TypeRepr.package_value) -> (variance, value.scheme) :: acc)
+                  rest
+                  signature.values
+          in
+          lower rest
   in
   let initial = ref [] in
-  let () =
-    Region.iter_owned_nodes frame
-      (fun node ->
-        let node = TypeRepr.prune node in
-        if Int.equal node.mark generation then
-          initial := (TypeDecl.Covariant, node) :: !initial)
-  in
+  Region.iter_owned_nodes frame
+    (fun node ->
+      let node = TypeRepr.prune node in
+      if Int.equal node.mark generation then
+        initial := (TypeDecl.Covariant, node) :: !initial);
   lower !initial
 
 let finalize_groups = fun (solver: t) (frame: frame) ~variance_of_named groups ->
   groups |> List.map
     (fun (group: generalization_group) ->
-      let () = List.iter (lower_expansive_var solver frame ~variance_of_named) group.expansive_roots in
-      let () = Region.generalize_reachable_vars solver.regions frame group.roots in
+      List.iter (lower_expansive_var solver frame ~variance_of_named) group.expansive_roots;
+      Region.generalize_reachable_vars solver.regions frame group.roots;
       List.map TypeScheme.of_type group.roots)
 
 let with_local_level_gen = fun (solver: t) ~variance_of_named f ->
@@ -167,7 +160,7 @@ let labels_match = fun left right ->
   | _ -> false
 
 let same_named_head = fun left right ->
-  TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
+  TypeRepr.(TypeConstructorId.equal left.type_constructor_id right.type_constructor_id)
 
 let same_poly_variant_bound = fun left right ->
   match (left, right) with
@@ -188,9 +181,7 @@ let unify = fun (solver: t) ~left ~right ->
     let order = ref 0 in
     fun () ->
       let current = !order in
-      let () =
-        order := current + 1
-      in
+      order := current + 1;
       current
   in
   let node_order ty =
@@ -199,10 +190,8 @@ let unify = fun (solver: t) ~left ~right ->
       TypeRepr.aux_order ty
     else
       let order = next_node_order () in
-      let () =
-        TypeRepr.set_aux_mark ty pair_generation;
-        TypeRepr.set_aux_order ty order
-      in
+      TypeRepr.set_aux_mark ty pair_generation;
+      TypeRepr.set_aux_order ty order;
       order
   in
   let seen_pairs = Collections.HashSet.with_capacity 128 in
@@ -217,9 +206,10 @@ let unify = fun (solver: t) ~left ~right ->
     in
     if Collections.HashSet.contains seen_pairs key then
       true
-    else
-      let () = Collections.HashSet.insert seen_pairs key |> ignore in
+    else (
+      Collections.HashSet.insert seen_pairs key |> ignore;
       false
+    )
   in
   let rec loop = function
     | [] -> Ok ()

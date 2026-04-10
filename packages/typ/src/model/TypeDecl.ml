@@ -19,7 +19,8 @@ type variance =
   | Contravariant
   | Invariant
 
-let flip_variance = function
+let flip_variance = fun value ->
+  match value with
   | Covariant -> Contravariant
   | Contravariant -> Covariant
   | Invariant -> Invariant
@@ -41,7 +42,8 @@ let compose_variance = fun outer inner ->
   | (Contravariant, Covariant) -> Contravariant
   | (Contravariant, Contravariant) -> Covariant
 
-let variance_to_string = function
+let variance_to_string = fun value ->
+  match value with
   | Covariant -> "covariant"
   | Contravariant -> "contravariant"
   | Invariant -> "invariant"
@@ -101,7 +103,8 @@ let constructor_to_json = fun (constructor: constructor) ->
   in
   Data.Json.Object fields
 
-let poly_variant_bound_to_string = function
+let poly_variant_bound_to_string = fun value ->
+  match value with
   | Exact -> "exact"
   | UpperBound -> "upper"
   | LowerBound -> "lower"
@@ -116,7 +119,8 @@ let poly_variant_tag_to_json = fun (tag: poly_variant_tag) ->
   in
   Data.Json.Object fields
 
-let manifest_to_json = function
+let manifest_to_json = fun value ->
+  match value with
   | Alias manifest_type -> Data.Json.Object [
     ("tag", Data.Json.String "alias");
     ("type", Data.Json.String (TypePrinter.type_to_string manifest_type));
@@ -160,11 +164,13 @@ let to_json = fun decl ->
 
 let poly_variant_tag_to_string = fun (tag: poly_variant_tag) ->
   match tag.payload_type with
-  | Some payload_type -> "`" ^ tag.name ^ " of " ^ TypePrinter.type_to_string payload_type
-  | None -> "`" ^ tag.name
+  | Some payload_type -> format
+    Format.[ str "`"; str tag.name; str " of "; str (TypePrinter.type_to_string payload_type); ]
+  | None -> format Format.[ str "`"; str (tag.name) ]
 
-let manifest_to_string = function
-  | Alias manifest_type -> "= " ^ TypePrinter.type_to_string manifest_type
+let manifest_to_string = fun value ->
+  match value with
+  | Alias manifest_type -> format Format.[ str "= "; str (TypePrinter.type_to_string manifest_type) ]
   | PolyVariant { bound; tags; inherited } ->
       let prefix =
         match bound with
@@ -172,9 +178,8 @@ let manifest_to_string = function
         | UpperBound -> ">"
         | LowerBound -> "<"
       in
-      let members = (List.map poly_variant_tag_to_string tags)
-      @ (List.map TypePrinter.type_to_string inherited) in
-      "= [" ^ prefix ^ " " ^ String.concat " | " members ^ " ]"
+      let members = List.map poly_variant_tag_to_string tags @ List.map TypePrinter.type_to_string inherited in
+      format Format.[ str "= ["; str prefix; str " "; str (String.concat " | " members); str " ]"; ]
 
 let to_string = fun decl ->
   let param_variances =
@@ -190,20 +195,29 @@ let to_string = fun decl ->
           (fun (constructor: constructor) ->
             let inline_record =
               match constructor.inline_record_labels with
-              | Some labels -> " of { "
-              ^ (labels
-              |> List.map
-                (fun (label: label) -> label.name ^ " : " ^ TypePrinter.type_to_string label.field_type)
-              |> String.concat "; ")
-              ^ " }"
+              | Some labels ->
+                  let rendered_labels = labels
+                  |> List.map
+                    (fun (label: label) ->
+                      format
+                        Format.[
+                          str label.name;
+                          str " : ";
+                          str (TypePrinter.type_to_string label.field_type);
+                        ])
+                  |> String.concat "; " in
+                  format Format.[ str " of { "; str rendered_labels; str " }" ]
               | None -> ""
             in
-            ConstructorId.to_string constructor.constructor_id
-            ^ " "
-            ^ constructor.name
-            ^ inline_record
-            ^ " : "
-            ^ TypePrinter.scheme_to_string constructor.scheme) |> String.concat ", "
+            format
+              Format.[
+                str (ConstructorId.to_string constructor.constructor_id);
+                str " ";
+                str constructor.name;
+                str inline_record;
+                str " : ";
+                str (TypePrinter.scheme_to_string constructor.scheme);
+              ]) |> String.concat ", "
   in
   let labels =
     match decl.labels with
@@ -217,21 +231,39 @@ let to_string = fun decl ->
               else
                 ""
             in
-            LabelId.to_string label.label_id
-            ^ " "
-            ^ label.name
-            ^ " : "
-            ^ mutability
-            ^ TypePrinter.type_to_string label.field_type) |> String.concat ", "
+            format
+              Format.[
+                str (LabelId.to_string label.label_id);
+                str " ";
+                str label.name;
+                str " : ";
+                str mutability;
+                str (TypePrinter.type_to_string label.field_type);
+              ]) |> String.concat ", "
   in
   let manifest =
     match decl.manifest with
-    | Some manifest -> "; manifest = " ^ manifest_to_string manifest
+    | Some manifest -> format Format.[ str "; manifest = "; str (manifest_to_string manifest) ]
     | None -> ""
   in
-  TypeConstructorId.to_string decl.type_constructor_id ^ " " ^ decl.type_name ^ (
-    if decl.nonrec_ then
-      " nonrec"
-    else
-      ""
-  ) ^ " { param_variances = " ^ param_variances ^ "; constructors = " ^ constructors ^ "; labels = " ^ labels ^ manifest ^ " }"
+  format
+    Format.[
+      str (TypeConstructorId.to_string decl.type_constructor_id);
+      str " ";
+      str decl.type_name;
+      str
+        (
+          if decl.nonrec_ then
+            " nonrec"
+          else
+            ""
+        );
+      str " { param_variances = ";
+      str param_variances;
+      str "; constructors = ";
+      str constructors;
+      str "; labels = ";
+      str labels;
+      str manifest;
+      str " }";
+    ]

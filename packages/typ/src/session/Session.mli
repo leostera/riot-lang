@@ -7,7 +7,11 @@ module SourceAnalysis: module type of SourceAnalysis
 
 module ModulePairing: module type of ModulePairing
 
+module ModuleSurface: module type of ModuleSurface
+
 module MissingRequirements: module type of MissingRequirements
+
+module LocalModules: module type of LocalModules
 
 (** Mutable host-owned set of logical sources. *)
 type t

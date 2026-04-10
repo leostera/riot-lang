@@ -3,12 +3,12 @@ open Std
 type t = TypeRepr.t
 
 let of_type = fun ty ->
-  let () = TypeRepr.seal_levels ty in
+  TypeRepr.seal_levels ty;
   ty
 
 let of_explicit = fun ~quantified body ->
-  let () = TypeRepr.generalize_ids quantified body in
-  let () = TypeRepr.seal_levels body in
+  TypeRepr.generalize_ids quantified body;
+  TypeRepr.seal_levels body;
   body
 
 let body = fun scheme -> scheme
@@ -21,9 +21,7 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
     let order = ref 0 in
     fun () ->
       let current = !order in
-      let () =
-        order := current + 1
-      in
+      order := current + 1;
       current
   in
   let replacements = Collections.HashMap.with_capacity 16 in
@@ -32,10 +30,8 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
       TypeRepr.aux_order ty
     else
       let order = next_order () in
-      let () =
-        TypeRepr.set_aux_mark ty generation;
-        TypeRepr.set_aux_order ty order
-      in
+      TypeRepr.set_aux_mark ty generation;
+      TypeRepr.set_aux_order ty order;
       order
   in
   let lookup_replacement ty =
@@ -60,8 +56,8 @@ let instantiate = fun ~fresh_var ~make ~next_mark scheme ->
           else
             xs
       | x :: rest ->
-          let x' = loop x in
-          walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+          let mapped_x = loop x in
+          walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
     in
     walk false [] xs
   in
@@ -184,9 +180,7 @@ let next_copy_generation =
   let generation = ref 0 in
   fun () ->
     let current = !generation in
-    let () =
-      generation := current + 1
-    in
+    generation := current + 1;
     current
 
 let copy = fun scheme ->
@@ -196,9 +190,7 @@ let copy = fun scheme ->
     let order = ref 0 in
     fun () ->
       let current = !order in
-      let () =
-        order := current + 1
-      in
+      order := current + 1;
       current
   in
   let replacements = Collections.HashMap.with_capacity 16 in
@@ -208,10 +200,8 @@ let copy = fun scheme ->
       TypeRepr.mark_order ty
     else
       let order = next_order () in
-      let () =
-        TypeRepr.set_mark ty generation;
-        TypeRepr.set_mark_order ty order
-      in
+      TypeRepr.set_mark ty generation;
+      TypeRepr.set_mark_order ty order;
       order
   in
   let lookup_replacement ty =
@@ -232,8 +222,8 @@ let copy = fun scheme ->
           else
             xs
       | x :: rest ->
-          let x' = loop x in
-          walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+          let mapped_x = loop x in
+          walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
     in
     walk false [] xs
   in

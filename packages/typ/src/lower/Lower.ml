@@ -24,6 +24,8 @@ type state = {
   mutable diagnostics: Typ_diagnostic.t list;
   mutable declared_type_names: (string * IdentPath.t * TypeConstructorId.t) list;
   mutable module_type_templates: (IdentPath.t * module_type_template) list;
+  mutable local_module_aliases: (string * IdentPath.t) list;
+  mutable local_module_binding_groups: (string * BodyArena.local_module_binding_group list) list;
 }
 
 and module_type_template = {
@@ -38,6 +40,15 @@ let unsupported_core_type_hole_id = (-101)
 let unsupported_record_constructor_payload_hole_id = (-102)
 
 let ident_path = fun path -> path |> Cst.Ident.segments |> List.map Cst.Token.text |> IdentPath.of_segments
+
+let resolve_local_module_alias_path = fun (state: state) path ->
+  match IdentPath.to_segments path with
+  | head :: tail -> (
+      match List.assoc_opt head state.local_module_aliases with
+      | Some resolved_path -> tail |> List.fold_left IdentPath.append_name resolved_path
+      | None -> path
+    )
+  | [] -> path
 
 let path_text = fun path -> path |> ident_path |> IdentPath.to_string
 
@@ -55,9 +66,8 @@ let source_owner = fun (source: Source.t) ->
   | Source.Label label -> Path.v label |> Path.remove_extension |> Path.to_string
 
 let resolve_named_type_name = fun (state: state) name ->
-  let prelude_path = IdentPath.of_name name in
   let rec loop = function
-    | [] -> BuiltinTypeConstructors.head_of_path prelude_path
+    | [] -> None
     | scope_path :: rest ->
         if
           List.exists
@@ -183,15 +193,16 @@ let is_module_name = fun name ->
   && Char.uppercase_ascii name.[0] = name.[0]
   && Char.lowercase_ascii name.[0] != name.[0]
 
-let rec module_path_segments_of_expr = function
+let rec module_path_segments_of_expr = fun (state: state) ->
+  function
   | Cst.Expression.Path { path; _ } ->
       let segments = Cst.Ident.segments path |> List.map Cst.Token.text in
       if List.is_empty segments || not (List.for_all is_module_name segments) then
         None
       else
-        Some (IdentPath.of_segments segments)
+        Some (resolve_local_module_alias_path state (IdentPath.of_segments segments))
   | Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
-      match module_path_segments_of_expr receiver with
+      match module_path_segments_of_expr state receiver with
       | Some path ->
           let field_name = Cst.Token.text field_name in
           if is_module_name field_name then
@@ -203,11 +214,13 @@ let rec module_path_segments_of_expr = function
   | _ ->
       None
 
-let rec module_path_segments_of_module_expression = function
-  | Cst.ModuleExpression.Path path -> Some (ident_path path)
+let rec module_path_segments_of_module_expression = fun (state: state) ->
+  function
+  | Cst.ModuleExpression.Path path -> Some (resolve_local_module_alias_path state (ident_path path))
   | Cst.ModuleExpression.Parenthesized { inner; _ }
   | Cst.ModuleExpression.Attribute { module_expression=inner; _ }
   | Cst.ModuleExpression.Constraint { module_expression=inner; _ } -> module_path_segments_of_module_expression
+    state
     inner
   | _ -> None
 
@@ -284,96 +297,97 @@ let substitute_package_type =
     | TypeRepr.Var _ ->
         ty
     | TypeRepr.Option element ->
-        let element' = loop replacements element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop replacements element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          TypeRepr.option element'
+          TypeRepr.option substituted_element
     | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty' = loop replacements ok_ty in
-        let error_ty' = loop replacements error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        let substituted_ok_ty = loop replacements ok_ty in
+        let substituted_error_ty = loop replacements error_ty in
+        if Std.Ptr.equal ok_ty substituted_ok_ty && Std.Ptr.equal error_ty substituted_error_ty then
           ty
         else
-          TypeRepr.result ok_ty' error_ty'
+          TypeRepr.result substituted_ok_ty substituted_error_ty
     | TypeRepr.Array element ->
-        let element' = loop replacements element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop replacements element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          TypeRepr.array element'
+          TypeRepr.array substituted_element
     | TypeRepr.List element ->
-        let element' = loop replacements element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop replacements element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          TypeRepr.list element'
+          TypeRepr.list substituted_element
     | TypeRepr.Seq element ->
-        let element' = loop replacements element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop replacements element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          TypeRepr.seq element'
+          TypeRepr.seq substituted_element
     | TypeRepr.Named { head; arguments } ->
-        let arguments' = List.map (loop replacements) arguments in
+        let substituted_arguments = List.map (loop replacements) arguments in
         begin
           match Collections.HashMap.get replacements head.type_constructor_id with
-          | Some replacement when List.is_empty arguments' -> replacement
+          | Some replacement when List.is_empty substituted_arguments -> replacement
           | _ ->
-              if List.for_all2 Std.Ptr.equal arguments arguments' then
+              if List.for_all2 Std.Ptr.equal arguments substituted_arguments then
                 ty
               else
-                TypeRepr.named ~head ~arguments:arguments'
+                TypeRepr.named ~head ~arguments:substituted_arguments
         end
     | TypeRepr.Package signature ->
-        let values' =
+        let substituted_values =
           signature.values
           |> List.map
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = loop replacements value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let substituted_scheme = loop replacements value.scheme in
+              if Std.Ptr.equal value.scheme substituted_scheme then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = substituted_scheme })
         in
-        if List.for_all2 Std.Ptr.equal signature.values values' then
+        if List.for_all2 Std.Ptr.equal signature.values substituted_values then
           ty
         else
-          TypeRepr.package ~values:values'
+          TypeRepr.package ~values:substituted_values
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' =
+        let substituted_tags =
           List.map
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
               | Some payload_type ->
-                  let payload_type' = loop replacements payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
+                  let substituted_payload_type = loop replacements payload_type in
+                  if Std.Ptr.equal payload_type substituted_payload_type then
                     tag
                   else
-                    { tag with payload_type = Some payload_type' }
+                    { tag with payload_type = Some substituted_payload_type }
               | None -> tag)
             tags
         in
-        let inherited' = List.map (loop replacements) inherited in
+        let substituted_inherited = List.map (loop replacements) inherited in
         if
-          List.for_all2 Std.Ptr.equal tags tags' && List.for_all2 Std.Ptr.equal inherited inherited'
+          List.for_all2 Std.Ptr.equal tags substituted_tags
+          && List.for_all2 Std.Ptr.equal inherited substituted_inherited
         then
           ty
         else
-          TypeRepr.poly_variant ~bound ~tags:tags' ~inherited:inherited'
+          TypeRepr.poly_variant ~bound ~tags:substituted_tags ~inherited:substituted_inherited
     | TypeRepr.Tuple members ->
-        let members' = List.map (loop replacements) members in
-        if List.for_all2 Std.Ptr.equal members members' then
+        let substituted_members = List.map (loop replacements) members in
+        if List.for_all2 Std.Ptr.equal members substituted_members then
           ty
         else
-          TypeRepr.tuple members'
+          TypeRepr.tuple substituted_members
     | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs' = loop replacements lhs in
-        let rhs' = loop replacements rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        let substituted_lhs = loop replacements lhs in
+        let substituted_rhs = loop replacements rhs in
+        if Std.Ptr.equal lhs substituted_lhs && Std.Ptr.equal rhs substituted_rhs then
           ty
         else
-          TypeRepr.arrow ~label ~lhs:lhs' ~rhs:rhs'
+          TypeRepr.arrow ~label ~lhs:substituted_lhs ~rhs:substituted_rhs
   in
   loop
 
@@ -399,19 +413,18 @@ let rec lower_core_type = fun (state: state) type_params core_type ->
         with
         | Some id -> TypeRepr.make_var id
         | None -> (
-            match builtin_type_of_name (IdentPath.to_string name) arguments with
-            | Some builtin -> builtin
-            | None ->
-                let head =
-                  match Cst.Ident.segments constructor_path with
-                  | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
-                  | _ -> resolve_named_type_path state name
-                in
-                (
-                  match head with
-                  | Some head -> TypeRepr.named ~head ~arguments
-                  | None -> TypeRepr.named_path ~name ~arguments
-                )
+            let resolved_head =
+              match Cst.Ident.segments constructor_path with
+              | [ segment ] -> resolve_named_type_name state (Cst.Token.text segment)
+              | _ -> resolve_named_type_path state name
+            in
+            match resolved_head with
+            | Some head -> TypeRepr.named ~head ~arguments
+            | None -> (
+                match builtin_type_of_name (IdentPath.to_string name) arguments with
+                | Some builtin -> builtin
+                | None -> TypeRepr.named_path ~name ~arguments
+              )
           )
       end
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
@@ -518,6 +531,8 @@ let make_state = fun source ->
     diagnostics = [];
     declared_type_names = [];
     module_type_templates = [];
+    local_module_aliases = [];
+    local_module_binding_groups = [];
   }
 
 let add_diagnostic = fun (state: state) diagnostic -> state.diagnostics <- diagnostic :: state.diagnostics
@@ -557,11 +572,11 @@ let add_pattern = fun (state: state) ~syntax_node ~label desc ->
 let annotate_pattern = fun (state: state) pat_id annotation ->
   let rec loop acc = function
     | [] -> List.rev acc
-    | ((node: BodyArena.pattern_node) as node') :: rest ->
+    | ((node: BodyArena.pattern_node) as current_node) :: rest ->
         if PatId.equal node.pat_id pat_id then
-          List.rev_append acc ({ node' with annotation = Some annotation } :: rest)
+          List.rev_append acc ({ current_node with annotation = Some annotation } :: rest)
         else
-          loop (node' :: acc) rest
+          loop (current_node :: acc) rest
   in
   state.patterns <- loop [] state.patterns
 
@@ -878,7 +893,7 @@ let lower_type_declaration = fun (state: state) (declaration: Cst.TypeDeclaratio
     ~head:(TypeRepr.named_head
       ~type_constructor_id
       ~name:(qualify_scoped_name state.scope_path type_name))
-    ~arguments:((params |> List.map (fun (_, id) -> TypeRepr.make_var id))) in
+    ~arguments:(params |> List.map (fun (_, id) -> TypeRepr.make_var id)) in
   let lowered_declaration =
     with_nonrec_current_type_name_hidden state declaration
       (fun () ->
@@ -1212,6 +1227,47 @@ let with_scope = fun (state: state) scope_path f ->
   in
   result
 
+let with_local_module_alias = fun (state: state) ~module_name ~module_path f ->
+  let previous_aliases = state.local_module_aliases in
+  let () =
+    state.local_module_aliases <- (module_name, module_path) :: state.local_module_aliases
+  in
+  try
+    let result = f () in
+    let () =
+      state.local_module_aliases <- previous_aliases
+    in
+    result
+  with
+  | error ->
+      let () =
+        state.local_module_aliases <- previous_aliases
+      in
+      raise error
+
+let with_local_module_binding_groups = fun (state: state) ~module_name ~binding_groups f ->
+  let previous_binding_groups = state.local_module_binding_groups in
+  let () =
+    state.local_module_binding_groups <- (module_name, binding_groups) :: state.local_module_binding_groups
+  in
+  try
+    let result = f () in
+    let () =
+      state.local_module_binding_groups <- previous_binding_groups
+    in
+    result
+  with
+  | error ->
+      let () =
+        state.local_module_binding_groups <- previous_binding_groups
+      in
+      raise error
+
+let local_module_binding_groups_for_path = fun (state: state) module_path ->
+  match IdentPath.to_segments module_path with
+  | [ module_name ] -> List.assoc_opt module_name state.local_module_binding_groups
+  | _ -> None
+
 let int_text = fun (integer: Cst.integer_constant) ->
   let sign =
     match integer.Cst.sign_token with
@@ -1494,7 +1550,7 @@ let synthetic_var_pattern = fun (state: state) syntax_node ~label ->
   let pat_id = add_pattern
     state
     ~syntax_node
-    ~label:(("synthetic_" ^ label ^ "_pattern"))
+    ~label:("synthetic_" ^ label ^ "_pattern")
     (BodyArena.PVar name) in
   (name, pat_id)
 
@@ -1592,7 +1648,7 @@ and lower_binding_source = fun (state: state) ~syntax_node ~binding_pattern ~par
   let name = binding_name_of_pattern binding_pattern in
   add_binding state ~syntax_node ~name ~pattern_id ~annotation ~value_id ~recursive
 
-and lower_let_binding_group = fun (state: state) let_binding ->
+and binding_ids_of_let_binding_group = fun (state: state) let_binding ->
   let recursive = Cst.LetBinding.is_recursive let_binding in
   let binding_ids = let_binding :: Cst.LetBinding.and_bindings let_binding
   |> List.map
@@ -1604,6 +1660,11 @@ and lower_let_binding_group = fun (state: state) let_binding ->
         ~parameters:(Cst.LetBinding.parameters binding)
         ~value:(Cst.LetBinding.value binding)
         ~recursive) in
+  binding_ids
+
+and lower_let_binding_group = fun (state: state) let_binding ->
+  let recursive = Cst.LetBinding.is_recursive let_binding in
+  let binding_ids = binding_ids_of_let_binding_group state let_binding in
   add_item
     state
     ~syntax_node:(Cst.LetBinding.syntax_node let_binding)
@@ -1635,6 +1696,71 @@ and lower_let_expression_bindings = fun (state: state) (let_expression: Cst.let_
             ~recursive)
   in
   head :: tail
+
+and lower_local_module_binding_groups = fun (state: state) ~module_name module_expression ->
+  let with_local_scope f =
+    let scope_path = IdentPath.append_name state.scope_path module_name in
+    let previous_scope_path = state.scope_path in
+    let previous_declared_type_names = state.declared_type_names in
+    let previous_module_type_templates = state.module_type_templates in
+    let () =
+      state.scope_path <- scope_path
+    in
+    try
+      let result = f () in
+      let () =
+        state.scope_path <- previous_scope_path;
+        state.declared_type_names <- previous_declared_type_names;
+        state.module_type_templates <- previous_module_type_templates
+      in
+      result
+    with
+    | error ->
+        let () =
+          state.scope_path <- previous_scope_path;
+          state.declared_type_names <- previous_declared_type_names;
+          state.module_type_templates <- previous_module_type_templates
+        in
+        raise error
+  in
+  let rec loop = function
+    | Cst.ModuleExpression.Parenthesized { inner; _ }
+    | Cst.ModuleExpression.Attribute { module_expression=inner; _ }
+    | Cst.ModuleExpression.Constraint { module_expression=inner; _ } -> loop inner
+    | Cst.ModuleExpression.Path _ -> None
+    | module_expression ->
+        with_local_scope
+          (fun () ->
+            match CstBuilder.structure_items_of_module_expression module_expression with
+            | Error builder_error ->
+                let () = add_diagnostic state (Typ_diagnostic.CstBuilderError { builder_error }) in
+                None
+            | Ok items ->
+                let binding_groups =
+                  items
+                  |> List.filter_map
+                    (
+                      function
+                      | Cst.StructureItem.Comment _
+                      | Cst.StructureItem.Docstring _ ->
+                          None
+                      | Cst.StructureItem.LetBinding binding ->
+                          Some {
+                            BodyArena.binding_ids = binding_ids_of_let_binding_group state binding
+                          }
+                      | Cst.StructureItem.TypeDeclaration declaration ->
+                          let () = register_type_declaration_names state declaration in
+                          None
+                      | item ->
+                          let () = add_unsupported_structure_item
+                            state
+                            (Cst.StructureItem.syntax_node item) in
+                          None
+                    )
+                in
+                Some binding_groups)
+  in
+  loop module_expression
 
 and lower_apply = fun (state: state) expression ->
   let lower_argument = function
@@ -1819,7 +1945,7 @@ and lower_expr = fun (state: state) expression ->
             ))
     )
   | Cst.Expression.FieldAccess { syntax_node; receiver; field_name; _ } -> (
-      match module_path_segments_of_expr receiver with
+      match module_path_segments_of_expr state receiver with
       | Some module_path ->
           let qualified_name = IdentPath.append_name module_path (Cst.Token.text field_name) in
           add_expr
@@ -1862,6 +1988,14 @@ and lower_expr = fun (state: state) expression ->
         ~syntax_node
         ~label:"record_update_expression"
         (BodyArena.ERecord { base_id = Some base_id; fields })
+  | Cst.Expression.FieldAssign { syntax_node; target; value; _ } ->
+      let receiver_id = lower_expr state target.receiver in
+      let value_id = lower_expr state value in
+      add_expr
+        state
+        ~syntax_node
+        ~label:"field_assign_expression"
+        (BodyArena.EFieldAssign { receiver_id; label = Cst.Token.text target.field_name; value_id })
   | Cst.Expression.Operator { syntax_node; operator_tokens; _ } ->
       let operator = operator_tokens |> List.map Cst.Token.text |> String.concat "" in
       add_expr
@@ -1914,15 +2048,26 @@ and lower_expr = fun (state: state) expression ->
       let element_ids = List.map (lower_expr state) expressions in
       add_expr state ~syntax_node ~label:"sequence_expression" (BodyArena.ESequence element_ids)
   | Cst.Expression.ModulePack { syntax_node; module_expression; package_type; _ } -> (
-      match module_path_segments_of_module_expression module_expression with
-      | Some module_path -> add_expr
-        state
-        ~syntax_node
-        ~label:"module_pack_expression"
-        (BodyArena.EModulePack {
-          module_path;
-          package_type = package_type |> Option.map (lower_package_type state [])
-        })
+      match module_path_segments_of_module_expression state module_expression with
+      | Some module_path -> (
+          match local_module_binding_groups_for_path state module_path with
+          | Some binding_groups -> add_expr
+            state
+            ~syntax_node
+            ~label:"local_module_pack_expression"
+            (BodyArena.ELocalModulePack {
+              binding_groups;
+              package_type = package_type |> Option.map (lower_package_type state [])
+            })
+          | None -> add_expr
+            state
+            ~syntax_node
+            ~label:"module_pack_expression"
+            (BodyArena.EModulePack {
+              module_path;
+              package_type = package_type |> Option.map (lower_package_type state [])
+            })
+        )
       | None ->
           let () = add_diagnostic state
             (
@@ -2047,6 +2192,47 @@ and lower_expr = fun (state: state) expression ->
         ~syntax_node:let_expression.syntax_node
         ~label:"let_expression"
         (BodyArena.ELet (binding_ids, body_id))
+  | Cst.Expression.LetModule {
+    syntax_node;
+    module_name_token;
+    module_expression;
+    body;
+    _
+  } ->
+      let source_module_name = Cst.Token.text module_name_token in
+      begin
+        match module_path_segments_of_module_expression state module_expression with
+        | Some module_path -> with_local_module_alias
+          state
+          ~module_name:source_module_name
+          ~module_path
+          (fun () -> lower_expr state body)
+        | None -> (
+            match lower_local_module_binding_groups state ~module_name:source_module_name module_expression with
+            | Some binding_groups -> with_local_module_binding_groups
+              state
+              ~module_name:source_module_name
+              ~binding_groups
+              (fun () -> lower_expr state body)
+            | None ->
+                let () = add_diagnostic state
+                  (
+                    Typ_diagnostic.UnsupportedSyntax {
+                      syntax_kind = unsupported_syntax_kind syntax_node;
+                      syntax_span = Ceibo.Red.SyntaxNode.span syntax_node;
+                      context = Typ_diagnostic.Expression;
+                      recovery = Typ_diagnostic.HoleExpression;
+                      reason = None;
+                    }
+                  )
+                in
+                add_expr
+                  state
+                  ~syntax_node
+                  ~label:"unsupported_let_module_expression"
+                  (BodyArena.EHole (SyntaxKind.to_string (unsupported_syntax_kind syntax_node)))
+          )
+      end
   | Cst.Expression.LetOperator let_operator ->
       lower_let_operator_expression state let_operator
   | Cst.Expression.Match { syntax_node; scrutinee; cases; _ } ->
@@ -2263,7 +2449,7 @@ and lower_include_statement = fun (state: state) (include_statement: Cst.include
   let syntax_node = include_statement.syntax_node in
   match include_statement.target with
   | Cst.ModuleExpression module_expression -> (
-      match module_path_segments_of_module_expression module_expression with
+      match module_path_segments_of_module_expression state module_expression with
       | Some path when IdentPath.is_empty path ->
           ()
       | Some module_path ->
@@ -2289,6 +2475,25 @@ and lower_signature_include_statement = fun (state: state) (include_statement: C
     )
   | Cst.ModuleExpression _ -> add_unsupported_signature_item state syntax_node
 
+and lower_module_binding = fun (state: state) ~syntax_node ~module_name ~module_expression ->
+  match module_path_segments_of_module_expression state module_expression with
+  | Some path when IdentPath.is_empty path ->
+      ()
+  | Some module_path ->
+      let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
+      ()
+  | None ->
+      let nested_scope_path = IdentPath.append_name state.scope_path module_name in
+      with_scope state nested_scope_path
+        (fun () ->
+          match CstBuilder.structure_items_of_module_expression module_expression with
+          | Ok items ->
+              let _ = List.map (lower_structure_item state) items in
+              ()
+          | Error builder_error -> add_diagnostic
+            state
+            (Typ_diagnostic.CstBuilderError { builder_error }))
+
 and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStructure.t) ->
   let syntax_node = Cst.ModuleStructure.syntax_node declaration in
   if
@@ -2297,25 +2502,11 @@ and lower_module_declaration = fun (state: state) (declaration: Cst.ModuleStruct
   then
     add_unsupported_structure_item state syntax_node
   else
-    let module_name = Cst.ModuleStructure.name declaration in
-    let module_expression = Cst.ModuleStructure.module_expression declaration in
-    match module_path_segments_of_module_expression module_expression with
-    | Some path when IdentPath.is_empty path ->
-        ()
-    | Some module_path ->
-        let _ = add_item state ~syntax_node (`ModuleAlias (module_name, module_path)) in
-        ()
-    | None ->
-        let nested_scope_path = IdentPath.append_name state.scope_path module_name in
-        with_scope state nested_scope_path
-          (fun () ->
-            match CstBuilder.structure_items_of_module_expression module_expression with
-            | Ok items ->
-                let _ = List.map (lower_structure_item state) items in
-                ()
-            | Error builder_error -> add_diagnostic
-              state
-              (Typ_diagnostic.CstBuilderError { builder_error }))
+    lower_module_binding
+      state
+      ~syntax_node
+      ~module_name:(Cst.ModuleStructure.name declaration)
+      ~module_expression:(Cst.ModuleStructure.module_expression declaration)
 
 and lower_module_signature_declaration = fun (state: state) (declaration: Cst.ModuleSignature.t) ->
   let syntax_node = Cst.ModuleSignature.syntax_node declaration in
@@ -2329,7 +2520,7 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
     let module_name = Cst.ModuleSignature.name declaration in
     match Cst.ModuleSignature.definition declaration with
     | Cst.ModuleSignature.Alias module_expression -> (
-        match module_path_segments_of_module_expression module_expression with
+        match module_path_segments_of_module_expression state module_expression with
         | Some path when IdentPath.is_empty path ->
             ()
         | Some module_path ->

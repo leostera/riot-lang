@@ -168,52 +168,51 @@ let mark_analysis_partial = fun (analysis: SourceAnalysis.t) diagnostics ->
     in
     {
       analysis
-      with
-        typing_diagnostics = analysis.typing_diagnostics @ diagnostics;
-        completeness = SourceAnalysis.completeness_of_file_summary file_summary;
-        file_summary;
+      with typing_diagnostics = analysis.typing_diagnostics @ diagnostics;
+      completeness = SourceAnalysis.completeness_of_file_summary file_summary;
+      file_summary
     }
 
 let module_typings_of_summary = fun ~module_name ~source_hash ~value_definitions summary ->
   match summary.FileSummary.export_result with
-  | FileSummary.TrustedExport { exports } ->
-      (
-        match summary.FileSummary.completeness with
-        | FileSummary.Complete -> ModuleTypings.complete
-          ~module_name
-          ~source_hash
-          ~type_decls:summary.type_decls
-          ~value_definitions
-          exports
-        | FileSummary.Partial -> ModuleTypings.partial
-          ~module_name
-          ~source_hash
-          ~type_decls:summary.type_decls
-          ~value_definitions
-          ~exports
-          ()
-      )
-  | FileSummary.ErroredExport { exports } -> ModuleTypings.partial
-    ~module_name
-    ~source_hash
-    ~type_decls:summary.type_decls
-    ~value_definitions
-    ~exports
-    ()
-  | FileSummary.NoExport -> ModuleTypings.partial
-    ~module_name
-    ~source_hash
-    ~type_decls:summary.type_decls
-    ~value_definitions
-    ()
+  | FileSummary.TrustedExport { exports } -> (
+      match summary.FileSummary.completeness with
+      | FileSummary.Complete -> ModuleTypings.complete
+        ~module_name
+        ~source_hash
+        ~type_decls:summary.type_decls
+        ~value_definitions
+        exports
+      | FileSummary.Partial -> ModuleTypings.partial
+        ~module_name
+        ~source_hash
+        ~type_decls:summary.type_decls
+        ~value_definitions
+        ~exports
+        ()
+    )
+  | FileSummary.ErroredExport { exports } ->
+      ModuleTypings.partial
+        ~module_name
+        ~source_hash
+        ~type_decls:summary.type_decls
+        ~value_definitions
+        ~exports
+        ()
+  | FileSummary.NoExport ->
+      ModuleTypings.partial
+        ~module_name
+        ~source_hash
+        ~type_decls:summary.type_decls
+        ~value_definitions
+        ()
 
 let with_module_view = fun module_typings (analysis: SourceAnalysis.t) ->
   let file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_typings in
   {
     analysis
-    with
-      completeness = SourceAnalysis.completeness_of_file_summary file_summary;
-      file_summary;
+    with completeness = SourceAnalysis.completeness_of_file_summary file_summary;
+    file_summary
   }
 
 let find_declared_value_span = fun (analysis: SourceAnalysis.t) export_name ->
@@ -291,19 +290,32 @@ let list_for_all2 = fun predicate left right ->
   in
   loop left right
 
-let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) (right: TypeRepr.package_signature) ->
-  List.length left.values = List.length right.values
-  && List.for_all
+let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) (
+  right: TypeRepr.package_signature
+) ->
+  List.length left.values = List.length right.values && List.for_all
     (fun (left_value: TypeRepr.package_value) ->
-      match List.find_opt (fun (right_value: TypeRepr.package_value) -> String.equal left_value.name right_value.name) right.values with
+      match
+        List.find_opt
+          (fun (right_value: TypeRepr.package_value) ->
+            String.equal left_value.name right_value.name)
+          right.values
+      with
       | Some right_value -> equal_type left_value.scheme right_value.scheme
       | None -> false)
     left.values
 
-let package_signature_includes = fun includes_type (actual: TypeRepr.package_signature) (expected: TypeRepr.package_signature) ->
+let package_signature_includes = fun includes_type (actual: TypeRepr.package_signature) (
+  expected: TypeRepr.package_signature
+) ->
   List.for_all
     (fun (expected_value: TypeRepr.package_value) ->
-      match List.find_opt (fun (actual_value: TypeRepr.package_value) -> String.equal actual_value.name expected_value.name) actual.values with
+      match
+        List.find_opt
+          (fun (actual_value: TypeRepr.package_value) ->
+            String.equal actual_value.name expected_value.name)
+          actual.values
+      with
       | Some actual_value -> includes_type actual_value.scheme expected_value.scheme
       | None -> false)
     expected.values
@@ -373,6 +385,8 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
   let expected_scheme = VisibleTypes.canonicalize_scheme visible_types expected_scheme in
   let actual_quantified, actual_body = TypeScheme.to_explicit actual_scheme in
   let _expected_quantified, expected_body = TypeScheme.to_explicit expected_scheme in
+  let actual_body = VisibleTypes.resolve_type visible_types actual_body in
+  let expected_body = VisibleTypes.resolve_type visible_types expected_body in
   let flexible_actual_vars = Collections.HashSet.of_list actual_quantified in
   let bindings = Collections.HashMap.with_capacity 8 in
   let rec includes_type actual expected =
@@ -463,8 +477,8 @@ let value_mismatches = fun ~visible_types interface_exports implementation_expor
 
 let canonical_type_equal = fun ~visible_types left right ->
   rigid_type_equal
-    (VisibleTypes.canonicalize_type visible_types left)
-    (VisibleTypes.canonicalize_type visible_types right)
+    (VisibleTypes.resolve_type visible_types (VisibleTypes.canonicalize_type visible_types left))
+    (VisibleTypes.resolve_type visible_types (VisibleTypes.canonicalize_type visible_types right))
 
 let scheme_equal = fun ~visible_types left right ->
   scheme_includes ~visible_types left right && scheme_includes ~visible_types right left
@@ -483,36 +497,29 @@ let inline_record_labels_equal = fun ~visible_types left right ->
 let constructor_equal = fun ~visible_types (left: TypeDecl.constructor) (right: TypeDecl.constructor) ->
   String.equal left.name right.name
   && scheme_equal ~visible_types left.scheme right.scheme
-  && inline_record_labels_equal
-    ~visible_types
-    left.inline_record_labels
-    right.inline_record_labels
+  && inline_record_labels_equal ~visible_types left.inline_record_labels right.inline_record_labels
 
-let poly_variant_tag_equal = fun ~visible_types (left: TypeDecl.poly_variant_tag) (right: TypeDecl.poly_variant_tag) ->
-  String.equal left.name right.name
-  && (
+let poly_variant_tag_equal = fun ~visible_types (left: TypeDecl.poly_variant_tag) (
+  right: TypeDecl.poly_variant_tag
+) ->
+  String.equal left.name right.name && (
     match (left.payload_type, right.payload_type) with
     | None, None -> true
-    | Some left_payload, Some right_payload -> canonical_type_equal
-      ~visible_types
-      left_payload
-      right_payload
+    | Some left_payload, Some right_payload -> canonical_type_equal ~visible_types left_payload right_payload
     | _ -> false
   )
 
 let manifest_aliases_decl_self = fun ~visible_types (type_decl: FileSummary.type_decl) manifest_type ->
   match TypeRepr.view (VisibleTypes.canonicalize_type visible_types manifest_type) with
-  | TypeRepr.Named { head; arguments=[] } ->
-      TypeConstructorId.equal head.type_constructor_id type_decl.declaration.type_constructor_id
-      || IdentPath.equal head.name (type_decl_key type_decl)
+  | TypeRepr.Named { head; arguments=[] } -> TypeConstructorId.equal
+    head.type_constructor_id
+    type_decl.declaration.type_constructor_id
+  || IdentPath.equal head.name (type_decl_key type_decl)
   | _ -> false
 
 let normalized_manifest = fun ~visible_types (type_decl: FileSummary.type_decl) ->
   match type_decl.declaration.manifest with
-  | Some (TypeDecl.Alias manifest_type) when manifest_aliases_decl_self
-    ~visible_types
-    type_decl
-    manifest_type -> None
+  | Some (TypeDecl.Alias manifest_type) when manifest_aliases_decl_self ~visible_types type_decl manifest_type -> None
   | manifest -> manifest
 
 let manifest_equal = fun ~visible_types left_decl right_decl ->
@@ -522,12 +529,13 @@ let manifest_equal = fun ~visible_types left_decl right_decl ->
     ~visible_types
     left_type
     right_type
-  | Some (TypeDecl.PolyVariant { bound=left_bound; tags=left_tags; inherited=left_inherited }), Some (
-      TypeDecl.PolyVariant { bound=right_bound; tags=right_tags; inherited=right_inherited }
-    ) ->
-      left_bound = right_bound
-      && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags
-      && list_for_all2 (canonical_type_equal ~visible_types) left_inherited right_inherited
+  | Some (TypeDecl.PolyVariant { bound=left_bound; tags=left_tags; inherited=left_inherited }), Some (TypeDecl.PolyVariant {
+    bound=right_bound;
+    tags=right_tags;
+    inherited=right_inherited
+  }) -> left_bound = right_bound
+  && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags
+  && list_for_all2 (canonical_type_equal ~visible_types) left_inherited right_inherited
   | _ -> false
 
 let type_decl_matches = fun ~visible_types interface_decl implementation_decl ->
@@ -639,21 +647,20 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
     ~type_decls
     ~value_definitions
     () in
-  let module_typings = module_typings_of_summary
-    ~module_name
-    ~source_hash
-    ~value_definitions
+  let module_typings = module_typings_of_summary ~module_name ~source_hash ~value_definitions
     {
       FileSummary.source_id = interface_analysis.source.source_id;
-      completeness = (
-        match export_result with
-        | FileSummary.TrustedExport _ -> FileSummary.Complete
-        | FileSummary.ErroredExport _
-        | FileSummary.NoExport -> FileSummary.Partial
-      );
+      completeness =
+        (
+          match export_result with
+          | FileSummary.TrustedExport _ -> FileSummary.Complete
+          | FileSummary.ErroredExport _
+          | FileSummary.NoExport -> FileSummary.Partial
+        );
       export_result;
       type_decls;
-    } in
+    }
+  in
   let interface_analysis = with_module_view module_typings interface_analysis in
   let implementation_analysis = with_module_view module_typings implementation_analysis in
   {
@@ -696,14 +703,8 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
       ~ambient_type_decls
       ~interface_decls:interface_type_decls
       ~implementation_decls:implementation_type_decls in
-    let mismatches = value_mismatches
-      ~visible_types
-      interface_exports
-      implementation_exports
-    @ type_decl_mismatches
-      ~visible_types
-      interface_type_decls
-      implementation_type_decls in
+    let mismatches = value_mismatches ~visible_types interface_exports implementation_exports
+    @ type_decl_mismatches ~visible_types interface_type_decls implementation_type_decls in
     if List.is_empty mismatches then
       paired_module_view ~module_name interface_pair implementation_pair
     else
@@ -711,14 +712,35 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
       |> List.map (interface_diagnostic interface_pair implementation_pair) in
       let implementation_diagnostics = mismatches
       |> List.map (implementation_diagnostic interface_pair implementation_pair) in
-      let module_typings = ModuleTypings.partial
+      let export_result = interface_shaped_export_result
+        interface_analysis.file_summary
+        implementation_analysis.file_summary in
+      let type_decls =
+        match export_result with
+        | FileSummary.NoExport -> []
+        | _ -> FileSummary.type_decls interface_analysis.file_summary
+      in
+      let value_definitions =
+        match export_result with
+        | FileSummary.NoExport -> []
+        | _ -> SourceAnalysis.export_definitions interface_analysis
+      in
+      let source_hash = ModuleTypings.synthetic_source_hash
         ~module_name
-        ~source_hash:(ModuleTypings.synthetic_source_hash
-          ~module_name
-          ~export_result:FileSummary.NoExport
-          ~type_decls:[]
-          ())
+        ~export_result
+        ~type_decls
+        ~value_definitions
         () in
+      let module_typings = module_typings_of_summary
+        ~module_name
+        ~source_hash
+        ~value_definitions
+        {
+          FileSummary.source_id = interface_analysis.source.source_id;
+          completeness = FileSummary.Partial;
+          export_result;
+          type_decls
+        } in
       let interface_analysis = mark_analysis_partial interface_analysis interface_diagnostics
       |> with_module_view module_typings in
       let implementation_analysis = mark_analysis_partial implementation_analysis implementation_diagnostics

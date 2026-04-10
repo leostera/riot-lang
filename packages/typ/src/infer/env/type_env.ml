@@ -232,11 +232,12 @@ let rec lookup_by_id = fun env type_constructor_id ->
 let qualify_entries = fun prefix env -> map (qualify_type_decl prefix) env
 
 let entries_for_include = fun env module_path ->
-  type_decls env |> List.filter_map
+  type_decls env
+  |> List.filter_map
     (fun (type_decl: FileSummary.type_decl) ->
-      match IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path with
-      | Some scope_path -> Some { type_decl with scope_path }
-      | None -> None) |> of_type_decls
+      IdentPath.strip_prefix ~prefix:module_path type_decl.scope_path
+      |> Option.map (fun scope_path -> { type_decl with scope_path }))
+  |> of_type_decls
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
   entries_for_include env module_path |> qualify_entries (IdentPath.of_name alias_name)

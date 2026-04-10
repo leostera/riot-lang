@@ -22,4 +22,4 @@ let of_path = fun path ->
 
 let to_int = fun value -> value
 
-let to_string = fun constructor_id -> "constructor#" ^ Int.to_string constructor_id
+let to_string = fun constructor_id -> format Format.[ str "constructor#"; int constructor_id ]

@@ -12,9 +12,13 @@ let main = fun ~args:_ ->
     match Syn.build_cst parse_result with
     | Ok cst -> cst
     | Error (Syn.Parse_diagnostics diagnostics) -> panic
-      ("expected CST for example.ml: "
-      ^ String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics))
-    | Error (Syn.Cst_builder_error error) -> panic ("expected CST for example.ml: " ^ error.message)
+      (format
+        Format.[
+          str "expected CST for example.ml: ";
+          str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
+        ])
+    | Error (Syn.Cst_builder_error error) -> panic
+      (format Format.[ str "expected CST for example.ml: "; str error.message; ])
   in
   let result = Typ.Batch.check_source ~filename ~parse_result ~cst in
   println (Typ.Diagnostics.Report.render_report result);

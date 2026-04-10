@@ -3,9 +3,9 @@ open Model
 
 type env = (IdentPath.t * TypeScheme.t) list
 
-let monomorphic = fun ty -> TypeScheme.of_type ty
+let monomorphic = TypeScheme.of_type
 
-let var = fun id -> TypeRepr.make_var id
+let var = TypeRepr.make_var
 
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
@@ -41,11 +41,41 @@ let list_cons =
     ~quantified:[ 0 ]
     (arrow element (arrow (TypeRepr.list element) (TypeRepr.list element)))
 
+let option_none =
+  let element = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (TypeRepr.option element)
+
+let option_some =
+  let element = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow element (TypeRepr.option element))
+
+let result_ok_constructor =
+  let ok_ty = var 0 in
+  let error_ty = var 1 in
+  TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow ok_ty (TypeRepr.result ok_ty error_ty))
+
+let result_error_constructor =
+  let ok_ty = var 0 in
+  let error_ty = var 1 in
+  TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow error_ty (TypeRepr.result ok_ty error_ty))
+
 let prelude_list_type_constructor_id = BuiltinTypeConstructors.list_type_constructor_id
 
 let prelude_nil_constructor_id = ConstructorId.of_int (-1)
 
 let prelude_cons_constructor_id = ConstructorId.of_int (-2)
+
+let prelude_option_type_constructor_id = TypeConstructorId.of_path (IdentPath.of_name "option")
+
+let prelude_result_type_constructor_id = TypeConstructorId.of_path (IdentPath.of_name "result")
+
+let prelude_none_constructor_id = ConstructorId.of_int (-3)
+
+let prelude_some_constructor_id = ConstructorId.of_int (-4)
+
+let prelude_ok_constructor_id = ConstructorId.of_int (-5)
+
+let prelude_error_constructor_id = ConstructorId.of_int (-6)
 
 let bindings = [
   (IdentPath.of_name "[]", list_nil);
@@ -99,4 +129,56 @@ let type_decls = [ {
         labels = [];
         manifest = None;
       };
-  } ]
+  }; {
+    FileSummary.scope_path = IdentPath.empty;
+    declaration =
+      {
+        TypeDecl.type_constructor_id = prelude_option_type_constructor_id;
+        type_name = "option";
+        nonrec_ = false;
+        param_ids = [ 0 ];
+        param_variances = [ TypeDecl.Covariant ];
+        constructors = [
+          {
+            TypeDecl.constructor_id = prelude_none_constructor_id;
+            name = "None";
+            scheme = option_none;
+            inline_record_labels = None
+          };
+          {
+            TypeDecl.constructor_id = prelude_some_constructor_id;
+            name = "Some";
+            scheme = option_some;
+            inline_record_labels = None
+          };
+        ];
+        labels = [];
+        manifest = None;
+      };
+  }; {
+    FileSummary.scope_path = IdentPath.empty;
+    declaration =
+      {
+        TypeDecl.type_constructor_id = prelude_result_type_constructor_id;
+        type_name = "result";
+        nonrec_ = false;
+        param_ids = [ 0; 1 ];
+        param_variances = [ TypeDecl.Covariant; TypeDecl.Covariant ];
+        constructors = [
+          {
+            TypeDecl.constructor_id = prelude_ok_constructor_id;
+            name = "Ok";
+            scheme = result_ok_constructor;
+            inline_record_labels = None
+          };
+          {
+            TypeDecl.constructor_id = prelude_error_constructor_id;
+            name = "Error";
+            scheme = result_error_constructor;
+            inline_record_labels = None
+          };
+        ];
+        labels = [];
+        manifest = None;
+      };
+  }; ]

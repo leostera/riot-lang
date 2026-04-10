@@ -5,8 +5,8 @@
     {
       "id": "TYP1012",
       "match_span": {
-        "end": 87,
-        "start": 20
+        "end": 129,
+        "start": 62
       },
       "message": "non-exhaustive match: missing case Some _",
       "name": "nonexhaustive-match",

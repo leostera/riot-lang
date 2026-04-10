@@ -54,6 +54,10 @@ type apply_argument = {
   value_id: ExprId.t;
 }
 
+type local_module_binding_group = {
+  binding_ids: BindingId.t list;
+}
+
 type expr_desc =
   | EVar of IdentPath.t
   | EInt of string
@@ -76,6 +80,7 @@ type expr_desc =
   | EApply of ExprId.t * apply_argument list
   | ERecord of { base_id: ExprId.t option; fields: record_expr_field list }
   | EFieldAccess of { receiver_id: ExprId.t; label: string }
+  | EFieldAssign of { receiver_id: ExprId.t; label: string; value_id: ExprId.t }
   | EIndex of ExprId.t * ExprId.t
   | ELet of BindingId.t list * ExprId.t
   | EIf of ExprId.t * ExprId.t * ExprId.t
@@ -84,6 +89,10 @@ type expr_desc =
   | EPolyVariant of { tag: string; payload: ExprId.t option }
   | ECoerce of { value_id: ExprId.t; target_type: TypeRepr.t }
   | EModulePack of { module_path: IdentPath.t; package_type: TypeRepr.t option }
+  | ELocalModulePack of {
+      binding_groups: local_module_binding_group list;
+      package_type: TypeRepr.t option
+    }
   | ELocalOpen of { module_path: IdentPath.t; body_id: ExprId.t }
   | EUnsupported of string
   | EHole of string
@@ -132,27 +141,18 @@ let of_lists = fun ~patterns ~expressions ~bindings ->
   let patterns_by_id = Collections.HashMap.with_capacity (List.length patterns) in
   let expressions_by_id = Collections.HashMap.with_capacity (List.length expressions) in
   let bindings_by_id = Collections.HashMap.with_capacity (List.length bindings) in
-  let () =
-    patterns
-    |> List.iter
-      (fun (node: pattern_node) ->
-        let _ = Collections.HashMap.insert patterns_by_id (PatId.to_int node.pat_id) node in
-        ())
-  in
-  let () =
-    expressions
-    |> List.iter
-      (fun (node: expr_node) ->
-        let _ = Collections.HashMap.insert expressions_by_id (ExprId.to_int node.expr_id) node in
-        ())
-  in
-  let () =
-    bindings
-    |> List.iter
-      (fun (node: binding) ->
-        let _ = Collections.HashMap.insert bindings_by_id (BindingId.to_int node.binding_id) node in
-        ())
-  in
+  patterns |> List.iter
+    (fun (node: pattern_node) ->
+      let _ = Collections.HashMap.insert patterns_by_id (PatId.to_int node.pat_id) node in
+      ());
+  expressions |> List.iter
+    (fun (node: expr_node) ->
+      let _ = Collections.HashMap.insert expressions_by_id (ExprId.to_int node.expr_id) node in
+      ());
+  bindings |> List.iter
+    (fun (node: binding) ->
+      let _ = Collections.HashMap.insert bindings_by_id (BindingId.to_int node.binding_id) node in
+      ());
   {
     patterns;
     patterns_by_id;
@@ -323,6 +323,8 @@ let render_expr_desc = function
       ^ " }"
   | EFieldAccess { receiver_id; label } ->
       "field " ^ ExprId.to_string receiver_id ^ "." ^ label
+  | EFieldAssign { receiver_id; label; value_id } ->
+      "field_assign " ^ ExprId.to_string receiver_id ^ "." ^ label ^ " <- " ^ ExprId.to_string value_id
   | EIndex (collection_id, index_id) ->
       "index " ^ ExprId.to_string collection_id ^ " [" ^ ExprId.to_string index_id ^ "]"
   | ELet (binding_ids, body_id) ->
@@ -386,6 +388,19 @@ let render_expr_desc = function
         | None -> ""
       in
       "pack " ^ IdentPath.to_string module_path ^ annotation
+  | ELocalModulePack { binding_groups; package_type } ->
+      let annotation =
+        match package_type with
+        | Some package_type -> " : " ^ TypePrinter.type_to_string package_type
+        | None -> ""
+      in
+      "local_pack "
+      ^ (binding_groups
+      |> List.map
+        (fun (group: local_module_binding_group) ->
+          "[" ^ render_ids BindingId.to_string group.binding_ids ^ "]")
+      |> String.concat " ")
+      ^ annotation
   | ELocalOpen { module_path; body_id } ->
       "local_open " ^ IdentPath.to_string module_path ^ " (" ^ ExprId.to_string body_id ^ ")"
   | EUnsupported summary ->
@@ -426,6 +441,16 @@ let record_expr_field_to_json = fun (field: record_expr_field) ->
   Data.Json.Object [
     ("label", Data.Json.String field.label);
     ("value_id", Data.Json.Int (ExprId.to_int field.value_id));
+  ]
+
+let local_module_binding_group_to_json = fun (group: local_module_binding_group) ->
+  Data.Json.Object [
+    (
+      "binding_ids",
+      Data.Json.Array (List.map
+        (fun binding_id -> Data.Json.Int (BindingId.to_int binding_id))
+        group.binding_ids)
+    );
   ]
 
 let pattern_desc_to_json = function
@@ -642,6 +667,12 @@ let expr_desc_to_json = function
     ("receiver_id", Data.Json.Int (ExprId.to_int receiver_id));
     ("label", Data.Json.String label);
   ]
+  | EFieldAssign { receiver_id; label; value_id } -> Data.Json.Object [
+    ("tag", Data.Json.String "field_assign");
+    ("receiver_id", Data.Json.Int (ExprId.to_int receiver_id));
+    ("label", Data.Json.String label);
+    ("value_id", Data.Json.Int (ExprId.to_int value_id));
+  ]
   | EIndex (collection_id, index_id) -> Data.Json.Object [
     ("tag", Data.Json.String "index");
     ("collection_id", Data.Json.Int (ExprId.to_int collection_id));
@@ -691,6 +722,20 @@ let expr_desc_to_json = function
       Data.Json.Object [
         ("tag", Data.Json.String "module_pack");
         ("module_path", Data.Json.String (IdentPath.to_string module_path));
+        (
+          "package_type",
+          match package_type with
+          | Some package_type -> Data.Json.String (TypePrinter.type_to_string package_type)
+          | None -> Data.Json.Null
+        );
+      ]
+  | ELocalModulePack { binding_groups; package_type } ->
+      Data.Json.Object [
+        ("tag", Data.Json.String "local_module_pack");
+        (
+          "binding_groups",
+          Data.Json.Array (List.map local_module_binding_group_to_json binding_groups)
+        );
         (
           "package_type",
           match package_type with

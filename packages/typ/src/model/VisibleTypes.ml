@@ -44,10 +44,181 @@ let map_preserving = fun loop xs ->
         else
           xs
     | x :: rest ->
-        let x' = loop x in
-        walk (changed || not (Std.Ptr.equal x x')) (x' :: acc) rest
+        let mapped_x = loop x in
+        walk (changed || not (Std.Ptr.equal x mapped_x)) (mapped_x :: acc) rest
   in
   walk false [] xs
+
+let rebase_type_decl_refs = fun type_decls ->
+  if List.is_empty type_decls then
+    type_decls
+  else
+    let by_id = Collections.HashMap.with_capacity (List.length type_decls) in
+    let () =
+      type_decls
+      |> List.iter
+        (fun (type_decl: FileSummary.type_decl) ->
+          let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
+          ())
+    in
+    let rec rebase_type ty =
+      let ty = TypeRepr.prune ty in
+      match TypeRepr.view ty with
+      | TypeRepr.Int
+      | TypeRepr.Float
+      | TypeRepr.Bool
+      | TypeRepr.String
+      | TypeRepr.Char
+      | TypeRepr.Unit
+      | TypeRepr.Hole _
+      | TypeRepr.Var _ ->
+          ty
+      | TypeRepr.Option element ->
+          let element2 = rebase_type element in
+          if Std.Ptr.equal element element2 then
+            ty
+          else
+            TypeRepr.option element2
+      | TypeRepr.Result (ok_ty, error_ty) ->
+          let ok_ty2 = rebase_type ok_ty in
+          let error_ty2 = rebase_type error_ty in
+          if Std.Ptr.equal ok_ty ok_ty2 && Std.Ptr.equal error_ty error_ty2 then
+            ty
+          else
+            TypeRepr.result ok_ty2 error_ty2
+      | TypeRepr.Array element ->
+          let element2 = rebase_type element in
+          if Std.Ptr.equal element element2 then
+            ty
+          else
+            TypeRepr.array element2
+      | TypeRepr.List element ->
+          let element2 = rebase_type element in
+          if Std.Ptr.equal element element2 then
+            ty
+          else
+            TypeRepr.list element2
+      | TypeRepr.Seq element ->
+          let element2 = rebase_type element in
+          if Std.Ptr.equal element element2 then
+            ty
+          else
+            TypeRepr.seq element2
+      | TypeRepr.Named { head; arguments } ->
+          let arguments2 = map_preserving rebase_type arguments in
+          let head2 =
+            match Collections.HashMap.get by_id head.type_constructor_id with
+            | Some (type_decl: FileSummary.type_decl) -> { head with name = type_decl_key type_decl }
+            | None -> head
+          in
+          if
+            Std.Ptr.equal arguments arguments2
+            && IdentPath.equal head.name head2.name
+            && TypeConstructorId.equal head.type_constructor_id head2.type_constructor_id
+          then
+            ty
+          else
+            TypeRepr.named ~head:head2 ~arguments:arguments2
+      | TypeRepr.PolyVariant { bound; tags; inherited } ->
+          let tags2 =
+            map_preserving
+              (fun (tag: TypeRepr.poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type ->
+                    let payload_type2 = rebase_type payload_type in
+                    if Std.Ptr.equal payload_type payload_type2 then
+                      tag
+                    else
+                      { tag with payload_type = Some payload_type2 }
+                | None -> tag)
+              tags
+          in
+          let inherited2 = map_preserving rebase_type inherited in
+          if Std.Ptr.equal tags tags2 && Std.Ptr.equal inherited inherited2 then
+            ty
+          else
+            TypeRepr.poly_variant ~bound ~tags:tags2 ~inherited:inherited2
+      | TypeRepr.Tuple members ->
+          let members2 = map_preserving rebase_type members in
+          if Std.Ptr.equal members members2 then
+            ty
+          else
+            TypeRepr.tuple members2
+      | TypeRepr.Arrow { label; lhs; rhs } ->
+          let lhs2 = rebase_type lhs in
+          let rhs2 = rebase_type rhs in
+          if Std.Ptr.equal lhs lhs2 && Std.Ptr.equal rhs rhs2 then
+            ty
+          else
+            TypeRepr.arrow ~label ~lhs:lhs2 ~rhs:rhs2
+      | TypeRepr.Package signature ->
+          let values2 =
+            map_preserving
+              (fun (value: TypeRepr.package_value) ->
+                let scheme2 = rebase_type value.scheme in
+                if Std.Ptr.equal value.scheme scheme2 then
+                  value
+                else
+                  { value with scheme = scheme2 })
+              signature.values
+          in
+          if Std.Ptr.equal signature.values values2 then
+            ty
+          else
+            TypeRepr.package ~values:values2
+    in
+    let rebase_scheme scheme =
+      let quantified, body = TypeScheme.to_explicit scheme in
+      let body2 = rebase_type body in
+      if Std.Ptr.equal body body2 then
+        scheme
+      else
+        TypeScheme.of_explicit ~quantified body2
+    in
+    let rebase_labels labels =
+      labels
+      |> List.map
+        (fun (label: TypeDecl.label) ->
+          let field_type = rebase_type label.field_type in
+          if Std.Ptr.equal label.field_type field_type then
+            label
+          else
+            { label with field_type })
+    in
+    type_decls |> List.map
+      (fun (type_decl: FileSummary.type_decl) ->
+        let declaration = type_decl.declaration in
+        let manifest =
+          match declaration.manifest with
+          | None -> None
+          | Some (TypeDecl.Alias manifest_type) -> Some (TypeDecl.Alias (rebase_type manifest_type))
+          | Some (TypeDecl.PolyVariant { bound; tags; inherited }) ->
+              Some (
+                TypeDecl.PolyVariant {
+                  bound;
+                  tags =
+                    tags |> List.map
+                      (fun (tag: TypeDecl.poly_variant_tag) ->
+                        match tag.payload_type with
+                        | Some payload_type -> {
+                          tag
+                          with payload_type = Some (rebase_type payload_type)
+                        }
+                        | None -> tag);
+                  inherited = List.map rebase_type inherited;
+                }
+              )
+        in
+        let constructors = declaration.constructors
+        |> List.map
+          (fun (constructor: TypeDecl.constructor) ->
+            {
+              constructor
+              with scheme = rebase_scheme constructor.scheme;
+              inline_record_labels = constructor.inline_record_labels |> Option.map rebase_labels
+            }) in
+        let labels = rebase_labels declaration.labels in
+        { type_decl with declaration = { declaration with manifest; constructors; labels } })
 
 let resolve_named_type_head_in_index = fun by_path name ->
   Collections.HashMap.get by_path name
@@ -95,89 +266,94 @@ let substitute_type_vars_with = fun ~make ty mapping ->
     | TypeRepr.Hole _ ->
         ty
     | TypeRepr.Option element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          make (TypeRepr.Option element')
+          make (TypeRepr.Option substituted_element)
     | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty' = loop ok_ty in
-        let error_ty' = loop error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        let substituted_ok_ty = loop ok_ty in
+        let substituted_error_ty = loop error_ty in
+        if Std.Ptr.equal ok_ty substituted_ok_ty && Std.Ptr.equal error_ty substituted_error_ty then
           ty
         else
-          make (TypeRepr.Result (ok_ty', error_ty'))
+          make (TypeRepr.Result (substituted_ok_ty, substituted_error_ty))
     | TypeRepr.Array element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          make (TypeRepr.Array element')
+          make (TypeRepr.Array substituted_element)
     | TypeRepr.List element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          make (TypeRepr.List element')
+          make (TypeRepr.List substituted_element)
     | TypeRepr.Seq element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let substituted_element = loop element in
+        if Std.Ptr.equal element substituted_element then
           ty
         else
-          make (TypeRepr.Seq element')
+          make (TypeRepr.Seq substituted_element)
     | TypeRepr.Named { head; arguments } ->
-        let arguments' = map_preserving loop arguments in
-        if Std.Ptr.equal arguments arguments' then
+        let substituted_arguments = map_preserving loop arguments in
+        if Std.Ptr.equal arguments substituted_arguments then
           ty
         else
-          make (TypeRepr.Named { head; arguments = arguments' })
+          make (TypeRepr.Named { head; arguments = substituted_arguments })
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' =
+        let substituted_tags =
           map_preserving
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
               | Some payload_type ->
-                  let payload_type' = loop payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
+                  let substituted_payload_type = loop payload_type in
+                  if Std.Ptr.equal payload_type substituted_payload_type then
                     tag
                   else
-                    { tag with payload_type = Some payload_type' }
+                    { tag with payload_type = Some substituted_payload_type }
               | None -> tag)
             tags
         in
-        let inherited' = map_preserving loop inherited in
-        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+        let substituted_inherited = map_preserving loop inherited in
+        if Std.Ptr.equal tags substituted_tags && Std.Ptr.equal inherited substituted_inherited then
           ty
         else
-          make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' })
+          make
+            (TypeRepr.PolyVariant {
+              bound;
+              tags = substituted_tags;
+              inherited = substituted_inherited
+            })
     | TypeRepr.Tuple members ->
-        let members' = map_preserving loop members in
-        if Std.Ptr.equal members members' then
+        let substituted_members = map_preserving loop members in
+        if Std.Ptr.equal members substituted_members then
           ty
         else
-          make (TypeRepr.Tuple members')
+          make (TypeRepr.Tuple substituted_members)
     | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs' = loop lhs in
-        let rhs' = loop rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        let substituted_lhs = loop lhs in
+        let substituted_rhs = loop rhs in
+        if Std.Ptr.equal lhs substituted_lhs && Std.Ptr.equal rhs substituted_rhs then
           ty
         else
-          make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+          make (TypeRepr.Arrow { label; lhs = substituted_lhs; rhs = substituted_rhs })
     | TypeRepr.Package signature ->
-        let values' =
+        let substituted_values =
           map_preserving
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = loop value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let substituted_scheme = loop value.scheme in
+              if Std.Ptr.equal value.scheme substituted_scheme then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = substituted_scheme })
             signature.values
         in
-        if Std.Ptr.equal signature.values values' then
+        if Std.Ptr.equal signature.values substituted_values then
           ty
         else
-          TypeRepr.package ~values:values'
+          TypeRepr.package ~values:substituted_values
     | TypeRepr.Var { id; link=None; _ } -> (
         match Collections.HashMap.get mapping id with
         | Some replacement -> replacement
@@ -208,6 +384,24 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
   let same_head left right =
     TypeConstructorId.equal left.TypeRepr.type_constructor_id right.TypeRepr.type_constructor_id
     && IdentPath.equal left.TypeRepr.name right.TypeRepr.name in
+  let builtin_type_of_head (head: TypeRepr.named_type_head) arguments =
+    Option.and_then (BuiltinTypeConstructors.head_of_path head.TypeRepr.name)
+      (fun builtin_head ->
+        if
+          TypeConstructorId.equal builtin_head.TypeRepr.type_constructor_id head.TypeRepr.type_constructor_id
+        then
+          BuiltinTypeConstructors.type_of_path head.TypeRepr.name arguments
+        else
+          None)
+  in
+  let builtin_type_of_decl (type_decl: FileSummary.type_decl) (head: TypeRepr.named_type_head) arguments =
+    if
+      TypeConstructorId.equal head.TypeRepr.type_constructor_id type_decl.FileSummary.declaration.type_constructor_id
+    then
+      builtin_type_of_head head arguments
+    else
+      None
+  in
   let rec loop ty =
     let ty = TypeRepr.prune ty in
     match TypeRepr.view ty with
@@ -221,38 +415,38 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
     | TypeRepr.Var _ ->
         ty
     | TypeRepr.Option element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let resolved_element = loop element in
+        if Std.Ptr.equal element resolved_element then
           ty
         else
-          make (TypeRepr.Option element')
+          make (TypeRepr.Option resolved_element)
     | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty' = loop ok_ty in
-        let error_ty' = loop error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        let resolved_ok_ty = loop ok_ty in
+        let resolved_error_ty = loop error_ty in
+        if Std.Ptr.equal ok_ty resolved_ok_ty && Std.Ptr.equal error_ty resolved_error_ty then
           ty
         else
-          make (TypeRepr.Result (ok_ty', error_ty'))
+          make (TypeRepr.Result (resolved_ok_ty, resolved_error_ty))
     | TypeRepr.Array element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let resolved_element = loop element in
+        if Std.Ptr.equal element resolved_element then
           ty
         else
-          make (TypeRepr.Array element')
+          make (TypeRepr.Array resolved_element)
     | TypeRepr.List element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let resolved_element = loop element in
+        if Std.Ptr.equal element resolved_element then
           ty
         else
-          make (TypeRepr.List element')
+          make (TypeRepr.List resolved_element)
     | TypeRepr.Seq element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let resolved_element = loop element in
+        if Std.Ptr.equal element resolved_element then
           ty
         else
-          make (TypeRepr.Seq element')
+          make (TypeRepr.Seq resolved_element)
     | TypeRepr.Named { head; arguments } ->
-        let arguments' = map_preserving loop arguments in
+        let resolved_arguments = map_preserving loop arguments in
         let resolved_head =
           match resolve_named_type_head head.name with
           | Some resolved_head -> resolved_head
@@ -263,86 +457,90 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
             (resolve_named_type_decl resolved_head)
             (fun () -> resolve_named_type_decl head) with
           | Some type_decl -> (
-              match instantiate_alias_manifest ~make type_decl arguments' with
+              match instantiate_alias_manifest ~make type_decl resolved_arguments with
               | Some manifest -> loop manifest
               | None -> (
-                  match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
+                  match builtin_type_of_decl type_decl resolved_head resolved_arguments with
                   | Some builtin -> builtin
                   | None ->
-                      if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                      if Std.Ptr.equal arguments resolved_arguments && same_head head resolved_head then
                         ty
                       else
-                        make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+                        make
+                          (TypeRepr.Named { head = resolved_head; arguments = resolved_arguments })
                 )
             )
           | None -> (
-              match BuiltinTypeConstructors.type_of_path resolved_head.name arguments' with
+              match builtin_type_of_head resolved_head resolved_arguments with
               | Some builtin -> builtin
               | None ->
-                  if Std.Ptr.equal arguments arguments' && same_head head resolved_head then
+                  if Std.Ptr.equal arguments resolved_arguments && same_head head resolved_head then
                     ty
                   else
-                    make (TypeRepr.Named { head = resolved_head; arguments = arguments' })
+                    make (TypeRepr.Named { head = resolved_head; arguments = resolved_arguments })
             )
         )
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' =
+        let resolved_tags =
           map_preserving
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
               | Some payload_type ->
-                  let payload_type' = loop payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
+                  let resolved_payload_type = loop payload_type in
+                  if Std.Ptr.equal payload_type resolved_payload_type then
                     tag
                   else
-                    { tag with payload_type = Some payload_type' }
+                    { tag with payload_type = Some resolved_payload_type }
               | None -> tag)
             tags
         in
-        let inherited' = map_preserving loop inherited in
-        if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+        let resolved_inherited = map_preserving loop inherited in
+        if Std.Ptr.equal tags resolved_tags && Std.Ptr.equal inherited resolved_inherited then
           ty
         else
-          make (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' })
+          make (TypeRepr.PolyVariant { bound; tags = resolved_tags; inherited = resolved_inherited })
     | TypeRepr.Tuple members ->
-        let members' = map_preserving loop members in
-        if Std.Ptr.equal members members' then
+        let resolved_members = map_preserving loop members in
+        if Std.Ptr.equal members resolved_members then
           ty
         else
-          make (TypeRepr.Tuple members')
+          make (TypeRepr.Tuple resolved_members)
     | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs' = loop lhs in
-        let rhs' = loop rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        let resolved_lhs = loop lhs in
+        let resolved_rhs = loop rhs in
+        if Std.Ptr.equal lhs resolved_lhs && Std.Ptr.equal rhs resolved_rhs then
           ty
         else
-          make (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+          make (TypeRepr.Arrow { label; lhs = resolved_lhs; rhs = resolved_rhs })
     | TypeRepr.Package signature ->
-        let values' =
+        let resolved_values =
           map_preserving
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = loop value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let resolved_scheme = loop value.scheme in
+              if Std.Ptr.equal value.scheme resolved_scheme then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = resolved_scheme })
             signature.values
         in
-        if Std.Ptr.equal signature.values values' then
+        if Std.Ptr.equal signature.values resolved_values then
           ty
         else
-          make (TypeRepr.Package { values = values' })
+          make (TypeRepr.Package { values = resolved_values })
   in
   loop
 
 let find_type_expansion = fun visible_types head ->
   resolve_named_type_decl_in_index visible_types.by_id visible_types.by_path head
 
-let expand_head = fun visible_types ->
-  let expand = resolve_type_with
+let resolve_type = fun visible_types ->
+  resolve_type_with
     ~make:TypeRepr.of_desc
     ~resolve_named_type_decl:(find_type_expansion visible_types)
-    ~resolve_named_type_head:(resolve_named_type_head_in_index visible_types.by_path) in
+    ~resolve_named_type_head:(resolve_named_type_head_in_index visible_types.by_path)
+
+let expand_head = fun visible_types ->
+  let expand = resolve_type visible_types in
   fun ty ->
     let ty = TypeRepr.prune ty in
     match TypeRepr.view ty with
@@ -352,11 +550,11 @@ let expand_head = fun visible_types ->
 
 let canonicalize_scheme_with = fun canonicalize_type scheme ->
   let quantified, body = TypeScheme.to_explicit scheme in
-  let body' = canonicalize_type body in
-  if Std.Ptr.equal body body' then
+  let canonical_body = canonicalize_type body in
+  if Std.Ptr.equal body canonical_body then
     scheme
   else
-    TypeScheme.of_explicit ~quantified body'
+    TypeScheme.of_explicit ~quantified canonical_body
 
 let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   let by_path = Collections.HashMap.with_capacity 32 in
@@ -377,12 +575,12 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
         ())
   in
   let default_resolve_named_type_head = resolve_named_type_head_in_index by_path in
-  let canonicalize_type_decl (type_decl: FileSummary.type_decl) =
+  let canonicalize_type_decl_heads (type_decl: FileSummary.type_decl) =
     let (resolve_named_type_head, resolve_named_type_decl) =
       if type_decl.declaration.nonrec_ then
         nonrec_resolvers by_id by_path type_decl
       else
-        (default_resolve_named_type_head, resolve_named_type_decl_in_index by_id by_path)
+        (default_resolve_named_type_head, fun _ -> None)
     in
     let resolve_type = resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head in
     let declaration = type_decl.declaration in
@@ -413,38 +611,38 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
       |> List.map
         (fun (constructor: TypeDecl.constructor) ->
           let body = TypeScheme.body constructor.scheme in
-          let body' = resolve_type body in
+          let resolved_body = resolve_type body in
           let inline_record_labels =
             constructor.inline_record_labels
             |> Option.map
               (
                 List.map
                   (fun (label: TypeDecl.label) ->
-                    let field_type' = resolve_type label.field_type in
-                    if Std.Ptr.equal label.field_type field_type' then
+                    let resolved_field_type = resolve_type label.field_type in
+                    if Std.Ptr.equal label.field_type resolved_field_type then
                       label
                     else
-                      { label with field_type = field_type' })
+                      { label with field_type = resolved_field_type })
               )
           in
-          if Std.Ptr.equal body body' && Option.equal
+          if Std.Ptr.equal body resolved_body && Option.equal
               (fun left right ->
                 List.for_all2 Std.Ptr.equal left right)
               constructor.inline_record_labels
               inline_record_labels then
             constructor
           else
-            { constructor with scheme = TypeScheme.of_type body'; inline_record_labels })
+            { constructor with scheme = TypeScheme.of_type resolved_body; inline_record_labels })
     in
     let labels =
       declaration.labels
       |> List.map
         (fun (label: TypeDecl.label) ->
-          let field_type' = resolve_type label.field_type in
-          if Std.Ptr.equal label.field_type field_type' then
+          let resolved_field_type = resolve_type label.field_type in
+          if Std.Ptr.equal label.field_type resolved_field_type then
             label
           else
-            { label with field_type = field_type' })
+            { label with field_type = resolved_field_type })
     in
     { type_decl with declaration = { declaration with manifest; constructors; labels } }
   in
@@ -634,7 +832,7 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   in
   type_decls |> List.map
     (fun (type_decl: FileSummary.type_decl) ->
-      let canonical_type_decl = canonicalize_type_decl type_decl in
+      let canonical_type_decl = canonicalize_type_decl_heads type_decl in
       let param_variances =
         match cached_param_variances canonical_type_decl.declaration.type_constructor_id with
         | Some param_variances -> param_variances
@@ -737,39 +935,39 @@ let canonicalize_type = fun visible_types ->
     | TypeRepr.Var _ ->
         ty
     | TypeRepr.Option element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let canonical_element = loop element in
+        if Std.Ptr.equal element canonical_element then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Option element')
+          TypeRepr.of_desc (TypeRepr.Option canonical_element)
     | TypeRepr.Result (ok_ty, error_ty) ->
-        let ok_ty' = loop ok_ty in
-        let error_ty' = loop error_ty in
-        if Std.Ptr.equal ok_ty ok_ty' && Std.Ptr.equal error_ty error_ty' then
+        let canonical_ok_ty = loop ok_ty in
+        let canonical_error_ty = loop error_ty in
+        if Std.Ptr.equal ok_ty canonical_ok_ty && Std.Ptr.equal error_ty canonical_error_ty then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Result (ok_ty', error_ty'))
+          TypeRepr.of_desc (TypeRepr.Result (canonical_ok_ty, canonical_error_ty))
     | TypeRepr.Array element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let canonical_element = loop element in
+        if Std.Ptr.equal element canonical_element then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Array element')
+          TypeRepr.of_desc (TypeRepr.Array canonical_element)
     | TypeRepr.List element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let canonical_element = loop element in
+        if Std.Ptr.equal element canonical_element then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.List element')
+          TypeRepr.of_desc (TypeRepr.List canonical_element)
     | TypeRepr.Seq element ->
-        let element' = loop element in
-        if Std.Ptr.equal element element' then
+        let canonical_element = loop element in
+        if Std.Ptr.equal element canonical_element then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Seq element')
+          TypeRepr.of_desc (TypeRepr.Seq canonical_element)
     | TypeRepr.Named { head; arguments } ->
-        let arguments' = map_preserving loop arguments in
-        let head' =
+        let canonical_arguments = map_preserving loop arguments in
+        let canonical_head =
           match lookup_by_id visible_types head.type_constructor_id with
           | Some (type_decl: FileSummary.type_decl) -> TypeRepr.named_head
             ~type_constructor_id:type_decl.declaration.type_constructor_id
@@ -778,35 +976,37 @@ let canonicalize_type = fun visible_types ->
           |> Option.unwrap_or ~default:head
         in
         if
-          Std.Ptr.equal arguments arguments'
-          && IdentPath.equal head.name head'.name
-          && TypeConstructorId.equal head.type_constructor_id head'.type_constructor_id
+          Std.Ptr.equal arguments canonical_arguments
+          && IdentPath.equal head.name canonical_head.name
+          && TypeConstructorId.equal head.type_constructor_id canonical_head.type_constructor_id
         then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Named { head = head'; arguments = arguments' })
+          TypeRepr.of_desc
+            (TypeRepr.Named { head = canonical_head; arguments = canonical_arguments })
     | TypeRepr.PolyVariant { bound; tags; inherited } ->
-        let tags' =
+        let canonical_tags =
           map_preserving
             (fun (tag: TypeRepr.poly_variant_tag) ->
               match tag.payload_type with
               | Some payload_type ->
-                  let payload_type' = loop payload_type in
-                  if Std.Ptr.equal payload_type payload_type' then
+                  let canonical_payload_type = loop payload_type in
+                  if Std.Ptr.equal payload_type canonical_payload_type then
                     tag
                   else
-                    { tag with payload_type = Some payload_type' }
+                    { tag with payload_type = Some canonical_payload_type }
               | None -> tag)
             tags
         in
-        let inherited' = map_preserving loop inherited in
+        let canonical_inherited = map_preserving loop inherited in
         let ty =
-          if Std.Ptr.equal tags tags' && Std.Ptr.equal inherited inherited' then
+          if Std.Ptr.equal tags canonical_tags && Std.Ptr.equal inherited canonical_inherited then
             ty
           else
-            TypeRepr.of_desc (TypeRepr.PolyVariant { bound; tags = tags'; inherited = inherited' })
+            TypeRepr.of_desc
+              (TypeRepr.PolyVariant { bound; tags = canonical_tags; inherited = canonical_inherited })
         in
-        exact_poly_variant_alias visible_types bound tags' inherited'
+        exact_poly_variant_alias visible_types bound canonical_tags canonical_inherited
         |> Option.map
           (fun (type_decl: FileSummary.type_decl) ->
             TypeRepr.named
@@ -816,33 +1016,33 @@ let canonicalize_type = fun visible_types ->
               ~arguments:[])
         |> Option.unwrap_or ~default:ty
     | TypeRepr.Tuple members ->
-        let members' = map_preserving loop members in
-        if Std.Ptr.equal members members' then
+        let canonical_members = map_preserving loop members in
+        if Std.Ptr.equal members canonical_members then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Tuple members')
+          TypeRepr.of_desc (TypeRepr.Tuple canonical_members)
     | TypeRepr.Arrow { label; lhs; rhs } ->
-        let lhs' = loop lhs in
-        let rhs' = loop rhs in
-        if Std.Ptr.equal lhs lhs' && Std.Ptr.equal rhs rhs' then
+        let canonical_lhs = loop lhs in
+        let canonical_rhs = loop rhs in
+        if Std.Ptr.equal lhs canonical_lhs && Std.Ptr.equal rhs canonical_rhs then
           ty
         else
-          TypeRepr.of_desc (TypeRepr.Arrow { label; lhs = lhs'; rhs = rhs' })
+          TypeRepr.of_desc (TypeRepr.Arrow { label; lhs = canonical_lhs; rhs = canonical_rhs })
     | TypeRepr.Package signature ->
-        let values' =
+        let canonical_values =
           map_preserving
             (fun (value: TypeRepr.package_value) ->
-              let scheme' = loop value.scheme in
-              if Std.Ptr.equal value.scheme scheme' then
+              let canonical_scheme = loop value.scheme in
+              if Std.Ptr.equal value.scheme canonical_scheme then
                 value
               else
-                { value with scheme = scheme' })
+                { value with scheme = canonical_scheme })
             signature.values
         in
-        if Std.Ptr.equal signature.values values' then
+        if Std.Ptr.equal signature.values canonical_values then
           ty
         else
-          TypeRepr.package ~values:values'
+          TypeRepr.package ~values:canonical_values
   in
   loop
 
@@ -918,8 +1118,9 @@ let canonicalize_type_decl = fun visible_types (type_decl: FileSummary.type_decl
   { type_decl with declaration = { declaration with manifest; constructors; labels } }
 
 let type_decls_for_include = fun visible_types module_path ->
-  aliases_for_type_decls visible_types.type_decls module_path
+  aliases_for_type_decls visible_types.type_decls module_path |> rebase_type_decl_refs
 
 let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
   aliases_for_type_decls visible_types.type_decls module_path
   |> prefix_type_decls (IdentPath.of_name alias_name)
+  |> rebase_type_decl_refs

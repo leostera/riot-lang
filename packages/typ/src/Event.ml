@@ -38,6 +38,7 @@ type kind =
       source_id: SourceId.t;
       module_name: string;
       mode: analysis_mode;
+      local_module_names: string list;
       loaded_module_count: int;
       ambient_binding_count: int;
       ambient_type_decl_count: int
@@ -86,11 +87,13 @@ let parse_diagnostics_to_json = fun diagnostics ->
 let diagnostics_to_json = fun diagnostics ->
   Data.Json.Array (List.map Diagnostic.to_json diagnostics)
 
-let analysis_mode_to_string = function
+let analysis_mode_to_string = fun value ->
+  match value with
   | BaseAnalysis -> "base"
   | SnapshotAnalysis -> "snapshot"
 
-let export_status_to_string = function
+let export_status_to_string = fun value ->
+  match value with
   | TrustedExport -> "trusted"
   | ErroredExport -> "errored"
   | MissingExport -> "missing"
@@ -146,6 +149,7 @@ let to_json = fun event ->
     source_id;
     module_name;
     mode;
+    local_module_names;
     loaded_module_count;
     ambient_binding_count;
     ambient_type_decl_count
@@ -156,6 +160,7 @@ let to_json = fun event ->
       ("source_id", Data.Json.Int (SourceId.to_int source_id));
       ("module_name", Data.Json.String module_name);
       ("mode", Data.Json.String (analysis_mode_to_string mode));
+      ("local_module_names", strings_to_json local_module_names);
       ("loaded_module_count", Data.Json.Int loaded_module_count);
       ("ambient_binding_count", Data.Json.Int ambient_binding_count);
       ("ambient_type_decl_count", Data.Json.Int ambient_type_decl_count);

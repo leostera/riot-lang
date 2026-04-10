@@ -44,9 +44,17 @@ let test_store_roundtrips_current_namespace = fun _ctx ->
                   let loaded_exports = ModuleTypings.exports loaded_module |> List.map fst in
                   let package_modules = loaded_package.typings |> List.map ModuleTypings.module_name in
                   if not (List.equal String.equal loaded_exports [ "answer" ]) then
-                    Error ("unexpected module exports: " ^ String.concat ", " loaded_exports)
+                    Error (format
+                      Format.[
+                        str "unexpected module exports: ";
+                        str (String.concat ", " loaded_exports);
+                      ])
                   else if not (List.equal String.equal package_modules [ "Std" ]) then
-                    Error ("unexpected package modules: " ^ String.concat ", " package_modules)
+                    Error (format
+                      Format.[
+                        str "unexpected package modules: ";
+                        str (String.concat ", " package_modules);
+                      ])
                   else
                     Ok ()
               | None, _ ->

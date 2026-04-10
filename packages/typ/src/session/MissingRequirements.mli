@@ -6,6 +6,7 @@ open Model
 type requirement =
   | MissingRootSource of { source_id: SourceId.t }
   | MissingModuleSummary of { module_name: string; requested_by: SourceId.t list }
+  | LocalModuleCycle of { module_names: string list; source_ids: SourceId.t list }
 (** Opaque collection of missing requirements. *)
 type t
 

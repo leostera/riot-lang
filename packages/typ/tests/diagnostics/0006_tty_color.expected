@@ -70,6 +70,17 @@
     },
     {
       "id": "TYP2001",
+      "message": "unbound name: raise",
+      "name": "unbound-name",
+      "name_text": "raise",
+      "reference_span": {
+        "end": 564,
+        "start": 558
+      },
+      "severity": "error"
+    },
+    {
+      "id": "TYP2001",
       "message": "unbound name: String.to_seq",
       "name": "unbound-name",
       "name_text": "String.to_seq",
@@ -114,6 +125,39 @@
     },
     {
       "id": "TYP2001",
+      "message": "unbound name: raise",
+      "name": "unbound-name",
+      "name_text": "raise",
+      "reference_span": {
+        "end": 860,
+        "start": 854
+      },
+      "severity": "error"
+    },
+    {
+      "id": "TYP2001",
+      "message": "unbound name: min",
+      "name": "unbound-name",
+      "name_text": "min",
+      "reference_span": {
+        "end": 1000,
+        "start": 997
+      },
+      "severity": "error"
+    },
+    {
+      "id": "TYP2001",
+      "message": "unbound name: max",
+      "name": "unbound-name",
+      "name_text": "max",
+      "reference_span": {
+        "end": 1005,
+        "start": 1002
+      },
+      "severity": "error"
+    },
+    {
+      "id": "TYP2001",
       "message": "unbound name: String.starts_with",
       "name": "unbound-name",
       "name_text": "String.starts_with",
@@ -131,6 +175,17 @@
       "reference_span": {
         "end": 1209,
         "start": 1195
+      },
+      "severity": "error"
+    },
+    {
+      "id": "TYP2001",
+      "message": "unbound name: raise",
+      "name": "unbound-name",
+      "name_text": "raise",
+      "reference_span": {
+        "end": 1315,
+        "start": 1309
       },
       "severity": "error"
     }

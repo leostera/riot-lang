@@ -26,16 +26,19 @@ let sort_entries = fun entries ->
       Int.compare (span_size left.span) (span_size right.span))
 
 let of_traced_exprs = fun ~origin_map traced_exprs ->
-  traced_exprs |> List.filter_map
+  traced_exprs
+  |> List.filter_map
     (fun (trace: traced_expr) ->
-      match OriginMap.find origin_map trace.origin_id with
-      | Some origin -> Some {
-        expr_id = trace.expr_id;
-        origin_id = trace.origin_id;
-        span = origin.span;
-        inferred_type = trace.inferred_type
-      }
-      | None -> None) |> sort_entries
+      OriginMap.find origin_map trace.origin_id
+      |> Option.map
+        (fun (origin: OriginMap.origin) ->
+          {
+            expr_id = trace.expr_id;
+            origin_id = trace.origin_id;
+            span = origin.span;
+            inferred_type = trace.inferred_type
+          }))
+  |> sort_entries
 
 let entries = fun index -> index
 

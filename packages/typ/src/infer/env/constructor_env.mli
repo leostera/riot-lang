@@ -17,7 +17,7 @@ val local_only: t -> t
 
 val bind: t -> t -> t
 
-val add_open: root:IdentPath.t -> t -> t -> t
+val add_open: root:IdentPath.t -> type_decls:FileSummary.type_decl list -> t -> t -> t
 
 val entries: t -> entry list
 
@@ -36,3 +36,5 @@ val owner_type_constructor_id: entry -> TypeConstructorId.t
 val scheme: entry -> TypeScheme.t
 
 val inline_record_labels: entry -> TypeDecl.label list option
+
+val qualify_entry: root:IdentPath.t -> type_decls:FileSummary.type_decl list -> entry -> entry

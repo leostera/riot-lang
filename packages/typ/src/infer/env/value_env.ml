@@ -41,7 +41,7 @@ let is_empty = fun env ->
   | Open _
   | Map _ -> false
 
-let visible_name_for_lookup = fun path -> IdentPath.bare_name path
+let visible_name_for_lookup = IdentPath.bare_name
 
 let ident_name_of_path = fun path ->
   match IdentPath.last_name path with
@@ -216,9 +216,10 @@ let unique = fun env ->
     | binding :: rest ->
         if Collections.HashSet.contains seen (Binding.path binding) then
           loop acc rest
-        else
-          let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
+        else (
+          Collections.HashSet.insert seen (Binding.path binding) |> ignore;
           loop (binding :: acc) rest
+        )
   in
   loop [] (bindings env) |> of_bindings
 
@@ -236,9 +237,10 @@ let visible_entries = fun env ->
     | binding :: rest ->
         if Collections.HashSet.contains seen (Binding.path binding) then
           loop acc rest
-        else
-          let () = Collections.HashSet.insert seen (Binding.path binding) |> ignore in
+        else (
+          Collections.HashSet.insert seen (Binding.path binding) |> ignore;
           loop (binding :: acc) rest
+        )
   in
   loop [] (bindings env) |> of_bindings
 
@@ -295,7 +297,7 @@ let entries_for_module_alias = fun env ~alias_name ~module_path ->
     (fun binding ->
       binding
       |> Binding.with_path (IdentPath.prepend_name alias_name (Binding.path binding))
-      |> Binding.with_provenance (Binding.Module_alias { alias_name; module_path }))
+      |> Binding.with_provenance (Binding.ModuleAlias { alias_name; module_path }))
 
 let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
 

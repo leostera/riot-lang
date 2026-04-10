@@ -3,6 +3,7 @@
   "exports": [],
   "expr_traces": null,
   "file_summary": {
+    "completeness": "partial",
     "export_result": {
       "exports": [],
       "tag": "no_export"

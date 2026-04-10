@@ -18,9 +18,7 @@ let make_ident =
   let next_local_id = ref 0 in
   fun name ->
     let local_id = !next_local_id in
-    let () =
-      next_local_id := local_id + 1
-    in
+    (next_local_id := local_id + 1);
     Env.Binding.make_ident ~local_id ~name
 
 let lookup_name = fun env name ->
@@ -37,9 +35,17 @@ let test_local_open_exposes_nested_modules = fun _ctx ->
   let to_string_name = lookup_name opened "to_string" in
   let blend_name = lookup_name opened "RGB.blend" in
   if not (Option.equal String.equal to_string_name (Some "to_string")) then
-    Error ("expected to_string after open Colors, got " ^ Option.unwrap_or ~default:"<none>" to_string_name)
+    Error (format
+      Format.[
+        str "expected to_string after open Colors, got ";
+        str (Option.unwrap_or ~default:"<none>" to_string_name);
+      ])
   else if not (Option.equal String.equal blend_name (Some "blend")) then
-    Error ("expected RGB.blend after open Colors, got " ^ Option.unwrap_or ~default:"<none>" blend_name)
+    Error (format
+      Format.[
+        str "expected RGB.blend after open Colors, got ";
+        str (Option.unwrap_or ~default:"<none>" blend_name);
+      ])
   else
     Ok ()
 

@@ -1,3 +1,7 @@
+type 'a option =
+  | None
+  | Some of 'a
+
 let input = Some 1
 
 let classify =

@@ -20,7 +20,8 @@ type t = {
 
 let namespace_version = "v4"
 
-let versioned_namespace = fun suffix -> "typ/" ^ namespace_version ^ "/" ^ suffix
+let versioned_namespace = fun suffix ->
+  format Format.[ str "typ/"; str namespace_version; str "/"; str suffix ]
 
 let module_typings_namespace = versioned_namespace "module-typings/by-hash"
 
@@ -28,7 +29,7 @@ let module_typings_name_namespace = versioned_namespace "module-typings/by-name"
 
 let package_typings_namespace = versioned_namespace "module-typings/by-package"
 
-let source_hash_key = fun source_hash -> Crypto.Digest.hex source_hash
+let source_hash_key = Crypto.Digest.hex
 
 let hash_of_hex = fun hex ->
   let len = String.length hex in
@@ -48,7 +49,7 @@ let hash_of_hex = fun hex ->
         loop (index + 2)
       )
   in
-  let () = loop 0 in
+  (loop 0);
   Crypto.Hash.of_bytes bytes
 
 let create = fun contentstore () ->
@@ -178,9 +179,8 @@ and save_package_bundle = fun store ~package_name ~fingerprint typings ->
   | Ok () ->
       let bundle = Some { fingerprint; typings } in
       let _ = Collections.HashMap.insert store.package_typings_by_name package_name bundle in
-      let () =
-        typings
-        |> List.iter
+      (
+        typings |> List.iter
           (fun typings ->
             let module_name = ModuleTypings.module_name typings in
             let source_hash = ModuleTypings.source_hash typings |> source_hash_key in
@@ -193,5 +193,5 @@ and save_package_bundle = fun store ~package_name ~fingerprint typings ->
               source_hash
               (Some typings) in
             ())
-      in
+      );
       Ok ()
