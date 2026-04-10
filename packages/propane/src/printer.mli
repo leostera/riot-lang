@@ -13,7 +13,6 @@ open Std
     user ("leo", 3) = "(\"leo\", 3)"
     ```
 *)
-
 type 'value t = 'value -> string
 
 (** Function that renders a value into a diagnostic string. *)
@@ -32,10 +31,7 @@ val int64: int64 t
     Use [precision] when you want stable output in snapshots or counter-example
     reports.
 *)
-val float:
-  (** Number of digits to keep after the decimal point. *)
-  ?precision:int ->
-  float t
+val float: ?precision:int -> float t
 
 (** Print booleans as [true] or [false]. *)
 val bool: bool t

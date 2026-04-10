@@ -14,45 +14,14 @@ open Std
         (fun xs -> List.rev (List.rev xs) = xs)
     ```
 *)
-
 type property_result =
-  | (** The property held for all generated inputs. *)
-    Success
-  | (** The property failed and Propane found a counter-example.
-
-         [counter_example] is the rendered failing input, and [shrink_steps]
-         tells you how many shrinking passes were needed to minimize it.
-
-         Example:
-         ```ocaml
-         Failure {
-           counter_example = "[0; 0; 0; 0]";
-           shrink_steps = 3;
-         }
-         ```
-     *)
-    Failure of {
-      counter_example: string;
-      shrink_steps: int;
-    }
-  | (** Running the property raised an exception.
-
-         Use this to distinguish "the property returned false" from
-         "the property code crashed".
-     *)
-    Error of {
-      exception_: exn;
-      backtrace: string;
-    }
-  | (** The generated input was discarded because an assumption did not hold. *)
-    Assumption_violated
-
+  | Success
+  | Failure of { counter_example: string; shrink_steps: int }
+  | Error of { exception_: exn; backtrace: string }
+  | Assumption_violated
 (** Result of running a property. *)
-
 type test_property
-
 (** Opaque property value used by the lower-level execution API. *)
-
 type config = {
   (** Number of random inputs to try before reporting success. *)
   test_count: int;
@@ -90,14 +59,7 @@ val default_config: config
       ]
     ```
 *)
-val property:
-  (** Human-readable test name shown by the test runner. *)
-  string ->
-  (** Arbitrary used to generate and shrink inputs. *)
-  'value Arbitrary.t ->
-  (** Predicate that should hold for every generated input. *)
-  ('value -> bool) ->
-  Test.test_case
+val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Test.test_case
 
 (** Build a property value without wrapping it into [Std.Test].
 
@@ -144,11 +106,7 @@ val fail: string -> 'value
     - [Failure _] when a counter-example is found.
     - [Error _] when the property function raises.
 *)
-val check:
-  (** Optional runtime configuration for the property run. *)
-  ?config:config ->
-  test_property ->
-  property_result
+val check: ?config:config -> test_property -> property_result
 
 (** Return the display name of a property.
 

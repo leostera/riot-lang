@@ -23,7 +23,6 @@ open Std
       xs @ ys
     ```
 *)
-
 type 'value t = 'value -> 'value list
 
 (** Function that proposes smaller versions of a value. *)

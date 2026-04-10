@@ -19,7 +19,6 @@ open Std
         Generator.(map (fun (x, y) -> { x; y }) (pair int int))
     ```
 *)
-
 type 'value t = {
   (** Generator used to create candidate test values. *)
   gen: 'value Generator.t;
@@ -39,13 +38,9 @@ type 'value t = {
     shrinking, printing, or size measurement for a domain type.
 *)
 val make:
-  (** Shrinker used to minimize failing values. *)
   ?shrink:'value Shrinker.t ->
-  (** Printer used in failure output. *)
   ?print:'value Printer.t ->
-  (** Size metric used to compare smaller candidates. *)
   ?small:('value -> int) ->
-  (** Generator used to produce test values. *)
   'value Generator.t ->
   'value t
 

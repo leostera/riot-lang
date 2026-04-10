@@ -184,11 +184,7 @@ let small_int = int_range 0 100
 
 let big_int = int
 
-let positive_int = {
-  run =
-    fun rnd _size ->
-      Random.State.bits rnd land max_int;
-}
+let positive_int = { run = fun rnd _size -> Random.State.bits rnd land max_int }
 
 let negative_int =
   map (fun n -> -n) positive_int
