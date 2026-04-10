@@ -3,13 +3,10 @@ open Std
 
 (** A syntax node with position information. *)
 type ('kind, 'text) syntax_node
-
 (** A syntax token with position information. *)
 type ('kind, 'text) syntax_token
-
 (** A trivia entry with position information. *)
 type ('kind, 'text) syntax_trivia
-
 (** A syntax element: either a node or a token. *)
 type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
@@ -126,9 +123,7 @@ val new_root: ('kind, 'text) Green.node -> ('kind, 'text) syntax_node
 
 (** Encode a positioned syntax element as JSON. *)
 val to_json:
-  (** Encoder for syntax kinds. *)
   kind_to_json:('kind -> Data.Json.t) ->
-  (** Encoder for token text values. *)
   text_to_json:('text -> Data.Json.t) ->
   ('kind, 'text) syntax_element ->
   Data.Json.t

@@ -78,8 +78,7 @@ let replace_child = fun node ~index ~child ->
   in
   make_node ~kind:node.kind ~children:(loop 0 node.children)
 
-let append_child = fun node ~child ->
-  make_node ~kind:node.kind ~children:((node.children @ [ child ]))
+let append_child = fun node ~child -> make_node ~kind:node.kind ~children:(node.children @ [ child ])
 
 let child_count = fun node -> List.length node.children
 
