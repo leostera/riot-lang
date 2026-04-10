@@ -1,0 +1,104 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "number",
+            "number": {
+              "kind": "int",
+              "value": 42
+            }
+          }
+        },
+        "kind": "const",
+        "name": "answer"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "bool",
+            "value": true
+          }
+        },
+        "kind": "let",
+        "name": "ready"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "hello"
+          }
+        },
+        "kind": "const",
+        "name": "message"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "undefined"
+          }
+        },
+        "kind": "var",
+        "name": "nothing"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "null"
+          }
+        },
+        "kind": "let",
+        "name": "empty"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "number",
+            "number": {
+              "kind": "float",
+              "value": 3.14
+            }
+          }
+        },
+        "kind": "const",
+        "name": "pi"
+      },
+      "kind": "declaration"
+    }
+  ],
+  "exports": [
+    {
+      "local": "answer",
+      "name": "answer"
+    },
+    {
+      "local": "message",
+      "name": "message"
+    }
+  ],
+  "imports": [],
+  "module_name": "Literals"
+}

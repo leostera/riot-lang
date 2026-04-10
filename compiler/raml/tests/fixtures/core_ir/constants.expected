@@ -1,0 +1,122 @@
+{
+  "exports": [
+    {
+      "name": "truthy",
+      "symbol": "truthy"
+    },
+    {
+      "name": "answer",
+      "symbol": "answer"
+    },
+    {
+      "name": "pi",
+      "symbol": "pi"
+    },
+    {
+      "name": "greeting",
+      "symbol": "greeting"
+    },
+    {
+      "name": "nothing",
+      "symbol": "nothing"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "truthy",
+          "symbol": "truthy"
+        },
+        {
+          "name": "answer",
+          "symbol": "answer"
+        },
+        {
+          "name": "pi",
+          "symbol": "pi"
+        },
+        {
+          "name": "greeting",
+          "symbol": "greeting"
+        },
+        {
+          "name": "nothing",
+          "symbol": "nothing"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "bool",
+                "value": true
+              },
+              "kind": "constant"
+            },
+            "name": "truthy"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "int",
+                "value": 42
+              },
+              "kind": "constant"
+            },
+            "name": "answer"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "float",
+                "value": 3.14
+              },
+              "kind": "constant"
+            },
+            "name": "pi"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "string",
+                "value": "hello"
+              },
+              "kind": "constant"
+            },
+            "name": "greeting"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "unit"
+              },
+              "kind": "constant"
+            },
+            "name": "nothing"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "fixtures/constants.ml",
+    "unit_name": "Constants"
+  }
+}

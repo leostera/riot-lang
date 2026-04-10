@@ -1,0 +1,94 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "bool",
+            "value": true
+          }
+        },
+        "name": "truthy"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "int",
+            "value": 42
+          }
+        },
+        "name": "answer"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "float",
+            "value": 3.14
+          }
+        },
+        "name": "pi"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "hello"
+          }
+        },
+        "name": "greeting"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "unit"
+          }
+        },
+        "name": "nothing"
+      },
+      "kind": "binding"
+    }
+  ],
+  "exports": [
+    {
+      "name": "truthy",
+      "symbol": "truthy"
+    },
+    {
+      "name": "answer",
+      "symbol": "answer"
+    },
+    {
+      "name": "pi",
+      "symbol": "pi"
+    },
+    {
+      "name": "greeting",
+      "symbol": "greeting"
+    },
+    {
+      "name": "nothing",
+      "symbol": "nothing"
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "module_name": "Constants",
+  "runtime_helpers": []
+}

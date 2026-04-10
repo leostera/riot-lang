@@ -1,0 +1,72 @@
+.section __TEXT, __cstring, cstring_literals
+.p2align 0
+L__raml_str_0:
+.asciz "hello"
+
+.data
+.globl _truthy
+.p2align 3
+_truthy:
+.quad 0
+.globl _answer
+.p2align 3
+_answer:
+.quad 0
+.globl _pi
+.p2align 3
+_pi:
+.quad 0
+.globl _greeting
+.p2align 3
+_greeting:
+.quad 0
+.globl _nothing
+.p2align 3
+_nothing:
+.quad 0
+
+.text
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #48
+movz x9, #1, lsl #0
+str x9, [sp, #0]
+ldr x9, [sp, #0]
+adrp x10, _truthy@PAGE
+add x10, x10, _truthy@PAGEOFF
+str x9, [x10, #0]
+movz x9, #42, lsl #0
+str x9, [sp, #8]
+ldr x9, [sp, #8]
+adrp x10, _answer@PAGE
+add x10, x10, _answer@PAGEOFF
+str x9, [x10, #0]
+movz x9, #34079, lsl #0
+movk x9, #20971, lsl #16
+movk x9, #7864, lsl #32
+movk x9, #16393, lsl #48
+str x9, [sp, #16]
+ldr x9, [sp, #16]
+adrp x10, _pi@PAGE
+add x10, x10, _pi@PAGEOFF
+str x9, [x10, #0]
+adrp x9, L__raml_str_0@PAGE
+add x9, x9, L__raml_str_0@PAGEOFF
+str x9, [sp, #24]
+ldr x9, [sp, #24]
+adrp x10, _greeting@PAGE
+add x10, x10, _greeting@PAGEOFF
+str x9, [x10, #0]
+movz x9, #0, lsl #0
+str x9, [sp, #32]
+ldr x9, [sp, #32]
+adrp x10, _nothing@PAGE
+add x10, x10, _nothing@PAGEOFF
+str x9, [x10, #0]
+movz x0, #0, lsl #0
+add sp, sp, #48
+ldp x29, x30, [sp], #16
+ret

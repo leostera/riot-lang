@@ -1,0 +1,179 @@
+{
+  "exports": [
+    {
+      "name": "loop",
+      "symbol": "loop"
+    },
+    {
+      "name": "apply",
+      "symbol": "apply"
+    },
+    {
+      "name": "inc",
+      "symbol": "inc"
+    },
+    {
+      "name": "answer",
+      "symbol": "answer"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "loop",
+          "symbol": "loop"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "var",
+                        "name": "value"
+                      }
+                    ],
+                    "callee": {
+                      "function": "loop",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "value"
+                ]
+              }
+            },
+            "name": "loop"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "recursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "apply",
+          "symbol": "apply"
+        },
+        {
+          "name": "inc",
+          "symbol": "inc"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "var",
+                        "name": "value"
+                      }
+                    ],
+                    "callee": {
+                      "expr": {
+                        "kind": "var",
+                        "name": "f"
+                      },
+                      "kind": "indirect"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "f",
+                  "value"
+                ]
+              }
+            },
+            "name": "apply"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "var",
+                        "name": "value"
+                      }
+                    ],
+                    "callee": {
+                      "function": "succ",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "value"
+                ]
+              }
+            },
+            "name": "inc"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "answer",
+          "symbol": "answer"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 41
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "inc",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "answer"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "fixtures/functions.ml",
+    "unit_name": "Functions"
+  }
+}

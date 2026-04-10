@@ -1,0 +1,12 @@
+[package]
+name = "raml"
+version = "0.0.17"
+
+[lib]
+path = "src/raml.ml"
+
+[dependencies]
+asm = { path = "../asm", version = "*" }
+std = "*"
+syn = { path = "../../packages/syn", version = "*" }
+typ = { path = "../../packages/typ", version = "*" }

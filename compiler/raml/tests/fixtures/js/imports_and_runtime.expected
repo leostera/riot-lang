@@ -1,0 +1,64 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "hello"
+                }
+              }
+            ],
+            "callee": {
+              "import": {
+                "from": "./fmt.js",
+                "imported": "format",
+                "local": "format"
+              },
+              "kind": "imported"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "message"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "identifier",
+              "name": "message"
+            }
+          ],
+          "callee": {
+            "helper": {
+              "local": "$println",
+              "module_name": "riot/std.js",
+              "symbol": "println"
+            },
+            "kind": "runtime"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./fmt.js",
+      "imported": "format",
+      "local": "format"
+    }
+  ],
+  "module_name": "Imports_and_runtime"
+}

@@ -1,0 +1,9 @@
+{
+  "has_trailing_newline": true,
+  "kind": "implementation",
+  "nonempty_lines": 1,
+  "relpath": "hello.ml",
+  "source_bytes": 16,
+  "source_lines": 1,
+  "unit_name": "Hello"
+}

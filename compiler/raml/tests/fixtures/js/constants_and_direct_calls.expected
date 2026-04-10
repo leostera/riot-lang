@@ -1,0 +1,89 @@
+{
+  "program": {
+    "body": [
+      {
+        "declaration": {
+          "init": {
+            "kind": "literal",
+            "literal": {
+              "kind": "number",
+              "number": {
+                "kind": "int",
+                "value": 41
+              }
+            }
+          },
+          "kind": "const",
+          "name": "answer"
+        },
+        "kind": "declaration"
+      },
+      {
+        "declaration": {
+          "init": {
+            "kind": "literal",
+            "literal": {
+              "kind": "bool",
+              "value": true
+            }
+          },
+          "kind": "const",
+          "name": "ready"
+        },
+        "kind": "declaration"
+      },
+      {
+        "declaration": {
+          "init": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "identifier",
+                  "name": "answer"
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "succ"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "const",
+          "name": "next"
+        },
+        "kind": "declaration"
+      },
+      {
+        "declaration": {
+          "init": {
+            "kind": "literal",
+            "literal": {
+              "kind": "undefined"
+            }
+          },
+          "kind": "const",
+          "name": "nothing"
+        },
+        "kind": "declaration"
+      }
+    ],
+    "exports": [
+      {
+        "local": "answer",
+        "name": "answer"
+      },
+      {
+        "local": "ready",
+        "name": "ready"
+      },
+      {
+        "local": "next",
+        "name": "next"
+      }
+    ],
+    "imports": [],
+    "module_name": "Constants_and_direct_calls"
+  },
+  "status": "ok"
+}

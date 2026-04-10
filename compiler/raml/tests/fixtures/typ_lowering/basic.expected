@@ -1,0 +1,111 @@
+{
+  "compilation_unit": {
+    "exports": [
+      {
+        "name": "answer",
+        "symbol": "answer"
+      },
+      {
+        "name": "id",
+        "symbol": "id"
+      },
+      {
+        "name": "picked",
+        "symbol": "picked"
+      }
+    ],
+    "init": [
+      {
+        "exports": [
+          {
+            "name": "answer",
+            "symbol": "answer"
+          }
+        ],
+        "items": [
+          {
+            "binding": {
+              "expr": {
+                "constant": {
+                  "kind": "int",
+                  "value": 42
+                },
+                "kind": "constant"
+              },
+              "name": "answer"
+            },
+            "kind": "binding"
+          }
+        ],
+        "rec_flag": "nonrecursive"
+      },
+      {
+        "exports": [
+          {
+            "name": "id",
+            "symbol": "id"
+          }
+        ],
+        "items": [
+          {
+            "binding": {
+              "expr": {
+                "kind": "lambda",
+                "lambda": {
+                  "body": {
+                    "kind": "var",
+                    "name": "x"
+                  },
+                  "params": [
+                    "x"
+                  ]
+                }
+              },
+              "name": "id"
+            },
+            "kind": "binding"
+          }
+        ],
+        "rec_flag": "nonrecursive"
+      },
+      {
+        "exports": [
+          {
+            "name": "picked",
+            "symbol": "picked"
+          }
+        ],
+        "items": [
+          {
+            "binding": {
+              "expr": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "kind": "var",
+                      "name": "answer"
+                    }
+                  ],
+                  "callee": {
+                    "function": "id",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "name": "picked"
+            },
+            "kind": "binding"
+          }
+        ],
+        "rec_flag": "nonrecursive"
+      }
+    ],
+    "unit_id": {
+      "kind": "implementation",
+      "relpath": "compiler/raml/tests/fixtures/typ_lowering/basic.ml",
+      "unit_name": "Basic"
+    }
+  },
+  "status": "ok"
+}

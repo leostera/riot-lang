@@ -1,0 +1,9 @@
+{
+  "errors": [
+    {
+      "kind": "unsupported_expr",
+      "reason": "expression form is outside the first Typ -> Raml lowering slice"
+    }
+  ],
+  "status": "error"
+}
