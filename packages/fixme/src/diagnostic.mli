@@ -6,7 +6,6 @@ type severity =
   | Warning
   | Info
   | Hint
-
 (** Diagnostic classification.
 
     [Known] is used for diagnostics backed by a rule with a stable message.
@@ -15,7 +14,6 @@ type severity =
 type kind =
   | Known of { rule_id: string; message: string }
   | Generic of { rule_id: string; message: string }
-
 (** Diagnostic reported by a rule or traversal. *)
 type t
 
@@ -25,15 +23,10 @@ type t
     hint shown to the user.
 *)
 val make:
-  (** Severity of the diagnostic. *)
   severity:severity ->
-  (** Diagnostic kind and rule identity. *)
   kind:kind ->
-  (** Source span covered by the diagnostic. *)
   span:Syn.Ceibo.Span.t ->
-  (** Optional short suggestion shown with the diagnostic. *)
   ?suggestion:string ->
-  (** Optional autofix attached to the diagnostic. *)
   ?fix:Fix.fix ->
   unit ->
   t

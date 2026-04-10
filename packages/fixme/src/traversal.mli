@@ -9,9 +9,7 @@ type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
 type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
-
 (** {1 Finding Nodes} *)
-
 (** Return all nodes in [tree] that satisfy [predicate].
 
     Use this when the selection logic is more specific than a syntax kind
@@ -40,7 +38,6 @@ val find_by_kind: Syn.SyntaxKind.t -> red_tree -> red_node list
 val find_by_kinds: Syn.SyntaxKind.t list -> red_tree -> red_node list
 
 (** {1 Token Queries} *)
-
 (** Return all tokens in [tree] that satisfy [predicate]. *)
 val find_tokens: (red_token -> bool) -> red_tree -> red_token list
 
@@ -83,12 +80,10 @@ type 'acc visitor = {
 val fold: 'acc visitor -> 'acc -> red_tree -> 'acc
 
 (** {1 Utilities} *)
-
 (** Return `true` if the syntax kind is trivia. *)
 val is_trivia: Syn.SyntaxKind.t -> bool
 
 (** {1 Typed CST Helpers} *)
-
 (** Return the expressions reachable from the structure item.
 
     Use this when a rule operates over expressions but starts from typed CST

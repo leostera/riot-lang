@@ -2,13 +2,10 @@ open Std
 
 (** Rule definition. *)
 type t
-
 (** Green tree passed through rule infrastructure when needed. *)
 type green_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Green.node
-
 (** Red tree used during rule traversal. *)
 type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
-
 (** Source context made available to a rule run. *)
 type context = {
   (** Path of the file being checked. *)
@@ -25,15 +22,10 @@ type context = {
     provide the longer markdown explanation shown when the rule is documented.
 *)
 val make:
-  (** Stable rule identifier. *)
   id:string ->
-  (** Short rule description shown in lists and reports. *)
   description:string ->
-  (** Longer markdown explanation for the rule. *)
   explain:string ->
-  (** Whether the rule is enabled by default. *)
   ?enabled:bool ->
-  (** Rule implementation. *)
   run:(context -> red_tree -> Diagnostic.t list) ->
   unit ->
   t

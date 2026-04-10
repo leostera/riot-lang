@@ -6,13 +6,11 @@ type progress_phase =
   | CstBuilt
   | RuleStarted of { rule_id: string }
   | RuleFinished of { rule_id: string; diagnostics: int }
-
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
 type progress_event = {
   timestamp_ms: int;
   phase: progress_phase;
 }
-
 (** Result of running rules against one source file. *)
 type result = {
   (** Green tree produced from the parsed source. *)
@@ -29,7 +27,6 @@ type result = {
     per-rule execution phases.
 *)
 val run:
-  (** Rules to execute. *)
   rules:Rule.t list -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
 
 (** Run a single rule against source text. *)

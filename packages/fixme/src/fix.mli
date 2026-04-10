@@ -4,7 +4,6 @@ open Std
 type target =
   | Node of Syn.Cst.syntax_node
   | Token of Syn.Cst.syntax_token
-
 (** Replacement content for an edit.
 
     Use [SourceOfNode] or [SourceOfToken] when you want to preserve the exact
@@ -14,7 +13,6 @@ type replacement =
   | SourceOfNode of Syn.Cst.syntax_node
   | SourceOfToken of Syn.Cst.syntax_token
   | Text of string
-
 (** One syntax-directed edit operation. *)
 type operation =
   | Delete of { target: target }
@@ -22,7 +20,6 @@ type operation =
   | InsertBefore of { anchor: target; content: replacement }
   | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
-
 (** A named fix composed of one or more edit operations. *)
 type fix = {
   (** Human-readable fix title shown to users. *)
@@ -30,7 +27,6 @@ type fix = {
   (** Operations applied when the fix is executed. *)
   operations: operation list;
 }
-
 (** Concrete text edit produced after lowering a syntax-directed fix. *)
 type text_edit = {
   span: Syn.Ceibo.Span.t;

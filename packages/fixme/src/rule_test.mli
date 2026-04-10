@@ -17,24 +17,10 @@ type result = {
     Use this in rule tests when you want to assert both diagnostics and the
     effect of any produced fixes.
 *)
-val run:
-  (** Rules to execute. *)
-  rules:Rule.t list ->
-  (** Optional filename reported to the rule context. *)
-  ?filename:Path.t ->
-  (** Source text under test. *)
-  string ->
-  (result, string) Result.t
+val run: rules:Rule.t list -> ?filename:Path.t -> string -> (result, string) Result.t
 
 (** Run a single rule against source text.
 
     This is a convenience wrapper around [run] for one-rule tests.
 *)
-val run_rule:
-  (** Rule to execute. *)
-  rule:Rule.t ->
-  (** Optional filename reported to the rule context. *)
-  ?filename:Path.t ->
-  (** Source text under test. *)
-  string ->
-  (result, string) Result.t
+val run_rule: rule:Rule.t -> ?filename:Path.t -> string -> (result, string) Result.t
