@@ -5,6 +5,8 @@ open Typ.Session
 
 let ( let* ) = Result.and_then
 
+module LoadedModules = Typ.Model.LoadedModules
+
 let lint_rules = Riot_fix.Pipeline.default_rules ()
 
 type document = {
@@ -18,6 +20,12 @@ type fixable_lint_diagnostic = {
   diagnostic: Riot_fix.Diagnostic.t;
   lsp_diagnostic: Lsp.Diagnostic.t;
   fix: Riot_fix.Fix.fix;
+}
+
+type typ_query_context = {
+  snapshot: Snapshot.t;
+  source_id: SourceId.t;
+  analysis: SourceAnalysis.t;
 }
 
 type t = {
@@ -240,7 +248,7 @@ let merge_module_exports = fun preferred fallback ->
     match remaining with
     | [] -> List.rev acc
     | ((name, _) as export) :: tail ->
-        if List.mem name seen then
+        if List.exists (Typ.Model.SurfacePath.equal name) seen then
           loop seen acc tail
         else
           loop (name :: seen) (export :: acc) tail
@@ -248,11 +256,11 @@ let merge_module_exports = fun preferred fallback ->
   loop [] [] (preferred @ fallback)
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  if Typ.Model.IdentPath.is_empty type_decl.scope_path then
+  if Typ.Model.SurfacePath.is_empty type_decl.scope_path then
     type_decl.declaration.type_name
   else
-    Typ.Model.IdentPath.append_name type_decl.scope_path type_decl.declaration.type_name
-    |> Typ.Model.IdentPath.to_string
+    Typ.Model.SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+    |> Typ.Model.SurfacePath.to_string
 
 let merge_module_type_decls = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -296,25 +304,10 @@ let merge_module_typings = fun preferred fallback ->
   typings_with_payload template ~source_hash ~exports ~type_decls
 
 let merge_loaded_module_typings = fun preferred fallback ->
-  let rec loop order merged remaining =
-    match remaining with
-    | [] ->
-        order |> List.rev |> List.filter_map
-          (fun module_name ->
-            List.assoc_opt module_name merged)
-    | summary :: tail ->
-        let module_name = ModuleTypings.module_name summary in
-        let (order, merged) =
-          match List.assoc_opt module_name merged with
-          | None -> (module_name :: order, (module_name, summary) :: merged)
-          | Some existing -> (
-            order,
-            (module_name, merge_module_typings existing summary) :: List.remove_assoc module_name merged
-          )
-        in
-        loop order merged tail
-  in
-  loop [] [] (preferred @ fallback)
+  LoadedModules.merge
+    ~preferred:(LoadedModules.of_list preferred)
+    ~fallback:(LoadedModules.of_list fallback)
+    ~combine:merge_module_typings
 
 let typ_session_with_paths = fun ~config paths ->
   paths |> List.fold_left
@@ -346,7 +339,8 @@ let module_typings_for_roots = fun session roots ->
         (fun source_id ->
           match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
           | Ok snapshot -> Typ.Query.module_typings_of snapshot source_id
-          | Error _ -> None) |> merge_loaded_module_typings []
+          | Error _ -> None)
+      |> fun typings -> LoadedModules.values (merge_loaded_module_typings typings [])
 
 let workspace_dependency_packages = fun ~include_dev (workspace: Riot_model.Workspace.t) (
   pkg: Riot_model.Package.t
@@ -373,20 +367,26 @@ let workspace_module_typings_for_package =
     | Some typings ->
         typings
     | None when List.mem pkg.name visiting ->
-        []
+        LoadedModules.empty
     | None ->
         let dependency_typings = workspace_dependency_packages ~include_dev:false workspace pkg
-        |> List.concat_map
-          (fun dependency_pkg -> load cache typ_store workspace ~visiting:(pkg.name :: visiting) dependency_pkg) in
+        |> List.fold_left
+          (fun loaded_modules dependency_pkg ->
+            LoadedModules.merge
+              ~preferred:loaded_modules
+              ~fallback:(load cache typ_store workspace ~visiting:(pkg.name :: visiting) dependency_pkg)
+              ~combine:merge_module_typings)
+          LoadedModules.empty in
         let package_typings =
           match load_package_module_typings_from_store typ_store pkg with
-          | Some typings -> typings
+          | Some typings -> LoadedModules.of_list typings
           | None ->
-              let loaded_modules = merge_loaded_module_typings
-                dependency_typings
-                Typ.Config.default.loaded_modules in
+              let loaded_modules = LoadedModules.merge
+                ~preferred:dependency_typings
+                ~fallback:Typ.Config.default.loaded_modules
+                ~combine:merge_module_typings in
               let config = Typ.Config.default
-              |> Typ.Config.with_loaded_modules ~loaded_modules
+              |> Typ.Config.with_loaded_module_index ~loaded_modules
               |> Typ.Config.with_store ~store:(Some typ_store) in
               let root_paths = package_library_typ_source_files pkg in
               let (session, source_ids, sources) = typ_session_with_paths
@@ -411,9 +411,12 @@ let workspace_module_typings_for_package =
                 | _ -> module_typings_for_roots session roots
               in
               let () = persist_module_typings typ_store ~package_name:pkg.name typings in
-              typings
+              LoadedModules.of_list typings
         in
-        let typings = merge_loaded_module_typings package_typings dependency_typings in
+        let typings = LoadedModules.merge
+          ~preferred:package_typings
+          ~fallback:dependency_typings
+          ~combine:merge_module_typings in
         let () =
           cache := (pkg.name, typings) :: !cache
         in
@@ -474,19 +477,28 @@ let typ_config_for_document = fun state ->
                   ~include_dev:true
                   workspace
                   pkg
-                |> List.concat_map
-                  (fun dependency_pkg ->
-                    workspace_module_typings_for_package summary_cache typ_store workspace dependency_pkg) in
-                let loaded_modules = merge_loaded_module_typings
-                  dependency_summaries
-                  Typ.Config.default.loaded_modules in
+                |> List.fold_left
+                  (fun loaded_modules dependency_pkg ->
+                    LoadedModules.merge
+                      ~preferred:loaded_modules
+                      ~fallback:(workspace_module_typings_for_package
+                        summary_cache
+                        typ_store
+                        workspace
+                        dependency_pkg)
+                      ~combine:merge_module_typings)
+                  LoadedModules.empty in
+                let loaded_modules = LoadedModules.merge
+                  ~preferred:dependency_summaries
+                  ~fallback:Typ.Config.default.loaded_modules
+                  ~combine:merge_module_typings in
                 Typ.Config.default
-                |> Typ.Config.with_loaded_modules ~loaded_modules
+                |> Typ.Config.with_loaded_module_index ~loaded_modules
                 |> Typ.Config.with_store ~store:(Some typ_store)
           )
       )
 
-let typ_analysis_for_document = fun state ->
+let typ_snapshot_for_document = fun state ->
   fun (document: document) ->
     let config = typ_config_for_document state document in
     let current_key =
@@ -538,11 +550,9 @@ let typ_analysis_for_document = fun state ->
               | None -> ()
               | Some store -> persist_module_typings_for_source store snapshot source_id
             in
-            Typ.Query.analysis_of_source snapshot source_id
-        | Error _ ->
-            Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
-            |> fun snapshot ->
-              Typ.Query.analysis_of_source snapshot source_id
+            Some (snapshot, source_id)
+        | Error _ -> Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
+        |> fun snapshot -> Some (snapshot, source_id)
       )
     | (session, None, sources) -> (
         match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
@@ -564,16 +574,25 @@ let typ_analysis_for_document = fun state ->
                   | None -> ()
                   | Some store -> persist_module_typings_for_source store snapshot source_id
                 in
-                Typ.Query.analysis_of_source snapshot source_id
-            | Error _ ->
-                Snapshot.make
-                  ~revision:document.version
-                  ~roots:[ source_id ]
-                  ~config
-                  ~sources:(sources @ [ source ])
-                |> fun snapshot ->
-                  Typ.Query.analysis_of_source snapshot source_id
+                Some (snapshot, source_id)
+            | Error _ -> Snapshot.make
+              ~revision:document.version
+              ~roots:[ source_id ]
+              ~config
+              ~sources:(sources @ [ source ])
+            |> fun snapshot -> Some (snapshot, source_id)
       )
+
+let typ_query_context_for_document = fun state ->
+  fun document ->
+    match typ_snapshot_for_document state document with
+    | None -> None
+    | Some (snapshot, source_id) -> Typ.Query.analysis_of_source snapshot source_id
+    |> Option.map (fun analysis -> { snapshot; source_id; analysis })
+
+let typ_analysis_for_document = fun state ->
+  fun document ->
+    typ_query_context_for_document state document |> Option.map (fun context -> context.analysis)
 
 let diagnostic_to_lsp = fun text ->
   fun (diagnostic: Syn.Diagnostic.t) ->
@@ -762,18 +781,423 @@ let publish_diagnostics = fun state ->
     } in
     Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
 
+let query_position_of_lsp_position = fun text position ->
+  match Lsp.Utf16.offset_of_position text position with
+  | Error _ -> None
+  | Ok offset -> Some (Position.make ~offset)
+
+let range_of_span = fun text span ->
+  Lsp.Utf16.range_of_offsets text ~start_offset:span.Ceibo.Span.start ~end_offset:span.end_
+
+let range_of_syntax_node = fun text syntax_node ->
+  range_of_span text (Syn.Cst.token_body_span syntax_node)
+
+let range_of_token = fun text token -> range_of_span text (Syn.Cst.Token.span token)
+
+let range_of_tokens = fun text tokens ->
+  match tokens with
+  | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
+  | first :: rest ->
+      let last =
+        List.fold_left (fun _ token -> token) first rest
+      in
+      let first_span = Syn.Cst.Token.span first in
+      let last_span = Syn.Cst.Token.span last in
+      Lsp.Utf16.range_of_offsets text ~start_offset:first_span.start ~end_offset:last_span.end_
+
+let text_of_name_tokens = fun tokens -> tokens |> List.map Syn.Cst.Token.text |> String.concat ""
+
+let rec binding_name_tokens_of_pattern = function
+  | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some [ name_token ]
+  | Syn.Cst.Pattern.Operator { operator_tokens; _ } -> Some operator_tokens
+  | Syn.Cst.Pattern.Alias { name_token; _ } -> Some [ name_token ]
+  | Syn.Cst.Pattern.Typed { pattern; _ }
+  | Syn.Cst.Pattern.Lazy { pattern; _ }
+  | Syn.Cst.Pattern.LocalOpen { pattern; _ } -> binding_name_tokens_of_pattern pattern
+  | Syn.Cst.Pattern.Parenthesized { inner; _ } -> binding_name_tokens_of_pattern inner
+  | _ -> None
+
+let rec value_like_type_is_function = function
+  | Syn.Cst.CoreType.Arrow _ -> true
+  | Syn.Cst.CoreType.Alias { type_; _ }
+  | Syn.Cst.CoreType.Attribute { type_; _ }
+  | Syn.Cst.CoreType.Parenthesized { inner=type_; _ }
+  | Syn.Cst.CoreType.Poly { body=type_; _ } -> value_like_type_is_function type_
+  | _ -> false
+
+let symbol_kind_of_type_definition = function
+  | Syn.Cst.TypeDefinition.Variant _
+  | Syn.Cst.TypeDefinition.PolyVariant _ -> Lsp.Symbol_kind.Enum
+  | Syn.Cst.TypeDefinition.Record _ -> Lsp.Symbol_kind.Struct
+  | Syn.Cst.TypeDefinition.Abstract
+  | Syn.Cst.TypeDefinition.Alias _
+  | Syn.Cst.TypeDefinition.Extensible _
+  | Syn.Cst.TypeDefinition.FirstClassModule _
+  | Syn.Cst.TypeDefinition.Object _ -> Lsp.Symbol_kind.Struct
+
+let symbol_children = function
+  | [] -> None
+  | children -> Some children
+
+let document_symbol_of_named_item = fun ~text ~name ~kind ~syntax_node ~selection_range ?detail ?children () ->
+  {
+    Lsp.Document_symbol_item.name;
+    detail;
+    kind;
+    range = range_of_syntax_node text syntax_node;
+    selection_range;
+    children;
+  }
+
+let rec let_binding_group_symbols = fun text (binding: Syn.Cst.LetBinding.t) ->
+  let current =
+    match binding_name_tokens_of_pattern (Syn.Cst.LetBinding.binding_pattern binding) with
+    | None -> []
+    | Some name_tokens ->
+        let kind =
+          if Syn.Cst.LetBinding.is_function binding then
+            Lsp.Symbol_kind.Function
+          else
+            Lsp.Symbol_kind.Variable
+        in
+        [
+          document_symbol_of_named_item
+            ~text
+            ~name:(text_of_name_tokens name_tokens)
+            ~kind
+            ~syntax_node:(Syn.Cst.LetBinding.syntax_node binding)
+            ~selection_range:(range_of_tokens text name_tokens)
+            ()
+        ]
+  in
+  current @ (
+    match Syn.Cst.LetBinding.and_binding binding with
+    | None -> []
+    | Some next -> let_binding_group_symbols text next
+  )
+
+let rec type_declaration_group_symbols = fun text (declaration: Syn.Cst.TypeDeclaration.t) ->
+  let current = [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
+      ~kind:(symbol_kind_of_type_definition (Syn.Cst.TypeDeclaration.type_definition declaration))
+      ~syntax_node:(Syn.Cst.TypeDeclaration.syntax_node declaration)
+      ~selection_range:(range_of_token text (Syn.Cst.TypeDeclaration.name_token declaration))
+      ()
+  ] in
+  current @ (
+    match Syn.Cst.TypeDeclaration.next_and_declaration declaration with
+    | None -> []
+    | Some next -> type_declaration_group_symbols text next
+  )
+
+let rec module_structure_group_symbols = fun text (declaration: Syn.Cst.ModuleStructure.t) ->
+  let children = module_expression_symbols
+    text
+    (Syn.Cst.ModuleStructure.module_expression declaration) in
+  let current = [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Cst.ModuleStructure.name declaration)
+      ~kind:Lsp.Symbol_kind.Module
+      ~syntax_node:(Syn.Cst.ModuleStructure.syntax_node declaration)
+      ~selection_range:(range_of_token text (Syn.Cst.ModuleStructure.module_name_token declaration))
+      ?children:(symbol_children children)
+      ()
+  ] in
+  current @ (
+    match Syn.Cst.ModuleStructure.next_and_declaration declaration with
+    | None -> []
+    | Some next -> module_structure_group_symbols text next
+  )
+
+and module_signature_group_symbols = fun text (declaration: Syn.Cst.ModuleSignature.t) ->
+  let children =
+    match Syn.Cst.ModuleSignature.definition declaration with
+    | Signature module_type -> module_type_symbols text module_type
+    | Alias module_expression -> module_expression_symbols text module_expression
+  in
+  let current = [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Cst.ModuleSignature.name declaration)
+      ~kind:Lsp.Symbol_kind.Module
+      ~syntax_node:(Syn.Cst.ModuleSignature.syntax_node declaration)
+      ~selection_range:(range_of_token text (Syn.Cst.ModuleSignature.module_name_token declaration))
+      ?children:(symbol_children children)
+      ()
+  ] in
+  current @ (
+    match Syn.Cst.ModuleSignature.next_and_declaration declaration with
+    | None -> []
+    | Some next -> module_signature_group_symbols text next
+  )
+
+and module_expression_symbols = fun text ->
+  function
+  | Syn.Cst.ModuleExpression.Structure _ as module_expression -> (
+      match Syn.CstBuilder.structure_items_of_module_expression module_expression with
+      | Ok items -> structure_item_symbols text items
+      | Error _ -> []
+    )
+  | Syn.Cst.ModuleExpression.Functor { body; _ } ->
+      module_expression_symbols text body
+  | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
+  | Syn.Cst.ModuleExpression.Parenthesized { inner=module_expression; _ }
+  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
+      module_expression_symbols text module_expression
+  | Syn.Cst.ModuleExpression.Path _
+  | Syn.Cst.ModuleExpression.Apply _
+  | Syn.Cst.ModuleExpression.ApplyUnit _
+  | Syn.Cst.ModuleExpression.ModuleUnpack _
+  | Syn.Cst.ModuleExpression.Extension _ ->
+      []
+
+and module_type_symbols = fun text ->
+  function
+  | Syn.Cst.ModuleType.Signature _ as module_type -> (
+      match Syn.CstBuilder.signature_items_of_module_type module_type with
+      | Ok items -> signature_item_symbols text items
+      | Error _ -> []
+    )
+  | Syn.Cst.ModuleType.Functor { result; _ } ->
+      module_type_symbols text result
+  | Syn.Cst.ModuleType.With { base; _ }
+  | Syn.Cst.ModuleType.Parenthesized { inner=base; _ }
+  | Syn.Cst.ModuleType.Attribute { module_type=base; _ } ->
+      module_type_symbols text base
+  | Syn.Cst.ModuleType.Path _
+  | Syn.Cst.ModuleType.TypeOf _
+  | Syn.Cst.ModuleType.Extension _ ->
+      []
+
+and structure_item_symbols = fun text items ->
+  items |> List.concat_map
+    (fun item ->
+      match item with
+      | Syn.Cst.StructureItem.TypeDeclaration declaration ->
+          type_declaration_group_symbols text declaration
+      | Syn.Cst.StructureItem.TypeExtension declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token declaration))
+              ~kind:Lsp.Symbol_kind.Enum
+              ~syntax_node:(Syn.Cst.TypeExtension.syntax_node declaration)
+              ~selection_range:(range_of_token text (Syn.Cst.TypeExtension.name_token declaration))
+              ()
+          ]
+      | Syn.Cst.StructureItem.LetBinding binding ->
+          let_binding_group_symbols text binding
+      | Syn.Cst.StructureItem.ClassDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.ClassDefinition.name declaration)
+              ~kind:Lsp.Symbol_kind.Class
+              ~syntax_node:(Syn.Cst.ClassDefinition.syntax_node declaration)
+              ~selection_range:(range_of_token
+                text
+                (Syn.Cst.ClassDefinition.class_name_token declaration))
+              ()
+          ]
+      | Syn.Cst.StructureItem.ClassTypeDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text declaration.class_type_name)
+              ~kind:Lsp.Symbol_kind.Interface
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_token text declaration.class_type_name)
+              ()
+          ]
+      | Syn.Cst.StructureItem.ModuleDeclaration declaration ->
+          module_structure_group_symbols text declaration
+      | Syn.Cst.StructureItem.ModuleTypeDeclaration declaration ->
+          let children =
+            match Syn.Cst.ModuleTypeDeclaration.module_type declaration with
+            | None -> []
+            | Some module_type -> module_type_symbols text module_type
+          in
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.ModuleTypeDeclaration.name declaration)
+              ~kind:Lsp.Symbol_kind.Interface
+              ~syntax_node:(Syn.Cst.ModuleTypeDeclaration.syntax_node declaration)
+              ~selection_range:(range_of_token
+                text
+                (Syn.Cst.ModuleTypeDeclaration.module_type_name_token declaration))
+              ?children:(symbol_children children)
+              ()
+          ]
+      | Syn.Cst.StructureItem.ExternalDeclaration declaration ->
+          let kind =
+            if value_like_type_is_function declaration.type_ then
+              Lsp.Symbol_kind.Function
+            else
+              Lsp.Symbol_kind.Variable
+          in
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(text_of_name_tokens declaration.name_tokens)
+              ~kind
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_tokens text declaration.name_tokens)
+              ()
+          ]
+      | Syn.Cst.StructureItem.ExceptionDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text declaration.name_token)
+              ~kind:Lsp.Symbol_kind.Event
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_token text declaration.name_token)
+              ()
+          ]
+      | Syn.Cst.StructureItem.Expression _
+      | Syn.Cst.StructureItem.Attribute _
+      | Syn.Cst.StructureItem.Extension _
+      | Syn.Cst.StructureItem.OpenStatement _
+      | Syn.Cst.StructureItem.Docstring _
+      | Syn.Cst.StructureItem.Comment _
+      | Syn.Cst.StructureItem.IncludeStatement _ ->
+          [])
+
+and signature_item_symbols = fun text items ->
+  items |> List.concat_map
+    (fun item ->
+      match item with
+      | Syn.Cst.SignatureItem.TypeDeclaration declaration ->
+          type_declaration_group_symbols text declaration
+      | Syn.Cst.SignatureItem.TypeExtension declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token declaration))
+              ~kind:Lsp.Symbol_kind.Enum
+              ~syntax_node:(Syn.Cst.TypeExtension.syntax_node declaration)
+              ~selection_range:(range_of_token text (Syn.Cst.TypeExtension.name_token declaration))
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ClassDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.ClassDeclaration.name declaration)
+              ~kind:Lsp.Symbol_kind.Class
+              ~syntax_node:(Syn.Cst.ClassDeclaration.syntax_node declaration)
+              ~selection_range:(range_of_token
+                text
+                (Syn.Cst.ClassDeclaration.class_name_token declaration))
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ClassTypeDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text declaration.class_type_name)
+              ~kind:Lsp.Symbol_kind.Interface
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_token text declaration.class_type_name)
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ModuleDeclaration declaration ->
+          module_signature_group_symbols text declaration
+      | Syn.Cst.SignatureItem.ModuleTypeDeclaration declaration ->
+          let children =
+            match Syn.Cst.ModuleTypeDeclaration.module_type declaration with
+            | None -> []
+            | Some module_type -> module_type_symbols text module_type
+          in
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.ModuleTypeDeclaration.name declaration)
+              ~kind:Lsp.Symbol_kind.Interface
+              ~syntax_node:(Syn.Cst.ModuleTypeDeclaration.syntax_node declaration)
+              ~selection_range:(range_of_token
+                text
+                (Syn.Cst.ModuleTypeDeclaration.module_type_name_token declaration))
+              ?children:(symbol_children children)
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ValueDeclaration declaration ->
+          let kind =
+            if value_like_type_is_function declaration.type_ then
+              Lsp.Symbol_kind.Function
+            else
+              Lsp.Symbol_kind.Variable
+          in
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(text_of_name_tokens declaration.name_tokens)
+              ~kind
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_tokens text declaration.name_tokens)
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ExternalDeclaration declaration ->
+          let kind =
+            if value_like_type_is_function declaration.type_ then
+              Lsp.Symbol_kind.Function
+            else
+              Lsp.Symbol_kind.Variable
+          in
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(text_of_name_tokens declaration.name_tokens)
+              ~kind
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_tokens text declaration.name_tokens)
+              ()
+          ]
+      | Syn.Cst.SignatureItem.ExceptionDeclaration declaration ->
+          [
+            document_symbol_of_named_item
+              ~text
+              ~name:(Syn.Cst.Token.text declaration.name_token)
+              ~kind:Lsp.Symbol_kind.Event
+              ~syntax_node:declaration.syntax_node
+              ~selection_range:(range_of_token text declaration.name_token)
+              ()
+          ]
+      | Syn.Cst.SignatureItem.Attribute _
+      | Syn.Cst.SignatureItem.Extension _
+      | Syn.Cst.SignatureItem.OpenStatement _
+      | Syn.Cst.SignatureItem.Docstring _
+      | Syn.Cst.SignatureItem.Comment _
+      | Syn.Cst.SignatureItem.IncludeStatement _ ->
+          [])
+
+let document_symbols_for_document = fun document ->
+  match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
+  | None -> Some []
+  | Some (_, cst) ->
+      let symbols =
+        match cst with
+        | Syn.Cst.Implementation implementation -> structure_item_symbols
+          document.text
+          implementation.items
+        | Syn.Cst.Interface interface -> signature_item_symbols document.text interface.items
+      in
+      Some symbols
+
 let hover_for_document = fun state ->
   fun document ->
     fun position ->
-      match typ_analysis_for_document state document with
+      match typ_query_context_for_document state document with
       | None -> None
-      | Some analysis -> (
-          match Lsp.Utf16.offset_of_position document.text position with
-          | Error _ -> None
-          | Ok offset -> (
-              match Typ.Analysis.TypeIndex.find_at
-                analysis.SourceAnalysis.type_index
-                (Position.make ~offset) with
+      | Some context -> (
+          match query_position_of_lsp_position document.text position with
+          | None -> None
+          | Some query_position -> (
+              match Typ.Analysis.TypeIndex.find_at context.analysis.SourceAnalysis.type_index query_position with
               | None -> None
               | Some entry -> Some {
                 Lsp.Hover_result.contents = {
@@ -787,6 +1211,44 @@ let hover_for_document = fun state ->
               }
             )
         )
+
+let document_source_for_origin = fun state origin ->
+  match origin with
+  | Source.Path path -> text_for_path state path
+  |> Option.map (fun text -> (Lsp.Uri.of_path path, text))
+  | Source.Label label ->
+      state.documents |> List.find_opt
+        (fun document ->
+          String.equal (Lsp.Uri.to_string document.uri) label) |> Option.map
+        (fun document -> (document.uri, document.text))
+
+let location_for_definition_site = fun state definition ->
+  document_source_for_origin state definition.ModuleTypings.origin
+  |> Option.map
+    (fun (uri, text) ->
+      {
+        Lsp.Location.uri;
+        range = Lsp.Utf16.range_of_offsets
+          text
+          ~start_offset:definition.span.start
+          ~end_offset:definition.span.end_
+      })
+
+let definition_for_document = fun state ->
+  fun document ->
+    fun position ->
+      match typ_query_context_for_document state document with
+      | None -> None
+      | Some context -> (
+          match query_position_of_lsp_position document.text position with
+          | None -> None
+          | Some query_position -> Option.and_then
+            (Typ.Query.definition_at context.snapshot context.source_id query_position)
+            (location_for_definition_site state)
+          |> Option.map (fun location -> [ location ])
+        )
+
+let document_symbol_for_document = fun document -> document_symbols_for_document document
 
 let clear_diagnostics = fun uri ->
   let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
@@ -831,7 +1293,9 @@ let capabilities = {
     save = None
   });
   document_formatting_provider = Some true;
+  definition_provider = Some true;
   hover_provider = Some true;
+  document_symbol_provider = Some true;
   code_action_provider = Some (Lsp.Initialize.Server_capabilities.Provider_options {
     code_action_kinds = Some [ Lsp.Action_kind.Quick_fix; Source_fix_all ];
     resolve_provider = Some false
@@ -974,6 +1438,60 @@ let handle_hover = fun state ->
           ]
       )
 
+let handle_definition = fun state ->
+  fun payload ->
+    match Lsp.request_of_json Lsp.Text_document_methods.Definition.request payload with
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Ok (id, params) -> (
+        match find_document state params.text_document.uri with
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"definition requested for a document that is not open"
+              ();
+          ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Definition.request
+              (definition_for_document state document params.position)
+          ]
+      )
+
+let handle_document_symbol = fun state ->
+  fun payload ->
+    match Lsp.request_of_json Lsp.Text_document_methods.Document_symbol.request payload with
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Ok (id, params) -> (
+        match find_document state params.text_document.uri with
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"document symbols requested for a document that is not open"
+              ();
+          ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Document_symbol.request
+              (document_symbol_for_document document)
+          ]
+      )
+
 let handle_code_action = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Code_action.request payload with
@@ -1047,6 +1565,10 @@ let handle_request = fun state ->
             handle_initialize state payload
         | "shutdown" ->
             handle_shutdown state payload
+        | "textDocument/definition" ->
+            handle_definition state payload
+        | "textDocument/documentSymbol" ->
+            handle_document_symbol state payload
         | "textDocument/hover" ->
             handle_hover state payload
         | "textDocument/formatting" ->

@@ -168,10 +168,14 @@ let typ_event_name = fun ({ Event.kind; _ }: Event.t) ->
   | Event.HydrateModuleTypingsFinished _ -> "typ_hydrate_module_typings_finish"
   | Event.PrepareSnapshotFailed _ -> "typ_prepare_snapshot_failed"
   | Event.PrepareSnapshotFinished _ -> "typ_prepare_snapshot_finish"
+  | Event.SnapshotMaterializationStarted _ -> "typ_snapshot_materialization_start"
+  | Event.SnapshotMaterializationFinished _ -> "typ_snapshot_materialization_finish"
   | Event.SourceAnalysisStarted _ -> "typ_source_analysis_start"
   | Event.SourceAnalysisFinished _ -> "typ_source_analysis_finish"
   | Event.ModulePairingStarted _ -> "typ_module_pairing_start"
   | Event.ModulePairingFinished _ -> "typ_module_pairing_finish"
+  | Event.ModuleTypingsCollectionStarted _ -> "typ_module_typings_collection_start"
+  | Event.ModuleTypingsCollectionFinished _ -> "typ_module_typings_collection_finish"
 
 let typ_event_instants_are_monotonic = fun (events: Event.t list) ->
   let rec loop previous remaining_events =
@@ -3620,6 +3624,8 @@ let test_prepare_snapshot_emits_structured_events = fun _ctx ->
         | [
           { Event.kind=Event.PrepareSnapshotStarted _; _ };
           { Event.kind=Event.PrepareSnapshotFinished _; _ };
+          { Event.kind=Event.SnapshotMaterializationStarted _; _ };
+          { Event.kind=Event.SnapshotMaterializationFinished _; _ };
           { Event.kind=Event.ModulePairingStarted _; _ };
           {
             Event.kind=Event.SourceAnalysisStarted {
@@ -4149,7 +4155,7 @@ let test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis
 let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
   with_typ_store
     (fun store ->
-      let baseline_loaded_module_count = List.length Config.default.loaded_modules in
+      let baseline_loaded_module_count = Model.LoadedModules.len Config.default.loaded_modules in
       let seed_session = Session.empty ~config:Config.default in
       let (seed_session, colors_source_id) = create_source seed_session ~kind:Source.File ~origin:(Source.Label "colors.ml")
         ~text:{ocaml|

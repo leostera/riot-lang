@@ -5,7 +5,7 @@ type env = (SurfacePath.t * TypeScheme.t) list
 
 type t = {
   prelude: env;
-  loaded_modules: ModuleTypings.t list;
+  loaded_modules: LoadedModules.t;
   store: Store.t option;
   capture_traces: bool;
   ambient: env;
@@ -20,7 +20,7 @@ let default_ambient_type_decls = LanguagePrelude.type_decls
 
 let default = {
   prelude = default_prelude;
-  loaded_modules = [];
+  loaded_modules = LoadedModules.empty;
   store = None;
   capture_traces = true;
   ambient = [];
@@ -45,7 +45,11 @@ let with_ambient_visible_types = fun config ~ambient_visible_types ->
     ambient_type_decls = VisibleTypes.type_decls ambient_visible_types
   }
 
-let with_loaded_modules = fun config ~loaded_modules -> { config with loaded_modules }
+let with_loaded_modules = fun config ~loaded_modules ->
+  { config with loaded_modules = LoadedModules.of_list loaded_modules }
+
+let with_loaded_module_index = fun config ~loaded_modules ->
+  { config with loaded_modules }
 
 let with_store = fun config ~store -> { config with store }
 

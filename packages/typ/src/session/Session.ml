@@ -147,12 +147,7 @@ let remove_source_indexes = fun session (source: Source.t) ->
   session
 
 let loaded_modules_key = fun loaded_modules ->
-  loaded_modules |> List.map
-    (fun typings ->
-      format
-        Format.[ str (ModuleTypings.module_name typings); str ":"; str
-            (ModuleTypings.source_hash typings |> Crypto.Digest.hex); ]) |> List.sort String.compare |> String.concat
-    "|"
+  LoadedModules.stable_key loaded_modules
 
 let create_source = fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
@@ -181,22 +176,10 @@ let register_source_alias = fun session source_id ~module_name ->
   | Some _ -> add_module_name_index session ~module_name ~source_id
 
 let merge_loaded_modules = fun preferred fallback ->
-  let rec loop order merged remaining =
-    match remaining with
-    | [] ->
-        order |> List.rev |> List.filter_map
-          (fun module_name ->
-            List.assoc_opt module_name merged)
-    | summary :: tail ->
-        let module_name = ModuleTypings.module_name summary in
-        let (order, merged) =
-          match List.assoc_opt module_name merged with
-          | None -> (module_name :: order, (module_name, summary) :: merged)
-          | Some _ -> (order, merged)
-        in
-        loop order merged tail
-  in
-  loop [] [] (preferred @ fallback)
+  LoadedModules.merge
+    ~preferred
+    ~fallback:(LoadedModules.of_list fallback)
+    ~combine:(fun existing _incoming -> existing)
 
 let update_source = fun session source_id ~source_hash ~parse_result ~cst ->
   let revision = session.next_revision in
@@ -290,7 +273,10 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
                 ~free_names:[ module_name ])
           env
       in
-      let env = List.fold_left add_summary_paths Syn.Deps.Env.empty loaded_modules in
+      let env = LoadedModules.fold
+        (fun _module_name summary env -> add_summary_paths env summary)
+        loaded_modules
+        Syn.Deps.Env.empty in
       let _ = Collections.HashMap.insert session.deps_envs_by_loaded_modules key env in
       (key, env)
 
@@ -356,7 +342,7 @@ let module_dependencies = fun session ~deps_env_key ~deps_env (source: Source.t)
 let collect_missing_module_summaries = fun session roots ->
   let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
   let loaded_module_names = session.config.loaded_modules
-  |> List.map ModuleTypings.module_name
+  |> LoadedModules.names
   |> Collections.HashSet.of_list in
   let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map SurfacePath.to_string in
   let implicit_open_source_ids source = implicit_open_module_names source
@@ -447,11 +433,7 @@ let collect_missing_module_summaries = fun session roots ->
         nested_modules
   in
   let loaded_nested_module_prefixes module_name =
-    match
-      session.config.loaded_modules |> List.find_opt
-        (fun summary ->
-          String.equal module_name (ModuleTypings.module_name summary))
-    with
+    match LoadedModules.get session.config.loaded_modules ~module_name with
     | None -> []
     | Some summary -> nested_module_prefixes_of_typings summary
   in
@@ -555,7 +537,7 @@ let collect_missing_module_summaries = fun session roots ->
 let local_source_closure = fun session roots ->
   let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
   let loaded_module_names = session.config.loaded_modules
-  |> List.map ModuleTypings.module_name
+  |> LoadedModules.names
   |> Collections.HashSet.of_list in
   let implicit_open_source_ids (source: Source.t) = source.implicit_opens
   |> List.map SurfacePath.to_string
@@ -703,11 +685,11 @@ let prepare_snapshot = fun session ~roots ->
   TypConfig.emit_event
     session.config
     (fun () ->
-      Event.PrepareSnapshotStarted {
-        roots;
-        root_modules = root_module_names session roots;
-        session_source_count = List.length session.sources;
-        loaded_module_count = List.length session.config.loaded_modules
+        Event.PrepareSnapshotStarted {
+          roots;
+          root_modules = root_module_names session roots;
+          session_source_count = List.length session.sources;
+          loaded_module_count = LoadedModules.len session.config.loaded_modules
       });
   let rec hydrate_session session =
     let missing_modules = collect_missing_module_summaries session roots in
@@ -751,14 +733,14 @@ let prepare_snapshot = fun session ~roots ->
                 hydrated_modules = hydrated
                 |> List.map ModuleTypings.module_name
                 |> List.sort_uniq String.compare;
-                loaded_module_count = List.length loaded_modules
+                loaded_module_count = LoadedModules.len loaded_modules
               });
         if List.is_empty hydrated then
           (session, missing_modules)
         else
           let session = {
             session
-            with config = TypConfig.with_loaded_modules session.config ~loaded_modules
+            with config = TypConfig.with_loaded_module_index session.config ~loaded_modules
           } in
           hydrate_session session
   in
@@ -773,7 +755,7 @@ let prepare_snapshot = fun session ~roots ->
         Event.PrepareSnapshotFinished {
           roots;
           local_source_count = List.length sources;
-          loaded_module_count = List.length session.config.loaded_modules;
+          loaded_module_count = LoadedModules.len session.config.loaded_modules;
           revision = session.next_revision
         });
     TypConfig.emit_event

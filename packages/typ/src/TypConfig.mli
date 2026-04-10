@@ -12,7 +12,7 @@ type t = {
   prelude: env;
   (** Host-loaded reusable module typings available to every source in the
       session. *)
-  loaded_modules: ModuleTypings.t list;
+  loaded_modules: LoadedModules.t;
   (** Optional semantic store used to hydrate canonical module typings during
       rooted snapshot preparation. *)
   store: Store.t option;
@@ -35,10 +35,9 @@ type t = {
 (** Default host configuration used by the current prototype and tests.
 
     The default keeps [prelude] limited to syntax-backed language intrinsics
-    and seeds a small set of bootstrap module typings through [loaded_modules].
-    Those seeded typings are a temporary stand-in for real persisted module
-    exports and intentionally flow through the same [ModuleTypings] boundary
-    that hosts will later hydrate from cache or build outputs. *)
+    and starts with an empty loaded-module index. Hosts are expected to hydrate
+    reusable module summaries through [with_loaded_modules] or
+    [with_loaded_module_index]. *)
 val default: t
 
 (** Replace the snapshot ambient environment while preserving the base prelude. *)
@@ -57,6 +56,9 @@ val with_ambient_visible_types: t -> ambient_visible_types:VisibleTypes.t -> t
 (** Replace the host-loaded reusable module typings while preserving the
     base prelude and snapshot ambient environment. *)
 val with_loaded_modules: t -> loaded_modules:ModuleTypings.t list -> t
+
+(** Replace the host-loaded reusable module index directly. *)
+val with_loaded_module_index: t -> loaded_modules:LoadedModules.t -> t
 
 (** Replace the optional semantic store used during rooted snapshot
     preparation. *)

@@ -21,7 +21,7 @@ type t = {
   ambient_type_decls: FileSummary.type_decl list;
   completeness: completeness;
   file_summary: FileSummary.t;
-  export_bindings: Check_result.binding_ref list;
+  value_definitions: ModuleTypings.value_definition list;
   type_index: TypeIndex.t;
   item_traces: Check_result.item_trace list;
   expr_traces: Check_result.expr_trace list;
@@ -31,13 +31,13 @@ let exports = fun analysis -> FileSummary.exports analysis.file_summary
 
 let completeness_of_file_summary = fun summary -> FileSummary.completeness summary
 
-let definition_site_of_origin_id = fun analysis origin_id ->
-  match analysis.semantic_tree with
+let definition_site_of_origin_id = fun ~(source: Source.t) ~semantic_tree origin_id ->
+  match semantic_tree with
   | None -> None
-  | Some semantic_tree -> OriginMap.find semantic_tree.origin_map origin_id
+  | Some (semantic_tree: SemanticTree.file) -> OriginMap.find semantic_tree.origin_map origin_id
   |> Option.map
     (fun (origin: OriginMap.origin) ->
-      ({ origin = analysis.source.origin; span = origin.span }: ModuleTypings.definition_site))
+      ({ origin = source.origin; span = origin.span }: ModuleTypings.definition_site))
 
 let declared_value_origin_id = fun (semantic_tree: SemanticTree.file) ~scope_path ~name ->
   ItemTree.items semantic_tree.item_tree |> List.find_map
@@ -64,30 +64,30 @@ let alias_target_path = fun ~alias_name ~module_path path ->
   let suffix = SurfacePath.strip_prefix ~prefix:alias_prefix path |> Option.unwrap_or ~default:path in
   SurfacePath.append_path module_path suffix
 
-let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.binding_ref) ->
+let definition_target_of_binding_ref_in_tree = fun ~(source: Source.t) ~semantic_tree (binding_ref: Check_result.binding_ref) ->
   match binding_ref.provenance with
   | Check_result.LoweredPattern pat_id -> (
-      match analysis.semantic_tree with
+      match semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
         (SemanticTree.find_pattern semantic_tree pat_id)
-        (fun pattern -> definition_site_of_origin_id analysis pattern.origin_id)
+        (fun pattern -> definition_site_of_origin_id ~source ~semantic_tree:(Some semantic_tree) pattern.origin_id)
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.DeclaredValue { name; scope_path } -> (
-      match analysis.semantic_tree with
+      match semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
         (declared_value_origin_id semantic_tree ~scope_path ~name)
-        (definition_site_of_origin_id analysis)
+        (definition_site_of_origin_id ~source ~semantic_tree:(Some semantic_tree))
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Exception { name; scope_path } -> (
-      match analysis.semantic_tree with
+      match semantic_tree with
       | None -> None
       | Some semantic_tree -> Option.and_then
         (exception_origin_id semantic_tree ~scope_path ~name)
-        (definition_site_of_origin_id analysis)
+        (definition_site_of_origin_id ~source ~semantic_tree:(Some semantic_tree))
       |> Option.map (fun site -> ModuleTypings.Site site)
     )
   | Check_result.Ambient ->
@@ -105,16 +105,24 @@ let definition_target_of_binding_ref = fun analysis (binding_ref: Check_result.b
   | Check_result.TypeConstructor _ ->
       None
 
-let export_definitions = fun analysis ->
-  analysis.export_bindings
+let definition_target_of_binding_ref = fun analysis binding_ref ->
+  definition_target_of_binding_ref_in_tree
+    ~source:analysis.source
+    ~semantic_tree:analysis.semantic_tree
+    binding_ref
+
+let export_definitions_of_bindings = fun ~(source: Source.t) ~semantic_tree export_bindings ->
+  export_bindings
   |> List.filter_map
     (fun (binding_ref: Check_result.binding_ref) ->
-      definition_target_of_binding_ref analysis binding_ref
+      definition_target_of_binding_ref_in_tree ~source ~semantic_tree binding_ref
       |> Option.map
         (fun target ->
           (
             { export_name = binding_ref.surface_path; target }: ModuleTypings.value_definition
           )))
+
+let export_definitions = fun analysis -> analysis.value_definitions
 
 let has_error_diagnostics = fun diagnostics ->
   List.exists (fun diagnostic -> Typ_diagnostic.severity diagnostic = Typ_diagnostic.Error) diagnostics
@@ -124,6 +132,10 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
   let cst = source.cst in
   let semantic_tree = Lower.lower_source_file ~source cst in
   let inferred = Infer.infer_file ?initial_env ~config ~source semantic_tree in
+  let value_definitions = export_definitions_of_bindings
+    ~source
+    ~semantic_tree:(Some semantic_tree)
+    inferred.export_bindings in
   let type_index =
     if config.capture_traces then
       let traced_exprs = inferred.expr_traces
@@ -157,13 +169,13 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     parse_diagnostics =
       Parser.(parsed.diagnostics);
     cst;
-    semantic_tree = Some semantic_tree;
+    semantic_tree = if config.capture_traces then Some semantic_tree else None;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
     ambient_type_decls = config.ambient_type_decls;
     completeness = completeness_of_file_summary file_summary;
     file_summary;
-    export_bindings = inferred.export_bindings;
+    value_definitions;
     type_index;
     item_traces = inferred.item_traces;
     expr_traces = inferred.expr_traces;

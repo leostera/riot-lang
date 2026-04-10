@@ -335,7 +335,7 @@ let test_export_render_keeps_nested_module_paths_stable = fun _ctx ->
   let config = {
     Config.default
     with prelude = [];
-    loaded_modules = [];
+    loaded_modules = LoadedModules.empty;
     ambient = [];
     ambient_type_decls = []
   } in

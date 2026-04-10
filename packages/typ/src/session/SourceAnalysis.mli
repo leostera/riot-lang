@@ -27,8 +27,8 @@ type t = {
   completeness: completeness;
   (** Export-facing summary for this analyzed source. *)
   file_summary: FileSummary.t;
-  (** Export-facing binding references retained for definition queries. *)
-  export_bindings: Check_result.binding_ref list;
+  (** Export-facing definition targets retained for module-summary persistence. *)
+  value_definitions: ModuleTypings.value_definition list;
   (** Query-oriented expression-type index derived from the inferred source. *)
   type_index: TypeIndex.t;
   (** Per-item export snapshots from inference. *)
