@@ -759,8 +759,8 @@ let publish_diagnostics = fun state ->
       uri = document.uri;
       version = Some document.version;
       diagnostics
-  } in
-  Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
+    } in
+    Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
 
 let hover_for_document = fun state ->
   fun document ->
@@ -773,20 +773,18 @@ let hover_for_document = fun state ->
           | Ok offset -> (
               match Typ.Analysis.TypeIndex.find_at
                 analysis.SourceAnalysis.type_index
-                (Position.make ~offset)
-              with
+                (Position.make ~offset) with
               | None -> None
-              | Some entry ->
-                  Some {
-                    Lsp.Hover_result.contents = {
-                      kind = Lsp.Markup_kind.Plain_text;
-                      value = TypePrinter.type_to_string entry.inferred_type;
-                    };
-                    range = Some (Lsp.Utf16.range_of_offsets
-                      document.text
-                      ~start_offset:entry.span.start
-                      ~end_offset:entry.span.end_);
-                  }
+              | Some entry -> Some {
+                Lsp.Hover_result.contents = {
+                  kind = Lsp.Markup_kind.Plain_text;
+                  value = TypePrinter.type_to_string entry.inferred_type
+                };
+                range = Some (Lsp.Utf16.range_of_offsets
+                  document.text
+                  ~start_offset:entry.span.start
+                  ~end_offset:entry.span.end_)
+              }
             )
         )
 
@@ -966,15 +964,14 @@ let handle_hover = fun state ->
               ~message:"hover requested for a document that is not open"
               ();
           ]
-        | Some document ->
-            ok
-              state
-              [
-                Lsp.response_to_json
-                  ~id
-                  Lsp.Text_document_methods.Hover.request
-                  (hover_for_document state document params.position)
-              ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Hover.request
+              (hover_for_document state document params.position)
+          ]
       )
 
 let handle_code_action = fun state ->

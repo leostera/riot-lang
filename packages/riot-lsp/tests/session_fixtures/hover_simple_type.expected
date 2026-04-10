@@ -12,7 +12,6 @@
           },
           "documentFormattingProvider": true,
           "hoverProvider": true,
-          "hoverProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
               "quickfix",
@@ -46,7 +45,7 @@
         "range": {
           "start": {
             "line": 0,
-            "character": 13
+            "character": 12
           },
           "end": {
             "line": 0,
