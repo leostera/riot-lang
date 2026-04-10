@@ -227,6 +227,17 @@ vim.api.nvim_create_autocmd("LspAttach", {
       return
     end
 
+    if type(client.supports_method) ~= "function" or client:supports_method("textDocument/hover") then
+      vim.keymap.set("n", "K", function()
+        vim.lsp.buf.hover({
+          border = "rounded",
+        })
+      end, {
+        buffer = args.buf,
+        desc = "Riot LSP hover",
+      })
+    end
+
     if vim.lsp.inlay_hint == nil then
       return
     end
