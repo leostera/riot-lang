@@ -276,7 +276,7 @@ let render_dependency_section = fun dependencies ->
         ~href:dep.url
         ~name:dep.name
         ~kind_label:"dependency"
-        ~meta:(("linked docs: " ^ Option.unwrap_or ~default:"dev" dep.version))
+        ~meta:("linked docs: " ^ Option.unwrap_or ~default:"dev" dep.version)
         ~signature:""
         ~snippet:""
         ~docstring:None
@@ -323,8 +323,8 @@ let render_item_detail = fun (item: Doctree.item) ->
           ^ "</div>\n"
           ^ (
             match detail.docstring with
-            | Some docstring when not (String.equal docstring "") ->
-                "  " ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
+            | Some docstring when not (String.equal docstring "") -> "  "
+            ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
             | _ -> ""
           )
           ^ "</div>") |> String.concat "\n"
@@ -494,7 +494,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
         |> List.map
           (fun (item: Doctree.item) ->
             render_item_row
-              ~href:((Doctree.module_href summary_module ^ "#" ^ item.anchor))
+              ~href:(Doctree.module_href summary_module ^ "#" ^ item.anchor)
               ~name:item.name
               ~kind_label:(Doctree.item_kind_label item.kind)
               ~meta:""
