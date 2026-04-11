@@ -1,0 +1,10 @@
+[package]
+name = "raml-js"
+version = "0.1.0"
+
+[lib]
+path = "src/RamlJs.ml"
+
+[dependencies]
+std = "*"
+raml = { path = "../raml", version = "*" }
