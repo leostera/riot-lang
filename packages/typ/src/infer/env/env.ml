@@ -562,22 +562,25 @@ let rec lookup_module_scope_in: module_table -> SurfacePath.t -> module_scope op
 
 let lookup_module_scope = fun env module_path -> lookup_module_scope_in env.modules module_path
 
-let with_local_open = fun (env: t) module_path ->
+let rec with_local_open = fun (env: t) module_path ->
   match lookup_module_scope env module_path with
   | Some scope ->
-      {
-        summary = Summary2.open_ env.summary module_path;
-        values = Value_env.add_open ~root:module_path scope.values env.values;
-        types = Type_env.add_open ~root:module_path scope.types env.types;
-        constructors = Constructor_env.add_open
-          ~root:module_path
-          ~type_decls:(Type_env.type_decls scope.types)
-          scope.constructors
-          env.constructors;
-        labels = Label_env.add_open ~root:module_path scope.labels env.labels;
-        modules = merge_visible_module_tables env.modules scope.modules;
-      }
+      with_opened_module_scope ~module_path scope env
   | None -> env
+
+and with_opened_module_scope = fun ~module_path scope env ->
+  {
+    summary = Summary2.open_ env.summary module_path;
+    values = Value_env.add_open ~root:module_path scope.values env.values;
+    types = Type_env.add_open ~root:module_path scope.types env.types;
+    constructors = Constructor_env.add_open
+      ~root:module_path
+      ~type_decls:(Type_env.type_decls scope.types)
+      scope.constructors
+      env.constructors;
+    labels = Label_env.add_open ~root:module_path scope.labels env.labels;
+    modules = merge_visible_module_tables env.modules scope.modules;
+  }
 
 let qualify = fun ~scope_path (env: t) ->
   if SurfacePath.is_empty scope_path then
@@ -824,41 +827,48 @@ let singleton_module_scope = fun ~name scope ->
 let singleton_module = fun ~name module_env ->
   singleton_module_scope ~name (module_scope_of_env module_env)
 
+let entries_of_module_scope_for_include = fun ~module_path (scope: module_scope) ->
+  {
+    summary = Summary2.snapshot ~bindings:[] ~type_decls:[];
+    values =
+      scope.values |> Value_env.bindings |> List.map
+        (fun binding ->
+          Binding.with_provenance (Binding.Included { module_path }) binding) |> Value_env.of_bindings;
+    modules = scope.modules;
+    types = Type_env.local_only scope.types;
+    constructors = Constructor_env.of_type_decls (Type_env.type_decls scope.types);
+    labels = Label_env.of_type_decls (Type_env.type_decls scope.types);
+  }
+
+let export_names_of_module_scope_for_alias = fun ~alias_name (scope: module_scope) ->
+  scope_bindings_with_prefix (SurfacePath.of_name alias_name) scope
+  |> of_bindings
+  |> canonical_bindings
+  |> List.map (fun binding -> Binding.surface_path binding |> SurfacePath.to_string)
+
+let entries_of_module_scope_for_alias = fun ~alias_name (scope: module_scope) ->
+  {
+    summary = Summary2.snapshot ~bindings:[] ~type_decls:[];
+    values = Value_env.empty;
+    modules = module_table_singleton { name = alias_name; components = scope };
+    types = Type_env.empty;
+    constructors = Constructor_env.empty;
+    labels = Label_env.empty;
+  }
+
 let entries_for_include = fun env module_path ->
   match lookup_module_scope env module_path with
-  | Some scope ->
-      {
-        summary = Summary2.snapshot ~bindings:[] ~type_decls:[];
-        values =
-          scope.values |> Value_env.bindings |> List.map
-            (fun binding ->
-              Binding.with_provenance (Binding.Included { module_path }) binding) |> Value_env.of_bindings;
-        modules = scope.modules;
-        types = Type_env.local_only scope.types;
-        constructors = Constructor_env.of_type_decls (Type_env.type_decls scope.types);
-        labels = Label_env.of_type_decls (Type_env.type_decls scope.types);
-      }
+  | Some scope -> entries_of_module_scope_for_include ~module_path scope
   | None -> empty
 
 let export_names_for_module_alias = fun env ~alias_name ~module_path ->
   match lookup_module_scope env module_path with
-  | Some scope -> scope_bindings_with_prefix (SurfacePath.of_name alias_name) scope
-  |> of_bindings
-  |> canonical_bindings
-  |> List.map (fun binding -> Binding.surface_path binding |> SurfacePath.to_string)
+  | Some scope -> export_names_of_module_scope_for_alias ~alias_name scope
   | None -> []
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->
   match lookup_module_scope env module_path with
-  | Some scope ->
-      {
-        summary = Summary2.snapshot ~bindings:[] ~type_decls:[];
-        values = Value_env.empty;
-        modules = module_table_singleton { name = alias_name; components = scope };
-        types = Type_env.empty;
-        constructors = Constructor_env.empty;
-        labels = Label_env.empty;
-      }
+  | Some scope -> entries_of_module_scope_for_alias ~alias_name scope
   | None -> empty
 
 let summary_cache: (summary, t) Collections.HashMap.t = Collections.HashMap.with_capacity 128
@@ -930,7 +940,7 @@ let scope_locals_for = fun scope scope_path ->
         |> List.fold_left
           (fun acc key ->
             match Path_map.find_opt key scope.locals with
-            | Some entries -> env_of_summary_relative acc entries.summary
+            | Some entries -> bind acc entries.env
             | None -> acc)
           empty
       in
@@ -945,7 +955,7 @@ let register_entries = fun scope ~scope_path (env: t) ->
   in
   let updated = {
     summary = Summary2.bind existing.summary env.summary;
-    env = env_of_summary_relative existing.env env.summary
+    env = bind existing.env env
   } in
   { scope with locals = Path_map.add scope_path updated scope.locals; locals_cache = Path_map.empty }
 

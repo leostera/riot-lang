@@ -32,7 +32,6 @@ module SharedCaches = struct
   type t = {
     module_result_cache: (shared_module_result_cache_key, ModulePairing.t) Collections.HashMap.t;
     source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
-    initial_env_cache: (ambient_surface_cache_key, Infer.Env.t) Collections.HashMap.t;
     loaded_ambient_env_cache:
       (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
     loaded_ambient_type_decls_cache:
@@ -47,7 +46,6 @@ module SharedCaches = struct
     {
       module_result_cache = Collections.HashMap.with_capacity 128;
       source_analysis_cache = Collections.HashMap.with_capacity 256;
-      initial_env_cache = Collections.HashMap.with_capacity 256;
       loaded_ambient_env_cache = Collections.HashMap.with_capacity 64;
       loaded_ambient_type_decls_cache = Collections.HashMap.with_capacity 64;
       local_ambient_env_cache = Collections.HashMap.with_capacity 256;
@@ -65,7 +63,6 @@ type t = {
   module_results_cache: (string, ModulePairing.t) Collections.HashMap.t;
   shared_module_result_cache: (shared_module_result_cache_key, ModulePairing.t) Collections.HashMap.t;
   shared_source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
-  shared_initial_env_cache: (ambient_surface_cache_key, Infer.Env.t) Collections.HashMap.t;
   shared_loaded_ambient_env_cache:
     (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
   shared_loaded_ambient_type_decls_cache:
@@ -201,8 +198,6 @@ let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_cach
       SharedCaches.(shared_caches.module_result_cache);
     shared_source_analysis_cache =
       SharedCaches.(shared_caches.source_analysis_cache);
-    shared_initial_env_cache =
-      SharedCaches.(shared_caches.initial_env_cache);
     shared_loaded_ambient_env_cache =
       SharedCaches.(shared_caches.loaded_ambient_env_cache);
     shared_loaded_ambient_type_decls_cache =
@@ -578,7 +573,6 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
             let config = slot.config
             |> TypConfig.with_ambient ~ambient
             |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
-            let initial_env = initial_env_for snapshot slot config in
             TypConfig.emit_event slot.config
               (fun () ->
                 Event.SourceAnalysisStarted {
@@ -590,7 +584,7 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
                   ambient_binding_count = List.length ambient;
                   ambient_type_decl_count = List.length ambient_type_decls;
                 });
-            let analysis = SourceAnalysis.analyze ~initial_env ~config slot.source in
+            let analysis = SourceAnalysis.analyze ~config slot.source in
             TypConfig.emit_event slot.config
               (fun () ->
                 Event.SourceAnalysisFinished {
@@ -624,15 +618,6 @@ and module_results_for = fun (snapshot: t) ->
       |> List.map (fun module_name -> (module_name, module_result_for snapshot module_name)) in
       snapshot.all_module_results_cache <- Some module_results;
       module_results
-
-and initial_env_for = fun (snapshot: t) (slot: analysis_slot) config ->
-  let cache_key = ambient_surface_cache_key snapshot slot in
-  match Collections.HashMap.get snapshot.shared_initial_env_cache cache_key with
-  | Some initial_env -> initial_env
-  | None ->
-      let initial_env = Infer.initial_env_of_config ~config in
-      let _ = Collections.HashMap.insert snapshot.shared_initial_env_cache cache_key initial_env in
-      initial_env
 
 and local_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
   let cache_key = local_ambient_cache_key snapshot slot in

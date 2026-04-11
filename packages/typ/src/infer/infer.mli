@@ -28,9 +28,13 @@ type t = {
 
 (** Infer types for a semantic tree using the shared checker core.
 
-    The host configuration supplies only the intrinsic prelude plus ambient
-    module summaries, so package-check and query callers share the same
-    inference rules without hardcoding package/library APIs in the inferencer. *)
-val initial_env_of_config: config:TypConfig.t -> Env.t
-
-val infer_file: ?initial_env:Env.t -> config:TypConfig.t -> source:Source.t -> SemanticTree.file -> t
+    Imported package/module state is resolved through [PackageEnv] and
+    constrained by [ScopeView]. The local checker env then carries only
+    lexical/local typing state for the current source. *)
+val infer_file:
+  package_env:PackageEnv.t ->
+  scope_view:ScopeView.t ->
+  config:TypConfig.t ->
+  source:Source.t ->
+  SemanticTree.file ->
+  t

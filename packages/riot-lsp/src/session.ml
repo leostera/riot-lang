@@ -25,7 +25,7 @@ type fixable_lint_diagnostic = {
 type typ_query_context = {
   snapshot: Snapshot.t;
   source_id: SourceId.t;
-  analysis: SourceAnalysis.t;
+  analysis: Typ.SourceAnalysis.t;
 }
 
 type t = {
@@ -339,8 +339,8 @@ let module_typings_for_roots = fun session roots ->
         (fun source_id ->
           match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
           | Ok snapshot -> Typ.Query.module_typings_of snapshot source_id
-          | Error _ -> None)
-      |> fun typings -> LoadedModules.values (merge_loaded_module_typings typings [])
+          | Error _ -> None) |> fun typings ->
+        LoadedModules.values (merge_loaded_module_typings typings [])
 
 let workspace_dependency_packages = fun ~include_dev (workspace: Riot_model.Workspace.t) (
   pkg: Riot_model.Package.t
@@ -765,7 +765,7 @@ let typ_diagnostics = fun state ->
   fun document ->
     match typ_analysis_for_document state document with
     | None -> []
-    | Some analysis -> (analysis.SourceAnalysis.lowering_diagnostics @ analysis.SourceAnalysis.typing_diagnostics)
+    | Some analysis -> (analysis.lowering_diagnostics @ analysis.typing_diagnostics)
     |> List.map (typ_diagnostic_to_lsp document.text)
 
 let publish_diagnostics = fun state ->
@@ -1197,7 +1197,7 @@ let hover_for_document = fun state ->
           match query_position_of_lsp_position document.text position with
           | None -> None
           | Some query_position -> (
-              match Typ.Analysis.TypeIndex.find_at context.analysis.SourceAnalysis.type_index query_position with
+              match Typ.Analysis.TypeIndex.find_at context.analysis.type_index query_position with
               | None -> None
               | Some entry -> Some {
                 Lsp.Hover_result.contents = {

@@ -68,6 +68,12 @@ val singleton_module: name:string -> t -> t
 
 val singleton_module_scope: name:string -> module_scope -> t
 
+val entries_of_module_scope_for_include: module_path:SurfacePath.t -> module_scope -> t
+
+val export_names_of_module_scope_for_alias: alias_name:string -> module_scope -> string list
+
+val entries_of_module_scope_for_alias: alias_name:string -> module_scope -> t
+
 val bindings: t -> bindings
 
 val type_decls: t -> FileSummary.type_decl list
@@ -85,6 +91,8 @@ val bind_in_scope: t -> scope_path:SurfacePath.t -> t -> t
 val without_summary: t -> t
 
 val with_local_open: t -> SurfacePath.t -> t
+
+val with_opened_module_scope: module_path:SurfacePath.t -> module_scope -> t -> t
 
 val qualify: scope_path:SurfacePath.t -> t -> t
 

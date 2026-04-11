@@ -11,6 +11,10 @@ open Std
       checked-source outputs such as reports and type indexes
     - `Typ.SourceAnalysis`
       core single-source analysis over already prepared sources
+    - `Typ.PackageEnv`
+      monotonic package-wide module-artifact environment
+    - `Typ.ScopeView`
+      cheap per-source/group visibility view over `PackageEnv`
     - `Typ.ModulePairing`
       canonical pairing of interface and implementation analyses
     - `Typ.ModuleSurface`
@@ -49,6 +53,10 @@ module Model: module type of Model
 module Analysis: module type of Analysis
 
 module SourceAnalysis: module type of SourceAnalysis
+
+module PackageEnv: module type of PackageEnv
+
+module ScopeView: module type of ScopeView
 
 module ModulePairing: module type of ModulePairing
 

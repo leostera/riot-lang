@@ -43,18 +43,181 @@ let missing_record_decl_param_hole_id = (-200)
 
 let qualify_name = State.qualify_name
 
-let has_surface_entries = fun env visible_types module_path ->
-  not (List.is_empty (Env.names (Env.entries_for_include env module_path)))
+let module_env_of_artifact = fun artifact ->
+  Env.bind
+    (Env.of_entries
+      ~make_id:BindingId.persistent
+      ~provenance:Binding.Ambient
+      (ModuleTypings.exports artifact))
+    (Env.of_type_decls (ModuleTypings.type_decls artifact))
+  |> Env.without_summary
+
+let imported_module_env = fun (state: state) module_id ->
+  PackageEnv.find_artifact state.package_env module_id |> Option.map module_env_of_artifact
+
+let imported_module_scope = fun (state: state) module_id ->
+  imported_module_env state module_id |> Option.map Env.module_scope_of_env
+
+let imported_resolution = fun (state: state) path ->
+  Option.and_then
+    (ScopeView.resolve_visible_module_prefix state.scope_view path)
+    (fun (module_path, module_id, suffix) ->
+      Option.map
+        (fun module_scope ->
+          let qualified_env = Env.of_module_scope module_scope |> Env.qualify ~scope_path:module_path in
+          (module_path, module_id, qualified_env, suffix))
+        (imported_module_scope state module_id))
+
+let lookup_imported_module_scope = fun (state: state) module_path ->
+  Option.and_then
+    (imported_resolution state module_path)
+    (fun (_visible_module_path, _module_id, qualified_env, _suffix) ->
+      Env.lookup_module_scope qualified_env module_path)
+
+let lookup_module_scope = fun (state: state) env module_path ->
+  Option.or_else (Env.lookup_module_scope env module_path) (fun () -> lookup_imported_module_scope state module_path)
+
+let with_local_open = fun (state: state) env module_path ->
+  match lookup_module_scope state env module_path with
+  | Some scope ->
+      Env.bind env (Env.entries_of_module_scope_for_include ~module_path scope |> Env.without_summary)
+  | None ->
+      env
+
+let lookup_imported_binding = fun (state: state) path ->
+  if EntityId.is_bare path then
+    ScopeView.implicit_open_modules state.scope_view
+    |> List.find_map
+      (fun module_id ->
+        imported_module_env state module_id
+        |> fun module_env -> Option.and_then module_env (fun module_env -> Env.lookup module_env path))
+  else
+    Option.and_then
+      (imported_resolution state (EntityId.surface_path path))
+      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
+        if SurfacePath.is_empty suffix then
+          None
+        else
+          Env.lookup qualified_env path)
+
+let lookup_binding = fun (state: state) env path ->
+  Option.or_else (Env.lookup env path) (fun () -> lookup_imported_binding state path)
+
+let lookup_imported_type = fun (state: state) name ->
+  if SurfacePath.is_bare name then
+    ScopeView.implicit_open_modules state.scope_view
+    |> List.find_map
+      (fun module_id ->
+        imported_module_env state module_id
+        |> fun module_env -> Option.and_then module_env (fun module_env -> Env.lookup_type module_env name))
+  else
+    Option.and_then
+      (imported_resolution state name)
+      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
+        if SurfacePath.is_empty suffix then
+          None
+        else
+          Env.lookup_type qualified_env name)
+
+let lookup_type = fun (state: state) env name ->
+  Option.or_else (Env.lookup_type env name) (fun () -> lookup_imported_type state name)
+
+let lookup_imported_constructors = fun (state: state) path ->
+  if SurfacePath.is_bare path then
+    ScopeView.implicit_open_modules state.scope_view
+    |> List.concat_map
+      (fun module_id ->
+        imported_module_env state module_id
+        |> Option.map (fun module_env -> Env.lookup_constructors module_env path)
+        |> Option.unwrap_or ~default:[])
+  else
+    imported_resolution state path
+    |> Option.map
+      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
+        if SurfacePath.is_empty suffix then
+          []
+        else
+          Env.lookup_constructors qualified_env path)
+    |> Option.unwrap_or ~default:[]
+
+let lookup_constructors = fun (state: state) env path ->
+  let local = Env.lookup_constructors env path in
+  if List.is_empty local then
+    lookup_imported_constructors state path
+  else
+    local
+
+let lookup_owned_constructor = fun (state: state) env path owner_type_constructor_id ->
+  Option.or_else
+    (Env.lookup_owned_constructor env path owner_type_constructor_id)
+    (fun () ->
+      lookup_constructors state env path
+      |> List.find_map
+        (fun candidate ->
+          if
+            TypeConstructorId.equal
+              owner_type_constructor_id
+              (Env.Constructor_env.owner_type_constructor_id candidate)
+          then
+            Some candidate
+          else
+            None))
+
+let lookup_imported_record_decls = fun (state: state) label_name ->
+  ScopeView.implicit_open_modules state.scope_view
+  |> List.concat_map
+    (fun module_id ->
+      imported_module_env state module_id
+      |> Option.map (fun module_env -> Env.lookup_record_decls module_env label_name)
+      |> Option.unwrap_or ~default:[])
+
+let lookup_record_decls = fun (state: state) env label_name ->
+  let local = Env.lookup_record_decls env label_name in
+  if List.is_empty local then
+    lookup_imported_record_decls state label_name
+  else
+    local
+
+let lookup_record_decl_by_owner = fun (state: state) env owner_type_constructor_id ->
+  Option.or_else
+    (Env.lookup_record_decl_by_owner env owner_type_constructor_id)
+    (fun () ->
+      ScopeView.implicit_open_modules state.scope_view
+      |> List.find_map
+        (fun module_id ->
+          imported_module_env state module_id
+          |> fun module_env ->
+            Option.and_then
+              module_env
+              (fun module_env -> Env.lookup_record_decl_by_owner module_env owner_type_constructor_id)))
+
+let entries_for_include = fun (state: state) env module_path ->
+  match lookup_module_scope state env module_path with
+  | Some scope -> Env.entries_of_module_scope_for_include ~module_path scope
+  | None -> Env.empty
+
+let export_names_for_module_alias = fun (state: state) env ~alias_name ~module_path ->
+  match lookup_module_scope state env module_path with
+  | Some scope -> Env.export_names_of_module_scope_for_alias ~alias_name scope
+  | None -> []
+
+let entries_for_module_alias = fun (state: state) env ~alias_name ~module_path ->
+  match lookup_module_scope state env module_path with
+  | Some scope -> Env.entries_of_module_scope_for_alias ~alias_name scope
+  | None -> Env.empty
+
+let has_surface_entries = fun state env visible_types module_path ->
+  not (List.is_empty (Env.names (entries_for_include state env module_path)))
   || not (List.is_empty (type_decls_for_include visible_types module_path))
 
-let resolve_module_path_in_scope = fun env visible_types scope_path module_path ->
+let resolve_module_path_in_scope = fun state env visible_types scope_path module_path ->
   if SurfacePath.is_empty scope_path || not (SurfacePath.is_bare module_path) then
     module_path
   else
     let scoped_module_path = SurfacePath.append_path scope_path module_path in
-    if has_surface_entries env visible_types module_path then
+    if has_surface_entries state env visible_types module_path then
       module_path
-    else if has_surface_entries env visible_types scoped_module_path then
+    else if has_surface_entries state env visible_types scoped_module_path then
       scoped_module_path
     else
       module_path
@@ -116,16 +279,6 @@ let prelude_env = fun (state: state) (config: TypConfig.t) ->
       ~provenance:Binding.Prelude config.prelude)
     (Env.of_type_decls LanguagePrelude.type_decls)
 
-let ambient_env = fun (state: state) (config: TypConfig.t) ->
-  let ambient_entries = config.ambient
-  |> List.map (fun (name, scheme) -> (name, canonicalize_scheme state scheme)) in
-  Env.of_entries
-    ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
-    ~provenance:Binding.Ambient ambient_entries
-
-let ambient_type_env = fun (state: state) (_config: TypConfig.t) ->
-  Env.of_type_decls (visible_type_decls state)
-
 let static_ident_generator = fun () ->
   let next_local_id = ref (-1) in
   fun kind path ->
@@ -134,19 +287,6 @@ let static_ident_generator = fun () ->
     match kind with
     | `Predef -> BindingId.predef ~stamp:local_id ~name:(binding_name_of_path path)
     | `Persistent -> BindingId.persistent path
-
-let initial_env_of_config = fun ~(config:TypConfig.t) ->
-  let make_id = static_ident_generator () in
-  let visible_types = config.ambient_visible_types in
-  let prelude = config.prelude
-  |> List.map (fun (path, scheme) -> (path, VisibleTypes.canonicalize_scheme visible_types scheme)) in
-  let ambient = config.ambient
-  |> List.map (fun (path, scheme) -> (path, VisibleTypes.canonicalize_scheme visible_types scheme)) in
-  Env.bind
-    (Env.bind
-      (Env.of_entries ~make_id:(make_id `Predef) ~provenance:Binding.Prelude prelude)
-      (Env.of_entries ~make_id:(make_id `Persistent) ~provenance:Binding.Ambient ambient))
-    (Env.of_type_decls config.ambient_type_decls)
 
 let view = fun ty -> TypeRepr.view (TypeRepr.prune ty)
 
@@ -177,7 +317,7 @@ let type_item_env = fun (_state: state) (type_item: ItemTree.type_item) ->
     [ { FileSummary.scope_path = SurfacePath.empty; declaration = type_item.declaration } ]
 
 let resolve_named_type_head_in_env = fun (state: state) env name ->
-  Env.lookup_type env name
+  lookup_type state env name
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
       TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
@@ -192,8 +332,7 @@ let canonicalize_scheme_in_env = fun (state: state) env scheme ->
       (fun name -> resolve_named_type_head_in_env state env name)
       scheme
   in
-  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
-  VisibleTypes.canonicalize_scheme visible_types scheme
+  VisibleTypes.canonicalize_scheme state.visible_types scheme
 
 let canonicalize_scheme_heads_in_env = fun (state: state) env scheme ->
   State.canonicalize_scheme_with_named_type_head
@@ -201,7 +340,7 @@ let canonicalize_scheme_heads_in_env = fun (state: state) env scheme ->
     scheme
 
 let resolve_named_type_decl_in_env = fun (state: state) env name ->
-  Option.or_else (Env.lookup_type env name)
+  Option.or_else (lookup_type state env name)
     (fun () ->
       State.visible_type_decl state name)
 
@@ -216,7 +355,7 @@ let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSumma
   State.canonicalize_type_decl_with_named_type_head resolve_named_type_head type_decl
 
 let constructor_bindings = fun (state: state) env ~name ~scheme ~provenance ~constructor_id ~inline_record_labels ->
-  let visible_types = VisibleTypes.bind state.visible_types (Env.visible_type_decls env) in
+  let visible_types = state.visible_types in
   let scheme = canonicalize_scheme_in_env state env scheme in
   let inline_record_labels = inline_record_labels
   |> Option.map (VisibleTypes.canonicalize_inline_record_labels visible_types) in
@@ -610,10 +749,10 @@ let rec result_type_of_type = fun ty ->
   | _ -> ty
 
 let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty ->
-  let candidates = Env.lookup_constructors env constructor in
+  let candidates = lookup_constructors state env constructor in
   match owner_of_type state expected_ty with
   | Some expected_owner -> (
-      match Env.lookup_owned_constructor env constructor expected_owner.type_constructor_id with
+      match lookup_owned_constructor state env constructor expected_owner.type_constructor_id with
       | Some candidate -> Some candidate
       | None -> (
           match
@@ -638,8 +777,8 @@ let resolve_constructor_entry = fun (state: state) env constructor ~expected_ty 
       | [] -> None
     )
 
-let resolve_constructor_without_expected = fun env constructor ->
-  Env.lookup_constructors env constructor |> function
+let resolve_constructor_without_expected = fun state env constructor ->
+  match lookup_constructors state env constructor with
   | candidate :: _ -> Some candidate
   | [] -> None
 
@@ -936,7 +1075,7 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
   let name_candidates =
     match field_names with
     | first_field :: remaining_fields ->
-        Env.lookup_record_decls env first_field |> List.filter
+        lookup_record_decls state env first_field |> List.filter
           (fun (record_decl: record_type_decl) ->
             Env.Label_env.matches_fields record_decl remaining_fields)
     | [] -> Env.record_decls env
@@ -944,7 +1083,7 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
   let candidates =
     match owner_hint with
     | Some owner -> (
-        match Env.lookup_record_decl_by_owner env owner.type_constructor_id with
+        match lookup_record_decl_by_owner state env owner.type_constructor_id with
         | Some record_decl when Env.Label_env.matches_fields record_decl field_names -> [
           record_decl
         ]
@@ -962,7 +1101,7 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
       Some record_decl
   | [] ->
       let unknown_labels = field_names
-      |> List.filter (fun field_name -> List.is_empty (Env.lookup_record_decls env field_name)) in
+      |> List.filter (fun field_name -> List.is_empty (lookup_record_decls state env field_name)) in
       let reason =
         if not (List.is_empty unknown_labels) then
           Typ_diagnostic.UnknownRecordLabels unknown_labels
@@ -1771,7 +1910,7 @@ let check_module_pack_against_signature = fun (state: state) env ~origin module_
   signature: TypeRepr.package_signature
 )) ->
   let signature = instantiate_package_signature state signature in
-  match Env.lookup_module_scope env module_path with
+  match lookup_module_scope state env module_path with
   | Some scope ->
       let scope_env = env_of_module_scope scope in
       signature.values |> List.iter
@@ -2195,7 +2334,8 @@ let record_expr_trace = fun (state: state) expr_id origin_id env_before inferred
   in
   let resolved_binding =
     match SemanticTree.find_expr state.file expr_id with
-    | Some { desc=BodyArena.EVar name; _ } -> Env.lookup env_before (EntityId.of_surface_path name)
+    | Some { desc=BodyArena.EVar name; _ } ->
+        lookup_binding state env_before (EntityId.of_surface_path name)
     |> Option.map
       (fun binding ->
         Check_result.{
@@ -2449,7 +2589,7 @@ and infer_expr = fun (state: state) env expr_id ->
       let inferred_type =
         match expr.desc with
         | BodyArena.EVar name -> (
-            match Env.lookup env (EntityId.of_surface_path name) with
+            match lookup_binding state env (EntityId.of_surface_path name) with
             | Some binding ->
                 let scheme = canonicalize_scheme_in_env state env (Binding.scheme binding) in
                 instantiate state scheme
@@ -2457,7 +2597,7 @@ and infer_expr = fun (state: state) env expr_id ->
                 match origin_of_expr state expr_id with
                 | Some origin when String.equal origin.label "constructor_expression"
                 || String.equal origin.label "constructor_path_expression" -> (
-                    match resolve_constructor_without_expected env name with
+                    match resolve_constructor_without_expected state env name with
                     | Some constructor_entry ->
                         let scheme = canonicalize_scheme_in_env
                           state
@@ -2662,7 +2802,7 @@ and infer_expr = fun (state: state) env expr_id ->
               | Some origin when String.equal origin.label "constructor_apply_expression" -> (
                   match SemanticTree.find_expr state.file callee_id with
                   | Some { desc=BodyArena.EVar constructor; _ } -> (
-                      match resolve_constructor_without_expected env constructor with
+                      match resolve_constructor_without_expected state env constructor with
                       | Some constructor_entry ->
                           let instantiated = instantiate_constructor_entry state env constructor_entry in
                           let constructor_ty =
@@ -2921,7 +3061,7 @@ and infer_expr = fun (state: state) env expr_id ->
             let body_env = Env.bind env (Env.singleton_module ~name:module_name local_module_env) in
             infer_expr state body_env body_id
         | BodyArena.ELocalOpen { module_path; body_id } ->
-            infer_expr state (Env.with_local_open env module_path) body_id
+            infer_expr state (with_local_open state env module_path) body_id
         | BodyArena.EUnsupported summary ->
             let hole = fresh_hole state in
             let () = add_diagnostic
@@ -3256,7 +3396,7 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
         let generalized_entries =
           List.map2
             (fun entry scheme ->
-              Binding.with_scheme (canonicalize_scheme_in_env state env scheme) entry)
+              Binding.with_scheme (canonicalize_scheme_heads_in_env state env scheme) entry)
             entries.entries
             schemes
         in
@@ -3331,7 +3471,7 @@ and infer_recursive_group = fun (state: state) env bindings ->
             let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
             let entry =
               match schemes with
-              | [ scheme ] -> Binding.with_scheme (canonicalize_scheme_in_env state env scheme) entry
+              | [ scheme ] -> Binding.with_scheme (canonicalize_scheme_heads_in_env state env scheme) entry
               | _ -> entry
             in
             loop (entry :: acc) rest_bindings rest_groups
@@ -3359,15 +3499,9 @@ and infer_recursive_group = fun (state: state) env bindings ->
       env
       bindings
 
-let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
-  let state = make_state ~config file in
-  let initial_env =
-    match initial_env with
-    | Some initial_env -> initial_env
-    | None -> Env.bind
-      (Env.bind (prelude_env state config) (ambient_env state config))
-      (ambient_type_env state config)
-  in
+let infer_file = fun ~package_env ~scope_view ~config ~(source:Source.t) file ->
+  let state = make_state ~package_env ~scope_view ~config file in
+  let initial_env = prelude_env state config in
   let initial_scope = source.implicit_opens
   |> List.fold_left
     (fun scope module_path -> Env.register_open scope ~scope_path:SurfacePath.empty ~module_path)
@@ -3580,10 +3714,15 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
             in
             loop export_state type_decls scope rest
         | ItemTree.Open open_item ->
-            let scope = Env.register_open
-              scope
-              ~scope_path:open_item.scope_path
-              ~module_path:open_item.module_path in
+            let item_env = Env.for_item_scope export_state scope ~scope_path:open_item.scope_path in
+            let module_path = resolve_module_path_in_scope
+              state
+              item_env
+              state.visible_types
+              open_item.scope_path
+              open_item.module_path in
+            let introduced = entries_for_include state item_env module_path in
+            let scope = Env.register_entries scope ~scope_path:open_item.scope_path introduced in
             let () =
               if state.config.capture_traces then
                 let exports_after = Env.export config export_state |> Env.render in
@@ -3597,6 +3736,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
         | ItemTree.Include include_item ->
             let item_env = Env.for_item_scope export_state scope ~scope_path:include_item.scope_path in
             let module_path = resolve_module_path_in_scope
+              state
               item_env
               state.visible_types
               include_item.scope_path
@@ -3607,7 +3747,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
               else
                 None
             in
-            let introduced = Env.entries_for_include item_env module_path in
+            let introduced = entries_for_include state item_env module_path in
             let introduced_type_decls = type_decls_for_include state.visible_types module_path
             |> prefix_type_decls include_item.scope_path in
             let (export_state, scope) =
@@ -3640,6 +3780,7 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
         | ItemTree.ModuleAlias module_alias_item ->
             let item_env = Env.for_item_scope export_state scope ~scope_path:module_alias_item.scope_path in
             let module_path = resolve_module_path_in_scope
+              state
               item_env
               state.visible_types
               module_alias_item.scope_path
@@ -3653,11 +3794,11 @@ let infer_file = fun ?initial_env ~config ~(source:Source.t) file ->
               else
                 None
             in
-            let alias_export_names = Env.export_names_for_module_alias
+            let alias_export_names = export_names_for_module_alias state
               item_env
               ~alias_name:module_alias_item.alias_name
               ~module_path in
-            let introduced = Env.entries_for_module_alias
+            let introduced = entries_for_module_alias state
               item_env
               ~alias_name:module_alias_item.alias_name
               ~module_path in

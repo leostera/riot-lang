@@ -81,6 +81,7 @@ type visible_module_name =
 
 type graph_source = {
   prepared: prepared_source;
+  required_names: LocalModules.RequiredName.t array;
   dependency_set_id: dependency_set_id;
   missing_external_names: LocalModules.RequiredName.t array;
 }
@@ -94,36 +95,17 @@ type graph_group = {
   dependency_ids: module_id array;
 }
 
-type imported_module_surface = {
-  visible_type_decls: FileSummary.type_decl list;
-  hidden_export_names: SurfacePath.t list;
-}
-
-type source_analysis_surface = {
-  config: TypConfig.t;
-  initial_env_config: TypConfig.t;
-  ambient_type_decls: FileSummary.type_decl list;
-  loaded_module_results: ModuleTypings.t list;
-}
-
-type compiled_module = {
-  checked_sources: checked_source list;
-  module_result: ModuleTypings.t;
-  imported_surface: imported_module_surface;
-}
-
 type package_graph = {
   groups: graph_group array;
   candidate_ids_by_required_name:
     (LocalModules.RequiredName.t, module_id array) Collections.HashMap.t;
-  base_source_surface: source_analysis_surface;
   dependency_local_ids_by_set_id: module_id array array;
 }
 
 type engine_state = {
+  package_env: PackageEnv.t;
   loaded_modules: LoadedModules.t;
-  compiled_modules_by_id: compiled_module option array;
-  source_analysis_surfaces_by_dependency_set_id: source_analysis_surface option array;
+  compiled_modules_by_id: finished_group option array;
 }
 
 let dedupe_module_ids_preserving_order = fun module_ids ->
@@ -352,103 +334,78 @@ let missing_requirements_of_source = fun ~config ~resolution_ids_by_required_nam
     !missing_rev |> List.rev |> MissingRequirements.of_list
   )
 
-let hidden_export_names_of_env = fun env ->
-  Infer.Env.bindings env
-  |> List.map Infer.Env.Binding.surface_path
-  |> dedupe_by_key_preserving_order ~key:(fun path -> path)
-
-let hidden_export_names_of_compiled_scope = fun compiled_scope ->
-  CompiledScope.exports compiled_scope
-  |> List.map fst
-  |> dedupe_by_key_preserving_order ~key:(fun path -> path)
-
 let hidden_export_names_of_exports = fun exports ->
   exports
   |> List.map fst
   |> dedupe_by_key_preserving_order ~key:(fun path -> path)
 
-let module_body_env_of_typings = fun typings ->
-  Infer.Env.bind
-    (Infer.Env.of_entries
-      ~make_id:BindingId.persistent
-      ~provenance:Infer.Env.Binding.Ambient
-      (ModuleTypings.exports typings))
-    (Infer.Env.of_type_decls (ModuleTypings.type_decls typings))
+let dedupe_type_decls_preserving_order = fun type_decls ->
+  dedupe_by_key_preserving_order ~key:ModuleSurface.type_decl_key type_decls
 
-let module_body_env_of_compiled_module = fun compiled_module ->
-  compiled_module
-  |> ModuleTypings.compiled_scope
-  |> CompiledScopeEnv.to_env
+let visible_module_path = fun visible_name ->
+  SurfacePath.of_string (visible_module_name_to_string visible_name)
 
-let imported_module_env_of_named_module = fun ~module_name typings ->
-  module_body_env_of_typings typings
-  |> Infer.Env.singleton_module ~name:module_name
-  |> Infer.Env.without_summary
+let implicit_open_required_names_of_source = fun (source: prepared_source) ->
+  source.source.implicit_opens
+  |> List.map SurfacePath.to_string
+  |> List.filter
+    (fun module_name ->
+      LocalModules.should_include_implicit_open ~current_module_name:source.internal_module_name ~module_name)
+  |> List.map LocalModules.RequiredName.of_string
+  |> dedupe_by_key_preserving_order ~key:(fun required_name -> required_name)
 
-let imported_module_env_of_loaded_module_result = fun module_result ->
-  module_body_env_of_compiled_module module_result
-  |> Infer.Env.singleton_module ~name:(ModuleTypings.module_name module_result)
-  |> Infer.Env.without_summary
-
-let imported_module_surface_of_env = fun env ->
-  {
-    visible_type_decls = Infer.Env.visible_type_decls env;
-    hidden_export_names = hidden_export_names_of_env env;
-  }
-
-let imported_module_surface_of_named_module = fun ~module_name typings ->
-  let type_decls = ModuleTypings.type_decls typings in
-  let qualified_exports = ModuleSurface.qualify_exports
-    ~module_name
-    ~type_decls
-    (ModuleTypings.exports typings) in
-  let qualified_type_decls = ModuleSurface.qualify_type_decls ~module_name type_decls in
-  {
-    visible_type_decls = qualified_type_decls;
-    hidden_export_names = hidden_export_names_of_exports qualified_exports;
-  }
-
-let imported_module_surface_of_loaded_module_result = fun module_result ->
-  let qualified_surface = ModuleSurface.qualify_surface
-    ~module_name:(ModuleTypings.module_name module_result)
-    ~type_decls:(ModuleTypings.type_decls module_result)
-    (ModuleTypings.exports module_result) in
-  {
-    visible_type_decls = qualified_surface.ModuleSurface.type_decls;
-    hidden_export_names = hidden_export_names_of_exports qualified_surface.ModuleSurface.exports;
-  }
-
-let base_source_surface_of_loaded_modules = fun ~config ->
-  let loaded_module_results =
-    TypConfig.(config.loaded_modules)
-    |> LoadedModules.values
+let scope_view_for_source = fun ~graph ~state ~(group: graph_group) (source: graph_source) ->
+  let visible_modules_rev = ref [] in
+  let visible_type_decls_rev = ref [] in
+  let implicit_open_modules_rev = ref [] in
+  let implicit_open_required_names = implicit_open_required_names_of_source source.prepared in
+  let required_name_is_implicit_open required_name =
+    List.exists (fun candidate -> candidate = required_name) implicit_open_required_names
   in
-  let external_surfaces =
-    loaded_module_results
-    |> List.map imported_module_surface_of_loaded_module_result
+  let add_visible_module module_id module_name artifact =
+    visible_modules_rev := (SurfacePath.of_string module_name, module_id) :: !visible_modules_rev;
+    visible_type_decls_rev := List.rev_append
+      (ModuleSurface.qualify_type_decls ~module_name (ModuleTypings.type_decls artifact))
+      !visible_type_decls_rev
   in
-  let external_visible_type_decls =
-    external_surfaces
-    |> List.concat_map (fun surface -> surface.visible_type_decls)
+  let add_local_group ~required_name module_id =
+    let package_module_id = PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name in
+    match PackageEnv.find_artifact state.package_env package_module_id with
+    | None -> ()
+    | Some artifact ->
+        add_visible_module
+          package_module_id
+          (LocalModules.RequiredName.to_string required_name)
+          artifact
   in
-  let initial_env_config = config in
-  let ambient_visible_types = VisibleTypes.bind
-    TypConfig.(initial_env_config.ambient_visible_types)
-    external_visible_type_decls in
-  let hidden_export_names = dedupe_by_key_preserving_order ~key:(fun path -> path)
-    (
-      TypConfig.hidden_export_names initial_env_config
-      @ (external_surfaces |> List.concat_map (fun surface -> surface.hidden_export_names))
-    ) in
-  let config = initial_env_config
-  |> TypConfig.with_ambient_visible_types ~ambient_visible_types
-  |> TypConfig.with_hidden_export_names ~hidden_export_names in
-  {
-    config;
-    initial_env_config;
-    ambient_type_decls = TypConfig.ambient_type_decls config;
-    loaded_module_results;
-  }
+  let add_loaded_required_name required_name =
+    match PackageEnv.find_loaded state.package_env ~required_name with
+    | None -> ()
+    | Some artifact ->
+        let package_module_id = PackageEnv.ModuleId.Loaded required_name in
+        add_visible_module package_module_id (LocalModules.RequiredName.to_string required_name) artifact
+  in
+  source.required_names |> Array.iter
+    (fun required_name ->
+      let local_ids = best_matching_local_module_ids graph group ~required_module_name:required_name in
+      if Array.length local_ids = 0 then
+        add_loaded_required_name required_name
+      else (
+        local_ids |> Array.iter (add_local_group ~required_name);
+        if required_name_is_implicit_open required_name then
+          implicit_open_modules_rev := List.rev_append
+            (local_ids
+            |> Array.to_list
+            |> List.map (fun module_id -> PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name))
+            !implicit_open_modules_rev
+      );
+      if required_name_is_implicit_open required_name && Array.length local_ids = 0 then
+        implicit_open_modules_rev := PackageEnv.ModuleId.Loaded required_name :: !implicit_open_modules_rev);
+  ScopeView.create
+    ~visible_modules:(List.rev !visible_modules_rev |> dedupe_by_key_preserving_order ~key:fst)
+    ~implicit_open_modules:(List.rev !implicit_open_modules_rev
+      |> dedupe_by_key_preserving_order ~key:(fun module_id -> module_id))
+    ~visible_type_decls:(List.rev !visible_type_decls_rev |> dedupe_type_decls_preserving_order)
 
 let build_package_graph = fun ~config ~ordered_sources ->
   let grouped_sources = grouped_sources_by_internal_module ordered_sources in
@@ -472,7 +429,6 @@ let build_package_graph = fun ~config ~ordered_sources ->
   let graph = {
     groups;
     candidate_ids_by_required_name = candidate_ids_by_required_name groups;
-    base_source_surface = base_source_surface_of_loaded_modules ~config;
     dependency_local_ids_by_set_id = [||]
   } in
   let dependency_set_id_by_local_ids = Collections.HashMap.with_capacity
@@ -522,7 +478,12 @@ let build_package_graph = fun ~config ~ordered_sources ->
               |> Array.of_list
             in
             let dependency_set_id = intern_dependency_set required_local_ids in
-            graph_sources_rev := { prepared = source; dependency_set_id; missing_external_names }
+            graph_sources_rev := {
+              prepared = source;
+              required_names = Array.of_list required_names;
+              dependency_set_id;
+              missing_external_names
+            }
             :: !graph_sources_rev);
         let graph_sources = List.rev !graph_sources_rev in
         let dependency_ids = !dependency_ids_rev
@@ -650,137 +611,6 @@ let rebind_public_module_views = fun (group: graph_group) module_typings ->
         ~module_name:(LocalModules.AmbientName.to_string public_name)
         module_typings)
 
-let imported_module_env_of_group_result = fun (group: graph_group) module_result ->
-  let internal_name = LocalModules.InternalName.to_string group.internal_name in
-  let module_env =
-    module_body_env_of_compiled_module module_result
-    |> Infer.Env.singleton_module ~name:internal_name
-    |> Infer.Env.without_summary
-  in
-  group.visible_names
-  |> Array.to_list
-  |> List.fold_left
-    (fun env visible_name ->
-      match visible_name with
-      | InternalName _ -> env
-      | AmbientName ambient_name ->
-          Infer.Env.bind
-            env
-            (Infer.Env.entries_for_module_alias
-              env
-              ~alias_name:(LocalModules.AmbientName.to_string ambient_name)
-              ~module_path:(SurfacePath.of_name internal_name)))
-    module_env
-  |> Infer.Env.without_summary
-
-let imported_module_surface_of_group_result = fun group module_result ->
-  let qualified_surfaces = group.visible_names
-  |> Array.to_list
-  |> List.map
-    (fun visible_name ->
-      ModuleSurface.qualify_surface
-        ~module_name:(visible_module_name_to_string visible_name)
-        ~type_decls:(ModuleTypings.type_decls module_result)
-        (ModuleTypings.exports module_result)) in
-  {
-    visible_type_decls = qualified_surfaces |> List.concat_map (fun surface -> surface.ModuleSurface.type_decls);
-    hidden_export_names = qualified_surfaces
-    |> List.concat_map (fun surface -> surface.ModuleSurface.exports)
-    |> hidden_export_names_of_exports;
-  }
-
-let build_source_analysis_surface = fun ~graph ~state dependency_set_id ->
-  let ambient_visible_types = ref TypConfig.(graph.base_source_surface.config.ambient_visible_types) in
-  let hidden_export_names_rev = ref [] in
-  let ambient_type_decls_rev = ref graph.base_source_surface.ambient_type_decls in
-        dependency_local_ids graph dependency_set_id |> Array.iter
-    (fun module_id ->
-      match state.compiled_modules_by_id.(module_id) with
-      | Some compiled_module ->
-          let imported_surface = compiled_module.imported_surface in
-          ambient_type_decls_rev := !ambient_type_decls_rev @ imported_surface.visible_type_decls;
-          ambient_visible_types := VisibleTypes.bind
-            !ambient_visible_types
-            imported_surface.visible_type_decls;
-          hidden_export_names_rev := List.rev_append
-            imported_surface.hidden_export_names
-            !hidden_export_names_rev;
-      | None -> ());
-  let hidden_export_names = dedupe_by_key_preserving_order ~key:(fun path -> path)
-    (TypConfig.hidden_export_names graph.base_source_surface.config @ List.rev !hidden_export_names_rev) in
-  let config = graph.base_source_surface.config
-  |> TypConfig.with_ambient_visible_types ~ambient_visible_types:!ambient_visible_types
-  |> TypConfig.with_hidden_export_names ~hidden_export_names
-  in
-  {
-    config;
-    initial_env_config = graph.base_source_surface.initial_env_config;
-    ambient_type_decls = !ambient_type_decls_rev;
-    loaded_module_results = graph.base_source_surface.loaded_module_results;
-  }
-
-let source_analysis_setup = fun ~graph ~state (source: graph_source) ->
-  let module_name = source.prepared.internal_module_name in
-  let unavailable_local_ids = dependency_local_ids graph source.dependency_set_id
-  |> Array.to_list
-  |> List.filter (fun module_id -> Option.is_none state.compiled_modules_by_id.(module_id)) in
-  let missing_requirements = (source.missing_external_names
-  |> Array.to_list
-  |> List.map
-    (fun missing_module_name ->
-      MissingRequirements.MissingModuleSummary {
-        module_name = LocalModules.RequiredName.to_string missing_module_name;
-        requested_by = [ source.prepared.source.source_id ]
-      }))
-  @ (unavailable_local_ids
-  |> List.map
-    (fun module_id ->
-      MissingRequirements.MissingModuleSummary {
-        module_name = LocalModules.InternalName.to_string graph.groups.(module_id).internal_name;
-        requested_by = [ source.prepared.source.source_id ]
-      })) in
-  match missing_requirements with
-  | _ :: _ -> Error (MissingRequirements {
-    module_name;
-    requirements = MissingRequirements.of_list missing_requirements
-  })
-  | [] ->
-      let source_surface =
-        match state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) with
-        | Some source_surface -> source_surface
-        | None ->
-            let source_surface = build_source_analysis_surface ~graph ~state source.dependency_set_id in
-            state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) <- Some source_surface;
-            source_surface
-      in
-      let initial_env =
-        let env = Infer.initial_env_of_config ~config:source_surface.initial_env_config in
-        let env = source_surface.loaded_module_results
-        |> List.fold_left
-          (fun env typings ->
-            Infer.Env.bind
-              env
-              (imported_module_env_of_loaded_module_result typings))
-          env in
-        dependency_local_ids graph source.dependency_set_id
-        |> Array.fold_left
-          (fun env module_id ->
-            match state.compiled_modules_by_id.(module_id) with
-            | Some compiled_module ->
-                Infer.Env.bind
-                  env
-                  (imported_module_env_of_group_result
-                    graph.groups.(module_id)
-                    compiled_module.module_result)
-            | None -> env)
-          env
-      in
-      let source_config = source_surface.config
-      |> TypConfig.with_loaded_module_index ~loaded_modules:state.loaded_modules in
-      let ambient_binding_count = List.length (Infer.Env.names initial_env) in
-      let ambient_type_decl_count = List.length source_surface.ambient_type_decls in
-      Ok (source_surface, initial_env, source_config, ambient_binding_count, ambient_type_decl_count)
-
 let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
   let local_module_names = dependency_local_ids graph
     (match group.sources with
@@ -795,10 +625,37 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
       (fun result (source: graph_source) ->
         match result with
         | Error _ as err -> err
-        | Ok analyzed_sources -> (
-            match source_analysis_setup ~graph ~state source with
-            | Error _ as err -> err
-            | Ok (source_surface, initial_env, source_config, ambient_binding_count, ambient_type_decl_count) ->
+        | Ok analyzed_sources ->
+            let unavailable_local_ids = dependency_local_ids graph source.dependency_set_id
+            |> Array.to_list
+            |> List.filter (fun module_id -> Option.is_none state.compiled_modules_by_id.(module_id)) in
+            let missing_requirements =
+              (source.missing_external_names
+              |> Array.to_list
+              |> List.map
+                (fun missing_module_name ->
+                  MissingRequirements.MissingModuleSummary {
+                    module_name = LocalModules.RequiredName.to_string missing_module_name;
+                    requested_by = [ source.prepared.source.source_id ]
+                  }))
+              @ (unavailable_local_ids
+              |> List.map
+                (fun module_id ->
+                  MissingRequirements.MissingModuleSummary {
+                    module_name = LocalModules.InternalName.to_string graph.groups.(module_id).internal_name;
+                    requested_by = [ source.prepared.source.source_id ]
+                  }))
+            in
+            (match missing_requirements with
+            | _ :: _ ->
+                Error (MissingRequirements {
+                  module_name = group.internal_name;
+                  requirements = MissingRequirements.of_list missing_requirements
+                })
+            | [] ->
+                let scope_view = scope_view_for_source ~graph ~state ~group source in
+                let source_config = TypConfig.with_loaded_module_index ~loaded_modules:state.loaded_modules config in
+                let ambient_type_decl_count = List.length (ScopeView.visible_type_decls scope_view) in
                 let () = TypConfig.emit_event source_config
                   (fun () ->
                     Event.SourceAnalysisStarted {
@@ -807,19 +664,23 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
                       mode = Event.BaseAnalysis;
                       local_module_names;
                       loaded_module_count = LoadedModules.len state.loaded_modules;
-                      ambient_binding_count;
+                      ambient_binding_count = 0;
                       ambient_type_decl_count;
                     })
                 in
                 let analysis = SourceAnalysis.analyze
-                  ~initial_env
+                  ~package_env:state.package_env
+                  ~scope_view
                   ~config:source_config
                   source.prepared.source in
                 let () = TypConfig.emit_event source_config
                   (fun () -> source_analysis_finished_event analysis)
                 in
-                Ok ((source.prepared, analysis, source_surface.ambient_type_decls) :: analyzed_sources)
-          ))
+                Ok ((
+                  source.prepared,
+                  analysis,
+                  ScopeView.visible_type_decls scope_view
+                ) :: analyzed_sources)))
       (Ok [])
   in
   match analyzed_sources with
@@ -831,10 +692,10 @@ let public_module_typings_of_compiled_modules = fun graph compiled_modules_by_id
   Array.iteri
     (fun module_id (group: graph_group) ->
       match compiled_modules_by_id.(module_id) with
-      | Some compiled_module ->
+      | Some finished_group ->
           rebind_public_module_views
             group
-            compiled_module.module_result
+            finished_group.module_result
           |> List.iter (LoadedModules.add public_module_typings)
       | None -> ())
     graph.groups;
@@ -846,11 +707,9 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
   | Error _ as err -> err
   | Ok ordered_group_ids ->
       let initial_state = {
+        package_env = PackageEnv.of_loaded_modules TypConfig.(config.loaded_modules);
         loaded_modules = LoadedModules.copy TypConfig.(config.loaded_modules);
         compiled_modules_by_id = Array.make (Array.length graph.groups) None;
-        source_analysis_surfaces_by_dependency_set_id = Array.make
-          (Array.length graph.dependency_local_ids_by_set_id)
-          None;
       }
       in
       let result =
@@ -861,58 +720,54 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
             | Error _ as err -> err
             | Ok (acc, state) ->
                 let group = graph.groups.(module_id) in
-                (
-                  match analyze_group ~graph ~state ~config group with
-                  | Error _ as err -> err
-                  | Ok analyzed_sources ->
-                      let module_name = LocalModules.InternalName.to_string group.internal_name in
-                      let source_ids = analyzed_sources
-                      |> List.map
-                        (fun ((source: prepared_source), _analysis, _ambient_type_decls) -> source.source.source_id) in
-                      let () = TypConfig.emit_event config
-                        (fun () -> Event.ModulePairingStarted { module_name; source_ids })
-                      in
-                      let pairing = analyzed_sources
-                      |> List.map
-                        (fun ((source: prepared_source), analysis, ambient_type_decls) -> {
-                          ModulePairing.source = source.source;
-                          analysis;
-                          ambient_type_decls;
-                        })
-                        |> ModulePairing.of_sources ~internal_name:group.internal_name in
-                      let () = TypConfig.emit_event config
-                        (fun () -> module_pairing_finished_event module_name source_ids pairing)
-                      in
-                      let checked_sources = analyzed_sources
-                      |> List.map
-                        (fun ((source: prepared_source), analysis, _ambient_type_decls) ->
-                          { path = source.display_path; analysis }) in
-                      let module_result = pairing.module_result in
-                      let public_module_typings = rebind_public_module_views group module_result in
-                      let persisted_typings = module_result :: public_module_typings in
-                      (
-                        match persist_module_views config ~module_name:group.internal_name persisted_typings with
-                        | Error _ as err -> err
-                        | Ok () ->
-                            LoadedModules.add state.loaded_modules module_result;
-                            state.compiled_modules_by_id.(module_id) <- Some {
-                              checked_sources;
-                              module_result;
-                              imported_surface = imported_module_surface_of_group_result group module_result;
-                            };
-                            let finished_group = {
-                              module_name = group.internal_name;
-                              checked_sources;
-                              module_result;
-                            } in
-                            Ok (f acc finished_group, state)
-                      )
-                ))
+                match analyze_group ~graph ~state ~config group with
+                | Error _ as err -> err
+                | Ok analyzed_sources ->
+                    let module_name = LocalModules.InternalName.to_string group.internal_name in
+                    let source_ids = analyzed_sources
+                    |> List.map (fun ((source: prepared_source), _analysis, _visible_type_decls) -> source.source.source_id) in
+                    let () = TypConfig.emit_event config
+                      (fun () -> Event.ModulePairingStarted { module_name; source_ids })
+                    in
+                    let pairing = analyzed_sources
+                    |> List.map
+                      (fun ((source: prepared_source), analysis, ambient_type_decls) -> {
+                        ModulePairing.source = source.source;
+                        analysis;
+                        ambient_type_decls;
+                      })
+                      |> ModulePairing.of_sources ~internal_name:group.internal_name
+                    in
+                    let () = TypConfig.emit_event config
+                      (fun () -> module_pairing_finished_event module_name source_ids pairing)
+                    in
+                    let checked_sources = analyzed_sources
+                    |> List.map
+                      (fun ((source: prepared_source), analysis, _ambient_type_decls) -> {
+                        path = source.display_path;
+                        analysis
+                      })
+                    in
+                    let module_result = pairing.module_result in
+                    let public_module_typings = rebind_public_module_views group module_result in
+                    let persisted_typings = module_result :: public_module_typings in
+                    match persist_module_views config ~module_name:group.internal_name persisted_typings with
+                    | Error _ as err -> err
+                    | Ok () ->
+                        PackageEnv.add_local state.package_env ~internal_name:group.internal_name module_result;
+                        LoadedModules.add state.loaded_modules module_result;
+                        let finished_group = {
+                          module_name = group.internal_name;
+                          checked_sources;
+                          module_result;
+                        } in
+                        state.compiled_modules_by_id.(module_id) <- Some finished_group;
+                        Ok (f acc finished_group, state))
           (Ok (init, initial_state))
       in
       match result with
       | Error _ as err -> err
-      | Ok (acc, state) -> (
+      | Ok (acc, state) ->
           let public_module_typings = public_module_typings_of_compiled_modules
             graph
             state.compiled_modules_by_id in
@@ -923,4 +778,3 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
             loaded_modules = state.loaded_modules;
             public_module_typings
           }
-        )
