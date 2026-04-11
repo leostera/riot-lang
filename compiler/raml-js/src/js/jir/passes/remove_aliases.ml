@@ -9,79 +9,13 @@ module Binding_map = Collections.Map.Make (struct
   let compare = Core.Binding_id.compare
 end)
 
-module Entity_set = struct
-  module Storage = Collections.Map.Make (struct
-    type t = Core.Entity_id.t
-    let compare = Core.Entity_id.compare
-  end)
-
-  type t = unit Storage.t
-
-  let empty = Storage.empty
-
-  let add = fun entity set -> Storage.add entity () set
-
-  let mem = Storage.mem
-end
+module Entity_set = Analysis.Entity_set
 
 type env = {
   aliases: Core.Entity_id.t Binding_map.t;
   assigned: Entity_set.t;
   exported: Entity_set.t;
 }
-
-let rec collect_expr_assigned_entities = fun entities expr ->
-  match expr with
-  | Jir.Expr.Literal _
-  | Jir.Expr.Identifier _
-  | Jir.Expr.Imported _
-  | Jir.Expr.Runtime_helper _ ->
-      entities
-  | Jir.Expr.Function function_ ->
-      collect_statement_assigned_entities entities function_.body
-  | Jir.Expr.Member member ->
-      collect_expr_assigned_entities entities member.object_
-  | Jir.Expr.Call call ->
-      let entities = collect_expr_assigned_entities entities call.callee in
-      collect_expr_list_assigned_entities entities call.arguments
-  | Jir.Expr.Conditional conditional ->
-      let entities = collect_expr_assigned_entities entities conditional.condition in
-      let entities = collect_expr_assigned_entities entities conditional.then_ in
-      collect_expr_assigned_entities entities conditional.else_
-  | Jir.Expr.Assignment assignment ->
-      collect_expr_assigned_entities (Entity_set.add assignment.target entities) assignment.value
-
-and collect_expr_list_assigned_entities = fun entities exprs ->
-  match exprs with
-  | [] -> entities
-  | expr :: rest ->
-      let entities = collect_expr_assigned_entities entities expr in
-      collect_expr_list_assigned_entities entities rest
-
-and collect_statement_assigned_entities = fun entities statements ->
-  match statements with
-  | [] -> entities
-  | statement :: rest ->
-      let entities = collect_one_statement_assigned_entities entities statement in
-      collect_statement_assigned_entities entities rest
-
-and collect_one_statement_assigned_entities = fun entities statement ->
-  match statement with
-  | Jir.Statement.Declaration declaration ->
-      Option.map (collect_expr_assigned_entities entities) declaration.init
-      |> Option.unwrap_or ~default:entities
-  | Jir.Statement.Block statements ->
-      collect_statement_assigned_entities entities statements
-  | Jir.Statement.Expression expr
-  | Jir.Statement.Return expr ->
-      collect_expr_assigned_entities entities expr
-  | Jir.Statement.If if_ ->
-      let entities = collect_expr_assigned_entities entities if_.condition in
-      let entities = collect_statement_assigned_entities entities if_.then_ in
-      collect_statement_assigned_entities entities if_.else_
-
-let collect_program_assigned_entities = fun (program: Jir.Program.t) ->
-  collect_statement_assigned_entities Entity_set.empty program.body
 
 let resolve_alias = fun env entity ->
   let rec loop seen entity =
@@ -167,7 +101,7 @@ and lower_scoped_block = fun env statements -> lower_block env statements |> fst
 let program = fun (program: Jir.Program.t) ->
   let env = {
     aliases = Binding_map.empty;
-    assigned = collect_program_assigned_entities program;
+    assigned = Analysis.program_assigned_entities program;
     exported =
       List.fold_left
         (fun set (export: Jir.Export.t) -> Entity_set.add export.local set)

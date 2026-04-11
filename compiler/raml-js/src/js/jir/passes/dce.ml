@@ -3,28 +3,7 @@ module Core = Raml_core.Core_ir
 module Jir = Types
 module Analysis = Analysis
 
-module Entity_set = struct
-  module Storage = Collections.Map.Make (struct
-    type t = Core.Entity_id.t
-    let compare = Core.Entity_id.compare
-  end)
-
-  type t = unit Storage.t
-
-  let empty = Storage.empty
-
-  let add = fun entity set -> Storage.add entity () set
-
-  let singleton = fun entity -> Storage.singleton entity ()
-
-  let mem = Storage.mem
-
-  let union = fun left right ->
-    Storage.union (fun _ () () -> Some ()) left right
-
-  let filter = fun predicate set ->
-    Storage.filter (fun entity () -> predicate entity) set
-end
+module Entity_set = Analysis.Entity_set
 
 type lowered_block = {
   statements: Jir.Statement.t list;
@@ -35,59 +14,6 @@ let is_dead_local_store = fun ~protected ~used_after target ->
   match Core.Entity_id.binding_id target with
   | None -> false
   | Some _ -> not (Entity_set.mem target protected) && not (Entity_set.mem target used_after)
-
-let rec collect_expr_assigned_entities = fun entities expr ->
-  match expr with
-  | Jir.Expr.Literal _
-  | Jir.Expr.Identifier _
-  | Jir.Expr.Imported _
-  | Jir.Expr.Runtime_helper _ ->
-      entities
-  | Jir.Expr.Function function_ ->
-      collect_statement_assigned_entities entities function_.body
-  | Jir.Expr.Member member ->
-      collect_expr_assigned_entities entities member.object_
-  | Jir.Expr.Call call ->
-      let entities = collect_expr_assigned_entities entities call.callee in
-      collect_expr_list_assigned_entities entities call.arguments
-  | Jir.Expr.Conditional conditional ->
-      let entities = collect_expr_assigned_entities entities conditional.condition in
-      let entities = collect_expr_assigned_entities entities conditional.then_ in
-      collect_expr_assigned_entities entities conditional.else_
-  | Jir.Expr.Assignment assignment ->
-      collect_expr_assigned_entities (Entity_set.add assignment.target entities) assignment.value
-
-and collect_expr_list_assigned_entities = fun entities exprs ->
-  match exprs with
-  | [] -> entities
-  | expr :: rest ->
-      let entities = collect_expr_assigned_entities entities expr in
-      collect_expr_list_assigned_entities entities rest
-
-and collect_statement_assigned_entities = fun entities statements ->
-  match statements with
-  | [] -> entities
-  | statement :: rest ->
-      let entities = collect_one_statement_assigned_entities entities statement in
-      collect_statement_assigned_entities entities rest
-
-and collect_one_statement_assigned_entities = fun entities statement ->
-  match statement with
-  | Jir.Statement.Declaration declaration ->
-      Option.map (collect_expr_assigned_entities entities) declaration.init
-      |> Option.unwrap_or ~default:entities
-  | Jir.Statement.Block statements ->
-      collect_statement_assigned_entities entities statements
-  | Jir.Statement.Expression expr
-  | Jir.Statement.Return expr ->
-      collect_expr_assigned_entities entities expr
-  | Jir.Statement.If if_ ->
-      let entities = collect_expr_assigned_entities entities if_.condition in
-      let entities = collect_statement_assigned_entities entities if_.then_ in
-      collect_statement_assigned_entities entities if_.else_
-
-let collect_program_assigned_entities = fun (program: Jir.Program.t) ->
-  collect_statement_assigned_entities Entity_set.empty program.body
 
 let forget_binding = fun entities binding_id ->
   Entity_set.filter
@@ -244,6 +170,6 @@ let program = fun (program: Jir.Program.t) ->
       Entity_set.empty
       program.exports
   in
-  let assigned = collect_program_assigned_entities program in
+  let assigned = Analysis.program_assigned_entities program in
   let lowered_body = lower_block ~protected ~assigned program.body in
   { program with body = lowered_body.statements }
