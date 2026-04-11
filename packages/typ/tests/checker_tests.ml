@@ -1,6 +1,6 @@
 open Std
 
-let (let*) = Result.and_then
+let ( let* ) = Result.and_then
 
 let fixtures_dir = Path.v "packages/typ/tests/fixtures/corpus"
 
@@ -14,17 +14,19 @@ let checker_test = fun (ctx: Test.FixtureRunner.ctx) ->
   let* file = Fs.read ctx.fixture_path |> Result.map_error IO.error_message in
   let parse_result = Syn.parse ~filename:ctx.fixture_path file in
   let* cst =
-    Syn.build_cst parse_result
-    |> Result.map_error (function
-         | Syn.Parse_diagnostics diagnostics ->
-             diagnostics |> List.map Syn.Diagnostic.to_string |> String.concat "\n"
-      | Syn.Cst_builder_error {message} -> message)
+    Syn.build_cst parse_result |> Result.map_error
+      (
+        function
+        | Syn.Parse_diagnostics diagnostics -> diagnostics
+        |> List.map Syn.Diagnostic.to_string
+        |> String.concat "\n"
+        | Syn.Cst_builder_error { message } -> message
+      )
   in
   let source = Typ.Model.Source.make ~text:file in
   let typings = Typ.Check.check ~source cst in
-  let* json_text = Serde_json.to_string Typ.Check.Typings.serializer typings 
-    |> Result.map_error Serde.Error.to_string
-  in
+  let* json_text = Serde_json.to_string Typ.Check.Typings.serializer typings
+  |> Result.map_error Serde.Error.to_string in
   let* json = Data.Json.of_string json_text |> Result.map_error Data.Json.error_to_string in
   Test.Snapshot.assert_json ~ctx:ctx.test ~actual:json
 

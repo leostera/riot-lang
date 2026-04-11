@@ -52,17 +52,13 @@ let env_of_compiled_scope = fun scope ->
   |> Env.without_summary
 
 let imported_visible_type_decls_for_module = fun (state: state) ~visible_path ~module_id ->
-  ImportedWorld.visible_type_decls_for_module
-    state.imported_world
-    ~visible_path
-    ~module_id
+  ImportedWorld.visible_type_decls_for_module state.imported_world ~visible_path ~module_id
 
 let imported_type_env_for_module = fun (state: state) ~visible_path ~module_id ->
   imported_visible_type_decls_for_module state ~visible_path ~module_id |> Env.of_type_decls
 
 let imported_lookup_record_module_path = fun label_name ->
-  Option.and_then
-    (SurfacePath.split_last (SurfacePath.of_string label_name))
+  Option.and_then (SurfacePath.split_last (SurfacePath.of_string label_name))
     (fun (module_path, _label_name) ->
       if SurfacePath.is_empty module_path then
         None
@@ -109,19 +105,15 @@ let lookup_imported_constructors = fun (state: state) path ->
   if SurfacePath.is_bare path then
     ImportedWorld.implicit_open_modules state.imported_world |> List.concat_map
       (fun ({ ImportedWorld.visible_path; module_id }: ImportedWorld.opened_module) ->
-        Env.lookup_constructors
-          (imported_type_env_for_module state ~visible_path ~module_id)
-          path)
+        Env.lookup_constructors (imported_type_env_for_module state ~visible_path ~module_id) path)
   else
     ImportedWorld.resolve_visible_module_prefix state.imported_world path |> Option.map
       (fun ({ ImportedWorld.visible_path; module_id; suffix }: ImportedWorld.resolved_module) ->
         if SurfacePath.is_empty suffix then
           []
         else
-          Env.lookup_constructors
-            (imported_type_env_for_module state ~visible_path ~module_id)
-            path)
-    |> Option.unwrap_or ~default:[]
+          Env.lookup_constructors (imported_type_env_for_module state ~visible_path ~module_id) path) |> Option.unwrap_or
+      ~default:[]
 
 let lookup_constructors = fun (state: state) env path ->
   let local = Env.lookup_constructors env path in
@@ -147,22 +139,17 @@ let lookup_owned_constructor = fun (state: state) env path owner_type_constructo
 let lookup_imported_record_decls = fun (state: state) label_name ->
   match imported_lookup_record_module_path label_name with
   | Some module_path ->
-      ImportedWorld.resolve_visible_module_prefix state.imported_world module_path
-      |> Option.map
+      ImportedWorld.resolve_visible_module_prefix state.imported_world module_path |> Option.map
         (fun ({ ImportedWorld.visible_path; module_id; suffix }: ImportedWorld.resolved_module) ->
           if SurfacePath.is_empty suffix then
             []
           else
-            Env.lookup_record_decls
-              (imported_type_env_for_module state ~visible_path ~module_id)
-              label_name)
-      |> Option.unwrap_or ~default:[]
+            Env.lookup_record_decls (imported_type_env_for_module state ~visible_path ~module_id) label_name) |> Option.unwrap_or
+        ~default:[]
   | None ->
       ImportedWorld.implicit_open_modules state.imported_world |> List.concat_map
         (fun ({ ImportedWorld.visible_path; module_id }: ImportedWorld.opened_module) ->
-          Env.lookup_record_decls
-            (imported_type_env_for_module state ~visible_path ~module_id)
-            label_name)
+          Env.lookup_record_decls (imported_type_env_for_module state ~visible_path ~module_id) label_name)
 
 let lookup_record_decls = fun (state: state) env label_name ->
   let local = Env.lookup_record_decls env label_name in

@@ -3,6 +3,7 @@ module Check_error = Error
 module State = State
 module Event = Event
 module Reporter = Reporter
+module Session = Session
 
 let emit = fun ?on_event event ->
   match on_event with

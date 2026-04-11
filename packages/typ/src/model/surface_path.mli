@@ -1,19 +1,18 @@
 type t
+val empty: t
 
-val empty : t
+val is_empty: t -> bool
 
-val is_empty : t -> bool
+val of_name: string -> t
 
-val of_name : string -> t
+val of_segments: string list -> t
 
-val of_segments : string list -> t
+val to_segments: t -> string list
 
-val to_segments : t -> string list
+val to_string: t -> string
 
-val to_string : t -> string
+val equal: t -> t -> bool
 
-val equal : t -> t -> bool
+val compare: t -> t -> int
 
-val compare : t -> t -> int
-
-val serializer : t Serde.Ser.t
+val serializer: t Serde.Ser.t

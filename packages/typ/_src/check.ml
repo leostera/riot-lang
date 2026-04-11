@@ -165,17 +165,18 @@ let graph_input_of_source = fun (source: prepared_source) ->
     LocalModuleGraph.payload = source;
     source_id = source.source.source_id;
     internal_name = source.internal_module_name;
-    visible_names =
-      LocalModuleGraph.InternalName source.internal_module_name
-      :: (ambient_names_of_source source
-      |> List.map (fun ambient_name -> LocalModuleGraph.AmbientName ambient_name));
+    visible_names = LocalModuleGraph.InternalName source.internal_module_name
+    :: (ambient_names_of_source source
+    |> List.map (fun ambient_name -> LocalModuleGraph.AmbientName ambient_name));
     required_names = LocalModuleGraph.required_names_of_parse_result
       ~current_module_name:source.internal_module_name
       ~parse_result:source.source.parse_result
       ~implicit_opens:source.source.implicit_opens;
   }
 
-let scope_view_for_source = fun ~(graph:package_graph) ~state ~(group:graph_group) (source: graph_source) ->
+let scope_view_for_source = fun ~(graph:package_graph) ~state ~(group:graph_group) (
+  source: graph_source
+) ->
   let visible_modules_rev = ref [] in
   let implicit_open_modules_rev = ref [] in
   let prepared = source.input.payload in
@@ -187,9 +188,11 @@ let scope_view_for_source = fun ~(graph:package_graph) ~state ~(group:graph_grou
     visible_modules_rev := (SurfacePath.of_string module_name, module_id) :: !visible_modules_rev
   in
   let add_implicit_open_module required_name module_id =
-    implicit_open_modules_rev :=
-      (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), module_id)
-      :: !implicit_open_modules_rev
+    implicit_open_modules_rev := (
+      SurfacePath.of_string (LocalModules.RequiredName.to_string required_name),
+      module_id
+    )
+    :: !implicit_open_modules_rev
   in
   let add_local_group ~required_name module_id =
     let package_module_id = PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name in
@@ -240,22 +243,22 @@ let build_package_graph = fun ~ordered_sources ->
 
 let public_module_names_of_group = fun (group: graph_group) ->
   group.sources
-  |> List.filter_map
-    (fun (source: graph_source) -> source.input.payload.public_module_name)
+  |> List.filter_map (fun (source: graph_source) -> source.input.payload.public_module_name)
   |> dedupe_by_key_preserving_order ~key:(fun ambient_name -> ambient_name)
 
-let cycle_error = fun (graph:package_graph) (cycle: LocalModuleGraph.cycle) ->
+let cycle_error = fun (graph: package_graph) (cycle: LocalModuleGraph.cycle) ->
   let module_name =
     match cycle.module_ids with
     | module_id :: _ -> graph.groups.(module_id).internal_name
     | [] -> panic "cycle_error expected at least one module id"
   in
   let requirements = MissingRequirements.of_list
-    [ MissingRequirements.LocalModuleCycle {
-      module_names = cycle.module_names;
-      source_ids = cycle.source_ids;
-    } ]
-  in
+    [
+      MissingRequirements.LocalModuleCycle {
+        module_names = cycle.module_names;
+        source_ids = cycle.source_ids
+      }
+    ] in
   MissingRequirements { module_name; requirements }
 
 let persist_module_typings = fun store module_typings ->
@@ -332,8 +335,7 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
             let missing_requirements = (source.unresolved_local_names
             |> Array.to_list
             |> List.filter
-              (fun required_name ->
-                not (LoadedModules.contains state.loaded_modules ~required_name))
+              (fun required_name -> not (LoadedModules.contains state.loaded_modules ~required_name))
             |> List.map
               (fun missing_module_name ->
                 MissingRequirements.MissingModuleSummary {
@@ -391,7 +393,7 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
   | Error _ as err -> err
   | Ok analyzed_sources -> Ok (List.rev analyzed_sources)
 
-let public_module_typings_of_compiled_modules = fun (graph:package_graph) compiled_modules_by_id ->
+let public_module_typings_of_compiled_modules = fun (graph: package_graph) compiled_modules_by_id ->
   let public_module_typings = LoadedModules.empty in
   Array.iteri
     (fun module_id (group: graph_group) ->

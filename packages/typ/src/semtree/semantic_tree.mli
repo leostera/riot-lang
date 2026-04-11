@@ -1,16 +1,15 @@
 open Std
 
 type file_kind =
-  [ `Implementation
-  | `Interface ]
-
+[
+  `Implementation
+  | `Interface
+]
 type path = string list
-
 type arrow_label = {
   name: string;
   optional_: bool;
 }
-
 type type_constr = {
   path: path;
   arguments: type_expr list;
@@ -41,7 +40,6 @@ and type_expr =
   | TypeArrow of type_arrow
   | TypeTuple of type_expr list
   | TypeUnsupported of string
-
 type type_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
@@ -51,7 +49,6 @@ type type_declaration = {
   nonrec_: bool;
   private_: bool;
 }
-
 type value_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
@@ -61,11 +58,9 @@ type value_declaration = {
   declared: bool;
   annotation: type_expr option;
 }
-
 type module_definition =
   | Alias of path
   | Opaque
-
 type module_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
@@ -73,58 +68,48 @@ type module_declaration = {
   recursive: bool;
   definition: module_definition;
 }
-
 type module_type_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
   name: string;
   has_definition: bool;
 }
-
 type open_statement = {
   span: Syn.Ceibo.Span.t;
   target: path option;
   override_: bool;
 }
-
 type include_target =
   | ModulePath of path
   | ModuleTypePath of path
   | Opaque
-
 type include_statement = {
   span: Syn.Ceibo.Span.t;
   target: include_target;
 }
-
 type exception_rhs =
   | ExceptionAlias of path
   | ExceptionPayload of type_expr
-
 type exception_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
   name: string;
   rhs: exception_rhs option;
 }
-
 type external_declaration = {
   id: Model.Binding_id.t;
   span: Syn.Ceibo.Span.t;
   name: string;
   annotation: type_expr;
 }
-
 type expression_item = {
   span: Syn.Ceibo.Span.t;
 }
-
 type unsupported_item = {
   span: Syn.Ceibo.Span.t;
   kind: Syn.SyntaxKind.t;
   summary: string;
 }
-
 type item =
   | TypeDeclaration of type_declaration
   | ValueDeclaration of value_declaration
@@ -136,14 +121,12 @@ type item =
   | ExternalDeclaration of external_declaration
   | Expression of expression_item
   | Unsupported of unsupported_item
-
 type t = {
   kind: file_kind;
   items: item list;
   exports: item list;
   diagnostics: Diagnostics.Diagnostic.t list;
 }
+val empty: kind:file_kind -> t
 
-val empty : kind:file_kind -> t
-
-val exports_of_items : item list -> item list
+val exports_of_items: item list -> item list

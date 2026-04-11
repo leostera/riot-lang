@@ -5,10 +5,7 @@ type t = {
   on_event: (Event.t -> unit) option;
 }
 
-let default = {
-  capture_traces = true;
-  on_event = None;
-}
+let default = { capture_traces = true; on_event = None }
 
 let with_capture_traces = fun config ~capture_traces -> { config with capture_traces }
 

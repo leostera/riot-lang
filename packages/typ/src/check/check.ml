@@ -1,6 +1,5 @@
 open Std
 open Syn
-
 module TypingContext = Typing_context
 module Typings = File
 

@@ -30,7 +30,7 @@ module SharedCaches = struct
   let create = fun () ->
     {
       module_result_cache = Collections.HashMap.with_capacity 128;
-      source_analysis_cache = Collections.HashMap.with_capacity 256;
+      source_analysis_cache = Collections.HashMap.with_capacity 256
     }
 end
 
@@ -226,7 +226,8 @@ let candidate_local_module_names = fun (snapshot: t) (slot: analysis_slot) ->
   snapshot.module_names
   |> List.filter
     (fun candidate_module_name ->
-      not (String.equal (LocalModules.InternalName.to_string current_module_name) candidate_module_name))
+      not
+        (String.equal (LocalModules.InternalName.to_string current_module_name) candidate_module_name))
 
 let best_matching_local_module_names = fun (snapshot: t) (slot: analysis_slot) ~required_name ->
   let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
@@ -287,42 +288,43 @@ let scope_view_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
     List.exists (fun candidate -> candidate = required_name) implicit_open_required_names
   in
   let add_visible_module module_id required_name =
-    visible_modules_rev :=
-      (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), module_id)
-      :: !visible_modules_rev
+    visible_modules_rev := (
+      SurfacePath.of_string (LocalModules.RequiredName.to_string required_name),
+      module_id
+    )
+    :: !visible_modules_rev
   in
   let add_implicit_open_module module_id required_name =
-    implicit_open_modules_rev :=
-      (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), module_id)
-      :: !implicit_open_modules_rev
+    implicit_open_modules_rev := (
+      SurfacePath.of_string (LocalModules.RequiredName.to_string required_name),
+      module_id
+    )
+    :: !implicit_open_modules_rev
   in
-  required_local_module_names slot
-  |> List.iter
+  required_local_module_names slot |> List.iter
     (fun required_name_string ->
       let required_name = LocalModules.RequiredName.of_string required_name_string in
       let local_module_names = best_matching_local_module_names snapshot slot ~required_name in
       match local_module_names with
       | [] ->
-          if LoadedModules.contains slot.config.loaded_modules ~required_name then (
-            let module_id = PackageEnv.ModuleId.Loaded required_name in
-            add_visible_module module_id required_name;
-            if required_name_is_implicit_open required_name then
-              add_implicit_open_module module_id required_name
-          )
+          if LoadedModules.contains slot.config.loaded_modules ~required_name then
+            (
+              let module_id = PackageEnv.ModuleId.Loaded required_name in
+              add_visible_module module_id required_name;
+              if required_name_is_implicit_open required_name then
+                add_implicit_open_module module_id required_name
+            )
       | _ ->
-          local_module_names
-          |> List.iter
+          local_module_names |> List.iter
             (fun module_name ->
-              let module_id =
-                PackageEnv.ModuleId.Local (LocalModules.InternalName.of_string module_name)
-              in
+              let module_id = PackageEnv.ModuleId.Local (LocalModules.InternalName.of_string module_name) in
               add_visible_module module_id required_name;
               if required_name_is_implicit_open required_name then
                 add_implicit_open_module module_id required_name));
   ScopeView.create
     ~visible_modules:(List.rev !visible_modules_rev |> dedupe_by_key_preserving_order ~key:fst)
     ~implicit_open_modules:(List.rev !implicit_open_modules_rev
-      |> dedupe_by_key_preserving_order ~key:fst)
+    |> dedupe_by_key_preserving_order ~key:fst)
 
 let placeholder_analysis = fun (slot: analysis_slot) ->
   {
@@ -435,12 +437,8 @@ and scope_view_dependency_cache_keys = fun (snapshot: t) scope_view ->
 and visible_module_dependency_cache_key = fun (snapshot: t) ~role (visible_path, module_id) ->
   let module_key =
     match module_id with
-    | PackageEnv.ModuleId.Loaded required_name ->
-        format
-          Format.[
-            str "loaded:";
-            str (LocalModules.RequiredName.to_string required_name);
-          ]
+    | PackageEnv.ModuleId.Loaded required_name -> format
+      Format.[ str "loaded:"; str (LocalModules.RequiredName.to_string required_name); ]
     | PackageEnv.ModuleId.Local internal_name ->
         let module_name = LocalModules.InternalName.to_string internal_name in
         format
@@ -452,13 +450,7 @@ and visible_module_dependency_cache_key = fun (snapshot: t) ~role (visible_path,
           ]
   in
   format
-    Format.[
-      str role;
-      str ":";
-      str (SurfacePath.to_string visible_path);
-      str ":";
-      str module_key;
-    ]
+    Format.[ str role; str ":"; str (SurfacePath.to_string visible_path); str ":"; str module_key; ]
 
 let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
   match slot.state with
@@ -519,8 +511,7 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
 and imported_world_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
   let scope_view = scope_view_for_slot snapshot slot in
   let package_env = PackageEnv.of_loaded_modules slot.config.loaded_modules in
-  local_module_names_for snapshot slot
-  |> List.iter
+  local_module_names_for snapshot slot |> List.iter
     (fun module_name ->
       let internal_name = LocalModules.InternalName.of_string module_name in
       let module_result = module_typings_of_result (module_result_for snapshot module_name) in
@@ -635,10 +626,7 @@ and module_result_for = fun (snapshot: t) module_name ->
                 result
             | None ->
                 let provisional_result = partial_module_result snapshot module_name in
-                let _ = Collections.HashMap.insert
-                  snapshot.module_results_cache
-                  cache_key
-                  provisional_result in
+                let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key provisional_result in
                 let slots = module_slots snapshot module_name in
                 let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
                 (

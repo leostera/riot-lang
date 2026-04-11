@@ -5,15 +5,12 @@ type opened_module = {
   visible_path: SurfacePath.t;
   module_id: PackageEnv.ModuleId.t;
 }
-
 type resolved_module = {
   visible_path: SurfacePath.t;
   module_id: PackageEnv.ModuleId.t;
   suffix: SurfacePath.t;
 }
-
 type t
-
 val empty: unit -> t
 
 val create: package_env:PackageEnv.t -> scope_view:ScopeView.t -> t

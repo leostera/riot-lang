@@ -129,10 +129,7 @@ let register_module_name = fun session ~module_name ~source_id ->
     | Some module_names -> module_names @ [ module_name ]
     | None -> [ module_name ]
   in
-  let _ = Collections.HashMap.insert
-    session.module_names_by_source_id
-    (SourceId.to_int source_id)
-    module_names in
+  let _ = Collections.HashMap.insert session.module_names_by_source_id (SourceId.to_int source_id) module_names in
   session
 
 let add_source_indexes = fun session (source: Source.t) ->
@@ -149,7 +146,9 @@ let update_source_indexes = fun session (source: Source.t) ->
 let remove_source_indexes = fun session (source: Source.t) ->
   let _ = Collections.HashMap.remove session.sources_by_id (SourceId.to_int source.source_id) in
   let module_names = module_names_of_source_id session source.source_id in
-  let _ = Collections.HashMap.remove session.module_names_by_source_id (SourceId.to_int source.source_id) in
+  let _ = Collections.HashMap.remove
+    session.module_names_by_source_id
+    (SourceId.to_int source.source_id) in
   module_names |> List.iter
     (fun module_name ->
       let remaining_source_ids = source_ids_of_module session module_name
@@ -170,8 +169,7 @@ let visible_module_names_of_source = fun session (source: Source.t) ->
   LocalModuleGraph.InternalName internal_name
   :: (module_names_of_source_id session source.source_id
   |> List.map
-    (fun module_name ->
-      LocalModuleGraph.AmbientName (LocalModules.AmbientName.of_string module_name)))
+    (fun module_name -> LocalModuleGraph.AmbientName (LocalModules.AmbientName.of_string module_name)))
 
 let create_source = fun session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
@@ -346,70 +344,58 @@ let declared_modules = fun session (source: Source.t) ->
       modules
 
 let module_path_of_ident = fun ident ->
-  Syn.Cst.Ident.segments ident
-  |> List.map Syn.Cst.Token.text
-  |> String.concat "."
+  Syn.Cst.Ident.segments ident |> List.map Syn.Cst.Token.text |> String.concat "."
 
-let rec module_path_of_module_expression =
-  function
+let rec module_path_of_module_expression = function
   | Syn.Cst.ModuleExpression.Path path -> Some (module_path_of_ident path)
-  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
-      module_path_of_module_expression inner
-  | Syn.Cst.ModuleExpression.Constraint { module_expression; _ } ->
-      module_path_of_module_expression module_expression
-  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
-      module_path_of_module_expression module_expression
+  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } -> module_path_of_module_expression inner
+  | Syn.Cst.ModuleExpression.Constraint { module_expression; _ } -> module_path_of_module_expression
+    module_expression
+  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } -> module_path_of_module_expression module_expression
   | Syn.Cst.ModuleExpression.Structure _
   | Syn.Cst.ModuleExpression.Functor _
   | Syn.Cst.ModuleExpression.Apply _
   | Syn.Cst.ModuleExpression.ApplyUnit _
   | Syn.Cst.ModuleExpression.ModuleUnpack _
-  | Syn.Cst.ModuleExpression.Extension _ ->
-      None
+  | Syn.Cst.ModuleExpression.Extension _ -> None
 
-let rec module_path_of_module_type =
-  function
+let rec module_path_of_module_type = function
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } -> Some (module_path_of_ident module_path)
-  | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
-      module_path_of_module_type inner
-  | Syn.Cst.ModuleType.With { base; _ } ->
-      module_path_of_module_type base
-  | Syn.Cst.ModuleType.Attribute { module_type; _ } ->
-      module_path_of_module_type module_type
+  | Syn.Cst.ModuleType.Parenthesized { inner; _ } -> module_path_of_module_type inner
+  | Syn.Cst.ModuleType.With { base; _ } -> module_path_of_module_type base
+  | Syn.Cst.ModuleType.Attribute { module_type; _ } -> module_path_of_module_type module_type
   | Syn.Cst.ModuleType.Path _
   | Syn.Cst.ModuleType.Signature _
   | Syn.Cst.ModuleType.Functor _
-  | Syn.Cst.ModuleType.Extension _ ->
-      None
+  | Syn.Cst.ModuleType.Extension _ -> None
 
 let top_level_include_module_paths = fun session (source: Source.t) ->
   let key = source_hash_key source in
   match Collections.HashMap.get session.top_level_includes_by_source_hash key with
   | Some module_paths -> module_paths
   | None ->
-      let include_path_of_target =
-        function
-        | Syn.Cst.ModuleExpression module_expression ->
-            module_path_of_module_expression module_expression
-        | Syn.Cst.ModuleType module_type ->
-            module_path_of_module_type module_type
+      let include_path_of_target = function
+        | Syn.Cst.ModuleExpression module_expression -> module_path_of_module_expression module_expression
+        | Syn.Cst.ModuleType module_type -> module_path_of_module_type module_type
       in
       let module_paths =
         match source.cst with
         | Syn.Cst.Implementation implementation ->
-            Syn.Cst.(implementation.items)
-            |> List.filter_map
-              (function
-                | Syn.Cst.StructureItem.IncludeStatement include_statement ->
-                    include_path_of_target include_statement.target
-                | _ -> None)
+            Syn.Cst.(implementation.items) |> List.filter_map
+              (
+                function
+                | Syn.Cst.StructureItem.IncludeStatement include_statement -> include_path_of_target
+                  include_statement.target
+                | _ -> None
+              )
         | Syn.Cst.Interface interface ->
-            Syn.Cst.(interface.items)
-            |> List.filter_map
-              (function
-                | Syn.Cst.SignatureItem.IncludeStatement include_statement ->
-                    include_path_of_target include_statement.target
-                | _ -> None)
+            Syn.Cst.(interface.items) |> List.filter_map
+              (
+                function
+                | Syn.Cst.SignatureItem.IncludeStatement include_statement -> include_path_of_target
+                  include_statement.target
+                | _ -> None
+              )
       in
       let module_paths = List.sort_uniq String.compare module_paths in
       let _ = Collections.HashMap.insert session.top_level_includes_by_source_hash key module_paths in
@@ -443,27 +429,26 @@ let local_required_names_of_source = fun session ~deps_env_key ~deps_env (source
   let implicit_open_modules = source.implicit_opens
   |> List.map SurfacePath.to_string
   |> List.filter
-    (fun module_name ->
-      LocalModules.should_include_implicit_open ~current_module_name ~module_name) in
-  module_dependencies session ~deps_env_key ~deps_env source
-  @ implicit_open_modules
+    (fun module_name -> LocalModules.should_include_implicit_open ~current_module_name ~module_name) in
+  module_dependencies session ~deps_env_key ~deps_env source @ implicit_open_modules
   |> dedupe_strings_preserving_order
   |> List.map LocalModules.RequiredName.of_string
 
 let local_module_graph = fun session ->
   let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
   LocalModuleGraph.create
-    ~ordered_sources:(session.sources
-    |> List.map
-      (fun (source: Source.t) ->
-        let internal_name = LocalModules.InternalName.of_string (Source.module_name source) in
-        {
-          LocalModuleGraph.payload = source;
-          source_id = source.source_id;
-          internal_name;
-          visible_names = visible_module_names_of_source session source;
-          required_names = local_required_names_of_source session ~deps_env_key ~deps_env source;
-        }))
+    ~ordered_sources:(
+      session.sources |> List.map
+        (fun (source: Source.t) ->
+          let internal_name = LocalModules.InternalName.of_string (Source.module_name source) in
+          {
+            LocalModuleGraph.payload = source;
+            source_id = source.source_id;
+            internal_name;
+            visible_names = visible_module_names_of_source session source;
+            required_names = local_required_names_of_source session ~deps_env_key ~deps_env source;
+          })
+    )
 
 let collect_missing_module_summaries = fun session ~closure_sources ->
   let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
@@ -474,11 +459,12 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
   |> List.map (fun (source: Source.t) -> source.source_id)
   |> Collections.HashSet.of_list in
   let implicit_open_module_names (source: Source.t) = source.implicit_opens |> List.map SurfacePath.to_string in
-  let local_dependency_source_ids source module_name = local_source_ids_for_module_in_scope
-    session
-    ~current_module_name:(Source.module_name source)
-    module_name
-  |> List.filter (fun source_id -> Collections.HashSet.contains closure_source_ids source_id) in
+  let local_dependency_source_ids source module_name =
+    local_source_ids_for_module_in_scope session ~current_module_name:(Source.module_name source) module_name
+    |> List.filter
+      (fun source_id ->
+        Collections.HashSet.contains closure_source_ids source_id)
+  in
   let dependency_is_loaded_only module_name =
     Collections.HashSet.contains
       loaded_module_names
@@ -487,9 +473,11 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
   let local_nested_module_prefixes_cache = Collections.HashMap.with_capacity 32 in
   let source_ids_in_closure_for_module module_name =
     source_ids_of_module session module_name
-    |> List.filter (fun source_id -> Collections.HashSet.contains closure_source_ids source_id)
+    |> List.filter
+      (fun source_id ->
+        Collections.HashSet.contains closure_source_ids source_id)
   in
-  let loaded_nested_module_prefixes = fun module_name ->
+  let loaded_nested_module_prefixes module_name =
     let module_path = SurfacePath.of_string module_name in
     match SurfacePath.uncons module_path with
     | None -> []
@@ -511,9 +499,11 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
             |> Option.unwrap_or ~default:[]
       )
   in
-  let resolve_local_module_names = fun ~current_module_name module_name ->
+  let resolve_local_module_names ~current_module_name module_name =
     local_source_ids_for_module_in_scope session ~current_module_name module_name
-    |> List.filter (fun source_id -> Collections.HashSet.contains closure_source_ids source_id)
+    |> List.filter
+      (fun source_id ->
+        Collections.HashSet.contains closure_source_ids source_id)
     |> List.filter_map (source_of_id session)
     |> List.map Source.module_name
     |> List.sort_uniq String.compare
@@ -521,10 +511,9 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
   let rec nested_module_prefixes_of_module_path ~current_module_name module_name =
     match resolve_local_module_names ~current_module_name module_name with
     | [] -> loaded_nested_module_prefixes module_name
-    | local_module_names ->
-        local_module_names
-        |> List.concat_map local_nested_module_prefixes_of_internal_name
-        |> List.sort_uniq String.compare
+    | local_module_names -> local_module_names
+    |> List.concat_map local_nested_module_prefixes_of_internal_name
+    |> List.sort_uniq String.compare
   and local_nested_module_prefixes_of_internal_name module_name =
     match Collections.HashMap.get local_nested_module_prefixes_cache module_name with
     | Some nested_modules -> nested_modules
@@ -533,25 +522,21 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
         let module_sources = source_ids_in_closure_for_module module_name
         |> List.filter_map (source_of_id session) in
         let declared_nested_modules = module_sources |> List.concat_map (declared_modules session) in
-        let included_nested_modules =
-          module_sources
-          |> List.concat_map
-            (fun (source: Source.t) ->
-              top_level_include_module_paths session source
-              |> List.concat_map
-                (nested_module_prefixes_of_module_path ~current_module_name:source.module_name))
-        in
+        let included_nested_modules = module_sources
+        |> List.concat_map
+          (fun (source: Source.t) ->
+            top_level_include_module_paths session source
+            |> List.concat_map
+              (nested_module_prefixes_of_module_path ~current_module_name:source.module_name)) in
         let nested_modules = declared_nested_modules @ included_nested_modules
         |> List.sort_uniq String.compare in
         let _ = Collections.HashMap.insert local_nested_module_prefixes_cache module_name nested_modules in
         nested_modules
   in
-  let implicit_open_nested_modules source =
-    implicit_open_module_names source
-    |> List.concat_map
-      (nested_module_prefixes_of_module_path ~current_module_name:(Source.module_name source))
-    |> List.sort_uniq String.compare
-  in
+  let implicit_open_nested_modules source = implicit_open_module_names source
+  |> List.concat_map
+    (nested_module_prefixes_of_module_path ~current_module_name:(Source.module_name source))
+  |> List.sort_uniq String.compare in
   let rec add_missing missing module_name requested_by =
     let rec loop = function
       | [] ->
@@ -569,35 +554,37 @@ let collect_missing_module_summaries = fun session ~closure_sources ->
     in
     loop missing
   in
-  let missing = closure_sources
-  |> List.fold_left
-    (fun missing (source: Source.t) ->
-      let source_modules = module_dependencies session ~deps_env_key ~deps_env source in
-      let unresolved_modules = source_modules
-      |> List.filter
-        (fun module_name ->
-          match local_dependency_source_ids source module_name with
-          | _ :: _ -> false
-          | [] -> not (dependency_is_loaded_only module_name))
-      in
-      let dependency_nested_modules =
-        if List.is_empty unresolved_modules then
-          []
-        else
-          source_modules |> List.concat_map
-            (nested_module_prefixes_of_module_path ~current_module_name:(Source.module_name source))
-            |> fun nested_modules ->
-            nested_modules @ implicit_open_nested_modules source |> List.sort_uniq String.compare
-      in
-      unresolved_modules
-      |> List.fold_left
-        (fun missing module_name ->
-          if List.mem module_name dependency_nested_modules then
-            missing
+  let missing =
+    closure_sources
+    |> List.fold_left
+      (fun missing (source: Source.t) ->
+        let source_modules = module_dependencies session ~deps_env_key ~deps_env source in
+        let unresolved_modules =
+          source_modules
+          |> List.filter
+            (fun module_name ->
+              match local_dependency_source_ids source module_name with
+              | _ :: _ -> false
+              | [] -> not (dependency_is_loaded_only module_name))
+        in
+        let dependency_nested_modules =
+          if List.is_empty unresolved_modules then
+            []
           else
-            add_missing missing module_name source.source_id)
-        missing)
-    []
+            source_modules
+            |> List.concat_map
+              (nested_module_prefixes_of_module_path ~current_module_name:(Source.module_name source))
+            |> fun nested_modules ->
+              nested_modules @ implicit_open_nested_modules source |> List.sort_uniq String.compare
+        in
+        unresolved_modules |> List.fold_left
+          (fun missing module_name ->
+            if List.mem module_name dependency_nested_modules then
+              missing
+            else
+              add_missing missing module_name source.source_id)
+          missing)
+      []
   in
   MissingRequirements.of_list
     (missing
@@ -625,10 +612,12 @@ let local_module_cycles = fun ~(graph:Source.t LocalModuleGraph.t) ~roots ->
   |> List.filter (fun group_id -> cycle_relevant_group graph.groups.(group_id)) in
   match LocalModuleGraph.ordered_subset_group_ids graph ~group_ids:relevant_group_ids with
   | Ok _ -> []
-  | Error cycle -> [ MissingRequirements.LocalModuleCycle {
-    module_names = cycle.module_names;
-    source_ids = cycle.source_ids;
-  } ]
+  | Error cycle -> [
+    MissingRequirements.LocalModuleCycle {
+      module_names = cycle.module_names;
+      source_ids = cycle.source_ids
+    }
+  ]
 
 let prepare_snapshot = fun session ~roots ->
   let missing_root_source_ids = roots

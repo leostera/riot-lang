@@ -35,8 +35,7 @@ type 'a group = {
 
 type 'a t = {
   groups: 'a group array;
-  candidate_ids_by_required_name:
-    (LocalModules.RequiredName.t, group_id array) Collections.HashMap.t;
+  candidate_ids_by_required_name: (LocalModules.RequiredName.t, group_id array) Collections.HashMap.t;
   dependency_local_ids_by_set_id: group_id array array;
   group_id_by_source_id: (int, group_id) Collections.HashMap.t;
 }
@@ -80,8 +79,7 @@ let required_names_of_parse_result = fun ~current_module_name ~parse_result ~imp
   let implicit_opens = implicit_opens
   |> List.map SurfacePath.to_string
   |> List.filter
-    (fun module_name ->
-      LocalModules.should_include_implicit_open ~current_module_name ~module_name) in
+    (fun module_name -> LocalModules.should_include_implicit_open ~current_module_name ~module_name) in
   dedupe_by_key_preserving_order ~key:(fun required_name -> required_name)
     ((explicit_dependencies @ implicit_opens) |> List.map LocalModules.RequiredName.of_string)
 
@@ -116,11 +114,12 @@ let visible_name_arrays_for_group = fun internal_name sources ->
   |> dedupe_by_key_preserving_order ~key:(fun visible_name -> visible_name) in
   let visible_names =
     if List.exists
-      (function
-        | InternalName current -> current = internal_name
-        | AmbientName _ -> false)
-      visible_names
-    then
+        (
+          function
+          | InternalName current -> current = internal_name
+          | AmbientName _ -> false
+        )
+        visible_names then
       visible_names
     else
       InternalName internal_name :: visible_names
@@ -213,7 +212,7 @@ let create = fun ~ordered_sources ->
     groups;
     candidate_ids_by_required_name = candidate_ids_by_required_name groups;
     dependency_local_ids_by_set_id = [||];
-    group_id_by_source_id = Collections.HashMap.with_capacity (List.length ordered_sources + 1);
+    group_id_by_source_id = Collections.HashMap.with_capacity (List.length ordered_sources + 1)
   } in
   let dependency_set_id_by_local_ids = Collections.HashMap.with_capacity
     (List.length ordered_sources + 1) in
@@ -255,25 +254,25 @@ let create = fun ~ordered_sources ->
                 if Array.length local_ids = 0 then
                   unresolved_local_names_rev := required_module_name :: !unresolved_local_names_rev
                 else
-                  required_local_ids_rev :=
-                    List.rev_append (Array.to_list local_ids) !required_local_ids_rev);
-            let required_local_ids =
-              !required_local_ids_rev |> List.rev |> dedupe_module_ids_preserving_order |> Array.of_list in
+                  required_local_ids_rev := List.rev_append (Array.to_list local_ids) !required_local_ids_rev);
+            let required_local_ids = !required_local_ids_rev
+            |> List.rev
+            |> dedupe_module_ids_preserving_order
+            |> Array.of_list in
             dependency_ids_rev := List.rev_append (Array.to_list required_local_ids) !dependency_ids_rev;
             let dependency_set_id = intern_dependency_set required_local_ids in
             graph_sources_rev := {
               input = source;
               required_names = Array.of_list required_names;
               dependency_set_id;
-              unresolved_local_names = !unresolved_local_names_rev |> List.rev |> Array.of_list;
+              unresolved_local_names = !unresolved_local_names_rev |> List.rev |> Array.of_list
             }
             :: !graph_sources_rev;
             let _ = Collections.HashMap.insert
               graph.group_id_by_source_id
               (SourceId.to_int source.source_id)
               module_id in
-            ())
-        ;
+            ());
         let dependency_ids = !dependency_ids_rev
         |> List.rev
         |> List.filter (fun dependency_id -> not (Int.equal dependency_id module_id))
@@ -283,8 +282,8 @@ let create = fun ~ordered_sources ->
       groups
   in
   {
-    graph with
-    groups;
+    graph
+    with groups;
     dependency_local_ids_by_set_id = !dependency_local_ids_rev |> List.rev |> Array.of_list
   }
 
@@ -313,11 +312,13 @@ let cycle_of_module_ids = fun graph module_ids ->
   { module_ids; module_names; source_ids }
 
 let reachable_group_ids = fun graph ~roots ->
-  let root_group_ids = roots
-  |> List.filter_map
-    (fun source_id ->
-      Collections.HashMap.get graph.group_id_by_source_id (SourceId.to_int source_id))
-  |> dedupe_module_ids_preserving_order in
+  let root_group_ids =
+    roots
+    |> List.filter_map
+      (fun source_id ->
+        Collections.HashMap.get graph.group_id_by_source_id (SourceId.to_int source_id))
+    |> dedupe_module_ids_preserving_order
+  in
   let seen = Collections.HashSet.with_capacity (List.length root_group_ids + 1) in
   let rec discover ordered_rev = function
     | [] -> List.rev ordered_rev
@@ -362,14 +363,12 @@ let ordered_group_ids_from = fun graph group_ids ->
                 Ok (module_id :: ordered)
           )
   in
-  group_ids
-  |> List.fold_left
+  group_ids |> List.fold_left
     (fun result module_id ->
       match result with
       | Error _ as err -> err
       | Ok ordered -> visit [] ordered module_id)
-    (Ok [])
-  |> Result.map List.rev
+    (Ok []) |> Result.map List.rev
 
 let ordered_group_ids = fun graph ->
   graph.groups
@@ -377,11 +376,9 @@ let ordered_group_ids = fun graph ->
   |> List.map (fun (group: 'a group) -> group.id)
   |> ordered_group_ids_from graph
 
-let ordered_subset_group_ids = fun graph ~group_ids ->
-  ordered_group_ids_from graph group_ids
+let ordered_subset_group_ids = fun graph ~group_ids -> ordered_group_ids_from graph group_ids
 
-let closure_group_ids = fun graph ~roots ->
-  reachable_group_ids graph ~roots
+let closure_group_ids = fun graph ~roots -> reachable_group_ids graph ~roots
 
 let ordered_closure_group_ids = fun graph ~roots ->
   closure_group_ids graph ~roots |> ordered_group_ids_from graph

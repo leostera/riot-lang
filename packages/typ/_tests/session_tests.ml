@@ -4019,35 +4019,28 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
       Ok ()
 
 let test_fold_package_sources_reports_local_module_cycles = fun _ctx ->
-  let source_a = prepared_check_source
-    ~source_id:(SourceId.of_int 0)
-    ~filename:"a.ml"
-    ~internal_module_name:"A"
-    ~local_module_name:"A"
-    ~public_module_name:None
+  let source_a = prepared_check_source ~source_id:(SourceId.of_int 0) ~filename:"a.ml" ~internal_module_name:"A" ~local_module_name:"A" ~public_module_name:None
     ~text:{ocaml|
 open B
 
 let answer = value
-|ocaml} in
-  let source_b = prepared_check_source
-    ~source_id:(SourceId.of_int 1)
-    ~filename:"b.ml"
-    ~internal_module_name:"B"
-    ~local_module_name:"B"
-    ~public_module_name:None
+|ocaml}
+  in
+  let source_b = prepared_check_source ~source_id:(SourceId.of_int 1) ~filename:"b.ml" ~internal_module_name:"B" ~local_module_name:"B" ~public_module_name:None
     ~text:{ocaml|
 open A
 
 let value = answer
-|ocaml} in
+|ocaml}
+  in
   match Check.fold_package_sources
     ~config:Config.default
     ~ordered_sources:[ source_a; source_b ]
     ~init:[]
     ~f:(fun groups (group: Check.finished_group) -> group :: groups)
     () with
-  | Ok _ -> Error "expected package checking to report a local module cycle"
+  | Ok _ ->
+      Error "expected package checking to report a local module cycle"
   | Error Check.MissingRequirements { requirements; _ } ->
       let actual = Session.MissingRequirements.to_json requirements |> Data.Json.to_string in
       let expected = Data.Json.Array [
@@ -4082,15 +4075,15 @@ let value = answer
         ])
   | Error Check.PackageStoreFailure { package_name; reason } ->
       Error (format
-        Format.[ str "unexpected package store failure for "; str package_name; str ": "; str reason; ])
+        Format.[
+          str "unexpected package store failure for ";
+          str package_name;
+          str ": ";
+          str reason;
+        ])
 
 let test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
-  let helpers = prepared_check_source
-    ~source_id:(SourceId.of_int 0)
-    ~filename:"helpers.ml"
-    ~internal_module_name:"Helpers"
-    ~local_module_name:"Helpers"
-    ~public_module_name:None
+  let helpers = prepared_check_source ~source_id:(SourceId.of_int 0) ~filename:"helpers.ml" ~internal_module_name:"Helpers" ~local_module_name:"Helpers" ~public_module_name:None
     ~text:{ocaml|
 type t = Wrap of int
 type record = { field : int }
@@ -4101,13 +4094,9 @@ let project ({ field } : record) = field
 module Nested = struct
   let nested_value = 7
 end
-|ocaml} in
-  let consumer = prepared_check_source
-    ~source_id:(SourceId.of_int 1)
-    ~filename:"consumer.ml"
-    ~internal_module_name:"Consumer"
-    ~local_module_name:"Consumer"
-    ~public_module_name:None
+|ocaml}
+  in
+  let consumer = prepared_check_source ~source_id:(SourceId.of_int 1) ~filename:"consumer.ml" ~internal_module_name:"Consumer" ~local_module_name:"Consumer" ~public_module_name:None
     ~text:{ocaml|
 open Helpers
 module Alias = Helpers
@@ -4119,7 +4108,8 @@ let from_record = project { field = 3 }
 let from_include = nested_value + 1
 let via_local_open = Helpers.(match make 4 with Wrap value -> value)
 let from_alias_type (value : Alias.record) = project value
-|ocaml} in
+|ocaml}
+  in
   let config = Config.default |> Config.with_capture_traces ~capture_traces:false in
   match Check.fold_package_sources
     ~config
@@ -4136,7 +4126,11 @@ let from_alias_type (value : Alias.record) = project value
           str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
         ])
   | Error Check.MissingModuleTypings { module_name } ->
-      Error (format Format.[ str "missing module typings for "; str (LocalModules.InternalName.to_string module_name) ])
+      Error (format
+        Format.[
+          str "missing module typings for ";
+          str (LocalModules.InternalName.to_string module_name)
+        ])
   | Error Check.MissingAnalysis { module_name; path } ->
       Error (format
         Format.[
@@ -4154,7 +4148,8 @@ let from_alias_type (value : Alias.record) = project value
           str reason;
         ])
   | Error Check.PackageStoreFailure { package_name; reason } ->
-      Error (format Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
+      Error (format
+        Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
   | Ok result ->
       let groups = List.rev result.acc in
       let consumer_analysis =
@@ -4188,10 +4183,7 @@ let from_alias_type (value : Alias.record) = project value
 
 let test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _helpers_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "helpers.ml")
+  let (session, _helpers_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "helpers.ml")
     ~text:{ocaml|
 type t = Wrap of int
 type record = { field : int }
@@ -4202,11 +4194,9 @@ let project ({ field } : record) = field
 module Nested = struct
   let nested_value = 7
 end
-|ocaml} in
-  let (session, consumer_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+|ocaml}
+  in
+  let (session, consumer_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
 open Helpers
 module Alias = Helpers
@@ -4218,7 +4208,8 @@ let from_record = project { field = 3 }
 let from_include = nested_value + 1
 let via_local_open = Helpers.(match make 4 with Wrap value -> value)
 let from_alias_type (value : Alias.record) = project value
-|ocaml} in
+|ocaml}
+  in
   let snapshot = Session.snapshot session in
   let diagnostics = diagnostic_strings snapshot consumer_source_id in
   let exported_names = export_names (Query.export_of snapshot consumer_source_id) in
@@ -4227,12 +4218,24 @@ let from_alias_type (value : Alias.record) = project value
   else if not (List.mem "from_alias_type" exported_names) then
     Error "expected alias-qualified type export on snapshot path"
   else
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "nested_value") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_alias") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_ctor") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_record") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_include") in
-    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "via_local_open") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "nested_value") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "from_alias") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "from_ctor") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "from_record") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "from_include") in
+    let () = Test.assert_equal
+      ~expected:(Some "int")
+      ~actual:(export_scheme snapshot consumer_source_id "via_local_open") in
     Ok ()
 
 let test_fold_package_sources_persists_package_bundle = fun _ctx ->
@@ -4550,15 +4553,18 @@ let test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings 
           (fun ({ Event.kind; _ }: Event.t) ->
             match kind with
             | Event.SourceAnalysisStarted {
-                source_id;
-                module_name;
-                mode=Event.SnapshotAnalysis;
-                ambient_binding_count;
-                ambient_type_decl_count;
-                _;
-              }
-              when SourceId.equal source_id consumer_source_id ->
-                Some (module_name, ambient_binding_count, ambient_type_decl_count)
+              source_id;
+              module_name;
+              mode=Event.SnapshotAnalysis;
+              ambient_binding_count;
+              ambient_type_decl_count;
+              _;
+
+            } when SourceId.equal source_id consumer_source_id -> Some (
+              module_name,
+              ambient_binding_count,
+              ambient_type_decl_count
+            )
             | _ -> None)
       in
       match consumer_starts with
@@ -4573,15 +4579,13 @@ let test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings 
 
 let test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _helpers_source_id) = create_source
-    session
-    ~kind:Source.File
-    ~origin:(Source.Label "helpers.ml")
+  let (session, _helpers_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "helpers.ml")
     ~text:{ocaml|
       type t = Wrap of int
 
       let make value = Wrap value
-    |ocaml} in
+    |ocaml}
+  in
   let consumer_text = {ocaml|
     open Helpers
 
@@ -5172,14 +5176,12 @@ let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_ne
   let config = Config.default
   |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let (session, _wrapper_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "wrapper.ml")
+  let (session, _wrapper_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "wrapper.ml")
     ~text:{ocaml|
       include Missing_module
     |ocaml}
   in
-  let (session, consumer_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, consumer_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
       open Wrapper
 
@@ -5187,8 +5189,7 @@ let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_ne
     |ocaml}
   in
   match Session.prepare_snapshot session ~roots:[ consumer_source_id ] with
-  | Ok _ ->
-      Error "expected rooted snapshot preparation to report missing requirements through include wrapper"
+  | Ok _ -> Error "expected rooted snapshot preparation to report missing requirements through include wrapper"
   | Error _missing ->
       let actual = !events |> List.map typ_event_name in
       let expected = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed"; ] in
@@ -5200,16 +5201,14 @@ let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_ne
 
 let test_prepare_snapshot_discovers_local_nested_module_dependencies = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _provider_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "provider.ml")
+  let (session, _provider_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "provider.ml")
     ~text:{ocaml|
       module Nested = struct
         let value = 1
       end
     |ocaml}
   in
-  let (session, consumer_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, consumer_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
       let answer = Provider.Nested.value
     |ocaml}
@@ -5229,20 +5228,17 @@ let test_prepare_snapshot_discovers_local_nested_module_dependencies = fun _ctx 
 
 let test_prepare_snapshot_discovers_local_include_dependencies = fun _ctx ->
   let session = Session.empty ~config:Config.default in
-  let (session, _helpers_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "helpers.ml")
+  let (session, _helpers_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "helpers.ml")
     ~text:{ocaml|
       let value = 1
     |ocaml}
   in
-  let (session, _wrapper_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "wrapper.ml")
+  let (session, _wrapper_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "wrapper.ml")
     ~text:{ocaml|
       include Helpers
     |ocaml}
   in
-  let (session, consumer_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "consumer.ml")
+  let (session, consumer_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "consumer.ml")
     ~text:{ocaml|
       open Wrapper
 
@@ -5267,7 +5263,8 @@ let test_prepare_snapshot_discovers_local_implicit_open_dependencies = fun _ctx 
   let (session, _aliases_source_id) =
     let aliases_text = {ocaml|
       let helper value = value
-    |ocaml} in
+    |ocaml}
+    in
     let parse_result = Syn.parse ~filename:(Path.v "aliases.ml") aliases_text in
     let cst = expect_cst ~filename:"aliases.ml" parse_result in
     Session.create_source
@@ -5284,7 +5281,8 @@ let test_prepare_snapshot_discovers_local_implicit_open_dependencies = fun _ctx 
     let implicit_opens = [ SurfacePath.of_string "Aliases" ] in
     let consumer_text = {ocaml|
       let answer = helper 1
-    |ocaml} in
+    |ocaml}
+    in
     let parse_result = Syn.parse ~filename:(Path.v "consumer.ml") consumer_text in
     let cst = expect_cst ~filename:"consumer.ml" parse_result in
     Session.create_source
@@ -5315,16 +5313,14 @@ let test_prepare_snapshot_reports_local_module_cycles_before_typing = fun _ctx -
   let config = Config.default
   |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
   let session = Session.empty ~config in
-  let (session, a_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "a.ml")
+  let (session, a_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "a.ml")
     ~text:{ocaml|
       open B
 
       let answer = value
     |ocaml}
   in
-  let (session, b_source_id) = create_source session ~kind:Source.File
-    ~origin:(Source.Label "b.ml")
+  let (session, b_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "b.ml")
     ~text:{ocaml|
       open A
 
@@ -9903,12 +9899,8 @@ let () =
         Test.case "fold_package_sources persists module typings from the authoritative engine" test_fold_package_sources_persists_module_typings_from_authoritative_engine;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
-        Test.case
-          "prepare_snapshot keeps imported value payloads out of ambient bindings"
-          test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings;
-        Test.case
-          "prepare_snapshot keeps diagnostics and exports stable after module forcing"
-          test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing;
+        Test.case "prepare_snapshot keeps imported value payloads out of ambient bindings" test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings;
+        Test.case "prepare_snapshot keeps diagnostics and exports stable after module forcing" test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
         Test.case "prepare_snapshot reuses shared transitive local modules" test_prepare_snapshot_reuses_shared_transitive_local_modules;
         Test.case "prepare_snapshot reuses paired local modules across rooted snapshots" test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
@@ -9918,18 +9910,10 @@ let () =
         Test.case
           "prepare_snapshot missing requirements through include do not trigger nested typing"
           test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing;
-        Test.case
-          "prepare_snapshot discovers local nested module dependencies"
-          test_prepare_snapshot_discovers_local_nested_module_dependencies;
-        Test.case
-          "prepare_snapshot discovers local include dependencies"
-          test_prepare_snapshot_discovers_local_include_dependencies;
-        Test.case
-          "prepare_snapshot discovers local implicit-open dependencies"
-          test_prepare_snapshot_discovers_local_implicit_open_dependencies;
-        Test.case
-          "prepare_snapshot reports local module cycles before typing"
-          test_prepare_snapshot_reports_local_module_cycles_before_typing;
+        Test.case "prepare_snapshot discovers local nested module dependencies" test_prepare_snapshot_discovers_local_nested_module_dependencies;
+        Test.case "prepare_snapshot discovers local include dependencies" test_prepare_snapshot_discovers_local_include_dependencies;
+        Test.case "prepare_snapshot discovers local implicit-open dependencies" test_prepare_snapshot_discovers_local_implicit_open_dependencies;
+        Test.case "prepare_snapshot reports local module cycles before typing" test_prepare_snapshot_reports_local_module_cycles_before_typing;
         Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
         Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
         Test.case "loaded module typings override store" test_loaded_module_typings_override_store;

@@ -1,3 +1,2 @@
 type t
-
-val make : text:string -> t
+val make: text:string -> t

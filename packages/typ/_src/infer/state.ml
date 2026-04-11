@@ -670,10 +670,8 @@ let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
   VisibleTypes.type_decls_for_module_alias visible_types ~alias_name ~module_path
 
 let make ~imported_world ~config file =
-  let base_visible_types =
-    VisibleTypes.of_type_decls
-      (LanguagePrelude.type_decls @ ImportedWorld.visible_type_decls imported_world)
-  in
+  let base_visible_types = VisibleTypes.of_type_decls
+    (LanguagePrelude.type_decls @ ImportedWorld.visible_type_decls imported_world) in
   {
     file;
     config;

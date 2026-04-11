@@ -32,8 +32,4 @@ type t = {
     local checker env then carries only lexical/local typing state for the
     current source. *)
 val infer_file:
-  imported_world:ImportedWorld.t ->
-  config:TypConfig.t ->
-  source:Source.t ->
-  SemanticTree.file ->
-  t
+  imported_world:ImportedWorld.t -> config:TypConfig.t -> source:Source.t -> SemanticTree.file -> t

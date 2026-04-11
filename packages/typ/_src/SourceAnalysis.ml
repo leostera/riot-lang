@@ -124,9 +124,7 @@ let export_definitions = fun analysis -> analysis.value_definitions
 let has_error_diagnostics = fun diagnostics ->
   List.exists (fun diagnostic -> Typ_diagnostic.severity diagnostic = Typ_diagnostic.Error) diagnostics
 
-let analyze = fun ?(imported_world = ImportedWorld.empty ()) ~config (
-  source: Source.t
-) ->
+let analyze = fun ?(imported_world = ImportedWorld.empty ()) ~config (source: Source.t) ->
   let parsed = source.parse_result in
   let semantic_tree = Lower.lower_source_file ~source source.cst in
   let inferred = Infer.infer_file ~imported_world ~config ~source semantic_tree in
