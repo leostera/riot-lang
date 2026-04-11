@@ -210,6 +210,7 @@ let json_snapshots = [
   make_pass_snapshot ~stage:"lir" ~pass:"layout_frames";
   make_pass_snapshot ~stage:"lir" ~pass:"allocate_homes";
   make_pass_snapshot ~stage:"lir" ~pass:"assign_homes";
+  make_pass_snapshot ~stage:"lir" ~pass:"legalize";
 ]
 
 let text_snapshots = [

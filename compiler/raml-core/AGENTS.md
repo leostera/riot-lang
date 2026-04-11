@@ -8,6 +8,7 @@ surface.
 This package owns:
 
 - `Config`
+- `Compilation_context`
 - `Event`
 - `Target`
 - `Compilation`

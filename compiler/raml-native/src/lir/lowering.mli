@@ -11,6 +11,6 @@ type trace = {
 }
 val trace_to_json: trace -> Json.t
 
-val lower_program_with_trace: Mir.Program.t -> trace
+val lower_program_with_trace: ctx:Raml_core.Compilation_context.t -> Mir.Program.t -> trace
 
-val lower_program: Mir.Program.t -> Types.Program.t
+val lower_program: ctx:Raml_core.Compilation_context.t -> Mir.Program.t -> Types.Program.t

@@ -1,4 +1,5 @@
 module Compilation = Compilation
+module Compilation_context = Compilation_context
 module Config = Config
 module Event = Event
 module Target = Target

@@ -126,13 +126,14 @@ let trace_to_json = fun trace ->
       ("program", Target.Program.to_json trace.final);
     ]
 
-let trace_program = fun initial ->
+let trace_program = fun ~ctx initial ->
   let simplify = Passes.Simplify.program initial in
   let dead_code = Passes.Dead_code.program simplify in
   let schedule = Passes.Schedule.program dead_code in
   let layout_frames, analysis = Passes.Layout_frames.program_with_analysis schedule in
   let allocate_homes = Passes.Allocate_homes.program ~analysis layout_frames in
   let assign_homes = Passes.Assign_homes.program allocate_homes in
+  let legalize = Passes.Legalize.program ~ctx assign_homes in
   {
     initial;
     passes = [
@@ -141,17 +142,18 @@ let trace_program = fun initial ->
       { name = "schedule"; program = schedule };
       { name = "layout_frames"; program = layout_frames };
       { name = "allocate_homes"; program = allocate_homes };
-      { name = "assign_homes"; program = assign_homes }
+      { name = "assign_homes"; program = assign_homes };
+      { name = "legalize"; program = legalize }
     ];
-    final = assign_homes
+    final = legalize
   }
 
-let lower_program_with_trace = fun (program: Source.Program.t) ->
+let lower_program_with_trace = fun ~ctx (program: Source.Program.t) ->
   Target.Program.{
     module_name = program.module_name;
     procedures = List.map lower_procedure program.procedures;
     exports = List.map lower_export program.exports
   }
-  |> trace_program
+  |> trace_program ~ctx
 
-let lower_program = fun program -> (lower_program_with_trace program).final
+let lower_program = fun ~ctx program -> (lower_program_with_trace ~ctx program).final

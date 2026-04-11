@@ -1,4 +1,4 @@
-module Compiler_config = Raml_core.Config
+module Compilation_context = Raml_core.Compilation_context
 module Frontend_pipeline = Raml_core.Frontend_pipeline
 module Backend_result = Raml_core.Backend_result
 module Pipeline_stage = Raml_core.Pipeline_stage
@@ -14,6 +14,7 @@ let artifact_store_error_to_json = fun error ->
     ]
 
 let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
+  let context = Compilation_context.make ~config ~source:frontend.source_unit in
   let core_ir = Frontend_pipeline.core_ir frontend in
   match core_ir.value with
   | None -> Backend_result.blocked_native ~blocked_on:"core_ir" core_ir.errors
@@ -38,7 +39,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
         match mir.value with
         | None -> Pipeline_stage.blocked ~blocked_on:"mir" mir.errors
         | Some program ->
-            let trace = Native.Lir.Lowering.lower_program_with_trace program in
+            let trace = Native.Lir.Lowering.lower_program_with_trace ~ctx:context program in
             Pipeline_stage.ok_with_json ~json:(Native.Lir.Lowering.trace_to_json trace) trace.final
       in
       let native =
@@ -46,8 +47,8 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
         | None -> Pipeline_stage.blocked ~blocked_on:"lir" lir.errors
         | Some program -> (
             match Native.Emitter.emit_program
-              ~host:(Compiler_config.host config)
-              ~target:(Compiler_config.target config)
+              ~host:(Compilation_context.host context)
+              ~target:(Compilation_context.target context)
               program with
             | Ok output -> (
                 match Artifact_store.of_config config with
