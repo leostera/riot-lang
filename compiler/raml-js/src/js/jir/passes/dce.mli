@@ -2,9 +2,12 @@
 
     Algorithm:
     - walk blocks backwards and compute a set of used [Entity_id] values
+    - collect the set of entities assigned anywhere in the program
     - keep return values, impure expressions, and anything reachable from them
     - drop [const] declarations whose binder is unused, not protected, and
       whose initializer is pure
+    - drop dead [let] declarations only when the binder is also never assigned,
+      so the declaration is not needed as storage for a later write
     - drop pure expression statements entirely
     - preserve exported entities through the [protected] set
 
