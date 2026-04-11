@@ -7,6 +7,7 @@ let ( let* ) = Option.and_then
 module String_set = struct
   module Storage = Collections.Map.Make (struct
     type t = string
+
     let compare = String.compare
   end)
 
@@ -14,7 +15,8 @@ module String_set = struct
 
   let empty = Storage.empty
 
-  let add = fun name set -> Storage.add name () set
+  let add = fun name set ->
+    Storage.add name () set
 
   let mem = Storage.mem
 end
@@ -23,8 +25,7 @@ type state = {
   used_names: String_set.t;
 }
 
-let remember_name = fun state name ->
-  { used_names = String_set.add name state.used_names }
+let remember_name = fun state name -> { used_names = String_set.add name state.used_names }
 
 let remember_binder = fun state (binder: Jir.Binder.t) -> remember_name state binder.name
 
@@ -39,8 +40,7 @@ let remember_visible_entity = fun state entity ->
 let rec collect_array_element_names = fun state element ->
   match element with
   | Jir.Expr.Item expr
-  | Jir.Expr.Spread expr ->
-      collect_expr_names state expr
+  | Jir.Expr.Spread expr -> collect_expr_names state expr
 
 and collect_object_field_names = fun state (field: Jir.Expr.object_field) ->
   collect_expr_names state field.value
@@ -143,8 +143,7 @@ let fresh_name = fun state base ->
   in
   loop 0
 
-let generated_binder = fun name ->
-  Jir.Binder.generated ~namespace:[ "flatten" ] ~name
+let generated_binder = fun name -> Jir.Binder.generated ~namespace:[ "flatten" ] ~name
 
 let rec lower_expr_list = fun state exprs ->
   List.fold_left
@@ -266,7 +265,7 @@ and lower_statement = fun state statement ->
 
 and lower_declaration_statement = fun state (declaration: Jir.Declaration.t) ->
   match declaration.init with
-  | Some (Jir.Expr.Call { callee = Jir.Expr.Function function_; arguments = [] }) -> (
+  | Some (Jir.Expr.Call { callee=Jir.Expr.Function function_; arguments=[] }) -> (
       let base = format Format.[ str "__raml_init_"; str declaration.binder.name ] in
       let (trial_state, target_name) = fresh_name state base in
       let target_binder = generated_binder target_name in
@@ -276,12 +275,12 @@ and lower_declaration_statement = fun state (declaration: Jir.Declaration.t) ->
           Jir.Statement.Declaration Jir.Declaration.{
             kind = Jir.Declaration.Let;
             binder = target_binder;
-            init = None;
+            init = None
           };
           Jir.Statement.Block body;
           Jir.Statement.Declaration Jir.Declaration.{
             declaration
-            with init = Some (Jir.Expr.Identifier (Jir.Binder.entity_id target_binder));
+            with init = Some (Jir.Expr.Identifier (Jir.Binder.entity_id target_binder))
           };
         ],
         state
@@ -296,7 +295,7 @@ and lower_declaration_statement = fun state (declaration: Jir.Declaration.t) ->
 
 and lower_effect_expr = fun state expr ->
   match expr with
-  | Jir.Expr.Call { callee = Jir.Expr.Function function_; arguments = [] } -> (
+  | Jir.Expr.Call { callee=Jir.Expr.Function function_; arguments=[] } -> (
       match lower_effect_function_body state function_.body with
       | Some (statements, state) -> (statements, state)
       | None ->
@@ -380,12 +379,15 @@ and lower_initializer_tail_statement = fun state ~target statement ->
   match statement with
   | Jir.Statement.Return expr ->
       let (value, state) = lower_expr state expr in
-      Some ([
-        Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
-          target = Jir.Binder.entity_id target;
-          value;
-        })
-      ], state)
+      Some (
+        [
+          Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
+            target = Jir.Binder.entity_id target;
+            value
+          })
+        ],
+        state
+      )
   | Jir.Statement.If if_ ->
       let (condition, state) = lower_expr state if_.condition in
       let* (then_, state) = lower_initializer_function_body state ~target if_.then_ in
@@ -396,7 +398,7 @@ and lower_initializer_tail_statement = fun state ~target statement ->
   | Jir.Statement.Expression _ ->
       None
 
-let program = fun (program: Jir.Program.t) ->
+let program = fun ~context:_ (program: Jir.Program.t) ->
   let state = collect_program_names program in
   let (body, _) = lower_block state program.body in
   { program with body }

@@ -72,6 +72,9 @@ ReScript is a better reference for emitted JS shape:
   main lowering walk
 - object keys, property access, and emitted binder legality now share one
   syntax policy instead of backend-local heuristics
+- backend lowering, late JIR passes, JST lowering, and emission now all accept
+  one shared `Compilation_context`, so future target-sensitive JS decisions can
+  key off host/target/source without re-plumbing the whole backend again
 
 Where `raml-js` still differs from ReScript:
 
@@ -112,6 +115,8 @@ The main remaining architectural gaps are:
    step much less invasive.
 6. JS binder validity is now owned centrally, but module/path resolution is
    still much shallower than Melange or ReScript.
+7. The backend now has shared compilation context plumbing, but it does not yet
+   use that context for module-format decisions like ESM vs CommonJS.
 
 ## Current Cleanup Direction
 

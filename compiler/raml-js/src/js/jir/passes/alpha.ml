@@ -5,12 +5,14 @@ module Syntax = Syntax
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
+
   let compare = Core.Binding_id.compare
 end)
 
 module String_set = struct
   module Storage = Collections.Map.Make (struct
     type t = string
+
     let compare = String.compare
   end)
 
@@ -18,7 +20,8 @@ module String_set = struct
 
   let empty = Storage.empty
 
-  let add = fun name set -> Storage.add name () set
+  let add = fun name set ->
+    Storage.add name () set
 
   let mem = Storage.mem
 end
@@ -34,7 +37,8 @@ let is_visible = fun env name ->
   String_set.mem name env.visible
 
 let lookup_binding_name = fun env binding_id ->
-  Binding_map.find_opt binding_id env.bindings |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
+  Binding_map.find_opt binding_id env.bindings
+  |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
 
 let fresh_name = fun env name ->
   let base = Syntax.sanitize_binding_identifier name in
@@ -53,10 +57,13 @@ let fresh_name = fun env name ->
 let bind_binder = fun env (binder: Jir.Binder.t) ->
   let lowered = fresh_name env binder.name in
   let binder = Jir.Binder.rename binder lowered in
-  ({
-    bindings = Binding_map.add binder.binding_id lowered env.bindings;
-    visible = String_set.add lowered env.visible;
-  }, binder)
+  (
+    {
+      bindings = Binding_map.add binder.binding_id lowered env.bindings;
+      visible = String_set.add lowered env.visible
+    },
+    binder
+  )
 
 let bind_binders = fun env binders ->
   let (env, lowered_rev) =
@@ -100,7 +107,7 @@ and lower_expr = fun env expr ->
       Jir.Expr.Binary Jir.Expr.{
         binary
         with left = lower_expr env binary.left;
-             right = lower_expr env binary.right;
+        right = lower_expr env binary.right
       }
   | Jir.Expr.Array elements ->
       Jir.Expr.Array (List.map (lower_array_element env) elements)
@@ -113,28 +120,28 @@ and lower_expr = fun env expr ->
   | Jir.Expr.Member member ->
       Jir.Expr.Member Jir.Expr.{
         object_ = lower_expr env member.object_;
-        property = member.property;
+        property = member.property
       }
   | Jir.Expr.Index index ->
       Jir.Expr.Index Jir.Expr.{
         object_ = lower_expr env index.object_;
-        index = lower_expr env index.index;
+        index = lower_expr env index.index
       }
   | Jir.Expr.Call call ->
       Jir.Expr.Call Jir.Expr.{
         callee = lower_expr env call.callee;
-        arguments = List.map (lower_expr env) call.arguments;
+        arguments = List.map (lower_expr env) call.arguments
       }
   | Jir.Expr.Conditional conditional ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr env conditional.condition;
         then_ = lower_expr env conditional.then_;
-        else_ = lower_expr env conditional.else_;
+        else_ = lower_expr env conditional.else_
       }
   | Jir.Expr.Assignment assignment ->
       Jir.Expr.Assignment Jir.Expr.{
         target = assignment.target;
-        value = lower_expr env assignment.value;
+        value = lower_expr env assignment.value
       }
 
 and lower_statement = fun env statement ->
@@ -165,7 +172,7 @@ and lower_block = fun env statements ->
 
 and lower_scoped_block = fun env statements -> lower_block env statements |> fst
 
-let program = fun (program: Jir.Program.t) ->
+let program = fun ~context:_ (program: Jir.Program.t) ->
   let (imports, env) =
     List.fold_left
       (fun (imports_rev, env) import ->

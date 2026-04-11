@@ -244,7 +244,7 @@ let lower_group = fun (_group_index: int) (group: Core.Binding_group.t) ->
   | Core.Rec_flag.Nonrecursive -> List.map lower_item group.items
   | Core.Rec_flag.Recursive -> lower_recursive_group group
 
-let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
+let lower_compilation_unit = fun ~context (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
   | Raml_core.Source_unit.Interface -> error
     (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
@@ -280,14 +280,14 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
            unresolved import/runtime expression nodes.
          - Remove_aliases and Prune_imports run one last time to clean up names
            and imports made redundant by materialization. *)
-      let normalized = Passes.Normalize.program program in
-      let flattened = Passes.Flatten.program normalized in
-      let alpha_renamed = Passes.Alpha.program flattened in
-      let aliases_removed = Passes.Remove_aliases.program alpha_renamed in
-      let dce_lowered = Passes.Dce.program aliases_removed in
-      let normalized_after_dce = Passes.Normalize.program dce_lowered in
-      let dce_after_normalize = Passes.Dce.program normalized_after_dce in
-      let materialized_imports = Passes.Materialize_imports.program dce_after_normalize in
-      let aliases_removed_after_imports = Passes.Remove_aliases.program materialized_imports in
-      let imports_pruned = Passes.Prune_imports.program aliases_removed_after_imports in
+      let normalized = Passes.Normalize.program ~context program in
+      let flattened = Passes.Flatten.program ~context normalized in
+      let alpha_renamed = Passes.Alpha.program ~context flattened in
+      let aliases_removed = Passes.Remove_aliases.program ~context alpha_renamed in
+      let dce_lowered = Passes.Dce.program ~context aliases_removed in
+      let normalized_after_dce = Passes.Normalize.program ~context dce_lowered in
+      let dce_after_normalize = Passes.Dce.program ~context normalized_after_dce in
+      let materialized_imports = Passes.Materialize_imports.program ~context dce_after_normalize in
+      let aliases_removed_after_imports = Passes.Remove_aliases.program ~context materialized_imports in
+      let imports_pruned = Passes.Prune_imports.program ~context aliases_removed_after_imports in
       ok imports_pruned

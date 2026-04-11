@@ -39,7 +39,8 @@ module Import_set = struct
 
   let empty = Storage.empty
 
-  let add = fun import set -> Storage.add import () set
+  let add = fun import set ->
+    Storage.add import () set
 
   let mem = Storage.mem
 end
@@ -49,25 +50,18 @@ type import_state = {
   reversed: Jir.Imports.requirement list;
 }
 
-let empty_import_state = {
-  seen = Import_set.empty;
-  reversed = [];
-}
+let empty_import_state = { seen = Import_set.empty; reversed = [] }
 
 let remember_import = fun requirement state ->
   if Import_set.mem requirement state.seen then
     state
   else
-    {
-      seen = Import_set.add requirement state.seen;
-      reversed = requirement :: state.reversed;
-    }
+    { seen = Import_set.add requirement state.seen; reversed = requirement :: state.reversed }
 
 let rec collect_array_element_imports = fun state element ->
   match element with
   | Jir.Expr.Item expr
-  | Jir.Expr.Spread expr ->
-      collect_expr_imports expr state
+  | Jir.Expr.Spread expr -> collect_expr_imports expr state
 
 and collect_object_field_imports = fun state (field: Jir.Expr.object_field) ->
   collect_expr_imports field.value state
@@ -170,7 +164,7 @@ and normalize_expr = fun expr ->
       Jir.Expr.Binary Jir.Expr.{
         binary
         with left = normalize_expr binary.left;
-             right = normalize_expr binary.right;
+        right = normalize_expr binary.right
       }
   | Jir.Expr.Array elements ->
       Jir.Expr.Array (List.map normalize_array_element elements)
@@ -179,38 +173,38 @@ and normalize_expr = fun expr ->
   | Jir.Expr.Function function_ ->
       let body = normalize_statement_list function_.body |> Simplify.function_body in
       Jir.Expr.Function Jir.Expr.{ function_ with body }
-  | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
-    member
-    with object_ = normalize_expr member.object_;
-  }
-  | Jir.Expr.Index index -> Jir.Expr.Index Jir.Expr.{
-    object_ = normalize_expr index.object_;
-    index = normalize_expr index.index;
-  }
-  | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
-    callee = normalize_expr call.callee;
-    arguments = List.map normalize_expr call.arguments;
-  }
-  | Jir.Expr.Conditional conditional -> Jir.Expr.Conditional Jir.Expr.{
-    condition = normalize_expr conditional.condition;
-    then_ = normalize_expr conditional.then_;
-    else_ = normalize_expr conditional.else_;
-  }
-  | Jir.Expr.Assignment assignment -> Jir.Expr.Assignment Jir.Expr.{
-    assignment
-    with value = normalize_expr assignment.value;
-  }
+  | Jir.Expr.Member member ->
+      Jir.Expr.Member Jir.Expr.{ member with object_ = normalize_expr member.object_ }
+  | Jir.Expr.Index index ->
+      Jir.Expr.Index Jir.Expr.{
+        object_ = normalize_expr index.object_;
+        index = normalize_expr index.index
+      }
+  | Jir.Expr.Call call ->
+      Jir.Expr.Call Jir.Expr.{
+        callee = normalize_expr call.callee;
+        arguments = List.map normalize_expr call.arguments
+      }
+  | Jir.Expr.Conditional conditional ->
+      Jir.Expr.Conditional Jir.Expr.{
+        condition = normalize_expr conditional.condition;
+        then_ = normalize_expr conditional.then_;
+        else_ = normalize_expr conditional.else_
+      }
+  | Jir.Expr.Assignment assignment ->
+      Jir.Expr.Assignment Jir.Expr.{ assignment with value = normalize_expr assignment.value }
 
 and normalize_statement = fun statement ->
   match statement with
   | Jir.Statement.Declaration declaration ->
-      [ Jir.Statement.Declaration Jir.Declaration.{
+      [
+        Jir.Statement.Declaration Jir.Declaration.{
           declaration
-          with init = Option.map normalize_expr declaration.init;
-        } ]
-  | Jir.Statement.Block statements -> (
-      normalize_statement_list statements |> Simplify.block
-    )
+          with init = Option.map normalize_expr declaration.init
+        }
+      ]
+  | Jir.Statement.Block statements ->
+      (normalize_statement_list statements |> Simplify.block)
   | Jir.Statement.Expression expr ->
       [ Jir.Statement.Expression (normalize_expr expr) ]
   | Jir.Statement.Return expr ->
@@ -224,10 +218,8 @@ and normalize_statement = fun statement ->
 and normalize_statement_list = fun statements ->
   List.concat_map normalize_statement statements
 
-let program = fun (program: Jir.Program.t) ->
+let program = fun ~context:_ (program: Jir.Program.t) ->
   let body = normalize_statement_list program.body in
-  let imports =
-    collect_program_imports Jir.Program.{ program with body }
-    |> fun state -> List.rev state.reversed
-  in
+  let imports = collect_program_imports Jir.Program.{ program with body }
+  |> fun state -> List.rev state.reversed in
   { program with body; imports }

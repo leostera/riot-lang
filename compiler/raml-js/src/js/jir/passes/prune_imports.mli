@@ -14,4 +14,4 @@
       no longer read anywhere
     - this is local import cleanup, not full cross-module tree shaking
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

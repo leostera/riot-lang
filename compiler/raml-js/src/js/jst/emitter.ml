@@ -331,8 +331,7 @@ let emit_import = fun env (import: Types.Import.t) ->
             Format.[ str default.name; str ", "; str named ])
         in
         match bindings with
-        | None -> format
-          Format.[ str "import "; str (emit_import_path import.from); str ";" ]
+        | None -> format Format.[ str "import "; str (emit_import_path import.from); str ";" ]
         | Some bindings -> format
           Format.[
             str "import ";
@@ -361,7 +360,7 @@ let emit_module_item = fun env item ->
   | Types.Module_item.Statement statement -> emit_statement ~level:0 env statement
   | Types.Module_item.Export exports -> (emit_exports env exports, env)
 
-let emit_program = fun (program: Types.Program.t) ->
+let emit_program = fun ~context:_ (program: Types.Program.t) ->
   let (sections_rev, _) =
     List.fold_left
       (fun (sections_rev, env) item ->

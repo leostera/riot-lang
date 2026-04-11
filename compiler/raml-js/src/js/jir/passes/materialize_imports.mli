@@ -15,4 +15,4 @@
     - [JST] should not understand unresolved import/runtime expression forms
     - this pass makes the [JIR -> JST] boundary explicit and enforceable
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

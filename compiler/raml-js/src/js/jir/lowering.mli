@@ -8,4 +8,7 @@ type error =
   | UnsupportedExpr of { reason: string }
 val error_to_json: error -> Json.t
 
-val lower_compilation_unit: Raml_core.Core_ir.Compilation_unit.t -> (Types.Program.t, error list) result
+val lower_compilation_unit:
+  context:Raml_core.Compilation_context.t ->
+  Raml_core.Core_ir.Compilation_unit.t ->
+  (Types.Program.t, error list) result

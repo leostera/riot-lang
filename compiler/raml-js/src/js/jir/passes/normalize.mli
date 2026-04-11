@@ -19,4 +19,4 @@
     - the backend wants a cheap canonicalization pass before more targeted
       transformations like flattening, alias removal, and DCE
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

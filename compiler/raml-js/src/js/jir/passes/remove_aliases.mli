@@ -21,4 +21,4 @@
     - removing those aliases exposes more opportunities for DCE and import
       pruning without changing runtime behavior
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

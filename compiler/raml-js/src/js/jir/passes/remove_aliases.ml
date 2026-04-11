@@ -6,6 +6,7 @@ module Simplify = Simplify
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
+
   let compare = Core.Binding_id.compare
 end)
 
@@ -32,7 +33,8 @@ let resolve_alias = fun env entity ->
   in
   loop Entity_set.empty entity
 
-let bind_alias = fun env alias target -> { env with aliases = Binding_map.add alias target env.aliases }
+let bind_alias = fun env alias target ->
+  { env with aliases = Binding_map.add alias target env.aliases }
 
 let rec lower_array_element = fun env element ->
   match element with
@@ -51,53 +53,52 @@ and lower_expr = fun env expr ->
   | Jir.Expr.Identifier entity -> Jir.Expr.Identifier (resolve_alias env entity)
   | Jir.Expr.Unary unary -> Jir.Expr.Unary Jir.Expr.{
     unary
-    with operand = lower_expr env unary.operand;
+    with operand = lower_expr env unary.operand
   }
   | Jir.Expr.Binary binary -> Jir.Expr.Binary Jir.Expr.{
     binary
     with left = lower_expr env binary.left;
-         right = lower_expr env binary.right;
+    right = lower_expr env binary.right
   }
-  | Jir.Expr.Array elements ->
-      Jir.Expr.Array (List.map (lower_array_element env) elements)
-  | Jir.Expr.Object fields ->
-      Jir.Expr.Object (List.map (lower_object_field env) fields)
+  | Jir.Expr.Array elements -> Jir.Expr.Array (List.map (lower_array_element env) elements)
+  | Jir.Expr.Object fields -> Jir.Expr.Object (List.map (lower_object_field env) fields)
   | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
     function_
-    with body = lower_scoped_block env function_.body;
+    with body = lower_scoped_block env function_.body
   }
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     member
-    with object_ = lower_expr env member.object_;
+    with object_ = lower_expr env member.object_
   }
   | Jir.Expr.Index index -> Jir.Expr.Index Jir.Expr.{
     object_ = lower_expr env index.object_;
-    index = lower_expr env index.index;
+    index = lower_expr env index.index
   }
   | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
     callee = lower_expr env call.callee;
-    arguments = List.map (lower_expr env) call.arguments;
+    arguments = List.map (lower_expr env) call.arguments
   }
   | Jir.Expr.Conditional conditional -> Jir.Expr.Conditional Jir.Expr.{
     condition = lower_expr env conditional.condition;
     then_ = lower_expr env conditional.then_;
-    else_ = lower_expr env conditional.else_;
+    else_ = lower_expr env conditional.else_
   }
   | Jir.Expr.Assignment assignment -> Jir.Expr.Assignment Jir.Expr.{
     assignment
-    with value = lower_expr env assignment.value;
+    with value = lower_expr env assignment.value
   }
 
 and lower_statement = fun env statement ->
   match statement with
-  | Jir.Statement.Declaration declaration -> lower_declaration env declaration
-  | Jir.Statement.Block statements -> (
-    (lower_scoped_block env statements |> Simplify.block, env)
-  )
+  | Jir.Statement.Declaration declaration ->
+      lower_declaration env declaration
+  | Jir.Statement.Block statements ->
+      (lower_scoped_block env statements |> Simplify.block, env)
   | Jir.Statement.Expression expr ->
       let expr = lower_expr env expr in
       (Simplify.effect_expression expr, env)
-  | Jir.Statement.Return expr -> ([ Jir.Statement.Return (lower_expr env expr) ], env)
+  | Jir.Statement.Return expr ->
+      ([ Jir.Statement.Return (lower_expr env expr) ], env)
   | Jir.Statement.If if_ ->
       let condition = lower_expr env if_.condition in
       let then_ = lower_scoped_block env if_.then_ in
@@ -111,7 +112,10 @@ and lower_declaration = fun env (declaration: Jir.Declaration.t) ->
   | (Jir.Declaration.Const, Some (Jir.Expr.Identifier target)) when not
     (Core.Entity_id.equal binder_entity target)
   && not (Entity_set.mem binder_entity env.exported)
-  && not (Entity_set.mem target env.assigned) -> ([], bind_alias env declaration.binder.binding_id target)
+  && not (Entity_set.mem target env.assigned) -> (
+    [],
+    bind_alias env declaration.binder.binding_id target
+  )
   | _ -> ([ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ], env)
 
 and lower_block = fun env statements ->
@@ -124,15 +128,17 @@ and lower_block = fun env statements ->
 
 and lower_scoped_block = fun env statements -> lower_block env statements |> fst
 
-let program = fun (program: Jir.Program.t) ->
+let program = fun ~context:_ (program: Jir.Program.t) ->
   let env = {
     aliases = Binding_map.empty;
     assigned = Analysis.program_assigned_entities program;
     exported =
       List.fold_left
-        (fun set (export: Jir.Export.t) -> Entity_set.add export.local set)
+        (fun set (export: Jir.Export.t) ->
+          Entity_set.add export.local set)
         Entity_set.empty
         program.exports;
-  } in
+  }
+  in
   let (body, _) = lower_block env program.body in
   { program with body }

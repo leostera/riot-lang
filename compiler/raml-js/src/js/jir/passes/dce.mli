@@ -27,4 +27,4 @@
     - this pass is the local cleanup step that removes the dead scaffolding
       those earlier transforms uncovered
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

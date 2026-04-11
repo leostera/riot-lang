@@ -18,7 +18,7 @@ let lower_module_ref = fun (module_ref: Source.Modules.t) : Target.module_ref ->
     kind = module_ref.kind;
     unit_name = module_ref.unit_name;
     import_path = module_ref.import_path;
-    namespace = module_ref.namespace;
+    namespace = module_ref.namespace
   }
 
 let lower_import = fun (import: Source.Imports.requirement) ->
@@ -145,7 +145,7 @@ and lower_statement = fun statement ->
 let lower_export = fun (export: Source.Export.t) ->
   Target.Export.{ name = export.name; local = export.local }
 
-let lower_program = fun (program: Source.Program.t) ->
+let lower_program = fun ~context:_ (program: Source.Program.t) ->
   let import_items = program.imports
   |> List.map lower_import
   |> List.map (fun import -> Target.Module_item.Import import) in

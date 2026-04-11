@@ -20,4 +20,4 @@
     - later lowering steps still materialize imports and remove aliases using
       ids, but they need a collision-free printable name surface first
 *)
-val program: Types.Program.t -> Types.Program.t
+val program: context:Raml_core.Compilation_context.t -> Types.Program.t -> Types.Program.t

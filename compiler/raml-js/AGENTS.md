@@ -46,6 +46,9 @@ late syntax lowering, and JS emission.
 9. Use `src/js/syntax.*` for JS naming and property-syntax decisions. Do not
    duplicate ad hoc “is this a valid JS name?” heuristics in lowering,
    passes, or emission.
+10. Thread `Raml_core.Compilation_context.t` through backend lowering, passes,
+    `JST`, and emission. Future target-sensitive decisions like ESM vs CJS
+    should read from that context instead of inventing new ambient inputs.
 
 ## Verification
 
