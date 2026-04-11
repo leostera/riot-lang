@@ -183,23 +183,23 @@ Checklist:
 - [x] remove `loaded_ambient_type_decls_for` from the snapshot hot path
 - [x] remove `local_ambient_env_for` from the snapshot hot path
 - [x] remove `local_ambient_type_decls_for` from the snapshot hot path
-- [ ] replace ambient replay caches with caches keyed by visible module ids and
+- [x] replace ambient replay caches with caches keyed by visible module ids and
       canonical module results
-- [ ] make snapshot local-module visibility produce `ScopeView` entries directly
+- [x] make snapshot local-module visibility produce `ScopeView` entries directly
       instead of concatenating export lists
-- [ ] keep any needed caching around qualified/public surfaces as derived view
+- [x] keep any needed caching around qualified/public surfaces as derived view
       caches only, not as checker inputs
-- [ ] make snapshot forcing pass imported context through `PackageEnv` lookups
+- [x] make snapshot forcing pass imported context through `PackageEnv` lookups
       rather than `TypConfig` ambient mutation
-- [ ] add tests that snapshot diagnostics and query answers remain stable after
+- [x] add tests that snapshot diagnostics and query answers remain stable after
       removing ambient replay
-- [ ] add tests that snapshots no longer allocate ambient payload proportional to
+- [x] add tests that snapshots no longer allocate ambient payload proportional to
       all visible imported exports
 
 Exit criteria:
 
-- [ ] snapshots no longer rebuild imported state as flat ambient lists
-- [ ] snapshot caching is about canonical module results and visibility, not
+- [x] snapshots no longer rebuild imported state as flat ambient lists
+- [x] snapshot caching is about canonical module results and visibility, not
       replayed semantic env payload
 
 ## Phase 4. Separate Dependency Discovery From Typing

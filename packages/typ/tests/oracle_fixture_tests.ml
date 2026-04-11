@@ -195,7 +195,7 @@ let check_source_text = fun ~filename text ->
                 {
                   ModulePairing.source;
                   analysis = fallback_analysis;
-                  ambient_type_decls = Typ.Config.ambient_type_decls config;
+                  visible_type_decls = Typ.Config.ambient_type_decls config
                 }
               ])
       in

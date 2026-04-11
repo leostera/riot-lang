@@ -4,9 +4,8 @@ open Model
 type source_input = {
   source: Source.t;
   analysis: SourceAnalysis.t;
-  ambient_type_decls: FileSummary.type_decl list;
+  visible_type_decls: FileSummary.type_decl list;
 }
-
 (** Paired module result for one logical module name.
 
     A logical module may be backed by an implementation source, an interface

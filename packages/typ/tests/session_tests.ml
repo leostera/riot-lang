@@ -4436,6 +4436,120 @@ let test_prepare_snapshot_emits_structured_diagnostics_in_events = fun _ctx ->
           str (typ_events_json !events);
         ])
 
+let test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let helpers_text = {ocaml|
+    let value0 = 0
+    let value1 = 1
+    let value2 = 2
+    let value3 = 3
+    let value4 = 4
+    let value5 = 5
+    let value6 = 6
+    let value7 = 7
+    let value8 = 8
+    let value9 = 9
+  |ocaml}
+  in
+  let (session, _helpers_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "helpers.ml")
+    ~text:helpers_text in
+  let consumer_text = {ocaml|
+    open Helpers
+
+    let answer = value0 + value9
+  |ocaml}
+  in
+  let (session, consumer_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:consumer_text in
+  match Session.prepare_snapshot session ~roots:[ consumer_source_id ] with
+  | Error missing -> Error (format
+    Format.[
+      str "expected rooted snapshot, got ";
+      str (Data.Json.to_string (Session.MissingRequirements.to_json missing));
+    ])
+  | Ok snapshot ->
+      let answer_scheme = export_scheme snapshot consumer_source_id "answer" in
+      let consumer_starts =
+        !events
+        |> List.filter_map
+          (fun ({ Event.kind; _ }: Event.t) ->
+            match kind with
+            | Event.SourceAnalysisStarted {
+                source_id;
+                module_name;
+                mode=Event.SnapshotAnalysis;
+                ambient_binding_count;
+                ambient_type_decl_count;
+                _;
+              }
+              when SourceId.equal source_id consumer_source_id ->
+                Some (module_name, ambient_binding_count, ambient_type_decl_count)
+            | _ -> None)
+      in
+      match consumer_starts with
+      | [ ("Consumer", 0, 0) ] ->
+          Test.assert_equal ~expected:(Some "int") ~actual:answer_scheme;
+          Ok ()
+      | _ -> Error (format
+        Format.[
+          str "expected consumer snapshot analysis to avoid imported ambient value payloads, got ";
+          str (typ_events_json !events);
+        ])
+
+let test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _helpers_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "helpers.ml")
+    ~text:{ocaml|
+      type t = Wrap of int
+
+      let make value = Wrap value
+    |ocaml} in
+  let consumer_text = {ocaml|
+    open Helpers
+
+    let ok = match make 1 with Wrap value -> value
+    let broken = missing_value
+  |ocaml}
+  in
+  let (session, consumer_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:consumer_text in
+  match prepare_snapshot_or_error session ~roots:[ consumer_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics_before = diagnostic_strings snapshot consumer_source_id in
+      let had_unbound_name_before = has_unbound_name snapshot consumer_source_id in
+      let ok_export_before = export_scheme snapshot consumer_source_id "ok" in
+      let exports_before = export_names (Query.export_of snapshot consumer_source_id) in
+      let _ = Session.Snapshot.find_module_typings_by_name snapshot "Helpers" in
+      let _ = Session.Snapshot.module_typings snapshot in
+      let _ = Query.module_typings_of snapshot consumer_source_id in
+      let diagnostics_after = diagnostic_strings snapshot consumer_source_id in
+      let had_unbound_name_after = has_unbound_name snapshot consumer_source_id in
+      let ok_export_after = export_scheme snapshot consumer_source_id "ok" in
+      let exports_after = export_names (Query.export_of snapshot consumer_source_id) in
+      Test.assert_equal ~expected:true ~actual:had_unbound_name_before;
+      Test.assert_equal ~expected:true ~actual:had_unbound_name_after;
+      Test.assert_equal ~expected:diagnostics_before ~actual:diagnostics_after;
+      Test.assert_equal ~expected:exports_before ~actual:exports_after;
+      Test.assert_equal ~expected:ok_export_before ~actual:ok_export_after;
+      Test.assert_equal ~expected:(Some "int") ~actual:ok_export_after;
+      Ok ()
+
 let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
   let events = ref [] in
   let config = Config.default
@@ -9530,6 +9644,12 @@ let () =
         Test.case "fold_package_sources persists module typings from the authoritative engine" test_fold_package_sources_persists_module_typings_from_authoritative_engine;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
+        Test.case
+          "prepare_snapshot keeps imported value payloads out of ambient bindings"
+          test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings;
+        Test.case
+          "prepare_snapshot keeps diagnostics and exports stable after module forcing"
+          test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
         Test.case "prepare_snapshot reuses shared transitive local modules" test_prepare_snapshot_reuses_shared_transitive_local_modules;
         Test.case "prepare_snapshot reuses paired local modules across rooted snapshots" test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;

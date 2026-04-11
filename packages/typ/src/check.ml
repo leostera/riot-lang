@@ -660,8 +660,8 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
                   let source_config = TypConfig.with_loaded_module_index
                     ~loaded_modules:state.loaded_modules
                     config in
-                  let ambient_type_decls = ImportedWorld.visible_type_decls imported_world in
-                  let ambient_type_decl_count = List.length ambient_type_decls in
+                  let visible_type_decls = ImportedWorld.visible_type_decls imported_world in
+                  let ambient_type_decl_count = List.length visible_type_decls in
                   let () =
                     TypConfig.emit_event source_config
                       (fun () ->
@@ -684,7 +684,7 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
                       source_config
                       (fun () -> source_analysis_finished_event analysis)
                   in
-                  Ok ((source.prepared, analysis, ambient_type_decls) :: analyzed_sources)
+                  Ok ((source.prepared, analysis, visible_type_decls) :: analyzed_sources)
             ))
       (Ok [])
   in
@@ -736,8 +736,8 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
                     in
                     let pairing = analyzed_sources
                     |> List.map
-                      (fun ((source: prepared_source), analysis, ambient_type_decls) ->
-                        { ModulePairing.source = source.source; analysis; ambient_type_decls })
+                      (fun ((source: prepared_source), analysis, visible_type_decls) ->
+                        { ModulePairing.source = source.source; analysis; visible_type_decls })
                     |> ModulePairing.of_sources ~internal_name:group.internal_name in
                     let () =
                       TypConfig.emit_event
@@ -746,7 +746,7 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
                     in
                     let checked_sources = analyzed_sources
                     |> List.map
-                      (fun ((source: prepared_source), analysis, _ambient_type_decls) ->
+                      (fun ((source: prepared_source), analysis, _visible_type_decls) ->
                         { path = source.display_path; analysis }) in
                     let module_result = pairing.module_result in
                     let public_module_typings = rebind_public_module_views group module_result in

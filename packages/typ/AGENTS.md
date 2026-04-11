@@ -30,6 +30,8 @@ Then use the feature slices that match the work you are doing.
 8. Feed imported-module state into `SourceAnalysis` through `ImportedWorld`
    (`PackageEnv + ScopeView`), not by mutating `TypConfig` ambient payloads on
    hot paths.
+9. Key rooted snapshot reuse off `ScopeView` visibility plus canonical local
+   module results, not flattened ambient export/type payloads.
 
 ## Validate
 

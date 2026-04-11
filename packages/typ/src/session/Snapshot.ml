@@ -373,8 +373,8 @@ let placeholder_source_analysis_cache_key = fun (snapshot: t) (slot: analysis_sl
 let placeholder_module_result_cache_key = fun (snapshot: t) module_name ->
   digest_key [ shared_cache_namespace snapshot; "partial-module"; module_name ]
 
-(* These caches depend on the visible ambient module surfaces, not on the
-   logical source identity that happens to request them. *)
+(* These caches depend on visible module identities plus canonical local module
+   results, not on replayed ambient payloads. *)
 
 let rec source_analysis_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
   match Collections.HashMap.get snapshot.source_analysis_keys_cache (SourceId.to_int slot.source_id) with
@@ -387,6 +387,7 @@ let rec source_analysis_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
         snapshot.source_analysis_keys_cache
         (SourceId.to_int slot.source_id)
         None in
+      let scope_view = scope_view_for_slot snapshot slot in
       let cache_key = digest_key
         ([
           shared_cache_namespace snapshot;
@@ -394,9 +395,7 @@ let rec source_analysis_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
           Int.to_string (SourceId.to_int slot.source_id);
           Int.to_string slot.source.revision;
         ]
-        @ (local_module_names_for snapshot slot
-        |> List.sort_uniq String.compare
-        |> List.map (module_result_shared_cache_key snapshot))) in
+        @ scope_view_dependency_cache_keys snapshot scope_view) in
       let _ = Collections.HashMap.insert
         snapshot.source_analysis_keys_cache
         (SourceId.to_int slot.source_id)
@@ -427,6 +426,40 @@ and module_result_shared_cache_key = fun (snapshot: t) module_name ->
         (Some cache_key) in
       cache_key
 
+and scope_view_dependency_cache_keys = fun (snapshot: t) scope_view ->
+  (ScopeView.visible_modules scope_view
+  |> List.map (visible_module_dependency_cache_key snapshot ~role:"visible"))
+  @ (ScopeView.implicit_open_modules scope_view
+  |> List.map (visible_module_dependency_cache_key snapshot ~role:"implicit-open"))
+
+and visible_module_dependency_cache_key = fun (snapshot: t) ~role (visible_path, module_id) ->
+  let module_key =
+    match module_id with
+    | PackageEnv.ModuleId.Loaded required_name ->
+        format
+          Format.[
+            str "loaded:";
+            str (LocalModules.RequiredName.to_string required_name);
+          ]
+    | PackageEnv.ModuleId.Local internal_name ->
+        let module_name = LocalModules.InternalName.to_string internal_name in
+        format
+          Format.[
+            str "local:";
+            str module_name;
+            str ":";
+            str (module_result_shared_cache_key snapshot module_name);
+          ]
+  in
+  format
+    Format.[
+      str role;
+      str ":";
+      str (SurfacePath.to_string visible_path);
+      str ":";
+      str module_key;
+    ]
+
 let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
   match slot.state with
   | Finished analysis ->
@@ -445,7 +478,7 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
             slot.state <- InProgress;
             let local_module_names = local_module_names_for snapshot slot in
             let imported_world = imported_world_for_slot snapshot slot in
-            let ambient_type_decls = ImportedWorld.visible_type_decls imported_world in
+            let visible_type_decls = ImportedWorld.visible_type_decls imported_world in
             TypConfig.emit_event slot.config
               (fun () ->
                 Event.SourceAnalysisStarted {
@@ -455,7 +488,7 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
                   local_module_names;
                   loaded_module_count = LoadedModules.len slot.config.loaded_modules;
                   ambient_binding_count = 0;
-                  ambient_type_decl_count = List.length ambient_type_decls;
+                  ambient_type_decl_count = List.length visible_type_decls;
                 });
             let analysis = SourceAnalysis.analyze ~imported_world ~config:slot.config slot.source in
             TypConfig.emit_event slot.config
@@ -493,6 +526,9 @@ and imported_world_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
       let module_result = module_typings_of_result (module_result_for snapshot module_name) in
       PackageEnv.add_local package_env ~internal_name module_result);
   ImportedWorld.create ~package_env ~scope_view
+
+and visible_type_decls_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
+  ImportedWorld.visible_type_decls (imported_world_for_slot snapshot slot)
 
 and module_results_for = fun (snapshot: t) ->
   match snapshot.all_module_results_cache with
@@ -613,7 +649,7 @@ and module_result_for = fun (snapshot: t) module_name ->
                     {
                       ModulePairing.source = slot.source;
                       analysis = force_analysis snapshot slot;
-                      ambient_type_decls = slot.config.ambient_type_decls
+                      visible_type_decls = visible_type_decls_for_slot snapshot slot
                     }) in
                 let result = ModulePairing.of_sources
                   ~internal_name:(LocalModules.InternalName.of_string module_name)

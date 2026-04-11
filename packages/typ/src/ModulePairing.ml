@@ -6,7 +6,7 @@ module ModuleSurface = ModuleSurface
 type source_input = {
   source: Source.t;
   analysis: SourceAnalysis.t;
-  ambient_type_decls: FileSummary.type_decl list;
+  visible_type_decls: FileSummary.type_decl list;
 }
 
 type t = {
@@ -45,7 +45,9 @@ let select_source = fun sources desired_kind ->
           (
             match selected with
             | None -> loop (Some candidate) tail
-            | Some { source = existing; _ } when prefer_source existing source -> loop (Some candidate) tail
+            | Some { source=existing; _ } when prefer_source existing source -> loop
+              (Some candidate)
+              tail
             | Some _ -> loop selected tail
           )
   in
@@ -65,8 +67,8 @@ let qualify_signature_exports = fun module_name type_decls exports ->
 let qualify_signature_type_decls = fun module_name type_decls ->
   ModuleSurface.qualify_type_decls ~module_name type_decls
 
-let signature_visible_types = fun ~ambient_type_decls ~interface_decls ~implementation_decls ->
-  VisibleTypes.of_type_decls (ambient_type_decls @ interface_decls @ implementation_decls)
+let signature_visible_types = fun ~visible_type_decls ~interface_decls ~implementation_decls ->
+  VisibleTypes.of_type_decls (visible_type_decls @ interface_decls @ implementation_decls)
 
 let canonical_scheme_string = fun visible_types scheme ->
   VisibleTypes.canonicalize_scheme visible_types scheme |> TypePrinter.scheme_to_string
@@ -610,8 +612,7 @@ let should_check_signature_inclusion = fun interface_summary implementation_summ
   && has_reusable_exports implementation_summary
 
 let analyses_by_source = fun sources ->
-  sources
-  |> List.map (fun ({ analysis; _ }: source_input) -> (analysis.source.source_id, analysis))
+  sources |> List.map (fun ({ analysis; _ }: source_input) -> (analysis.source.source_id, analysis))
 
 let extra_analyses = fun excluded_ids sources ->
   sources |> List.filter_map
@@ -622,8 +623,8 @@ let extra_analyses = fun excluded_ids sources ->
         Some (analysis.source.source_id, analysis))
 
 let paired_module_view = fun ~internal_name interface_pair implementation_pair ->
-  let ({ analysis = interface_analysis; _ }: source_input) = interface_pair in
-  let ({ analysis = implementation_analysis; _ }: source_input) = implementation_pair in
+  let { analysis=interface_analysis; _ }: source_input = interface_pair in
+  let { analysis=implementation_analysis; _ }: source_input = implementation_pair in
   let export_result = interface_shaped_export_result
     interface_analysis.file_summary
     implementation_analysis.file_summary in
@@ -674,23 +675,16 @@ let paired_module_view = fun ~internal_name interface_pair implementation_pair -
 
 let pair_interface_and_implementation = fun ~internal_name interface_pair implementation_pair ->
   let module_name = LocalModules.InternalName.to_string internal_name in
-  let ({
-    analysis = interface_analysis;
-    ambient_type_decls = interface_ambient_type_decls;
-    _;
-  }: source_input) = interface_pair in
-  let ({
-    analysis = implementation_analysis;
-    ambient_type_decls = implementation_ambient_type_decls;
-    _;
-  }: source_input) = implementation_pair in
+  let { analysis=interface_analysis; visible_type_decls=interface_visible_type_decls; _;  }: source_input = interface_pair in
+  let { analysis=implementation_analysis; visible_type_decls=implementation_visible_type_decls; _;  }:
+    source_input = implementation_pair in
   if
     not
       (should_check_signature_inclusion interface_analysis.file_summary implementation_analysis.file_summary)
   then
     paired_module_view ~internal_name interface_pair implementation_pair
   else
-    let ambient_type_decls = interface_ambient_type_decls @ implementation_ambient_type_decls in
+    let visible_type_decls = interface_visible_type_decls @ implementation_visible_type_decls in
     let interface_type_decls = qualify_signature_type_decls
       module_name
       (FileSummary.type_decls interface_analysis.file_summary) in
@@ -706,7 +700,7 @@ let pair_interface_and_implementation = fun ~internal_name interface_pair implem
       (FileSummary.type_decls implementation_analysis.file_summary)
       (FileSummary.exports implementation_analysis.file_summary) in
     let visible_types = signature_visible_types
-      ~ambient_type_decls
+      ~visible_type_decls
       ~interface_decls:interface_type_decls
       ~implementation_decls:implementation_type_decls in
     let mismatches = value_mismatches ~visible_types interface_exports implementation_exports
@@ -794,10 +788,7 @@ let of_sources = fun ~internal_name sources ->
         ~type_decls:[]
         () in
       {
-        module_result = ModuleTypings.partial
-          ~module_name
-          ~source_hash
-          ();
+        module_result = ModuleTypings.partial ~module_name ~source_hash ();
         analyses_by_source = analyses_by_source sources;
         signature_mismatches = []
       }
