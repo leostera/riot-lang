@@ -2,6 +2,7 @@ open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Analysis = Analysis
+module Simplify = Simplify
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
@@ -131,30 +132,17 @@ and lower_statement = fun env statement ->
   match statement with
   | Jir.Statement.Declaration declaration -> lower_declaration env declaration
   | Jir.Statement.Block statements -> (
-    match lower_scoped_block env statements with
-    | [] -> ([], env)
-    | statements -> ([ Jir.Statement.Block statements ], env)
+    (lower_scoped_block env statements |> Simplify.block, env)
   )
   | Jir.Statement.Expression expr ->
       let expr = lower_expr env expr in
-      if Analysis.is_pure_expr expr then
-        ([], env)
-      else
-        ([ Jir.Statement.Expression expr ], env)
+      (Simplify.effect_expression expr, env)
   | Jir.Statement.Return expr -> ([ Jir.Statement.Return (lower_expr env expr) ], env)
   | Jir.Statement.If if_ ->
       let condition = lower_expr env if_.condition in
       let then_ = lower_scoped_block env if_.then_ in
       let else_ = lower_scoped_block env if_.else_ in
-      if List.is_empty then_ && List.is_empty else_ then
-        if Analysis.is_pure_expr condition then
-          ([], env)
-        else
-          ([ Jir.Statement.Expression condition ], env)
-      else
-        ([
-          Jir.Statement.If Jir.Statement.{ condition; then_; else_ }
-        ], env)
+      (Simplify.conditional ~condition ~then_ ~else_, env)
 
 and lower_declaration = fun env (declaration: Jir.Declaration.t) ->
   let init = Option.map (lower_expr env) declaration.init in

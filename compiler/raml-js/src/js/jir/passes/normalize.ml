@@ -2,6 +2,7 @@ open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Analysis = Analysis
+module Simplify = Simplify
 
 module Import_set = struct
   module Storage = Collections.Map.Make (struct
@@ -161,9 +162,7 @@ and normalize_statement = fun statement ->
           with init = Option.map normalize_expr declaration.init;
         } ]
   | Jir.Statement.Block statements -> (
-      match normalize_statement_list statements with
-      | [] -> []
-      | statements -> [ Jir.Statement.Block statements ]
+      normalize_statement_list statements |> Simplify.block
     )
   | Jir.Statement.Expression expr ->
       [ Jir.Statement.Expression (normalize_expr expr) ]
@@ -173,13 +172,7 @@ and normalize_statement = fun statement ->
       let condition = normalize_expr if_.condition in
       let then_ = normalize_statement_list if_.then_ in
       let else_ = normalize_statement_list if_.else_ in
-      if List.is_empty then_ && List.is_empty else_ then
-        if Analysis.is_pure_expr condition then
-          []
-        else
-          [ Jir.Statement.Expression condition ]
-      else
-        [ Jir.Statement.If Jir.Statement.{ condition; then_; else_ } ]
+      Simplify.conditional ~condition ~then_ ~else_
 
 and normalize_statement_list = fun statements ->
   List.concat_map normalize_statement statements
