@@ -152,6 +152,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "fact__local_loop_0",
         "params": [
@@ -202,6 +206,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "fact",
         "params": [
@@ -269,6 +277,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -429,6 +441,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "acc",
+                "offset": 0
+              },
+              {
+                "name": "n",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t6",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "fact__local_loop_0",
           "params": [
@@ -479,6 +532,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "fact",
           "params": [
@@ -546,6 +616,27 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -705,6 +796,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "acc",
+                "offset": 0
+              },
+              {
+                "name": "n",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t6",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "fact__local_loop_0",
           "params": [
@@ -755,6 +887,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "fact",
           "params": [
@@ -822,6 +971,27 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -982,6 +1152,47 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 80,
+          "slots": [
+            {
+              "name": "acc",
+              "offset": 0
+            },
+            {
+              "name": "n",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            },
+            {
+              "name": "t1",
+              "offset": 24
+            },
+            {
+              "name": "t6",
+              "offset": 32
+            },
+            {
+              "name": "t2",
+              "offset": 40
+            },
+            {
+              "name": "t3",
+              "offset": 48
+            },
+            {
+              "name": "t4",
+              "offset": 56
+            },
+            {
+              "name": "t5",
+              "offset": 64
+            }
+          ]
+        },
         "kind": "function",
         "name": "fact__local_loop_0",
         "params": [
@@ -1032,6 +1243,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "n",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "fact",
         "params": [
@@ -1099,6 +1327,27 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t3",
+              "offset": 24
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

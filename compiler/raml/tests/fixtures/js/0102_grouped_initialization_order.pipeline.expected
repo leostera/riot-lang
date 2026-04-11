@@ -19,11 +19,27 @@
         "exports": [
           {
             "name": "before",
-            "symbol": "before"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "before",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "before"
+            }
           },
           {
             "name": "after",
-            "symbol": "after"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "after",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "after"
+            }
           }
         ],
         "init": [
@@ -31,12 +47,29 @@
             "exports": [
               {
                 "name": "before",
-                "symbol": "before"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "before",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "before"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "before",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "before"
+                  },
                   "expr": {
                     "constant": {
                       "kind": "string",
@@ -60,11 +93,22 @@
                     "arguments": [
                       {
                         "kind": "var",
-                        "name": "before"
+                        "name": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "before",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "before"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "print_endline",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "print_endline"
+                      },
                       "kind": "direct"
                     }
                   },
@@ -79,12 +123,29 @@
             "exports": [
               {
                 "name": "after",
-                "symbol": "after"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "after",
+                    "stamp": 2
+                  },
+                  "kind": "resolved",
+                  "surface_path": "after"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "after",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "after"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -97,7 +158,10 @@
                         }
                       ],
                       "callee": {
-                        "function": "print_endline",
+                        "function": {
+                          "kind": "unresolved",
+                          "surface_path": "print_endline"
+                        },
                         "kind": "direct"
                       }
                     },

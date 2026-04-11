@@ -125,11 +125,11 @@ let with_snapshot_path = fun path (ctx: Test.ctx) ->
 let compile_fixture = fun (ctx: Test.FixtureRunner.ctx) ->
   let source = read_source ctx in
   let filename = stable_fixture_filename ctx in
-  let config = Raml.Config.make
+  let config = Raml.TestingHelpers.Test_fixture_typing.raml_config
     ~host:Raml.Target.aarch64_apple_darwin
-    ~target:Raml.Target.js_unknown_ecma
-    () in
-  Raml.compile_source ~config ~relpath:filename source |> Result.expect ~msg:"fixture should compile into a backend-oriented compilation snapshot"
+    ~target:Raml.Target.js_unknown_ecma in
+  Raml.TestingHelpers.compile_source ~config ~relpath:filename source
+  |> Result.expect ~msg:"fixture should compile into a backend-oriented compilation snapshot"
 
 let test_compilation_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let snapshot_path = snapshot_path ~snapshot_dir:snapshots_dir ~ctx ~suffix:".compilation.expected" in

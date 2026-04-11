@@ -37,7 +37,10 @@
                           }
                         ],
                         "callee": {
-                          "function": "int_of_string",
+                          "function": {
+                            "kind": "unresolved",
+                            "surface_path": "int_of_string"
+                          },
                           "kind": "direct"
                         }
                       },
@@ -45,7 +48,10 @@
                     }
                   ],
                   "callee": {
-                    "function": "Printf.printf",
+                    "function": {
+                      "kind": "unresolved",
+                      "surface_path": "Printf.printf"
+                    },
                     "kind": "direct"
                   }
                 },

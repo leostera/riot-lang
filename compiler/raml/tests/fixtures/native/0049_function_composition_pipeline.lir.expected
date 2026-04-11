@@ -142,6 +142,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "compose",
         "params": [
@@ -178,6 +182,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_2__closure",
         "params": [
@@ -228,6 +236,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_2",
         "params": [
@@ -262,6 +274,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_1__closure",
         "params": [
@@ -312,6 +328,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_1",
         "params": [
@@ -346,6 +366,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_0__closure",
         "params": [
@@ -396,6 +420,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_0",
         "params": [
@@ -528,6 +556,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__partial_compose_0__step_1",
         "params": [
@@ -661,6 +693,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "pipeline__partial_compose_1__step_1",
         "params": [
@@ -875,6 +911,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -1025,6 +1065,55 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "f",
+                "offset": 0
+              },
+              {
+                "name": "g",
+                "offset": 8
+              },
+              {
+                "name": "x",
+                "offset": 16
+              },
+              {
+                "name": "t0",
+                "offset": 24
+              },
+              {
+                "name": "t1",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              },
+              {
+                "name": "t6",
+                "offset": 72
+              },
+              {
+                "name": "t7",
+                "offset": 80
+              }
+            ]
+          },
           "kind": "function",
           "name": "compose",
           "params": [
@@ -1061,6 +1150,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_2__closure",
           "params": [
@@ -1111,6 +1217,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_2",
           "params": [
@@ -1145,6 +1268,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_1__closure",
           "params": [
@@ -1195,6 +1335,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_1",
           "params": [
@@ -1229,6 +1386,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_0__closure",
           "params": [
@@ -1279,6 +1453,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_0",
           "params": [
@@ -1411,6 +1602,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "__arg__",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t2",
+                "offset": 32
+              },
+              {
+                "name": "t3",
+                "offset": 40
+              },
+              {
+                "name": "t4",
+                "offset": 48
+              },
+              {
+                "name": "t5",
+                "offset": 56
+              },
+              {
+                "name": "t6",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__partial_compose_0__step_1",
           "params": [
@@ -1544,6 +1776,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "__arg__",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t2",
+                "offset": 32
+              },
+              {
+                "name": "t3",
+                "offset": 40
+              },
+              {
+                "name": "t4",
+                "offset": 48
+              },
+              {
+                "name": "t5",
+                "offset": 56
+              },
+              {
+                "name": "t6",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__partial_compose_1__step_1",
           "params": [
@@ -1758,6 +2031,59 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              },
+              {
+                "name": "t6",
+                "offset": 48
+              },
+              {
+                "name": "t7",
+                "offset": 56
+              },
+              {
+                "name": "t8",
+                "offset": 64
+              },
+              {
+                "name": "t9",
+                "offset": 72
+              },
+              {
+                "name": "t10",
+                "offset": 80
+              },
+              {
+                "name": "t11",
+                "offset": 88
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -1907,6 +2233,55 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "f",
+                "offset": 0
+              },
+              {
+                "name": "g",
+                "offset": 8
+              },
+              {
+                "name": "x",
+                "offset": 16
+              },
+              {
+                "name": "t0",
+                "offset": 24
+              },
+              {
+                "name": "t1",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              },
+              {
+                "name": "t6",
+                "offset": 72
+              },
+              {
+                "name": "t7",
+                "offset": 80
+              }
+            ]
+          },
           "kind": "function",
           "name": "compose",
           "params": [
@@ -1943,6 +2318,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_2__closure",
           "params": [
@@ -1993,6 +2385,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_2",
           "params": [
@@ -2027,6 +2436,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_1__closure",
           "params": [
@@ -2077,6 +2503,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_1",
           "params": [
@@ -2111,6 +2554,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "x",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_0__closure",
           "params": [
@@ -2161,6 +2621,23 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "x",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__local_lambda_0",
           "params": [
@@ -2293,6 +2770,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "__arg__",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t2",
+                "offset": 32
+              },
+              {
+                "name": "t3",
+                "offset": 40
+              },
+              {
+                "name": "t4",
+                "offset": 48
+              },
+              {
+                "name": "t5",
+                "offset": 56
+              },
+              {
+                "name": "t6",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__partial_compose_0__step_1",
           "params": [
@@ -2426,6 +2944,47 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 80,
+            "slots": [
+              {
+                "name": "__closure__",
+                "offset": 0
+              },
+              {
+                "name": "__arg__",
+                "offset": 8
+              },
+              {
+                "name": "t0",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              },
+              {
+                "name": "t2",
+                "offset": 32
+              },
+              {
+                "name": "t3",
+                "offset": 40
+              },
+              {
+                "name": "t4",
+                "offset": 48
+              },
+              {
+                "name": "t5",
+                "offset": 56
+              },
+              {
+                "name": "t6",
+                "offset": 64
+              }
+            ]
+          },
           "kind": "function",
           "name": "pipeline__partial_compose_1__step_1",
           "params": [
@@ -2640,6 +3199,59 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              },
+              {
+                "name": "t6",
+                "offset": 48
+              },
+              {
+                "name": "t7",
+                "offset": 56
+              },
+              {
+                "name": "t8",
+                "offset": 64
+              },
+              {
+                "name": "t9",
+                "offset": 72
+              },
+              {
+                "name": "t10",
+                "offset": 80
+              },
+              {
+                "name": "t11",
+                "offset": 88
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -2790,6 +3402,55 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 96,
+          "slots": [
+            {
+              "name": "f",
+              "offset": 0
+            },
+            {
+              "name": "g",
+              "offset": 8
+            },
+            {
+              "name": "x",
+              "offset": 16
+            },
+            {
+              "name": "t0",
+              "offset": 24
+            },
+            {
+              "name": "t1",
+              "offset": 32
+            },
+            {
+              "name": "t2",
+              "offset": 40
+            },
+            {
+              "name": "t3",
+              "offset": 48
+            },
+            {
+              "name": "t4",
+              "offset": 56
+            },
+            {
+              "name": "t5",
+              "offset": 64
+            },
+            {
+              "name": "t6",
+              "offset": 72
+            },
+            {
+              "name": "t7",
+              "offset": 80
+            }
+          ]
+        },
         "kind": "function",
         "name": "compose",
         "params": [
@@ -2826,6 +3487,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "__closure__",
+              "offset": 0
+            },
+            {
+              "name": "x",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_2__closure",
         "params": [
@@ -2876,6 +3554,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "x",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_2",
         "params": [
@@ -2910,6 +3605,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "__closure__",
+              "offset": 0
+            },
+            {
+              "name": "x",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_1__closure",
         "params": [
@@ -2960,6 +3672,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "x",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_1",
         "params": [
@@ -2994,6 +3723,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "__closure__",
+              "offset": 0
+            },
+            {
+              "name": "x",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_0__closure",
         "params": [
@@ -3044,6 +3790,23 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "x",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__local_lambda_0",
         "params": [
@@ -3176,6 +3939,47 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 80,
+          "slots": [
+            {
+              "name": "__closure__",
+              "offset": 0
+            },
+            {
+              "name": "__arg__",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            },
+            {
+              "name": "t1",
+              "offset": 24
+            },
+            {
+              "name": "t2",
+              "offset": 32
+            },
+            {
+              "name": "t3",
+              "offset": 40
+            },
+            {
+              "name": "t4",
+              "offset": 48
+            },
+            {
+              "name": "t5",
+              "offset": 56
+            },
+            {
+              "name": "t6",
+              "offset": 64
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__partial_compose_0__step_1",
         "params": [
@@ -3309,6 +4113,47 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 80,
+          "slots": [
+            {
+              "name": "__closure__",
+              "offset": 0
+            },
+            {
+              "name": "__arg__",
+              "offset": 8
+            },
+            {
+              "name": "t0",
+              "offset": 16
+            },
+            {
+              "name": "t1",
+              "offset": 24
+            },
+            {
+              "name": "t2",
+              "offset": 32
+            },
+            {
+              "name": "t3",
+              "offset": 40
+            },
+            {
+              "name": "t4",
+              "offset": 48
+            },
+            {
+              "name": "t5",
+              "offset": 56
+            },
+            {
+              "name": "t6",
+              "offset": 64
+            }
+          ]
+        },
         "kind": "function",
         "name": "pipeline__partial_compose_1__step_1",
         "params": [
@@ -3523,6 +4368,59 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 96,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t3",
+              "offset": 24
+            },
+            {
+              "name": "t4",
+              "offset": 32
+            },
+            {
+              "name": "t5",
+              "offset": 40
+            },
+            {
+              "name": "t6",
+              "offset": 48
+            },
+            {
+              "name": "t7",
+              "offset": 56
+            },
+            {
+              "name": "t8",
+              "offset": 64
+            },
+            {
+              "name": "t9",
+              "offset": 72
+            },
+            {
+              "name": "t10",
+              "offset": 80
+            },
+            {
+              "name": "t11",
+              "offset": 88
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

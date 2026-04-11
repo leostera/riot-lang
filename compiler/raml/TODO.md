@@ -132,6 +132,9 @@ This is the current package baseline as of the last update to this file.
   passes
 - `riot fmt ./compiler/raml`
   passes
+- `Core_ir` now owns compiler-local `Surface_path`, `Binding_id`, and
+  `Entity_id` types, so shared IR refs no longer depend on raw strings or on
+  `Typ.Model` identity modules directly
 - the JS source-driven lane now also includes
   `0120_string_of_int.ml`, which keeps `Core_ir` direct callee
   `string_of_int` shared while the JS backend lowers it through

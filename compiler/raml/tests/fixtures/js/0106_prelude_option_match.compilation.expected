@@ -12,7 +12,15 @@
       "exports": [
         {
           "name": "double_if_some",
-          "symbol": "double_if_some"
+          "symbol": {
+            "binding_id": {
+              "kind": "local",
+              "name": "double_if_some",
+              "stamp": 0
+            },
+            "kind": "resolved",
+            "surface_path": "double_if_some"
+          }
         }
       ],
       "init": [
@@ -20,12 +28,29 @@
           "exports": [
             {
               "name": "double_if_some",
-              "symbol": "double_if_some"
+              "symbol": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "double_if_some",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "double_if_some"
+              }
             }
           ],
           "items": [
             {
               "binding": {
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "double_if_some",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "double_if_some"
+                },
                 "expr": {
                   "kind": "lambda",
                   "lambda": {
@@ -34,9 +59,26 @@
                       "let": {
                         "bindings": [
                           {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "__raml_match_8",
+                                "stamp": -273
+                              },
+                              "kind": "resolved",
+                              "surface_path": "__raml_match_8"
+                            },
                             "expr": {
                               "kind": "var",
-                              "name": "value"
+                              "name": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "value",
+                                  "stamp": -289
+                                },
+                                "kind": "resolved",
+                                "surface_path": "value"
+                              }
                             },
                             "name": "__raml_match_8"
                           }
@@ -53,7 +95,15 @@
                                       "index": 0,
                                       "tuple": {
                                         "kind": "var",
-                                        "name": "__raml_match_8"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "__raml_match_8",
+                                            "stamp": -273
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "__raml_match_8"
+                                        }
                                       }
                                     }
                                   },
@@ -73,13 +123,30 @@
                               "let": {
                                 "bindings": [
                                   {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "n",
+                                        "stamp": -1000096
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "n"
+                                    },
                                     "expr": {
                                       "kind": "tuple_get",
                                       "tuple_get": {
                                         "index": 1,
                                         "tuple": {
                                           "kind": "var",
-                                          "name": "__raml_match_8"
+                                          "name": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "__raml_match_8",
+                                              "stamp": -273
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "__raml_match_8"
+                                          }
                                         }
                                       }
                                     },
@@ -102,15 +169,34 @@
                                           "arguments": [
                                             {
                                               "kind": "var",
-                                              "name": "n"
+                                              "name": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "n",
+                                                  "stamp": -1000096
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "n"
+                                              }
                                             },
                                             {
                                               "kind": "var",
-                                              "name": "n"
+                                              "name": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "n",
+                                                  "stamp": -1000096
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "n"
+                                              }
                                             }
                                           ],
                                           "callee": {
-                                            "function": "+",
+                                            "function": {
+                                              "kind": "unresolved",
+                                              "surface_path": "+"
+                                            },
                                             "kind": "direct"
                                           }
                                         },
@@ -143,7 +229,18 @@
                       }
                     },
                     "params": [
-                      "value"
+                      {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "value",
+                            "stamp": -289
+                          },
+                          "kind": "resolved",
+                          "surface_path": "value"
+                        },
+                        "name": "value"
+                      }
                     ]
                   }
                 },
@@ -163,6 +260,15 @@
                 "let": {
                   "bindings": [
                     {
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "__raml_match_22",
+                          "stamp": -721
+                        },
+                        "kind": "resolved",
+                        "surface_path": "__raml_match_22"
+                      },
                       "expr": {
                         "apply": {
                           "arguments": [
@@ -189,7 +295,15 @@
                             }
                           ],
                           "callee": {
-                            "function": "double_if_some",
+                            "function": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "double_if_some",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "double_if_some"
+                            },
                             "kind": "direct"
                           }
                         },
@@ -210,7 +324,15 @@
                                 "index": 0,
                                 "tuple": {
                                   "kind": "var",
-                                  "name": "__raml_match_22"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "__raml_match_22",
+                                      "stamp": -721
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "__raml_match_22"
+                                  }
                                 }
                               }
                             },
@@ -237,7 +359,10 @@
                             }
                           ],
                           "callee": {
-                            "function": "print_endline",
+                            "function": {
+                              "kind": "unresolved",
+                              "surface_path": "print_endline"
+                            },
                             "kind": "direct"
                           }
                         },
@@ -248,13 +373,30 @@
                         "let": {
                           "bindings": [
                             {
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "n",
+                                  "stamp": -1000192
+                                },
+                                "kind": "resolved",
+                                "surface_path": "n"
+                              },
                               "expr": {
                                 "kind": "tuple_get",
                                 "tuple_get": {
                                   "index": 1,
                                   "tuple": {
                                     "kind": "var",
-                                    "name": "__raml_match_22"
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "__raml_match_22",
+                                        "stamp": -721
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "__raml_match_22"
+                                    }
                                   }
                                 }
                               },
@@ -273,11 +415,22 @@
                                 },
                                 {
                                   "kind": "var",
-                                  "name": "n"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "n",
+                                      "stamp": -1000192
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "n"
+                                  }
                                 }
                               ],
                               "callee": {
-                                "function": "Printf.printf",
+                                "function": {
+                                  "kind": "unresolved",
+                                  "surface_path": "Printf.printf"
+                                },
                                 "kind": "direct"
                               }
                             },

@@ -46,22 +46,43 @@ let selected_codegen = fun ~backend ~target codegen ->
   in
   Json.obj [ ("backend", Json.string backend); ("target", target); ("stage", stage) ]
 
+let create = fun ~targeting ~source ~typing ~core_ir ~lowering_fields ~codegen_fields ->
+  let backend = selected_backend targeting in
+  let target = json_field "target" targeting |> Option.unwrap_or ~default:Json.null in
+  let lowered = Json.obj lowering_fields in
+  let codegen = Json.obj codegen_fields in
+  {
+    targeting;
+    source;
+    typing;
+    core_ir;
+    lowering = selected_lowering ~backend lowered;
+    codegen = selected_codegen ~backend ~target codegen;
+  }
+
 let of_pipeline_json = fun pipeline ->
   let targeting = json_field "targeting" pipeline |> Option.unwrap_or ~default:Json.null in
   let source = json_field "source" pipeline |> Option.unwrap_or ~default:Json.null in
   let typing = json_field "typing" pipeline |> Option.unwrap_or ~default:Json.null in
   let lowered = json_field "lowered" pipeline |> Option.unwrap_or ~default:Json.null in
   let codegen = json_field "codegen" pipeline |> Option.unwrap_or ~default:Json.null in
-  let backend = selected_backend targeting in
-  let target = json_field "target" targeting |> Option.unwrap_or ~default:Json.null in
-  {
-    targeting;
-    source;
-    typing;
-    core_ir = json_field "core_ir" lowered |> Option.unwrap_or ~default:Json.null;
-    lowering = selected_lowering ~backend lowered;
-    codegen = selected_codegen ~backend ~target codegen;
-  }
+  create
+    ~targeting
+    ~source
+    ~typing
+    ~core_ir:(json_field "core_ir" lowered |> Option.unwrap_or ~default:Json.null)
+    ~lowering_fields:[
+      ("jir", json_field "jir" lowered |> Option.unwrap_or ~default:Json.null);
+      ("nir", json_field "nir" lowered |> Option.unwrap_or ~default:Json.null);
+      ("mir", json_field "mir" lowered |> Option.unwrap_or ~default:Json.null);
+      ("lir", json_field "lir" lowered |> Option.unwrap_or ~default:Json.null);
+      ("wasm", json_field "wasm" lowered |> Option.unwrap_or ~default:Json.null);
+    ]
+    ~codegen_fields:[
+      ("js", json_field "js" codegen |> Option.unwrap_or ~default:Json.null);
+      ("native", json_field "native" codegen |> Option.unwrap_or ~default:Json.null);
+      ("wasm", json_field "wasm" codegen |> Option.unwrap_or ~default:Json.null);
+    ]
 
 let to_json = fun compilation ->
   Json.obj

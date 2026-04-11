@@ -19,7 +19,15 @@
         "exports": [
           {
             "name": "larger",
-            "symbol": "larger"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "larger",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "larger"
+            }
           }
         ],
         "init": [
@@ -27,12 +35,29 @@
             "exports": [
               {
                 "name": "larger",
-                "symbol": "larger"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "larger",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "larger"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "larger",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "larger"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -52,7 +77,10 @@
                         }
                       ],
                       "callee": {
-                        "function": ">",
+                        "function": {
+                          "kind": "unresolved",
+                          "surface_path": ">"
+                        },
                         "kind": "direct"
                       }
                     },
@@ -81,11 +109,22 @@
                       },
                       {
                         "kind": "var",
-                        "name": "larger"
+                        "name": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "larger",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "larger"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "Printf.printf",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "Printf.printf"
+                      },
                       "kind": "direct"
                     }
                   },

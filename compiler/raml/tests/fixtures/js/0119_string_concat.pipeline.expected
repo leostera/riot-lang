@@ -19,7 +19,15 @@
         "exports": [
           {
             "name": "message",
-            "symbol": "message"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "message",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "message"
+            }
           }
         ],
         "init": [
@@ -27,12 +35,29 @@
             "exports": [
               {
                 "name": "message",
-                "symbol": "message"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "message",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "message"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "message",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "message"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -52,7 +77,10 @@
                         }
                       ],
                       "callee": {
-                        "function": "^",
+                        "function": {
+                          "kind": "unresolved",
+                          "surface_path": "^"
+                        },
                         "kind": "direct"
                       }
                     },
@@ -74,11 +102,22 @@
                     "arguments": [
                       {
                         "kind": "var",
-                        "name": "message"
+                        "name": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "message",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "message"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "print_endline",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "print_endline"
+                      },
                       "kind": "direct"
                     }
                   },

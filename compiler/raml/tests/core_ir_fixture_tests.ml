@@ -13,10 +13,10 @@ let keep_json = fun path ->
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* source = Result.map_error IO.error_message (Fs.read ctx.fixture_path) in
   let* json = Result.map_error Json.error_to_string (Json.of_string source) in
-  let* compilation_unit = Raml.Core_ir_fixture_support.parse_compilation_unit json in
+  let* compilation_unit = Raml.TestingHelpers.Core_ir_fixture_support.parse_compilation_unit json in
   Test.Snapshot.assert_json
     ~ctx:ctx.test
-    ~actual:(Raml.Core_ir.Compilation_unit.to_json compilation_unit)
+    ~actual:(Raml.CoreIR.Compilation_unit.to_json compilation_unit)
 
 let () =
   Actors.run

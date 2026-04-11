@@ -4,22 +4,10 @@ module Doc = Asm.Doc
 
 let ( let* ) = Result.and_then
 
-type slot = {
-  name: string;
-  offset: int;
-}
-
-type frame_layout = {
-  slots: slot list;
-  frame_size: int;
-}
-
 type string_constant = {
   label: string;
   value: string;
 }
-
-let pointer_width = 8
 
 let value_register = Asm.Register.x 9
 
@@ -65,12 +53,6 @@ let add_unique = fun names name ->
   else
     names @ [ name ]
 
-let align_to = fun value ~alignment ->
-  if value mod alignment = 0 then
-    value
-  else
-    value + (alignment - (value mod alignment))
-
 let mangle_symbol = fun name ->
   if String.for_all is_macho_symbol_char name then
     format Format.[ str "_"; str name ]
@@ -82,54 +64,9 @@ let procedure_symbol = fun (procedure: Lir.Procedure.t) ->
   | Lir.Procedure.Entry -> "_main"
   | Lir.Procedure.Function -> mangle_symbol procedure.name
 
-let rec collect_operand_registers = fun names operand ->
-  match operand with
-  | Lir.Operand.Register name -> add_unique names name
-  | Lir.Operand.Global _ -> names
-  | Lir.Operand.Symbol_address _ -> names
-  | Lir.Operand.Literal _ -> names
-
-let collect_callee_registers = fun names callee ->
-  match callee with
-  | Lir.Callee.Direct _ -> names
-  | Lir.Callee.Indirect operand -> collect_operand_registers names operand
-
-let collect_instruction_registers = fun names instruction ->
-  match instruction with
-  | Lir.Instruction.Label _ ->
-      names
-  | Lir.Instruction.Comment _ ->
-      names
-  | Lir.Instruction.Move { dst; src } ->
-      add_unique (collect_operand_registers names src) dst
-  | Lir.Instruction.Store_global { src; _ } ->
-      collect_operand_registers names src
-  | Lir.Instruction.Call { dst; callee; arguments } ->
-      let names = collect_callee_registers names callee in
-      let names = List.fold_left collect_operand_registers names arguments in
-      (
-        match dst with
-        | Some name -> add_unique names name
-        | None -> names
-      )
-  | Lir.Instruction.Branch_if_zero { operand; _ } ->
-      collect_operand_registers names operand
-  | Lir.Instruction.Jump _ ->
-      names
-  | Lir.Instruction.Return operand ->
-      Option.map (collect_operand_registers names) operand |> Option.unwrap_or ~default:names
-
-let frame_layout_of_procedure = fun (procedure: Lir.Procedure.t) ->
-  let slot_names = List.fold_left collect_instruction_registers procedure.params procedure.body in
-  let slots =
-    List.mapi (fun index name -> { name; offset = index * pointer_width }) slot_names
-  in
-  let frame_size = align_to (List.length slots * pointer_width) ~alignment:16 in
-  { slots; frame_size }
-
-let slot_offset = fun layout name ->
+let slot_offset = fun (layout: Lir.Frame.t) name ->
   layout.slots |> List.find_map
-    (fun slot ->
+    (fun (slot: Lir.Slot.t) ->
       if String.equal slot.name name then
         Some slot.offset
       else
@@ -276,7 +213,7 @@ and materialize_literal = fun _layout strings register literal ->
 let store_register = fun layout name register ->
   [ instruction (Asm.Instruction.Str { src = register; address = slot_address layout name }) ]
 
-let emit_prologue = fun layout ->
+let emit_prologue = fun (layout: Lir.Frame.t) ->
   let prologue = [
     instruction
       (Asm.Instruction.Stp {
@@ -299,7 +236,7 @@ let emit_prologue = fun layout ->
         })
     ]
 
-let emit_epilogue = fun layout ->
+let emit_epilogue = fun (layout: Lir.Frame.t) ->
   let body =
     if layout.frame_size = 0 then
       []
@@ -409,7 +346,7 @@ let emit_default_return = fun layout (procedure: Lir.Procedure.t) ->
   | Lir.Procedure.Entry -> move_int64_into (Asm.Register.x 0) 0L @ emit_epilogue layout
 
 let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
-  let layout = frame_layout_of_procedure procedure in
+  let layout = procedure.frame in
   let* parameter_saves = emit_parameter_saves layout procedure.params in
   let* body =
     List.fold_left

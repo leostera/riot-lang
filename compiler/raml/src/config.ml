@@ -4,16 +4,33 @@ type t = {
   on_event: (Event.t -> unit) option;
   host: Target.t;
   target: Target.t;
+  typing_config: Typ.Config.t;
 }
 
 let default = {
   on_event = None;
   host = Target.unknown_unknown_unknown;
-  target = Target.js_unknown_ecma
+  target = Target.js_unknown_ecma;
+  typing_config = Typ.Config.default
 }
 
-let make = fun ?on_event ?(host = default.host) ?(target = default.target) () ->
-  { on_event; host; target }
+let validate_target = fun ~name (target: Target.t) ->
+  if String.equal target.architecture "" then
+    Error (name ^ " target triple must include a non-empty architecture")
+  else if String.equal target.vendor "" then
+    Error (name ^ " target triple must include a non-empty vendor")
+  else if String.equal target.system "" then
+    Error (name ^ " target triple must include a non-empty system")
+  else
+    Ok ()
+
+let validate = fun config ->
+  match validate_target ~name:"host" config.host with
+  | Error _ as error -> error
+  | Ok () -> validate_target ~name:"target" config.target
+
+let make = fun ?on_event ?(host = default.host) ?(target = default.target) ?(typing_config = default.typing_config) () ->
+  { on_event; host; target; typing_config }
 
 let with_on_event = fun config ~on_event -> { config with on_event = Some on_event }
 
@@ -24,6 +41,16 @@ let with_host = fun config ~host -> { config with host }
 let with_target = fun config ~target -> { config with target }
 
 let with_targeting = fun config ~host ~target -> { config with host; target }
+
+let with_typing_config = fun config ~typing_config -> { config with typing_config }
+
+let host = fun config -> config.host
+
+let target = fun config -> config.target
+
+let typing_config = fun config -> config.typing_config
+
+let select_backend = fun config -> Target.select_backend ~host:config.host ~target:config.target
 
 let monotonic_now_us = fun () -> Int64.(to_int (div (Kernel.Time.monotonic_time_nanos ()) 1_000L))
 

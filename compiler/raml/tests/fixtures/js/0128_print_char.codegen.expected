@@ -34,7 +34,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "print_char",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "print_char"
+                      },
                       "kind": "direct"
                     }
                   },

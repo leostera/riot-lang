@@ -12,11 +12,27 @@
       "exports": [
         {
           "name": "compose",
-          "symbol": "compose"
+          "symbol": {
+            "binding_id": {
+              "kind": "local",
+              "name": "compose",
+              "stamp": 0
+            },
+            "kind": "resolved",
+            "surface_path": "compose"
+          }
         },
         {
           "name": "pipeline",
-          "symbol": "pipeline"
+          "symbol": {
+            "binding_id": {
+              "kind": "local",
+              "name": "pipeline",
+              "stamp": 1
+            },
+            "kind": "resolved",
+            "surface_path": "pipeline"
+          }
         }
       ],
       "init": [
@@ -24,12 +40,29 @@
           "exports": [
             {
               "name": "compose",
-              "symbol": "compose"
+              "symbol": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "compose",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "compose"
+              }
             }
           ],
           "items": [
             {
               "binding": {
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "compose",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "compose"
+                },
                 "expr": {
                   "kind": "lambda",
                   "lambda": {
@@ -41,13 +74,29 @@
                               "arguments": [
                                 {
                                   "kind": "var",
-                                  "name": "x"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "x",
+                                      "stamp": -163
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "x"
+                                  }
                                 }
                               ],
                               "callee": {
                                 "expr": {
                                   "kind": "var",
-                                  "name": "g"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "g",
+                                      "stamp": -162
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "g"
+                                  }
                                 },
                                 "kind": "indirect"
                               }
@@ -58,7 +107,15 @@
                         "callee": {
                           "expr": {
                             "kind": "var",
-                            "name": "f"
+                            "name": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "f",
+                                "stamp": -161
+                              },
+                              "kind": "resolved",
+                              "surface_path": "f"
+                            }
                           },
                           "kind": "indirect"
                         }
@@ -66,9 +123,42 @@
                       "kind": "apply"
                     },
                     "params": [
-                      "f",
-                      "g",
-                      "x"
+                      {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "f",
+                            "stamp": -161
+                          },
+                          "kind": "resolved",
+                          "surface_path": "f"
+                        },
+                        "name": "f"
+                      },
+                      {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "g",
+                            "stamp": -162
+                          },
+                          "kind": "resolved",
+                          "surface_path": "g"
+                        },
+                        "name": "g"
+                      },
+                      {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "x",
+                            "stamp": -163
+                          },
+                          "kind": "resolved",
+                          "surface_path": "x"
+                        },
+                        "name": "x"
+                      }
                     ]
                   }
                 },
@@ -83,12 +173,29 @@
           "exports": [
             {
               "name": "pipeline",
-              "symbol": "pipeline"
+              "symbol": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "pipeline",
+                  "stamp": 1
+                },
+                "kind": "resolved",
+                "surface_path": "pipeline"
+              }
             }
           ],
           "items": [
             {
               "binding": {
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "pipeline",
+                    "stamp": 1
+                  },
+                  "kind": "resolved",
+                  "surface_path": "pipeline"
+                },
                 "expr": {
                   "apply": {
                     "arguments": [
@@ -100,7 +207,15 @@
                               "arguments": [
                                 {
                                   "kind": "var",
-                                  "name": "x"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "x",
+                                      "stamp": -353
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "x"
+                                  }
                                 },
                                 {
                                   "constant": {
@@ -111,14 +226,28 @@
                                 }
                               ],
                               "callee": {
-                                "function": "+",
+                                "function": {
+                                  "kind": "unresolved",
+                                  "surface_path": "+"
+                                },
                                 "kind": "direct"
                               }
                             },
                             "kind": "apply"
                           },
                           "params": [
-                            "x"
+                            {
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "x",
+                                  "stamp": -353
+                                },
+                                "kind": "resolved",
+                                "surface_path": "x"
+                              },
+                              "name": "x"
+                            }
                           ]
                         }
                       },
@@ -133,7 +262,15 @@
                                     "arguments": [
                                       {
                                         "kind": "var",
-                                        "name": "x"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "x",
+                                            "stamp": -545
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "x"
+                                        }
                                       },
                                       {
                                         "constant": {
@@ -144,14 +281,28 @@
                                       }
                                     ],
                                     "callee": {
-                                      "function": "*",
+                                      "function": {
+                                        "kind": "unresolved",
+                                        "surface_path": "*"
+                                      },
                                       "kind": "direct"
                                     }
                                   },
                                   "kind": "apply"
                                 },
                                 "params": [
-                                  "x"
+                                  {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "x",
+                                        "stamp": -545
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "x"
+                                    },
+                                    "name": "x"
+                                  }
                                 ]
                               }
                             },
@@ -163,7 +314,15 @@
                                     "arguments": [
                                       {
                                         "kind": "var",
-                                        "name": "x"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "x",
+                                            "stamp": -705
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "x"
+                                        }
                                       },
                                       {
                                         "constant": {
@@ -174,20 +333,42 @@
                                       }
                                     ],
                                     "callee": {
-                                      "function": "-",
+                                      "function": {
+                                        "kind": "unresolved",
+                                        "surface_path": "-"
+                                      },
                                       "kind": "direct"
                                     }
                                   },
                                   "kind": "apply"
                                 },
                                 "params": [
-                                  "x"
+                                  {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "x",
+                                        "stamp": -705
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "x"
+                                    },
+                                    "name": "x"
+                                  }
                                 ]
                               }
                             }
                           ],
                           "callee": {
-                            "function": "compose",
+                            "function": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "compose",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "compose"
+                            },
                             "kind": "direct"
                           }
                         },
@@ -195,7 +376,15 @@
                       }
                     ],
                     "callee": {
-                      "function": "compose",
+                      "function": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "compose",
+                          "stamp": 0
+                        },
+                        "kind": "resolved",
+                        "surface_path": "compose"
+                      },
                       "kind": "direct"
                     }
                   },
@@ -236,7 +425,15 @@
                         "callee": {
                           "expr": {
                             "kind": "var",
-                            "name": "pipeline"
+                            "name": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "pipeline",
+                                "stamp": 1
+                              },
+                              "kind": "resolved",
+                              "surface_path": "pipeline"
+                            }
                           },
                           "kind": "indirect"
                         }
@@ -245,7 +442,10 @@
                     }
                   ],
                   "callee": {
-                    "function": "Printf.printf",
+                    "function": {
+                      "kind": "unresolved",
+                      "surface_path": "Printf.printf"
+                    },
                     "kind": "direct"
                   }
                 },

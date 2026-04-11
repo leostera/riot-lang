@@ -5,7 +5,15 @@
         "exports": [
           {
             "name": "smaller",
-            "symbol": "smaller"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "smaller",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "smaller"
+            }
           }
         ],
         "init": [
@@ -13,12 +21,29 @@
             "exports": [
               {
                 "name": "smaller",
-                "symbol": "smaller"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "smaller",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "smaller"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "smaller",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "smaller"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -38,7 +63,10 @@
                         }
                       ],
                       "callee": {
-                        "function": "<",
+                        "function": {
+                          "kind": "unresolved",
+                          "surface_path": "<"
+                        },
                         "kind": "direct"
                       }
                     },
@@ -67,11 +95,22 @@
                       },
                       {
                         "kind": "var",
-                        "name": "smaller"
+                        "name": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "smaller",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "smaller"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "Printf.printf",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "Printf.printf"
+                      },
                       "kind": "direct"
                     }
                   },

@@ -27,6 +27,15 @@
                   "let": {
                     "bindings": [
                       {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "message",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "message"
+                        },
                         "expr": {
                           "constant": {
                             "kind": "string",
@@ -42,11 +51,22 @@
                         "arguments": [
                           {
                             "kind": "var",
-                            "name": "message"
+                            "name": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "message",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "message"
+                            }
                           }
                         ],
                         "callee": {
-                          "function": "print_endline",
+                          "function": {
+                            "kind": "unresolved",
+                            "surface_path": "print_endline"
+                          },
                           "kind": "direct"
                         }
                       },

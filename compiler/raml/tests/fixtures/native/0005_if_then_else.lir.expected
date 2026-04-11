@@ -80,6 +80,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "choose",
         "params": [
@@ -147,6 +151,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -235,6 +243,27 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "cond",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "function",
           "name": "choose",
           "params": [
@@ -302,6 +331,27 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -389,6 +439,27 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "cond",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t1",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "function",
           "name": "choose",
           "params": [
@@ -456,6 +527,27 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 32,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -544,6 +636,27 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "cond",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t1",
+              "offset": 24
+            }
+          ]
+        },
         "kind": "function",
         "name": "choose",
         "params": [
@@ -611,6 +724,27 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 32,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t3",
+              "offset": 24
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

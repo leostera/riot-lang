@@ -91,6 +91,32 @@ module Instruction = struct
     | Comment text -> Json.obj [ ("kind", Json.string "comment"); ("text", Json.string text); ]
 end
 
+module Slot = struct
+  type t = {
+    name: string;
+    offset: int;
+  }
+
+  let to_json = fun slot ->
+    Json.obj [ ("name", Json.string slot.name); ("offset", Json.int slot.offset); ]
+end
+
+module Frame = struct
+  type t = {
+    slots: Slot.t list;
+    frame_size: int;
+  }
+
+  let empty = { slots = []; frame_size = 0 }
+
+  let to_json = fun frame ->
+    Json.obj
+      [
+        ("slots", Json.array (List.map Slot.to_json frame.slots));
+        ("frame_size", Json.int frame.frame_size);
+      ]
+end
+
 module Procedure = struct
   type kind =
     | Function
@@ -100,6 +126,7 @@ module Procedure = struct
     name: string;
     kind: kind;
     params: string list;
+    frame: Frame.t;
     body: Instruction.t list;
   }
 
@@ -114,6 +141,7 @@ module Procedure = struct
         ("name", Json.string procedure.name);
         ("kind", kind_to_json procedure.kind);
         ("params", Json.array (List.map Json.string procedure.params));
+        ("frame", Frame.to_json procedure.frame);
         ("body", Json.array (List.map Instruction.to_json procedure.body));
       ]
 end

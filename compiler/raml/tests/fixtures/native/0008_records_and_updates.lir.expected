@@ -142,6 +142,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "move",
         "params": [
@@ -414,6 +418,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -564,6 +572,55 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "dx",
+                "offset": 0
+              },
+              {
+                "name": "dy",
+                "offset": 8
+              },
+              {
+                "name": "p",
+                "offset": 16
+              },
+              {
+                "name": "t0",
+                "offset": 24
+              },
+              {
+                "name": "t1",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              },
+              {
+                "name": "t6",
+                "offset": 72
+              },
+              {
+                "name": "t7",
+                "offset": 80
+              }
+            ]
+          },
           "kind": "function",
           "name": "move",
           "params": [
@@ -836,6 +893,83 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 144,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              },
+              {
+                "name": "t6",
+                "offset": 48
+              },
+              {
+                "name": "t7",
+                "offset": 56
+              },
+              {
+                "name": "t8",
+                "offset": 64
+              },
+              {
+                "name": "t9",
+                "offset": 72
+              },
+              {
+                "name": "t10",
+                "offset": 80
+              },
+              {
+                "name": "t11",
+                "offset": 88
+              },
+              {
+                "name": "t12",
+                "offset": 96
+              },
+              {
+                "name": "t13",
+                "offset": 104
+              },
+              {
+                "name": "t14",
+                "offset": 112
+              },
+              {
+                "name": "t15",
+                "offset": 120
+              },
+              {
+                "name": "t16",
+                "offset": 128
+              },
+              {
+                "name": "t17",
+                "offset": 136
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -985,6 +1119,55 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 96,
+            "slots": [
+              {
+                "name": "dx",
+                "offset": 0
+              },
+              {
+                "name": "dy",
+                "offset": 8
+              },
+              {
+                "name": "p",
+                "offset": 16
+              },
+              {
+                "name": "t0",
+                "offset": 24
+              },
+              {
+                "name": "t1",
+                "offset": 32
+              },
+              {
+                "name": "t2",
+                "offset": 40
+              },
+              {
+                "name": "t3",
+                "offset": 48
+              },
+              {
+                "name": "t4",
+                "offset": 56
+              },
+              {
+                "name": "t5",
+                "offset": 64
+              },
+              {
+                "name": "t6",
+                "offset": 72
+              },
+              {
+                "name": "t7",
+                "offset": 80
+              }
+            ]
+          },
           "kind": "function",
           "name": "move",
           "params": [
@@ -1257,6 +1440,83 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 144,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              },
+              {
+                "name": "t6",
+                "offset": 48
+              },
+              {
+                "name": "t7",
+                "offset": 56
+              },
+              {
+                "name": "t8",
+                "offset": 64
+              },
+              {
+                "name": "t9",
+                "offset": 72
+              },
+              {
+                "name": "t10",
+                "offset": 80
+              },
+              {
+                "name": "t11",
+                "offset": 88
+              },
+              {
+                "name": "t12",
+                "offset": 96
+              },
+              {
+                "name": "t13",
+                "offset": 104
+              },
+              {
+                "name": "t14",
+                "offset": 112
+              },
+              {
+                "name": "t15",
+                "offset": 120
+              },
+              {
+                "name": "t16",
+                "offset": 128
+              },
+              {
+                "name": "t17",
+                "offset": 136
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -1407,6 +1667,55 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 96,
+          "slots": [
+            {
+              "name": "dx",
+              "offset": 0
+            },
+            {
+              "name": "dy",
+              "offset": 8
+            },
+            {
+              "name": "p",
+              "offset": 16
+            },
+            {
+              "name": "t0",
+              "offset": 24
+            },
+            {
+              "name": "t1",
+              "offset": 32
+            },
+            {
+              "name": "t2",
+              "offset": 40
+            },
+            {
+              "name": "t3",
+              "offset": 48
+            },
+            {
+              "name": "t4",
+              "offset": 56
+            },
+            {
+              "name": "t5",
+              "offset": 64
+            },
+            {
+              "name": "t6",
+              "offset": 72
+            },
+            {
+              "name": "t7",
+              "offset": 80
+            }
+          ]
+        },
         "kind": "function",
         "name": "move",
         "params": [
@@ -1679,6 +1988,83 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 144,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t3",
+              "offset": 24
+            },
+            {
+              "name": "t4",
+              "offset": 32
+            },
+            {
+              "name": "t5",
+              "offset": 40
+            },
+            {
+              "name": "t6",
+              "offset": 48
+            },
+            {
+              "name": "t7",
+              "offset": 56
+            },
+            {
+              "name": "t8",
+              "offset": 64
+            },
+            {
+              "name": "t9",
+              "offset": 72
+            },
+            {
+              "name": "t10",
+              "offset": 80
+            },
+            {
+              "name": "t11",
+              "offset": 88
+            },
+            {
+              "name": "t12",
+              "offset": 96
+            },
+            {
+              "name": "t13",
+              "offset": 104
+            },
+            {
+              "name": "t14",
+              "offset": 112
+            },
+            {
+              "name": "t15",
+              "offset": 120
+            },
+            {
+              "name": "t16",
+              "offset": 128
+            },
+            {
+              "name": "t17",
+              "offset": 136
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

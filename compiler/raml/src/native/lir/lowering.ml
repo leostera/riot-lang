@@ -101,7 +101,8 @@ let lower_procedure = fun (procedure: Source.Procedure.t) ->
     name = procedure.name;
     kind = lower_kind procedure.kind;
     params = procedure.params;
-    body = Target.Instruction.Label procedure.name :: body
+    frame = Target.Frame.empty;
+    body = Target.Instruction.Label procedure.name :: body;
   }
 
 let lower_export = fun (export: Source.Export.t) ->

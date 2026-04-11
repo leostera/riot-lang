@@ -5,7 +5,15 @@
         "exports": [
           {
             "name": "choose",
-            "symbol": "choose"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "choose",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "choose"
+            }
           }
         ],
         "init": [
@@ -13,12 +21,29 @@
             "exports": [
               {
                 "name": "choose",
-                "symbol": "choose"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "choose",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "choose"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "choose",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "choose"
+                  },
                   "expr": {
                     "kind": "lambda",
                     "lambda": {
@@ -26,7 +51,15 @@
                         "if_then_else": {
                           "condition": {
                             "kind": "var",
-                            "name": "cond"
+                            "name": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "cond",
+                                "stamp": -129
+                              },
+                              "kind": "resolved",
+                              "surface_path": "cond"
+                            }
                           },
                           "else": {
                             "constant": {
@@ -46,7 +79,18 @@
                         "kind": "if_then_else"
                       },
                       "params": [
-                        "cond"
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "cond",
+                              "stamp": -129
+                            },
+                            "kind": "resolved",
+                            "surface_path": "cond"
+                          },
+                          "name": "cond"
+                        }
                       ]
                     }
                   },
@@ -83,7 +127,15 @@
                             }
                           ],
                           "callee": {
-                            "function": "choose",
+                            "function": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "choose",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "choose"
+                            },
                             "kind": "direct"
                           }
                         },
@@ -91,7 +143,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "Printf.printf",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "Printf.printf"
+                      },
                       "kind": "direct"
                     }
                   },

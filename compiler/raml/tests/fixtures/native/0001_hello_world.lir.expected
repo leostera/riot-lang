@@ -35,6 +35,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -78,6 +82,19 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 16,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -120,6 +137,19 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 16,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -163,6 +193,19 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 16,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

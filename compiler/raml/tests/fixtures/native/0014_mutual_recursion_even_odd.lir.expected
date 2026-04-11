@@ -116,6 +116,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "even",
         "params": [
@@ -226,6 +230,10 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "function",
         "name": "odd",
         "params": [
@@ -322,6 +330,10 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 0,
+          "slots": []
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []
@@ -446,6 +458,39 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 64,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              },
+              {
+                "name": "t2",
+                "offset": 24
+              },
+              {
+                "name": "t3",
+                "offset": 32
+              },
+              {
+                "name": "t4",
+                "offset": 40
+              },
+              {
+                "name": "t5",
+                "offset": 48
+              }
+            ]
+          },
           "kind": "function",
           "name": "even",
           "params": [
@@ -556,6 +601,39 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 64,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              },
+              {
+                "name": "t2",
+                "offset": 24
+              },
+              {
+                "name": "t3",
+                "offset": 32
+              },
+              {
+                "name": "t4",
+                "offset": 40
+              },
+              {
+                "name": "t5",
+                "offset": 48
+              }
+            ]
+          },
           "kind": "function",
           "name": "odd",
           "params": [
@@ -652,6 +730,35 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 48,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -775,6 +882,39 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 64,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              },
+              {
+                "name": "t2",
+                "offset": 24
+              },
+              {
+                "name": "t3",
+                "offset": 32
+              },
+              {
+                "name": "t4",
+                "offset": 40
+              },
+              {
+                "name": "t5",
+                "offset": 48
+              }
+            ]
+          },
           "kind": "function",
           "name": "even",
           "params": [
@@ -885,6 +1025,39 @@
               }
             }
           ],
+          "frame": {
+            "frame_size": 64,
+            "slots": [
+              {
+                "name": "n",
+                "offset": 0
+              },
+              {
+                "name": "t0",
+                "offset": 8
+              },
+              {
+                "name": "t1",
+                "offset": 16
+              },
+              {
+                "name": "t2",
+                "offset": 24
+              },
+              {
+                "name": "t3",
+                "offset": 32
+              },
+              {
+                "name": "t4",
+                "offset": 40
+              },
+              {
+                "name": "t5",
+                "offset": 48
+              }
+            ]
+          },
           "kind": "function",
           "name": "odd",
           "params": [
@@ -981,6 +1154,35 @@
               "kind": "call"
             }
           ],
+          "frame": {
+            "frame_size": 48,
+            "slots": [
+              {
+                "name": "t0",
+                "offset": 0
+              },
+              {
+                "name": "t1",
+                "offset": 8
+              },
+              {
+                "name": "t2",
+                "offset": 16
+              },
+              {
+                "name": "t3",
+                "offset": 24
+              },
+              {
+                "name": "t4",
+                "offset": 32
+              },
+              {
+                "name": "t5",
+                "offset": 40
+              }
+            ]
+          },
           "kind": "entry",
           "name": "__entry__",
           "params": []
@@ -1105,6 +1307,39 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 64,
+          "slots": [
+            {
+              "name": "n",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            },
+            {
+              "name": "t2",
+              "offset": 24
+            },
+            {
+              "name": "t3",
+              "offset": 32
+            },
+            {
+              "name": "t4",
+              "offset": 40
+            },
+            {
+              "name": "t5",
+              "offset": 48
+            }
+          ]
+        },
         "kind": "function",
         "name": "even",
         "params": [
@@ -1215,6 +1450,39 @@
             }
           }
         ],
+        "frame": {
+          "frame_size": 64,
+          "slots": [
+            {
+              "name": "n",
+              "offset": 0
+            },
+            {
+              "name": "t0",
+              "offset": 8
+            },
+            {
+              "name": "t1",
+              "offset": 16
+            },
+            {
+              "name": "t2",
+              "offset": 24
+            },
+            {
+              "name": "t3",
+              "offset": 32
+            },
+            {
+              "name": "t4",
+              "offset": 40
+            },
+            {
+              "name": "t5",
+              "offset": 48
+            }
+          ]
+        },
         "kind": "function",
         "name": "odd",
         "params": [
@@ -1311,6 +1579,35 @@
             "kind": "call"
           }
         ],
+        "frame": {
+          "frame_size": 48,
+          "slots": [
+            {
+              "name": "t0",
+              "offset": 0
+            },
+            {
+              "name": "t1",
+              "offset": 8
+            },
+            {
+              "name": "t2",
+              "offset": 16
+            },
+            {
+              "name": "t3",
+              "offset": 24
+            },
+            {
+              "name": "t4",
+              "offset": 32
+            },
+            {
+              "name": "t5",
+              "offset": 40
+            }
+          ]
+        },
         "kind": "entry",
         "name": "__entry__",
         "params": []

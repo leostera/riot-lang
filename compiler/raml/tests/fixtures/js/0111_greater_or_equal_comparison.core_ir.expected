@@ -2,7 +2,15 @@
   "exports": [
     {
       "name": "no_smaller",
-      "symbol": "no_smaller"
+      "symbol": {
+        "binding_id": {
+          "kind": "local",
+          "name": "no_smaller",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "no_smaller"
+      }
     }
   ],
   "init": [
@@ -10,12 +18,29 @@
       "exports": [
         {
           "name": "no_smaller",
-          "symbol": "no_smaller"
+          "symbol": {
+            "binding_id": {
+              "kind": "local",
+              "name": "no_smaller",
+              "stamp": 0
+            },
+            "kind": "resolved",
+            "surface_path": "no_smaller"
+          }
         }
       ],
       "items": [
         {
           "binding": {
+            "entity_id": {
+              "binding_id": {
+                "kind": "local",
+                "name": "no_smaller",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "no_smaller"
+            },
             "expr": {
               "apply": {
                 "arguments": [
@@ -35,7 +60,10 @@
                   }
                 ],
                 "callee": {
-                  "function": ">=",
+                  "function": {
+                    "kind": "unresolved",
+                    "surface_path": ">="
+                  },
                   "kind": "direct"
                 }
               },
@@ -64,11 +92,22 @@
                 },
                 {
                   "kind": "var",
-                  "name": "no_smaller"
+                  "name": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "no_smaller",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "no_smaller"
+                  }
                 }
               ],
               "callee": {
-                "function": "Printf.printf",
+                "function": {
+                  "kind": "unresolved",
+                  "surface_path": "Printf.printf"
+                },
                 "kind": "direct"
               }
             },

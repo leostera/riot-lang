@@ -2,19 +2,31 @@
   "exports": [
     {
       "name": "loop",
-      "symbol": "loop"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "loop"
+      }
     },
     {
       "name": "apply",
-      "symbol": "apply"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "apply"
+      }
     },
     {
       "name": "inc",
-      "symbol": "inc"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "inc"
+      }
     },
     {
       "name": "answer",
-      "symbol": "answer"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "answer"
+      }
     }
   ],
   "init": [
@@ -22,12 +34,19 @@
       "exports": [
         {
           "name": "loop",
-          "symbol": "loop"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "loop"
+          }
         }
       ],
       "items": [
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "loop"
+            },
             "expr": {
               "kind": "lambda",
               "lambda": {
@@ -36,18 +55,30 @@
                     "arguments": [
                       {
                         "kind": "var",
-                        "name": "value"
+                        "name": {
+                          "kind": "unresolved",
+                          "surface_path": "value"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "loop",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "loop"
+                      },
                       "kind": "direct"
                     }
                   },
                   "kind": "apply"
                 },
                 "params": [
-                  "value"
+                  {
+                    "entity_id": {
+                      "kind": "unresolved",
+                      "surface_path": "value"
+                    },
+                    "name": "value"
+                  }
                 ]
               }
             },
@@ -62,16 +93,26 @@
       "exports": [
         {
           "name": "apply",
-          "symbol": "apply"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "apply"
+          }
         },
         {
           "name": "inc",
-          "symbol": "inc"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "inc"
+          }
         }
       ],
       "items": [
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "apply"
+            },
             "expr": {
               "kind": "lambda",
               "lambda": {
@@ -80,13 +121,19 @@
                     "arguments": [
                       {
                         "kind": "var",
-                        "name": "value"
+                        "name": {
+                          "kind": "unresolved",
+                          "surface_path": "value"
+                        }
                       }
                     ],
                     "callee": {
                       "expr": {
                         "kind": "var",
-                        "name": "f"
+                        "name": {
+                          "kind": "unresolved",
+                          "surface_path": "f"
+                        }
                       },
                       "kind": "indirect"
                     }
@@ -94,8 +141,20 @@
                   "kind": "apply"
                 },
                 "params": [
-                  "f",
-                  "value"
+                  {
+                    "entity_id": {
+                      "kind": "unresolved",
+                      "surface_path": "f"
+                    },
+                    "name": "f"
+                  },
+                  {
+                    "entity_id": {
+                      "kind": "unresolved",
+                      "surface_path": "value"
+                    },
+                    "name": "value"
+                  }
                 ]
               }
             },
@@ -105,6 +164,10 @@
         },
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "inc"
+            },
             "expr": {
               "kind": "lambda",
               "lambda": {
@@ -113,18 +176,30 @@
                     "arguments": [
                       {
                         "kind": "var",
-                        "name": "value"
+                        "name": {
+                          "kind": "unresolved",
+                          "surface_path": "value"
+                        }
                       }
                     ],
                     "callee": {
-                      "function": "succ",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "succ"
+                      },
                       "kind": "direct"
                     }
                   },
                   "kind": "apply"
                 },
                 "params": [
-                  "value"
+                  {
+                    "entity_id": {
+                      "kind": "unresolved",
+                      "surface_path": "value"
+                    },
+                    "name": "value"
+                  }
                 ]
               }
             },
@@ -139,12 +214,19 @@
       "exports": [
         {
           "name": "answer",
-          "symbol": "answer"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "answer"
+          }
         }
       ],
       "items": [
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "answer"
+            },
             "expr": {
               "apply": {
                 "arguments": [
@@ -157,7 +239,10 @@
                   }
                 ],
                 "callee": {
-                  "function": "inc",
+                  "function": {
+                    "kind": "unresolved",
+                    "surface_path": "inc"
+                  },
                   "kind": "direct"
                 }
               },

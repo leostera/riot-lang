@@ -125,26 +125,25 @@ let with_snapshot_path = fun path (ctx: Test.ctx) ->
 let compile_fixture = fun (ctx: Test.FixtureRunner.ctx) ->
   let source = read_source ctx in
   let filename = stable_fixture_filename ctx in
-  Raml.Example_pipeline.compile_source
+  let config = Raml.TestingHelpers.Test_fixture_typing.raml_config
     ~host:Raml.Target.aarch64_apple_darwin
-    ~target:Raml.Target.js_unknown_ecma
-    ~relpath:filename
-    ~source
+    ~target:Raml.Target.js_unknown_ecma in
+  Raml.TestingHelpers.Example_pipeline.compile_source ~config ~relpath:filename ~source
   |> Result.expect ~msg:"fixture should compile into a pipeline snapshot"
 
 let test_pipeline_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let snapshot_path = snapshot_path ~snapshot_dir:snapshots_dir ~ctx ~suffix:".pipeline.expected" in
-  let actual = compile_fixture ctx |> Raml.Example_pipeline.to_json in
+  let actual = compile_fixture ctx |> Raml.TestingHelpers.Example_pipeline.to_json in
   Test.Snapshot.assert_json ~ctx:(with_snapshot_path snapshot_path ctx.test) ~actual
 
 let test_lowering_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let snapshot_path = snapshot_path ~snapshot_dir:snapshots_dir ~ctx ~suffix:".lowering.expected" in
-  let actual = compile_fixture ctx |> Raml.Example_pipeline.lowering_to_json in
+  let actual = compile_fixture ctx |> Raml.TestingHelpers.Example_pipeline.lowering_to_json in
   Test.Snapshot.assert_json ~ctx:(with_snapshot_path snapshot_path ctx.test) ~actual
 
 let test_codegen_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let snapshot_path = snapshot_path ~snapshot_dir:snapshots_dir ~ctx ~suffix:".codegen.expected" in
-  let actual = compile_fixture ctx |> Raml.Example_pipeline.codegen_to_json in
+  let actual = compile_fixture ctx |> Raml.TestingHelpers.Example_pipeline.codegen_to_json in
   Test.Snapshot.assert_json ~ctx:(with_snapshot_path snapshot_path ctx.test) ~actual
 
 let () =

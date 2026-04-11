@@ -5,7 +5,15 @@
         "exports": [
           {
             "name": "step",
-            "symbol": "step"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "step",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "step"
+            }
           }
         ],
         "init": [
@@ -13,12 +21,29 @@
             "exports": [
               {
                 "name": "step",
-                "symbol": "step"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "step",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "step"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "step",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "step"
+                  },
                   "expr": {
                     "kind": "lambda",
                     "lambda": {
@@ -30,11 +55,22 @@
                               "arguments": [
                                 {
                                   "kind": "var",
-                                  "name": "label"
+                                  "name": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "label",
+                                      "stamp": -545
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "label"
+                                  }
                                 }
                               ],
                               "callee": {
-                                "function": "print_string",
+                                "function": {
+                                  "kind": "unresolved",
+                                  "surface_path": "print_string"
+                                },
                                 "kind": "direct"
                               }
                             },
@@ -55,7 +91,10 @@
                                     }
                                   ],
                                   "callee": {
-                                    "function": "print_char",
+                                    "function": {
+                                      "kind": "unresolved",
+                                      "surface_path": "print_char"
+                                    },
                                     "kind": "direct"
                                   }
                                 },
@@ -69,11 +108,22 @@
                                       "arguments": [
                                         {
                                           "kind": "var",
-                                          "name": "x"
+                                          "name": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "x",
+                                              "stamp": -546
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "x"
+                                          }
                                         }
                                       ],
                                       "callee": {
-                                        "function": "print_int",
+                                        "function": {
+                                          "kind": "unresolved",
+                                          "surface_path": "print_int"
+                                        },
                                         "kind": "direct"
                                       }
                                     },
@@ -94,7 +144,10 @@
                                             }
                                           ],
                                           "callee": {
-                                            "function": "print_char",
+                                            "function": {
+                                              "kind": "unresolved",
+                                              "surface_path": "print_char"
+                                            },
                                             "kind": "direct"
                                           }
                                         },
@@ -105,7 +158,15 @@
                                           "arguments": [
                                             {
                                               "kind": "var",
-                                              "name": "x"
+                                              "name": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "x",
+                                                  "stamp": -546
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "x"
+                                              }
                                             },
                                             {
                                               "constant": {
@@ -116,7 +177,10 @@
                                             }
                                           ],
                                           "callee": {
-                                            "function": "+",
+                                            "function": {
+                                              "kind": "unresolved",
+                                              "surface_path": "+"
+                                            },
                                             "kind": "direct"
                                           }
                                         },
@@ -131,8 +195,30 @@
                         }
                       },
                       "params": [
-                        "label",
-                        "x"
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "label",
+                              "stamp": -545
+                            },
+                            "kind": "resolved",
+                            "surface_path": "label"
+                          },
+                          "name": "label"
+                        },
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "x",
+                              "stamp": -546
+                            },
+                            "kind": "resolved",
+                            "surface_path": "x"
+                          },
+                          "name": "x"
+                        }
                       ]
                     }
                   },
@@ -152,6 +238,15 @@
                   "let": {
                     "bindings": [
                       {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "n",
+                            "stamp": 1
+                          },
+                          "kind": "resolved",
+                          "surface_path": "n"
+                        },
                         "expr": {
                           "apply": {
                             "arguments": [
@@ -171,7 +266,15 @@
                               }
                             ],
                             "callee": {
-                              "function": "step",
+                              "function": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "step",
+                                  "stamp": 0
+                                },
+                                "kind": "resolved",
+                                "surface_path": "step"
+                              },
                               "kind": "direct"
                             }
                           },
@@ -185,6 +288,15 @@
                       "let": {
                         "bindings": [
                           {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "n",
+                                "stamp": 2
+                              },
+                              "kind": "resolved",
+                              "surface_path": "n"
+                            },
                             "expr": {
                               "apply": {
                                 "arguments": [
@@ -197,11 +309,27 @@
                                   },
                                   {
                                     "kind": "var",
-                                    "name": "n"
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "n",
+                                        "stamp": 1
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "n"
+                                    }
                                   }
                                 ],
                                 "callee": {
-                                  "function": "step",
+                                  "function": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "step",
+                                      "stamp": 0
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "step"
+                                  },
                                   "kind": "direct"
                                 }
                               },
@@ -228,11 +356,27 @@
                                       },
                                       {
                                         "kind": "var",
-                                        "name": "n"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "n",
+                                            "stamp": 2
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "n"
+                                        }
                                       }
                                     ],
                                     "callee": {
-                                      "function": "step",
+                                      "function": {
+                                        "binding_id": {
+                                          "kind": "local",
+                                          "name": "step",
+                                          "stamp": 0
+                                        },
+                                        "kind": "resolved",
+                                        "surface_path": "step"
+                                      },
                                       "kind": "direct"
                                     }
                                   },
@@ -257,7 +401,10 @@
                                   }
                                 ],
                                 "callee": {
-                                  "function": "print_newline",
+                                  "function": {
+                                    "kind": "unresolved",
+                                    "surface_path": "print_newline"
+                                  },
                                   "kind": "direct"
                                 }
                               },

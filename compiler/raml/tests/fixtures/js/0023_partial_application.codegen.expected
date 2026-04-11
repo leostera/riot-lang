@@ -19,15 +19,39 @@
         "exports": [
           {
             "name": "mul",
-            "symbol": "mul"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "mul",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "mul"
+            }
           },
           {
             "name": "double_then",
-            "symbol": "double_then"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "double_then",
+                "stamp": 1
+              },
+              "kind": "resolved",
+              "surface_path": "double_then"
+            }
           },
           {
             "name": "six_times",
-            "symbol": "six_times"
+            "symbol": {
+              "binding_id": {
+                "kind": "local",
+                "name": "six_times",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "six_times"
+            }
           }
         ],
         "init": [
@@ -35,12 +59,29 @@
             "exports": [
               {
                 "name": "mul",
-                "symbol": "mul"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "mul",
+                    "stamp": 0
+                  },
+                  "kind": "resolved",
+                  "surface_path": "mul"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "mul",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "mul"
+                  },
                   "expr": {
                     "kind": "lambda",
                     "lambda": {
@@ -52,15 +93,34 @@
                                 "arguments": [
                                   {
                                     "kind": "var",
-                                    "name": "x"
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "x",
+                                        "stamp": -225
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "x"
+                                    }
                                   },
                                   {
                                     "kind": "var",
-                                    "name": "y"
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "y",
+                                        "stamp": -226
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "y"
+                                    }
                                   }
                                 ],
                                 "callee": {
-                                  "function": "*",
+                                  "function": {
+                                    "kind": "unresolved",
+                                    "surface_path": "*"
+                                  },
                                   "kind": "direct"
                                 }
                               },
@@ -68,20 +128,64 @@
                             },
                             {
                               "kind": "var",
-                              "name": "z"
+                              "name": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "z",
+                                  "stamp": -227
+                                },
+                                "kind": "resolved",
+                                "surface_path": "z"
+                              }
                             }
                           ],
                           "callee": {
-                            "function": "*",
+                            "function": {
+                              "kind": "unresolved",
+                              "surface_path": "*"
+                            },
                             "kind": "direct"
                           }
                         },
                         "kind": "apply"
                       },
                       "params": [
-                        "x",
-                        "y",
-                        "z"
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "x",
+                              "stamp": -225
+                            },
+                            "kind": "resolved",
+                            "surface_path": "x"
+                          },
+                          "name": "x"
+                        },
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "y",
+                              "stamp": -226
+                            },
+                            "kind": "resolved",
+                            "surface_path": "y"
+                          },
+                          "name": "y"
+                        },
+                        {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "z",
+                              "stamp": -227
+                            },
+                            "kind": "resolved",
+                            "surface_path": "z"
+                          },
+                          "name": "z"
+                        }
                       ]
                     }
                   },
@@ -96,12 +200,29 @@
             "exports": [
               {
                 "name": "double_then",
-                "symbol": "double_then"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "double_then",
+                    "stamp": 1
+                  },
+                  "kind": "resolved",
+                  "surface_path": "double_then"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "double_then",
+                      "stamp": 1
+                    },
+                    "kind": "resolved",
+                    "surface_path": "double_then"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -114,7 +235,15 @@
                         }
                       ],
                       "callee": {
-                        "function": "mul",
+                        "function": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "mul",
+                            "stamp": 0
+                          },
+                          "kind": "resolved",
+                          "surface_path": "mul"
+                        },
                         "kind": "direct"
                       }
                     },
@@ -131,12 +260,29 @@
             "exports": [
               {
                 "name": "six_times",
-                "symbol": "six_times"
+                "symbol": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "six_times",
+                    "stamp": 2
+                  },
+                  "kind": "resolved",
+                  "surface_path": "six_times"
+                }
               }
             ],
             "items": [
               {
                 "binding": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "six_times",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "six_times"
+                  },
                   "expr": {
                     "apply": {
                       "arguments": [
@@ -151,7 +297,15 @@
                       "callee": {
                         "expr": {
                           "kind": "var",
-                          "name": "double_then"
+                          "name": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "double_then",
+                              "stamp": 1
+                            },
+                            "kind": "resolved",
+                            "surface_path": "double_then"
+                          }
                         },
                         "kind": "indirect"
                       }
@@ -193,7 +347,15 @@
                           "callee": {
                             "expr": {
                               "kind": "var",
-                              "name": "six_times"
+                              "name": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "six_times",
+                                  "stamp": 2
+                                },
+                                "kind": "resolved",
+                                "surface_path": "six_times"
+                              }
                             },
                             "kind": "indirect"
                           }
@@ -202,7 +364,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "Printf.printf",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "Printf.printf"
+                      },
                       "kind": "direct"
                     }
                   },

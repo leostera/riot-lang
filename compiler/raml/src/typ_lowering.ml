@@ -5,7 +5,7 @@ module Core = Core_ir
 
 type error =
   | UnsupportedSourceKind of { kind: Source_unit.kind }
-  | UnsupportedItem of { item_id: ItemArenaId.t; kind: string; scope_path: SurfacePath.t }
+  | UnsupportedItem of { item_id: ItemArenaId.t; kind: string; scope_path: Core.Surface_path.t }
   | MissingBinding of { binding_id: BindingArenaId.t }
   | MissingExpr of { expr_id: ExprArenaId.t }
   | MissingPattern of { pattern_id: PatternArenaId.t }
@@ -104,7 +104,7 @@ let error_to_json = fun error ->
         [
           ("kind", Json.string "unsupported_item");
           ("item_kind", Json.string kind);
-          ("scope_path", Json.string (SurfacePath.to_string scope_path));
+          ("scope_path", Json.string (Core.Surface_path.to_string scope_path));
         ]
   | MissingBinding { binding_id } ->
       let _ = binding_id in
@@ -165,6 +165,29 @@ let fresh_lambda_name = fun expr_id ->
 let fresh_match_scrutinee_name = fun expr_id ->
   format Format.[ str "__raml_match_"; int (ExprArenaId.to_int expr_id) ]
 
+let core_surface_path_of_typ = fun path -> path |> SurfacePath.to_segments |> Core.Surface_path.of_segments
+
+let unresolved_entity_id_of_typ_path = fun path ->
+  path |> core_surface_path_of_typ |> Core.Entity_id.of_surface_path
+
+let semantic_binding_id = fun ~name binding_id ->
+  Core.Binding_id.local ~stamp:(BindingArenaId.to_int binding_id) ~name
+
+let semantic_entity_id = fun ~name binding_id ->
+  semantic_binding_id ~name binding_id |> Core.Entity_id.of_binding_id
+
+let generated_expr_binding_id = fun ~name expr_id slot ->
+  Core.Binding_id.local ~stamp:(-(1 + (ExprArenaId.to_int expr_id * 32) + slot)) ~name
+
+let generated_expr_entity_id = fun ~name expr_id slot ->
+  generated_expr_binding_id ~name expr_id slot |> Core.Entity_id.of_binding_id
+
+let generated_pattern_binding_id = fun ~name pattern_id slot ->
+  Core.Binding_id.local ~stamp:(-(1_000_000 + (PatternArenaId.to_int pattern_id * 32) + slot)) ~name
+
+let generated_pattern_entity_id = fun ~name pattern_id slot ->
+  generated_pattern_binding_id ~name pattern_id slot |> Core.Entity_id.of_binding_id
+
 let wrap_nonrecursive_let = fun binding body ->
   Core.Expr.Let Core.Expr.{ rec_flag = Core.Rec_flag.Nonrecursive; bindings = [ binding ]; body }
 
@@ -176,7 +199,7 @@ let lower_direct_intrinsic_apply = fun path arguments ->
       second = Core.Expr.Constant Core.Constant.Unit
     })
   | _ ->
-      let callee = ok (Core.Expr.Direct (SurfacePath.to_string path)) in
+      let callee = ok (Core.Expr.Direct (unresolved_entity_id_of_typ_path path)) in
       validation_map2
         callee
         (ok arguments)
@@ -184,14 +207,13 @@ let lower_direct_intrinsic_apply = fun path arguments ->
 
 type direct_call_binding = {
   name: string;
+  entity_id: Core.Entity_id.t;
   direct: bool;
 }
 
-let direct_call_binding = fun ~name ~direct -> { name; direct }
+let direct_call_binding = fun ~name ~entity_id ~direct -> { name; entity_id; direct }
 
-let lambda_bound_binding = fun name -> direct_call_binding ~name ~direct:true
-
-let value_bound_binding = fun name -> direct_call_binding ~name ~direct:false
+let value_bound_binding = fun ~name ~entity_id -> direct_call_binding ~name ~entity_id ~direct:false
 
 let expr_is_direct_callable = fun expr ->
   match expr with
@@ -207,51 +229,74 @@ let lookup_direct_call = fun env name ->
   env |> List.find_map
     (fun (binding: direct_call_binding) ->
       if String.equal binding.name name then
-        Some binding.direct
+        Some binding
       else
         None)
 
-let bare_name = fun path ->
-  if SurfacePath.is_bare path then
-    SurfacePath.bare_name path
-  else
-    None
+let unresolved_bare_name = fun entity_id ->
+  match Core.Entity_id.binding_id entity_id with
+  | Some _ -> None
+  | None ->
+      if Core.Entity_id.is_bare entity_id then
+        Core.Entity_id.bare_name entity_id
+      else
+        None
 
-let reclassify_direct_callee = fun env name ->
-  match bare_name (SurfacePath.of_string name) with
-  | None -> Core.Expr.Direct name
+let reclassify_entity_id = fun env entity_id ->
+  match unresolved_bare_name entity_id with
   | Some bare_name -> (
       match lookup_direct_call env bare_name with
-      | Some true -> Core.Expr.Direct name
-      | Some false -> Core.Expr.Indirect (Core.Expr.Var bare_name)
-      | None -> Core.Expr.Direct name
+      | Some binding -> binding.entity_id
+      | None -> entity_id
+    )
+  | None -> entity_id
+
+let reclassify_direct_callee = fun env entity_id ->
+  match unresolved_bare_name entity_id with
+  | None -> Core.Expr.Direct entity_id
+  | Some bare_name -> (
+      match lookup_direct_call env bare_name with
+      | Some binding when binding.direct -> Core.Expr.Direct binding.entity_id
+      | Some binding -> Core.Expr.Indirect (Core.Expr.Var binding.entity_id)
+      | None -> Core.Expr.Direct entity_id
     )
 
 let direct_call_binding_of_core_binding = fun (binding: Core.Expr.binding) ->
-  direct_call_binding ~name:binding.name ~direct:(expr_is_direct_callable binding.expr)
+  direct_call_binding
+    ~name:binding.name
+    ~entity_id:binding.entity_id
+    ~direct:(expr_is_direct_callable binding.expr)
 
 let direct_call_binding_of_init_item = fun item ->
   match item with
   | Core.Init_item.Binding binding -> Some (direct_call_binding
     ~name:binding.name
+    ~entity_id:binding.entity_id
     ~direct:(expr_is_direct_callable binding.expr))
   | Core.Init_item.Eval _ -> None
 
 let rec reclassify_expr = fun env expr ->
   match expr with
-  | Core.Expr.Constant _
-  | Core.Expr.Var _ ->
+  | Core.Expr.Constant _ ->
       expr
+  | Core.Expr.Var entity_id ->
+      Core.Expr.Var (reclassify_entity_id env entity_id)
   | Core.Expr.Apply apply ->
       let callee =
         match apply.callee with
-        | Core.Expr.Direct name -> reclassify_direct_callee env name
+        | Core.Expr.Direct entity_id -> reclassify_direct_callee env entity_id
         | Core.Expr.Indirect callee -> Core.Expr.Indirect (reclassify_expr env callee)
       in
       let arguments = List.map (reclassify_expr env) apply.arguments in
       Core.Expr.Apply Core.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
-      let env = bind_direct_calls env (List.map value_bound_binding lambda.params) in
+      let env =
+        bind_direct_calls
+          env
+          (List.map
+            (fun (param: Core.Expr.param) -> value_bound_binding ~name:param.name ~entity_id:param.entity_id)
+            lambda.params)
+      in
       Core.Expr.Lambda Core.Expr.{ lambda with body = reclassify_expr env lambda.body }
   | Core.Expr.Let let_ ->
       let bindings = List.map direct_call_binding_of_core_binding let_.bindings in
@@ -596,10 +641,17 @@ let rec bind_pattern = fun semantic_tree pattern_id value body ->
   | Some pattern -> (
       match pattern.desc with
       | BodyArena.PVar name ->
-          ok (wrap_nonrecursive_let Core.Expr.{ name; expr = value } body)
+          ok
+            (wrap_nonrecursive_let
+              Core.Expr.{
+                entity_id = generated_pattern_entity_id ~name pattern_id 0;
+                name;
+                expr = value
+              }
+              body)
       | BodyArena.PTuple element_ids ->
           let tuple_name = fresh_destructure_name "tuple" pattern_id in
-          let tuple_var = Core.Expr.Var tuple_name in
+          let tuple_var = Core.Expr.Var (Core.Entity_id.of_name tuple_name) in
           let indexed_elements =
             List.mapi (fun index child_pattern_id -> (index, child_pattern_id)) element_ids
           in
@@ -618,7 +670,14 @@ let rec bind_pattern = fun semantic_tree pattern_id value body ->
               (ok body)
           in
           Result.map
-            (fun body -> wrap_nonrecursive_let Core.Expr.{ name = tuple_name; expr = value } body)
+            (fun body ->
+              wrap_nonrecursive_let
+                Core.Expr.{
+                  entity_id = generated_pattern_entity_id ~name:tuple_name pattern_id 1;
+                  name = tuple_name;
+                  expr = value
+                }
+                body)
             body
       | _ ->
           error
@@ -640,14 +699,27 @@ let rec lower_function = fun semantic_tree ~name expr_id parameters body_id ->
           | None -> error (MissingPattern { pattern_id = parameter.pattern_id })
           | Some pattern -> (
               match pattern.desc with
-              | BodyArena.PVar name -> ok (name, None)
-              | BodyArena.PTuple _ -> ok
-                (fresh_function_parameter_name expr_id parameter_index, Some parameter.pattern_id)
-              | _ -> error
-                (UnsupportedPattern {
-                  pattern_id = parameter.pattern_id;
-                  reason = "only variable and tuple function parameters are supported in the current Typ -> Raml lowering slice"
-                })
+              | BodyArena.PVar name ->
+                  ok
+                    (Core.Expr.{
+                      entity_id = generated_expr_entity_id ~name expr_id parameter_index;
+                      name
+                    },
+                    None)
+              | BodyArena.PTuple _ ->
+                  let name = fresh_function_parameter_name expr_id parameter_index in
+                  ok
+                    (Core.Expr.{
+                      entity_id = generated_expr_entity_id ~name expr_id parameter_index;
+                      name
+                    },
+                    Some parameter.pattern_id)
+              | _ ->
+                  error
+                    (UnsupportedPattern {
+                      pattern_id = parameter.pattern_id;
+                      reason = "only variable and tuple function parameters are supported in the current Typ -> Raml lowering slice"
+                    })
             )
         )
       | label -> error
@@ -671,7 +743,7 @@ let rec lower_function = fun semantic_tree ~name expr_id parameters body_id ->
     (fun (params, body) ->
       let body =
         List.fold_right
-          (fun (param_name, pattern_id) body ->
+          (fun ((param_name: Core.Expr.param), pattern_id) body ->
             Result.and_then body
               (fun body ->
                 match pattern_id with
@@ -679,7 +751,7 @@ let rec lower_function = fun semantic_tree ~name expr_id parameters body_id ->
                 | Some pattern_id -> bind_pattern
                   semantic_tree
                   pattern_id
-                  (Core.Expr.Var param_name)
+                  (Core.Expr.Var param_name.entity_id)
                   body))
           params
           (ok body)
@@ -902,7 +974,11 @@ and lower_closed_variant_match = fun semantic_tree ~expr_id scrutinee_id cases -
                         })
                     else
                       let scrutinee_name = fresh_match_scrutinee_name expr_id in
-                      let scrutinee_var = Core.Expr.Var scrutinee_name in
+                      let scrutinee_entity_id = generated_expr_entity_id
+                        ~name:scrutinee_name
+                        expr_id
+                        16 in
+                      let scrutinee_var = Core.Expr.Var scrutinee_entity_id in
                       let lower_case_body (case: lowered_variant_match_case) =
                         match case.argument_pattern_ids with
                         | [] -> ok case.body
@@ -952,7 +1028,11 @@ and lower_closed_variant_match = fun semantic_tree ~expr_id scrutinee_id cases -
                             }
                           in
                           wrap_nonrecursive_let
-                            Core.Expr.{ name = scrutinee_name; expr = scrutinee }
+                            Core.Expr.{
+                              entity_id = scrutinee_entity_id;
+                              name = scrutinee_name;
+                              expr = scrutinee
+                            }
                             (build case_bodies))
                         case_bodies
               ))
@@ -1007,7 +1087,7 @@ and lower_expr = fun semantic_tree expr_id ->
                   )
               else
                 ok (variant_constructor_expr constructor [])
-          | MissingVariantConstructor -> ok (Core.Expr.Var (SurfacePath.to_string path))
+          | MissingVariantConstructor -> ok (Core.Expr.Var (unresolved_entity_id_of_typ_path path))
           | AmbiguousVariantConstructor candidates -> error
             (UnsupportedExpr {
               expr_id;
@@ -1096,7 +1176,7 @@ and lower_expr = fun semantic_tree expr_id ->
                 let lower_callee callee_id =
                   match SemanticTree.find_expr semantic_tree callee_id with
                   | Some { desc=BodyArena.EVar path; _ } -> ok
-                    (Core.Expr.Direct (SurfacePath.to_string path))
+                    (Core.Expr.Direct (unresolved_entity_id_of_typ_path path))
                   | Some _ -> Result.map
                     (fun callee -> Core.Expr.Indirect callee)
                     (lower_expr semantic_tree callee_id)
@@ -1164,10 +1244,11 @@ and lower_expr = fun semantic_tree expr_id ->
                 (fun base lowered_fields -> (base, lowered_fields)))
                 (fun (base, lowered_fields) ->
                   let base_name = fresh_record_base_name expr_id in
-                  let base_var = Core.Expr.Var base_name in
+                  let base_entity_id = generated_expr_entity_id ~name:base_name expr_id 17 in
+                  let base_var = Core.Expr.Var base_entity_id in
                   Result.map (fun elements ->
                     wrap_nonrecursive_let
-                      Core.Expr.{ name = base_name; expr = base }
+                      Core.Expr.{ entity_id = base_entity_id; name = base_name; expr = base }
                       (Core.Expr.Tuple elements))
                     (
                       map_results (List.mapi (fun index label -> (index, label)) layout.labels)
@@ -1252,7 +1333,15 @@ and lower_local_binding = fun semantic_tree binding_id ->
           (fun (binding_name, pattern_name) ->
             if String.equal binding_name pattern_name then
               Result.map
-                (fun expr -> (binding.recursive, Core.Expr.{ name = binding_name; expr }))
+                (fun expr ->
+                  (
+                    binding.recursive,
+                    Core.Expr.{
+                      entity_id = semantic_entity_id ~name:binding_name binding_id;
+                      name = binding_name;
+                      expr
+                    }
+                  ))
                 (lower_local_binding_value semantic_tree binding_id binding_name binding.value_id)
             else
               error
@@ -1392,28 +1481,33 @@ let lower_binding = fun semantic_tree binding_id ->
                     binding_id;
                     reason = "unit-pattern top-level bindings cannot introduce functions"
                   })
-                | Some name -> Result.map
-                  (fun lambda ->
-                    {
-                      export = Some Core.Export.{ name; symbol = name };
-                      item = Core.Init_item.Binding Core.Binding.{
-                        name;
-                        expr = Core.Expr.Lambda lambda
-                      }
-                    })
-                  (lower_function semantic_tree ~name expr_id parameters body_id)
+                | Some name ->
+                    Result.map
+                      (fun lambda ->
+                        let entity_id = semantic_entity_id ~name binding_id in
+                        {
+                          export = Some Core.Export.{ name; symbol = entity_id };
+                          item = Core.Init_item.Binding Core.Binding.{
+                            entity_id;
+                            name;
+                            expr = Core.Expr.Lambda lambda
+                          }
+                        })
+                      (lower_function semantic_tree ~name expr_id parameters body_id)
               )
         | Some _ ->
             Result.and_then named_binding
               (
                 function
-                | Some name -> Result.map
-                  (fun expr ->
-                    {
-                      export = Some Core.Export.{ name; symbol = name };
-                      item = Core.Init_item.Binding Core.Binding.{ name; expr }
-                    })
-                  (lower_expr semantic_tree binding.value_id)
+                | Some name ->
+                    Result.map
+                      (fun expr ->
+                        let entity_id = semantic_entity_id ~name binding_id in
+                        {
+                          export = Some Core.Export.{ name; symbol = entity_id };
+                          item = Core.Init_item.Binding Core.Binding.{ entity_id; name; expr }
+                        })
+                      (lower_expr semantic_tree binding.value_id)
                 | None -> Result.map
                   (fun expr -> { export = None; item = Core.Init_item.Eval expr })
                   (lower_expr semantic_tree binding.value_id)
@@ -1459,55 +1553,55 @@ let lower_item = fun semantic_tree (item: ItemTree.item) ->
     (UnsupportedItem {
       item_id = value_item.item_id;
       kind = item_kind item;
-      scope_path = value_item.scope_path
+      scope_path = core_surface_path_of_typ value_item.scope_path
     })
   | ItemTree.Type type_item -> error
     (UnsupportedItem {
       item_id = type_item.item_id;
       kind = item_kind item;
-      scope_path = type_item.scope_path
+      scope_path = core_surface_path_of_typ type_item.scope_path
     })
   | ItemTree.Exception exception_item -> error
     (UnsupportedItem {
       item_id = exception_item.item_id;
       kind = item_kind item;
-      scope_path = exception_item.scope_path
+      scope_path = core_surface_path_of_typ exception_item.scope_path
     })
   | ItemTree.ExtensionConstructor extension_item -> error
     (UnsupportedItem {
       item_id = extension_item.item_id;
       kind = item_kind item;
-      scope_path = extension_item.scope_path
+      scope_path = core_surface_path_of_typ extension_item.scope_path
     })
   | ItemTree.DeclaredValue declared_value_item -> error
     (UnsupportedItem {
       item_id = declared_value_item.item_id;
       kind = item_kind item;
-      scope_path = declared_value_item.scope_path
+      scope_path = core_surface_path_of_typ declared_value_item.scope_path
     })
   | ItemTree.Open open_item -> error
     (UnsupportedItem {
       item_id = open_item.item_id;
       kind = item_kind item;
-      scope_path = open_item.scope_path
+      scope_path = core_surface_path_of_typ open_item.scope_path
     })
   | ItemTree.Include include_item -> error
     (UnsupportedItem {
       item_id = include_item.item_id;
       kind = item_kind item;
-      scope_path = include_item.scope_path
+      scope_path = core_surface_path_of_typ include_item.scope_path
     })
   | ItemTree.ModuleAlias module_alias_item -> error
     (UnsupportedItem {
       item_id = module_alias_item.item_id;
       kind = item_kind item;
-      scope_path = module_alias_item.scope_path
+      scope_path = core_surface_path_of_typ module_alias_item.scope_path
     })
   | ItemTree.Unsupported unsupported_item -> error
     (UnsupportedItem {
       item_id = unsupported_item.item_id;
       kind = item_kind item;
-      scope_path = unsupported_item.scope_path
+      scope_path = core_surface_path_of_typ unsupported_item.scope_path
     })
 
 let lower_file = fun ~(source_unit:Source_unit.t) (semantic_tree: SemanticTree.file) ->

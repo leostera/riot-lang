@@ -2,23 +2,38 @@
   "exports": [
     {
       "name": "truthy",
-      "symbol": "truthy"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "truthy"
+      }
     },
     {
       "name": "answer",
-      "symbol": "answer"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "answer"
+      }
     },
     {
       "name": "pi",
-      "symbol": "pi"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "pi"
+      }
     },
     {
       "name": "greeting",
-      "symbol": "greeting"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "greeting"
+      }
     },
     {
       "name": "nothing",
-      "symbol": "nothing"
+      "symbol": {
+        "kind": "unresolved",
+        "surface_path": "nothing"
+      }
     }
   ],
   "init": [
@@ -26,28 +41,47 @@
       "exports": [
         {
           "name": "truthy",
-          "symbol": "truthy"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "truthy"
+          }
         },
         {
           "name": "answer",
-          "symbol": "answer"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "answer"
+          }
         },
         {
           "name": "pi",
-          "symbol": "pi"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "pi"
+          }
         },
         {
           "name": "greeting",
-          "symbol": "greeting"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "greeting"
+          }
         },
         {
           "name": "nothing",
-          "symbol": "nothing"
+          "symbol": {
+            "kind": "unresolved",
+            "surface_path": "nothing"
+          }
         }
       ],
       "items": [
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "truthy"
+            },
             "expr": {
               "constant": {
                 "kind": "bool",
@@ -61,6 +95,10 @@
         },
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "answer"
+            },
             "expr": {
               "constant": {
                 "kind": "int",
@@ -74,6 +112,10 @@
         },
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "pi"
+            },
             "expr": {
               "constant": {
                 "kind": "float",
@@ -87,6 +129,10 @@
         },
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "greeting"
+            },
             "expr": {
               "constant": {
                 "kind": "string",
@@ -100,6 +146,10 @@
         },
         {
           "binding": {
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "nothing"
+            },
             "expr": {
               "constant": {
                 "kind": "unit"

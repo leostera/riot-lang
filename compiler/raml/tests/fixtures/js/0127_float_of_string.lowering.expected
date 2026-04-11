@@ -26,7 +26,10 @@
                                   }
                                 ],
                                 "callee": {
-                                  "function": "float_of_string",
+                                  "function": {
+                                    "kind": "unresolved",
+                                    "surface_path": "float_of_string"
+                                  },
                                   "kind": "direct"
                                 }
                               },
@@ -34,7 +37,10 @@
                             }
                           ],
                           "callee": {
-                            "function": "string_of_float",
+                            "function": {
+                              "kind": "unresolved",
+                              "surface_path": "string_of_float"
+                            },
                             "kind": "direct"
                           }
                         },
@@ -42,7 +48,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "print_endline",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "print_endline"
+                      },
                       "kind": "direct"
                     }
                   },

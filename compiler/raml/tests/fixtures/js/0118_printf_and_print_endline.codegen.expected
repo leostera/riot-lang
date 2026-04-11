@@ -41,7 +41,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "Printf.printf",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "Printf.printf"
+                      },
                       "kind": "direct"
                     }
                   },
@@ -68,7 +71,10 @@
                       }
                     ],
                     "callee": {
-                      "function": "print_endline",
+                      "function": {
+                        "kind": "unresolved",
+                        "surface_path": "print_endline"
+                      },
                       "kind": "direct"
                     }
                   },

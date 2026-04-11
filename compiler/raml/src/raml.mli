@@ -42,10 +42,19 @@ module Config: sig
     on_event: (Event.t -> unit) option;
     host: Target.t;
     target: Target.t;
+    typing_config: Typ.Config.t;
   }
   val default: t
 
-  val make: ?on_event:(Event.t -> unit) -> ?host:Target.t -> ?target:Target.t -> unit -> t
+  val validate: t -> (unit, string) Std.Result.t
+
+  val make:
+    ?on_event:(Event.t -> unit) ->
+    ?host:Target.t ->
+    ?target:Target.t ->
+    ?typing_config:Typ.Config.t ->
+    unit ->
+    t
 
   val with_on_event: t -> on_event:(Event.t -> unit) -> t
 
@@ -56,6 +65,16 @@ module Config: sig
   val with_target: t -> target:Target.t -> t
 
   val with_targeting: t -> host:Target.t -> target:Target.t -> t
+
+  val with_typing_config: t -> typing_config:Typ.Config.t -> t
+
+  val host: t -> Target.t
+
+  val target: t -> Target.t
+
+  val typing_config: t -> Typ.Config.t
+
+  val select_backend: t -> Target.backend
 
   val emit_event: t -> (unit -> Event.kind) -> unit
 end
@@ -69,11 +88,7 @@ module Compilation: sig
   val codegen_to_json: t -> Std.Data.Json.t
 end
 
-module Core_ir = Core_ir
-
-module Core_ir_fixture_support = Core_ir_fixture_support
-
-module Example_pipeline = Example_pipeline
+module CoreIR = Core_ir
 
 module Js = Js
 
@@ -83,6 +98,42 @@ module Source_unit = Source_unit
 
 module Typ_lowering = Typ_lowering
 
-val compile_source: ?config:Config.t -> relpath:Std.Path.t -> string -> (Compilation.t, string) result
+val compile: ?config:Config.t -> Std.Path.t -> (Compilation.t, string) Std.Result.t
 
-val compile: ?config:Config.t -> Std.Path.t -> (Compilation.t, string) result
+module TestingHelpers: sig
+  val compile_source:
+    ?config:Config.t ->
+    relpath:Std.Path.t ->
+    string ->
+    (Compilation.t, string) Std.Result.t
+
+  module Test_fixture_typing: sig
+    val typing_config: Typ.Config.t
+
+    val raml_config:
+      host:Target.t ->
+      target:Target.t ->
+      Config.t
+  end
+
+  module Example_pipeline: sig
+    type t
+    val compile_source:
+      config:Config.t ->
+      relpath:Std.Path.t ->
+      source:string ->
+      (t, string) Std.Result.t
+
+    val to_json: t -> Std.Data.Json.t
+
+    val lowering_to_json: t -> Std.Data.Json.t
+
+    val codegen_to_json: t -> Std.Data.Json.t
+  end
+
+  module Core_ir_fixture_support: sig
+    val parse_compilation_unit:
+      Std.Data.Json.t ->
+      (CoreIR.Compilation_unit.t, string) Std.Result.t
+  end
+end

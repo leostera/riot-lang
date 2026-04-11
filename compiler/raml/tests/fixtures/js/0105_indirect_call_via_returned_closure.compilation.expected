@@ -12,7 +12,15 @@
       "exports": [
         {
           "name": "make_adder",
-          "symbol": "make_adder"
+          "symbol": {
+            "binding_id": {
+              "kind": "local",
+              "name": "make_adder",
+              "stamp": 1
+            },
+            "kind": "resolved",
+            "surface_path": "make_adder"
+          }
         }
       ],
       "init": [
@@ -20,12 +28,29 @@
           "exports": [
             {
               "name": "make_adder",
-              "symbol": "make_adder"
+              "symbol": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "make_adder",
+                  "stamp": 1
+                },
+                "kind": "resolved",
+                "surface_path": "make_adder"
+              }
             }
           ],
           "items": [
             {
               "binding": {
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "make_adder",
+                    "stamp": 1
+                  },
+                  "kind": "resolved",
+                  "surface_path": "make_adder"
+                },
                 "expr": {
                   "kind": "lambda",
                   "lambda": {
@@ -34,6 +59,15 @@
                       "let": {
                         "bindings": [
                           {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "add",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "add"
+                            },
                             "expr": {
                               "kind": "lambda",
                               "lambda": {
@@ -42,22 +76,52 @@
                                     "arguments": [
                                       {
                                         "kind": "var",
-                                        "name": "base"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "base",
+                                            "stamp": -225
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "base"
+                                        }
                                       },
                                       {
                                         "kind": "var",
-                                        "name": "x"
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "x",
+                                            "stamp": -129
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "x"
+                                        }
                                       }
                                     ],
                                     "callee": {
-                                      "function": "+",
+                                      "function": {
+                                        "kind": "unresolved",
+                                        "surface_path": "+"
+                                      },
                                       "kind": "direct"
                                     }
                                   },
                                   "kind": "apply"
                                 },
                                 "params": [
-                                  "x"
+                                  {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "x",
+                                        "stamp": -129
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "x"
+                                    },
+                                    "name": "x"
+                                  }
                                 ]
                               }
                             },
@@ -66,13 +130,32 @@
                         ],
                         "body": {
                           "kind": "var",
-                          "name": "add"
+                          "name": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "add",
+                              "stamp": 0
+                            },
+                            "kind": "resolved",
+                            "surface_path": "add"
+                          }
                         },
                         "rec_flag": "nonrecursive"
                       }
                     },
                     "params": [
-                      "base"
+                      {
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "base",
+                            "stamp": -225
+                          },
+                          "kind": "resolved",
+                          "surface_path": "base"
+                        },
+                        "name": "base"
+                      }
                     ]
                   }
                 },
@@ -121,7 +204,15 @@
                                 }
                               ],
                               "callee": {
-                                "function": "make_adder",
+                                "function": {
+                                  "binding_id": {
+                                    "kind": "local",
+                                    "name": "make_adder",
+                                    "stamp": 1
+                                  },
+                                  "kind": "resolved",
+                                  "surface_path": "make_adder"
+                                },
                                 "kind": "direct"
                               }
                             },
@@ -134,7 +225,10 @@
                     }
                   ],
                   "callee": {
-                    "function": "Printf.printf",
+                    "function": {
+                      "kind": "unresolved",
+                      "surface_path": "Printf.printf"
+                    },
                     "kind": "direct"
                   }
                 },

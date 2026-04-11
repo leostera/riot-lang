@@ -136,14 +136,13 @@ let json_field_or_null = fun name json -> json_field name json |> Option.unwrap_
 let compile_fixture = fun (ctx: Test.FixtureRunner.ctx) ->
   let source = read_source ctx in
   let filename = stable_fixture_filename ctx in
-  Raml.Example_pipeline.compile_source
+  let config = Raml.TestingHelpers.Test_fixture_typing.raml_config
     ~host:Raml.Target.aarch64_apple_darwin
-    ~target:Raml.Target.aarch64_apple_darwin
-    ~relpath:filename
-    ~source
+    ~target:Raml.Target.aarch64_apple_darwin in
+  Raml.TestingHelpers.Example_pipeline.compile_source ~config ~relpath:filename ~source
   |> Result.expect ~msg:"fixture should compile into a native pipeline snapshot"
 
-let native_pipeline_json = fun ctx -> compile_fixture ctx |> Raml.Example_pipeline.to_json
+let native_pipeline_json = fun ctx -> compile_fixture ctx |> Raml.TestingHelpers.Example_pipeline.to_json
 
 let lowered_stage = fun ~name pipeline ->
   pipeline |> json_field_or_null "lowered" |> json_field_or_null name

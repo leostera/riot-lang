@@ -40,6 +40,24 @@ module Instruction: sig
   val to_json: t -> Json.t
 end
 
+module Slot: sig
+  type t = {
+    name: string;
+    offset: int;
+  }
+  val to_json: t -> Json.t
+end
+
+module Frame: sig
+  type t = {
+    slots: Slot.t list;
+    frame_size: int;
+  }
+  val empty: t
+
+  val to_json: t -> Json.t
+end
+
 module Procedure: sig
   type kind =
     | Function
@@ -48,6 +66,7 @@ module Procedure: sig
     name: string;
     kind: kind;
     params: string list;
+    frame: Frame.t;
     body: Instruction.t list;
   }
   val kind_to_json: kind -> Json.t

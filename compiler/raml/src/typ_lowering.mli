@@ -6,7 +6,7 @@ type error =
   | UnsupportedItem of {
       item_id: Typ.Model.ItemArenaId.t;
       kind: string;
-      scope_path: Typ.Model.SurfacePath.t
+      scope_path: Core_ir.Surface_path.t
     }
   | MissingBinding of { binding_id: Typ.Model.BindingArenaId.t }
   | MissingExpr of { expr_id: Typ.Model.ExprArenaId.t }

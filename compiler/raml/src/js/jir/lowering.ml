@@ -57,10 +57,21 @@ let is_module_segment = fun segment -> String.length segment > 0 && is_ascii_upp
 
 let module_import_path = fun module_name -> format Format.[ str "./"; str module_name; str ".js" ]
 
-let lower_reference = fun name ->
-  let parts = String.split_on_char '.' name |> List.filter (fun part -> not (String.equal part "")) in
+let param_name = fun (param: Core.Expr.param) -> param.name
+
+let unresolved_bare_name = fun entity_id ->
+  match Core.Entity_id.binding_id entity_id with
+  | Some _ -> None
+  | None ->
+      if Core.Entity_id.is_bare entity_id then
+        Core.Entity_id.bare_name entity_id
+      else
+        None
+
+let lower_reference = fun entity_id ->
+  let parts = Core.Entity_id.to_segments entity_id in
   match parts with
-  | [] -> Jir.Expr.Identifier name
+  | [] -> Jir.Expr.Identifier (Core.Entity_id.to_string entity_id)
   | head :: tail ->
       let base =
         if not (List.is_empty tail) && is_module_segment head then
@@ -76,10 +87,14 @@ let iife = fun body ->
     arguments = []
   }
 
-let lower_direct_callee = fun function_name ->
-  match Jir.Runtime.helper_for_direct_callee function_name with
-  | Some helper -> Jir.Expr.Runtime_helper helper
-  | None -> lower_reference function_name
+let lower_direct_callee = fun entity_id ->
+  match unresolved_bare_name entity_id with
+  | Some function_name -> (
+      match Jir.Runtime.helper_for_direct_callee function_name with
+      | Some helper -> Jir.Expr.Runtime_helper helper
+      | None -> lower_reference entity_id
+    )
+  | None -> lower_reference entity_id
 
 let lower_runtime_primitive_call = fun name arguments ->
   let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
@@ -101,66 +116,70 @@ let lower_curried_function = fun (function_: Jir.Expr.function_) ->
       ]
     }
 
-let primitive_for_direct_callee = fun function_name ->
-  match function_name with
-  | "+." -> Some "%addfloat"
-  | "-." -> Some "%subfloat"
-  | "*." -> Some "%mulfloat"
-  | "/." -> Some "%divfloat"
-  | "=" -> Some "%eq"
-  | "<>" -> Some "%neq"
-  | "<" -> Some "%lt"
-  | "<=" -> Some "%le"
-  | ">" -> Some "%gt"
-  | ">=" -> Some "%ge"
-  | "+" -> Some "%addint"
-  | "-" -> Some "%subint"
-  | "*" -> Some "%mulint"
-  | "/" -> Some "%divint"
-  | "mod" -> Some "%modint"
-  | "^" -> Some "%concatstring"
-  | "sqrt" -> Some "%sqrtfloat"
-  | "string_of_int" -> Some "%string_of_int"
-  | "string_of_float" -> Some "%string_of_float"
-  | "int_of_string" -> Some "%int_of_string"
-  | "float_of_string" -> Some "%float_of_string"
-  | _ -> None
+let primitive_for_direct_callee = fun entity_id ->
+  match unresolved_bare_name entity_id with
+  | Some function_name -> (
+      match function_name with
+      | "+." -> Some "%addfloat"
+      | "-." -> Some "%subfloat"
+      | "*." -> Some "%mulfloat"
+      | "/." -> Some "%divfloat"
+      | "=" -> Some "%eq"
+      | "<>" -> Some "%neq"
+      | "<" -> Some "%lt"
+      | "<=" -> Some "%le"
+      | ">" -> Some "%gt"
+      | ">=" -> Some "%ge"
+      | "+" -> Some "%addint"
+      | "-" -> Some "%subint"
+      | "*" -> Some "%mulint"
+      | "/" -> Some "%divint"
+      | "mod" -> Some "%modint"
+      | "^" -> Some "%concatstring"
+      | "sqrt" -> Some "%sqrtfloat"
+      | "string_of_int" -> Some "%string_of_int"
+      | "string_of_float" -> Some "%string_of_float"
+      | "int_of_string" -> Some "%int_of_string"
+      | "float_of_string" -> Some "%float_of_string"
+      | _ -> None
+    )
+  | None -> None
 
-let lower_boolean_direct_call = fun function_name arguments ->
-  match (function_name, arguments) with
-  | ("not", [ argument ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+let lower_boolean_direct_call = fun entity_id arguments ->
+  match (unresolved_bare_name entity_id, arguments) with
+  | (Some "not", [ argument ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
     condition = argument;
     then_ = lower_bool false;
     else_ = lower_bool true
   })
-  | ("&&", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+  | (Some "&&", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
     condition = left;
     then_ = right;
     else_ = lower_bool false
   })
-  | ("||", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+  | (Some "||", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
     condition = left;
     then_ = lower_bool true;
     else_ = right
   })
   | _ -> None
 
-let lower_direct_call = fun function_name arguments ->
-  match lower_boolean_direct_call function_name arguments with
+let lower_direct_call = fun entity_id arguments ->
+  match lower_boolean_direct_call entity_id arguments with
   | Some expr -> expr
   | None ->
-      match primitive_for_direct_callee function_name with
+      match primitive_for_direct_callee entity_id with
       | Some primitive_name -> lower_runtime_primitive_call primitive_name arguments
       | None ->
-          let callee = lower_direct_callee function_name in
+          let callee = lower_direct_callee entity_id in
           Jir.Expr.Call Jir.Expr.{ callee; arguments }
 
 let rec lower_expr = fun expr ->
   match expr with
   | Core.Expr.Constant constant ->
       Jir.Expr.Literal (lower_constant constant)
-  | Core.Expr.Var name ->
-      lower_reference name
+  | Core.Expr.Var entity_id ->
+      lower_reference entity_id
   | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
       let arguments = List.map lower_expr arguments in
       lower_direct_call function_name arguments
@@ -169,7 +188,8 @@ let rec lower_expr = fun expr ->
       let arguments = List.map lower_expr arguments in
       Jir.Expr.Call Jir.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
-      lower_curried_function Jir.Expr.{ params = lambda.params; body = lower_tail_expr lambda.body }
+      lower_curried_function
+        Jir.Expr.{ params = List.map param_name lambda.params; body = lower_tail_expr lambda.body }
   | Core.Expr.Let let_ ->
       lower_let let_
   | Core.Expr.Sequence sequence ->
@@ -259,7 +279,7 @@ and lower_tail_let = fun (let_: Core.Expr.let_) ->
 and lower_let = fun (let_: Core.Expr.let_) -> iife (lower_tail_let let_)
 
 let lower_export = fun (export: Core.Export.t) ->
-  Jir.Export.{ name = export.name; local = export.symbol }
+  Jir.Export.{ name = export.name; local = Core.Entity_id.to_string export.symbol }
 
 let lower_item = fun item ->
   match item with

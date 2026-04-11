@@ -27,7 +27,10 @@
                     }
                   ],
                   "callee": {
-                    "function": "print_endline",
+                    "function": {
+                      "kind": "unresolved",
+                      "surface_path": "print_endline"
+                    },
                     "kind": "direct"
                   }
                 },

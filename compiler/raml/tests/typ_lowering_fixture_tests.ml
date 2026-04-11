@@ -15,7 +15,11 @@ let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
 let check_source_text = fun ~filename text ->
   let parse_result = Syn.parse ~filename text in
   match Syn.build_cst parse_result with
-  | Ok cst -> Typ.Check.check_source ~filename ~parse_result ~cst
+  | Ok cst -> Typ.Check.check_source_with_config
+        ~config:Raml.TestingHelpers.Test_fixture_typing.typing_config
+    ~filename
+    ~parse_result
+    ~cst
   | Error (Syn.Parse_diagnostics diagnostics) -> panic
     (format
       Format.[
@@ -33,7 +37,7 @@ let lowering_result_to_json = fun result ->
   | Ok compilation_unit -> Json.obj
     [
       ("status", Json.string "ok");
-      ("compilation_unit", Raml.Core_ir.Compilation_unit.to_json compilation_unit);
+      ("compilation_unit", Raml.CoreIR.Compilation_unit.to_json compilation_unit);
     ]
   | Error errors -> Json.obj
     [

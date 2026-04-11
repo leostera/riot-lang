@@ -26,7 +26,10 @@
                     }
                   ],
                   "callee": {
-                    "function": "print_newline",
+                    "function": {
+                      "kind": "unresolved",
+                      "surface_path": "print_newline"
+                    },
                     "kind": "direct"
                   }
                 },

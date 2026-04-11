@@ -106,6 +106,58 @@ let parse_constant = fun json ->
   | _ ->
       invalid_field scope "kind" "`unit`, `bool`, `int`, `float`, `char`, or `string`"
 
+let parse_surface_path = fun scope json ->
+  match Json.get_string json with
+  | Some value -> Ok (Core_ir.Surface_path.of_string value)
+  | None -> invalid_field scope "surface_path" "a string"
+
+let parse_binding_id = fun json ->
+  let scope = "binding_id" in
+  let* kind = string_field scope "kind" json in
+  match kind with
+  | "local" ->
+      let* name = string_field scope "name" json in
+      let* stamp_json = field scope "stamp" json in
+      let* stamp =
+        match Json.get_int stamp_json with
+        | Some stamp -> Ok stamp
+        | None -> invalid_field scope "stamp" "an integer"
+      in
+      Ok (Core_ir.Binding_id.local ~stamp ~name)
+  | "predef" ->
+      let* name = string_field scope "name" json in
+      let* stamp_json = field scope "stamp" json in
+      let* stamp =
+        match Json.get_int stamp_json with
+        | Some stamp -> Ok stamp
+        | None -> invalid_field scope "stamp" "an integer"
+      in
+      Ok (Core_ir.Binding_id.predef ~stamp ~name)
+  | "persistent" ->
+      let* surface_path_json = field scope "surface_path" json in
+      let* surface_path = parse_surface_path scope surface_path_json in
+      Ok (Core_ir.Binding_id.persistent surface_path)
+  | _ ->
+      invalid_field scope "kind" "`local`, `predef`, or `persistent`"
+
+let parse_entity_id = fun json ->
+  match Json.get_string json with
+  | Some value -> Ok (Core_ir.Entity_id.of_string value)
+  | None ->
+      let scope = "entity_id" in
+      let* kind = string_field scope "kind" json in
+      let* surface_path_json = field scope "surface_path" json in
+      let* surface_path = parse_surface_path scope surface_path_json in
+      match kind with
+      | "unresolved" ->
+          Ok (Core_ir.Entity_id.of_surface_path surface_path)
+      | "resolved" ->
+          let* binding_id_json = field scope "binding_id" json in
+          let* binding_id = parse_binding_id binding_id_json in
+          Ok (Core_ir.Entity_id.resolved ~binding_id ~surface_path)
+      | _ ->
+          invalid_field scope "kind" "`unresolved` or `resolved`"
+
 let rec parse_expr = fun json ->
   let scope = "expr" in
   let* kind = string_field scope "kind" json in
@@ -115,7 +167,8 @@ let rec parse_expr = fun json ->
       let* constant = parse_constant constant_json in
       Ok (Core_ir.Expr.Constant constant)
   | "var" ->
-      let* name = string_field scope "name" json in
+      let* name_json = field scope "name" json in
+      let* name = parse_entity_id name_json in
       Ok (Core_ir.Expr.Var name)
   | "apply" ->
       let* apply_json = field scope "apply" json in
@@ -149,7 +202,8 @@ and parse_apply_callee = fun json ->
   let* kind = string_field scope "kind" json in
   match kind with
   | "direct" ->
-      let* function_name = string_field scope "function" json in
+      let* function_json = field scope "function" json in
+      let* function_name = parse_entity_id function_json in
       Ok (Core_ir.Expr.Direct function_name)
   | "indirect" ->
       let* expr_json = field scope "expr" json in
@@ -173,8 +227,18 @@ and parse_lambda = fun json ->
     map_results params
       (fun json ->
         match Json.get_string json with
-        | Some value -> Ok value
-        | None -> Error (format Format.[ str scope; str ".params entries must be strings" ]))
+        | Some value -> Ok Core_ir.Expr.{ entity_id = Core_ir.Entity_id.of_name value; name = value }
+        | None ->
+            let entry_scope = "lambda.param" in
+            let* entity_id =
+              match Json.get_field "entity_id" json with
+              | Some entity_id_json -> parse_entity_id entity_id_json
+              | None ->
+                  let* name = string_field entry_scope "name" json in
+                  Ok (Core_ir.Entity_id.of_name name)
+            in
+            let* name = string_field entry_scope "name" json in
+            Ok Core_ir.Expr.{ entity_id; name })
   in
   let* body_json = field scope "body" json in
   let* body = parse_expr body_json in
@@ -182,10 +246,17 @@ and parse_lambda = fun json ->
 
 and parse_expr_binding = fun json ->
   let scope = "binding" in
+  let* entity_id =
+    match Json.get_field "entity_id" json with
+    | Some entity_id_json -> parse_entity_id entity_id_json
+    | None ->
+        let* name = string_field scope "name" json in
+        Ok (Core_ir.Entity_id.of_name name)
+  in
   let* name = string_field scope "name" json in
   let* expr_json = field scope "expr" json in
   let* expr = parse_expr expr_json in
-  Ok Core_ir.Expr.{ name; expr }
+  Ok Core_ir.Expr.{ entity_id; name; expr }
 
 and parse_let = fun json ->
   let scope = "let" in
@@ -223,15 +294,23 @@ and parse_primitive = fun json ->
 
 let parse_binding = fun json ->
   let scope = "binding" in
+  let* entity_id =
+    match Json.get_field "entity_id" json with
+    | Some entity_id_json -> parse_entity_id entity_id_json
+    | None ->
+        let* name = string_field scope "name" json in
+        Ok (Core_ir.Entity_id.of_name name)
+  in
   let* name = string_field scope "name" json in
   let* expr_json = field scope "expr" json in
   let* expr = parse_expr expr_json in
-  Ok Core_ir.Binding.{ name; expr }
+  Ok Core_ir.Binding.{ entity_id; name; expr }
 
 let parse_export = fun json ->
   let scope = "export" in
   let* name = string_field scope "name" json in
-  let* symbol = string_field scope "symbol" json in
+  let* symbol_json = field scope "symbol" json in
+  let* symbol = parse_entity_id symbol_json in
   Ok Core_ir.Export.{ name; symbol }
 
 let parse_init_item = fun json ->

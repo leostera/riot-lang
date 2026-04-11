@@ -87,6 +87,7 @@ But `typ`'s semantic tree is not the long-term backend contract.
 `raml` needs a compiler-facing executable IR with explicit:
 
 - compilation-unit identity
+- stable compiler-owned symbol identity
 - module init ordering and exports
 - closures and arity
 - direct versus indirect application
@@ -108,8 +109,22 @@ Today the implemented core is Lambda-shaped enough to grow real passes:
 - `Compilation_unit`
 - `Binding_group`
 - `Init_item`
+- compiler-owned `Surface_path`, `Binding_id`, and `Entity_id`
 - `Expr` with `Constant`, `Var`, `Apply`, `Lambda`, `Let`, `Sequence`,
   `Tuple`, `Tuple_get`, `If_then_else`, and `Primitive`
+
+Those identity types are local to `raml`.
+They intentionally mirror the split in `typ` between printable paths and real
+semantic identities, but they are not aliases of `Typ.Model` types.
+
+That means:
+
+- `Surface_path` is the printable/current path view
+- `Binding_id` is the binder identity
+- `Entity_id` is the use-site/shared-reference identity carried by `Core_ir`
+- unresolved global/module/prelude refs may remain unresolved in `Core_ir`
+- local/current-unit refs should be reclassified to resolved `Entity_id`s
+  during `typ -> raml` lowering whenever the lowering environment can do it
 
 This layer should remain backend-neutral in representation, not in richness.
 
@@ -139,7 +154,7 @@ Today `raml` lowers a narrow implementation-only slice from `typ` into
 - top-level non-nested value groups
 - variable and unit top-level binders
 - constants, including backend-neutral char literals
-- symbolic variables
+- structured entity references instead of raw-string symbolic variables
 - positional direct and indirect applies
 - top-level lambdas
 - source anonymous function expressions inside supported bindings and lambda

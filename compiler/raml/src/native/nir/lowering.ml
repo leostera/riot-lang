@@ -151,6 +151,16 @@ let primitive_helper = fun name ->
   | "%eq" -> Some eq_helper
   | _ -> None
 
+let entity_name = fun entity_id -> Core.Entity_id.to_string entity_id
+
+let local_entity_name = fun entity_id ->
+  match Core.Entity_id.binding_id entity_id with
+  | Some binding_id -> Some (Core.Binding_id.name binding_id)
+  | None -> None
+
+let param_names = fun params ->
+  List.map (fun (param: Core.Expr.param) -> param.name) params
+
 let has_name = fun names name ->
   List.exists (String.equal name) names
 
@@ -388,11 +398,15 @@ let rec free_vars = fun ~bound expr ->
   match expr with
   | Core.Expr.Constant _ ->
       []
-  | Core.Expr.Var name ->
-      if has_name bound name then
-        []
-      else
-        [ name ]
+  | Core.Expr.Var entity_id -> (
+      match local_entity_name entity_id with
+      | Some name ->
+          if has_name bound name then
+            []
+          else
+            [ name ]
+      | None -> []
+    )
   | Core.Expr.Apply { callee=Core.Expr.Direct _; arguments } ->
       List.fold_left
         (fun names argument ->
@@ -406,7 +420,7 @@ let rec free_vars = fun ~bound expr ->
         (free_vars ~bound callee)
         arguments
   | Core.Expr.Lambda lambda ->
-      free_vars ~bound:(List.fold_left add_unique_name bound lambda.params) lambda.body
+      free_vars ~bound:(List.fold_left add_unique_name bound (param_names lambda.params)) lambda.body
   | Core.Expr.Let let_ ->
       let binding_names =
         List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
@@ -456,22 +470,29 @@ let rec free_vars = fun ~bound expr ->
         primitive.arguments
 
 let captures_of_lambda = fun env (lambda: Core.Expr.lambda) ->
-  free_vars ~bound:lambda.params lambda.body
+  free_vars ~bound:(param_names lambda.params) lambda.body
   |> List.filter (fun name -> has_name env.bound_values name)
 
 let rec expr_uses_name_as_value = fun ~shadowed name expr ->
   match expr with
   | Core.Expr.Constant _ ->
       false
-  | Core.Expr.Var var ->
-      (not (has_name shadowed name)) && String.equal var name
-  | Core.Expr.Apply { callee=Core.Expr.Direct callee; arguments } ->
-      (not (String.equal callee name)) && List.exists (expr_uses_name_as_value ~shadowed name) arguments
+  | Core.Expr.Var var -> (
+      match local_entity_name var with
+      | Some var_name -> (not (has_name shadowed name)) && String.equal var_name name
+      | None -> false
+    )
+  | Core.Expr.Apply { callee=Core.Expr.Direct callee; arguments } -> (
+      match local_entity_name callee with
+      | Some callee_name -> (not (String.equal callee_name name))
+      && List.exists (expr_uses_name_as_value ~shadowed name) arguments
+      | None -> List.exists (expr_uses_name_as_value ~shadowed name) arguments
+    )
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       expr_uses_name_as_value ~shadowed name callee
       || List.exists (expr_uses_name_as_value ~shadowed name) arguments
   | Core.Expr.Lambda lambda ->
-      expr_uses_name_as_value ~shadowed:(lambda.params @ shadowed) name lambda.body
+      expr_uses_name_as_value ~shadowed:(param_names lambda.params @ shadowed) name lambda.body
   | Core.Expr.Let let_ ->
       let binding_names =
         List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
@@ -510,39 +531,43 @@ let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.bind
             lifted_name;
             closure_name = format Format.[ str lifted_name; str "__closure" ];
             captures = captures_of_lambda env lambda;
-            params = lambda.params;
+            params = param_names lambda.params;
             escapes = has_name escaping_names binding.name;
           })
         (fresh_lifted_name env binding.name)
   | _ -> ok None
 
-let lower_var = fun env name ->
-  match find_local_function env name with
-  | Some local_function ->
-      if local_function.escapes then
-        Result.and_then (map_results
-          local_function.captures
-          (lower_capture_argument env local_function))
-          (fun lowered_captures ->
-            let captures, lifted_functions = collect_lowered_exprs lowered_captures in
-            ok
-              {
-                expr = runtime_call
-                  (tuple_make_helper ~arity:(1 + List.length local_function.captures))
-                  (Nir.Expr.Symbol_address local_function.closure_name :: captures);
-                lifted_functions
+let lower_var = fun env entity_id ->
+  match local_entity_name entity_id with
+  | Some name -> (
+      match find_local_function env name with
+      | Some local_function ->
+          if local_function.escapes then
+            Result.and_then (map_results
+              local_function.captures
+              (lower_capture_argument env local_function))
+              (fun lowered_captures ->
+                let captures, lifted_functions = collect_lowered_exprs lowered_captures in
+                ok
+                  {
+                    expr = runtime_call
+                      (tuple_make_helper ~arity:(1 + List.length local_function.captures))
+                      (Nir.Expr.Symbol_address local_function.closure_name :: captures);
+                    lifted_functions
+                  })
+          else
+            error
+              (UnsupportedExpr {
+                reason = format
+                  Format.[
+                    str "local function value `";
+                    str name;
+                    str "` escapes local-function lowering without closure materialization";
+                  ]
               })
-      else
-        error
-          (UnsupportedExpr {
-            reason = format
-              Format.[
-                str "local function value `";
-                str name;
-                str "` escapes local-function lowering without closure materialization";
-              ]
-          })
-  | None -> ok (lowered_expr (Nir.Expr.Symbol name))
+      | None -> ok (lowered_expr (Nir.Expr.Symbol name))
+    )
+  | None -> ok (lowered_expr (Nir.Expr.Symbol (entity_name entity_id)))
 
 let recursive_local_let_is_function_only = fun (let_: Core.Expr.let_) ->
   List.for_all
@@ -559,7 +584,12 @@ let rec lower_expr = fun env expr ->
   | Core.Expr.Var name ->
       lower_var env name
   | Core.Expr.Apply { callee=Core.Expr.Direct name; arguments } ->
-      Result.and_then (map_results arguments (lower_expr env)) (lower_direct_call env name)
+      Result.and_then (map_results arguments (lower_expr env))
+        (
+          match local_entity_name name with
+          | Some local_name -> lower_direct_call env local_name
+          | None -> lower_direct_call env (entity_name name)
+        )
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       validation_map2 (lower_expr env callee) (map_results arguments (lower_expr env))
         (fun callee lowered_arguments ->
@@ -702,8 +732,9 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
     (fun lifted_name ->
       let closure_name = format Format.[ str lifted_name; str "__closure" ] in
       let capture_names = captures_of_lambda env lambda in
+      let params = param_names lambda.params in
       let lambda_env = {
-        bound_values = capture_names @ lambda.params;
+        bound_values = capture_names @ params;
         top_level_functions = env.top_level_functions;
         local_functions = env.local_functions;
         current_function = Some lifted_name;
@@ -719,7 +750,7 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
               let closure_function =
                 Nir.Function.{
                   name = closure_name;
-                  params = closure_param :: lambda.params;
+                  params = closure_param :: params;
                   body = Nir.Expr.Call Nir.Expr.{
                     callee = Direct lifted_name;
                     arguments = (capture_names
@@ -731,7 +762,7 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
                             Nir.Expr.Symbol closure_param;
                             Nir.Expr.Literal (Nir.Literal.Int (index + 1));
                           ]))
-                    @ List.map (fun param -> Nir.Expr.Symbol param) lambda.params
+                    @ List.map (fun param -> Nir.Expr.Symbol param) params
                   }
                 } in
               {
@@ -744,12 +775,14 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
                   closure_function;
                   Nir.Function.{
                     name = lifted_name;
-                    params = capture_names @ lambda.params;
+                    params = capture_names @ params;
                     body = lowered_body.expr
                   };
                 ]
               })
-            (map_results capture_names (fun capture_name -> lower_var env capture_name))))
+            (map_results
+              capture_names
+              (fun capture_name -> lower_var env (Core.Entity_id.of_name capture_name)))))
 
 and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
   match binding.expr with
@@ -761,8 +794,9 @@ and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
           reason = "missing lifted local-function metadata"
         })
       | Some local_function ->
+          let params = param_names lambda.params in
           let lambda_env = {
-            bound_values = local_function.captures @ lambda.params;
+            bound_values = local_function.captures @ params;
             top_level_functions = env.top_level_functions;
             local_functions = local_functions @ env.local_functions;
             current_function = Some local_function.lifted_name;
@@ -803,7 +837,7 @@ and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
                 @ [
                   Nir.Function.{
                     name = local_function.lifted_name;
-                    params = local_function.captures @ lambda.params;
+                    params = local_function.captures @ params;
                     body = lowered_body.expr
                   }
                 ]
@@ -829,23 +863,19 @@ let env_for_function = fun state ~top_level_functions ~current_function ~bound_v
 
 let lower_binding = fun state ~top_level_functions (binding: Core.Binding.t) ->
   match binding.expr with
-  | Core.Expr.Lambda lambda -> Result.map
-    (fun (body: lowered_expr) ->
-      List.map (fun function_ -> LoweredFunction function_) body.lifted_functions
-      @ [
-        LoweredFunction Nir.Function.{
-          name = binding.name;
-          params = lambda.params;
-          body = body.expr
-        }
-      ])
-    (lower_expr
-      (env_for_function
-        state
-        ~top_level_functions
-        ~current_function:binding.name
-        ~bound_values:lambda.params)
-      lambda.body)
+  | Core.Expr.Lambda lambda ->
+      Result.map
+        (fun (body: lowered_expr) ->
+          let params = param_names lambda.params in
+          List.map (fun function_ -> LoweredFunction function_) body.lifted_functions
+          @ [ LoweredFunction Nir.Function.{ name = binding.name; params; body = body.expr } ])
+        (lower_expr
+          (env_for_function
+            state
+            ~top_level_functions
+            ~current_function:binding.name
+            ~bound_values:(param_names lambda.params))
+          lambda.body)
   | expr -> Result.map
     (fun (lowered_expr: lowered_expr) ->
       List.map (fun function_ -> LoweredFunction function_) lowered_expr.lifted_functions
@@ -894,7 +924,7 @@ let lower_group = fun state ~top_level_functions group_index (group: Core.Bindin
     (map_results group.items (lower_item state ~top_level_functions))
 
 let lower_export = fun (export: Core.Export.t) ->
-  Nir.Export.{ name = export.name; symbol = export.symbol }
+  Nir.Export.{ name = export.name; symbol = entity_name export.symbol }
 
 let top_level_functions_of_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
   compilation_unit.init |> List.concat_map

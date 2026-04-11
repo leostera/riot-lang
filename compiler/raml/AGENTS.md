@@ -40,8 +40,15 @@ Today that means:
 - `Core_ir.Binding_group` owns ordered init groups plus exports
 - `Core_ir.Init_item` distinguishes named `Binding` items from effectful `Eval`
   items
+- `Core_ir` owns its own compiler-local identity types:
+  `Surface_path`, `Binding_id`, and `Entity_id`
 - `Core_ir.Expr` is Lambda-shaped: `Constant`, `Var`, `Apply`, `Lambda`,
   `Let`, `Sequence`, `Tuple`, `Tuple_get`, `If_then_else`, and `Primitive`
+- `Core_ir.Expr.Var`, direct callees, lambda params, let bindings, and exports
+  use `Entity_id`, not raw strings; unresolved global/module/prelude references
+  may stay unresolved, but local/current-unit binders should be resolved through
+  `Binding_id` during `typ -> raml` lowering whenever the lowering environment
+  can recover that identity
 
 Backend ownership is:
 
@@ -129,6 +136,9 @@ Backend ownership is:
   `compiler/raml/src/native/lir/`,
   and `compiler/raml/src/native/emitter/`
 - the first native late IR is `NIR`, followed by `MIR` and `LIR`
+- `LIR.Procedure` now carries explicit frame metadata computed by
+  `Native.Lir.Passes.Layout_frames`; native emitters should consume that
+  metadata instead of rediscovering stack slots or frame sizes ad hoc
 - wasm backend code should grow under `compiler/raml/src/wasm/`
 - wasm should get its own post-`Core_ir` runtime/host IR family
 - only extract a shared post-`Core_ir` native/wasm layer later if the
@@ -144,12 +154,21 @@ Top-level compiler entrypoints are exposed through:
 - `Raml.Config`
 - `Raml.Event`
 - `Raml.compile`
-- `Raml.compile_source`
+- `Raml.TestingHelpers.compile_source`
 
 Use `Raml.Config.make ~host ~target ()` when backend selection matters.
 Do not infer the backend family from the machine running the compiler.
 The target triple decides the backend; the host triple only describes where
 the compiler is executing.
+The public `Raml.compile` path should go through a shared frontend stage plus
+backend dispatch. Keep source-string helpers under `Raml.TestingHelpers`; do
+not route the library API back through `Raml.TestingHelpers.Example_pipeline`.
+Keep `Raml.Config.on_event` structured as `Raml.Event.t -> unit`; `raml`
+itself should not serialize, print, or reparse its own events.
+Example-only typing support must not be part of the public `Raml` API. If the
+current build graph needs shared fixture typing helpers, keep them internal to
+the package and out of the production compile path until the fixtures become
+self-describing.
 
 Keep diagnostics/event emission structured. Do not replace it with ad hoc text
 logging.
@@ -243,10 +262,13 @@ For new compiler behavior:
 4. Keep example fixtures cross-target so feature drift is obvious.
 
 The example-driven suite is the cross-backend regression layer.
-Keep it centered on `Raml.Example_pipeline`, so every example snapshots the
-shared `Core_ir` view plus backend projections in one place.
+Keep it centered on `Raml.TestingHelpers.Example_pipeline`, so every example
+snapshots the shared `Core_ir` view plus backend projections in one place.
+If examples need extra typing surface, keep that in fixture/test support or in
+the example sources themselves; do not hide example-only ambient typing inside
+the `raml` library.
 
-Use the public `Raml.compile_source` / `Raml.compile` API to snapshot the
+Use `Raml.TestingHelpers.compile_source` or `Raml.compile` to snapshot the
 selected-backend contract separately through `Raml.Compilation`.
 
 ## Validate
