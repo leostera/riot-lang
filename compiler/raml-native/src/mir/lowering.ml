@@ -192,13 +192,15 @@ let trace_to_json = fun trace ->
 let trace_program = fun initial ->
   let canonicalize = Passes.Canonicalize.program initial in
   let insert_polls = Passes.Insert_polls.program canonicalize in
-  let copy_propagate = Passes.Copy_propagate.program insert_polls in
+  let cse = Passes.Cse.program insert_polls in
+  let copy_propagate = Passes.Copy_propagate.program cse in
   let dead_code = Passes.Dead_code.program copy_propagate in
   {
     initial;
     passes = [
       { name = "canonicalize"; program = canonicalize };
       { name = "insert_polls"; program = insert_polls };
+      { name = "cse"; program = cse };
       { name = "copy_propagate"; program = copy_propagate };
       { name = "dead_code"; program = dead_code };
     ];

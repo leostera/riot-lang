@@ -1,12 +1,8 @@
-(** Insert explicit runtime polling calls into [MIR].
-
-    The current policy is simple and intentionally conservative: every non-poll
-    call site gets a synthetic [raml_poll] call immediately before it, and
-    structured conditionals are rewritten recursively so the policy applies in
-    both branches.
-
-    This keeps polling visible in snapshots and gives later MIR/LIR passes a
-    concrete call site to optimize around. *)
+(** This pass makes runtime polling explicit in [MIR]. It walks the structured
+    instruction tree and inserts a synthetic [raml_poll] call before every
+    non-poll call, including calls nested under conditionals. That turns an
+    implicit runtime obligation into ordinary IR, which means later passes and
+    snapshots can reason about it directly instead of hiding it in emission. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

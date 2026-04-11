@@ -1,14 +1,10 @@
-(** Eliminate dead local work from structured [MIR].
-
-    This pass consumes [Mir.Liveness] and removes instructions whose results
-    are unused and whose execution has no required side effects.
-
-    Today that means:
-
-    - drop dead pure moves
-    - strip comments from the optimization pipeline
-    - prune empty conditionals
-    - erase unused call destinations while keeping the call itself *)
+(** This pass removes local work from [MIR] that no longer matters. It walks
+    each procedure backwards using [Mir.Liveness], keeps instructions whose
+    results are still live or whose effects must happen, drops dead pure moves
+    and empty conditionals, and preserves calls while discarding unused result
+    destinations. The goal is simple: once earlier passes have exposed
+    redundancy, this pass strips the remaining temporary traffic before
+    linearization. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

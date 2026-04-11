@@ -1,14 +1,8 @@
-(** Canonicalize structured [MIR] before later native optimization passes.
-
-    This pass keeps the instruction tree easy to reason about by eliminating
-    obviously redundant structure:
-
-    - no-op moves
-    - empty conditionals
-    - conditionals with identical branches
-    - boolean-literal conditionals that can be folded eagerly
-
-    It does not attempt dataflow reasoning; that belongs in later MIR passes. *)
+(** This pass cleans up the structured parts of [MIR] before the heavier MIR
+    analyses run. It walks conditionals recursively, drops no-op moves, folds
+    constant boolean branches, and erases conditionals whose branches are empty
+    or identical. The result is a smaller, more regular tree, which makes the
+    later dataflow-oriented passes cheaper and easier to trust. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

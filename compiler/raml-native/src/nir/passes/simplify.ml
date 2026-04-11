@@ -1,14 +1,9 @@
-(** Conservative local simplifications over [NIR].
-
-    This pass removes redundant tree structure without changing native-specific
-    semantics:
-
-    - fold boolean [if] expressions with literal conditions
-    - drop pure entry-side [Eval] items
-    - remove dead pure [let] bindings
-    - collapse [let x = expr in x]
-
-    It is intentionally cheaper and less opinionated than later MIR/LIR passes. *)
+(** This pass trims obviously redundant structure from [NIR] before instruction
+    selection. It walks the expression tree, folds boolean-literal conditionals,
+    removes dead pure [let] bindings, collapses [let x = expr in x], and drops
+    pure entry-side [Eval] items. The effect is intentionally conservative:
+    keep the native-runtime shape, but stop carrying tree structure that every
+    later stage would just delete again. *)
 open Std
 module Nir = Types
 

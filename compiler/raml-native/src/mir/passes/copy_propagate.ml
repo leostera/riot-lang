@@ -1,12 +1,10 @@
-(** Propagate cheap copied values through structured [MIR].
-
-    This is a local forward substitution pass. It tracks simple copied values
-    such as registers, literals, and symbol addresses, then rewrites later uses
-    to reference the cheaper source directly.
-
-    The pass intentionally avoids propagating globals or reasoning across
-    side-effect boundaries beyond conservative destination invalidation. It is
-    meant to expose obvious redundancy before dead-code elimination runs. *)
+(** This pass pushes cheap copied values forward through structured [MIR]. It
+    keeps a forward environment of copies, rewrites later uses to point at the
+    cheaper source operand, invalidates destinations when they are overwritten,
+    and only keeps branch knowledge when both sides agree. The effect is that
+    literals, symbol addresses, and simple register aliases stop bouncing
+    through temporary names, which in turn exposes more dead work for the next
+    cleanup pass. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

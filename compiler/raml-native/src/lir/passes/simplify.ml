@@ -1,16 +1,9 @@
-(** Local instruction simplifications for linear native code.
-
-    This pass is intentionally small and local. It runs after frame layout and
-    before scheduling, and it only performs rewrites that are obviously valid
-    without control-flow analysis:
-
-    - remove no-op moves
-    - fold constant zero/nonzero conditional branches
-    - drop conditional branches whose target is the next label
-    - fold [move; return] into a direct return of the moved operand
-
-    More global control-flow cleanup remains the responsibility of
-    [Lir.Passes.Schedule]. *)
+(** This pass applies a handful of cheap local rewrites to linear [LIR]. It
+    scans left-to-right, removes no-op moves, folds constant conditional
+    branches, drops branches that only jump to the next label, and turns
+    [move; return] into a direct return of the moved operand. These are small
+    wins, but they are worth taking before scheduling so later cleanup sees a
+    simpler stream. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

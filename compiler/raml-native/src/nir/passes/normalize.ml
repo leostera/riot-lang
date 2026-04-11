@@ -1,15 +1,9 @@
-(** Normalize [NIR] into a simpler expression shape for later native passes.
-
-    This pass is still purely structural. It does not choose runtime layouts or
-    target details. Its job is to make nested expression structure easier for
-    later passes by:
-
-    - lifting nested [let] structure out of call positions and conditions
-    - flattening adjacent [let] chains
-    - keeping function and entry bodies in a more ANF-like shape
-
-    This is the native analogue of "make the tree easier to reason about"
-    before later simplification and selection work. *)
+(** [NIR] normalization makes the tree easier for later native passes to work
+    with. It lifts nested [let] bindings out of call positions and conditions,
+    flattens adjacent [let] chains, and generally pushes the IR toward a more
+    ANF-like shape. The point is not to change runtime meaning; it is to make
+    later simplification and lowering passes reason about one regular shape
+    instead of many incidental ones. *)
 open Std
 module Program = Types.Program
 module Expr = Types.Expr

@@ -1,13 +1,9 @@
-(** Cleanup and normalize linear control flow in [LIR].
-
-    This pass is the last structured cleanup before emission. It rewrites the
-    flat instruction stream so emitters see a tidier control-flow graph:
-
-    - collapse chains of adjacent labels
-    - rewrite branch targets through label aliases
-    - remove instructions that become unreachable after jumps/returns
-    - remove fallthrough jumps
-    - drop labels that are no longer referenced *)
+(** This pass cleans up the linear control-flow graph in [LIR]. It collapses
+    adjacent labels into a single canonical name, rewrites branch targets
+    through those aliases, removes unreachable code after jumps or returns,
+    drops jumps that only fall through to the next label, and finally deletes
+    labels that are no longer referenced. The point is to hand the emitter a
+    compact linear program instead of one still carrying lowering artifacts. *)
 open Std
 module HashSet = Collections.HashSet
 module Program = Types.Program
