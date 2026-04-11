@@ -54,8 +54,7 @@ ReScript is a better reference for emitted JS shape:
 - tuples lower to JS arrays
 - records lower to JS objects
 - arithmetic/comparisons/string conversion prefer native JS forms
-- Riot-owned JS builtins are classified explicitly before any OCaml-compat
-  aliases
+- Riot-owned JS builtins are classified explicitly from `Std`/Riot surface paths
 - object keys, property access, and emitted binder legality now share one
   syntax policy instead of backend-local heuristics
 
@@ -79,9 +78,7 @@ The main remaining architectural gaps are:
    collapsing imports down to bare path strings immediately.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.
-   The current shape is better than before though: Riot-owned paths are now the
-   primary classification surface, and OCaml-shaped names are quarantined as
-   compatibility aliases.
+   It is now Riot-owned end to end in the JS backend.
 3. `JST` has no post-lowering optimization layer yet.
 4. There is no package-level dependency artifact analogous to Melange `.cmj`
    metadata.

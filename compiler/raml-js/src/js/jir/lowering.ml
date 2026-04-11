@@ -204,12 +204,6 @@ let lower_builtin_call = fun entity_id builtin arguments ->
       | [ argument ] -> lower_console_error [ argument ]
       | _ -> fallback ()
     )
-  | Print_newline -> (
-      match arguments with
-      | []
-      | [ _ ] -> lower_console_log [ Jir.Expr.Literal (Jir.Literal.String "") ]
-      | _ -> fallback ()
-    )
   | Stdout_write -> (
       match arguments with
       | [ argument ] -> lower_stdout_write argument

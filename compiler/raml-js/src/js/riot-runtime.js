@@ -1,23 +1,3 @@
-export function print_endline(value) {
-  console.log(value);
-}
-
-export function print_newline() {
-  console.log("");
-}
-
-export function print_int(value) {
-  process.stdout.write(String(value));
-}
-
-export function print_string(value) {
-  process.stdout.write(String(value));
-}
-
-export function print_char(value) {
-  process.stdout.write(String(value));
-}
-
 export function makeCurried(fn, arity = fn.length) {
   function curried(...args) {
     if (args.length >= arity) {

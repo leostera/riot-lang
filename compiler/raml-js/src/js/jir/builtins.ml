@@ -6,7 +6,6 @@ type surface_path = string list
 type direct_callee =
   | Console_log
   | Console_error
-  | Print_newline
   | Stdout_write
   | Stderr_write
   | String_constructor
@@ -41,8 +40,7 @@ let matches_surface_path = fun entity_id expected ->
 
 type direct_callee_spec = {
   callee: direct_callee;
-  riot_paths: surface_path list;
-  compatibility_paths: surface_path list;
+  paths: surface_path list;
 }
 
 let matches_any_surface_path = fun entity_id paths ->
@@ -50,65 +48,57 @@ let matches_any_surface_path = fun entity_id paths ->
 
 let riot_global = fun name -> [ "Std"; "Global"; name ]
 
+let riot_module = fun module_name name ->
+  [ [ module_name; name ]; [ "Std"; module_name; name ] ]
+
 let specs = [
   {
     callee = Console_log;
-    riot_paths = [ [ "println" ]; [ "Std"; "println" ]; riot_global "println" ];
-    compatibility_paths = [ [ "print_endline" ] ];
+    paths = [ [ "println" ]; [ "Std"; "println" ]; riot_global "println" ];
   };
   {
     callee = Console_error;
-    riot_paths = [ [ "eprintln" ]; [ "Std"; "eprintln" ]; riot_global "eprintln" ];
-    compatibility_paths = [];
+    paths = [ [ "eprintln" ]; [ "Std"; "eprintln" ]; riot_global "eprintln" ];
   };
   {
     callee = Stdout_write;
-    riot_paths = [ [ "print" ]; [ "Std"; "print" ]; riot_global "print" ];
-    compatibility_paths = [ [ "print_int" ]; [ "print_string" ]; [ "print_char" ] ];
+    paths = [ [ "print" ]; [ "Std"; "print" ]; riot_global "print" ];
   };
   {
     callee = Stderr_write;
-    riot_paths = [ [ "eprint" ]; [ "Std"; "eprint" ]; riot_global "eprint" ];
-    compatibility_paths = [];
-  };
-  {
-    callee = Print_newline;
-    riot_paths = [];
-    compatibility_paths = [ [ "print_newline" ] ];
+    paths = [ [ "eprint" ]; [ "Std"; "eprint" ]; riot_global "eprint" ];
   };
   {
     callee = String_constructor;
-    riot_paths = [];
-    compatibility_paths = [ [ "string_of_int" ]; [ "string_of_float" ] ];
+    paths = riot_module "Int" "to_string" @ riot_module "Float" "to_string";
   };
   {
     callee = Math_sqrt;
-    riot_paths = [];
-    compatibility_paths = [ [ "sqrt" ] ];
+    paths = riot_module "Float" "sqrt";
   };
-  { callee = Primitive "%int_of_string"; riot_paths = []; compatibility_paths = [ [ "int_of_string" ] ] };
-  { callee = Primitive "%float_of_string"; riot_paths = []; compatibility_paths = [ [ "float_of_string" ] ] };
-  { callee = Unary_operator Types.Operator.Not; riot_paths = []; compatibility_paths = [ [ "not" ] ] };
-  { callee = Boolean_and; riot_paths = []; compatibility_paths = [ [ "&&" ] ] };
-  { callee = Boolean_or; riot_paths = []; compatibility_paths = [ [ "||" ] ] };
-  { callee = Binary_operator Types.Operator.Add; riot_paths = []; compatibility_paths = [ [ "+." ]; [ "+" ] ] };
-  { callee = Binary_operator Types.Operator.Subtract; riot_paths = []; compatibility_paths = [ [ "-." ]; [ "-" ] ] };
-  { callee = Binary_operator Types.Operator.Multiply; riot_paths = []; compatibility_paths = [ [ "*." ]; [ "*" ] ] };
-  { callee = Binary_operator Types.Operator.Divide; riot_paths = []; compatibility_paths = [ [ "/." ]; [ "/" ] ] };
-  { callee = Binary_operator Types.Operator.Modulo; riot_paths = []; compatibility_paths = [ [ "mod" ] ] };
-  { callee = Binary_operator Types.Operator.Equal; riot_paths = []; compatibility_paths = [ [ "=" ] ] };
-  { callee = Binary_operator Types.Operator.Not_equal; riot_paths = []; compatibility_paths = [ [ "<>" ] ] };
-  { callee = Binary_operator Types.Operator.Less_than; riot_paths = []; compatibility_paths = [ [ "<" ] ] };
-  { callee = Binary_operator Types.Operator.Less_or_equal; riot_paths = []; compatibility_paths = [ [ "<=" ] ] };
-  { callee = Binary_operator Types.Operator.Greater_than; riot_paths = []; compatibility_paths = [ [ ">" ] ] };
-  { callee = Binary_operator Types.Operator.Greater_or_equal; riot_paths = []; compatibility_paths = [ [ ">=" ] ] };
-  { callee = Binary_operator Types.Operator.Add; riot_paths = []; compatibility_paths = [ [ "^" ] ] };
+  { callee = Primitive "%int_of_string"; paths = riot_module "Int" "of_string" };
+  { callee = Primitive "%float_of_string"; paths = riot_module "Float" "of_string" };
+  { callee = Unary_operator Types.Operator.Not; paths = [ [ "not" ] ] };
+  { callee = Boolean_and; paths = [ [ "&&" ] ] };
+  { callee = Boolean_or; paths = [ [ "||" ] ] };
+  { callee = Binary_operator Types.Operator.Add; paths = [ [ "+." ]; [ "+" ] ] };
+  { callee = Binary_operator Types.Operator.Subtract; paths = [ [ "-." ]; [ "-" ] ] };
+  { callee = Binary_operator Types.Operator.Multiply; paths = [ [ "*." ]; [ "*" ] ] };
+  { callee = Binary_operator Types.Operator.Divide; paths = [ [ "/." ]; [ "/" ] ] };
+  { callee = Binary_operator Types.Operator.Modulo; paths = [ [ "mod" ] ] };
+  { callee = Binary_operator Types.Operator.Equal; paths = [ [ "=" ] ] };
+  { callee = Binary_operator Types.Operator.Not_equal; paths = [ [ "<>" ] ] };
+  { callee = Binary_operator Types.Operator.Less_than; paths = [ [ "<" ] ] };
+  { callee = Binary_operator Types.Operator.Less_or_equal; paths = [ [ "<=" ] ] };
+  { callee = Binary_operator Types.Operator.Greater_than; paths = [ [ ">" ] ] };
+  { callee = Binary_operator Types.Operator.Greater_or_equal; paths = [ [ ">=" ] ] };
+  { callee = Binary_operator Types.Operator.Add; paths = [ [ "^" ] ] };
 ]
 
-let classify_with = fun project_paths entity_id ->
+let classify_with = fun entity_id ->
   specs
   |> List.find_map (fun spec ->
-    if matches_any_surface_path entity_id (project_paths spec) then
+    if matches_any_surface_path entity_id spec.paths then
       Some spec.callee
     else
       None)
@@ -117,6 +107,4 @@ let classify_direct_callee = fun entity_id ->
   if not (can_classify_entity entity_id) then
     None
   else
-    match classify_with (fun spec -> spec.riot_paths) entity_id with
-    | Some direct_callee -> Some direct_callee
-    | None -> classify_with (fun spec -> spec.compatibility_paths) entity_id
+    classify_with entity_id

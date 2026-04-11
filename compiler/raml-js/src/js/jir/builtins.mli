@@ -10,7 +10,6 @@
 
     The intended contract is:
     - Riot-owned surface names are the primary builtin vocabulary.
-    - OCaml-stdlib-shaped names are temporary compatibility aliases.
     - lowering should target native JS syntax/runtime ownership from those
       classifications, not re-match raw source names elsewhere. *)
 module Core = Raml_core.Core_ir
@@ -18,7 +17,6 @@ module Core = Raml_core.Core_ir
 type direct_callee =
   | Console_log
   | Console_error
-  | Print_newline
   | Stdout_write
   | Stderr_write
   | String_constructor

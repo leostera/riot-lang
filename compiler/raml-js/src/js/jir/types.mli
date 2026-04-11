@@ -216,16 +216,6 @@ module Runtime: sig
 
   val make_curried: unit -> helper
 
-  val print_endline: unit -> helper
-
-  val print_newline: unit -> helper
-
-  val print_int: unit -> helper
-
-  val print_string: unit -> helper
-
-  val print_char: unit -> helper
-
   val to_import: helper -> Imports.requirement
 
   val to_json: helper -> Json.t

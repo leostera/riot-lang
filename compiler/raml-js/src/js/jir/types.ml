@@ -474,41 +474,6 @@ module Runtime = struct
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__makeCurried")
       ()
 
-  let print_endline = fun () ->
-    make
-      ~module_ref
-      ~symbol:"print_endline"
-      ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_endline")
-      ()
-
-  let print_newline = fun () ->
-    make
-      ~module_ref
-      ~symbol:"print_newline"
-      ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_newline")
-      ()
-
-  let print_int = fun () ->
-    make
-      ~module_ref
-      ~symbol:"print_int"
-      ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_int")
-      ()
-
-  let print_string = fun () ->
-    make
-      ~module_ref
-      ~symbol:"print_string"
-      ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_string")
-      ()
-
-  let print_char = fun () ->
-    make
-      ~module_ref
-      ~symbol:"print_char"
-      ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_char")
-      ()
-
   let to_import = fun helper ->
     Imports.make ~from:helper.module_ref ~imported:helper.symbol ~local:helper.local ()
 
