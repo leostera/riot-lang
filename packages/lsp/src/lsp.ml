@@ -198,6 +198,22 @@ module Range = struct
     Ok { start_; end_ }
 end
 
+module Location = struct
+  type t = {
+    uri: Uri.t;
+    range: Range.t;
+  }
+
+  let to_json = fun { uri; range } ->
+    Json.obj [ ("uri", Uri.to_json uri); ("range", Range.to_json range) ]
+
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "location" value in
+    let* uri = Decode.required "location" "uri" (ignore_context Uri.of_json) fields in
+    let* range = Decode.required "location" "range" (ignore_context Range.of_json) fields in
+    Ok { uri; range }
+end
+
 module Markup_kind = struct
   type t =
     | Plain_text
@@ -251,6 +267,156 @@ module Hover_result = struct
     let* contents = Decode.required "hover" "contents" (ignore_context Markup_content.of_json) fields in
     let* range = Decode.optional "hover" "range" (ignore_context Range.of_json) fields in
     Ok { contents; range }
+end
+
+module Symbol_kind = struct
+  type t =
+    | File
+    | Module
+    | Namespace
+    | Package
+    | Class
+    | Method
+    | Property
+    | Field
+    | Constructor
+    | Enum
+    | Interface
+    | Function
+    | Variable
+    | Constant
+    | String
+    | Number
+    | Boolean
+    | Array
+    | Object
+    | Key
+    | Null
+    | EnumMember
+    | Struct
+    | Event
+    | Operator
+    | TypeParameter
+
+  let to_int = function
+    | File -> 1
+    | Module -> 2
+    | Namespace -> 3
+    | Package -> 4
+    | Class -> 5
+    | Method -> 6
+    | Property -> 7
+    | Field -> 8
+    | Constructor -> 9
+    | Enum -> 10
+    | Interface -> 11
+    | Function -> 12
+    | Variable -> 13
+    | Constant -> 14
+    | String -> 15
+    | Number -> 16
+    | Boolean -> 17
+    | Array -> 18
+    | Object -> 19
+    | Key -> 20
+    | Null -> 21
+    | EnumMember -> 22
+    | Struct -> 23
+    | Event -> 24
+    | Operator -> 25
+    | TypeParameter -> 26
+
+  let of_int = function
+    | 1 -> Ok File
+    | 2 -> Ok Module
+    | 3 -> Ok Namespace
+    | 4 -> Ok Package
+    | 5 -> Ok Class
+    | 6 -> Ok Method
+    | 7 -> Ok Property
+    | 8 -> Ok Field
+    | 9 -> Ok Constructor
+    | 10 -> Ok Enum
+    | 11 -> Ok Interface
+    | 12 -> Ok Function
+    | 13 -> Ok Variable
+    | 14 -> Ok Constant
+    | 15 -> Ok String
+    | 16 -> Ok Number
+    | 17 -> Ok Boolean
+    | 18 -> Ok Array
+    | 19 -> Ok Object
+    | 20 -> Ok Key
+    | 21 -> Ok Null
+    | 22 -> Ok EnumMember
+    | 23 -> Ok Struct
+    | 24 -> Ok Event
+    | 25 -> Ok Operator
+    | 26 -> Ok TypeParameter
+    | value -> Error ("invalid symbol kind: " ^ Int.to_string value)
+
+  let to_json = fun value -> Json.int (to_int value)
+
+  let of_json = fun value ->
+    let* value = Decode.int "symbolKind" value in
+    of_int value
+end
+
+module Document_symbol_item = struct
+  type t = {
+    name: string;
+    detail: string option;
+    kind: Symbol_kind.t;
+    range: Range.t;
+    selection_range: Range.t;
+    children: t list option;
+  }
+
+  let rec to_json = fun
+    {
+      name;
+      detail;
+      kind;
+      range;
+      selection_range;
+      children
+    } ->
+    let fields = [
+      ("name", Json.string name);
+      ("kind", Symbol_kind.to_json kind);
+      ("range", Range.to_json range);
+      ("selectionRange", Range.to_json selection_range);
+    ] in
+    let fields = Encode.field_opt "detail" Json.string detail fields in
+    let fields =
+      Encode.field_opt "children" (fun children -> Json.array (List.map to_json children)) children fields
+    in
+    Json.obj (List.rev fields)
+
+  let rec of_json = fun value ->
+    let* fields = Decode.object_fields "documentSymbol" value in
+    let* name = Decode.required "documentSymbol" "name" Decode.string fields in
+    let* detail = Decode.optional "documentSymbol" "detail" Decode.string fields in
+    let* kind = Decode.required "documentSymbol" "kind" (ignore_context Symbol_kind.of_json) fields in
+    let* range = Decode.required "documentSymbol" "range" (ignore_context Range.of_json) fields in
+    let* selection_range = Decode.required
+      "documentSymbol"
+      "selectionRange"
+      (ignore_context Range.of_json)
+      fields in
+    let* children = Decode.optional
+      "documentSymbol"
+      "children"
+      (ignore_context (Decode.list "documentSymbol.children" of_json))
+      fields in
+    Ok {
+      name;
+      detail;
+      kind;
+      range;
+      selection_range;
+      children;
+    }
 end
 
 module Diagnostic = struct
@@ -874,7 +1040,9 @@ module Initialize = struct
       position_encoding: string option;
       text_document_sync: text_document_sync option;
       document_formatting_provider: bool option;
+      definition_provider: bool option;
       hover_provider: bool option;
+      document_symbol_provider: bool option;
       code_action_provider: code_action_provider option;
       experimental: json option;
     }
@@ -946,7 +1114,13 @@ module Initialize = struct
         Json.bool
         capabilities.document_formatting_provider
         fields in
+      let fields = Encode.field_opt "definitionProvider" Json.bool capabilities.definition_provider fields in
       let fields = Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields in
+      let fields = Encode.field_opt
+        "documentSymbolProvider"
+        Json.bool
+        capabilities.document_symbol_provider
+        fields in
       let fields = Encode.field_opt
         "codeActionProvider"
         code_action_provider_to_json
@@ -974,7 +1148,17 @@ module Initialize = struct
         "documentFormattingProvider"
         Decode.bool
         fields in
+      let* definition_provider = Decode.optional
+        "serverCapabilities"
+        "definitionProvider"
+        Decode.bool
+        fields in
       let* hover_provider = Decode.optional "serverCapabilities" "hoverProvider" Decode.bool fields in
+      let* document_symbol_provider = Decode.optional
+        "serverCapabilities"
+        "documentSymbolProvider"
+        Decode.bool
+        fields in
       let* code_action_provider = Decode.optional
         "serverCapabilities"
         "codeActionProvider"
@@ -985,7 +1169,9 @@ module Initialize = struct
         position_encoding;
         text_document_sync;
         document_formatting_provider;
+        definition_provider;
         hover_provider;
+        document_symbol_provider;
         code_action_provider;
         experimental;
       }
@@ -1277,6 +1463,104 @@ module Text_document_requests = struct
 
     let request = Method.request
       ~name:"textDocument/hover"
+      ~params_of_jsonrpc
+      ~params_to_jsonrpc
+      ~result_of_json
+      ~result_to_json
+  end
+
+  module Definition = struct
+    type params = {
+      text_document: Text_document.identifier;
+      position: Position.t;
+    }
+
+    type result = Location.t list option
+
+    let params_to_jsonrpc = fun { text_document; position } ->
+      Params.named
+        [
+          ("textDocument", Text_document.Identifier.to_json text_document);
+          ("position", Position.to_json position);
+        ]
+
+    let params_of_jsonrpc =
+      Params.object_params "textDocument/definition"
+        (fun fields ->
+          let* text_document = Decode.required
+            "textDocument/definition"
+            "textDocument"
+            (ignore_context Text_document.Identifier.of_json)
+            fields in
+          let* position = Decode.required
+            "textDocument/definition"
+            "position"
+            (ignore_context Position.of_json)
+            fields in
+          Ok { text_document; position })
+
+    let result_to_json = function
+      | None -> Json.Null
+      | Some locations -> Json.array (List.map Location.to_json locations)
+
+    let result_of_json = function
+      | Json.Null ->
+          Ok None
+      | Json.Object _ as value ->
+          let* location = Location.of_json value in
+          Ok (Some [ location ])
+      | Json.Array _ as value ->
+          let* locations = Decode.list "textDocument/definition result" Location.of_json value in
+          Ok (Some locations)
+      | value ->
+          Error (unsupported_json_kind "textDocument/definition result object or array" value)
+
+    let request = Method.request
+      ~name:"textDocument/definition"
+      ~params_of_jsonrpc
+      ~params_to_jsonrpc
+      ~result_of_json
+      ~result_to_json
+  end
+
+  module Document_symbol = struct
+    type params = {
+      text_document: Text_document.identifier;
+    }
+
+    type result = Document_symbol_item.t list option
+
+    let params_to_jsonrpc = fun { text_document } ->
+      Params.named [ ("textDocument", Text_document.Identifier.to_json text_document) ]
+
+    let params_of_jsonrpc =
+      Params.object_params "textDocument/documentSymbol"
+        (fun fields ->
+          let* text_document = Decode.required
+            "textDocument/documentSymbol"
+            "textDocument"
+            (ignore_context Text_document.Identifier.of_json)
+            fields in
+          Ok { text_document })
+
+    let result_to_json = function
+      | None -> Json.Null
+      | Some symbols -> Json.array (List.map Document_symbol_item.to_json symbols)
+
+    let result_of_json = function
+      | Json.Null ->
+          Ok None
+      | Json.Array _ as value ->
+          let* symbols = Decode.list
+            "textDocument/documentSymbol result"
+            Document_symbol_item.of_json
+            value in
+          Ok (Some symbols)
+      | value ->
+          Error (unsupported_json_kind "textDocument/documentSymbol result array" value)
+
+    let request = Method.request
+      ~name:"textDocument/documentSymbol"
       ~params_of_jsonrpc
       ~params_to_jsonrpc
       ~result_of_json
