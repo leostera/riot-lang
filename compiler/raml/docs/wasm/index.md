@@ -1,6 +1,6 @@
 # Raml Wasm Backend Manual
 
-This directory is the step-1 manual for `compiler/raml`'s wasm backend work.
+This directory is the working manual for `raml-wasm`.
 
 It is a source-driven snapshot of two related but different things:
 
@@ -8,7 +8,7 @@ It is a source-driven snapshot of two related but different things:
   `3rdparty/melange/jscomp`
 - the current upstream `wasm_of_ocaml` compilation and runtime model
 
-The point is not to treat either project as the design for `raml`.
+The point is not to treat either project as the design for `raml-wasm`.
 
 The point is to make the seams, invariants, and runtime assumptions explicit
 before `raml` grows a Riot package that can target native, JS, and wasm
@@ -35,12 +35,17 @@ So this manual is intentionally split:
 
 Start here:
 
+- [sketch.md](./sketch.md)
+  the concrete `raml-wasm` package shape and first owned seams
 - [pipeline.md](./pipeline.md)
   the two upstream pipeline shapes and what they imply for `raml`
 - [runtime.md](./runtime.md)
   the runtime and host boundary lessons from Melange and `wasm_of_ocaml`
 - [ir.md](./ir.md)
   what a shared `raml` IR stack has to preserve for native, JS, and wasm
+- [grain-notes.md](./grain-notes.md)
+  what Grain's wasm-first backend teaches us, and where wasm really overlaps
+  with native
 - [zort-compatibility.md](./zort-compatibility.md)
   what this means for a wasm target that wants to sit on `zort`
 
@@ -71,6 +76,8 @@ The native half already has its own manual under `../native`.
 
 These docs are meant to keep ownership boundaries explicit.
 
+- `sketch.md`
+  owns the concrete `raml-wasm` package shape and the first `WIR` boundary
 - `pipeline.md`
   owns the stage graph and the main handoff choices
 - `runtime.md`
@@ -78,6 +85,8 @@ These docs are meant to keep ownership boundaries explicit.
   feature gaps
 - `ir.md`
   owns the shared `raml` IR requirements for a real multi-backend compiler
+- `grain-notes.md`
+  owns the Grain-specific backend lessons and the native/wasm overlap sketch
 - `zort-compatibility.md`
   owns the compatibility implications for a `zort`-hosted wasm target
 

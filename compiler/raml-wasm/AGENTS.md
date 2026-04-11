@@ -6,7 +6,8 @@
 
 This package owns wasm-only lowering and codegen work.
 
-Right now that is only the backend stub. Grow the wasm backend here instead of
+Right now the first owned seam is `WIR`: a wasm-specific lowered IR plus
+runtime-import and artifact scaffolding. Grow the wasm backend here instead of
 adding speculative wasm code back into `compiler/raml` or `raml-core`.
 
 ## Rules
@@ -20,6 +21,7 @@ adding speculative wasm code back into `compiler/raml` or `raml-core`.
 ## Read First
 
 - `compiler/raml/docs/wasm/index.md`
+- `compiler/raml/docs/wasm/sketch.md`
 - `compiler/raml/docs/wasm/pipeline.md`
 - `compiler/raml/docs/wasm/ir.md`
 
