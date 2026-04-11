@@ -9,3 +9,5 @@ module Dce = Dce
 module Normalize = Normalize
 
 module Materialize_imports = Materialize_imports
+
+module Prune_imports = Prune_imports
