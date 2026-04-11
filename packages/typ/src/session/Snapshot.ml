@@ -76,7 +76,6 @@ type t = {
   local_module_names_cache: (int, string list) Collections.HashMap.t;
   local_ambient_keys_cache: (int, local_ambient_cache_key) Collections.HashMap.t;
   ambient_surface_keys_cache: (int, ambient_surface_cache_key) Collections.HashMap.t;
-  persisted_module_typings_cache: (string, bool) Collections.HashMap.t;
   qualified_module_surface_cache: (string, ModuleSurface.qualified_surface) Collections.HashMap.t;
   mutable all_module_results_cache: (string * ModulePairing.t) list option;
   mutable rooted_module_typings_cache: ModuleTypings.t list option;
@@ -104,39 +103,6 @@ let signature_mismatch_subject mismatch =
   | Diagnostic.TypeDeclarationMismatch { name; _ } -> format Format.[ str "type "; str name ]
 
 let signature_mismatch_message = Diagnostic.signature_mismatch_message
-
-let ensure_module_typings_persisted = fun (snapshot: t) ~module_name module_typings ->
-  match Collections.HashMap.get snapshot.persisted_module_typings_cache module_name with
-  | Some true -> ()
-  | Some false
-  | None -> (
-      match snapshot.analyses with
-      | [] -> ()
-      | slot :: _ -> (
-          match slot.config.store with
-          | None -> ()
-          | Some store ->
-              match Store.save_module_typings store module_typings with
-              | Ok () ->
-                  let _ = Collections.HashMap.insert
-                    snapshot.persisted_module_typings_cache
-                    module_name
-                    true in
-                  ()
-              | Error message ->
-                  let loaded_module_names = slot.config.loaded_modules
-                  |> LoadedModules.names
-                  |> List.map LocalModules.RequiredName.to_string
-                  |> List.sort String.compare in
-                  raise
-                    (Failure ("while persisting snapshot module typings for "
-                    ^ module_name
-                    ^ " loaded_modules=["
-                    ^ String.concat ", " loaded_module_names
-                    ^ "]: "
-                    ^ message))
-        )
-    )
 
 let digest_key = fun parts -> parts |> String.concat "\x1f" |> Crypto.hash_string |> Crypto.Digest.hex
 
@@ -211,7 +177,6 @@ let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_cach
     local_module_names_cache = Collections.HashMap.with_capacity 64;
     local_ambient_keys_cache = Collections.HashMap.with_capacity 64;
     ambient_surface_keys_cache = Collections.HashMap.with_capacity 64;
-    persisted_module_typings_cache = Collections.HashMap.with_capacity 32;
     qualified_module_surface_cache = Collections.HashMap.with_capacity 128;
     all_module_results_cache = None;
     rooted_module_typings_cache = None;
@@ -732,12 +697,7 @@ and module_result_for = fun (snapshot: t) module_name ->
         | Finished _ -> false)
   in
   match Collections.HashMap.get snapshot.module_results_cache cache_key with
-  | Some result ->
-      let () = ensure_module_typings_persisted
-        snapshot
-        ~module_name
-        (module_typings_of_result result) in
-      result
+  | Some result -> result
   | None -> (
       if module_is_in_progress then
         partial_module_result snapshot module_name
@@ -752,20 +712,12 @@ and module_result_for = fun (snapshot: t) module_name ->
         in
         match shared_cache_hit with
         | Some result ->
-            let () = ensure_module_typings_persisted
-              snapshot
-              ~module_name
-              (module_typings_of_result result) in
             let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
             result
         | None ->
             let shared_cache_key = module_result_shared_cache_key snapshot module_name in
             match Collections.HashMap.get snapshot.shared_module_result_cache shared_cache_key with
             | Some result ->
-                let () = ensure_module_typings_persisted
-                  snapshot
-                  ~module_name
-                  (module_typings_of_result result) in
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
                 result
             | None ->
@@ -794,7 +746,6 @@ and module_result_for = fun (snapshot: t) module_name ->
                   shared_cache_key
                   result in
                 let module_typings = module_typings_of_result result in
-                let () = ensure_module_typings_persisted snapshot ~module_name module_typings in
                 (
                   match slots with
                   | [] -> ()

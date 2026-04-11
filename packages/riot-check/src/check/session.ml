@@ -1288,6 +1288,12 @@ let session_ordered_grouped_root_targets = fun prepared_by_path target_paths ->
 let checked_group_for_ordered_sources_via_rooted_sessions = fun ?on_event ~package_name ~group_targets config ordered_sources target_paths ->
   let () = emit_event
     ?on_event
+    (Check_event.PackageEngineSelected {
+      package_name;
+      engine = Check_event.RootedSnapshotReconstruction
+    }) in
+  let () = emit_event
+    ?on_event
     (Check_event.PackageSessionSeedStarted {
       package_name;
       ordered_source_count = List.length ordered_sources;
@@ -1511,6 +1517,12 @@ let workspace_module_typings_for_package =
         in
         let package_fingerprint = package_fingerprint_of_typ_sources ordered_sources dependency_packages in
         let compute_package_typings () =
+          let () = emit_event
+            ?on_event
+            (Check_event.PackageEngineSelected {
+              package_name = pkg.name;
+              engine = Check_event.AuthoritativePackageEngine
+            }) in
           let loaded_modules = Typ_loaded_modules.merge
             ~preferred:dependency_typings
             ~fallback:default_typ_loaded_modules
@@ -1622,11 +1634,17 @@ let ordered_sources_by_path = fun ordered_sources ->
     (fun by_path (source: package_typ_source) -> (path_key source.display_path, source) :: by_path)
     []
 
-let checked_group_for_package_scan = fun config ~package_name ~package_fingerprint ordered_sources target_paths ->
+let checked_group_for_package_scan = fun ?on_event config ~package_name ~package_fingerprint ordered_sources target_paths ->
   let checked_files_by_path = ref [] in
   let record_checked_file path analysis =
     checked_files_by_path := (path_key path, checked_file_of_analysis path analysis) :: !checked_files_by_path
   in
+  let () = emit_event
+    ?on_event
+    (Check_event.PackageEngineSelected {
+      package_name;
+      engine = Check_event.AuthoritativePackageEngine
+    }) in
   match Typ.Check.fold_package_sources
     ~package_name
     ~package_fingerprint
@@ -1817,6 +1835,7 @@ let check_target_files = fun ~workspace ~scan_mode ~include_dev ?on_event ?on_re
                 | Some ordered_sources ->
                     let package_fingerprint = package_fingerprint_of_typ_sources ordered_sources dependency_packages in
                     let checked_group = checked_group_for_package_scan
+                      ?on_event
                       config
                       ~package_name:pkg.name
                       ~package_fingerprint

@@ -56,6 +56,8 @@ let emit_human = fun ~stdout ~stderr ~workspace_root ~quiet event ->
         stderr (package_progress_line "Checking" package_name)
   | Check.Event.PackageCached { package_name } ->
       ignore package_name
+  | Check.Event.PackageEngineSelected _ ->
+      ()
   | Check.Event.PackagePlanningStarted _
   | Check.Event.PackagePlanningFinished _
   | Check.Event.PackageSourcePreparationStarted _

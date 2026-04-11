@@ -3666,31 +3666,104 @@ let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
             Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type;
             Ok ())
 
-let test_prepare_snapshot_persists_module_typings_as_modules_finish = fun _ctx ->
+let test_prepare_snapshot_keeps_store_read_only_during_query_forcing = fun _ctx ->
   with_typ_store
     (fun store ->
       let config = Config.default |> Config.with_store ~store:(Some store) in
       let session = Session.empty ~config in
-      let (session, _a_source_id) = create_source
+      let (session, source_id) = create_source
         session
         ~kind:Source.File
-        ~origin:(Source.Label "a.ml")
-        ~text:"let answer = 42\n" in
-      let (session, b_source_id) = create_source
-        session
-        ~kind:Source.File
-        ~origin:(Source.Label "b.ml")
-        ~text:"let use = A.answer\n" in
-      match Session.prepare_snapshot session ~roots:[ b_source_id ] with
+        ~origin:(Source.Label "single.ml")
+        ~text:"let value = 42\n" in
+      match Session.prepare_snapshot session ~roots:[ source_id ] with
       | Error missing -> Error (format
         Format.[
           str "expected store-backed snapshot preparation to succeed, got ";
           str (Data.Json.to_string (Session.MissingRequirements.to_json missing));
         ])
       | Ok snapshot ->
-          let before_a = Store.load_module_typings store ~module_name:"A" in
-          let before_b = Store.load_module_typings store ~module_name:"B" in
-          let _ = Session.Snapshot.find_module_typings_by_name snapshot "B" in
+          let diagnostics = diagnostic_strings snapshot source_id in
+          let before = Store.load_module_typings store ~module_name:"Single" in
+          let value_type = export_scheme snapshot source_id "value" in
+          let _ = Session.Snapshot.find_module_typings_by_name snapshot "Single" in
+          let rooted_typings = Session.Snapshot.module_typings snapshot in
+          let after = Store.load_module_typings store ~module_name:"Single" in
+          if Option.is_some before then
+            Error "expected module typings store to start empty"
+          else if not (List.is_empty diagnostics) then
+            Error (String.concat "\n" diagnostics)
+          else if value_type <> Some "int" then
+            Error ("unexpected rooted export type: " ^ show_option value_type)
+          else if List.map ModuleTypings.module_name rooted_typings <> [ "Single" ] then
+            Error ("unexpected rooted module typings: "
+            ^ String.concat ", " (List.map ModuleTypings.module_name rooted_typings))
+          else if Option.is_some after then
+            Error "expected rooted snapshot queries to leave canonical module persistence to the build path"
+          else
+            Ok ())
+
+let test_fold_package_sources_persists_module_typings_from_authoritative_engine = fun _ctx ->
+  with_typ_store
+    (fun store ->
+      let config = Config.default |> Config.with_store ~store:(Some store) in
+      let source_a = prepared_check_source
+        ~source_id:(SourceId.of_int 0)
+        ~filename:"a.ml"
+        ~internal_module_name:"A"
+        ~local_module_name:"A"
+        ~public_module_name:None
+        ~text:"let answer = 42\n" in
+      let source_b = prepared_check_source
+        ~source_id:(SourceId.of_int 1)
+        ~filename:"b.ml"
+        ~internal_module_name:"B"
+        ~local_module_name:"B"
+        ~public_module_name:None
+        ~text:"let use = A.answer\n" in
+      let before_a = Store.load_module_typings store ~module_name:"A" in
+      let before_b = Store.load_module_typings store ~module_name:"B" in
+      match Check.fold_package_sources
+        ~config
+        ~ordered_sources:[ source_b; source_a ]
+        ~init:[]
+        ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+        () with
+      | Error Check.MissingRequirements { module_name; requirements } -> Error (format
+        Format.[
+          str "unexpected missing requirements while checking ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+        ])
+      | Error Check.MissingModuleTypings { module_name } -> Error (format
+        Format.[
+          str "missing authoritative module typings for ";
+          str (LocalModules.InternalName.to_string module_name);
+        ])
+      | Error Check.MissingAnalysis { module_name; path } -> Error (format
+        Format.[
+          str "missing checked analysis for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str " at ";
+          str (Path.to_string path);
+        ])
+      | Error Check.StoreFailure { module_name; reason } -> Error (format
+        Format.[
+          str "while persisting module typings for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
+      | Error Check.PackageStoreFailure { package_name; reason } -> Error (format
+        Format.[
+          str "while persisting package bundle for ";
+          str package_name;
+          str ": ";
+          str reason;
+        ])
+      | Ok result ->
+          let groups = List.rev result.acc in
           let after_a = Store.load_module_typings store ~module_name:"A" in
           let after_b = Store.load_module_typings store ~module_name:"B" in
           if Option.is_some before_a || Option.is_some before_b then
@@ -3699,16 +3772,22 @@ let test_prepare_snapshot_persists_module_typings_as_modules_finish = fun _ctx -
             match (after_a, after_b) with
             | (Some a_typings, Some b_typings) ->
                 Test.assert_equal
+                  ~expected:[ "A"; "B" ]
+                  ~actual:(groups
+                  |> List.map (fun (group: Check.finished_group) -> LocalModules.InternalName.to_string group.module_name));
+                Test.assert_equal
                   ~expected:[ "answer" ]
                   ~actual:(module_typings_export_names a_typings);
-                Test.assert_equal ~expected:[ "use" ] ~actual:(module_typings_export_names b_typings);
+                Test.assert_equal
+                  ~expected:[ "use" ]
+                  ~actual:(module_typings_export_names b_typings);
                 Ok ()
             | (None, Some _) ->
-                Error "expected sibling dependency module typings to be persisted eagerly"
+                Error "expected authoritative build checking to persist sibling dependency module typings"
             | (Some _, None) ->
-                Error "expected rooted module typings to be persisted eagerly"
+                Error "expected authoritative build checking to persist rooted module typings"
             | (None, None) ->
-                Error "expected module typings to be persisted during rooted snapshot forcing")
+                Error "expected authoritative build checking to persist module typings as modules finish")
 
 let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
   let adapter = prepared_check_source
@@ -9278,7 +9357,12 @@ let () =
         Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
-        Test.case "prepare_snapshot persists module typings as modules finish" test_prepare_snapshot_persists_module_typings_as_modules_finish;
+        Test.case
+          "prepare_snapshot keeps the store read-only during query forcing"
+          test_prepare_snapshot_keeps_store_read_only_during_query_forcing;
+        Test.case
+          "fold_package_sources persists module typings from the authoritative engine"
+          test_fold_package_sources_persists_module_typings_from_authoritative_engine;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;

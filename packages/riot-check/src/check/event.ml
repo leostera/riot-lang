@@ -1,10 +1,19 @@
 open Std
 
+type package_check_engine =
+  | AuthoritativePackageEngine
+  | RootedSnapshotReconstruction
+
+let package_check_engine_to_string = function
+  | AuthoritativePackageEngine -> "authoritative_package_engine"
+  | RootedSnapshotReconstruction -> "rooted_snapshot_reconstruction"
+
 type t =
   | Start of { target_count: int }
   | WorkspacePrepared of { packages: (string * Path.t) list }
   | Package of { package_name: string }
   | PackageCached of { package_name: string }
+  | PackageEngineSelected of { package_name: string; engine: package_check_engine }
   | PackagePlanningStarted of { package_name: string; include_dev: bool }
   | PackagePlanningFinished of {
       package_name: string;
@@ -134,6 +143,11 @@ let to_json = fun ~workspace_root event ->
   | PackageCached { package_name } -> Data.Json.Object [
     ("type", Data.Json.String "check_package_cached");
     ("package_name", Data.Json.String package_name);
+  ]
+  | PackageEngineSelected { package_name; engine } -> Data.Json.Object [
+    ("type", Data.Json.String "check_package_engine_selected");
+    ("package_name", Data.Json.String package_name);
+    ("engine", Data.Json.String (package_check_engine_to_string engine));
   ]
   | PackagePlanningStarted { package_name; include_dev } -> Data.Json.Object [
     ("type", Data.Json.String "check_package_planning_start");

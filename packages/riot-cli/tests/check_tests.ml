@@ -731,7 +731,7 @@ let test_check_package_filter_uses_package_session_for_cross_file_exports = fun 
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ())
 
-let test_check_package_filter_emits_rooted_session_progress_events = fun _ctx ->
+let test_check_package_filter_emits_authoritative_package_engine_event = fun _ctx ->
   with_tempdir_result "riot_check_package_session_events"
     (fun tmpdir ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
@@ -757,30 +757,25 @@ let test_check_package_filter_emits_rooted_session_progress_events = fun _ctx ->
                   |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use rooted package sessions";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use the authoritative package engine";
                   let events = parse_jsonl (stdout_contents ()) in
-                  let event_types =
+                  let engine_event =
                     events
-                    |> List.filter_map
+                    |> List.find_opt
                       (fun json ->
-                        match Data.Json.get_field "type" json with
-                        | Some (Data.Json.String event_type) -> Some event_type
-                        | _ -> None)
+                        match Data.Json.get_field "type" json, Data.Json.get_field "package_name" json with
+                        | Some (Data.Json.String "check_package_engine_selected"), Some (Data.Json.String "colors") ->
+                            true
+                        | _ -> false)
+                    |> Option.expect ~msg:"missing package engine event"
                   in
-                  let has_event expected = event_types |> List.exists (String.equal expected) in
-                  let () = Test.assert_equal
-                    ~expected:true
-                    ~actual:(has_event "check_package_session_seed_start") in
-                  let () = Test.assert_equal
-                    ~expected:true
-                    ~actual:(has_event "check_package_session_seed_finish") in
-                  let () = Test.assert_equal
-                    ~expected:true
-                    ~actual:(has_event "check_package_root_grouping_finish") in
+                  Test.assert_equal
+                    ~expected:(Some (Data.Json.String "authoritative_package_engine"))
+                    ~actual:(Data.Json.get_field "engine" engine_event);
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ())
 
-let test_check_package_filter_uses_single_root_group_for_full_package_scan = fun _ctx ->
+let test_check_package_filter_does_not_emit_rooted_session_reconstruction_events = fun _ctx ->
   with_tempdir_result "riot_check_package_single_root_group"
     (fun tmpdir ->
       let workspace_root = Path.(tmpdir / Path.v "workspace") in
@@ -806,23 +801,32 @@ let test_check_package_filter_uses_single_root_group_for_full_package_scan = fun
                   |> Result.expect ~msg:"parse check args" in
                   let stdout, stdout_contents = make_capture_writer () in
                   let stderr, stderr_contents = make_capture_writer () in
-                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should use one rooted package snapshot";
+                  Riot_cli.Check_cmd.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"package check should avoid rooted-session reconstruction";
                   let events = parse_jsonl (stdout_contents ()) in
-                  let root_group_event =
+                  let event_types =
                     events
-                    |> List.find_opt
+                    |> List.filter_map
                       (fun json ->
                         match Data.Json.get_field "type" json with
-                        | Some (Data.Json.String "check_package_root_grouping_finish") -> true
-                        | _ -> false)
-                    |> Option.expect ~msg:"missing package root grouping event"
+                        | Some (Data.Json.String event_type) -> Some event_type
+                        | _ -> None)
                   in
-                  let actual_root_group_count =
-                    match Data.Json.get_field "root_group_count" root_group_event with
-                    | Some (Data.Json.Int count) -> count
-                    | _ -> (-1)
-                  in
-                  let () = Test.assert_equal ~expected:1 ~actual:actual_root_group_count in
+                  let rooted_session_event_types = [
+                    "check_package_session_seed_start";
+                    "check_package_session_seed_finish";
+                    "check_package_root_grouping_finish";
+                    "check_package_snapshot_persistence_start";
+                    "check_package_snapshot_persistence_finish";
+                    "check_package_snapshot_checked_files_start";
+                    "check_package_snapshot_checked_files_finish";
+                    "check_package_snapshot_reload_start";
+                    "check_package_snapshot_reload_finish";
+                    "check_package_checked_group_assemble_start";
+                    "check_package_checked_group_assemble_finish";
+                  ] in
+                  let unexpected_rooted_events = rooted_session_event_types
+                    |> List.filter (fun expected -> List.exists (String.equal expected) event_types) in
+                  Test.assert_equal ~expected:[] ~actual:unexpected_rooted_events;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ())
 
@@ -2737,8 +2741,8 @@ let tests =
     case "check: package filter handles hyphenated package names after workspace prepare" test_check_package_filter_handles_hyphenated_package_names_after_workspace_prepare;
     case "check: json includes typ event diagnostics" test_check_json_includes_typ_event_diagnostics;
     case "check: package filter uses sibling source exports during package scans" test_check_package_filter_uses_package_session_for_cross_file_exports;
-    case "check: package filter emits rooted session progress events" test_check_package_filter_emits_rooted_session_progress_events;
-    case "check: package filter uses one root group for full package scans" test_check_package_filter_uses_single_root_group_for_full_package_scan;
+    case "check: package filter emits authoritative package engine events" test_check_package_filter_emits_authoritative_package_engine_event;
+    case "check: package filter avoids rooted session reconstruction events" test_check_package_filter_does_not_emit_rooted_session_reconstruction_events;
     case "check: package filter uses sibling source record types during package scans" test_check_package_filter_uses_package_session_for_cross_file_record_types;
     case "check: package filter loads workspace dependency summaries" test_check_package_filter_loads_workspace_dependency_summaries;
     case "check: package filter emits cached dependency package events" test_check_package_filter_emits_cached_dependency_package_events;
