@@ -363,6 +363,21 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
         body;
         exports = List.map lower_export compilation_unit.exports;
       } in
+      (* Pass order is intentionally explicit:
+         - Normalize establishes a canonical structural baseline and recollects
+           imports from the freshly lowered body.
+         - Flatten exposes statement-shaped work that lowering encoded with
+           zero-arg IIFEs.
+         - Alpha makes printable names collision-free before later rewrites
+           reuse those binders.
+         - Remove_aliases and Dce simplify data flow and delete dead local
+           scaffolding.
+         - Normalize runs again after those rewrites because they can expose
+           empty blocks or stale import requirements.
+         - Materialize_imports marks the boundary where late JIR stops carrying
+           unresolved import/runtime expression nodes.
+         - Remove_aliases and Prune_imports run one last time to clean up names
+           and imports made redundant by materialization. *)
       let normalized = Passes.Normalize.program program in
       let flattened = Passes.Flatten.program normalized in
       let alpha_renamed = Passes.Alpha.program flattened in
