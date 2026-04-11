@@ -47,7 +47,7 @@ Today the intended native stack is:
 
 Within `LIR`, the current pass shape is:
 
-`simplify -> dead_code -> schedule -> layout_frames -> allocate_homes -> assign_homes -> legalize`
+`simplify -> dead_code -> schedule -> layout_frames -> allocate_homes -> assign_homes -> legalize -> calling_convention`
 
 The cheap virtual cleanups happen first. `simplify` and `dead_code` trim the
 linear stream while values are still virtual, and `schedule` then removes the
@@ -59,9 +59,10 @@ values in a small callee-saved pool, and spills the rest to stack homes while
 reusing stack slots for non-overlapping spill intervals. The Darwin emitter is
 responsible for saving and restoring the callee-saved homes that allocation
 marks as used. `assign_homes` then rewrites virtual names to those concrete
-homes, and `legalize` performs the last target-owned reload step with the
-shared compilation context as an explicit input, so the emitter does not have to invent
-stack-to-stack copies or other scratch-register detours on its own.
+homes. `legalize` performs the target-owned reload step that makes scratch
+register traffic explicit, and `calling_convention` lowers entry parameters,
+call arguments, and call results into ordinary `LIR` moves using the shared
+compilation context. That keeps ABI shuffling out of the emitter.
 
 ## Verification
 

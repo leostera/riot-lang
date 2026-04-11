@@ -211,6 +211,7 @@ let json_snapshots = [
   make_pass_snapshot ~stage:"lir" ~pass:"allocate_homes";
   make_pass_snapshot ~stage:"lir" ~pass:"assign_homes";
   make_pass_snapshot ~stage:"lir" ~pass:"legalize";
+  make_pass_snapshot ~stage:"lir" ~pass:"calling_convention";
 ]
 
 let text_snapshots = [

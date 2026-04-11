@@ -11,3 +11,5 @@ module Schedule = Schedule
 module Assign_homes = Assign_homes
 
 module Legalize = Legalize
+
+module Calling_convention = Calling_convention

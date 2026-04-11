@@ -134,6 +134,7 @@ let trace_program = fun ~ctx initial ->
   let allocate_homes = Passes.Allocate_homes.program ~analysis layout_frames in
   let assign_homes = Passes.Assign_homes.program allocate_homes in
   let legalize = Passes.Legalize.program ~ctx assign_homes in
+  let calling_convention = Passes.Calling_convention.program ~ctx legalize in
   {
     initial;
     passes = [
@@ -143,9 +144,10 @@ let trace_program = fun ~ctx initial ->
       { name = "layout_frames"; program = layout_frames };
       { name = "allocate_homes"; program = allocate_homes };
       { name = "assign_homes"; program = assign_homes };
-      { name = "legalize"; program = legalize }
+      { name = "legalize"; program = legalize };
+      { name = "calling_convention"; program = calling_convention }
     ];
-    final = legalize
+    final = calling_convention
   }
 
 let lower_program_with_trace = fun ~ctx (program: Source.Program.t) ->

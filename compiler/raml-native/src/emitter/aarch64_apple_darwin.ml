@@ -59,14 +59,6 @@ let procedure_symbol = fun (procedure: Lir.Procedure.t) ->
   | Lir.Procedure.Entry -> "_main"
   | Lir.Procedure.Function -> mangle_symbol procedure.name
 
-let home_of_name = fun (layout: Lir.Frame.t) name ->
-  layout.homes |> List.find_map
-    (fun (binding: Lir.Home_binding.t) ->
-      if String.equal binding.name name then
-        Some binding.home
-      else
-        None) |> Option.expect ~msg:(format Format.[ str "missing home for register "; str name ])
-
 let home_address = fun home ->
   match home with
   | Lir.Home.Register _ -> panic "aarch64 emitter: register home has no stack address"
@@ -346,32 +338,12 @@ let emit_epilogue = fun (layout: Lir.Frame.t) ->
       instruction Asm.Instruction.Ret;
     ])
 
-let emit_parameter_saves = fun layout params ->
-  if List.length params > 8 then
-    Error "aarch64-apple-darwin emitter supports at most 8 parameters per procedure"
-  else
-    let rec loop index params =
-      match params with
-      | [] -> Ok []
-      | name :: rest ->
-          let home = home_of_name layout name in
-          let* current =
-            match home with
-            | Lir.Home.Stack_slot _ -> Ok [
-              instruction
-                (Asm.Instruction.Str { src = Asm.Register.x index; address = home_address home })
-            ]
-            | Lir.Home.Register _ ->
-                let* dst = register_of_home home in
-                if dst = Asm.Register.x index then
-                  Ok []
-                else
-                  Ok [ instruction (Asm.Instruction.Mov { dst; src = Asm.Register.x index }) ]
-          in
-          let* next = loop (index + 1) rest in
-          Ok (current @ next)
-    in
-    loop 0 params
+let operand_is_argument_register = fun operand index ->
+  match operand with
+  | Lir.Operand.Home (Lir.Home.Register name) -> String.equal
+    name
+    (format Format.[ str "x"; int index ])
+  | _ -> false
 
 let emit_call_arguments = fun layout strings arguments ->
   if List.length arguments > 8 then
@@ -381,7 +353,18 @@ let emit_call_arguments = fun layout strings arguments ->
       match arguments with
       | [] -> Ok []
       | argument :: rest ->
-          let* current = materialize_operand layout strings (Asm.Register.x index) argument in
+          let* current =
+            if operand_is_argument_register argument index then
+              Ok []
+            else
+              Error (format
+                Format.[
+                  str "aarch64-apple-darwin emitter expected argument ";
+                  int index;
+                  str " to already be placed in x";
+                  int index;
+                ])
+          in
           let* next = loop (index + 1) rest in
           Ok (current @ next)
     in
@@ -398,7 +381,8 @@ let emit_return = fun layout strings operand ->
   let* body =
     match operand with
     | None -> Ok []
-    | Some operand -> materialize_operand layout strings (Asm.Register.x 0) operand
+    | Some (Lir.Operand.Home (Lir.Home.Register "x0")) -> Ok []
+    | Some _ -> Error "aarch64-apple-darwin emitter expected return value in x0"
   in
   let* epilogue = emit_epilogue layout in
   Ok (body @ epilogue)
@@ -420,15 +404,14 @@ let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instructi
       let* body = materialize_operand layout strings value_register src in
       Ok (body @ store_global_value (mangle_symbol symbol) value_register)
   | Lir.Instruction.Call { dst; callee; arguments } ->
+      let* () =
+        match dst with
+        | None -> Ok ()
+        | Some _ -> Error "aarch64-apple-darwin emitter expected call result moves to be explicit"
+      in
       let* argument_setup = emit_call_arguments layout strings arguments in
       let* (callee_setup, call_instruction) = emit_callee layout strings callee in
-      let store_result =
-        match dst with
-        | None -> Ok []
-        | Some dst -> store_destination layout dst (Asm.Register.x 0)
-      in
-      let* store_result = store_result in
-      Ok (argument_setup @ callee_setup @ [ call_instruction ] @ store_result)
+      Ok (argument_setup @ callee_setup @ [ call_instruction ])
   | Lir.Instruction.Branch_if_zero { operand; target } ->
       let* body = materialize_operand layout strings value_register operand in
       Ok (body @ [ instruction (Asm.Instruction.Cbz { src = value_register; label = target }) ])
@@ -453,9 +436,14 @@ let emit_default_return = fun layout (procedure: Lir.Procedure.t) ->
       Ok (move_int64_into (Asm.Register.x 0) 0L @ epilogue)
 
 let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
+  let* () =
+    if List.length procedure.params > 8 then
+      Error "aarch64-apple-darwin emitter supports at most 8 parameters per procedure"
+    else
+      Ok ()
+  in
   let layout = procedure.frame in
   let* prologue = emit_prologue layout in
-  let* parameter_saves = emit_parameter_saves layout procedure.params in
   let* body =
     List.fold_left
       (fun acc instruction_ ->
@@ -478,7 +466,6 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
     label symbol;
   ]
   @ prologue
-  @ parameter_saves
   @ body
   @ default_return
   @ [ blank ])
