@@ -253,7 +253,13 @@ module Fields = struct
 
   let length = fun fields -> array__length fields.tags
 
-  let tag_at = fun fields index -> array__get fields.tags index
+  let tag_at = fun fields index ->
+    if index < 0 || index >= array__length fields.tags then
+      None
+    else
+      Some (array__get fields.tags index)
+
+  let tag_at_unchecked = fun fields index -> array__get fields.tags index
 end
 
 type 'value t = {

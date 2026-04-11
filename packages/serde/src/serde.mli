@@ -49,7 +49,10 @@ module De: sig
     val length: 'tag t -> int
 
     (** Return the tag for the field at the given source-order index. *)
-    val tag_at: 'tag t -> int -> 'tag
+    val tag_at: 'tag t -> int -> 'tag option
+
+    (** Return the tag for the field at the given source-order index without bounds checks. *)
+    val tag_at_unchecked: 'tag t -> int -> 'tag
   end
 
   (** A format-agnostic decoder description. *)

@@ -255,7 +255,7 @@ and record_backend:
     if Int.equal index (De.Fields.length fields) then
       finish acc
     else
-      let next = step acc (Some (De.Fields.tag_at fields index)) in
+      let next = step acc (Some (De.Fields.tag_at_unchecked fields index)) in
       loop (index + 1) next
   in
   loop 0 init
@@ -271,7 +271,7 @@ and record_mut_backend:
   fun _state ~fields ~create ~step ~finish ->
   let builder = create () in
   for index = 0 to De.Fields.length fields - 1 do
-    step builder (Some (De.Fields.tag_at fields index))
+    step builder (Some (De.Fields.tag_at_unchecked fields index))
   done;
   finish builder
 
