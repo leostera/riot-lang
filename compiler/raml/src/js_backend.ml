@@ -1,3 +1,7 @@
+module Frontend_pipeline = RamlCore.Frontend_pipeline
+module Backend_result = RamlCore.Backend_result
+module Pipeline_stage = RamlCore.Pipeline_stage
+module Event = RamlCore.Event
 open Std
 
 let compile = fun ~config:_ ~(frontend: Frontend_pipeline.t) ->

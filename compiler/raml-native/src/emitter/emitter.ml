@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+module Target = RamlCore.Target
 
 type error =
   | UnsupportedTarget of { target: Target.t }

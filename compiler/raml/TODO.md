@@ -1,6 +1,6 @@
 # Raml TODO
 
-This is the working task list for `compiler/raml`.
+This is the working task list for the Raml compiler family.
 
 Keep this file blunt and operational.
 
@@ -122,7 +122,8 @@ Use for:
 
 ## Current Baseline
 
-This is the current package baseline as of the last update to this file.
+This is the current compiler-family baseline as of the last update to this
+file.
 
 - `riot build raml`
   passes
@@ -132,9 +133,10 @@ This is the current package baseline as of the last update to this file.
   passes
 - `riot fmt ./compiler/raml`
   passes
-- `Core_ir` now owns compiler-local `Surface_path`, `Binding_id`, and
-  `Entity_id` types, so shared IR refs no longer depend on raw strings or on
-  `Typ.Model` identity modules directly
+- `Core_ir` now reuses `Typ.Model.SurfacePath`, `Typ.Model.BindingId`, and
+  `Typ.Model.EntityId` directly through the local
+  `Core_ir.Surface_path` / `Binding_id` / `Entity_id` modules, so shared IR
+  refs no longer depend on raw strings
 - the JS source-driven lane now also includes
   `0120_string_of_int.ml`, which keeps `Core_ir` direct callee
   `string_of_int` shared while the JS backend lowers it through

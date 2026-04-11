@@ -583,7 +583,7 @@ The current `raml` split should stay cleaner than Melange's.
 
 ### Shared Layer
 
-`compiler/raml/src/core_ir.mli` should stay backend-neutral.
+`compiler/raml-core/src/core_ir.ml` should stay backend-neutral.
 
 That means:
 

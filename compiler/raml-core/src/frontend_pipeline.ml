@@ -141,12 +141,23 @@ let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
 let typing_state = fun ~config ~filename ~source ->
   let parse_result = Syn.parse ~filename source in
   match Syn.build_cst parse_result with
-  | Ok cst -> Typ.Check.check_source_with_config
-    ~config:(Compiler_config.typing_config config)
-    ~filename
-    ~parse_result
-    ~cst
-  |> typing_state_of_report
+  | Ok cst ->
+      let origin = Typ.Model.Source.Path filename in
+      let implicit_opens = [] in
+      let source = Typ.Model.Source.make_prepared
+        ~source_id:(Typ.Model.SourceId.of_int 0)
+        ~kind:Typ.Model.Source.File
+        ~module_name:(Typ.Model.Source.infer_module_name origin)
+        ~implicit_opens
+        ~origin
+        ~revision:0
+        ~source_hash:(Typ.Model.Source.hash ~implicit_opens ~cst)
+        ~parse_result
+        ~cst in
+      Typ.check
+        ~config:(Compiler_config.typing_config config)
+        ~source
+      |> typing_state_of_report
   | Error error -> typing_state_of_parse_failure parse_result error
 
 let compile_source = fun ~config ~relpath ~source ->

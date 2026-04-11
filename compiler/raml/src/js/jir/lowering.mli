@@ -1,6 +1,9 @@
 open Std
 open Std.Data
 
+module Source_unit = RamlCore.Source_unit
+module Core = RamlCore.CoreIR
+
 type error =
   | UnsupportedModuleKind of { kind: Source_unit.kind }
   | UnsupportedGroup of { group_index: int; reason: string }
@@ -8,4 +11,4 @@ type error =
   | UnsupportedExpr of { reason: string }
 val error_to_json: error -> Json.t
 
-val lower_compilation_unit: Core_ir.Compilation_unit.t -> (Types.Program.t, error list) result
+val lower_compilation_unit: Core.Compilation_unit.t -> (Types.Program.t, error list) result

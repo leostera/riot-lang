@@ -178,156 +178,79 @@ let render_link_text = fun native_stage ->
         ("native_codegen", native_stage);
       ])
 
-let test_nir_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage ~name:"nir" in
-  let path = snapshot_path ~ctx ~suffix:".nir.expected" in
+type json_snapshot = {
+  suffix: string;
+  select: Json.t -> Json.t;
+}
+
+type text_snapshot = {
+  suffix: string;
+  render: Json.t -> string;
+}
+
+let make_stage_snapshot = fun ~stage ~suffix ->
+  { suffix; select = lowered_stage ~name:stage }
+
+let make_pass_snapshot = fun ~stage ~pass ->
+  {
+    suffix = format Format.[ str "."; str stage; str "."; str pass; str ".expected" ];
+    select = lowered_stage_pass ~stage ~pass;
+  }
+
+let json_snapshots = [
+  make_stage_snapshot ~stage:"nir" ~suffix:".nir.expected";
+  make_pass_snapshot ~stage:"nir" ~pass:"normalize";
+  make_pass_snapshot ~stage:"nir" ~pass:"simplify";
+  make_stage_snapshot ~stage:"mir" ~suffix:".mir.expected";
+  make_pass_snapshot ~stage:"mir" ~pass:"canonicalize";
+  make_pass_snapshot ~stage:"mir" ~pass:"insert_polls";
+  make_stage_snapshot ~stage:"lir" ~suffix:".lir.expected";
+  make_pass_snapshot ~stage:"lir" ~pass:"layout_frames";
+  make_pass_snapshot ~stage:"lir" ~pass:"schedule";
+]
+
+let text_snapshots = [
+  {
+    suffix = ".native.expected";
+    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_stage_text);
+  };
+  {
+    suffix = ".link.expected";
+    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_link_text);
+  };
+]
+
+let test_json_snapshot_fixture = fun snapshot ~(ctx:Test.FixtureRunner.ctx) ->
+  let actual = native_pipeline_json ctx |> snapshot.select in
+  let path = snapshot_path ~ctx ~suffix:snapshot.suffix in
   Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
 
-let test_nir_normalize_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"nir" ~pass:"normalize" in
-  let path = snapshot_path ~ctx ~suffix:".nir.normalize.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_nir_simplify_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"nir" ~pass:"simplify" in
-  let path = snapshot_path ~ctx ~suffix:".nir.simplify.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_mir_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage ~name:"mir" in
-  let path = snapshot_path ~ctx ~suffix:".mir.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_mir_canonicalize_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"mir" ~pass:"canonicalize" in
-  let path = snapshot_path ~ctx ~suffix:".mir.canonicalize.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_mir_insert_polls_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"mir" ~pass:"insert_polls" in
-  let path = snapshot_path ~ctx ~suffix:".mir.insert_polls.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_lir_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage ~name:"lir" in
-  let path = snapshot_path ~ctx ~suffix:".lir.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_lir_layout_frames_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"lir" ~pass:"layout_frames" in
-  let path = snapshot_path ~ctx ~suffix:".lir.layout_frames.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_lir_schedule_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let actual = native_pipeline_json ctx |> lowered_stage_pass ~stage:"lir" ~pass:"schedule" in
-  let path = snapshot_path ~ctx ~suffix:".lir.schedule.expected" in
-  Test.Snapshot.assert_json ~ctx:(with_snapshot_path path ctx.test) ~actual
-
-let test_native_emitter_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let native_stage = native_pipeline_json ctx |> codegen_stage ~name:"native" in
-  let path = snapshot_path ~ctx ~suffix:".native.expected" in
-  let actual = render_stage_text native_stage in
+let test_text_snapshot_fixture = fun snapshot ~(ctx:Test.FixtureRunner.ctx) ->
+  let actual = native_pipeline_json ctx |> snapshot.render in
+  let path = snapshot_path ~ctx ~suffix:snapshot.suffix in
   Test.Snapshot.assert_text ~ctx:(with_snapshot_path path ctx.test) ~actual
 
-let test_native_linker_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let native_stage = native_pipeline_json ctx |> codegen_stage ~name:"native" in
-  let path = snapshot_path ~ctx ~suffix:".link.expected" in
-  let actual = render_link_text native_stage in
-  Test.Snapshot.assert_text ~ctx:(with_snapshot_path path ctx.test) ~actual
+let fixture_cases = fun run ->
+  Test.FixtureRunner.cases
+    ()
+    ~dir:fixtures_dir
+    ~filter:keep_native_fixture
+    ~run
+
+let json_snapshot_cases = fun snapshot ->
+  fixture_cases (fun ctx -> test_json_snapshot_fixture snapshot ~ctx)
+
+let text_snapshot_cases = fun snapshot ->
+  fixture_cases (fun ctx -> test_text_snapshot_fixture snapshot ~ctx)
 
 let () =
   Actors.run
     ~main:(fun ~args ->
-      let nir_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_nir_fixture ~ctx)
-      in
-      let nir_normalize_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_nir_normalize_fixture ~ctx)
-      in
-      let nir_simplify_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_nir_simplify_fixture ~ctx)
-      in
-      let mir_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_mir_fixture ~ctx)
-      in
-      let mir_canonicalize_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_mir_canonicalize_fixture ~ctx)
-      in
-      let mir_insert_polls_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_mir_insert_polls_fixture ~ctx)
-      in
-      let lir_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_lir_fixture ~ctx)
-      in
-      let lir_layout_frames_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_lir_layout_frames_fixture ~ctx)
-      in
-      let lir_schedule_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_lir_schedule_fixture ~ctx)
-      in
-      let emitter_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_native_emitter_fixture ~ctx)
-      in
-      let linker_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:keep_native_fixture
-          ~run:(fun ctx -> test_native_linker_fixture ~ctx)
-      in
+      let json_tests = List.map json_snapshot_cases json_snapshots |> List.flatten in
+      let text_tests = List.map text_snapshot_cases text_snapshots |> List.flatten in
       Test.Cli.main
         ~name:"raml:native_fixture_tests"
-        ~tests:(nir_tests
-        @ nir_normalize_tests
-        @ nir_simplify_tests
-        @ mir_tests
-        @ mir_canonicalize_tests
-        @ mir_insert_polls_tests
-        @ lir_tests
-        @ lir_layout_frames_tests
-        @ lir_schedule_tests
-        @ emitter_tests
-        @ linker_tests)
+        ~tests:(json_tests @ text_tests)
         ~args)
     ~args:Env.args
     ()

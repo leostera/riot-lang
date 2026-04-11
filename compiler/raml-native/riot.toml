@@ -1,0 +1,11 @@
+[package]
+name = "raml-native"
+version = "0.0.17"
+
+[lib]
+path = "src/RamlNative.ml"
+
+[dependencies]
+std = "*"
+asm = { path = "../asm", version = "*" }
+raml-core = { path = "../raml-core", version = "*" }

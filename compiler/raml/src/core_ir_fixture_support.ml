@@ -1,5 +1,7 @@
 open Std
 open Std.Data
+module Source_unit = RamlCore.Source_unit
+module Core_ir = RamlCore.CoreIR
 
 let ( let* ) = Result.and_then
 

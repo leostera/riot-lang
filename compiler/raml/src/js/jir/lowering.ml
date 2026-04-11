@@ -1,6 +1,7 @@
 open Std
 open Std.Data
-module Core = Core_ir
+module Source_unit = RamlCore.Source_unit
+module Core = RamlCore.CoreIR
 module Jir = Types
 
 type error =

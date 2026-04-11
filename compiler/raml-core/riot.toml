@@ -1,0 +1,11 @@
+[package]
+name = "raml-core"
+version = "0.0.17"
+
+[lib]
+path = "src/RamlCore.ml"
+
+[dependencies]
+std = "*"
+syn = { path = "../../packages/syn", version = "*" }
+typ = { path = "../../packages/typ", version = "*" }

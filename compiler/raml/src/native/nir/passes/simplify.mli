@@ -1,1 +1,0 @@
-val program: 'a -> 'a

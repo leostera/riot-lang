@@ -1,6 +1,7 @@
 # Raml Compiler Architecture
 
-This document states the intended top-level architecture for `compiler/raml`.
+This document states the intended top-level architecture for the Raml compiler
+family.
 
 It sits above the source-driven manuals in:
 
@@ -9,11 +10,20 @@ It sits above the source-driven manuals in:
 - `./wasm`
 
 Those manuals explain what current systems do today.
-This document explains the compiler shape `raml` is trying to own now.
+This document explains the compiler shape the split `raml-core` /
+`raml-native` / `raml-wasm` / `raml` packages are trying to own now.
 
 ## 1. Design Goal
 
-`compiler/raml` is a multi-backend compiler package.
+Raml is now a split compiler family:
+
+- `compiler/raml-core` owns the shared frontend and `Core_ir`
+- `compiler/raml-native` owns the native backend
+- `compiler/raml-wasm` owns the wasm backend
+- `compiler/raml` is the thin public facade and integration package
+
+The JS backend still lives under `compiler/raml` until that package split
+lands.
 
 Its job is to provide one compiler-owned middle layer above:
 
@@ -109,13 +119,14 @@ Today the implemented core is Lambda-shaped enough to grow real passes:
 - `Compilation_unit`
 - `Binding_group`
 - `Init_item`
-- compiler-owned `Surface_path`, `Binding_id`, and `Entity_id`
+- `Surface_path`, `Binding_id`, and `Entity_id` re-exported from `Typ.Model`
 - `Expr` with `Constant`, `Var`, `Apply`, `Lambda`, `Let`, `Sequence`,
   `Tuple`, `Tuple_get`, `If_then_else`, and `Primitive`
 
-Those identity types are local to `raml`.
-They intentionally mirror the split in `typ` between printable paths and real
-semantic identities, but they are not aliases of `Typ.Model` types.
+Those identity types are not local mirrors anymore.
+For now, `raml` reuses the `typ` identity modules directly and keeps the local
+`Core_ir.Surface_path`, `Core_ir.Binding_id`, and `Core_ir.Entity_id` module
+names as the compiler-facing access points.
 
 That means:
 
@@ -144,7 +155,7 @@ including:
 
 ## 5. Current Implemented Slice
 
-The current package is intentionally uneven.
+The current package split is intentionally uneven.
 
 ### Shared lowering that exists today
 

@@ -15,11 +15,22 @@ let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
 let check_source_text = fun ~filename text ->
   let parse_result = Syn.parse ~filename text in
   match Syn.build_cst parse_result with
-  | Ok cst -> Typ.Check.check_source_with_config
+  | Ok cst ->
+      let origin = Typ.Model.Source.Path filename in
+      let implicit_opens = [] in
+      let source = Typ.Model.Source.make_prepared
+        ~source_id:(Typ.Model.SourceId.of_int 0)
+        ~kind:Typ.Model.Source.File
+        ~module_name:(Typ.Model.Source.infer_module_name origin)
+        ~implicit_opens
+        ~origin
+        ~revision:0
+        ~source_hash:(Typ.Model.Source.hash ~implicit_opens ~cst)
+        ~parse_result
+        ~cst in
+      Typ.check
         ~config:Raml.TestingHelpers.Test_fixture_typing.typing_config
-    ~filename
-    ~parse_result
-    ~cst
+        ~source
   | Error (Syn.Parse_diagnostics diagnostics) -> panic
     (format
       Format.[

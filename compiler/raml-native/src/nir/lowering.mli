@@ -1,5 +1,7 @@
 open Std
 open Std.Data
+module Source_unit = RamlCore.Source_unit
+module Core = RamlCore.CoreIR
 
 type error =
   | UnsupportedModuleKind of { kind: Source_unit.kind }
@@ -19,6 +21,6 @@ val error_to_json: error -> Json.t
 
 val trace_to_json: trace -> Json.t
 
-val lower_compilation_unit_with_trace: Core_ir.Compilation_unit.t -> (trace, error list) result
+val lower_compilation_unit_with_trace: Core.Compilation_unit.t -> (trace, error list) result
 
-val lower_compilation_unit: Core_ir.Compilation_unit.t -> (Types.Program.t, error list) result
+val lower_compilation_unit: Core.Compilation_unit.t -> (Types.Program.t, error list) result

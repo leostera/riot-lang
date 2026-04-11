@@ -1,6 +1,6 @@
 # Raml Native Loop
 
-This file is the working loop for extending `compiler/raml`'s native backend.
+This file is the working loop for extending `compiler/raml-native`.
 
 Use it to grow the native path one corpus program at a time until the shared
 source corpus compiles cleanly through the implemented native layers and the
@@ -16,13 +16,13 @@ ideas, and adapt them to `raml`'s own `Core_ir -> NIR -> MIR -> LIR` pipeline.
 Always read these before changing native code:
 
 - [AGENTS.md](./AGENTS.md)
-- [TODO.md](./TODO.md)
-- [docs/architecture.md](./docs/architecture.md)
-- [docs/native/index.md](./docs/native/index.md)
-- [docs/native/strategy.md](./docs/native/strategy.md)
-- [docs/native/pipeline.md](./docs/native/pipeline.md)
-- [docs/native/mach.md](./docs/native/mach.md)
-- [docs/native/targets.md](./docs/native/targets.md)
+- [compiler/raml/TODO.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/TODO.md)
+- [compiler/raml/docs/architecture.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/architecture.md)
+- [compiler/raml/docs/native/index.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/native/index.md)
+- [compiler/raml/docs/native/strategy.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/native/strategy.md)
+- [compiler/raml/docs/native/pipeline.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/native/pipeline.md)
+- [compiler/raml/docs/native/mach.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/native/mach.md)
+- [compiler/raml/docs/native/targets.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml/docs/native/targets.md)
 
 Then read the `asmcomp` source that matches the layer you are touching:
 

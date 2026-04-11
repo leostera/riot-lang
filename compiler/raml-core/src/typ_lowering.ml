@@ -165,7 +165,7 @@ let fresh_lambda_name = fun expr_id ->
 let fresh_match_scrutinee_name = fun expr_id ->
   format Format.[ str "__raml_match_"; int (ExprArenaId.to_int expr_id) ]
 
-let core_surface_path_of_typ = fun path -> path |> SurfacePath.to_segments |> Core.Surface_path.of_segments
+let core_surface_path_of_typ = fun path -> path
 
 let unresolved_entity_id_of_typ_path = fun path ->
   path |> core_surface_path_of_typ |> Core.Entity_id.of_surface_path

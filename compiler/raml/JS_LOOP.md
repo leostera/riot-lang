@@ -656,7 +656,7 @@ of surviving as a backend/runtime call.
     runtime helper; first-class value uses of `ignore` stay outside this slice
 - ownership:
   - `packages/typ/src/LanguagePrelude.ml`
-  - `compiler/raml/src/typ_lowering.ml`
+  - `compiler/raml-core/src/typ_lowering.ml`
   - `compiler/raml/tests/js_fixture_tests.ml`
   - `compiler/raml/tests/example_fixture_tests.ml`
   - `compiler/raml/tests/compilation_fixture_tests.ml`

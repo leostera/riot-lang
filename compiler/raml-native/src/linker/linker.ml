@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+module Target = RamlCore.Target
 
 let ( let* ) = Result.and_then
 
