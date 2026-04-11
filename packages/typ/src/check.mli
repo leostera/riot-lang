@@ -4,9 +4,9 @@ open Model
 
 type prepared_source = {
   display_path: Path.t;
-  internal_module_name: string;
-  local_module_name: string;
-  public_module_name: string option;
+  internal_module_name: Session.LocalModules.InternalName.t;
+  local_module_name: Session.LocalModules.AmbientName.t;
+  public_module_name: Session.LocalModules.AmbientName.t option;
   source: Source.t;
 }
 type checked_source = {

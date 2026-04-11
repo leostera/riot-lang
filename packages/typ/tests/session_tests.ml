@@ -155,6 +155,22 @@ let test_contextual_local_module_depth_keeps_single_segment_suffixes = fun _ctx 
   Test.assert_equal ~expected:(Some 2) ~actual:cousin_depth;
   Ok ()
 
+let test_local_module_implicit_opens_skip_enclosing_alias_wrappers = fun _ctx ->
+  let current_module_name = LocalModules.InternalName.of_string "Kernel_new__Fs__Read_dir" in
+  let include_root_alias = LocalModules.should_include_implicit_open
+    ~current_module_name
+    ~module_name:"Kernel_new__Aliases" in
+  let include_fs_alias = LocalModules.should_include_implicit_open
+    ~current_module_name
+    ~module_name:"Kernel_new__Fs__Aliases" in
+  let include_colors_alias = LocalModules.should_include_implicit_open
+    ~current_module_name
+    ~module_name:"Colors__Aliases" in
+  Test.assert_equal ~expected:false ~actual:include_root_alias;
+  Test.assert_equal ~expected:false ~actual:include_fs_alias;
+  Test.assert_equal ~expected:true ~actual:include_colors_alias;
+  Ok ()
+
 let trace_debug = fun snapshot source_id ->
   match Query.analysis_of_source snapshot source_id with
   | None -> []
@@ -379,9 +395,9 @@ let prepared_check_source = fun ~source_id ~filename ~internal_module_name ~loca
     ~cst in
   {
     Check.display_path = path;
-    internal_module_name;
-    local_module_name;
-    public_module_name;
+    internal_module_name = LocalModules.InternalName.of_string internal_module_name;
+    local_module_name = LocalModules.AmbientName.of_string local_module_name;
+    public_module_name = public_module_name |> Option.map LocalModules.AmbientName.of_string;
     source;
   }
 
@@ -9116,6 +9132,7 @@ let () =
         Test.case "local module aliases include public wrapper spellings" test_local_module_aliases_include_public_wrapper_spellings;
         Test.case "contextual local module depth prefers deeper shared prefix" test_contextual_local_module_depth_prefers_deeper_shared_prefix;
         Test.case "contextual local module depth keeps single segment suffixes" test_contextual_local_module_depth_keeps_single_segment_suffixes;
+        Test.case "local module implicit opens skip enclosing alias wrappers" test_local_module_implicit_opens_skip_enclosing_alias_wrappers;
         Test.case "source id stays stable across updates" test_source_id_stays_stable_across_updates;
         Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
         Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;

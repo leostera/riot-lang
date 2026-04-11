@@ -5,9 +5,9 @@ module Array = Collections.Array
 
 type prepared_source = {
   display_path: Path.t;
-  internal_module_name: string;
-  local_module_name: string;
-  public_module_name: string option;
+  internal_module_name: Session.LocalModules.InternalName.t;
+  local_module_name: Session.LocalModules.AmbientName.t;
+  public_module_name: Session.LocalModules.AmbientName.t option;
   source: Source.t;
 }
 
@@ -42,23 +42,12 @@ let check_source = Batch.check_source
 
 type module_id = int
 
-type source_identity = {
-  internal_name: Session.LocalModules.InternalName.t;
-  local_name: Session.LocalModules.AmbientName.t;
-  public_name: Session.LocalModules.AmbientName.t option;
-}
-
 type visible_module_name =
   | InternalName of Session.LocalModules.InternalName.t
   | AmbientName of Session.LocalModules.AmbientName.t
 
-type resolved_source = {
-  prepared: prepared_source;
-  identity: source_identity;
-}
-
 type graph_source = {
-  prepared: resolved_source;
+  prepared: prepared_source;
   required_local_ids: module_id array;
   missing_external_names: Session.LocalModules.RequiredName.t array;
 }
@@ -118,17 +107,7 @@ let dedupe_by_key_preserving_order = fun ~key items ->
         let _ = Collections.HashSet.insert seen item_key in
         true)
 
-let source_identity_of_prepared_source = fun (source: prepared_source) ->
-  {
-    internal_name = Session.LocalModules.InternalName.of_string source.internal_module_name;
-    local_name = Session.LocalModules.AmbientName.of_string source.local_module_name;
-    public_name = source.public_module_name |> Option.map Session.LocalModules.AmbientName.of_string
-  }
-
 let module_name_of_internal_name = Session.LocalModules.InternalName.to_string
-
-let module_name_of_source_identity = fun (identity: source_identity) ->
-  module_name_of_internal_name identity.internal_name
 
 let visible_module_name_to_string = fun visible_name ->
   match visible_name with
@@ -140,38 +119,33 @@ let required_name_of_visible_module_name = fun visible_name ->
   | InternalName internal_name -> Session.LocalModules.RequiredName.of_internal_name internal_name
   | AmbientName ambient_name -> Session.LocalModules.RequiredName.of_ambient_name ambient_name
 
-let ambient_names_of_source_identity = fun (identity: source_identity) ->
+let ambient_names_of_source = fun (source: prepared_source) ->
   dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string
     (
-      Session.LocalModules.local_module_aliases_of_internal_name identity.internal_name
-      @ [ identity.local_name ]
+      Session.LocalModules.local_module_aliases_of_internal_name source.internal_module_name
+      @ [ source.local_module_name ]
       @ (
-        match identity.public_name with
+        match source.public_module_name with
         | Some public_name -> [ public_name ]
         | None -> []
       )
     )
 
-let visible_names_of_source_identity = fun (identity: source_identity) ->
+let visible_names_of_source = fun (source: prepared_source) ->
   dedupe_by_key_preserving_order
     ~key:visible_module_name_to_string
-    (InternalName identity.internal_name
-    :: (ambient_names_of_source_identity identity
-    |> List.map (fun ambient_name -> AmbientName ambient_name)))
+    (InternalName source.internal_module_name
+    :: (ambient_names_of_source source |> List.map (fun ambient_name -> AmbientName ambient_name)))
 
 let grouped_sources_by_internal_module = fun ordered_sources ->
   let module_order_rev = ref [] in
   let sources_by_module_name = Collections.HashMap.with_capacity 64 in
   ordered_sources |> List.iter
     (fun (source: prepared_source) ->
-      let resolved_source = {
-        prepared = source;
-        identity = source_identity_of_prepared_source source
-      } in
-      let module_name = module_name_of_source_identity resolved_source.identity in
-      let existing_rev =
+      let module_name = module_name_of_internal_name source.internal_module_name in
+      let existing_sources_rev =
         match Collections.HashMap.get sources_by_module_name module_name with
-        | Some existing_rev -> existing_rev
+        | Some (_internal_name, existing_sources_rev) -> existing_sources_rev
         | None ->
             module_order_rev := module_name :: !module_order_rev;
             []
@@ -179,51 +153,37 @@ let grouped_sources_by_internal_module = fun ordered_sources ->
       let _ = Collections.HashMap.insert
         sources_by_module_name
         module_name
-        (resolved_source :: existing_rev) in
+        (source.internal_module_name, source :: existing_sources_rev) in
       ());
   !module_order_rev
   |> List.rev
   |> List.filter_map
     (fun module_name ->
       Collections.HashMap.get sources_by_module_name module_name
-      |> Option.map (fun sources_rev -> (module_name, List.rev sources_rev)))
+      |> Option.map (fun (internal_name, sources_rev) -> (internal_name, List.rev sources_rev)))
 
-let is_alias_module_name = fun module_name -> String.ends_with ~suffix:"__Aliases" module_name
-
-let required_names_of_source = fun (source: resolved_source) ->
+let required_names_of_source = fun (source: prepared_source) ->
   let explicit_dependencies =
-    match Syn.Deps.of_parse_result source.prepared.source.parse_result with
+    match Syn.Deps.of_parse_result source.source.parse_result with
     | Ok deps -> Syn.Deps.modules deps
     | Error _ -> []
   in
-  let current_segments = module_name_of_source_identity source.identity |> Session.LocalModules.split_internal_module_name in
-  let should_include_implicit_open module_name =
-    if List.length current_segments <= 1 || not (is_alias_module_name module_name) then
-      true
-    else
-      let alias_segments = module_name |> Session.LocalModules.split_internal_module_name in
-      match List.rev alias_segments with
-      | "Aliases" :: reversed_prefix ->
-          let prefix = List.rev reversed_prefix in
-          not
-            (not (List.is_empty prefix)
-            && List.length prefix <= List.length current_segments
-            && List.for_all2 String.equal prefix (List.take (List.length prefix) current_segments))
-      | _ -> true
-  in
-  let implicit_opens = source.prepared.source.implicit_opens
+  let implicit_opens = source.source.implicit_opens
   |> List.map SurfacePath.to_string
-  |> List.filter should_include_implicit_open in
+  |> List.filter
+    (fun module_name ->
+      Session.LocalModules.should_include_implicit_open
+        ~current_module_name:source.internal_module_name
+        ~module_name) in
   dedupe_by_key_preserving_order ~key:Session.LocalModules.RequiredName.to_string
     ((explicit_dependencies @ implicit_opens) |> List.map Session.LocalModules.RequiredName.of_string)
 
 let visible_name_arrays_for_group = fun internal_name sources ->
   let visible_names = sources
-  |> List.concat_map
-    (fun (source: resolved_source) -> visible_names_of_source_identity source.identity)
+  |> List.concat_map visible_names_of_source
   |> dedupe_by_key_preserving_order ~key:visible_module_name_to_string in
   let public_module_names = sources
-  |> List.filter_map (fun (source: resolved_source) -> source.identity.public_name)
+  |> List.filter_map (fun (source: prepared_source) -> source.public_module_name)
   |> dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string in
   let public_name_set = public_module_names
   |> List.map Session.LocalModules.AmbientName.to_string
@@ -312,7 +272,7 @@ let resolution_ids_by_required_name = fun graph (group: graph_group) required_na
       ());
   by_name
 
-let missing_requirements_of_source = fun ~config ~resolution_ids_by_required_name ~(source:resolved_source) ~required_names ->
+let missing_requirements_of_source = fun ~config ~resolution_ids_by_required_name ~(source:prepared_source) ~required_names ->
   let missing_rev = ref [] in
   let required_local_ids_rev = ref [] in
   required_names |> List.iter
@@ -332,7 +292,7 @@ let missing_requirements_of_source = fun ~config ~resolution_ids_by_required_nam
       then
         missing_rev := Session.MissingRequirements.MissingModuleSummary {
           module_name = Session.LocalModules.RequiredName.to_string required_module_name;
-          requested_by = [ source.prepared.source.source_id ]
+          requested_by = [ source.source.source_id ]
         }
         :: !missing_rev);
   (
@@ -363,8 +323,7 @@ let build_package_graph = fun ~config ~ordered_sources ->
   let groups =
     grouped_sources_array
     |> Array.mapi
-      (fun module_id (module_name, sources) ->
-        let internal_name = Session.LocalModules.InternalName.of_string module_name in
+      (fun module_id (internal_name, sources) ->
         let visible_names, local_alias_names, public_module_names = visible_name_arrays_for_group
           internal_name
           sources in
@@ -386,16 +345,16 @@ let build_package_graph = fun ~config ~ordered_sources ->
   let groups =
     Array.mapi
       (fun module_id (group: graph_group) ->
-        let (_module_name, sources) = grouped_sources_array.(module_id) in
+        let (_internal_name, sources) = grouped_sources_array.(module_id) in
         let source_requirements = sources
-        |> List.map (fun (source: resolved_source) -> (source, required_names_of_source source)) in
+        |> List.map (fun (source: prepared_source) -> (source, required_names_of_source source)) in
         let resolution_ids_by_required_name = source_requirements
         |> List.concat_map snd
         |> resolution_ids_by_required_name graph group in
         let graph_sources =
           source_requirements
           |> List.map
-            (fun ((source: resolved_source), required_names) ->
+            (fun ((source: prepared_source), required_names) ->
               let required_local_ids, missing_requirements = missing_requirements_of_source
                 ~config
                 ~resolution_ids_by_required_name
@@ -444,7 +403,7 @@ let cycle_error = fun graph module_ids ->
   |> List.concat_map
     (fun module_id ->
       graph.groups.(module_id).sources
-      |> List.map (fun (source: graph_source) -> source.prepared.prepared.source.source_id)) in
+      |> List.map (fun (source: graph_source) -> source.prepared.source.source_id)) in
   let module_name =
     match module_names with
     | module_name :: _ -> module_name
@@ -558,7 +517,7 @@ let local_surface_of_typings = fun (group: graph_group) module_typings : local_m
   { ambient_exports; ambient_type_decls }
 
 let source_config = fun ~graph ~state ~base_config (source: graph_source) ->
-  let module_name = module_name_of_source_identity source.prepared.identity in
+  let module_name = module_name_of_internal_name source.prepared.internal_module_name in
   let unavailable_local_ids = source.required_local_ids
   |> Array.to_list
   |> List.filter (fun module_id -> Option.is_none state.local_typings_by_id.(module_id)) in
@@ -568,14 +527,14 @@ let source_config = fun ~graph ~state ~base_config (source: graph_source) ->
     (fun missing_module_name ->
       Session.MissingRequirements.MissingModuleSummary {
         module_name = Session.LocalModules.RequiredName.to_string missing_module_name;
-        requested_by = [ source.prepared.prepared.source.source_id ]
+        requested_by = [ source.prepared.source.source_id ]
       }))
   @ (unavailable_local_ids
   |> List.map
     (fun module_id ->
       Session.MissingRequirements.MissingModuleSummary {
         module_name = module_name_of_internal_name graph.groups.(module_id).internal_name;
-        requested_by = [ source.prepared.prepared.source.source_id ]
+        requested_by = [ source.prepared.source.source_id ]
       })) in
   match missing_requirements with
   | _ :: _ -> Error (MissingRequirements {
@@ -614,10 +573,8 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
             match source_config ~graph ~state ~base_config:config source with
             | Error _ as err -> err
             | Ok source_config ->
-                let analysis = Session.SourceAnalysis.analyze
-                  ~config:source_config
-                  source.prepared.prepared.source in
-                Ok ((source.prepared.prepared, analysis) :: analyzed_sources)
+                let analysis = Session.SourceAnalysis.analyze ~config:source_config source.prepared.source in
+                Ok ((source.prepared, analysis) :: analyzed_sources)
           ))
       (Ok [])
   in

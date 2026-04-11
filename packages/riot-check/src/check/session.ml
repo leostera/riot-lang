@@ -145,9 +145,9 @@ let checked_file_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
 let typ_check_prepared_source_of_package_source = fun (source: package_typ_source) ->
   {
     Typ.Check.display_path = source.display_path;
-    internal_module_name = source.internal_module_name;
-    local_module_name = source.local_module_name;
-    public_module_name = source.public_module_name;
+    internal_module_name = Typ_local_modules.InternalName.of_string source.internal_module_name;
+    local_module_name = Typ_local_modules.AmbientName.of_string source.local_module_name;
+    public_module_name = source.public_module_name |> Option.map Typ_local_modules.AmbientName.of_string;
     source = source.source;
   }
 

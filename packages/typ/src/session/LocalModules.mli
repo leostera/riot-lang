@@ -27,6 +27,8 @@ end
 
 val split_internal_module_name: string -> string list
 
+val should_include_implicit_open: current_module_name:InternalName.t -> module_name:string -> bool
+
 val local_module_aliases_of_internal_name: InternalName.t -> AmbientName.t list
 
 val matches_required_name: required_name:RequiredName.t -> InternalName.t -> bool

@@ -151,6 +151,24 @@ end
 
 let local_module_aliases_of_internal_name = fun module_name -> InternalName.direct_aliases module_name
 
+let should_include_implicit_open = fun ~current_module_name ~module_name ->
+  let current_segments = InternalName.segments current_module_name in
+  if Array.length current_segments <= 1 || not (String.ends_with ~suffix:"__Aliases" module_name) then
+    true
+  else
+    let alias_segments = module_name |> split_internal_module_name |> Array.of_list in
+    match Array.to_list alias_segments |> List.rev with
+    | "Aliases" :: reversed_prefix ->
+        let prefix = List.rev reversed_prefix in
+        not
+          (not (List.is_empty prefix)
+          && List.length prefix <= Array.length current_segments
+          && List.for_all2
+            String.equal
+            prefix
+            (Array.to_list (Array.sub current_segments 0 (List.length prefix))))
+    | _ -> true
+
 let matches_required_name = fun ~required_name candidate_module_name ->
   let required_name = RequiredName.to_string required_name in
   String.equal (InternalName.to_string candidate_module_name) required_name

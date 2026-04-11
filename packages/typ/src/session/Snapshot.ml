@@ -327,23 +327,13 @@ let module_dependencies_of_source = fun (source: Source.t) ->
 let is_alias_module_name = fun module_name -> String.ends_with ~suffix:"__Aliases" module_name
 
 let required_local_module_names = fun (slot: analysis_slot) ->
-  let current_segments = Source.module_name slot.source |> LocalModules.split_internal_module_name in
-  let should_include_implicit_open module_name =
-    if List.length current_segments <= 1 || not (is_alias_module_name module_name) then
-      true
-    else
-      let alias_segments = module_name |> LocalModules.split_internal_module_name in
-      match List.rev alias_segments with
-      | "Aliases" :: reversed_prefix ->
-          let prefix = List.rev reversed_prefix in
-          not
-            (List.length prefix > 0
-            && List.length prefix <= List.length current_segments
-            && List.for_all2 String.equal prefix (List.take (List.length prefix) current_segments))
-      | _ -> true
-  in
+  let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
   let names = module_dependencies_of_source slot.source
-  @ (slot.source.implicit_opens |> List.map SurfacePath.to_string |> List.filter should_include_implicit_open) in
+  @ (slot.source.implicit_opens
+  |> List.map SurfacePath.to_string
+  |> List.filter
+    (fun module_name ->
+      LocalModules.should_include_implicit_open ~current_module_name ~module_name)) in
   names |> List.sort_uniq String.compare
 
 let dedupe_preserving_order = fun names ->
