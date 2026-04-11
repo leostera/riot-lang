@@ -7,4 +7,4 @@ path = "src/RamlJs.ml"
 
 [dependencies]
 std = "*"
-raml = { path = "../raml", version = "*" }
+raml-core = { path = "../raml-core", version = "*" }

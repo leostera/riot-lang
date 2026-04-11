@@ -1,18 +1,20 @@
 open Std
-module Core = Raml.CoreIR
+module Core = RamlCore.CoreIR
 module Jir = Types
 
 let ( let* ) = Option.and_then
 
+module String_set = Set.Make (struct
+  type t = string
+  let compare = String.compare
+end)
+
 type state = {
-  used_names: string list;
+  used_names: String_set.t;
 }
 
 let remember_name = fun state name ->
-  if List.exists (String.equal name) state.used_names then
-    state
-  else
-    { used_names = name :: state.used_names }
+  { used_names = String_set.add name state.used_names }
 
 let remember_binder = fun state (binder: Jir.Binder.t) -> remember_name state binder.name
 
@@ -84,7 +86,7 @@ let collect_program_names = fun (program: Jir.Program.t) ->
   let state =
     List.fold_left
       (fun state import -> remember_binder state (Jir.Imports.local import))
-      { used_names = [] }
+      { used_names = String_set.empty }
       program.imports
   in
   let state = collect_statement_names state program.body in
@@ -101,10 +103,10 @@ let fresh_name = fun state base ->
       else
         format Format.[ str base; str "$"; int index ]
     in
-    if List.exists (String.equal candidate) state.used_names then
+    if String_set.mem candidate state.used_names then
       loop (index + 1)
     else
-      ({ used_names = candidate :: state.used_names }, candidate)
+      ({ used_names = String_set.add candidate state.used_names }, candidate)
   in
   loop 0
 

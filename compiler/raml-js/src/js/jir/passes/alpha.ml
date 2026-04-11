@@ -1,26 +1,29 @@
 open Std
-module Core = Raml.CoreIR
+module Core = RamlCore.CoreIR
 module Jir = Types
 
+module Binding_map = Map.Make (struct
+  type t = Core.Binding_id.t
+  let compare = Core.Binding_id.compare
+end)
+
+module String_set = Set.Make (struct
+  type t = string
+  let compare = String.compare
+end)
+
 type env = {
-  bindings: (Core.Binding_id.t * string) list;
-  visible: string list;
+  bindings: string Binding_map.t;
+  visible: String_set.t;
 }
 
-let empty = { bindings = []; visible = [] }
+let empty = { bindings = Binding_map.empty; visible = String_set.empty }
 
 let is_visible = fun env name ->
-  List.exists (String.equal name) env.visible
+  String_set.mem name env.visible
 
 let lookup_binding_name = fun env binding_id ->
-  match
-    List.find_opt
-      (fun (source, _) ->
-        Core.Binding_id.equal source binding_id)
-      env.bindings
-  with
-  | Some (_, lowered) -> lowered
-  | None -> Core.Binding_id.name binding_id
+  Binding_map.find_opt binding_id env.bindings |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
 
 let fresh_name = fun env name ->
   if not (is_visible env name) then
@@ -39,8 +42,8 @@ let bind_binder = fun env (binder: Jir.Binder.t) ->
   let lowered = fresh_name env binder.name in
   let binder = Jir.Binder.rename binder lowered in
   ({
-    bindings = (binder.binding_id, lowered) :: env.bindings;
-    visible = lowered :: env.visible;
+    bindings = Binding_map.add binder.binding_id lowered env.bindings;
+    visible = String_set.add lowered env.visible;
   }, binder)
 
 let bind_binders = fun env binders ->

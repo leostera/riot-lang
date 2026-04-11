@@ -1,6 +1,6 @@
 open Std
 open Std.Data
-module Core = Raml.CoreIR
+module Core = RamlCore.CoreIR
 
 type env = (Core.Binding_id.t * string) list
 

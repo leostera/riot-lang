@@ -1,6 +1,36 @@
 open Std
-module Core = Raml.CoreIR
+module Core = RamlCore.CoreIR
 module Jir = Types
+
+module Import_set = Set.Make (struct
+  type t = Jir.Imports.requirement
+
+  let compare_optional_string = fun left right ->
+    match (left, right) with
+    | (None, None) -> 0
+    | (None, Some _) -> (-1)
+    | (Some _, None) -> 1
+    | (Some left, Some right) -> String.compare left right
+
+  let compare = fun left right ->
+    let by_from = String.compare left.from right.from in
+    if by_from != 0 then
+      by_from
+    else
+      let by_namespace = Bool.compare left.namespace right.namespace in
+      if by_namespace != 0 then
+        by_namespace
+      else
+        let by_imported = compare_optional_string left.imported right.imported in
+        if by_imported != 0 then
+          by_imported
+        else
+          let by_binding = Core.Binding_id.compare left.local.binding_id right.local.binding_id in
+          if by_binding != 0 then
+            by_binding
+          else
+            String.compare left.local.name right.local.name
+end)
 
 let rec collect_expr_imports = fun expr imports ->
   match expr with
@@ -9,9 +39,9 @@ let rec collect_expr_imports = fun expr imports ->
   | Jir.Expr.Identifier _ ->
       imports
   | Jir.Expr.Imported requirement ->
-      requirement :: imports
+      Import_set.add requirement imports
   | Jir.Expr.Runtime_helper helper ->
-      Jir.Runtime.to_import helper :: imports
+      Import_set.add (Jir.Runtime.to_import helper) imports
   | Jir.Expr.Function function_ ->
       collect_statement_import_list function_.body imports
   | Jir.Expr.Member member ->
@@ -59,47 +89,8 @@ and collect_statement_imports = fun statement imports ->
       collect_statement_import_list if_.else_ imports
 
 let collect_program_imports = fun program ->
-  List.fold_right collect_statement_imports Jir.Program.(program.body) []
-
-let dedupe_imports = fun imports ->
-  let rec loop seen rest =
-    match rest with
-    | [] -> List.rev seen
-    | import :: rest ->
-        let seen_already = List.exists (Jir.Imports.equal import) seen in
-        if seen_already then
-          loop seen rest
-        else
-          loop (import :: seen) rest
-  in
-  loop [] imports
-
-let compare_optional_string = fun left right ->
-  match (left, right) with
-  | (None, None) -> 0
-  | (None, Some _) -> (-1)
-  | (Some _, None) -> 1
-  | (Some left, Some right) -> String.compare left right
-
-let compare_imports = fun left right ->
-  let by_from = String.compare Jir.Imports.(left.from) Jir.Imports.(right.from) in
-  if by_from != 0 then
-    by_from
-  else
-    let by_namespace = Bool.compare left.namespace right.namespace in
-    if by_namespace != 0 then
-      by_namespace
-    else
-      let by_imported = compare_optional_string left.imported right.imported in
-      if by_imported != 0 then
-        by_imported
-      else
-        let by_binding = Core.Binding_id.compare left.local.binding_id right.local.binding_id in
-        if by_binding != 0 then
-          by_binding
-        else
-          String.compare left.local.name right.local.name
+  List.fold_right collect_statement_imports Jir.Program.(program.body) Import_set.empty
 
 let program = fun program ->
-  let imports = collect_program_imports program |> dedupe_imports |> List.sort compare_imports in
+  let imports = collect_program_imports program |> Import_set.to_list in
   { program with imports }

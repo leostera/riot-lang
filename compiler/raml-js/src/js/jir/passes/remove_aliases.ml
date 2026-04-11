@@ -1,18 +1,22 @@
 open Std
-module Core = Raml.CoreIR
+module Core = RamlCore.CoreIR
 module Jir = Types
 
-type env = {
-  aliases: (Core.Binding_id.t * Core.Entity_id.t) list;
-  assigned: Core.Entity_id.t list;
-  exported: Core.Entity_id.t list;
-}
+module Binding_map = Map.Make (struct
+  type t = Core.Binding_id.t
+  let compare = Core.Binding_id.compare
+end)
 
-let remember_entity = fun entities entity ->
-  if List.exists (Core.Entity_id.equal entity) entities then
-    entities
-  else
-    entity :: entities
+module Entity_set = Set.Make (struct
+  type t = Core.Entity_id.t
+  let compare = Core.Entity_id.compare
+end)
+
+type env = {
+  aliases: Core.Entity_id.t Binding_map.t;
+  assigned: Entity_set.t;
+  exported: Entity_set.t;
+}
 
 let rec collect_expr_assigned_entities = fun entities expr ->
   match expr with
@@ -33,7 +37,7 @@ let rec collect_expr_assigned_entities = fun entities expr ->
       let entities = collect_expr_assigned_entities entities conditional.then_ in
       collect_expr_assigned_entities entities conditional.else_
   | Jir.Expr.Assignment assignment ->
-      collect_expr_assigned_entities (remember_entity entities assignment.target) assignment.value
+      collect_expr_assigned_entities (Entity_set.add assignment.target entities) assignment.value
 
 and collect_expr_list_assigned_entities = fun entities exprs ->
   match exprs with
@@ -65,32 +69,24 @@ and collect_one_statement_assigned_entities = fun entities statement ->
       collect_statement_assigned_entities entities if_.else_
 
 let collect_program_assigned_entities = fun (program: Jir.Program.t) ->
-  collect_statement_assigned_entities [] program.body
-
-let is_entity = fun entities entity ->
-  List.exists (Core.Entity_id.equal entity) entities
+  collect_statement_assigned_entities Entity_set.empty program.body
 
 let resolve_alias = fun env entity ->
   let rec loop seen entity =
-    if is_entity seen entity then
+    if List.exists (Core.Entity_id.equal entity) seen then
       entity
     else
       match Core.Entity_id.binding_id entity with
       | None -> entity
       | Some binding_id -> (
-          match
-            List.find_opt
-              (fun (alias, _) ->
-                Core.Binding_id.equal alias binding_id)
-              env.aliases
-          with
-          | Some (_, target) -> loop (entity :: seen) target
+          match Binding_map.find_opt binding_id env.aliases with
+          | Some target -> loop (entity :: seen) target
           | None -> entity
         )
   in
   loop [] entity
 
-let bind_alias = fun env alias target -> { env with aliases = (alias, target) :: env.aliases }
+let bind_alias = fun env alias target -> { env with aliases = Binding_map.add alias target env.aliases }
 
 let rec lower_expr = fun env expr ->
   match expr with
@@ -146,8 +142,8 @@ and lower_declaration = fun env (declaration: Jir.Declaration.t) ->
   match (declaration.kind, init) with
   | (Jir.Declaration.Const, Some (Jir.Expr.Identifier target)) when not
     (Core.Entity_id.equal binder_entity target)
-  && not (is_entity env.exported binder_entity)
-  && not (is_entity env.assigned target) -> ([], bind_alias env declaration.binder.binding_id target)
+  && not (Entity_set.mem binder_entity env.exported)
+  && not (Entity_set.mem target env.assigned) -> ([], bind_alias env declaration.binder.binding_id target)
   | _ -> ([ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ], env)
 
 and lower_block = fun env statements ->
@@ -162,9 +158,13 @@ and lower_scoped_block = fun env statements -> lower_block env statements |> fst
 
 let program = fun (program: Jir.Program.t) ->
   let env = {
-    aliases = [];
+    aliases = Binding_map.empty;
     assigned = collect_program_assigned_entities program;
-    exported = List.map (fun (export: Jir.Export.t) -> export.local) program.exports;
+    exported =
+      List.fold_left
+        (fun set (export: Jir.Export.t) -> Entity_set.add export.local set)
+        Entity_set.empty
+        program.exports;
   } in
   let (body, _) = lower_block env program.body in
   { program with body }
