@@ -243,6 +243,64 @@ let strip_comment = fun line ->
     in
     loop 0
 
+let trim_bounds = fun text ~start ~stop ->
+  let rec trim_start index =
+    if Int.compare index stop >= 0 then
+      stop
+    else if is_ws (String.unsafe_get text index) then
+      trim_start (index + 1)
+    else
+      index
+  in
+  let rec trim_stop index =
+    if Int.compare index start <= 0 then
+      start
+    else if is_ws (String.unsafe_get text (index - 1)) then
+      trim_stop (index - 1)
+    else
+      index
+  in
+  let trimmed_start = trim_start start in
+  let trimmed_stop = trim_stop stop in
+  if Int.compare trimmed_start trimmed_stop > 0 then
+    (trimmed_stop, trimmed_stop)
+  else
+    (trimmed_start, trimmed_stop)
+
+let trim_sub = fun text ~start ~stop ->
+  let (trimmed_start, trimmed_stop) = trim_bounds text ~start ~stop in
+  String.sub text trimmed_start (trimmed_stop - trimmed_start)
+
+let comment_cutoff = fun text ~start ~stop ->
+  let in_string = ref false in
+  let escaped = ref false in
+  let rec loop index =
+    if Int.compare index stop >= 0 then
+      stop
+    else
+      let current = String.unsafe_get text index in
+      if !in_string then
+        (
+          if !escaped then
+            escaped := false
+          else if Char.equal current '\\' then
+            escaped := true
+          else if Char.equal current '"' then
+            in_string := false;
+          loop (index + 1)
+        )
+      else if Char.equal current '"' then
+        (
+          in_string := true;
+          loop (index + 1)
+        )
+      else if Char.equal current '#' then
+        index
+      else
+        loop (index + 1)
+  in
+  loop start
+
 let split_top_level = fun text ~sep ->
   let len = String.length text in
   let parts = ref [] in
@@ -425,17 +483,16 @@ let parse_key_path = fun text ->
   |> List.map String.trim
   |> List.filter (fun segment -> not (String.equal segment ""))
 
-let find_assignment_from = fun line ~start ->
-  let len = String.length line in
+let find_assignment_from = fun text ~start ~stop ->
   let in_string = ref false in
   let escaped = ref false in
   let bracket_depth = ref 0 in
   let brace_depth = ref 0 in
   let rec loop index =
-    if Int.compare index len >= 0 then
+    if Int.compare index stop >= 0 then
       None
     else
-      let current = String.unsafe_get line index in
+      let current = String.unsafe_get text index in
       if !in_string then
         (
           if !escaped then
@@ -472,7 +529,7 @@ let find_assignment_from = fun line ~start ->
   in
   loop start
 
-let find_assignment = fun line -> find_assignment_from line ~start:0
+let find_assignment = fun text -> find_assignment_from text ~start:0 ~stop:(String.length text)
 
 let parse_value_text = fun input ->
   let len = String.length input in
@@ -608,7 +665,7 @@ let parse_value_text = fun input ->
             | None -> fail "expected key in inline table"
           in
           let eq_index =
-            match find_assignment_from input ~start:assignment_start with
+            match find_assignment_from input ~start:assignment_start ~stop:len with
             | Some index -> index
             | None -> fail "expected '=' in inline table"
           in
@@ -706,7 +763,7 @@ let iter_lines = fun content fn ->
   let line_start = ref 0 in
   let line_number = ref 1 in
   let emit line_end =
-    fn !line_number (String.sub content !line_start (line_end - !line_start));
+    fn !line_number ~start:!line_start ~stop:line_end;
     line_start := line_end + 1;
     line_number := !line_number + 1
   in
@@ -715,7 +772,7 @@ let iter_lines = fun content fn ->
       emit index
   done;
   if !line_start <= len then
-    fn !line_number (String.sub content !line_start (len - !line_start))
+    fn !line_number ~start:!line_start ~stop:len
 
 let parse_document = fun content ->
   try
@@ -723,7 +780,6 @@ let parse_document = fun content ->
     let context = ref (Table_context root) in
     let key_path_cache: (string, string list) HashMap.t = HashMap.create () in
     let parse_cached_key_path text =
-      let text = String.trim text in
       match HashMap.get key_path_cache text with
       | Some path -> path
       | None ->
@@ -739,14 +795,21 @@ let parse_document = fun content ->
           set_table_path current path value
     in
     iter_lines content
-      (fun line_number raw_line ->
-        let line = strip_comment raw_line |> String.trim in
-        if not (String.equal line "") then
-          if String.starts_with ~prefix:"[[" line then
+      (fun line_number ~start ~stop ->
+        let stop = comment_cutoff content ~start ~stop in
+        let (start, stop) = trim_bounds content ~start ~stop in
+        if Int.compare start stop < 0 then
+          if Int.compare (stop - start) 4 >= 0
+             && Char.equal (String.unsafe_get content start) '['
+             && Char.equal (String.unsafe_get content (start + 1)) '['
+          then
             (
-              if not (String.ends_with ~suffix:"]]" line) then
+              if not (
+                Char.equal (String.unsafe_get content (stop - 2)) ']'
+                && Char.equal (String.unsafe_get content (stop - 1)) ']'
+              ) then
                 fail_line line_number "unterminated array-of-tables header";
-              let inner = String.sub line 2 (String.length line - 4) |> String.trim in
+              let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
               let path = parse_cached_key_path inner in
               (
                 match !context with
@@ -764,14 +827,14 @@ let parse_document = fun content ->
                   )
                 | Table_context _ ->
                     let nested = append_array_table root path in
-                    context := Array_item_context { array_path = path; item = nested; current = nested }
+                        context := Array_item_context { array_path = path; item = nested; current = nested }
               )
             )
-          else if String.starts_with ~prefix:"[" line then
+          else if Char.equal (String.unsafe_get content start) '[' then
             (
-              if not (String.ends_with ~suffix:"]" line) then
+              if not (Char.equal (String.unsafe_get content (stop - 1)) ']') then
                 fail_line line_number "unterminated table header";
-              let inner = String.sub line 1 (String.length line - 2) |> String.trim in
+              let inner = trim_sub content ~start:(start + 1) ~stop:(stop - 1) in
               let path = parse_cached_key_path inner in
               let next_context =
                 match !context with
@@ -790,12 +853,11 @@ let parse_document = fun content ->
               context := next_context
             )
           else
-            match find_assignment line with
+            match find_assignment_from content ~start ~stop with
             | None -> fail_line line_number "expected key/value assignment"
             | Some eq_index ->
-                let key_text = String.sub line 0 eq_index |> String.trim in
-                let value_text = String.sub line (eq_index + 1) (String.length line - eq_index - 1)
-                |> String.trim in
+                let key_text = trim_sub content ~start ~stop:eq_index in
+                let value_text = trim_sub content ~start:(eq_index + 1) ~stop in
                 let key_path = parse_cached_key_path key_text in
                 if List.is_empty key_path then
                   fail_line line_number "empty key"

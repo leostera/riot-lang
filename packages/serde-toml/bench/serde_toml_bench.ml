@@ -340,6 +340,103 @@ let manifest_to_toml = fun (value: manifest) ->
       ("mirrors", Toml.Array (Array.to_list value.mirrors |> List.map stop_to_toml));
     ]
 
+let bool_of_toml = function
+  | Toml.Bool value -> value
+  | _ -> panic "serde_toml_bench: expected bool"
+
+let string_of_toml = function
+  | Toml.String value -> value
+  | _ -> panic "serde_toml_bench: expected string"
+
+let int_of_toml = function
+  | Toml.Int value -> value
+  | _ -> panic "serde_toml_bench: expected int"
+
+let array_of_toml = function
+  | Toml.Array values -> values
+  | _ -> panic "serde_toml_bench: expected array"
+
+let table_of_toml = function
+  | Toml.Table values -> values
+  | _ -> panic "serde_toml_bench: expected table"
+
+let field = fun table key ->
+  match List.assoc_opt key table with
+  | Some value -> value
+  | None -> panic ("serde_toml_bench: missing field '" ^ key ^ "'")
+
+let status_of_string = function
+  | "Active" -> Active
+  | "Draft" -> Draft
+  | "Archived" -> Archived
+  | _ -> panic "serde_toml_bench: invalid status"
+
+let stop_of_toml = fun value ->
+  let table = table_of_toml value in
+  ({
+      island = string_of_toml (field table "island");
+      supplies = int_of_toml (field table "supplies");
+    }: stop)
+
+let berth_of_toml = fun value ->
+  let table = table_of_toml value in
+  ({
+      island = string_of_toml (field table "island");
+      berth = int_of_toml (field table "berth");
+    }: berth)
+
+let vec_of_list = fun values ->
+  let vec = Vector.with_capacity (List.length values) in
+  List.iter (fun value -> Vector.push vec value) values;
+  vec
+
+let manifest_of_toml = fun value ->
+  let table = table_of_toml value in
+  ({
+      ship = string_of_toml (field table "ship");
+      emergency = bool_of_toml (field table "emergency");
+      crew_count = int_of_toml (field table "crew_count");
+      status = status_of_string (string_of_toml (field table "status"));
+      home = berth_of_toml (field table "home");
+      tags =
+        field table "tags"
+        |> array_of_toml
+        |> List.map string_of_toml
+        |> vec_of_list;
+      scores =
+        field table "scores"
+        |> array_of_toml
+        |> List.map int_of_toml
+        |> Array.of_list;
+      stops =
+        field table "stops"
+        |> array_of_toml
+        |> List.map stop_of_toml
+        |> vec_of_list;
+      mirrors =
+        field table "mirrors"
+        |> array_of_toml
+        |> List.map stop_of_toml
+        |> Array.of_list;
+    }: manifest)
+
+let equal_stop = fun (left: stop) (right: stop) ->
+  String.equal left.island right.island && Int.equal left.supplies right.supplies
+
+let equal_berth = fun (left: berth) (right: berth) ->
+  String.equal left.island right.island && Int.equal left.berth right.berth
+
+let equal_manifest = fun (left: manifest) (right: manifest) ->
+  String.equal left.ship right.ship
+  && Bool.equal left.emergency right.emergency
+  && Int.equal left.crew_count right.crew_count
+  && left.status = right.status
+  && equal_berth left.home right.home
+  && vec_to_list left.tags = vec_to_list right.tags
+  && Array.to_list left.scores = Array.to_list right.scores
+  && List.for_all2 equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
+  && List.for_all2 equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
+
 let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_repeat }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;
@@ -357,9 +454,13 @@ let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_rep
     Serde_toml.to_string manifest_encode value
     |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
   in
-  ignore
-    (Toml.parse encoded
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to parse with Std.Data.Toml"));
+  let parsed_with_std =
+    Toml.parse encoded
+    |> Result.expect ~msg:("expected " ^ label ^ " fixture to parse with Std.Data.Toml")
+  in
+  let std_decoded = manifest_of_toml parsed_with_std in
+  if not (equal_manifest value std_decoded) then
+    panic ("serde_toml_bench: std decode did not match " ^ label ^ " fixture");
   let std_value = manifest_to_toml value in
   let std_rendered = Toml.to_string std_value in
   { label; value; encoded; std_value; std_rendered }
@@ -399,6 +500,13 @@ let bench_serde_decode_reader = fun fixture () ->
 let bench_std_parse = fun fixture () ->
   ignore (Toml.parse fixture.encoded)
 
+let bench_std_decode_typed = fun fixture () ->
+  ignore
+    (fixture.encoded
+    |> Toml.parse
+    |> Result.expect ~msg:("expected " ^ fixture.label ^ " fixture to parse with Std.Data.Toml")
+    |> manifest_of_toml)
+
 let bench_std_render = fun fixture () ->
   ignore (Toml.to_string fixture.std_value)
 
@@ -431,8 +539,12 @@ let benchmark_suite = fun fixture ->
         (bench_serde_decode_reader fixture);
       with_config
         ~config
-        ("std-data-toml parse " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+        ("std-data-toml parse-only " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
         (bench_std_parse fixture);
+      with_config
+        ~config
+        ("std-data-toml decode typed " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+        (bench_std_decode_typed fixture);
       with_config
         ~config
         ("std-data-toml render " ^ fixture.label ^ " tree (" ^ std_size ^ ")")
