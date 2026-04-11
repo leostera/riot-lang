@@ -227,6 +227,15 @@ let test_int32_uses_raw_little_endian_bytes = fun _ctx ->
         ~message:"expected int32 to use raw little-endian bytes"
   | Error err -> Error ("int32 encode failed: " ^ Serde.Error.to_string err)
 
+let test_int_uses_raw_little_endian_bytes = fun _ctx ->
+  match Serde_bin.to_string Ser.int (-1) with
+  | Ok encoded ->
+      expect_equal
+        ~expected:[ 255; 255; 255; 255; 255; 255; 255; 255 ]
+        ~actual:(byte_values encoded)
+        ~message:"expected int to use raw 8-byte little-endian bytes"
+  | Error err -> Error ("int encode failed: " ^ Serde.Error.to_string err)
+
 let test_int32_roundtrips_negative_values = fun _ctx ->
   match Serde_bin.of_string De.int32 "\255\255\255\255" with
   | Ok value when Int32.equal value (-1l) -> Ok ()
@@ -337,6 +346,7 @@ let tests =
   Test.[
     case "serde-bin roundtrips records" test_roundtrips_record;
     case "serde-bin decodes from readers" test_decodes_from_reader;
+    case "serde-bin int uses raw little-endian bytes" test_int_uses_raw_little_endian_bytes;
     case "serde-bin int32 uses raw little-endian bytes" test_int32_uses_raw_little_endian_bytes;
     case "serde-bin int32 roundtrips negative values" test_int32_roundtrips_negative_values;
     case "serde-bin int64 uses raw little-endian bytes" test_int64_uses_raw_little_endian_bytes;

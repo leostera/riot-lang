@@ -51,9 +51,28 @@ static value serde_bin_val_long_u32(uint32_t value) {
 #endif
 }
 
+static value serde_bin_val_int64_as_int(int64_t value) {
+#ifdef ARCH_SIXTYFOUR
+  if (value < -((int64_t)1 << 62) || value > (((int64_t)1 << 62) - 1)) {
+    caml_invalid_argument("serde-bin decoded int does not fit in an OCaml int");
+  }
+#else
+  if (value < -((int64_t)1 << 30) || value > (((int64_t)1 << 30) - 1)) {
+    caml_invalid_argument("serde-bin decoded int does not fit in an OCaml int");
+  }
+#endif
+  return Val_long((intnat)value);
+}
+
 CAMLprim value serde_bin_write_u32_le(value dst, value off, value value32) {
   unsigned char *ptr = (unsigned char *)Bytes_val(dst) + Long_val(off);
   serde_bin_store_u32_le(ptr, (uint32_t)Long_val(value32));
+  return Val_unit;
+}
+
+CAMLprim value serde_bin_write_int_le(value dst, value off, value value_int) {
+  unsigned char *ptr = (unsigned char *)Bytes_val(dst) + Long_val(off);
+  serde_bin_store_u64_le(ptr, (uint64_t)(int64_t)Long_val(value_int));
   return Val_unit;
 }
 
@@ -77,6 +96,16 @@ CAMLprim value serde_bin_read_u32_le_string(value src, value off) {
 CAMLprim value serde_bin_read_u32_le_bytes(value src, value off) {
   const unsigned char *ptr = (const unsigned char *)Bytes_val(src) + Long_val(off);
   return serde_bin_val_long_u32(serde_bin_load_u32_le(ptr));
+}
+
+CAMLprim value serde_bin_read_int_le_string(value src, value off) {
+  const unsigned char *ptr = (const unsigned char *)String_val(src) + Long_val(off);
+  return serde_bin_val_int64_as_int((int64_t)serde_bin_load_u64_le(ptr));
+}
+
+CAMLprim value serde_bin_read_int_le_bytes(value src, value off) {
+  const unsigned char *ptr = (const unsigned char *)Bytes_val(src) + Long_val(off);
+  return serde_bin_val_int64_as_int((int64_t)serde_bin_load_u64_le(ptr));
 }
 
 CAMLprim value serde_bin_read_i32_le_string(value src, value off) {

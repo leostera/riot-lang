@@ -118,6 +118,18 @@ let write_int64_le = fun state value ->
       Stubs.write_int64_le state.scratch 0 value;
       write_subbytes state state.scratch ~off:0 ~len:8
 
+let write_int_le = fun state value ->
+  match state.target with
+  | Bytes_target target ->
+      if target.pos + 8 > IO.Bytes.length target.dst then
+        raise_no_space ();
+      Stubs.write_int_le target.dst target.pos value;
+      target.pos <- target.pos + 8
+  | Buffer_target
+  | Writer_target _ ->
+      Stubs.write_int_le state.scratch 0 value;
+      write_subbytes state state.scratch ~off:0 ~len:8
+
 let encode_u32 = fun kind value ->
   if value < 0 then
     raise_length_out_of_range kind value
@@ -170,7 +182,7 @@ and backend: state Serde.Ser.backend = {
     (fun state value ->
       write_uint32_le state (encode_u32 "string" (String.length value));
       write_string state value);
-  int = (fun state value -> write_int64_le state (Int64.of_int value));
+  int = write_int_le;
   int32 = write_int32_le;
   int64 = write_int64_le;
   float = (fun state value -> write_int64_le state (Int64.bits_of_float value));

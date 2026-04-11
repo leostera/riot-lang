@@ -171,8 +171,8 @@ let decode_length = fun state kind ->
   else
     value
 
-let fits_int = fun value ->
-  Int64.compare value (Int64.of_int min_int) >= 0 && Int64.compare value (Int64.of_int max_int) <= 0
+let raise_int_out_of_range = fun pos ->
+  error_at pos "decoded int does not fit in an OCaml int"
 
 let read_string = fun state ->
   let len = decode_length state "string" in
@@ -210,6 +210,29 @@ let read_string = fun state ->
         in
         loop len
       )
+
+let read_int = fun state ->
+  match state.input with
+  | String_input input when input.pos + 8 <= String.length input.input ->
+      let pos = input.pos in
+      let value =
+        try Stubs.read_int_le_from_string input.input pos with
+        | Invalid_argument _ -> raise_int_out_of_range (pos + 8)
+      in
+      input.pos <- pos + 8;
+      value
+  | Reader_input reader when reader.pos + 8 <= reader.limit ->
+      let pos = reader.pos in
+      let value =
+        try Stubs.read_int_le_from_bytes reader.buf pos with
+        | Invalid_argument _ -> raise_int_out_of_range (reader.base + pos + 8)
+      in
+      reader.pos <- pos + 8;
+      value
+  | _ ->
+      read_exact_into state state.bytes ~off:0 ~len:8 "i64";
+      (try Stubs.read_int_le_from_bytes state.bytes 0 with
+      | Invalid_argument _ -> raise_int_out_of_range (position state.input))
 
 let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let len = decode_length state "list" in
@@ -271,13 +294,7 @@ and backend: state De.backend = {
       | '\001' -> true
       | _ -> error_at (position state.input - 1) "invalid bool value");
   string = read_string;
-  int =
-    (fun state ->
-      let value = read_int64_le state in
-      if fits_int value then
-        Int64.to_int value
-      else
-        error_at (position state.input) "decoded int does not fit in an OCaml int");
+  int = read_int;
   int32 = read_int32_le;
   int64 = read_int64_le;
   float = (fun state -> read_int64_le state |> Int64.float_of_bits);
