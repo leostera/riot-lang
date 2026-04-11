@@ -1859,22 +1859,33 @@ and record_mut_backend:
           done;
           finish builder
 
-and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun state cases ->
-  let rec find_unit tag = function
-    | [] -> raise (Serde.Decode_error `invalid_tag)
-    | De.Unit (expected, value) :: _ when String.equal expected tag -> value
-    | _ :: rest -> find_unit tag rest
-  in
-  let rec find_object tag = function
-    | [] ->
+and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
+  let find_unit = fun tag ->
+    let rec loop index =
+      if Int.equal index (array__length cases) then
         raise (Serde.Decode_error `invalid_tag)
-    | De.Unit (expected, value) :: _ when String.equal expected tag ->
-        parse_null state;
-        value
-    | De.Newtype (expected, decode, wrap) :: _ when String.equal expected tag ->
-        wrap (decode.run backend state)
-    | _ :: rest ->
-        find_object tag rest
+      else
+        match array__get cases index with
+        | De.Unit (expected, value) when String.equal expected tag -> value
+        | _ -> loop (index + 1)
+    in
+    loop 0
+  in
+  let find_object = fun tag ->
+    let rec loop index =
+      if Int.equal index (array__length cases) then
+        raise (Serde.Decode_error `invalid_tag)
+      else
+        match array__get cases index with
+        | De.Unit (expected, value) when String.equal expected tag ->
+            parse_null state;
+            value
+        | De.Newtype (expected, decode, wrap) when String.equal expected tag ->
+            wrap (decode.run backend state)
+        | _ ->
+            loop (index + 1)
+    in
+    loop 0
   in
   match state.input with
   | Input.Reader_input reader ->
@@ -1883,13 +1894,13 @@ and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun st
         match reader_current_char reader with
         | Some '"' ->
             let tag = parse_string_reader state reader in
-            find_unit tag cases
+            find_unit tag
         | Some '{' ->
             reader_expect_char state reader '{' "variant object";
             let tag = parse_string_reader state reader in
             reader_skip_whitespace reader;
             reader_expect_char state reader ':' "':' after variant tag";
-            let value = find_object tag cases in
+            let value = find_object tag in
             reader_skip_whitespace reader;
             reader_expect_char state reader '}' "closing '}' for variant";
             value
@@ -1903,12 +1914,12 @@ and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun st
       match Input.current_char state.input with
       | Some '"' ->
           let tag = parse_string state in
-          find_unit tag cases
+          find_unit tag
       | Some '{' ->
           expect_char state '{' "variant object";
           let tag = parse_string state in
           skip_then_expect_char state ':' "':' after variant tag";
-          let value = find_object tag cases in
+          let value = find_object tag in
           skip_then_expect_char state '}' "closing '}' for variant";
           value
       | Some actual ->

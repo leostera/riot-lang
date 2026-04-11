@@ -447,6 +447,8 @@ module De = struct
 
   and 'value variant_cases = 'value variant_case list
 
+  and 'value compiled_variant_cases = 'value variant_case array
+
   and 'state backend = {
     bool: 'state -> bool;
     string: 'state -> string;
@@ -472,7 +474,7 @@ module De = struct
       step:('builder -> 'field option -> unit) ->
       finish:('builder -> 'value) ->
       'value;
-    variant: 'value. 'state -> 'value variant_cases -> 'value;
+    variant: 'value. 'state -> 'value compiled_variant_cases -> 'value;
   }
 
   type reader = {
@@ -592,10 +594,11 @@ module De = struct
     }
 
   let variant = fun cases ->
+    let compiled_cases = array_of_list cases in
     {
       run =
         fun backend state ->
-          backend.variant state cases;
+          backend.variant state compiled_cases;
     }
 end
 

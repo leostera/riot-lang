@@ -68,6 +68,9 @@ module De: sig
   (** A list of variant constructor descriptions. *)
   and 'value variant_cases = 'value variant_case list
 
+  (** A compiled array of variant constructor descriptions used by format backends. *)
+  and 'value compiled_variant_cases = 'value variant_case array
+
   (** The operations a concrete format backend must implement. *)
   and 'state backend = {
     bool: 'state -> bool;
@@ -94,7 +97,7 @@ module De: sig
       step:('builder -> 'field option -> unit) ->
       finish:('builder -> 'value) ->
       'value;
-    variant: 'value. 'state -> 'value variant_cases -> 'value;
+    variant: 'value. 'state -> 'value compiled_variant_cases -> 'value;
   }
   (** Reader passed into record steps so fields can decode nested values. *)
   type reader = {

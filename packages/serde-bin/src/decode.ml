@@ -175,15 +175,7 @@ let raise_int_out_of_range = fun pos ->
   error_at pos "decoded int does not fit in an OCaml int"
 
 let variant_uses_u8 = fun cases ->
-  let rec loop remaining = function
-    | [] -> true
-    | _ :: rest ->
-        if remaining = 0 then
-          false
-        else
-          loop (remaining - 1) rest
-  in
-  loop 0x100 cases
+  Int.compare (array__length cases) 0x100 <= 0
 
 let read_string = fun state ->
   let len = decode_length state "string" in
@@ -290,21 +282,19 @@ and record_mut_backend:
   done;
   finish builder
 
-and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun state cases ->
+and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
   let index =
     if variant_uses_u8 cases then
       Char.code (read_byte state "variant")
     else
       decode_length state "variant"
   in
-  let rec loop index = function
-    | [] -> raise (Serde.Decode_error `invalid_tag)
-    | De.Unit (_tag, value) :: _rest when Int.equal index 0 -> value
-    | De.Newtype (_tag, decode, wrap) :: _rest when Int.equal index 0 ->
-        wrap (decode.run backend state)
-    | _ :: rest -> loop (index - 1) rest
-  in
-  loop index cases
+  if Int.compare index 0 < 0 || Int.compare index (array__length cases) >= 0 then
+    raise (Serde.Decode_error `invalid_tag)
+  else
+    match array__get cases index with
+    | De.Unit (_tag, value) -> value
+    | De.Newtype (_tag, decode, wrap) -> wrap (decode.run backend state)
 
 and backend: state De.backend = {
   bool =
