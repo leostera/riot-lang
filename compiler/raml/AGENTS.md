@@ -32,6 +32,9 @@ Before changing code, pick the right package:
   Wasm backend work.
 - `compiler/raml-js/AGENTS.md`
   `JIR` / `JST`, JS runtime/import lowering, and JS pass work.
+- `compiler/raml-cli/AGENTS.md`
+  CLI argument parsing, emitted artifact writing, and repo-local JS runtime
+  asset copying.
 - `compiler/raml/AGENTS.md`
   Only for facade wiring, backend dispatch, public API, integration helpers,
   and cross-backend integration tests.

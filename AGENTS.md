@@ -47,15 +47,16 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `compiler/raml-native/AGENTS.md`: native backend, `NIR`/`MIR`/`LIR`, emitter, linker, and native pass work
 - `compiler/raml-wasm/AGENTS.md`: wasm backend package
 - `compiler/raml-js/AGENTS.md`: JS backend ownership, `JIR`/`JST`, JS runtime/import lowering, and JS pass work
+- `compiler/raml-cli/AGENTS.md`: CLI entrypoint for compiling source files through the public `Raml` facade
 - `compiler/raml/AGENTS.md`: thin public facade, backend dispatch, and integration helpers
 - `packages/gooey/AGENTS.md`: TUI primitives
 - `packages/minttea/AGENTS.md`: Elm-style TUI framework
 - `packages/sqlx/AGENTS.md`: high-level SQL API
 - `packages/sqlx-driver/AGENTS.md`: database driver interface
 - `packages/sqlite/AGENTS.md`: SQLite adapter
+- `packages/serde-bin/AGENTS.md`: compact schema-driven binary serialization on top of serde
 - `packages/postgres/AGENTS.md`: PostgreSQL adapter
 - `packages/pkgs-ml/AGENTS.md`: reusable pkgs.ml registry client and cache layout helpers
-- `packages/serde-bin/AGENTS.md`: compact schema-driven binary serialization on top of serde
 - `packages/pubgrub/AGENTS.md`: version solver
 - `packages/mime/AGENTS.md`: MIME parsing and rendering helpers
 - `packages/propane/AGENTS.md`: property-based testing support

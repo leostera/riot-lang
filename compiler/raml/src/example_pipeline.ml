@@ -1,5 +1,5 @@
-module Compiler_config = RamlCore.Config
-module Frontend_pipeline = RamlCore.Frontend_pipeline
+module Compiler_config = Raml_core.Config
+module Frontend_pipeline = Raml_core.Frontend_pipeline
 open Std
 open Std.Data
 

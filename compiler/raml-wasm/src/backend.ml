@@ -1,7 +1,7 @@
 open Std
 
-module Backend_result = RamlCore.Backend_result
-module Frontend_pipeline = RamlCore.Frontend_pipeline
+module Backend_result = Raml_core.Backend_result
+module Frontend_pipeline = Raml_core.Frontend_pipeline
 
 let compile = fun ~config:_ ~(frontend: Frontend_pipeline.t) ->
   let core_ir = Frontend_pipeline.core_ir frontend in

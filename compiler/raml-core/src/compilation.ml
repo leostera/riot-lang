@@ -17,6 +17,11 @@ let json_field_string = fun name json ->
   | Some value -> Json.get_string value
   | None -> None
 
+let json_field_array = fun name json ->
+  match json_field name json with
+  | Some value -> Json.get_array value
+  | None -> None
+
 let selected_backend = fun targeting ->
   json_field_string "backend" targeting |> Option.unwrap_or ~default:"unknown"
 
@@ -106,3 +111,36 @@ let lowering_to_json = fun compilation ->
     ]
 
 let codegen_to_json = to_json
+
+let emitted_output = fun compilation ->
+  let stage = json_field "stage" compilation.codegen in
+  match stage with
+  | None ->
+      Error "selected codegen stage is missing"
+  | Some stage -> (
+      match json_field_string "status" stage with
+      | Some "ok" -> (
+          match json_field_string "output" stage with
+          | Some output -> Ok output
+          | None -> Error "selected codegen stage succeeded without an output artifact"
+        )
+      | Some "blocked" ->
+          let blocked_on =
+            json_field_string "blocked_on" stage |> Option.unwrap_or ~default:"unknown"
+          in
+          Error ("codegen is blocked on " ^ blocked_on)
+      | Some "unavailable" ->
+          let reason = json_field_string "reason" stage |> Option.unwrap_or ~default:"unknown" in
+          Error ("codegen is unavailable: " ^ reason)
+      | Some "error" ->
+          let message =
+            match json_field_array "errors" stage with
+            | Some errors when not (List.is_empty errors) -> Json.array errors |> Json.to_string_pretty
+            | _ -> "codegen failed"
+          in
+          Error message
+      | Some status ->
+          Error ("unknown codegen status: " ^ status)
+      | None ->
+          Error "selected codegen stage is missing a status"
+    )

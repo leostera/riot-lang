@@ -1,8 +1,8 @@
-module Raml_compilation = RamlCore.Compilation
-module Raml_config = RamlCore.Config
-module Raml_event = RamlCore.Event
-module Frontend_pipeline = RamlCore.Frontend_pipeline
-module Backend_result = RamlCore.Backend_result
+module Raml_compilation = Raml_core.Compilation
+module Raml_config = Raml_core.Config
+module Raml_event = Raml_core.Event
+module Frontend_pipeline = Raml_core.Frontend_pipeline
+module Backend_result = Raml_core.Backend_result
 open Std
 
 let ( let* ) = Result.and_then

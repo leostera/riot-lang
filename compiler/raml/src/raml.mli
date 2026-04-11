@@ -1,6 +1,6 @@
 open Std
 
-module Target = RamlCore.Target
+module Target = Raml_core.Target
 
 module Event: sig
   type backend =
@@ -79,17 +79,17 @@ module Config: sig
   val emit_event: t -> (unit -> Event.kind) -> unit
 end
 
-module Compilation = RamlCore.Compilation
+module Compilation = Raml_core.Compilation
 
-module CoreIR = RamlCore.CoreIR
+module CoreIR = Raml_core.Core_ir
 
-module Js = Js
+module Js = Raml_js.Js
 
-module Native = RamlNative.Native
+module Native = Raml_native.Native
 
-module Source_unit = RamlCore.Source_unit
+module Source_unit = Raml_core.Source_unit
 
-module Typ_lowering = RamlCore.Typ_lowering
+module Typ_lowering = Raml_core.Typ_lowering
 
 val compile: ?config:Config.t -> Std.Path.t -> (Compilation.t, string) Std.Result.t
 

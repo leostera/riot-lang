@@ -1,6 +1,6 @@
 (* NOTE: test support only. This stays internal to the package so fixture typing
    support does not leak through the public Raml API. *)
-module Compiler_config = RamlCore.Config
+module Compiler_config = Raml_core.Config
 open Std
 open Typ.Model
 

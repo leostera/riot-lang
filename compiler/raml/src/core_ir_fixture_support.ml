@@ -1,7 +1,7 @@
 open Std
 open Std.Data
-module Source_unit = RamlCore.Source_unit
-module Core_ir = RamlCore.CoreIR
+module Source_unit = Raml_core.Source_unit
+module Core_ir = Raml_core.Core_ir
 
 let ( let* ) = Result.and_then
 

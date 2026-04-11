@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 module Jir = Raml.Js.Jir
+module Core = Raml.CoreIR
 
 let ( let* ) = Result.and_then
 
@@ -54,6 +55,33 @@ let string_field = fun scope name json ->
   match Json.get_string value with
   | Some value -> Ok value
   | None -> invalid_field scope name "a string"
+
+let binder_of_name = fun name ->
+  let path = Core.Surface_path.of_segments [ "__jir_fixture"; name ] in
+  Jir.Binder.make ~name (Core.Binding_id.persistent path)
+
+let entity_of_name = fun name -> binder_of_name name |> Jir.Binder.entity_id
+
+let strip_js_extension = fun value ->
+  if String.ends_with ~suffix:".js" value then
+    String.sub value 0 (String.length value - 3)
+  else
+    value
+
+let parse_module_ref = fun scope value ->
+  let value =
+    if String.starts_with ~prefix:"./" value then
+      String.sub value 2 (String.length value - 2)
+    else
+      value
+  in
+  let unit_name = strip_js_extension value in
+  if String.equal unit_name "riot-runtime" then
+    Ok (Jir.Modules.runtime unit_name)
+  else if String.equal unit_name "" then
+    invalid_field scope "from" "a non-empty module path"
+  else
+    Ok (Jir.Modules.sibling_unit unit_name)
 
 let array_field = fun scope name json ->
   let* value = field scope name json in
@@ -119,6 +147,7 @@ let parse_literal = fun json ->
 let parse_import = fun json ->
   let scope = "import" in
   let* from = string_field scope "from" json in
+  let* from = parse_module_ref scope from in
   let namespace =
     match Json.get_field "namespace" json with
     | None -> Ok false
@@ -141,6 +170,7 @@ let parse_import = fun json ->
   in
   let* imported = imported in
   let* local = string_field scope "local" json in
+  let local = binder_of_name local in
   if namespace then
     Ok (Jir.Imports.namespace ~from ~local ())
   else
@@ -149,9 +179,10 @@ let parse_import = fun json ->
 let parse_runtime = fun json ->
   let scope = "runtime" in
   let* module_name = string_field scope "module_name" json in
+  let* module_ref = parse_module_ref scope module_name in
   let* symbol = string_field scope "symbol" json in
   let* local = string_field scope "local" json in
-  Ok (Jir.Runtime.make ~module_name ~symbol ~local ())
+  Ok (Jir.Runtime.make ~module_ref ~symbol ~local:(binder_of_name local) ())
 
 let rec parse_expr = fun json ->
   let scope = "expr" in
@@ -163,7 +194,7 @@ let rec parse_expr = fun json ->
       Ok (Jir.Expr.Literal literal)
   | "identifier" ->
       let* name = string_field scope "name" json in
-      Ok (Jir.Expr.Identifier name)
+      Ok (Jir.Expr.Identifier (entity_of_name name))
   | "imported" ->
       let* import_json = field scope "import" json in
       let* import = parse_import import_json in
@@ -210,7 +241,7 @@ and parse_function = fun json ->
     map_results params
       (fun json ->
         match Json.get_string json with
-        | Some value -> Ok value
+        | Some value -> Ok (binder_of_name value)
         | None -> invalid_field scope "params" "an array of strings")
   in
   let* body = array_field scope "body" json in
@@ -239,7 +270,7 @@ and parse_assignment = fun json ->
   let* target = string_field scope "target" json in
   let* value_json = field scope "value" json in
   let* value = parse_expr value_json in
-  Ok Jir.Expr.{ target; value }
+  Ok Jir.Expr.{ target = entity_of_name target; value }
 
 and parse_declaration_kind = fun json ->
   let scope = "declaration" in
@@ -261,7 +292,7 @@ and parse_declaration = fun json ->
     | Some init_json -> Result.map (fun value -> Some value) (parse_expr init_json)
   in
   let* init = init in
-  Ok Jir.Declaration.{ kind; name; init }
+  Ok Jir.Declaration.{ kind; binder = binder_of_name name; init }
 
 and parse_if_statement = fun json ->
   let scope = "if" in
@@ -300,7 +331,7 @@ let parse_export = fun json ->
   let scope = "export" in
   let* name = string_field scope "name" json in
   let* local = string_field scope "local" json in
-  Ok Jir.Export.{ name; local }
+  Ok Jir.Export.{ name; local = entity_of_name local }
 
 let parse_program = fun json ->
   let* module_name = string_field "program" "module_name" json in

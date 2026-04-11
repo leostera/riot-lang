@@ -17,3 +17,5 @@ val to_json: t -> Json.t
 val lowering_to_json: t -> Json.t
 
 val codegen_to_json: t -> Json.t
+
+val emitted_output: t -> (string, string) Std.Result.t
