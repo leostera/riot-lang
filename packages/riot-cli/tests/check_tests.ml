@@ -764,8 +764,7 @@ let test_check_package_filter_emits_authoritative_package_engine_event = fun _ct
                     |> List.find_opt
                       (fun json ->
                         match Data.Json.get_field "type" json, Data.Json.get_field "package_name" json with
-                        | Some (Data.Json.String "check_package_engine_selected"), Some (Data.Json.String "colors") ->
-                            true
+                        | Some (Data.Json.String "check_package_engine_selected"), Some (Data.Json.String "colors") -> true
                         | _ -> false)
                     |> Option.expect ~msg:"missing package engine event"
                   in
@@ -823,9 +822,14 @@ let test_check_package_filter_does_not_emit_rooted_session_reconstruction_events
                     "check_package_snapshot_reload_finish";
                     "check_package_checked_group_assemble_start";
                     "check_package_checked_group_assemble_finish";
-                  ] in
-                  let unexpected_rooted_events = rooted_session_event_types
-                    |> List.filter (fun expected -> List.exists (String.equal expected) event_types) in
+                  ]
+                  in
+                  let unexpected_rooted_events =
+                    rooted_session_event_types
+                    |> List.filter
+                      (fun expected ->
+                        List.exists (String.equal expected) event_types)
+                  in
                   Test.assert_equal ~expected:[] ~actual:unexpected_rooted_events;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ())
@@ -1182,9 +1186,8 @@ let test_check_package_filter_persists_interface_shaped_module_typings = fun _ct
               match colors_typings with
               | None -> Error "expected Colors module typings to be persisted"
               | Some typings ->
-                  let exports =
-                    Typ.Model.ModuleTypings.exports typings
-                    |> List.map (fun (path, _scheme) -> Typ.Model.SurfacePath.to_string path) in
+                  let exports = Typ.Model.ModuleTypings.exports typings
+                  |> List.map (fun (path, _scheme) -> Typ.Model.SurfacePath.to_string path) in
                   Test.assert_equal ~expected:[ "answer" ] ~actual:exports;
                   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
                   Ok ()

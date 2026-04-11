@@ -310,9 +310,8 @@ let test_run_reports_no_binaries_with_creation_hint = fun _ctx ->
   match Riot_cli.Run.resolve_implicit_local_target workspace with
   | Ok _ -> Error "expected implicit run target resolution to reject missing binaries"
   | Error err ->
-      if String.equal
-        err
-        "no runnable binaries found; pass a binary name or create one with `riot new --bin ./packages/my-binary`"
+      if
+        String.equal err "no runnable binaries found; pass a binary name or create one with `riot new --bin ./packages/my-binary`"
       then
         Ok ()
       else
@@ -323,9 +322,8 @@ let test_run_reports_package_without_binaries_with_creation_hint = fun _ctx ->
   match Riot_cli.Run.resolve_implicit_local_target ~package_filter:"demo" workspace with
   | Ok _ -> Error "expected package-filtered implicit run target resolution to reject missing binaries"
   | Error err ->
-      if String.equal
-        err
-        "package 'demo' has no runnable binaries; create one with `riot new --bin ./packages/my-binary`"
+      if
+        String.equal err "package 'demo' has no runnable binaries; create one with `riot new --bin ./packages/my-binary`"
       then
         Ok ()
       else

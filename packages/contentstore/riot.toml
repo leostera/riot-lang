@@ -3,7 +3,7 @@ name = "contentstore"
 version = "0.0.17"
 description = "Generic content-addressable storage primitives"
 license = "Apache-2.0"
-public = false
+public = true
 
 [lib]
 path = "src/contentstore.ml"

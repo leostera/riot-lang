@@ -8,6 +8,8 @@ external not_equal: 'a -> 'a -> bool = "%notequal"
 
 let ( != ) = not_equal
 
+let ( <> ) = not_equal
+
 external ptr_eq: 'a -> 'a -> bool = "%eq"
 
 external ptr_not_eq: 'a -> 'a -> bool = "%noteq"

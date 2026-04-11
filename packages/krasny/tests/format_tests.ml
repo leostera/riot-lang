@@ -784,11 +784,7 @@ let tiny = 1.0e-6
 let tagged = 1.2e3g
 |}
       in
-      let actual =
-        parse_ml source
-        |> Krasny.format
-        |> Result.expect ~msg:"scientific float literals should format structurally"
-      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"scientific float literals should format structurally" in
       Test.assert_equal
         ~expected:{|let trillion = 1.0e12
 

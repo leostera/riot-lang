@@ -2,6 +2,8 @@ let ( = ) = Caml_runtime.equal
 
 let ( != ) = Caml_runtime.not_equal
 
+let ( <> ) = Caml_runtime.not_equal
+
 let ( < ) = Caml_runtime.less_than
 
 let ( > ) = Caml_runtime.greater_than

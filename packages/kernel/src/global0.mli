@@ -8,6 +8,8 @@ val ( = ): 'a -> 'a -> bool
 
 val ( != ): 'a -> 'a -> bool
 
+val ( <> ): 'a -> 'a -> bool
+
 val ptr_eq: 'a -> 'a -> bool
 
 val ptr_not_eq: 'a -> 'a -> bool

@@ -2,6 +2,8 @@ val ( = ): 'value -> 'value -> bool
 
 val ( != ): 'value -> 'value -> bool
 
+val ( <> ): 'value -> 'value -> bool
+
 val ( < ): 'value -> 'value -> bool
 
 val ( > ): 'value -> 'value -> bool
