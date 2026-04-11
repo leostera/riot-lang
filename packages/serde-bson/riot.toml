@@ -1,11 +1,13 @@
 [package]
 name = "serde-bson"
-version = "0.1.0"
+version = "0.0.1"
 
 [lib]
-path = "src/SerdeBson.ml"
+path = "src/serde_bson.ml"
 
 [dependencies]
-std = "*"
-# Add dependencies here
+serde = { path = "../serde", version = "*" }
+std = { path = "../std", version = "*" }
 
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }

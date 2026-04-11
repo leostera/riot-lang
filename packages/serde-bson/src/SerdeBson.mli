@@ -1,1 +1,0 @@
-(** serde-bson library interface *)

@@ -54,6 +54,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/sqlx/AGENTS.md`: high-level SQL API
 - `packages/sqlx-driver/AGENTS.md`: database driver interface
 - `packages/sqlite/AGENTS.md`: SQLite adapter
+- `packages/serde-bson/AGENTS.md`: schema-driven BSON serialization on top of serde
 - `packages/serde-bin/AGENTS.md`: compact schema-driven binary serialization on top of serde
 - `packages/serde-toml/AGENTS.md`: schema-driven TOML serialization on top of serde
 - `packages/serde-yaml/AGENTS.md`: schema-driven YAML serialization on top of serde
