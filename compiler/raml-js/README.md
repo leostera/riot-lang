@@ -62,6 +62,9 @@ ReScript is a better reference for emitted JS shape:
 - JS-native globals, member access, calls, arrays, and ambient namespaces now
   live in shared `Jir.Intrinsics` helpers instead of being rebuilt ad hoc in
   each lowering subsystem
+- dotted entity references and namespace-import construction now live in
+  explicit `Jir.References` lowering instead of being embedded directly in the
+  main lowering walk
 - object keys, property access, and emitted binder legality now share one
   syntax policy instead of backend-local heuristics
 
@@ -83,6 +86,9 @@ The main remaining architectural gaps are:
    lowering no longer invents those ad hoc.
    `JST` now also retains a structured module ref until emission instead of
    collapsing imports down to bare path strings immediately.
+   The current namespace/reference story is now also factored into
+   `Jir.References`, but the policy is still heuristic rather than package- or
+   artifact-aware the way Melange is.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.
    It is now Riot-owned end to end in the JS backend, and the remaining helper

@@ -5,7 +5,7 @@ module Jir = Types
 module Builtins = Builtins
 module Intrinsics = Intrinsics
 module Primitives = Primitives
-module Syntax = Syntax
+module References = References
 
 type error =
   | UnsupportedModuleKind of { kind: Raml_core.Source_unit.kind }
@@ -55,9 +55,6 @@ let lower_constant = fun constant ->
   | Core.Constant.Char value -> Jir.Literal.String value
   | Core.Constant.String value -> Jir.Literal.String value
 
-let is_module_segment = fun segment ->
-  String.length segment > 0 && Syntax.is_ascii_uppercase segment.[0]
-
 let binding_id_of_entity = fun ~fallback_name entity_id ->
   match Core.Entity_id.binding_id entity_id with
   | Some binding_id -> binding_id
@@ -77,48 +74,19 @@ let binder_of_binding = fun (binding: Core.Expr.binding) ->
 let binder_of_top_binding = fun (binding: Core.Binding.t) ->
   binder_of_entity ~fallback_name:binding.name binding.entity_id
 
-let lower_string_literal = fun value -> Jir.Expr.Literal (Jir.Literal.String value)
-
-let lower_named_property_access = fun object_ property ->
-  if Syntax.can_use_dot_property property then
-    Intrinsics.member object_ property
-  else
-    Intrinsics.index object_ (lower_string_literal property)
-
-let lower_reference = fun entity_id ->
-  let parts = Core.Entity_id.to_segments entity_id in
-  match parts with
-  | [] -> Jir.Expr.Identifier entity_id
-  | head :: tail ->
-      let base =
-        if not (List.is_empty tail) && is_module_segment head then
-          let module_ref = Jir.Modules.sibling_unit head in
-          Jir.Expr.Imported (Jir.Imports.namespace
-            ~from:module_ref
-            ~local:(Jir.Modules.namespace_binder module_ref)
-            ())
-        else if Option.is_some (Core.Entity_id.binding_id entity_id) && List.is_empty tail then
-          Jir.Expr.Identifier entity_id
-        else
-          Jir.Expr.Identifier (Core.Entity_id.of_name head)
-      in
-      List.fold_left lower_named_property_access base tail
-
 let iife = fun body ->
   Jir.Expr.Call Jir.Expr.{
     callee = Jir.Expr.Function Jir.Expr.{ params = []; body };
     arguments = []
   }
 
-let lower_direct_callee = fun entity_id -> lower_reference entity_id
+let lower_direct_callee = fun entity_id -> References.entity entity_id
 
 let lower_object = fun fields -> Jir.Expr.Object fields
 
-let lower_stdout_write = fun value ->
-  Intrinsics.stdout_write value
+let lower_stdout_write = fun value -> Intrinsics.stdout_write value
 
-let lower_stderr_write = fun value ->
-  Intrinsics.stderr_write value
+let lower_stderr_write = fun value -> Intrinsics.stderr_write value
 
 let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
 
@@ -210,7 +178,7 @@ let rec lower_expr = fun expr ->
   | Core.Expr.Constant constant ->
       Jir.Expr.Literal (lower_constant constant)
   | Core.Expr.Var entity_id ->
-      lower_reference entity_id
+      References.entity entity_id
   | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
       let arguments = List.map lower_expr arguments in
       lower_direct_call function_name arguments
@@ -241,7 +209,7 @@ let rec lower_expr = fun expr ->
   | Core.Expr.Record record ->
       lower_object (List.map lower_record_field record)
   | Core.Expr.Record_get record_get ->
-      lower_named_property_access (lower_expr record_get.record) record_get.label
+      References.named_property_access (lower_expr record_get.record) record_get.label
   | Core.Expr.If_then_else if_then_else ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr if_then_else.condition;
