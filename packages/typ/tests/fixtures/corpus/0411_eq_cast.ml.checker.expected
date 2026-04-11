@@ -1,0 +1,183 @@
+{
+  "bindings": [
+    {
+      "binding_id": {
+        "name": [
+          "cast"
+        ],
+        "stamp": 0
+      },
+      "entity_id": {
+        "binding_id": {
+          "name": [
+            "cast"
+          ],
+          "stamp": 0
+        },
+        "surface_path": [
+          "cast"
+        ]
+      },
+      "scheme": {
+        "body": {
+          "Arrow": {
+            "parameter": {
+              "Var": 1
+            },
+            "result": {
+              "Var": 0
+            }
+          }
+        },
+        "forall": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "binding_id": {
+        "name": [
+          "answer"
+        ],
+        "stamp": 1
+      },
+      "entity_id": {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 1
+        },
+        "surface_path": [
+          "answer"
+        ]
+      },
+      "scheme": {
+        "body": {
+          "Var": 0
+        },
+        "forall": [
+          0
+        ]
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "UnsupportedSyntax": {
+        "kind": "TYPE_DECL",
+        "span": {
+          "end": 179,
+          "start": 144
+        },
+        "summary": "type declaration"
+      }
+    },
+    {
+      "UnsupportedSyntax": {
+        "kind": "CONSTRUCTOR_PATTERN",
+        "span": {
+          "end": 236,
+          "start": 230
+        },
+        "summary": "unsupported constructor pattern Refl"
+      }
+    },
+    {
+      "UnsupportedType": {
+        "span": {
+          "end": 241,
+          "start": 240
+        },
+        "summary": "unbound value x"
+      }
+    },
+    {
+      "UnsupportedType": {
+        "span": {
+          "end": 221,
+          "start": 192
+        },
+        "summary": "polymorphic annotation"
+      }
+    },
+    {
+      "UnsupportedSyntax": {
+        "kind": "IDENT_EXPR",
+        "span": {
+          "end": 265,
+          "start": 261
+        },
+        "summary": "unsupported constructor Refl"
+      }
+    }
+  ],
+  "typing_context": {
+    "next_binding_stamp": 2,
+    "values": [
+      {
+        "binding_id": {
+          "name": [
+            "cast"
+          ],
+          "stamp": 0
+        },
+        "entity_id": {
+          "binding_id": {
+            "name": [
+              "cast"
+            ],
+            "stamp": 0
+          },
+          "surface_path": [
+            "cast"
+          ]
+        },
+        "scheme": {
+          "body": {
+            "Arrow": {
+              "parameter": {
+                "Var": 1
+              },
+              "result": {
+                "Var": 0
+              }
+            }
+          },
+          "forall": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 1
+        },
+        "entity_id": {
+          "binding_id": {
+            "name": [
+              "answer"
+            ],
+            "stamp": 1
+          },
+          "surface_path": [
+            "answer"
+          ]
+        },
+        "scheme": {
+          "body": {
+            "Var": 0
+          },
+          "forall": [
+            0
+          ]
+        }
+      }
+    ]
+  }
+}

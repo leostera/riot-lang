@@ -1,4 +1,5 @@
-type config = Config.t
+open Std
 
-module Config: module type of Config
-module Event: module type of Event
+module Check = Check
+module Model = Model
+module Semtree = Semtree

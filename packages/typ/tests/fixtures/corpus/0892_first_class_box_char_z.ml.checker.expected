@@ -1,0 +1,139 @@
+{
+  "bindings": [
+    {
+      "binding_id": {
+        "name": [
+          "packed"
+        ],
+        "stamp": 0
+      },
+      "entity_id": {
+        "binding_id": {
+          "name": [
+            "packed"
+          ],
+          "stamp": 0
+        },
+        "surface_path": [
+          "packed"
+        ]
+      },
+      "scheme": {
+        "body": {
+          "Var": 0
+        },
+        "forall": [
+          0
+        ]
+      }
+    },
+    {
+      "binding_id": {
+        "name": [
+          "answer"
+        ],
+        "stamp": 1
+      },
+      "entity_id": {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 1
+        },
+        "surface_path": [
+          "answer"
+        ]
+      },
+      "scheme": {
+        "body": {
+          "Var": 0
+        },
+        "forall": [
+          0
+        ]
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "UnsupportedSyntax": {
+        "kind": "FIRST_CLASS_MODULE_EXPR",
+        "span": {
+          "end": 344,
+          "start": 306
+        },
+        "summary": "first-class module expression"
+      }
+    },
+    {
+      "UnsupportedSyntax": {
+        "kind": "LET_MODULE_EXPR",
+        "span": {
+          "end": 426,
+          "start": 361
+        },
+        "summary": "local module binding"
+      }
+    }
+  ],
+  "typing_context": {
+    "next_binding_stamp": 2,
+    "values": [
+      {
+        "binding_id": {
+          "name": [
+            "packed"
+          ],
+          "stamp": 0
+        },
+        "entity_id": {
+          "binding_id": {
+            "name": [
+              "packed"
+            ],
+            "stamp": 0
+          },
+          "surface_path": [
+            "packed"
+          ]
+        },
+        "scheme": {
+          "body": {
+            "Var": 0
+          },
+          "forall": [
+            0
+          ]
+        }
+      },
+      {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 1
+        },
+        "entity_id": {
+          "binding_id": {
+            "name": [
+              "answer"
+            ],
+            "stamp": 1
+          },
+          "surface_path": [
+            "answer"
+          ]
+        },
+        "scheme": {
+          "body": {
+            "Var": 0
+          },
+          "forall": [
+            0
+          ]
+        }
+      }
+    ]
+  }
+}

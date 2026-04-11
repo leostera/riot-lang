@@ -1,0 +1,101 @@
+{
+  "bindings": [
+    {
+      "binding_id": {
+        "name": [
+          "answer"
+        ],
+        "stamp": 0
+      },
+      "entity_id": {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 0
+        },
+        "surface_path": [
+          "answer"
+        ]
+      },
+      "scheme": {
+        "body": {
+          "Tuple": [
+            {
+              "Var": 0
+            },
+            {
+              "Var": 1
+            }
+          ]
+        },
+        "forall": [
+          0,
+          1
+        ]
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "UnsupportedSyntax": {
+        "kind": "FIELD_ACCESS_EXPR",
+        "span": {
+          "end": 475,
+          "start": 465
+        },
+        "summary": "field access"
+      }
+    },
+    {
+      "UnsupportedSyntax": {
+        "kind": "FIELD_ACCESS_EXPR",
+        "span": {
+          "end": 487,
+          "start": 477
+        },
+        "summary": "field access"
+      }
+    }
+  ],
+  "typing_context": {
+    "next_binding_stamp": 1,
+    "values": [
+      {
+        "binding_id": {
+          "name": [
+            "answer"
+          ],
+          "stamp": 0
+        },
+        "entity_id": {
+          "binding_id": {
+            "name": [
+              "answer"
+            ],
+            "stamp": 0
+          },
+          "surface_path": [
+            "answer"
+          ]
+        },
+        "scheme": {
+          "body": {
+            "Tuple": [
+              {
+                "Var": 0
+              },
+              {
+                "Var": 1
+              }
+            ]
+          },
+          "forall": [
+            0,
+            1
+          ]
+        }
+      }
+    ]
+  }
+}
