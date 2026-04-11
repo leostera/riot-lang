@@ -123,24 +123,46 @@ let read_exact_into = fun state dst ~off ~len expected ->
       loop off len
 
 let read_uint32_le = fun state ->
-  read_exact_into state state.bytes ~off:0 ~len:4 "u32";
-  (Char.code (IO.Bytes.get state.bytes 0))
-  lor ((Char.code (IO.Bytes.get state.bytes 1)) lsl 8)
-  lor ((Char.code (IO.Bytes.get state.bytes 2)) lsl 16)
-  lor ((Char.code (IO.Bytes.get state.bytes 3)) lsl 24)
+  match state.input with
+  | String_input input when input.pos + 4 <= String.length input.input ->
+      let value = Stubs.read_uint32_le_from_string input.input input.pos in
+      input.pos <- input.pos + 4;
+      value
+  | Reader_input reader when reader.pos + 4 <= reader.limit ->
+      let value = Stubs.read_uint32_le_from_bytes reader.buf reader.pos in
+      reader.pos <- reader.pos + 4;
+      value
+  | _ ->
+      read_exact_into state state.bytes ~off:0 ~len:4 "u32";
+      Stubs.read_uint32_le_from_bytes state.bytes 0
 
 let read_int32_le = fun state ->
-  let value = read_uint32_le state in
-  Int32.of_int value
+  match state.input with
+  | String_input input when input.pos + 4 <= String.length input.input ->
+      let value = Stubs.read_int32_le_from_string input.input input.pos in
+      input.pos <- input.pos + 4;
+      value
+  | Reader_input reader when reader.pos + 4 <= reader.limit ->
+      let value = Stubs.read_int32_le_from_bytes reader.buf reader.pos in
+      reader.pos <- reader.pos + 4;
+      value
+  | _ ->
+      read_exact_into state state.bytes ~off:0 ~len:4 "i32";
+      Stubs.read_int32_le_from_bytes state.bytes 0
 
 let read_int64_le = fun state ->
-  read_exact_into state state.bytes ~off:0 ~len:8 "i64";
-  let acc = ref 0L in
-  for index = 0 to 7 do
-    let byte = Char.code (IO.Bytes.get state.bytes index) |> Int64.of_int in
-    acc := Int64.logor !acc (Int64.shift_left byte (index * 8))
-  done;
-  !acc
+  match state.input with
+  | String_input input when input.pos + 8 <= String.length input.input ->
+      let value = Stubs.read_int64_le_from_string input.input input.pos in
+      input.pos <- input.pos + 8;
+      value
+  | Reader_input reader when reader.pos + 8 <= reader.limit ->
+      let value = Stubs.read_int64_le_from_bytes reader.buf reader.pos in
+      reader.pos <- reader.pos + 8;
+      value
+  | _ ->
+      read_exact_into state state.bytes ~off:0 ~len:8 "i64";
+      Stubs.read_int64_le_from_bytes state.bytes 0
 
 let decode_length = fun state kind ->
   let value = read_uint32_le state in

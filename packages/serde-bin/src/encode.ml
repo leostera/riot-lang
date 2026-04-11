@@ -21,8 +21,6 @@ type size_state = {
 
 let flush_threshold = 4_096
 
-let byte_of_int = fun value -> Char.chr (value land 0xff)
-
 let raise_io_error = fun err -> raise (Serde.Encode_error (`Io_error err))
 
 let raise_no_space = fun () -> raise (Serde.Encode_error (`Msg "serde-bin destination buffer is too small"))
@@ -59,8 +57,16 @@ let write_subbytes = fun state source ~off ~len ->
         target.pos <- target.pos + len
 
 let write_char = fun state value ->
-  IO.Bytes.set state.scratch 0 value;
-  write_subbytes state state.scratch ~off:0 ~len:1
+  match state.target with
+  | Bytes_target target ->
+      if target.pos + 1 > IO.Bytes.length target.dst then
+        raise_no_space ();
+      IO.Bytes.set target.dst target.pos value;
+      target.pos <- target.pos + 1
+  | Buffer_target
+  | Writer_target _ ->
+      IO.Bytes.set state.scratch 0 value;
+      write_subbytes state state.scratch ~off:0 ~len:1
 
 let write_string = fun state value ->
   let len = String.length value in
@@ -77,23 +83,40 @@ let write_string = fun state value ->
         target.pos <- target.pos + len
 
 let write_uint32_le = fun state value ->
-  IO.Bytes.set state.scratch 0 (byte_of_int value);
-  IO.Bytes.set state.scratch 1 (byte_of_int (value lsr 8));
-  IO.Bytes.set state.scratch 2 (byte_of_int (value lsr 16));
-  IO.Bytes.set state.scratch 3 (byte_of_int (value lsr 24));
-  write_subbytes state state.scratch ~off:0 ~len:4
+  match state.target with
+  | Bytes_target target ->
+      if target.pos + 4 > IO.Bytes.length target.dst then
+        raise_no_space ();
+      Stubs.write_uint32_le target.dst target.pos value;
+      target.pos <- target.pos + 4
+  | Buffer_target
+  | Writer_target _ ->
+      Stubs.write_uint32_le state.scratch 0 value;
+      write_subbytes state state.scratch ~off:0 ~len:4
+
+let write_int32_le = fun state value ->
+  match state.target with
+  | Bytes_target target ->
+      if target.pos + 4 > IO.Bytes.length target.dst then
+        raise_no_space ();
+      Stubs.write_int32_le target.dst target.pos value;
+      target.pos <- target.pos + 4
+  | Buffer_target
+  | Writer_target _ ->
+      Stubs.write_int32_le state.scratch 0 value;
+      write_subbytes state state.scratch ~off:0 ~len:4
 
 let write_int64_le = fun state value ->
-  for index = 0 to 7 do
-    let byte =
-      Int64.shift_right_logical value (index * 8)
-      |> Int64.logand 0xffL
-      |> Int64.to_int
-      |> byte_of_int
-    in
-    IO.Bytes.set state.scratch index byte
-  done;
-  write_subbytes state state.scratch ~off:0 ~len:8
+  match state.target with
+  | Bytes_target target ->
+      if target.pos + 8 > IO.Bytes.length target.dst then
+        raise_no_space ();
+      Stubs.write_int64_le target.dst target.pos value;
+      target.pos <- target.pos + 8
+  | Buffer_target
+  | Writer_target _ ->
+      Stubs.write_int64_le state.scratch 0 value;
+      write_subbytes state state.scratch ~off:0 ~len:8
 
 let encode_u32 = fun kind value ->
   if value < 0 then
@@ -148,7 +171,7 @@ and backend: state Serde.Ser.backend = {
       write_uint32_le state (encode_u32 "string" (String.length value));
       write_string state value);
   int = (fun state value -> write_int64_le state (Int64.of_int value));
-  int32 = (fun state value -> write_uint32_le state (Int32.to_int value));
+  int32 = write_int32_le;
   int64 = write_int64_le;
   float = (fun state value -> write_int64_le state (Int64.bits_of_float value));
   null = (fun _state -> ());
