@@ -33,7 +33,10 @@ module Fields = struct
     edges: 'tag edge array;
   }
 
-  and 'tag t = 'tag node
+  and 'tag t = {
+    root: 'tag node;
+    tags: 'tag array;
+  }
 
   let list_nth = fun values index ->
     let rec loop values index =
@@ -186,7 +189,7 @@ module Fields = struct
     in
     loop 0
 
-  let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun root source ~offset ~length ->
+  let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
     let rec loop (node: 'tag node) offset length =
       if Int.equal length 0 then
         node.tag
@@ -203,9 +206,9 @@ module Fields = struct
             else
               None
     in
-    loop root offset length
+    loop fields.root offset length
 
-  let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun root source ~offset ~length ->
+  let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
     let rec loop (node: 'tag node) offset length =
       if Int.equal length 0 then
         node.tag
@@ -222,9 +225,9 @@ module Fields = struct
             else
               None
     in
-    loop root offset length
+    loop fields.root offset length
 
-  let match_buffer: 'tag. 'tag t -> IO.Buffer.t -> 'tag option = fun root buffer ->
+  let match_buffer: 'tag. 'tag t -> IO.Buffer.t -> 'tag option = fun fields buffer ->
     let rec loop (node: 'tag node) offset length =
       if Int.equal length 0 then
         node.tag
@@ -241,9 +244,16 @@ module Fields = struct
             else
               None
     in
-    loop root 0 (IO.Buffer.length buffer)
+    loop fields.root 0 (IO.Buffer.length buffer)
 
-  let make = fun cases -> List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node
+  let make = fun cases ->
+    let root = List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node in
+    let tags = array__init (List.length cases) (fun index -> list_nth cases index |> tag) in
+    { root; tags }
+
+  let length = fun fields -> array__length fields.tags
+
+  let tag_at = fun fields index -> array__get fields.tags index
 end
 
 type 'value t = {

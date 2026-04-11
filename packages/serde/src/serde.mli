@@ -44,6 +44,12 @@ module De: sig
 
     (** Compile a list of fields into a matcher. *)
     val make: 'tag case list -> 'tag t
+
+    (** Return the number of declared fields in source order. *)
+    val length: 'tag t -> int
+
+    (** Return the tag for the field at the given source-order index. *)
+    val tag_at: 'tag t -> int -> 'tag
   end
 
   (** A format-agnostic decoder description. *)

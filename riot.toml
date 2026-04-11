@@ -33,6 +33,7 @@ members = [
   "packages/suri",
   "packages/swisstable",
   "packages/syn",
+  "packages/serde-bin",
   "packages/tty",
   "packages/typ",
   "packages/riot-cli",

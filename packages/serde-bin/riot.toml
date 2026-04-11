@@ -1,0 +1,13 @@
+[package]
+name = "serde-bin"
+version = "0.0.17"
+
+[lib]
+path = "src/serde_bin.ml"
+
+[dependencies]
+serde = { path = "../serde", version = "*" }
+std = { path = "../std", version = "*" }
+
+[dev-dependencies]
+stdlib = "*"

@@ -1,0 +1,305 @@
+open Std
+module Vector = Collections.Vector
+module De = Serde.De
+
+type 'src reader_state = {
+  reader: ('src, IO.error) IO.Reader.t;
+  buf: bytes;
+  view: string;
+  mutable base: int;
+  mutable pos: int;
+  mutable limit: int;
+  mutable eof: bool;
+}
+
+type input =
+  | String_input of {
+      input: string;
+      mutable pos: int;
+    }
+  | Reader_input: 'src reader_state -> input
+
+type state = {
+  input: input;
+  scratch: IO.Buffer.t;
+  bytes: bytes;
+}
+
+let buffer_capacity = 4_096
+
+let error_at = fun pos message ->
+  raise (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
+
+let position = function
+  | String_input state -> state.pos
+  | Reader_input state -> state.base + state.pos
+
+let unexpected_end = fun state expected ->
+  error_at (position state.input) ("unexpected end of input while decoding " ^ expected)
+
+let compact = fun state ->
+  if state.pos > 0 then
+    let unread = state.limit - state.pos in
+    if unread > 0 then
+      IO.Bytes.blit state.buf state.pos state.buf 0 unread;
+    state.base <- state.base + state.pos;
+    state.limit <- unread;
+    state.pos <- 0
+
+let refill = fun state ->
+  if state.eof then
+    false
+  else (
+    compact state;
+    if Int.equal state.limit (IO.Bytes.length state.buf) then
+      false
+    else
+      let bufs = [|
+        { IO.Iovec.ba = state.buf; off = state.limit; len = IO.Bytes.length state.buf - state.limit }
+      |] in
+      match IO.Reader.read_vectored state.reader bufs with
+      | Ok 0 ->
+          state.eof <- true;
+          false
+      | Ok read_len ->
+          state.limit <- state.limit + read_len;
+          true
+      | Error err ->
+          raise (Serde.Decode_error (`Io_error err))
+  )
+
+let peek_byte = function
+  | String_input state ->
+      if state.pos < String.length state.input then
+        Some (String.unsafe_get state.input state.pos)
+      else
+        None
+  | Reader_input state ->
+      if state.pos < state.limit then
+        Some (String.unsafe_get state.view state.pos)
+      else if refill state then
+        Some (String.unsafe_get state.view state.pos)
+      else
+        None
+
+let advance = function
+  | String_input state -> state.pos <- state.pos + 1
+  | Reader_input state -> state.pos <- state.pos + 1
+
+let read_byte = fun state expected ->
+  match peek_byte state.input with
+  | Some byte ->
+      advance state.input;
+      byte
+  | None ->
+      unexpected_end state expected
+
+let read_exact_into = fun state dst ~off ~len expected ->
+  match state.input with
+  | String_input input ->
+      if input.pos + len > String.length input.input then
+        unexpected_end state expected
+      else (
+        IO.Bytes.blit_string input.input input.pos dst off len;
+        input.pos <- input.pos + len
+      )
+  | Reader_input reader ->
+      let rec loop dst_off remaining =
+        if Int.equal remaining 0 then
+          ()
+        else
+          let available = reader.limit - reader.pos in
+          if available = 0 then
+            if refill reader then
+              loop dst_off remaining
+            else
+              unexpected_end state expected
+          else
+            let chunk = min remaining available in
+            IO.Bytes.blit reader.buf reader.pos dst dst_off chunk;
+            reader.pos <- reader.pos + chunk;
+            loop (dst_off + chunk) (remaining - chunk)
+      in
+      loop off len
+
+let read_uint32_le = fun state ->
+  read_exact_into state state.bytes ~off:0 ~len:4 "u32";
+  (Char.code (IO.Bytes.get state.bytes 0))
+  lor ((Char.code (IO.Bytes.get state.bytes 1)) lsl 8)
+  lor ((Char.code (IO.Bytes.get state.bytes 2)) lsl 16)
+  lor ((Char.code (IO.Bytes.get state.bytes 3)) lsl 24)
+
+let read_int32_le = fun state ->
+  let value = read_uint32_le state in
+  Int32.of_int value
+
+let read_int64_le = fun state ->
+  read_exact_into state state.bytes ~off:0 ~len:8 "i64";
+  let acc = ref 0L in
+  for index = 0 to 7 do
+    let byte = Char.code (IO.Bytes.get state.bytes index) |> Int64.of_int in
+    acc := Int64.logor !acc (Int64.shift_left byte (index * 8))
+  done;
+  !acc
+
+let decode_length = fun state kind ->
+  let value = read_uint32_le state in
+  if value < 0 then
+    error_at (position state.input) ("decoded " ^ kind ^ " length is negative")
+  else
+    value
+
+let fits_int = fun value ->
+  Int64.compare value (Int64.of_int min_int) >= 0 && Int64.compare value (Int64.of_int max_int) <= 0
+
+let read_string = fun state ->
+  let len = decode_length state "string" in
+  match state.input with
+  | String_input input ->
+      if input.pos + len > String.length input.input then
+        unexpected_end state "string"
+      else
+        let value = String.sub input.input input.pos len in
+        input.pos <- input.pos + len;
+        value
+  | Reader_input reader ->
+      let available = reader.limit - reader.pos in
+      if len <= available then
+        let value = String.sub reader.view reader.pos len in
+        reader.pos <- reader.pos + len;
+        value
+      else (
+        IO.Buffer.clear state.scratch;
+        let rec loop remaining =
+          if Int.equal remaining 0 then
+            IO.Buffer.contents state.scratch
+          else
+            let available = reader.limit - reader.pos in
+            if available = 0 then
+              if refill reader then
+                loop remaining
+              else
+                unexpected_end state "string"
+            else
+              let chunk = min remaining available in
+              IO.Buffer.add_subbytes state.scratch reader.buf reader.pos chunk;
+              reader.pos <- reader.pos + chunk;
+              loop (remaining - chunk)
+        in
+        loop len
+      )
+
+let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
+  let len = decode_length state "list" in
+  let values = Vector.with_capacity len in
+  for _index = 0 to len - 1 do
+    Vector.push values (decode.run backend state)
+  done;
+  values
+
+and record_backend:
+  'field 'acc 'value.
+  state ->
+  fields:'field De.Fields.t ->
+  init:'acc ->
+  step:('acc -> 'field option -> 'acc) ->
+  finish:('acc -> 'value) ->
+  'value =
+  fun _state ~fields ~init ~step ~finish ->
+  let rec loop index acc =
+    if Int.equal index (De.Fields.length fields) then
+      finish acc
+    else
+      let next = step acc (Some (De.Fields.tag_at fields index)) in
+      loop (index + 1) next
+  in
+  loop 0 init
+
+and record_mut_backend:
+  'field 'builder 'value.
+  state ->
+  fields:'field De.Fields.t ->
+  create:(unit -> 'builder) ->
+  step:('builder -> 'field option -> unit) ->
+  finish:('builder -> 'value) ->
+  'value =
+  fun _state ~fields ~create ~step ~finish ->
+  let builder = create () in
+  for index = 0 to De.Fields.length fields - 1 do
+    step builder (Some (De.Fields.tag_at fields index))
+  done;
+  finish builder
+
+and variant_backend: 'value. state -> 'value De.variant_cases -> 'value = fun state cases ->
+  let index = decode_length state "variant" in
+  let rec loop index = function
+    | [] -> raise (Serde.Decode_error `invalid_tag)
+    | De.Unit (_tag, value) :: _rest when Int.equal index 0 -> value
+    | De.Newtype (_tag, decode, wrap) :: _rest when Int.equal index 0 ->
+        wrap (decode.run backend state)
+    | _ :: rest -> loop (index - 1) rest
+  in
+  loop index cases
+
+and backend: state De.backend = {
+  bool =
+    (fun state ->
+      match read_byte state "bool" with
+      | '\000' -> false
+      | '\001' -> true
+      | _ -> error_at (position state.input - 1) "invalid bool value");
+  string = read_string;
+  int =
+    (fun state ->
+      let value = read_int64_le state in
+      if fits_int value then
+        Int64.to_int value
+      else
+        error_at (position state.input) "decoded int does not fit in an OCaml int");
+  int32 = read_int32_le;
+  int64 = read_int64_le;
+  float = (fun state -> read_int64_le state |> Int64.float_of_bits);
+  skip_any = (fun _state -> raise (Serde.Decode_error `unimplemented));
+  option =
+    (fun state decode ->
+      match read_byte state "option tag" with
+      | '\000' -> None
+      | '\001' -> Some (decode.run backend state)
+      | _ -> error_at (position state.input - 1) "invalid option tag");
+  list = list_backend;
+  record = record_backend;
+  record_mut = record_mut_backend;
+  variant = variant_backend;
+}
+
+let finish = fun state value ->
+  match peek_byte state.input with
+  | None -> Ok value
+  | Some _ -> Error (`Msg ("extra input after binary value at byte " ^ Int.to_string (position state.input)))
+
+let of_input = fun decode input ->
+  let state = { input; scratch = IO.Buffer.create 64; bytes = IO.Bytes.create 8 } in
+  match De.run decode backend state with
+  | Error err -> Error err
+  | Ok value -> finish state value
+
+let decode_prefix = fun decode input ->
+  let state = { input = String_input { input; pos = 0 }; scratch = IO.Buffer.create 64; bytes = IO.Bytes.create 8 } in
+  match De.run decode backend state with
+  | Error err -> Error err
+  | Ok value -> Ok (value, position state.input)
+
+let of_string = fun decode input -> of_input decode (String_input { input; pos = 0 })
+
+let of_reader = fun decode reader ->
+  let buf = IO.Bytes.create buffer_capacity in
+  let input = Reader_input {
+    reader;
+    buf;
+    view = IO.Bytes.unsafe_to_string buf;
+    base = 0;
+    pos = 0;
+    limit = 0;
+    eof = false;
+  } in
+  of_input decode input
