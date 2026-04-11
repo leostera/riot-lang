@@ -12,6 +12,8 @@
       so the declaration is not needed as storage for a later write
     - in effect position, erase dead local assignments or keep only their
       right-hand-side effects when the assigned local is never read afterwards
+    - collapse [if] statements whose branches become empty, so pure conditions
+      stop keeping dead dependencies alive until a later normalization pass
     - drop pure expression statements entirely
     - preserve exported entities through the [protected] set
 

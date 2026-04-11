@@ -154,21 +154,7 @@ and lower_statement = fun ~protected ~assigned used_after statement ->
         { statements = [ Jir.Statement.Block lowered_block.statements ]; used }
   | Jir.Statement.Expression expr ->
       let (expr, used) = lower_expr ~assigned expr in
-      begin match expr with
-      | Jir.Expr.Assignment assignment when is_dead_local_store ~protected ~used_after assignment.target ->
-          if Analysis.is_pure_expr assignment.value then
-            { statements = []; used = Entity_set.union used_after used }
-          else
-            {
-              statements = [ Jir.Statement.Expression assignment.value ];
-              used = Entity_set.union used_after used;
-            }
-      | _ ->
-          if Analysis.is_pure_expr expr then
-            { statements = []; used = used_after }
-          else
-            { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
-      end
+      lower_effect_expr_statement ~protected used_after expr used
   | Jir.Statement.Return expr ->
       let (expr, used) = lower_expr ~assigned expr in
       { statements = [ Jir.Statement.Return expr ]; used = Entity_set.union used_after used }
@@ -176,19 +162,22 @@ and lower_statement = fun ~protected ~assigned used_after statement ->
       let (condition, condition_used) = lower_expr ~assigned if_.condition in
       let then_ = lower_block ~protected:Entity_set.empty ~assigned if_.then_ in
       let else_ = lower_block ~protected:Entity_set.empty ~assigned if_.else_ in
-      {
-        statements = [
-          Jir.Statement.If Jir.Statement.{
-            condition;
-            then_ = then_.statements;
-            else_ = else_.statements;
-          }
-        ];
-        used =
-          Entity_set.union used_after condition_used
-          |> Entity_set.union then_.used
-          |> Entity_set.union else_.used;
-      }
+      if List.is_empty then_.statements && List.is_empty else_.statements then
+        lower_effect_expr_statement ~protected used_after condition condition_used
+      else
+        {
+          statements = [
+            Jir.Statement.If Jir.Statement.{
+              condition;
+              then_ = then_.statements;
+              else_ = else_.statements;
+            }
+          ];
+          used =
+            Entity_set.union used_after condition_used
+            |> Entity_set.union then_.used
+            |> Entity_set.union else_.used;
+        }
 
 and lower_declaration = fun ~protected ~assigned used_after (declaration: Jir.Declaration.t) ->
   let binder_entity = Jir.Binder.entity_id declaration.binder in
@@ -220,6 +209,22 @@ and lower_declaration = fun ~protected ~assigned used_after (declaration: Jir.De
     statements = [ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ];
     used = Entity_set.union (forget_binding used_after declaration.binder.binding_id) init_used;
   }
+
+and lower_effect_expr_statement = fun ~protected used_after expr used ->
+  match expr with
+  | Jir.Expr.Assignment assignment when is_dead_local_store ~protected ~used_after assignment.target ->
+      if Analysis.is_pure_expr assignment.value then
+        { statements = []; used = Entity_set.union used_after used }
+      else
+        {
+          statements = [ Jir.Statement.Expression assignment.value ];
+          used = Entity_set.union used_after used;
+        }
+  | _ ->
+      if Analysis.is_pure_expr expr then
+        { statements = []; used = used_after }
+      else
+        { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
 
 and lower_block = fun ~protected ~assigned statements ->
   match statements with
