@@ -2,246 +2,69 @@
   "codegen": {
     "backend": "js",
     "stage": {
-      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst no_smaller = __callPrimitive(\"%ge\", 5, 3);\n\nPrintf.printf(\"%b\\\\n\", no_smaller);\n\nexport {\n  no_smaller\n};\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 128,
+              "start": 114
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "target": "js-unknown-ecma"
   },
   "core_ir": {
-    "compilation_unit": {
-      "exports": [
-        {
-          "name": "no_smaller",
-          "symbol": {
-            "binding_id": {
-              "kind": "local",
-              "name": "no_smaller",
-              "stamp": 0
-            },
-            "kind": "resolved",
-            "surface_path": "no_smaller"
-          }
-        }
-      ],
-      "init": [
-        {
-          "exports": [
-            {
-              "name": "no_smaller",
-              "symbol": {
-                "binding_id": {
-                  "kind": "local",
-                  "name": "no_smaller",
-                  "stamp": 0
-                },
-                "kind": "resolved",
-                "surface_path": "no_smaller"
-              }
-            }
-          ],
-          "items": [
-            {
-              "binding": {
-                "entity_id": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "no_smaller",
-                    "stamp": 0
-                  },
-                  "kind": "resolved",
-                  "surface_path": "no_smaller"
-                },
-                "expr": {
-                  "apply": {
-                    "arguments": [
-                      {
-                        "constant": {
-                          "kind": "int",
-                          "value": 5
-                        },
-                        "kind": "constant"
-                      },
-                      {
-                        "constant": {
-                          "kind": "int",
-                          "value": 3
-                        },
-                        "kind": "constant"
-                      }
-                    ],
-                    "callee": {
-                      "function": {
-                        "kind": "unresolved",
-                        "surface_path": ">="
-                      },
-                      "kind": "direct"
-                    }
-                  },
-                  "kind": "apply"
-                },
-                "name": "no_smaller"
-              },
-              "kind": "binding"
-            }
-          ],
-          "rec_flag": "nonrecursive"
+    "blocked_on": "typing",
+    "errors": [
+      {
+        "diagnostic": {
+          "id": "TYP2001",
+          "message": "unbound name: Printf.printf",
+          "name": "unbound-name",
+          "name_text": "Printf.printf",
+          "reference_span": {
+            "end": 128,
+            "start": 114
+          },
+          "severity": "error"
         },
-        {
-          "exports": [],
-          "items": [
-            {
-              "expr": {
-                "apply": {
-                  "arguments": [
-                    {
-                      "constant": {
-                        "kind": "string",
-                        "value": "%b\\n"
-                      },
-                      "kind": "constant"
-                    },
-                    {
-                      "kind": "var",
-                      "name": {
-                        "binding_id": {
-                          "kind": "local",
-                          "name": "no_smaller",
-                          "stamp": 0
-                        },
-                        "kind": "resolved",
-                        "surface_path": "no_smaller"
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "function": {
-                      "kind": "unresolved",
-                      "surface_path": "Printf.printf"
-                    },
-                    "kind": "direct"
-                  }
-                },
-                "kind": "apply"
-              },
-              "kind": "eval"
-            }
-          ],
-          "rec_flag": "nonrecursive"
-        }
-      ],
-      "unit_id": {
-        "kind": "implementation",
-        "relpath": "corpus/greater_or_equal_comparison.ml",
-        "unit_name": "Greater_or_equal_comparison"
+        "stage": "typing"
       }
-    },
-    "status": "ok"
+    ],
+    "status": "blocked"
   },
   "lowering": {
     "backend": "js",
     "stages": {
       "jir": {
-        "program": {
-          "body": [
-            {
-              "declaration": {
-                "init": {
-                  "call": {
-                    "arguments": [
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
-                          "value": "%ge"
-                        }
-                      },
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "number",
-                          "number": {
-                            "kind": "int",
-                            "value": 5
-                          }
-                        }
-                      },
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "number",
-                          "number": {
-                            "kind": "int",
-                            "value": 3
-                          }
-                        }
-                      }
-                    ],
-                    "callee": {
-                      "kind": "identifier",
-                      "name": "__callPrimitive"
-                    }
-                  },
-                  "kind": "call"
-                },
-                "kind": "const",
-                "name": "no_smaller"
+        "blocked_on": "core_ir",
+        "errors": [
+          {
+            "diagnostic": {
+              "id": "TYP2001",
+              "message": "unbound name: Printf.printf",
+              "name": "unbound-name",
+              "name_text": "Printf.printf",
+              "reference_span": {
+                "end": 128,
+                "start": 114
               },
-              "kind": "declaration"
+              "severity": "error"
             },
-            {
-              "expression": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%b\\n"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "no_smaller"
-                    }
-                  ],
-                  "callee": {
-                    "kind": "member",
-                    "member": {
-                      "object": {
-                        "kind": "identifier",
-                        "name": "Printf"
-                      },
-                      "property": "printf"
-                    }
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "expression"
-            }
-          ],
-          "exports": [
-            {
-              "local": "no_smaller",
-              "name": "no_smaller"
-            }
-          ],
-          "imports": [
-            {
-              "from": "./Printf.js",
-              "imported": null,
-              "local": "Printf",
-              "namespace": true
-            },
-            {
-              "from": "./riot-runtime.js",
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ],
-          "module_name": "Greater_or_equal_comparison"
-        },
-        "status": "ok"
+            "stage": "typing"
+          }
+        ],
+        "status": "blocked"
       }
     }
   },
@@ -260,7 +83,7 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [
       {
         "name": "no_smaller",
@@ -268,7 +91,7 @@
       }
     ],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [
           {
@@ -276,13 +99,25 @@
             "scheme": "bool"
           }
         ],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 128,
+          "start": 114
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

@@ -1,269 +1,48 @@
 {
-  "initial": {
-    "exports": [],
-    "module_name": "Float_of_string",
-    "procedures": [
-      {
-        "body": [
-          {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "3.1415"
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t0"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "float_of_string"
-            },
-            "dst": "t1",
-            "kind": "call"
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t1"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "string_of_float"
-            },
-            "dst": "t2",
-            "kind": "call"
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t2"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_endline"
-            },
-            "dst": "t3",
-            "kind": "call"
-          }
-        ],
-        "kind": "entry",
-        "name": "__entry__",
-        "params": []
-      }
-    ]
-  },
-  "passes": {
-    "canonicalize": {
-      "exports": [],
-      "module_name": "Float_of_string",
-      "procedures": [
-        {
-          "body": [
-            {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "3.1415"
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t0"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "float_of_string"
-              },
-              "dst": "t1",
-              "kind": "call"
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t1"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "string_of_float"
-              },
-              "dst": "t2",
-              "kind": "call"
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t2"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_endline"
-              },
-              "dst": "t3",
-              "kind": "call"
-            }
-          ],
-          "kind": "entry",
-          "name": "__entry__",
-          "params": []
-        }
-      ]
+  "blocked_on": "nir",
+  "errors": [
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: print_endline",
+        "name": "unbound-name",
+        "name_text": "print_endline",
+        "reference_span": {
+          "end": 101,
+          "start": 87
+        },
+        "severity": "error"
+      },
+      "stage": "typing"
     },
-    "insert_polls": {
-      "exports": [],
-      "module_name": "Float_of_string",
-      "procedures": [
-        {
-          "body": [
-            {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "3.1415"
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t0"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "float_of_string"
-              },
-              "dst": "t1",
-              "kind": "call"
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t1"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "string_of_float"
-              },
-              "dst": "t2",
-              "kind": "call"
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t2"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_endline"
-              },
-              "dst": "t3",
-              "kind": "call"
-            }
-          ],
-          "kind": "entry",
-          "name": "__entry__",
-          "params": []
-        }
-      ]
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: string_of_float",
+        "name": "unbound-name",
+        "name_text": "string_of_float",
+        "reference_span": {
+          "end": 118,
+          "start": 103
+        },
+        "severity": "error"
+      },
+      "stage": "typing"
+    },
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: float_of_string",
+        "name": "unbound-name",
+        "name_text": "float_of_string",
+        "reference_span": {
+          "end": 135,
+          "start": 120
+        },
+        "severity": "error"
+      },
+      "stage": "typing"
     }
-  },
-  "program": {
-    "exports": [],
-    "module_name": "Float_of_string",
-    "procedures": [
-      {
-        "body": [
-          {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "3.1415"
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t0"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "float_of_string"
-            },
-            "dst": "t1",
-            "kind": "call"
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t1"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "string_of_float"
-            },
-            "dst": "t2",
-            "kind": "call"
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t2"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_endline"
-            },
-            "dst": "t3",
-            "kind": "call"
-          }
-        ],
-        "kind": "entry",
-        "name": "__entry__",
-        "params": []
-      }
-    ]
-  },
-  "status": "ok"
+  ],
+  "status": "blocked"
 }

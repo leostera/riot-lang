@@ -12,8 +12,11 @@
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_newline"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_newline"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -22,12 +25,6 @@
     }
   ],
   "exports": [],
-  "imports": [
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_newline",
-      "local": "__print_newline"
-    }
-  ],
+  "imports": [],
   "module_name": "Print_newline"
 }

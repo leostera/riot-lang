@@ -9,7 +9,7 @@ It should stay thin.
 This package owns:
 
 - CLI argument parsing
-- target-string parsing at the command boundary
+- target-string parsing at the command boundary for JS/native/wasm triples
 - emitted artifact writing
 - temporary runtime companion copying needed to execute JS output locally
 
@@ -27,7 +27,8 @@ This package does **not** own:
 3. If the CLI needs new compiler data, prefer adding a narrow compiler accessor
    over parsing internal pipeline JSON in the binary.
 4. JS runtime asset copying is a temporary repo-local packaging step. Do not
-   move backend logic into this package.
+   move backend logic into this package. Keep it conditional on the selected JS
+   target instead of treating it as a generic output step.
 
 ## Verification
 

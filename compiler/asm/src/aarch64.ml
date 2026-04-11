@@ -67,8 +67,10 @@ module Instruction = struct
     | Str of { src: Register.t; address: Address.t }
     | Stp of { src1: Register.t; src2: Register.t; address: Address.t }
     | Ldp of { dst1: Register.t; dst2: Register.t; address: Address.t }
+    | B of string
     | Bl of string
     | Blr of Register.t
+    | Cbz of { src: Register.t; label: string }
     | Ret
 
   let render = fun opcode operands ->
@@ -124,8 +126,10 @@ module Instruction = struct
     | Ldp { dst1; dst2; address } -> render
       "ldp"
       [ Register.to_string dst1; Register.to_string dst2; Address.to_string address ]
+    | B label -> render "b" [ label ]
     | Bl symbol -> render "bl" [ symbol ]
     | Blr register -> render "blr" [ Register.to_string register ]
+    | Cbz { src; label } -> render "cbz" [ Register.to_string src; label ]
     | Ret -> render "ret" []
 
   let to_json = fun instruction_ -> Json.string (to_string instruction_)

@@ -44,6 +44,15 @@
           }
         },
         {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
+        },
+        {
           "arguments": [
             {
               "kind": "register",
@@ -58,14 +67,6 @@
           "kind": "call"
         },
         {
-          "dst": "t2",
-          "kind": "move",
-          "src": {
-            "kind": "register",
-            "name": "t1"
-          }
-        },
-        {
           "if_then_else": {
             "condition": {
               "kind": "register",
@@ -73,7 +74,7 @@
             },
             "else": [
               {
-                "dst": "t4",
+                "dst": "t3",
                 "kind": "move",
                 "src": {
                   "kind": "literal",
@@ -84,17 +85,17 @@
                 }
               },
               {
-                "dst": "t5",
+                "dst": "t4",
                 "kind": "move",
                 "src": {
                   "kind": "register",
-                  "name": "t4"
+                  "name": "t3"
                 }
               }
             ],
             "then": [
               {
-                "dst": "t3",
+                "dst": "t2",
                 "kind": "move",
                 "src": {
                   "kind": "literal",
@@ -105,11 +106,11 @@
                 }
               },
               {
-                "dst": "t5",
+                "dst": "t4",
                 "kind": "move",
                 "src": {
                   "kind": "register",
-                  "name": "t3"
+                  "name": "t2"
                 }
               }
             ]
@@ -117,11 +118,19 @@
           "kind": "if_then_else"
         },
         {
+          "dst": "t5",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t1"
+          }
+        },
+        {
           "dst": "t6",
           "kind": "move",
           "src": {
             "kind": "register",
-            "name": "t5"
+            "name": "t4"
           }
         },
         {
@@ -150,6 +159,15 @@
               "value": true
             }
           }
+        },
+        {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
         },
         {
           "arguments": [
@@ -183,6 +201,15 @@
               "value": false
             }
           }
+        },
+        {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
         },
         {
           "arguments": [

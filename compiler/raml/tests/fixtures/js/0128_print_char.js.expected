@@ -1,20 +1,7 @@
 {
-  "js": "import { print_char as __print_char } from \"./riot-runtime.js\";\n\n__print_char(\":\");\n",
+  "js": "print_char(\":\");\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_char",
-              "local": "__print_char"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
@@ -30,8 +17,11 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_char"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_char"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

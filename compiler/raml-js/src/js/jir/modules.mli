@@ -15,16 +15,13 @@ type t = Types.Modules.t = {
   import_path: string;
   namespace: string list;
 }
-
 type reference_root =
   | Identifier of Core.Entity_id.t
   | Namespace of t
-
 type entity_reference = {
   root: reference_root;
   properties: string list;
 }
-
 val sibling_unit: string -> t
 
 val runtime: string -> t

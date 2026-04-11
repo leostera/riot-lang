@@ -1,5 +1,4 @@
 open Std
-
 module Jir = Types
 
 let global = fun name -> Jir.Expr.Global Jir.Expr.{ name }

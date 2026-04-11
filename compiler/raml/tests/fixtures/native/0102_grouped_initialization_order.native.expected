@@ -1,51 +1,34 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "before"
-.p2align 0
-L__raml_str_1:
-.asciz "after"
-
-.data
-.globl _before
-.p2align 3
-_before:
-.quad 0
-.globl _after
-.p2align 3
-_after:
-.quad 0
-
-.text
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #32
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #0]
-ldr x9, [sp, #0]
-adrp x10, _before@PAGE
-add x10, x10, _before@PAGEOFF
-str x9, [x10, #0]
-adrp x10, _before@PAGE
-add x10, x10, _before@PAGEOFF
-ldr x0, [x10, #0]
-bl _print_endline
-str x0, [sp, #8]
-adrp x9, L__raml_str_1@PAGE
-add x9, x9, L__raml_str_1@PAGEOFF
-str x9, [sp, #16]
-ldr x0, [sp, #16]
-bl _print_endline
-str x0, [sp, #24]
-ldr x9, [sp, #24]
-adrp x10, _after@PAGE
-add x10, x10, _after@PAGEOFF
-str x9, [x10, #0]
-movz x0, #0, lsl #0
-add sp, sp, #32
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: print_endline",
+        "severity": "error",
+        "reference_span": {
+          "start": 30,
+          "end": 44
+        },
+        "name_text": "print_endline"
+      }
+    },
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: print_endline",
+        "severity": "error",
+        "reference_span": {
+          "start": 63,
+          "end": 77
+        },
+        "name_text": "print_endline"
+      }
+    }
+  ]
+}

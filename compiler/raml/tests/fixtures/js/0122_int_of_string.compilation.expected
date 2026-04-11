@@ -2,151 +2,111 @@
   "codegen": {
     "backend": "js",
     "stage": {
-      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nPrintf.printf(\"%d\\\\n\", __callPrimitive(\"%int_of_string\", \"42\"));\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 92,
+              "start": 78
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: int_of_string",
+            "name": "unbound-name",
+            "name_text": "int_of_string",
+            "reference_span": {
+              "end": 114,
+              "start": 101
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "target": "js-unknown-ecma"
   },
   "core_ir": {
-    "compilation_unit": {
-      "exports": [],
-      "init": [
-        {
-          "exports": [],
-          "items": [
-            {
-              "expr": {
-                "apply": {
-                  "arguments": [
-                    {
-                      "constant": {
-                        "kind": "string",
-                        "value": "%d\\n"
-                      },
-                      "kind": "constant"
-                    },
-                    {
-                      "apply": {
-                        "arguments": [
-                          {
-                            "constant": {
-                              "kind": "string",
-                              "value": "42"
-                            },
-                            "kind": "constant"
-                          }
-                        ],
-                        "callee": {
-                          "function": {
-                            "kind": "unresolved",
-                            "surface_path": "int_of_string"
-                          },
-                          "kind": "direct"
-                        }
-                      },
-                      "kind": "apply"
-                    }
-                  ],
-                  "callee": {
-                    "function": {
-                      "kind": "unresolved",
-                      "surface_path": "Printf.printf"
-                    },
-                    "kind": "direct"
-                  }
-                },
-                "kind": "apply"
-              },
-              "kind": "eval"
-            }
-          ],
-          "rec_flag": "nonrecursive"
-        }
-      ],
-      "unit_id": {
-        "kind": "implementation",
-        "relpath": "corpus/int_of_string.ml",
-        "unit_name": "Int_of_string"
+    "blocked_on": "typing",
+    "errors": [
+      {
+        "diagnostic": {
+          "id": "TYP2001",
+          "message": "unbound name: Printf.printf",
+          "name": "unbound-name",
+          "name_text": "Printf.printf",
+          "reference_span": {
+            "end": 92,
+            "start": 78
+          },
+          "severity": "error"
+        },
+        "stage": "typing"
+      },
+      {
+        "diagnostic": {
+          "id": "TYP2001",
+          "message": "unbound name: int_of_string",
+          "name": "unbound-name",
+          "name_text": "int_of_string",
+          "reference_span": {
+            "end": 114,
+            "start": 101
+          },
+          "severity": "error"
+        },
+        "stage": "typing"
       }
-    },
-    "status": "ok"
+    ],
+    "status": "blocked"
   },
   "lowering": {
     "backend": "js",
     "stages": {
       "jir": {
-        "program": {
-          "body": [
-            {
-              "expression": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%d\\n"
-                      }
-                    },
-                    {
-                      "call": {
-                        "arguments": [
-                          {
-                            "kind": "literal",
-                            "literal": {
-                              "kind": "string",
-                              "value": "%int_of_string"
-                            }
-                          },
-                          {
-                            "kind": "literal",
-                            "literal": {
-                              "kind": "string",
-                              "value": "42"
-                            }
-                          }
-                        ],
-                        "callee": {
-                          "kind": "identifier",
-                          "name": "__callPrimitive"
-                        }
-                      },
-                      "kind": "call"
-                    }
-                  ],
-                  "callee": {
-                    "kind": "member",
-                    "member": {
-                      "object": {
-                        "kind": "identifier",
-                        "name": "Printf"
-                      },
-                      "property": "printf"
-                    }
-                  }
-                },
-                "kind": "call"
+        "blocked_on": "core_ir",
+        "errors": [
+          {
+            "diagnostic": {
+              "id": "TYP2001",
+              "message": "unbound name: Printf.printf",
+              "name": "unbound-name",
+              "name_text": "Printf.printf",
+              "reference_span": {
+                "end": 92,
+                "start": 78
               },
-              "kind": "expression"
-            }
-          ],
-          "exports": [],
-          "imports": [
-            {
-              "from": "./Printf.js",
-              "imported": null,
-              "local": "Printf",
-              "namespace": true
+              "severity": "error"
             },
-            {
-              "from": "./riot-runtime.js",
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ],
-          "module_name": "Int_of_string"
-        },
-        "status": "ok"
+            "stage": "typing"
+          },
+          {
+            "diagnostic": {
+              "id": "TYP2001",
+              "message": "unbound name: int_of_string",
+              "name": "unbound-name",
+              "name_text": "int_of_string",
+              "reference_span": {
+                "end": 114,
+                "start": 101
+              },
+              "severity": "error"
+            },
+            "stage": "typing"
+          }
+        ],
+        "status": "blocked"
       }
     }
   },
@@ -165,19 +125,42 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 92,
+          "start": 78
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: int_of_string",
+        "name": "unbound-name",
+        "name_text": "int_of_string",
+        "reference_span": {
+          "end": 114,
+          "start": 101
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

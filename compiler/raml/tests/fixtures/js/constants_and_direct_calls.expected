@@ -3,69 +3,59 @@
     "body": [
       {
         "declaration": {
-          "init": {
-            "kind": "literal",
-            "literal": {
-              "kind": "number",
-              "number": {
-                "kind": "int",
-                "value": 41
-              }
-            }
+          "binder": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.binding.next"
+            },
+            "name": "next"
           },
-          "kind": "const",
-          "name": "answer"
-        },
-        "kind": "declaration"
-      },
-      {
-        "declaration": {
-          "init": {
-            "kind": "literal",
-            "literal": {
-              "kind": "bool",
-              "value": true
-            }
-          },
-          "kind": "const",
-          "name": "ready"
-        },
-        "kind": "declaration"
-      },
-      {
-        "declaration": {
           "init": {
             "call": {
               "arguments": [
                 {
-                  "kind": "identifier",
-                  "name": "answer"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "answer"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "succ"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "succ"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
           },
-          "kind": "const",
-          "name": "next"
+          "kind": "const"
         },
         "kind": "declaration"
       }
     ],
     "exports": [
       {
-        "local": "answer",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "answer"
+        },
         "name": "answer"
       },
       {
-        "local": "ready",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "ready"
+        },
         "name": "ready"
       },
       {
-        "local": "next",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "next"
+        },
         "name": "next"
       }
     ],

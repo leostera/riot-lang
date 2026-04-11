@@ -5,6 +5,7 @@ module Jir = Types
 module Entity_set = struct
   module Storage = Collections.Map.Make (struct
     type t = Core.Entity_id.t
+
     let compare = Core.Entity_id.compare
   end)
 
@@ -12,9 +13,11 @@ module Entity_set = struct
 
   let empty = Storage.empty
 
-  let add = fun entity set -> Storage.add entity () set
+  let add = fun entity set ->
+    Storage.add entity () set
 
-  let singleton = fun entity -> Storage.singleton entity ()
+  let singleton = fun entity ->
+    Storage.singleton entity ()
 
   let mem = Storage.mem
 
@@ -59,19 +62,17 @@ let rec is_pure_expr = fun expr ->
       if is_pure_expr conditional.condition then
         if is_pure_expr conditional.then_ then
           is_pure_expr conditional.else_
-      else
-        false
+        else
+          false
       else
         false
 
 and is_pure_array_element = fun element ->
   match element with
   | Jir.Expr.Item expr
-  | Jir.Expr.Spread expr ->
-      is_pure_expr expr
+  | Jir.Expr.Spread expr -> is_pure_expr expr
 
-and is_pure_object_field = fun (field: Jir.Expr.object_field) ->
-  is_pure_expr field.value
+and is_pure_object_field = fun (field: Jir.Expr.object_field) -> is_pure_expr field.value
 
 let rec expr_read_entities = fun expr used ->
   match expr with
@@ -125,8 +126,7 @@ and array_elements_read_entities = fun elements used ->
       let used =
         match element with
         | Jir.Expr.Item expr
-        | Jir.Expr.Spread expr ->
-            expr_read_entities expr used
+        | Jir.Expr.Spread expr -> expr_read_entities expr used
       in
       array_elements_read_entities rest used
 
@@ -164,7 +164,8 @@ and statements_read_entities = fun statements used ->
 let program_read_entities = fun (program: Jir.Program.t) ->
   let used = statements_read_entities program.body Entity_set.empty in
   List.fold_left
-    (fun used (export: Jir.Export.t) -> Entity_set.add export.local used)
+    (fun used (export: Jir.Export.t) ->
+      Entity_set.add export.local used)
     used
     program.exports
 
@@ -216,8 +217,7 @@ and array_elements_assigned_entities = fun elements entities ->
       let entities =
         match element with
         | Jir.Expr.Item expr
-        | Jir.Expr.Spread expr ->
-            expr_assigned_entities expr entities
+        | Jir.Expr.Spread expr -> expr_assigned_entities expr entities
       in
       array_elements_assigned_entities rest entities
 

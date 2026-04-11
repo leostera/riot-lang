@@ -2,6 +2,13 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.answer"
+          },
+          "name": "answer"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -12,13 +19,19 @@
             }
           }
         },
-        "kind": "const",
-        "name": "answer"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.ready"
+          },
+          "name": "ready"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -26,13 +39,19 @@
             "value": true
           }
         },
-        "kind": "let",
-        "name": "ready"
+        "kind": "let"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.message"
+          },
+          "name": "message"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -40,39 +59,57 @@
             "value": "hello"
           }
         },
-        "kind": "const",
-        "name": "message"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.nothing"
+          },
+          "name": "nothing"
+        },
         "init": {
           "kind": "literal",
           "literal": {
             "kind": "undefined"
           }
         },
-        "kind": "var",
-        "name": "nothing"
+        "kind": "var"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.empty"
+          },
+          "name": "empty"
+        },
         "init": {
           "kind": "literal",
           "literal": {
             "kind": "null"
           }
         },
-        "kind": "let",
-        "name": "empty"
+        "kind": "let"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.pi"
+          },
+          "name": "pi"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -83,19 +120,32 @@
             }
           }
         },
-        "kind": "const",
-        "name": "pi"
+        "kind": "const"
       },
       "kind": "declaration"
     }
   ],
   "exports": [
     {
-      "local": "answer",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__jir_fixture.answer"
+        },
+        "kind": "resolved",
+        "surface_path": "answer"
+      },
       "name": "answer"
     },
     {
-      "local": "message",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__jir_fixture.message"
+        },
+        "kind": "resolved",
+        "surface_path": "message"
+      },
       "name": "message"
     }
   ],

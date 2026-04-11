@@ -30,124 +30,67 @@
           "name": "__entry__"
         },
         {
-          "dst": "t0",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "int",
               "value": 42
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t0"
           },
           "symbol": "answer"
         },
         {
-          "dst": "t1",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "bool",
               "value": true
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t1"
           },
           "symbol": "ready"
         },
         {
-          "dst": "t2",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "float",
               "value": 3.5
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t2"
           },
           "symbol": "ratio"
         },
         {
-          "dst": "t3",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "string",
               "value": "riot"
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t3"
           },
           "symbol": "greeting"
         },
         {
-          "dst": "t4",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "unit"
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t4"
           },
           "symbol": "nothing"
         }
       ],
       "frame": {
-        "frame_size": 48,
-        "slots": [
-          {
-            "name": "t0",
-            "offset": 0
-          },
-          {
-            "name": "t1",
-            "offset": 8
-          },
-          {
-            "name": "t2",
-            "offset": 16
-          },
-          {
-            "name": "t3",
-            "offset": 24
-          },
-          {
-            "name": "t4",
-            "offset": 32
-          }
-        ]
+        "contains_calls": false,
+        "frame_required": false,
+        "frame_size": 0,
+        "homes": [],
+        "saved_registers": [],
+        "slots": []
       },
       "kind": "entry",
       "name": "__entry__",

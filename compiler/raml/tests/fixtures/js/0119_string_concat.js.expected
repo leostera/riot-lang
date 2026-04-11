@@ -1,62 +1,40 @@
 {
-  "js": "import { callPrimitive as __callPrimitive, print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst message = __callPrimitive(\"%concatstring\", \"hello, \", \"world\");\n\n__print_endline(message);\n\nexport {\n  message\n};\n",
+  "js": "const message = (\"hello, \" + \"world\");\n\nprint_endline(message);\n\nexport {\n  message\n};\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            },
-            {
-              "imported": "print_endline",
-              "local": "__print_endline"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "message",
+                "stamp": 0
+              },
+              "name": "message"
+            },
             "init": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%concatstring"
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "hello, "
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "world"
-                    }
+              "binary": {
+                "left": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "hello, "
                   }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
+                },
+                "operator": "add",
+                "right": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "world"
+                  }
                 }
               },
-              "kind": "call"
+              "kind": "binary"
             },
-            "kind": "const",
-            "name": "message"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -68,13 +46,24 @@
             "call": {
               "arguments": [
                 {
-                  "kind": "identifier",
-                  "name": "message"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "message",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "message"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_endline"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_endline"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
@@ -85,7 +74,15 @@
       {
         "exports": [
           {
-            "local": "message",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "message",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "message"
+            },
             "name": "message"
           }
         ],

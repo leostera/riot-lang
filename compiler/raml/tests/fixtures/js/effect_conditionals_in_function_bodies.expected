@@ -3,6 +3,13 @@
     "body": [
       {
         "declaration": {
+          "binder": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.binding.compute"
+            },
+            "name": "compute"
+          },
           "init": {
             "call": {
               "arguments": [
@@ -12,8 +19,11 @@
                       {
                         "if": {
                           "condition": {
-                            "kind": "identifier",
-                            "name": "flag"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "flag"
+                            },
+                            "kind": "identifier"
                           },
                           "else": [
                             {
@@ -21,13 +31,19 @@
                                 "call": {
                                   "arguments": [
                                     {
-                                      "kind": "identifier",
-                                      "name": "value"
+                                      "entity_id": {
+                                        "kind": "unresolved",
+                                        "surface_path": "value"
+                                      },
+                                      "kind": "identifier"
                                     }
                                   ],
                                   "callee": {
-                                    "kind": "identifier",
-                                    "name": "right"
+                                    "entity_id": {
+                                      "kind": "unresolved",
+                                      "surface_path": "right"
+                                    },
+                                    "kind": "identifier"
                                   }
                                 },
                                 "kind": "call"
@@ -39,8 +55,11 @@
                                 "call": {
                                   "arguments": [],
                                   "callee": {
-                                    "kind": "identifier",
-                                    "name": "finish"
+                                    "entity_id": {
+                                      "kind": "unresolved",
+                                      "surface_path": "finish"
+                                    },
+                                    "kind": "identifier"
                                   }
                                 },
                                 "kind": "call"
@@ -54,13 +73,19 @@
                                 "call": {
                                   "arguments": [
                                     {
-                                      "kind": "identifier",
-                                      "name": "value"
+                                      "entity_id": {
+                                        "kind": "unresolved",
+                                        "surface_path": "value"
+                                      },
+                                      "kind": "identifier"
                                     }
                                   ],
                                   "callee": {
-                                    "kind": "identifier",
-                                    "name": "left"
+                                    "entity_id": {
+                                      "kind": "unresolved",
+                                      "surface_path": "left"
+                                    },
+                                    "kind": "identifier"
                                   }
                                 },
                                 "kind": "call"
@@ -73,15 +98,30 @@
                       },
                       {
                         "expression": {
-                          "kind": "identifier",
-                          "name": "value"
+                          "entity_id": {
+                            "kind": "unresolved",
+                            "surface_path": "value"
+                          },
+                          "kind": "identifier"
                         },
                         "kind": "return"
                       }
                     ],
                     "params": [
-                      "flag",
-                      "value"
+                      {
+                        "binding_id": {
+                          "kind": "persistent",
+                          "surface_path": "__raml_js.binding.flag"
+                        },
+                        "name": "flag"
+                      },
+                      {
+                        "binding_id": {
+                          "kind": "persistent",
+                          "surface_path": "__raml_js.binding.value"
+                        },
+                        "name": "value"
+                      }
                     ]
                   },
                   "kind": "function"
@@ -98,21 +138,30 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__makeCurried"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.runtime.__makeCurried"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "__makeCurried"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
           },
-          "kind": "const",
-          "name": "compute"
+          "kind": "const"
         },
         "kind": "declaration"
       }
     ],
     "exports": [
       {
-        "local": "compute",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "compute"
+        },
         "name": "compute"
       }
     ],
@@ -120,7 +169,13 @@
       {
         "from": "./riot-runtime.js",
         "imported": "makeCurried",
-        "local": "__makeCurried"
+        "local": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__raml_js.runtime.__makeCurried"
+          },
+          "name": "__makeCurried"
+        }
       }
     ],
     "module_name": "Effect_conditionals_in_function_bodies"

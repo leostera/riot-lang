@@ -10,13 +10,6 @@
                   {
                     "kind": "literal",
                     "literal": {
-                      "kind": "string",
-                      "value": "%string_of_float"
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
                       "kind": "number",
                       "number": {
                         "kind": "float",
@@ -26,16 +19,22 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "string_of_float"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_endline"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_endline"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -44,17 +43,6 @@
     }
   ],
   "exports": [],
-  "imports": [
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_endline",
-      "local": "__print_endline"
-    }
-  ],
+  "imports": [],
   "module_name": "String_of_float"
 }

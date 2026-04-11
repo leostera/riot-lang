@@ -51,14 +51,11 @@ let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
 
 let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
 
-let is_ascii_letter = fun char ->
-  is_ascii_lowercase char || is_ascii_uppercase char
+let is_ascii_letter = fun char -> is_ascii_lowercase char || is_ascii_uppercase char
 
-let is_identifier_start = fun char ->
-  is_ascii_letter char || char = '_' || char = '$'
+let is_identifier_start = fun char -> is_ascii_letter char || char = '_' || char = '$'
 
-let is_identifier_continue = fun char ->
-  is_identifier_start char || (char >= '0' && char <= '9')
+let is_identifier_continue = fun char -> is_identifier_start char || (char >= '0' && char <= '9')
 
 let is_valid_identifier = fun name ->
   let length = String.length name in
@@ -83,19 +80,23 @@ let is_valid_binding_identifier = fun name ->
 let sanitize_binding_identifier = fun name ->
   let length = String.length name in
   let buffer = IO.Buffer.create (max 1 length) in
-  let push_valid_start = fun char ->
+  let push_valid_start char =
     if is_identifier_start char then
       IO.Buffer.add_char buffer char
-    else if char >= '0' && char <= '9' then begin
-      IO.Buffer.add_char buffer '_';
-      IO.Buffer.add_char buffer char
-    end else if char = '\'' then begin
-      IO.Buffer.add_char buffer '_';
-      IO.Buffer.add_char buffer '$'
-    end else
+    else if char >= '0' && char <= '9' then
+      begin
+        IO.Buffer.add_char buffer '_';
+        IO.Buffer.add_char buffer char
+      end
+    else if char = '\'' then
+      begin
+        IO.Buffer.add_char buffer '_';
+        IO.Buffer.add_char buffer '$'
+      end
+    else
       IO.Buffer.add_char buffer '_'
   in
-  let push_valid_continue = fun char ->
+  let push_valid_continue char =
     if is_identifier_continue char then
       IO.Buffer.add_char buffer char
     else if char = '\'' then
@@ -108,10 +109,11 @@ let sanitize_binding_identifier = fun name ->
   else begin
     push_valid_start name.[0];
     let rec loop index =
-      if index < length then begin
-        push_valid_continue name.[index];
-        loop (index + 1)
-      end
+      if index < length then
+        begin
+          push_valid_continue name.[index];
+          loop (index + 1)
+        end
     in
     loop 1;
     let lowered = IO.Buffer.contents buffer in
@@ -127,7 +129,6 @@ let classify_property_name = fun name ->
   else
     Quoted_string
 
-let can_use_dot_property = fun name ->
-  classify_property_name name = Identifier
+let can_use_dot_property = fun name -> classify_property_name name = Identifier
 
 let can_use_unquoted_object_key = can_use_dot_property

@@ -281,11 +281,27 @@
         "body": [
           {
             "declaration": {
+              "binder": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "choose",
+                  "stamp": 1
+                },
+                "name": "choose"
+              },
               "init": {
                 "function": {
                   "body": [
                     {
                       "declaration": {
+                        "binder": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "decide",
+                            "stamp": 0
+                          },
+                          "name": "decide"
+                        },
                         "init": {
                           "call": {
                             "arguments": [
@@ -295,14 +311,30 @@
                                     {
                                       "if": {
                                         "condition": {
-                                          "kind": "identifier",
-                                          "name": "flag"
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "flag",
+                                              "stamp": -321
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "flag"
+                                          },
+                                          "kind": "identifier"
                                         },
                                         "else": [
                                           {
                                             "expression": {
-                                              "kind": "identifier",
-                                              "name": "when_false"
+                                              "entity_id": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "when_false",
+                                                  "stamp": -130
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "when_false"
+                                              },
+                                              "kind": "identifier"
                                             },
                                             "kind": "return"
                                           }
@@ -310,8 +342,16 @@
                                         "then": [
                                           {
                                             "expression": {
-                                              "kind": "identifier",
-                                              "name": "when_true"
+                                              "entity_id": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "when_true",
+                                                  "stamp": -129
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "when_true"
+                                              },
+                                              "kind": "identifier"
                                             },
                                             "kind": "return"
                                           }
@@ -321,8 +361,22 @@
                                     }
                                   ],
                                   "params": [
-                                    "when_true",
-                                    "when_false"
+                                    {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "when_true",
+                                        "stamp": -129
+                                      },
+                                      "name": "when_true"
+                                    },
+                                    {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "when_false",
+                                        "stamp": -130
+                                      },
+                                      "name": "when_false"
+                                    }
                                   ]
                                 },
                                 "kind": "function"
@@ -339,14 +393,20 @@
                               }
                             ],
                             "callee": {
-                              "kind": "identifier",
-                              "name": "__makeCurried"
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "persistent",
+                                  "surface_path": "__raml_js.runtime.__makeCurried"
+                                },
+                                "kind": "resolved",
+                                "surface_path": "__makeCurried"
+                              },
+                              "kind": "identifier"
                             }
                           },
                           "kind": "call"
                         },
-                        "kind": "const",
-                        "name": "decide"
+                        "kind": "const"
                       },
                       "kind": "declaration"
                     },
@@ -370,8 +430,16 @@
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "decide"
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "decide",
+                                "stamp": 0
+                              },
+                              "kind": "resolved",
+                              "surface_path": "decide"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
@@ -380,18 +448,32 @@
                     }
                   ],
                   "params": [
-                    "flag"
+                    {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "flag",
+                        "stamp": -321
+                      },
+                      "name": "flag"
+                    }
                   ]
                 },
                 "kind": "function"
               },
-              "kind": "const",
-              "name": "choose"
+              "kind": "const"
             },
             "kind": "declaration"
           },
           {
             "declaration": {
+              "binder": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "selected",
+                  "stamp": 2
+                },
+                "name": "selected"
+              },
               "init": {
                 "call": {
                   "arguments": [
@@ -404,25 +486,48 @@
                     }
                   ],
                   "callee": {
-                    "kind": "identifier",
-                    "name": "choose"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "choose",
+                        "stamp": 1
+                      },
+                      "kind": "resolved",
+                      "surface_path": "choose"
+                    },
+                    "kind": "identifier"
                   }
                 },
                 "kind": "call"
               },
-              "kind": "const",
-              "name": "selected"
+              "kind": "const"
             },
             "kind": "declaration"
           }
         ],
         "exports": [
           {
-            "local": "choose",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "choose",
+                "stamp": 1
+              },
+              "kind": "resolved",
+              "surface_path": "choose"
+            },
             "name": "choose"
           },
           {
-            "local": "selected",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "selected",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "selected"
+            },
             "name": "selected"
           }
         ],
@@ -430,7 +535,13 @@
           {
             "from": "./riot-runtime.js",
             "imported": "makeCurried",
-            "local": "__makeCurried"
+            "local": {
+              "binding_id": {
+                "kind": "persistent",
+                "surface_path": "__raml_js.runtime.__makeCurried"
+              },
+              "name": "__makeCurried"
+            }
           }
         ],
         "module_name": "Local_function_capture"

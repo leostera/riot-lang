@@ -3,8 +3,15 @@
     {
       "if": {
         "condition": {
-          "kind": "identifier",
-          "name": "flag"
+          "entity_id": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__jir_fixture.flag"
+            },
+            "kind": "resolved",
+            "surface_path": "flag"
+          },
+          "kind": "identifier"
         },
         "else": [
           {
@@ -12,8 +19,15 @@
               "call": {
                 "arguments": [],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "right"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "persistent",
+                      "surface_path": "__jir_fixture.right"
+                    },
+                    "kind": "resolved",
+                    "surface_path": "right"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -27,8 +41,15 @@
               "call": {
                 "arguments": [],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "left"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "persistent",
+                      "surface_path": "__jir_fixture.left"
+                    },
+                    "kind": "resolved",
+                    "surface_path": "left"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"

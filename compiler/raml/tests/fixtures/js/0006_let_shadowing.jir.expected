@@ -2,6 +2,14 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "x",
+            "stamp": 0
+          },
+          "name": "x"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -12,151 +20,46 @@
             }
           }
         },
-        "kind": "const",
-        "name": "x"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
-        "init": null,
-        "kind": "let",
-        "name": "__raml_init_y"
-      },
-      "kind": "declaration"
-    },
-    {
-      "body": [
-        {
-          "declaration": {
-            "init": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%addint"
-                    }
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "x"
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 5
-                      }
-                    }
-                  }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
-                }
-              },
-              "kind": "call"
-            },
-            "kind": "const",
-            "name": "x$1"
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__raml_js.flatten.__raml_init_y"
           },
-          "kind": "declaration"
-        },
-        {
-          "declaration": {
-            "init": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%mulint"
-                    }
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "x$1"
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 2
-                      }
-                    }
-                  }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
-                }
-              },
-              "kind": "call"
-            },
-            "kind": "const",
-            "name": "x$2"
-          },
-          "kind": "declaration"
-        },
-        {
-          "expression": {
-            "assignment": {
-              "target": "__raml_init_y",
-              "value": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%subint"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "x$2"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 3
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
-                  }
-                },
-                "kind": "call"
-              }
-            },
-            "kind": "assignment"
-          },
-          "kind": "expression"
-        }
-      ],
-      "kind": "block"
-    },
-    {
-      "declaration": {
-        "init": {
-          "kind": "identifier",
           "name": "__raml_init_y"
         },
-        "kind": "const",
-        "name": "y"
+        "init": null,
+        "kind": "let"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "y",
+            "stamp": 3
+          },
+          "name": "y"
+        },
+        "init": {
+          "entity_id": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.flatten.__raml_init_y"
+            },
+            "kind": "resolved",
+            "surface_path": "__raml_init_y"
+          },
+          "kind": "identifier"
+        },
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -172,20 +75,43 @@
               }
             },
             {
-              "kind": "identifier",
-              "name": "x"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "x",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "x"
+              },
+              "kind": "identifier"
             },
             {
-              "kind": "identifier",
-              "name": "y"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "y",
+                  "stamp": 3
+                },
+                "kind": "resolved",
+                "surface_path": "y"
+              },
+              "kind": "identifier"
             }
           ],
           "callee": {
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -198,11 +124,27 @@
   ],
   "exports": [
     {
-      "local": "x",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "x",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "x"
+      },
       "name": "x"
     },
     {
-      "local": "y",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "y",
+          "stamp": 3
+        },
+        "kind": "resolved",
+        "surface_path": "y"
+      },
       "name": "y"
     }
   ],
@@ -210,13 +152,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
     }
   ],
   "module_name": "Let_shadowing"

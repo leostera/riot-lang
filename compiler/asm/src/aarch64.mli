@@ -50,8 +50,10 @@ module Instruction: sig
     | Str of { src: Register.t; address: Address.t }
     | Stp of { src1: Register.t; src2: Register.t; address: Address.t }
     | Ldp of { dst1: Register.t; dst2: Register.t; address: Address.t }
+    | B of string
     | Bl of string
     | Blr of Register.t
+    | Cbz of { src: Register.t; label: string }
     | Ret
   val to_string: t -> string
 

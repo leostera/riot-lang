@@ -6,7 +6,7 @@ The intent is simple:
 
 - keep wasm isolated from native
 - give wasm its own low-level boundary early
-- make imports and artifact seams explicit before codegen exists
+- make imports and artifact seams explicit before codegen gets deep
 
 ## Package Shape
 
@@ -15,11 +15,15 @@ The first useful package shape is:
 ```text
 compiler/raml-wasm/src/
   backend.ml
+  codegen.ml
   wir/
     types.ml
     runtime_imports.ml
     artifacts.ml
     lowering.ml
+    passes/
+      normalize.ml
+      collect_imports.ml
 ```
 
 That gives the backend four distinct responsibilities:
@@ -29,9 +33,17 @@ That gives the backend four distinct responsibilities:
 - `Wir.Runtime_imports`
   owns runtime and host import classification
 - `Wir.Artifacts`
-  owns per-module wasm summaries
+  owns per-module wasm summaries, object artifacts, and the first linked-program
+  shape
 - `Wir.Lowering`
-  owns `Core_ir -> WIR`
+  owns `Core_ir -> WIR` and threads explicit wasm passes
+- `Codegen`
+  owns the first executable wasm slice: a direct binary emitter over the linked
+  program plus a Node runner sidecar
+- `Wir.Passes.Normalize`
+  owns local structural cleanup on lowered `WIR`
+- `Wir.Passes.Collect_imports`
+  owns runtime and host import discovery
 
 ## First Pipeline
 
@@ -46,12 +58,18 @@ Core_ir
   -> final wasm module + sidecars
 ```
 
-Right now only the first two seams need to exist in code:
+Right now the first useful seams in code are:
 
 - `Core_ir -> WIR`
-- `WIR -> module summary`
+- `WIR -> normalize -> plan_runtime -> dead_code -> collect_imports`
+- `WIR -> object artifact -> linked program`
+- `linked program -> wasm binary + node runner`
 
 That is enough to stop talking about wasm as a single opaque "backend stub".
+
+The current executable slice is intentionally narrow. It is good enough for
+programs whose top-level init lowers to supported runtime print calls and static
+constants, and it fails explicitly outside that slice.
 
 ## Why `WIR` Exists
 
@@ -105,8 +123,9 @@ Once `WIR` exists, the next wasm-owned questions become concrete:
 
 1. Which `Core_ir` constructs need closure conversion before wasm codegen?
 2. Which runtime services become imports, and which become real wasm helpers?
-3. Do we target Binaryen late, or write a Riot-owned wasm encoder path first?
-4. What does a wasm object artifact need for separate compilation?
+3. What extra data must the object and linked-program layers carry for separate compilation?
+4. When do we outgrow the current direct encoder and introduce Binaryen or a
+   richer Riot-owned wasm emitter?
 
 Those are the right next questions.
 They are much cleaner than trying to reuse native IR or pretending wasm is just

@@ -18,20 +18,16 @@
                     "kind": "literal",
                     "literal": {
                       "kind": "string",
-                      "value": "%int_of_string"
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
                       "value": "42"
                     }
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "int_of_string"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -41,8 +37,15 @@
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -58,13 +61,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
     }
   ],
   "module_name": "Int_of_string"

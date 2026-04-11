@@ -2,6 +2,14 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "answer",
+            "stamp": 0
+          },
+          "name": "answer"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -12,13 +20,20 @@
             }
           }
         },
-        "kind": "const",
-        "name": "answer"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "ready",
+            "stamp": 1
+          },
+          "name": "ready"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -26,13 +41,20 @@
             "value": true
           }
         },
-        "kind": "const",
-        "name": "ready"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "ratio",
+            "stamp": 2
+          },
+          "name": "ratio"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -43,13 +65,20 @@
             }
           }
         },
-        "kind": "const",
-        "name": "ratio"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "greeting",
+            "stamp": 3
+          },
+          "name": "greeting"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -57,44 +86,90 @@
             "value": "riot"
           }
         },
-        "kind": "const",
-        "name": "greeting"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "nothing",
+            "stamp": 4
+          },
+          "name": "nothing"
+        },
         "init": {
           "kind": "literal",
           "literal": {
             "kind": "undefined"
           }
         },
-        "kind": "const",
-        "name": "nothing"
+        "kind": "const"
       },
       "kind": "declaration"
     }
   ],
   "exports": [
     {
-      "local": "answer",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "answer",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "answer"
+      },
       "name": "answer"
     },
     {
-      "local": "ready",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "ready",
+          "stamp": 1
+        },
+        "kind": "resolved",
+        "surface_path": "ready"
+      },
       "name": "ready"
     },
     {
-      "local": "ratio",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "ratio",
+          "stamp": 2
+        },
+        "kind": "resolved",
+        "surface_path": "ratio"
+      },
       "name": "ratio"
     },
     {
-      "local": "greeting",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "greeting",
+          "stamp": 3
+        },
+        "kind": "resolved",
+        "surface_path": "greeting"
+      },
       "name": "greeting"
     },
     {
-      "local": "nothing",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "nothing",
+          "stamp": 4
+        },
+        "kind": "resolved",
+        "surface_path": "nothing"
+      },
       "name": "nothing"
     }
   ],

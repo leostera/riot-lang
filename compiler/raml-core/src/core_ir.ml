@@ -56,13 +56,74 @@ module Constant = struct
 end
 
 module Surface_path = struct
-  include Typ.Model.SurfacePath
+  type t = Typ.Model.Surface_path.t
+
+  let empty = Typ.Model.Surface_path.empty
+
+  let is_empty = Typ.Model.Surface_path.is_empty
+
+  let of_name = Typ.Model.Surface_path.of_name
+
+  let of_segments = Typ.Model.Surface_path.of_segments
+
+  let of_string = fun value ->
+    value
+    |> String.split_on_char '.'
+    |> List.filter (fun segment -> not (String.equal segment ""))
+    |> of_segments
+
+  let to_segments = Typ.Model.Surface_path.to_segments
+
+  let to_string = Typ.Model.Surface_path.to_string
+
+  let equal = Typ.Model.Surface_path.equal
+
+  let compare = Typ.Model.Surface_path.compare
+
+  let last_name = fun path ->
+    match List.rev (to_segments path) with
+    | [] -> ""
+    | name :: _ -> name
 
   let to_json = fun path -> Json.string (to_string path)
 end
 
 module Binding_id = struct
-  include Typ.Model.BindingId
+  type t =
+    | Local of Typ.Model.Binding_id.t
+    | Persistent of Surface_path.t
+
+  let local = fun ~stamp ~name -> Local (Typ.Model.Binding_id.local ~stamp ~name)
+
+  let persistent = fun path -> Persistent path
+
+  let name = fun binding_id ->
+    match binding_id with
+    | Local binding_id -> Typ.Model.Binding_id.name binding_id |> Surface_path.to_string
+    | Persistent path -> Surface_path.to_string path
+
+  let stamp = fun binding_id ->
+    match binding_id with
+    | Local binding_id -> Some (Typ.Model.Binding_id.stamp binding_id)
+    | Persistent _ -> None
+
+  let to_string = fun binding_id ->
+    match binding_id with
+    | Local binding_id -> Typ.Model.Binding_id.to_string binding_id
+    | Persistent path -> Surface_path.to_string path
+
+  let equal = fun left right ->
+    match left, right with
+    | Local left, Local right -> Typ.Model.Binding_id.equal left right
+    | Persistent left, Persistent right -> Surface_path.equal left right
+    | _ -> false
+
+  let compare = fun left right ->
+    match left, right with
+    | Local left, Local right -> Typ.Model.Binding_id.compare left right
+    | Persistent left, Persistent right -> Surface_path.compare left right
+    | Local _, Persistent _ -> (-1)
+    | Persistent _, Local _ -> 1
 
   let to_json = fun binding_id ->
     match stamp binding_id with
@@ -87,7 +148,63 @@ module Binding_id = struct
 end
 
 module Entity_id = struct
-  include Typ.Model.EntityId
+  type t =
+    | Resolved of { binding_id: Binding_id.t; surface_path: Surface_path.t }
+    | Unresolved of Surface_path.t
+
+  let resolved = fun ~binding_id ~surface_path -> Resolved { binding_id; surface_path }
+
+  let of_binding_id = fun binding_id ->
+    resolved ~binding_id ~surface_path:(Surface_path.of_string (Binding_id.name binding_id))
+
+  let of_surface_path = fun surface_path -> Unresolved surface_path
+
+  let of_name = fun name -> of_surface_path (Surface_path.of_name name)
+
+  let binding_id = fun entity ->
+    match entity with
+    | Resolved { binding_id; _ } -> Some binding_id
+    | Unresolved _ -> None
+
+  let surface_path = fun entity ->
+    match entity with
+    | Resolved { surface_path; _ } -> surface_path
+    | Unresolved surface_path -> surface_path
+
+  let to_segments = fun entity -> surface_path entity |> Surface_path.to_segments
+
+  let is_bare = fun entity ->
+    match to_segments entity with
+    | [ _ ] -> true
+    | _ -> false
+
+  let bare_name = fun entity ->
+    match to_segments entity with
+    | [ name ] -> Some name
+    | _ -> None
+
+  let to_string = fun entity -> surface_path entity |> Surface_path.to_string
+
+  let equal = fun left right ->
+    match left, right with
+    | Resolved left, Resolved right -> Binding_id.equal left.binding_id right.binding_id
+    && Surface_path.equal left.surface_path right.surface_path
+    | Unresolved left, Unresolved right -> Surface_path.equal left right
+    | _ -> false
+
+  let compare = fun left right ->
+    match left, right with
+    | Resolved left, Resolved right -> (
+        match Binding_id.compare left.binding_id right.binding_id with
+        | 0 -> Surface_path.compare left.surface_path right.surface_path
+        | order -> order
+      )
+    | Unresolved left, Unresolved right ->
+        Surface_path.compare left right
+    | Resolved _, Unresolved _ ->
+        (-1)
+    | Unresolved _, Resolved _ ->
+        1
 
   let to_json = fun entity ->
     match binding_id entity with
@@ -160,54 +277,30 @@ module Primitive = struct
 
   let of_string = fun value ->
     match value with
-    | "add_float"
-      -> Some Add_float
-    | "subtract_float"
-      -> Some Subtract_float
-    | "multiply_float"
-      -> Some Multiply_float
-    | "divide_float"
-      -> Some Divide_float
-    | "add_int"
-      -> Some Add_int
-    | "subtract_int"
-      -> Some Subtract_int
-    | "multiply_int"
-      -> Some Multiply_int
-    | "divide_int"
-      -> Some Divide_int
-    | "modulo_int"
-      -> Some Modulo_int
-    | "concatenate_string"
-      -> Some Concatenate_string
-    | "int_to_string"
-      -> Some Int_to_string
-    | "float_to_string"
-      -> Some Float_to_string
-    | "int_of_string"
-      -> Some Int_of_string
-    | "float_of_string"
-      -> Some Float_of_string
-    | "equal"
-      -> Some Equal
-    | "not_equal"
-      -> Some Not_equal
-    | "less_than"
-      -> Some Less_than
-    | "less_or_equal"
-      -> Some Less_or_equal
-    | "greater_than"
-      -> Some Greater_than
-    | "greater_or_equal"
-      -> Some Greater_or_equal
-    | "float_sqrt"
-      -> Some Float_sqrt
-    | "tuple_make"
-      -> Some Tuple_make
-    | "tuple_get"
-      -> Some Tuple_get
-    | "trace"
-      -> Some Trace
+    | "add_float" -> Some Add_float
+    | "subtract_float" -> Some Subtract_float
+    | "multiply_float" -> Some Multiply_float
+    | "divide_float" -> Some Divide_float
+    | "add_int" -> Some Add_int
+    | "subtract_int" -> Some Subtract_int
+    | "multiply_int" -> Some Multiply_int
+    | "divide_int" -> Some Divide_int
+    | "modulo_int" -> Some Modulo_int
+    | "concatenate_string" -> Some Concatenate_string
+    | "int_to_string" -> Some Int_to_string
+    | "float_to_string" -> Some Float_to_string
+    | "int_of_string" -> Some Int_of_string
+    | "float_of_string" -> Some Float_of_string
+    | "equal" -> Some Equal
+    | "not_equal" -> Some Not_equal
+    | "less_than" -> Some Less_than
+    | "less_or_equal" -> Some Less_or_equal
+    | "greater_than" -> Some Greater_than
+    | "greater_or_equal" -> Some Greater_or_equal
+    | "float_sqrt" -> Some Float_sqrt
+    | "tuple_make" -> Some Tuple_make
+    | "tuple_get" -> Some Tuple_get
+    | "trace" -> Some Trace
     | _ -> None
 
   let to_json = fun primitive -> Json.string (to_string primitive)

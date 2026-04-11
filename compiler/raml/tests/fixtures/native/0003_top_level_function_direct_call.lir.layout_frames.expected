@@ -30,13 +30,12 @@
         }
       ],
       "frame": {
-        "frame_size": 16,
-        "slots": [
-          {
-            "name": "value",
-            "offset": 0
-          }
-        ]
+        "contains_calls": false,
+        "frame_required": false,
+        "frame_size": 0,
+        "homes": [],
+        "saved_registers": [],
+        "slots": []
       },
       "kind": "function",
       "name": "identity",
@@ -51,23 +50,24 @@
           "name": "__entry__"
         },
         {
-          "dst": "t0",
-          "kind": "move",
+          "kind": "store_global",
           "src": {
             "kind": "literal",
             "literal": {
               "kind": "string",
               "value": "riot"
             }
-          }
-        },
-        {
-          "kind": "store_global",
-          "src": {
-            "kind": "register",
-            "name": "t0"
           },
           "symbol": "subject"
+        },
+        {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
         },
         {
           "arguments": [
@@ -80,7 +80,10 @@
             "kind": "direct",
             "name": "identity"
           },
-          "dst": "t1",
+          "dst": {
+            "kind": "register",
+            "name": "t1"
+          },
           "kind": "call"
         },
         {
@@ -93,17 +96,12 @@
         }
       ],
       "frame": {
-        "frame_size": 16,
-        "slots": [
-          {
-            "name": "t0",
-            "offset": 0
-          },
-          {
-            "name": "t1",
-            "offset": 8
-          }
-        ]
+        "contains_calls": true,
+        "frame_required": true,
+        "frame_size": 0,
+        "homes": [],
+        "saved_registers": [],
+        "slots": []
       },
       "kind": "entry",
       "name": "__entry__",

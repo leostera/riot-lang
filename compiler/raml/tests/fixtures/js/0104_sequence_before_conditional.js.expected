@@ -6,30 +6,60 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "choose",
+                "stamp": 2
+              },
+              "name": "choose"
+            },
             "init": {
               "function": {
                 "body": [
                   {
                     "declaration": {
+                      "binder": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "consume",
+                          "stamp": 0
+                        },
+                        "name": "consume"
+                      },
                       "init": {
                         "function": {
                           "body": [
                             {
                               "expression": {
-                                "kind": "identifier",
-                                "name": "value"
+                                "entity_id": {
+                                  "binding_id": {
+                                    "kind": "local",
+                                    "name": "value",
+                                    "stamp": -33
+                                  },
+                                  "kind": "resolved",
+                                  "surface_path": "value"
+                                },
+                                "kind": "identifier"
                               },
                               "kind": "return"
                             }
                           ],
                           "params": [
-                            "value"
+                            {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "value",
+                                "stamp": -33
+                              },
+                              "name": "value"
+                            }
                           ]
                         },
                         "kind": "function"
                       },
-                      "kind": "const",
-                      "name": "consume"
+                      "kind": "const"
                     },
                     "kind": "declaration"
                   },
@@ -45,8 +75,16 @@
                           }
                         ],
                         "callee": {
-                          "kind": "identifier",
-                          "name": "consume"
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "consume",
+                              "stamp": 0
+                            },
+                            "kind": "resolved",
+                            "surface_path": "consume"
+                          },
+                          "kind": "identifier"
                         }
                       },
                       "kind": "call"
@@ -55,11 +93,27 @@
                   },
                   {
                     "declaration": {
+                      "binder": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "selected",
+                          "stamp": 1
+                        },
+                        "name": "selected"
+                      },
                       "init": {
                         "conditional": {
                           "condition": {
-                            "kind": "identifier",
-                            "name": "flag"
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "flag",
+                                "stamp": -417
+                              },
+                              "kind": "resolved",
+                              "surface_path": "flag"
+                            },
+                            "kind": "identifier"
                           },
                           "else": {
                             "kind": "literal",
@@ -78,27 +132,40 @@
                         },
                         "kind": "conditional"
                       },
-                      "kind": "const",
-                      "name": "selected"
+                      "kind": "const"
                     },
                     "kind": "declaration"
                   },
                   {
                     "expression": {
-                      "kind": "identifier",
-                      "name": "selected"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "selected",
+                          "stamp": 1
+                        },
+                        "kind": "resolved",
+                        "surface_path": "selected"
+                      },
+                      "kind": "identifier"
                     },
                     "kind": "return"
                   }
                 ],
                 "params": [
-                  "flag"
+                  {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "flag",
+                      "stamp": -417
+                    },
+                    "name": "flag"
+                  }
                 ]
               },
               "kind": "function"
             },
-            "kind": "const",
-            "name": "choose"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -107,6 +174,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "left",
+                "stamp": 3
+              },
+              "name": "left"
+            },
             "init": {
               "call": {
                 "arguments": [
@@ -119,14 +194,21 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "choose"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "choose",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "choose"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             },
-            "kind": "const",
-            "name": "left"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -135,6 +217,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "right",
+                "stamp": 4
+              },
+              "name": "right"
+            },
             "init": {
               "call": {
                 "arguments": [
@@ -147,14 +237,21 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "choose"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "choose",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "choose"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             },
-            "kind": "const",
-            "name": "right"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -162,15 +259,39 @@
       {
         "exports": [
           {
-            "local": "choose",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "choose",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "choose"
+            },
             "name": "choose"
           },
           {
-            "local": "left",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "left",
+                "stamp": 3
+              },
+              "kind": "resolved",
+              "surface_path": "left"
+            },
             "name": "left"
           },
           {
-            "local": "right",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "right",
+                "stamp": 4
+              },
+              "kind": "resolved",
+              "surface_path": "right"
+            },
             "name": "right"
           }
         ],

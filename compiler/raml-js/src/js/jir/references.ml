@@ -1,5 +1,4 @@
 open Std
-
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Modules = Modules
@@ -12,7 +11,6 @@ let entity = fun entity_id ->
   let base =
     match reference.root with
     | Modules.Identifier entity_id -> Jir.Expr.Identifier entity_id
-    | Modules.Namespace module_ref ->
-        Jir.Expr.Imported (Modules.namespace_import module_ref)
+    | Modules.Namespace module_ref -> Jir.Expr.Imported (Modules.namespace_import module_ref)
   in
   List.fold_left named_property_access base reference.properties

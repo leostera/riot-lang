@@ -2,14 +2,30 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "choose",
+            "stamp": 0
+          },
+          "name": "choose"
+        },
         "init": {
           "function": {
             "body": [
               {
                 "if": {
                   "condition": {
-                    "kind": "identifier",
-                    "name": "cond"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "cond",
+                        "stamp": -129
+                      },
+                      "kind": "resolved",
+                      "surface_path": "cond"
+                    },
+                    "kind": "identifier"
                   },
                   "else": [
                     {
@@ -46,13 +62,19 @@
               }
             ],
             "params": [
-              "cond"
+              {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "cond",
+                  "stamp": -129
+                },
+                "name": "cond"
+              }
             ]
           },
           "kind": "function"
         },
-        "kind": "const",
-        "name": "choose"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -79,8 +101,16 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "choose"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "choose",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "choose"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -90,8 +120,15 @@
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -104,7 +141,15 @@
   ],
   "exports": [
     {
-      "local": "choose",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "choose",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "choose"
+      },
       "name": "choose"
     }
   ],
@@ -112,7 +157,13 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
     }
   ],

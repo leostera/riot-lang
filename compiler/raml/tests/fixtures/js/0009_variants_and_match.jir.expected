@@ -2,486 +2,415 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "luminance",
+            "stamp": 0
+          },
+          "name": "luminance"
+        },
         "init": {
           "function": {
             "body": [
               {
                 "if": {
                   "condition": {
-                    "call": {
-                      "arguments": [
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "string",
-                            "value": "%eq"
-                          }
-                        },
-                        {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%tuple_get"
-                                }
-                              },
-                              {
-                                "kind": "identifier",
-                                "name": "color"
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 0
-                                  }
-                                }
+                    "binary": {
+                      "left": {
+                        "index": {
+                          "index": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 0
                               }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
                             }
                           },
-                          "kind": "call"
+                          "object": {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "color",
+                                "stamp": -673
+                              },
+                              "kind": "resolved",
+                              "surface_path": "color"
+                            },
+                            "kind": "identifier"
+                          }
                         },
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "number",
-                            "number": {
-                              "kind": "int",
-                              "value": 0
-                            }
+                        "kind": "index"
+                      },
+                      "operator": "equal",
+                      "right": {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 0
                           }
                         }
-                      ],
-                      "callee": {
-                        "kind": "identifier",
-                        "name": "__callPrimitive"
                       }
                     },
-                    "kind": "call"
+                    "kind": "binary"
                   },
                   "else": [
                     {
                       "if": {
                         "condition": {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%eq"
-                                }
-                              },
-                              {
-                                "call": {
-                                  "arguments": [
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "string",
-                                        "value": "%tuple_get"
-                                      }
-                                    },
-                                    {
-                                      "kind": "identifier",
-                                      "name": "color"
-                                    },
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "number",
-                                        "number": {
-                                          "kind": "int",
-                                          "value": 0
-                                        }
-                                      }
+                          "binary": {
+                            "left": {
+                              "index": {
+                                "index": {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "number",
+                                    "number": {
+                                      "kind": "int",
+                                      "value": 0
                                     }
-                                  ],
-                                  "callee": {
-                                    "kind": "identifier",
-                                    "name": "__callPrimitive"
                                   }
                                 },
-                                "kind": "call"
+                                "object": {
+                                  "entity_id": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "color",
+                                      "stamp": -673
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "color"
+                                  },
+                                  "kind": "identifier"
+                                }
                               },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 1
-                                  }
+                              "kind": "index"
+                            },
+                            "operator": "equal",
+                            "right": {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 1
                                 }
                               }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
                             }
                           },
-                          "kind": "call"
+                          "kind": "binary"
                         },
                         "else": [
                           {
                             "if": {
                               "condition": {
-                                "call": {
-                                  "arguments": [
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "string",
-                                        "value": "%eq"
-                                      }
-                                    },
-                                    {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%tuple_get"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "color"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 0
-                                              }
-                                            }
+                                "binary": {
+                                  "left": {
+                                    "index": {
+                                      "index": {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 0
                                           }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
                                         }
                                       },
-                                      "kind": "call"
+                                      "object": {
+                                        "entity_id": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "color",
+                                            "stamp": -673
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "color"
+                                        },
+                                        "kind": "identifier"
+                                      }
                                     },
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "number",
-                                        "number": {
-                                          "kind": "int",
-                                          "value": 2
-                                        }
+                                    "kind": "index"
+                                  },
+                                  "operator": "equal",
+                                  "right": {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 2
                                       }
                                     }
-                                  ],
-                                  "callee": {
-                                    "kind": "identifier",
-                                    "name": "__callPrimitive"
                                   }
                                 },
-                                "kind": "call"
+                                "kind": "binary"
                               },
                               "else": [
                                 {
                                   "declaration": {
-                                    "init": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%tuple_get"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "color"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 1
-                                              }
-                                            }
-                                          }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
-                                        }
+                                    "binder": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "__raml_tuple_8",
+                                        "stamp": -1000257
                                       },
-                                      "kind": "call"
+                                      "name": "__raml_tuple_8"
                                     },
-                                    "kind": "const",
-                                    "name": "__raml_tuple_8"
-                                  },
-                                  "kind": "declaration"
-                                },
-                                {
-                                  "declaration": {
                                     "init": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%tuple_get"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "__raml_tuple_8"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 0
-                                              }
-                                            }
-                                          }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
-                                        }
-                                      },
-                                      "kind": "call"
-                                    },
-                                    "kind": "const",
-                                    "name": "r"
-                                  },
-                                  "kind": "declaration"
-                                },
-                                {
-                                  "declaration": {
-                                    "init": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%tuple_get"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "__raml_tuple_8"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 1
-                                              }
-                                            }
-                                          }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
-                                        }
-                                      },
-                                      "kind": "call"
-                                    },
-                                    "kind": "const",
-                                    "name": "g"
-                                  },
-                                  "kind": "declaration"
-                                },
-                                {
-                                  "declaration": {
-                                    "init": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%tuple_get"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "__raml_tuple_8"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 2
-                                              }
-                                            }
-                                          }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
-                                        }
-                                      },
-                                      "kind": "call"
-                                    },
-                                    "kind": "const",
-                                    "name": "b"
-                                  },
-                                  "kind": "declaration"
-                                },
-                                {
-                                  "expression": {
-                                    "call": {
-                                      "arguments": [
-                                        {
-                                          "kind": "literal",
-                                          "literal": {
-                                            "kind": "string",
-                                            "value": "%divint"
-                                          }
-                                        },
-                                        {
-                                          "call": {
-                                            "arguments": [
-                                              {
-                                                "kind": "literal",
-                                                "literal": {
-                                                  "kind": "string",
-                                                  "value": "%addint"
-                                                }
-                                              },
-                                              {
-                                                "call": {
-                                                  "arguments": [
-                                                    {
-                                                      "kind": "literal",
-                                                      "literal": {
-                                                        "kind": "string",
-                                                        "value": "%addint"
-                                                      }
-                                                    },
-                                                    {
-                                                      "call": {
-                                                        "arguments": [
-                                                          {
-                                                            "kind": "literal",
-                                                            "literal": {
-                                                              "kind": "string",
-                                                              "value": "%mulint"
-                                                            }
-                                                          },
-                                                          {
-                                                            "kind": "literal",
-                                                            "literal": {
-                                                              "kind": "number",
-                                                              "number": {
-                                                                "kind": "int",
-                                                                "value": 3
-                                                              }
-                                                            }
-                                                          },
-                                                          {
-                                                            "kind": "identifier",
-                                                            "name": "r"
-                                                          }
-                                                        ],
-                                                        "callee": {
-                                                          "kind": "identifier",
-                                                          "name": "__callPrimitive"
-                                                        }
-                                                      },
-                                                      "kind": "call"
-                                                    },
-                                                    {
-                                                      "call": {
-                                                        "arguments": [
-                                                          {
-                                                            "kind": "literal",
-                                                            "literal": {
-                                                              "kind": "string",
-                                                              "value": "%mulint"
-                                                            }
-                                                          },
-                                                          {
-                                                            "kind": "literal",
-                                                            "literal": {
-                                                              "kind": "number",
-                                                              "number": {
-                                                                "kind": "int",
-                                                                "value": 6
-                                                              }
-                                                            }
-                                                          },
-                                                          {
-                                                            "kind": "identifier",
-                                                            "name": "g"
-                                                          }
-                                                        ],
-                                                        "callee": {
-                                                          "kind": "identifier",
-                                                          "name": "__callPrimitive"
-                                                        }
-                                                      },
-                                                      "kind": "call"
-                                                    }
-                                                  ],
-                                                  "callee": {
-                                                    "kind": "identifier",
-                                                    "name": "__callPrimitive"
-                                                  }
-                                                },
-                                                "kind": "call"
-                                              },
-                                              {
-                                                "kind": "identifier",
-                                                "name": "b"
-                                              }
-                                            ],
-                                            "callee": {
-                                              "kind": "identifier",
-                                              "name": "__callPrimitive"
-                                            }
-                                          },
-                                          "kind": "call"
-                                        },
-                                        {
+                                      "index": {
+                                        "index": {
                                           "kind": "literal",
                                           "literal": {
                                             "kind": "number",
                                             "number": {
                                               "kind": "int",
-                                              "value": 10
+                                              "value": 1
                                             }
                                           }
+                                        },
+                                        "object": {
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "color",
+                                              "stamp": -673
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "color"
+                                          },
+                                          "kind": "identifier"
                                         }
-                                      ],
-                                      "callee": {
-                                        "kind": "identifier",
-                                        "name": "__callPrimitive"
+                                      },
+                                      "kind": "index"
+                                    },
+                                    "kind": "const"
+                                  },
+                                  "kind": "declaration"
+                                },
+                                {
+                                  "declaration": {
+                                    "binder": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "r",
+                                        "stamp": -1000160
+                                      },
+                                      "name": "r"
+                                    },
+                                    "init": {
+                                      "index": {
+                                        "index": {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 0
+                                            }
+                                          }
+                                        },
+                                        "object": {
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "__raml_tuple_8",
+                                              "stamp": -1000257
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "__raml_tuple_8"
+                                          },
+                                          "kind": "identifier"
+                                        }
+                                      },
+                                      "kind": "index"
+                                    },
+                                    "kind": "const"
+                                  },
+                                  "kind": "declaration"
+                                },
+                                {
+                                  "declaration": {
+                                    "binder": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "g",
+                                        "stamp": -1000192
+                                      },
+                                      "name": "g"
+                                    },
+                                    "init": {
+                                      "index": {
+                                        "index": {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 1
+                                            }
+                                          }
+                                        },
+                                        "object": {
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "__raml_tuple_8",
+                                              "stamp": -1000257
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "__raml_tuple_8"
+                                          },
+                                          "kind": "identifier"
+                                        }
+                                      },
+                                      "kind": "index"
+                                    },
+                                    "kind": "const"
+                                  },
+                                  "kind": "declaration"
+                                },
+                                {
+                                  "declaration": {
+                                    "binder": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "b",
+                                        "stamp": -1000224
+                                      },
+                                      "name": "b"
+                                    },
+                                    "init": {
+                                      "index": {
+                                        "index": {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 2
+                                            }
+                                          }
+                                        },
+                                        "object": {
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "__raml_tuple_8",
+                                              "stamp": -1000257
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "__raml_tuple_8"
+                                          },
+                                          "kind": "identifier"
+                                        }
+                                      },
+                                      "kind": "index"
+                                    },
+                                    "kind": "const"
+                                  },
+                                  "kind": "declaration"
+                                },
+                                {
+                                  "expression": {
+                                    "binary": {
+                                      "left": {
+                                        "binary": {
+                                          "left": {
+                                            "binary": {
+                                              "left": {
+                                                "binary": {
+                                                  "left": {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "number",
+                                                      "number": {
+                                                        "kind": "int",
+                                                        "value": 3
+                                                      }
+                                                    }
+                                                  },
+                                                  "operator": "multiply",
+                                                  "right": {
+                                                    "entity_id": {
+                                                      "binding_id": {
+                                                        "kind": "local",
+                                                        "name": "r",
+                                                        "stamp": -1000160
+                                                      },
+                                                      "kind": "resolved",
+                                                      "surface_path": "r"
+                                                    },
+                                                    "kind": "identifier"
+                                                  }
+                                                },
+                                                "kind": "binary"
+                                              },
+                                              "operator": "add",
+                                              "right": {
+                                                "binary": {
+                                                  "left": {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "number",
+                                                      "number": {
+                                                        "kind": "int",
+                                                        "value": 6
+                                                      }
+                                                    }
+                                                  },
+                                                  "operator": "multiply",
+                                                  "right": {
+                                                    "entity_id": {
+                                                      "binding_id": {
+                                                        "kind": "local",
+                                                        "name": "g",
+                                                        "stamp": -1000192
+                                                      },
+                                                      "kind": "resolved",
+                                                      "surface_path": "g"
+                                                    },
+                                                    "kind": "identifier"
+                                                  }
+                                                },
+                                                "kind": "binary"
+                                              }
+                                            },
+                                            "kind": "binary"
+                                          },
+                                          "operator": "add",
+                                          "right": {
+                                            "entity_id": {
+                                              "binding_id": {
+                                                "kind": "local",
+                                                "name": "b",
+                                                "stamp": -1000224
+                                              },
+                                              "kind": "resolved",
+                                              "surface_path": "b"
+                                            },
+                                            "kind": "identifier"
+                                          }
+                                        },
+                                        "kind": "binary"
+                                      },
+                                      "operator": "divide",
+                                      "right": {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 10
+                                          }
+                                        }
                                       }
                                     },
-                                    "kind": "call"
+                                    "kind": "binary"
                                   },
                                   "kind": "return"
                                 }
@@ -544,29 +473,36 @@
               }
             ],
             "params": [
-              "color"
+              {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "color",
+                  "stamp": -673
+                },
+                "name": "color"
+              }
             ]
           },
           "kind": "function"
         },
-        "kind": "const",
-        "name": "luminance"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "sample",
+            "stamp": 1
+          },
+          "name": "sample"
+        },
         "init": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%tuple_make"
-                }
-              },
-              {
+          "array": [
+            {
+              "expr": {
                 "kind": "literal",
                 "literal": {
                   "kind": "number",
@@ -576,17 +512,13 @@
                   }
                 }
               },
-              {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%tuple_make"
-                      }
-                    },
-                    {
+              "kind": "item"
+            },
+            {
+              "expr": {
+                "array": [
+                  {
+                    "expr": {
                       "kind": "literal",
                       "literal": {
                         "kind": "number",
@@ -596,7 +528,10 @@
                         }
                       }
                     },
-                    {
+                    "kind": "item"
+                  },
+                  {
+                    "expr": {
                       "kind": "literal",
                       "literal": {
                         "kind": "number",
@@ -606,7 +541,10 @@
                         }
                       }
                     },
-                    {
+                    "kind": "item"
+                  },
+                  {
+                    "expr": {
                       "kind": "literal",
                       "literal": {
                         "kind": "number",
@@ -615,25 +553,18 @@
                           "value": 30
                         }
                       }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
+                    },
+                    "kind": "item"
                   }
-                },
-                "kind": "call"
-              }
-            ],
-            "callee": {
-              "kind": "identifier",
-              "name": "__callPrimitive"
+                ],
+                "kind": "array"
+              },
+              "kind": "item"
             }
-          },
-          "kind": "call"
+          ],
+          "kind": "array"
         },
-        "kind": "const",
-        "name": "sample"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -652,13 +583,29 @@
               "call": {
                 "arguments": [
                   {
-                    "kind": "identifier",
-                    "name": "sample"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "sample",
+                        "stamp": 1
+                      },
+                      "kind": "resolved",
+                      "surface_path": "sample"
+                    },
+                    "kind": "identifier"
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "luminance"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "luminance",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "luminance"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -668,8 +615,15 @@
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -682,11 +636,27 @@
   ],
   "exports": [
     {
-      "local": "luminance",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "luminance",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "luminance"
+      },
       "name": "luminance"
     },
     {
-      "local": "sample",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "sample",
+          "stamp": 1
+        },
+        "kind": "resolved",
+        "surface_path": "sample"
+      },
       "name": "sample"
     }
   ],
@@ -694,13 +664,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
     }
   ],
   "module_name": "Variants_and_match"

@@ -2,7 +2,6 @@ module Raml_compilation = Raml_core.Compilation
 module Raml_config = Raml_core.Config
 module Raml_event = Raml_core.Event
 module Raml_target = Raml_core.Target
-
 module CoreIR = Raml_core.Core_ir
 module Compilation = Raml_compilation
 module Js = Raml_js.Js

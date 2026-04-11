@@ -138,14 +138,12 @@ and statement =
   | Expression of expr
   | Return of expr
   | If of statement_if
-
 type module_ref = {
   kind: Jir.Types.Modules.kind;
   unit_name: string;
   import_path: string;
   namespace: string list;
 }
-
 type import = {
   from: module_ref;
   default: Binder.t option;
@@ -157,8 +155,8 @@ and import_named = {
   imported: string;
   local: Binder.t;
 }
-
 val module_ref_to_json: module_ref -> Json.t
+
 module Literal: sig
   type number = literal_number =
     | Int of int

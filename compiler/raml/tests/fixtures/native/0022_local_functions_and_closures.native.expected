@@ -1,102 +1,20 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "%d\\n"
-
-.text
-.globl _make_adder__local_add_0__closure
-.p2align 2
-_make_adder__local_add_0__closure:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #48
-str x0, [sp, #0]
-str x1, [sp, #8]
-movz x9, #1, lsl #0
-str x9, [sp, #16]
-ldr x0, [sp, #0]
-ldr x1, [sp, #16]
-bl _raml_tuple_get
-str x0, [sp, #24]
-ldr x0, [sp, #24]
-ldr x1, [sp, #8]
-bl _make_adder__local_add_0
-str x0, [sp, #32]
-ldr x0, [sp, #32]
-add sp, sp, #48
-ldp x29, x30, [sp], #16
-ret
-
-.globl _make_adder__local_add_0
-.p2align 2
-_make_adder__local_add_0:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #32
-str x0, [sp, #0]
-str x1, [sp, #8]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml$2b
-str x0, [sp, #16]
-ldr x0, [sp, #16]
-add sp, sp, #32
-ldp x29, x30, [sp], #16
-ret
-
-.globl _make_adder
-.p2align 2
-_make_adder:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #16
-str x0, [sp, #0]
-adrp x0, _make_adder__local_add_0__closure@PAGE
-add x0, x0, _make_adder__local_add_0__closure@PAGEOFF
-ldr x1, [sp, #0]
-bl _raml_tuple_make_2
-str x0, [sp, #8]
-ldr x0, [sp, #8]
-add sp, sp, #16
-ldp x29, x30, [sp], #16
-ret
-
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #80
-movz x9, #7, lsl #0
-str x9, [sp, #0]
-ldr x0, [sp, #0]
-bl _make_adder
-str x0, [sp, #8]
-ldr x9, [sp, #8]
-str x9, [sp, #16]
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #24]
-ldr x9, [sp, #16]
-str x9, [sp, #32]
-movz x9, #0, lsl #0
-str x9, [sp, #40]
-ldr x0, [sp, #32]
-ldr x1, [sp, #40]
-bl _raml_tuple_get
-str x0, [sp, #48]
-movz x9, #35, lsl #0
-str x9, [sp, #56]
-ldr x0, [sp, #32]
-ldr x1, [sp, #56]
-ldr x16, [sp, #48]
-blr x16
-str x0, [sp, #64]
-ldr x0, [sp, #24]
-ldr x1, [sp, #64]
-bl _Printf.printf
-str x0, [sp, #72]
-movz x0, #0, lsl #0
-add sp, sp, #80
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 138,
+          "end": 154
+        },
+        "name_text": "Printf.printf"
+      }
+    }
+  ]
+}

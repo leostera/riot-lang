@@ -1,5 +1,4 @@
 open Std
-
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Builtins = Builtins

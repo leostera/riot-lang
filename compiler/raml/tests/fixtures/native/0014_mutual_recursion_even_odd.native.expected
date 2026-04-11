@@ -1,96 +1,20 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "%b %b\\n"
-
-.text
-.globl _even
-.p2align 2
-_even:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #64
-str x0, [sp, #0]
-movz x9, #0, lsl #0
-str x9, [sp, #8]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml$3d
-str x0, [sp, #16]
-movz x9, #1, lsl #0
-str x9, [sp, #24]
-ldr x0, [sp, #0]
-ldr x1, [sp, #24]
-bl _raml$2d
-str x0, [sp, #32]
-ldr x0, [sp, #32]
-bl _odd
-str x0, [sp, #40]
-ldr x0, [sp, #16]
-ldr x1, [sp, #40]
-bl _raml$7c7c
-str x0, [sp, #48]
-ldr x0, [sp, #48]
-add sp, sp, #64
-ldp x29, x30, [sp], #16
-ret
-
-.globl _odd
-.p2align 2
-_odd:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #64
-str x0, [sp, #0]
-movz x9, #0, lsl #0
-str x9, [sp, #8]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml$3c3e
-str x0, [sp, #16]
-movz x9, #1, lsl #0
-str x9, [sp, #24]
-ldr x0, [sp, #0]
-ldr x1, [sp, #24]
-bl _raml$2d
-str x0, [sp, #32]
-ldr x0, [sp, #32]
-bl _even
-str x0, [sp, #40]
-ldr x0, [sp, #16]
-ldr x1, [sp, #40]
-bl _raml$2626
-str x0, [sp, #48]
-ldr x0, [sp, #48]
-add sp, sp, #64
-ldp x29, x30, [sp], #16
-ret
-
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #48
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #0]
-movz x9, #10, lsl #0
-str x9, [sp, #8]
-ldr x0, [sp, #8]
-bl _even
-str x0, [sp, #16]
-movz x9, #11, lsl #0
-str x9, [sp, #24]
-ldr x0, [sp, #24]
-bl _odd
-str x0, [sp, #32]
-ldr x0, [sp, #0]
-ldr x1, [sp, #16]
-ldr x2, [sp, #32]
-bl _Printf.printf
-str x0, [sp, #40]
-movz x0, #0, lsl #0
-add sp, sp, #48
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 123,
+          "end": 137
+        },
+        "name_text": "Printf.printf"
+      }
+    }
+  ]
+}

@@ -1,8 +1,52 @@
 {
   "codegen": {
     "js": {
-      "output": "import { callPrimitive as __callPrimitive, print_endline as __print_endline } from \"./riot-runtime.js\";\n\n__print_endline(__callPrimitive(\"%string_of_float\", __callPrimitive(\"%float_of_string\", \"3.1415\")));\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 101,
+              "start": 87
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: string_of_float",
+            "name": "unbound-name",
+            "name_text": "string_of_float",
+            "reference_span": {
+              "end": 118,
+              "start": 103
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: float_of_string",
+            "name": "unbound-name",
+            "name_text": "float_of_string",
+            "reference_span": {
+              "end": 135,
+              "start": 120
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "native": {
       "reason": "backend_not_selected",
@@ -15,153 +59,100 @@
   },
   "lowered": {
     "core_ir": {
-      "compilation_unit": {
-        "exports": [],
-        "init": [
-          {
-            "exports": [],
-            "items": [
-              {
-                "expr": {
-                  "apply": {
-                    "arguments": [
-                      {
-                        "apply": {
-                          "arguments": [
-                            {
-                              "apply": {
-                                "arguments": [
-                                  {
-                                    "constant": {
-                                      "kind": "string",
-                                      "value": "3.1415"
-                                    },
-                                    "kind": "constant"
-                                  }
-                                ],
-                                "callee": {
-                                  "function": {
-                                    "kind": "unresolved",
-                                    "surface_path": "float_of_string"
-                                  },
-                                  "kind": "direct"
-                                }
-                              },
-                              "kind": "apply"
-                            }
-                          ],
-                          "callee": {
-                            "function": {
-                              "kind": "unresolved",
-                              "surface_path": "string_of_float"
-                            },
-                            "kind": "direct"
-                          }
-                        },
-                        "kind": "apply"
-                      }
-                    ],
-                    "callee": {
-                      "function": {
-                        "kind": "unresolved",
-                        "surface_path": "print_endline"
-                      },
-                      "kind": "direct"
-                    }
-                  },
-                  "kind": "apply"
-                },
-                "kind": "eval"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          }
-        ],
-        "unit_id": {
-          "kind": "implementation",
-          "relpath": "corpus/float_of_string.ml",
-          "unit_name": "Float_of_string"
+      "blocked_on": "typing",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 101,
+              "start": 87
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: string_of_float",
+            "name": "unbound-name",
+            "name_text": "string_of_float",
+            "reference_span": {
+              "end": 118,
+              "start": 103
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: float_of_string",
+            "name": "unbound-name",
+            "name_text": "float_of_string",
+            "reference_span": {
+              "end": 135,
+              "start": 120
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
         }
-      },
-      "status": "ok"
+      ],
+      "status": "blocked"
     },
     "jir": {
-      "program": {
-        "body": [
-          {
-            "expression": {
-              "call": {
-                "arguments": [
-                  {
-                    "call": {
-                      "arguments": [
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "string",
-                            "value": "%string_of_float"
-                          }
-                        },
-                        {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%float_of_string"
-                                }
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "3.1415"
-                                }
-                              }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
-                            }
-                          },
-                          "kind": "call"
-                        }
-                      ],
-                      "callee": {
-                        "kind": "identifier",
-                        "name": "__callPrimitive"
-                      }
-                    },
-                    "kind": "call"
-                  }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__print_endline"
-                }
-              },
-              "kind": "call"
+      "blocked_on": "core_ir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 101,
+              "start": 87
             },
-            "kind": "expression"
-          }
-        ],
-        "exports": [],
-        "imports": [
-          {
-            "from": "./riot-runtime.js",
-            "imported": "callPrimitive",
-            "local": "__callPrimitive"
+            "severity": "error"
           },
-          {
-            "from": "./riot-runtime.js",
-            "imported": "print_endline",
-            "local": "__print_endline"
-          }
-        ],
-        "module_name": "Float_of_string"
-      },
-      "status": "ok"
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: string_of_float",
+            "name": "unbound-name",
+            "name_text": "string_of_float",
+            "reference_span": {
+              "end": 118,
+              "start": 103
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: float_of_string",
+            "name": "unbound-name",
+            "name_text": "float_of_string",
+            "reference_span": {
+              "end": 135,
+              "start": 120
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "lir": {
       "reason": "backend_not_selected",
@@ -195,19 +186,53 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: print_endline",
+        "name": "unbound-name",
+        "name_text": "print_endline",
+        "reference_span": {
+          "end": 101,
+          "start": 87
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: string_of_float",
+        "name": "unbound-name",
+        "name_text": "string_of_float",
+        "reference_span": {
+          "end": 118,
+          "start": 103
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: float_of_string",
+        "name": "unbound-name",
+        "name_text": "float_of_string",
+        "reference_span": {
+          "end": 135,
+          "start": 120
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

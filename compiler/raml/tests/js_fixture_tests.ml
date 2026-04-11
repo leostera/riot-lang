@@ -142,20 +142,25 @@ let check_source_text = fun ~filename text ->
         ~source_hash:(Typ.Model.Source.hash ~implicit_opens ~cst)
         ~parse_result
         ~cst in
-      Typ.check
-        ~config:Raml.TestingHelpers.Test_fixture_typing.typing_config
-        ~source
-  | Error (Syn.Parse_diagnostics diagnostics) -> panic
-    (format
-      Format.[
-        str "expected CST for ";
-        str (Path.to_string filename);
-        str ": ";
-        str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
-      ])
-  | Error (Syn.Cst_builder_error error) -> panic
-    (format
-      Format.[ str "expected CST for "; str (Path.to_string filename); str ": "; str error.message; ])
+      Typ.check ~config:Raml.TestingHelpers.Test_fixture_typing.typing_config ~source
+  | Error (Syn.Parse_diagnostics diagnostics) ->
+      panic
+        (format
+          Format.[
+            str "expected CST for ";
+            str (Path.to_string filename);
+            str ": ";
+            str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
+          ])
+  | Error (Syn.Cst_builder_error error) ->
+      panic
+        (format
+          Format.[
+            str "expected CST for ";
+            str (Path.to_string filename);
+            str ": ";
+            str error.message;
+          ])
 
 let render_json = Json.to_string_pretty
 

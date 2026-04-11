@@ -3,6 +3,13 @@
     "body": [
       {
         "declaration": {
+          "binder": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.binding.result"
+            },
+            "name": "result"
+          },
           "init": {
             "call": {
               "arguments": [
@@ -18,21 +25,26 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "f"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "f"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
           },
-          "kind": "const",
-          "name": "result"
+          "kind": "const"
         },
         "kind": "declaration"
       }
     ],
     "exports": [
       {
-        "local": "result",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "result"
+        },
         "name": "result"
       }
     ],

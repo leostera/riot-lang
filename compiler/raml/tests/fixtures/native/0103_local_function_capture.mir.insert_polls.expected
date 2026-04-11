@@ -83,6 +83,15 @@
           }
         },
         {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
+        },
+        {
           "arguments": [
             {
               "kind": "register",
@@ -130,6 +139,15 @@
               "value": true
             }
           }
+        },
+        {
+          "arguments": [],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_poll"
+          },
+          "dst": null,
+          "kind": "call"
         },
         {
           "arguments": [

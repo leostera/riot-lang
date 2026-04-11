@@ -2,6 +2,14 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "message",
+            "stamp": 0
+          },
+          "name": "message"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -9,8 +17,7 @@
             "value": "flattened"
           }
         },
-        "kind": "const",
-        "name": "message"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -19,13 +26,24 @@
         "call": {
           "arguments": [
             {
-              "kind": "identifier",
-              "name": "message"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "message",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "message"
+              },
+              "kind": "identifier"
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_endline"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_endline"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -34,12 +52,6 @@
     }
   ],
   "exports": [],
-  "imports": [
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_endline",
-      "local": "__print_endline"
-    }
-  ],
+  "imports": [],
   "module_name": "Effect_position_local_let"
 }

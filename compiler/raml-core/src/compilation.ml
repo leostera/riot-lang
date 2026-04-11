@@ -149,9 +149,8 @@ let render_codegen_error = fun error ->
       let name = json_nested_string [ "function"; "name" ] error |> Option.unwrap_or ~default:"<anonymous>" in
       "unsupported function: " ^ name
   | Some "unsupported_import" ->
-      let module_name =
-        json_nested_string [ "import"; "module_name" ] error |> Option.unwrap_or ~default:"<unknown>"
-      in
+      let module_name = json_nested_string [ "import"; "module_name" ] error
+      |> Option.unwrap_or ~default:"<unknown>" in
       let name = json_nested_string [ "import"; "name" ] error |> Option.unwrap_or ~default:"<unknown>" in
       "unsupported import: " ^ module_name ^ "." ^ name
   | Some "unsupported_global" ->
@@ -167,14 +166,17 @@ let render_codegen_error = fun error ->
       "closure runtime is not supported yet"
   | Some "unsupported_integer" ->
       let context = json_field_string "context" error |> Option.unwrap_or ~default:"unknown" in
-      let value = json_field "value" error |> Option.map Json.to_string |> Option.unwrap_or ~default:"<unknown>" in
+      let value = json_field "value" error
+      |> Option.map Json.to_string
+      |> Option.unwrap_or ~default:"<unknown>" in
       "unsupported integer in " ^ context ^ ": " ^ value
   | Some "unsupported_char" ->
       let value = json_field_string "value" error |> Option.unwrap_or ~default:"<unknown>" in
       "unsupported char literal: " ^ value
   | Some kind ->
       "codegen error (" ^ kind ^ "): " ^ Json.to_string error
-  | None -> Json.to_string error
+  | None ->
+      Json.to_string error
 
 let render_codegen_errors = fun errors ->
   match errors with
@@ -184,8 +186,7 @@ let render_codegen_errors = fun errors ->
 let emitted_output = fun compilation ->
   let stage = json_field "stage" compilation.codegen in
   match stage with
-  | None ->
-      Error "selected codegen stage is missing"
+  | None -> Error "selected codegen stage is missing"
   | Some stage -> (
       match json_field_string "status" stage with
       | Some "ok" -> (
@@ -194,9 +195,7 @@ let emitted_output = fun compilation ->
           | None -> Error "selected codegen stage succeeded without an output artifact"
         )
       | Some "blocked" ->
-          let blocked_on =
-            json_field_string "blocked_on" stage |> Option.unwrap_or ~default:"unknown"
-          in
+          let blocked_on = json_field_string "blocked_on" stage |> Option.unwrap_or ~default:"unknown" in
           Error ("codegen is blocked on " ^ blocked_on)
       | Some "unavailable" ->
           let reason = json_field_string "reason" stage |> Option.unwrap_or ~default:"unknown" in

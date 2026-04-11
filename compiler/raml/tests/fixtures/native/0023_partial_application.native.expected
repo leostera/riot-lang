@@ -1,175 +1,20 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "%d\\n"
-
-.data
-.globl _double_then
-.p2align 3
-_double_then:
-.quad 0
-.globl _six_times
-.p2align 3
-_six_times:
-.quad 0
-
-.text
-.globl _mul
-.p2align 2
-_mul:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #48
-str x0, [sp, #0]
-str x1, [sp, #8]
-str x2, [sp, #16]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml$2a
-str x0, [sp, #24]
-ldr x0, [sp, #24]
-ldr x1, [sp, #16]
-bl _raml$2a
-str x0, [sp, #32]
-ldr x0, [sp, #32]
-add sp, sp, #48
-ldp x29, x30, [sp], #16
-ret
-
-.globl _double_then__partial_mul_0__step_2
-.p2align 2
-_double_then__partial_mul_0__step_2:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #64
-str x0, [sp, #0]
-str x1, [sp, #8]
-movz x9, #1, lsl #0
-str x9, [sp, #16]
-ldr x0, [sp, #0]
-ldr x1, [sp, #16]
-bl _raml_tuple_get
-str x0, [sp, #24]
-movz x9, #2, lsl #0
-str x9, [sp, #32]
-ldr x0, [sp, #0]
-ldr x1, [sp, #32]
-bl _raml_tuple_get
-str x0, [sp, #40]
-adrp x0, _double_then__partial_mul_0__step_1@PAGE
-add x0, x0, _double_then__partial_mul_0__step_1@PAGEOFF
-ldr x1, [sp, #24]
-ldr x2, [sp, #40]
-ldr x3, [sp, #8]
-bl _raml_tuple_make_4
-str x0, [sp, #48]
-ldr x0, [sp, #48]
-add sp, sp, #64
-ldp x29, x30, [sp], #16
-ret
-
-.globl _double_then__partial_mul_0__step_1
-.p2align 2
-_double_then__partial_mul_0__step_1:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #80
-str x0, [sp, #0]
-str x1, [sp, #8]
-movz x9, #1, lsl #0
-str x9, [sp, #16]
-ldr x0, [sp, #0]
-ldr x1, [sp, #16]
-bl _raml_tuple_get
-str x0, [sp, #24]
-movz x9, #2, lsl #0
-str x9, [sp, #32]
-ldr x0, [sp, #0]
-ldr x1, [sp, #32]
-bl _raml_tuple_get
-str x0, [sp, #40]
-movz x9, #3, lsl #0
-str x9, [sp, #48]
-ldr x0, [sp, #0]
-ldr x1, [sp, #48]
-bl _raml_tuple_get
-str x0, [sp, #56]
-ldr x0, [sp, #40]
-ldr x1, [sp, #56]
-ldr x2, [sp, #8]
-ldr x16, [sp, #24]
-blr x16
-str x0, [sp, #64]
-ldr x0, [sp, #64]
-add sp, sp, #80
-ldp x29, x30, [sp], #16
-ret
-
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #112
-movz x9, #2, lsl #0
-str x9, [sp, #0]
-adrp x0, _double_then__partial_mul_0__step_2@PAGE
-add x0, x0, _double_then__partial_mul_0__step_2@PAGEOFF
-adrp x1, _mul@PAGE
-add x1, x1, _mul@PAGEOFF
-ldr x2, [sp, #0]
-bl _raml_tuple_make_3
-str x0, [sp, #8]
-ldr x9, [sp, #8]
-adrp x10, _double_then@PAGE
-add x10, x10, _double_then@PAGEOFF
-str x9, [x10, #0]
-adrp x10, _double_then@PAGE
-add x10, x10, _double_then@PAGEOFF
-ldr x9, [x10, #0]
-str x9, [sp, #16]
-movz x9, #0, lsl #0
-str x9, [sp, #24]
-ldr x0, [sp, #16]
-ldr x1, [sp, #24]
-bl _raml_tuple_get
-str x0, [sp, #32]
-movz x9, #3, lsl #0
-str x9, [sp, #40]
-ldr x0, [sp, #16]
-ldr x1, [sp, #40]
-ldr x16, [sp, #32]
-blr x16
-str x0, [sp, #48]
-ldr x9, [sp, #48]
-adrp x10, _six_times@PAGE
-add x10, x10, _six_times@PAGEOFF
-str x9, [x10, #0]
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #56]
-adrp x10, _six_times@PAGE
-add x10, x10, _six_times@PAGEOFF
-ldr x9, [x10, #0]
-str x9, [sp, #64]
-movz x9, #0, lsl #0
-str x9, [sp, #72]
-ldr x0, [sp, #64]
-ldr x1, [sp, #72]
-bl _raml_tuple_get
-str x0, [sp, #80]
-movz x9, #7, lsl #0
-str x9, [sp, #88]
-ldr x0, [sp, #64]
-ldr x1, [sp, #88]
-ldr x16, [sp, #80]
-blr x16
-str x0, [sp, #96]
-ldr x0, [sp, #56]
-ldr x1, [sp, #96]
-bl _Printf.printf
-str x0, [sp, #104]
-movz x0, #0, lsl #0
-add sp, sp, #112
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 140,
+          "end": 154
+        },
+        "name_text": "Printf.printf"
+      }
+    }
+  ]
+}

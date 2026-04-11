@@ -59,14 +59,6 @@
             "kind": "call"
           },
           {
-            "dst": "t2",
-            "kind": "move",
-            "src": {
-              "kind": "register",
-              "name": "t1"
-            }
-          },
-          {
             "if_then_else": {
               "condition": {
                 "kind": "register",
@@ -74,7 +66,7 @@
               },
               "else": [
                 {
-                  "dst": "t4",
+                  "dst": "t3",
                   "kind": "move",
                   "src": {
                     "kind": "literal",
@@ -85,17 +77,17 @@
                   }
                 },
                 {
-                  "dst": "t5",
+                  "dst": "t4",
                   "kind": "move",
                   "src": {
                     "kind": "register",
-                    "name": "t4"
+                    "name": "t3"
                   }
                 }
               ],
               "then": [
                 {
-                  "dst": "t3",
+                  "dst": "t2",
                   "kind": "move",
                   "src": {
                     "kind": "literal",
@@ -106,11 +98,11 @@
                   }
                 },
                 {
-                  "dst": "t5",
+                  "dst": "t4",
                   "kind": "move",
                   "src": {
                     "kind": "register",
-                    "name": "t3"
+                    "name": "t2"
                   }
                 }
               ]
@@ -118,11 +110,19 @@
             "kind": "if_then_else"
           },
           {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            }
+          },
+          {
             "dst": "t6",
             "kind": "move",
             "src": {
               "kind": "register",
-              "name": "t5"
+              "name": "t4"
             }
           },
           {
@@ -275,14 +275,6 @@
               "kind": "call"
             },
             {
-              "dst": "t2",
-              "kind": "move",
-              "src": {
-                "kind": "register",
-                "name": "t1"
-              }
-            },
-            {
               "if_then_else": {
                 "condition": {
                   "kind": "register",
@@ -290,7 +282,7 @@
                 },
                 "else": [
                   {
-                    "dst": "t4",
+                    "dst": "t3",
                     "kind": "move",
                     "src": {
                       "kind": "literal",
@@ -301,17 +293,17 @@
                     }
                   },
                   {
-                    "dst": "t5",
+                    "dst": "t4",
                     "kind": "move",
                     "src": {
                       "kind": "register",
-                      "name": "t4"
+                      "name": "t3"
                     }
                   }
                 ],
                 "then": [
                   {
-                    "dst": "t3",
+                    "dst": "t2",
                     "kind": "move",
                     "src": {
                       "kind": "literal",
@@ -322,11 +314,11 @@
                     }
                   },
                   {
-                    "dst": "t5",
+                    "dst": "t4",
                     "kind": "move",
                     "src": {
                       "kind": "register",
-                      "name": "t3"
+                      "name": "t2"
                     }
                   }
                 ]
@@ -334,11 +326,19 @@
               "kind": "if_then_else"
             },
             {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
               "dst": "t6",
               "kind": "move",
               "src": {
                 "kind": "register",
-                "name": "t5"
+                "name": "t4"
               }
             },
             {
@@ -430,6 +430,690 @@
         }
       ]
     },
+    "copy_propagate": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "left",
+          "symbol": "left"
+        },
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "module_name": "Sequence_before_conditional",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "value"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_consume_0",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "unit"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_consume_0"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "right"
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "right"
+                      }
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "left"
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "left"
+                      }
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t4"
+              }
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t4"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "left"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": false
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": false
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t3",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "right"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "cse": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "left",
+          "symbol": "left"
+        },
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "module_name": "Sequence_before_conditional",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "value"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_consume_0",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_consume_0"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "right"
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t3"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "left"
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t2"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t4"
+              }
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "left"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": false
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t2"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t3",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "right"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "dead_code": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "left",
+          "symbol": "left"
+        },
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "module_name": "Sequence_before_conditional",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "value"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_consume_0",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "unit"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_consume_0"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "right"
+                      }
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t4",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "left"
+                      }
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t4"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "left"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": false
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t3",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "right"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
     "insert_polls": {
       "exports": [
         {
@@ -476,6 +1160,15 @@
               }
             },
             {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
               "arguments": [
                 {
                   "kind": "register",
@@ -490,14 +1183,6 @@
               "kind": "call"
             },
             {
-              "dst": "t2",
-              "kind": "move",
-              "src": {
-                "kind": "register",
-                "name": "t1"
-              }
-            },
-            {
               "if_then_else": {
                 "condition": {
                   "kind": "register",
@@ -505,7 +1190,7 @@
                 },
                 "else": [
                   {
-                    "dst": "t4",
+                    "dst": "t3",
                     "kind": "move",
                     "src": {
                       "kind": "literal",
@@ -516,17 +1201,17 @@
                     }
                   },
                   {
-                    "dst": "t5",
+                    "dst": "t4",
                     "kind": "move",
                     "src": {
                       "kind": "register",
-                      "name": "t4"
+                      "name": "t3"
                     }
                   }
                 ],
                 "then": [
                   {
-                    "dst": "t3",
+                    "dst": "t2",
                     "kind": "move",
                     "src": {
                       "kind": "literal",
@@ -537,11 +1222,11 @@
                     }
                   },
                   {
-                    "dst": "t5",
+                    "dst": "t4",
                     "kind": "move",
                     "src": {
                       "kind": "register",
-                      "name": "t3"
+                      "name": "t2"
                     }
                   }
                 ]
@@ -549,11 +1234,19 @@
               "kind": "if_then_else"
             },
             {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
               "dst": "t6",
               "kind": "move",
               "src": {
                 "kind": "register",
-                "name": "t5"
+                "name": "t4"
               }
             },
             {
@@ -582,6 +1275,15 @@
                   "value": true
                 }
               }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
@@ -615,6 +1317,15 @@
                   "value": false
                 }
               }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
@@ -682,36 +1393,29 @@
       {
         "body": [
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "unit"
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
               }
             ],
             "callee": {
               "kind": "direct",
               "name": "choose__local_consume_0"
             },
-            "dst": "t1",
+            "dst": null,
             "kind": "call"
-          },
-          {
-            "dst": "t2",
-            "kind": "move",
-            "src": {
-              "kind": "register",
-              "name": "t1"
-            }
           },
           {
             "if_then_else": {
@@ -730,19 +1434,11 @@
                       "value": "right"
                     }
                   }
-                },
-                {
-                  "dst": "t5",
-                  "kind": "move",
-                  "src": {
-                    "kind": "register",
-                    "name": "t4"
-                  }
                 }
               ],
               "then": [
                 {
-                  "dst": "t3",
+                  "dst": "t4",
                   "kind": "move",
                   "src": {
                     "kind": "literal",
@@ -751,32 +1447,16 @@
                       "value": "left"
                     }
                   }
-                },
-                {
-                  "dst": "t5",
-                  "kind": "move",
-                  "src": {
-                    "kind": "register",
-                    "name": "t3"
-                  }
                 }
               ]
             },
             "kind": "if_then_else"
           },
           {
-            "dst": "t6",
-            "kind": "move",
-            "src": {
-              "kind": "register",
-              "name": "t5"
-            }
-          },
-          {
             "kind": "return",
             "operand": {
               "kind": "register",
-              "name": "t6"
+              "name": "t4"
             }
           }
         ],
@@ -789,21 +1469,22 @@
       {
         "body": [
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "bool",
-                "value": true
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
               }
             ],
             "callee": {
@@ -822,21 +1503,22 @@
             "symbol": "left"
           },
           {
-            "dst": "t2",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "bool",
-                "value": false
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t2"
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": false
+                }
               }
             ],
             "callee": {

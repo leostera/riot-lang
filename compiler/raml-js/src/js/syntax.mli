@@ -1,7 +1,6 @@
 type property_name_kind =
   | Identifier
   | Quoted_string
-
 val is_reserved_binding_identifier: string -> bool
 
 val is_ascii_uppercase: char -> bool

@@ -1,72 +1,20 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "%d %d\\n"
-
-.data
-.globl _x
-.p2align 3
-_x:
-.quad 0
-.globl _y
-.p2align 3
-_y:
-.quad 0
-
-.text
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #96
-movz x9, #10, lsl #0
-str x9, [sp, #0]
-ldr x9, [sp, #0]
-adrp x10, _x@PAGE
-add x10, x10, _x@PAGEOFF
-str x9, [x10, #0]
-movz x9, #5, lsl #0
-str x9, [sp, #8]
-adrp x10, _x@PAGE
-add x10, x10, _x@PAGEOFF
-ldr x0, [x10, #0]
-ldr x1, [sp, #8]
-bl _raml$2b
-str x0, [sp, #16]
-ldr x9, [sp, #16]
-str x9, [sp, #24]
-movz x9, #2, lsl #0
-str x9, [sp, #32]
-ldr x0, [sp, #24]
-ldr x1, [sp, #32]
-bl _raml$2a
-str x0, [sp, #40]
-ldr x9, [sp, #40]
-str x9, [sp, #48]
-movz x9, #3, lsl #0
-str x9, [sp, #56]
-ldr x0, [sp, #48]
-ldr x1, [sp, #56]
-bl _raml$2d
-str x0, [sp, #64]
-ldr x9, [sp, #64]
-adrp x10, _y@PAGE
-add x10, x10, _y@PAGEOFF
-str x9, [x10, #0]
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #72]
-ldr x0, [sp, #72]
-adrp x10, _x@PAGE
-add x10, x10, _x@PAGEOFF
-ldr x1, [x10, #0]
-adrp x10, _y@PAGE
-add x10, x10, _y@PAGEOFF
-ldr x2, [x10, #0]
-bl _Printf.printf
-str x0, [sp, #80]
-movz x0, #0, lsl #0
-add sp, sp, #96
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 116,
+          "end": 130
+        },
+        "name_text": "Printf.printf"
+      }
+    }
+  ]
+}

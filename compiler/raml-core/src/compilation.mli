@@ -4,7 +4,6 @@ type frontend_diagnostic =
   | Parse of Syn.Diagnostic.t
   | Lowering of Typ.Model.Diagnostic.t
   | Typing of Typ.Model.Diagnostic.t
-
 type t
 val create:
   targeting:Json.t ->

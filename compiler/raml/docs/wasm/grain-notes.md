@@ -63,6 +63,86 @@ Third, runtime-sensitive transformations are explicit passes.
 A good example is `codegen/garbage_collection.re`, which rewrites the low-level
 IR to insert refcount operations. That work is not hidden inside the emitter.
 
+## More Specific Things Worth Borrowing
+
+There are four more concrete lessons in Grain that are worth carrying forward.
+
+### A real object format, not just a pretty snapshot
+
+Grain object files are not vague compiler cache blobs.
+
+`emitmod.re` writes a real versioned object layout:
+
+- magic bytes
+- compiler version
+- signature length and signature payload
+- low-level code payload
+
+That is a good lesson for `raml-wasm`.
+
+If we want separate compilation, we should give wasm its own real object
+artifact early instead of pretending the summary can stay an ad hoc JSON shape
+forever. The exact binary format does not matter yet, but the boundary does.
+
+### Linking owns symbol resolution
+
+`linkedtree.re` does not just concatenate low-level modules. It resolves
+module-local exports and imports through link-time tables, scopes internal
+symbols by dependency id, and rewrites imports against those resolutions.
+
+That is useful because it tells us where wasm name hygiene actually belongs:
+
+- not in `raml-core`
+- not in the emitter
+- in a wasm-owned link/object layer
+
+So `raml-wasm` should expect a real linked-program stage after object loading,
+even if the first version is very small.
+
+### Late optimization should be feature-aware
+
+`optimize_mod.re` is not just "run Binaryen".
+
+It chooses late optimization passes based on:
+
+- optimize and shrink levels
+- enabled wasm features like GC, strings, and multivalue
+- closed-world assumptions
+
+That is a good reminder that Binaryen belongs late and target-profile-aware.
+`raml-wasm` should not treat Binaryen as the main compiler IR. It should treat
+it as a late optimizer/builder whose pass policy depends on the actual wasm
+feature set we are targeting.
+
+### Link time can own metadata sections
+
+The printing metadata docs are also useful. Grain builds type metadata into a
+linked wasm data section, not as scattered local compiler hacks.
+
+That matters because it shows another category of backend product:
+
+- the wasm module itself
+- the object/summary artifacts that feed linking
+- linked data sections or sidecar tables for runtime services
+
+So if `raml-wasm` later wants reflection tables, effect metadata, string
+literal segments, or runtime manifests, link time is a reasonable ownership
+boundary for that work.
+
+## What Not To Copy Too Literally
+
+A few Grain choices are useful as evidence but still wrong for us to copy
+directly.
+
+- Grain's ANF entrypoint is a good reminder that wasm wants a linear,
+  effect-explicit tree before low-level lowering. It is not evidence that
+  `raml-core` should grow Grain-style ANF as the one true shared IR.
+- Grain's refcounting and bespoke allocator are coherent for Grain's runtime,
+  but they are not a reason for `raml-wasm` to commit to the same memory story
+  before we decide whether Riot wants Wasm GC, a custom runtime heap, or both.
+- Grain's Binaryen-heavy backend is a good late-stage strategy. It is not a
+  reason to let Binaryen types or passes leak upward into `WIR`.
+
 ## What Not To Borrow
 
 Grain is wasm-first, so wasm concepts leak very early into the language and
@@ -143,6 +223,13 @@ That `WIR` would be the right place for:
 It would not be the right place for native homes, native frame layout, or
 Mach-O details.
 
+The object/link side probably wants one more explicit step than that:
+
+`Core_ir -> WIR -> wasm passes -> wasm object artifact -> linked wasm program -> Binaryen or emitter`
+
+That is closer to Grain's real shape, and it lines up with the way native owns
+emission and linking as separate concerns.
+
 ## The Main Conclusion
 
 Grain strengthens the case for keeping wasm separate from native until a real
@@ -156,3 +243,8 @@ The overlap between `raml-native` and `raml-wasm` is real, but it is mostly:
 - backend-owned semantic analyses
 
 It is not a strong argument for reviving one shared `ZIR` today.
+
+The most concrete design pressure Grain adds is this:
+
+`raml-wasm` probably wants a real object artifact and a real linked-program
+stage sooner than it wants a real wasm emitter.

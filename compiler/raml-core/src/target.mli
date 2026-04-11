@@ -12,6 +12,7 @@ type t = {
   abi: string option;
 }
 val make: architecture:string -> vendor:string -> system:string -> ?abi:string -> unit -> t
+
 val of_string: string -> (t, string) Std.Result.t
 
 val backend_to_string: backend -> string

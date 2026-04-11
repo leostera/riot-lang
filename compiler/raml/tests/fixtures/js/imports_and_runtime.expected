@@ -2,6 +2,13 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.message"
+          },
+          "name": "message"
+        },
         "init": {
           "call": {
             "arguments": [
@@ -17,15 +24,20 @@
               "import": {
                 "from": "./fmt.js",
                 "imported": "format",
-                "local": "format"
+                "local": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__jir_fixture.format"
+                  },
+                  "name": "format"
+                }
               },
               "kind": "imported"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "message"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -34,14 +46,27 @@
         "call": {
           "arguments": [
             {
-              "kind": "identifier",
-              "name": "message"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__jir_fixture.message"
+                },
+                "kind": "resolved",
+                "surface_path": "message"
+              },
+              "kind": "identifier"
             }
           ],
           "callee": {
             "helper": {
-              "local": "$println",
-              "module_name": "riot/std.js",
+              "local": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__jir_fixture.$println"
+                },
+                "name": "$println"
+              },
+              "module_name": "./riot/std.js",
               "symbol": "println"
             },
             "kind": "runtime"
@@ -57,7 +82,13 @@
     {
       "from": "./fmt.js",
       "imported": "format",
-      "local": "format"
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__jir_fixture.format"
+        },
+        "name": "format"
+      }
     }
   ],
   "module_name": "Imports_and_runtime"

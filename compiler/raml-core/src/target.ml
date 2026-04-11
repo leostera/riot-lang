@@ -16,21 +16,19 @@ type t = {
 let make = fun ~architecture ~vendor ~system ?abi () -> { architecture; vendor; system; abi }
 
 let of_string = fun value ->
-  let invalid_target message =
-    Error
-      ("invalid target '" ^ value ^ "': " ^ message
-      ^ " (expected <architecture>-<vendor>-<system>[-<abi>])")
-  in
-  let valid_part = fun part -> not (String.equal part "") in
+  let invalid_target message = Error ("invalid target '" ^ value ^ "': " ^ message ^ " (expected <architecture>-<vendor>-<system>[-<abi>])") in
+  let valid_part part = not (String.equal part "") in
   match String.split_on_char '-' value with
-  | [ architecture; vendor; system ] when valid_part architecture && valid_part vendor && valid_part system
-    -> Ok (make ~architecture ~vendor ~system ())
-  | [ architecture; vendor; system; abi ] when valid_part architecture
-    && valid_part vendor
-    && valid_part system
-    && valid_part abi -> Ok (make ~architecture ~vendor ~system ~abi ())
-  | _ ->
-      invalid_target "target parts must be non-empty"
+  | [architecture;vendor;system] when valid_part architecture && valid_part vendor && valid_part system -> Ok (make
+    ~architecture
+    ~vendor
+    ~system
+    ())
+  | [architecture;vendor;system;abi] when valid_part architecture
+  && valid_part vendor
+  && valid_part system
+  && valid_part abi -> Ok (make ~architecture ~vendor ~system ~abi ())
+  | _ -> invalid_target "target parts must be non-empty"
 
 let backend_to_string = fun backend ->
   match backend with

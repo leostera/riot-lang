@@ -25,8 +25,7 @@ let conditional = fun ~condition ~then_ ~else_ ->
 let rec function_body = fun statements ->
   match List.rev statements with
   | [] -> []
-  | tail :: prefix_rev ->
-      List.rev prefix_rev @ simplify_function_tail tail
+  | tail :: prefix_rev -> List.rev prefix_rev @ simplify_function_tail tail
 
 and simplify_function_tail = fun statement ->
   match statement with

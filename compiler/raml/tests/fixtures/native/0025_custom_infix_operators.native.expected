@@ -1,218 +1,62 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "("
-.p2align 0
-L__raml_str_1:
-.asciz ","
-.p2align 0
-L__raml_str_2:
-.asciz ")"
-.p2align 0
-L__raml_str_3:
-.asciz "%d "
-.p2align 0
-L__raml_str_4:
-.asciz "=> "
-.p2align 0
-L__raml_str_5:
-.asciz "raml"
-.p2align 0
-L__raml_str_6:
-.asciz "ocaml"
-
-.text
-.globl _raml$2b2b
-.p2align 2
-_raml$2b2b:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #32
-str x0, [sp, #0]
-str x1, [sp, #8]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml$40
-str x0, [sp, #16]
-ldr x0, [sp, #16]
-add sp, sp, #32
-ldp x29, x30, [sp], #16
-ret
-
-.globl _raml$5e5e5e
-.p2align 2
-_raml$5e5e5e:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #80
-str x0, [sp, #0]
-str x1, [sp, #8]
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #16]
-adrp x9, L__raml_str_1@PAGE
-add x9, x9, L__raml_str_1@PAGEOFF
-str x9, [sp, #24]
-adrp x9, L__raml_str_2@PAGE
-add x9, x9, L__raml_str_2@PAGEOFF
-str x9, [sp, #32]
-ldr x0, [sp, #8]
-ldr x1, [sp, #32]
-bl _raml$5e
-str x0, [sp, #40]
-ldr x0, [sp, #24]
-ldr x1, [sp, #40]
-bl _raml$5e
-str x0, [sp, #48]
-ldr x0, [sp, #0]
-ldr x1, [sp, #48]
-bl _raml$5e
-str x0, [sp, #56]
-ldr x0, [sp, #16]
-ldr x1, [sp, #56]
-bl _raml$5e
-str x0, [sp, #64]
-ldr x0, [sp, #64]
-add sp, sp, #80
-ldp x29, x30, [sp], #16
-ret
-
-.globl ___entry____local_lambda_0__closure
-.p2align 2
-___entry____local_lambda_0__closure:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #32
-str x0, [sp, #0]
-str x1, [sp, #8]
-ldr x0, [sp, #8]
-bl ___entry____local_lambda_0
-str x0, [sp, #16]
-ldr x0, [sp, #16]
-add sp, sp, #32
-ldp x29, x30, [sp], #16
-ret
-
-.globl ___entry____local_lambda_0
-.p2align 2
-___entry____local_lambda_0:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #32
-str x0, [sp, #0]
-adrp x9, L__raml_str_3@PAGE
-add x9, x9, L__raml_str_3@PAGEOFF
-str x9, [sp, #8]
-ldr x0, [sp, #8]
-ldr x1, [sp, #0]
-bl _Printf.printf
-str x0, [sp, #16]
-ldr x0, [sp, #16]
-add sp, sp, #32
-ldp x29, x30, [sp], #16
-ret
-
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #256
-movz x9, #1, lsl #0
-str x9, [sp, #0]
-movz x9, #1, lsl #0
-str x9, [sp, #8]
-movz x9, #1, lsl #0
-str x9, [sp, #16]
-movz x9, #2, lsl #0
-str x9, [sp, #24]
-movz x9, #0, lsl #0
-str x9, [sp, #32]
-ldr x0, [sp, #32]
-bl _raml_tuple_make_1
-str x0, [sp, #40]
-ldr x0, [sp, #24]
-ldr x1, [sp, #40]
-bl _raml_tuple_make_2
-str x0, [sp, #48]
-ldr x0, [sp, #16]
-ldr x1, [sp, #48]
-bl _raml_tuple_make_2
-str x0, [sp, #56]
-ldr x0, [sp, #8]
-ldr x1, [sp, #56]
-bl _raml_tuple_make_2
-str x0, [sp, #64]
-ldr x0, [sp, #0]
-ldr x1, [sp, #64]
-bl _raml_tuple_make_2
-str x0, [sp, #72]
-movz x9, #1, lsl #0
-str x9, [sp, #80]
-movz x9, #3, lsl #0
-str x9, [sp, #88]
-movz x9, #1, lsl #0
-str x9, [sp, #96]
-movz x9, #4, lsl #0
-str x9, [sp, #104]
-movz x9, #0, lsl #0
-str x9, [sp, #112]
-ldr x0, [sp, #112]
-bl _raml_tuple_make_1
-str x0, [sp, #120]
-ldr x0, [sp, #104]
-ldr x1, [sp, #120]
-bl _raml_tuple_make_2
-str x0, [sp, #128]
-ldr x0, [sp, #96]
-ldr x1, [sp, #128]
-bl _raml_tuple_make_2
-str x0, [sp, #136]
-ldr x0, [sp, #88]
-ldr x1, [sp, #136]
-bl _raml_tuple_make_2
-str x0, [sp, #144]
-ldr x0, [sp, #80]
-ldr x1, [sp, #144]
-bl _raml_tuple_make_2
-str x0, [sp, #152]
-ldr x0, [sp, #72]
-ldr x1, [sp, #152]
-bl _raml$2b2b
-str x0, [sp, #160]
-ldr x9, [sp, #160]
-str x9, [sp, #168]
-adrp x0, ___entry____local_lambda_0__closure@PAGE
-add x0, x0, ___entry____local_lambda_0__closure@PAGEOFF
-bl _raml_tuple_make_1
-str x0, [sp, #176]
-ldr x0, [sp, #176]
-ldr x1, [sp, #168]
-bl _List.iter
-str x0, [sp, #184]
-ldr x9, [sp, #184]
-str x9, [sp, #192]
-adrp x9, L__raml_str_4@PAGE
-add x9, x9, L__raml_str_4@PAGEOFF
-str x9, [sp, #200]
-adrp x9, L__raml_str_5@PAGE
-add x9, x9, L__raml_str_5@PAGEOFF
-str x9, [sp, #208]
-adrp x9, L__raml_str_6@PAGE
-add x9, x9, L__raml_str_6@PAGEOFF
-str x9, [sp, #216]
-ldr x0, [sp, #208]
-ldr x1, [sp, #216]
-bl _raml$5e5e5e
-str x0, [sp, #224]
-ldr x0, [sp, #200]
-ldr x1, [sp, #224]
-bl _raml$5e
-str x0, [sp, #232]
-ldr x0, [sp, #232]
-bl _print_endline
-str x0, [sp, #240]
-movz x0, #0, lsl #0
-add sp, sp, #256
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: @",
+        "severity": "error",
+        "reference_span": {
+          "start": 52,
+          "end": 58
+        },
+        "name_text": "@"
+      }
+    },
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: List.iter",
+        "severity": "error",
+        "reference_span": {
+          "start": 145,
+          "end": 157
+        },
+        "name_text": "List.iter"
+      }
+    },
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 167,
+          "end": 181
+        },
+        "name_text": "Printf.printf"
+      }
+    },
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: print_endline",
+        "severity": "error",
+        "reference_span": {
+          "start": 194,
+          "end": 210
+        },
+        "name_text": "print_endline"
+      }
+    }
+  ]
+}

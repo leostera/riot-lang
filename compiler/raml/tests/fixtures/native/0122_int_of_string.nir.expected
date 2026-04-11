@@ -1,197 +1,34 @@
 {
-  "initial": {
-    "entry": [
-      {
-        "expr": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%d\\n"
-                }
-              },
-              {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "42"
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "direct",
-                    "name": "int_of_string"
-                  }
-                },
-                "kind": "call"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "Printf.printf"
-            }
-          },
-          "kind": "call"
+  "blocked_on": "core_ir",
+  "errors": [
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 92,
+          "start": 78
         },
-        "kind": "eval"
-      }
-    ],
-    "exports": [],
-    "functions": [],
-    "imports": [],
-    "module_name": "Int_of_string",
-    "runtime_helpers": []
-  },
-  "passes": {
-    "normalize": {
-      "entry": [
-        {
-          "expr": {
-            "call": {
-              "arguments": [
-                {
-                  "kind": "literal",
-                  "literal": {
-                    "kind": "string",
-                    "value": "%d\\n"
-                  }
-                },
-                {
-                  "call": {
-                    "arguments": [
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
-                          "value": "42"
-                        }
-                      }
-                    ],
-                    "callee": {
-                      "kind": "direct",
-                      "name": "int_of_string"
-                    }
-                  },
-                  "kind": "call"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "Printf.printf"
-              }
-            },
-            "kind": "call"
-          },
-          "kind": "eval"
-        }
-      ],
-      "exports": [],
-      "functions": [],
-      "imports": [],
-      "module_name": "Int_of_string",
-      "runtime_helpers": []
+        "severity": "error"
+      },
+      "stage": "typing"
     },
-    "simplify": {
-      "entry": [
-        {
-          "expr": {
-            "call": {
-              "arguments": [
-                {
-                  "kind": "literal",
-                  "literal": {
-                    "kind": "string",
-                    "value": "%d\\n"
-                  }
-                },
-                {
-                  "call": {
-                    "arguments": [
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
-                          "value": "42"
-                        }
-                      }
-                    ],
-                    "callee": {
-                      "kind": "direct",
-                      "name": "int_of_string"
-                    }
-                  },
-                  "kind": "call"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "Printf.printf"
-              }
-            },
-            "kind": "call"
-          },
-          "kind": "eval"
-        }
-      ],
-      "exports": [],
-      "functions": [],
-      "imports": [],
-      "module_name": "Int_of_string",
-      "runtime_helpers": []
-    }
-  },
-  "program": {
-    "entry": [
-      {
-        "expr": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%d\\n"
-                }
-              },
-              {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "42"
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "direct",
-                    "name": "int_of_string"
-                  }
-                },
-                "kind": "call"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "Printf.printf"
-            }
-          },
-          "kind": "call"
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: int_of_string",
+        "name": "unbound-name",
+        "name_text": "int_of_string",
+        "reference_span": {
+          "end": 114,
+          "start": 101
         },
-        "kind": "eval"
-      }
-    ],
-    "exports": [],
-    "functions": [],
-    "imports": [],
-    "module_name": "Int_of_string",
-    "runtime_helpers": []
-  },
-  "status": "ok"
+        "severity": "error"
+      },
+      "stage": "typing"
+    }
+  ],
+  "status": "blocked"
 }

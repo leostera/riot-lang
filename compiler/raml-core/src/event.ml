@@ -70,7 +70,11 @@ let failure_reason = fun failure ->
   | SourceUnitRejected { reason } -> reason
 
 let failure_to_json = fun failure ->
-  Json.obj [ ("kind", Json.string (failure_tag failure)); ("reason", Json.string (failure_reason failure)); ]
+  Json.obj
+    [
+      ("kind", Json.string (failure_tag failure));
+      ("reason", Json.string (failure_reason failure));
+    ]
 
 let failure_to_string = fun failure ->
   match failure with
@@ -85,10 +89,18 @@ let to_string = fun event ->
   match event.kind with
   | CompileStarted { path } -> "raml compile started: " ^ Path.to_string path
   | CompileFinished { path } -> "raml compile finished: " ^ Path.to_string path
-  | CompileFailed { path; failure } ->
-      "raml compile failed: " ^ Path.to_string path ^ " (" ^ failure_to_string failure ^ ")"
-  | SourceLoaded { path; unit_name; source_bytes } ->
-      "raml source loaded: " ^ Path.to_string path ^ " (" ^ unit_name ^ ", " ^ Int.to_string source_bytes ^ " bytes)"
+  | CompileFailed { path; failure } -> "raml compile failed: "
+  ^ Path.to_string path
+  ^ " ("
+  ^ failure_to_string failure
+  ^ ")"
+  | SourceLoaded { path; unit_name; source_bytes } -> "raml source loaded: "
+  ^ Path.to_string path
+  ^ " ("
+  ^ unit_name
+  ^ ", "
+  ^ Int.to_string source_bytes
+  ^ " bytes)"
   | TypingFinished {
     path;
     unit_name;
@@ -96,26 +108,35 @@ let to_string = fun event ->
     parse_diagnostic_count;
     lowering_diagnostic_count;
     typing_diagnostic_count
-  } ->
-      "raml typing finished: " ^ Path.to_string path ^ " (" ^ unit_name ^ ", "
-      ^ completeness
-      ^ ", parse="
-      ^ Int.to_string parse_diagnostic_count
-      ^ ", lowering="
-      ^ Int.to_string lowering_diagnostic_count
-      ^ ", typing="
-      ^ Int.to_string typing_diagnostic_count
-      ^ ")"
-  | LoweringFinished { path; backend; status; error_count } ->
-      "raml lowering finished: " ^ Path.to_string path ^ " (" ^ backend_to_string backend ^ ", "
-      ^ status_to_string status
-      ^ ", errors="
-      ^ Int.to_string error_count
-      ^ ")"
-  | CodegenFinished { path; target; status } ->
-      "raml codegen finished: " ^ Path.to_string path ^ " (" ^ Target.to_string target ^ ", "
-      ^ status_to_string status
-      ^ ")"
+  } -> "raml typing finished: "
+  ^ Path.to_string path
+  ^ " ("
+  ^ unit_name
+  ^ ", "
+  ^ completeness
+  ^ ", parse="
+  ^ Int.to_string parse_diagnostic_count
+  ^ ", lowering="
+  ^ Int.to_string lowering_diagnostic_count
+  ^ ", typing="
+  ^ Int.to_string typing_diagnostic_count
+  ^ ")"
+  | LoweringFinished { path; backend; status; error_count } -> "raml lowering finished: "
+  ^ Path.to_string path
+  ^ " ("
+  ^ backend_to_string backend
+  ^ ", "
+  ^ status_to_string status
+  ^ ", errors="
+  ^ Int.to_string error_count
+  ^ ")"
+  | CodegenFinished { path; target; status } -> "raml codegen finished: "
+  ^ Path.to_string path
+  ^ " ("
+  ^ Target.to_string target
+  ^ ", "
+  ^ status_to_string status
+  ^ ")"
 
 let to_json = fun event ->
   let instant_us = event.instant_us in

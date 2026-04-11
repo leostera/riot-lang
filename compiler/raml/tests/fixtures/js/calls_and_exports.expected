@@ -2,6 +2,13 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.answer"
+          },
+          "name": "answer"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -12,30 +19,49 @@
             }
           }
         },
-        "kind": "const",
-        "name": "answer"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.next"
+          },
+          "name": "next"
+        },
         "init": {
           "call": {
             "arguments": [
               {
-                "kind": "identifier",
-                "name": "answer"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__jir_fixture.answer"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "answer"
+                },
+                "kind": "identifier"
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "succ"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__jir_fixture.succ"
+                },
+                "kind": "resolved",
+                "surface_path": "succ"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "next"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -44,28 +70,56 @@
         "call": {
           "arguments": [
             {
-              "kind": "identifier",
-              "name": "next"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__jir_fixture.next"
+                },
+                "kind": "resolved",
+                "surface_path": "next"
+              },
+              "kind": "identifier"
             },
             {
               "call": {
                 "arguments": [
                   {
-                    "kind": "identifier",
-                    "name": "next"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__jir_fixture.next"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "next"
+                    },
+                    "kind": "identifier"
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "format"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "persistent",
+                      "surface_path": "__jir_fixture.format"
+                    },
+                    "kind": "resolved",
+                    "surface_path": "format"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "trace"
+            "entity_id": {
+              "binding_id": {
+                "kind": "persistent",
+                "surface_path": "__jir_fixture.trace"
+              },
+              "kind": "resolved",
+              "surface_path": "trace"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -74,12 +128,26 @@
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__jir_fixture.reported"
+          },
+          "name": "reported"
+        },
         "init": {
           "call": {
             "arguments": [
               {
-                "kind": "identifier",
-                "name": "next"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__jir_fixture.next"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "next"
+                },
+                "kind": "identifier"
               },
               {
                 "kind": "literal",
@@ -90,25 +158,45 @@
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "record"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__jir_fixture.record"
+                },
+                "kind": "resolved",
+                "surface_path": "record"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "let",
-        "name": "reported"
+        "kind": "let"
       },
       "kind": "declaration"
     }
   ],
   "exports": [
     {
-      "local": "next",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__jir_fixture.next"
+        },
+        "kind": "resolved",
+        "surface_path": "next"
+      },
       "name": "next"
     },
     {
-      "local": "reported",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__jir_fixture.reported"
+        },
+        "kind": "resolved",
+        "surface_path": "reported"
+      },
       "name": "result"
     }
   ],

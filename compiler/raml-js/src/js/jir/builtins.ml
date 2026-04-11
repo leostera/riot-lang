@@ -48,34 +48,21 @@ let matches_any_surface_path = fun entity_id paths ->
 
 let riot_global = fun name -> [ "Std"; "Global"; name ]
 
-let riot_module = fun module_name name ->
-  [ [ module_name; name ]; [ "Std"; module_name; name ] ]
+let riot_module = fun module_name name -> [ [ module_name; name ]; [ "Std"; module_name; name ] ]
 
 let specs = [
-  {
-    callee = Console_log;
-    paths = [ [ "println" ]; [ "Std"; "println" ]; riot_global "println" ];
-  };
+  { callee = Console_log; paths = [ [ "println" ]; [ "Std"; "println" ]; riot_global "println" ] };
   {
     callee = Console_error;
-    paths = [ [ "eprintln" ]; [ "Std"; "eprintln" ]; riot_global "eprintln" ];
+    paths = [ [ "eprintln" ]; [ "Std"; "eprintln" ]; riot_global "eprintln" ]
   };
-  {
-    callee = Stdout_write;
-    paths = [ [ "print" ]; [ "Std"; "print" ]; riot_global "print" ];
-  };
-  {
-    callee = Stderr_write;
-    paths = [ [ "eprint" ]; [ "Std"; "eprint" ]; riot_global "eprint" ];
-  };
+  { callee = Stdout_write; paths = [ [ "print" ]; [ "Std"; "print" ]; riot_global "print" ] };
+  { callee = Stderr_write; paths = [ [ "eprint" ]; [ "Std"; "eprint" ]; riot_global "eprint" ] };
   {
     callee = String_constructor;
-    paths = riot_module "Int" "to_string" @ riot_module "Float" "to_string";
+    paths = riot_module "Int" "to_string" @ riot_module "Float" "to_string"
   };
-  {
-    callee = Math_sqrt;
-    paths = riot_module "Float" "sqrt";
-  };
+  { callee = Math_sqrt; paths = riot_module "Float" "sqrt" };
   { callee = Primitive Core.Primitive.Int_of_string; paths = riot_module "Int" "of_string" };
   { callee = Primitive Core.Primitive.Float_of_string; paths = riot_module "Float" "of_string" };
   { callee = Unary_operator Types.Operator.Not; paths = [ [ "not" ] ] };
@@ -96,12 +83,12 @@ let specs = [
 ]
 
 let classify_with = fun entity_id ->
-  specs
-  |> List.find_map (fun spec ->
-    if matches_any_surface_path entity_id spec.paths then
-      Some spec.callee
-    else
-      None)
+  specs |> List.find_map
+    (fun spec ->
+      if matches_any_surface_path entity_id spec.paths then
+        Some spec.callee
+      else
+        None)
 
 let classify_direct_callee = fun entity_id ->
   if not (can_classify_entity entity_id) then

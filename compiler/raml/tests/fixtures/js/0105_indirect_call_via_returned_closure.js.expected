@@ -1,26 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst make_adder = (function(base) {\n  const add = (function(x) {\n    return __callPrimitive(\"%addint\", base, x);\n  });\n  return add;\n});\n\nPrintf.printf(\"%d\\\\n\", make_adder(7)(35));\n\nexport {\n  make_adder\n};\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nconst make_adder = (function(base) {\n  const add = (function(x) {\n    return (base + x);\n  });\n  return add;\n});\n\nPrintf.printf(\"%d\\\\n\", make_adder(7)(35));\n\nexport {\n  make_adder\n};\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
-        },
-        "kind": "import"
-      },
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ]
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -28,71 +29,111 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "make_adder",
+                "stamp": 1
+              },
+              "name": "make_adder"
+            },
             "init": {
               "function": {
                 "body": [
                   {
                     "declaration": {
+                      "binder": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "add",
+                          "stamp": 0
+                        },
+                        "name": "add"
+                      },
                       "init": {
                         "function": {
                           "body": [
                             {
                               "expression": {
-                                "call": {
-                                  "arguments": [
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "string",
-                                        "value": "%addint"
-                                      }
+                                "binary": {
+                                  "left": {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "base",
+                                        "stamp": -225
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "base"
                                     },
-                                    {
-                                      "kind": "identifier",
-                                      "name": "base"
+                                    "kind": "identifier"
+                                  },
+                                  "operator": "add",
+                                  "right": {
+                                    "entity_id": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "x",
+                                        "stamp": -129
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "x"
                                     },
-                                    {
-                                      "kind": "identifier",
-                                      "name": "x"
-                                    }
-                                  ],
-                                  "callee": {
-                                    "kind": "identifier",
-                                    "name": "__callPrimitive"
+                                    "kind": "identifier"
                                   }
                                 },
-                                "kind": "call"
+                                "kind": "binary"
                               },
                               "kind": "return"
                             }
                           ],
                           "params": [
-                            "x"
+                            {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "x",
+                                "stamp": -129
+                              },
+                              "name": "x"
+                            }
                           ]
                         },
                         "kind": "function"
                       },
-                      "kind": "const",
-                      "name": "add"
+                      "kind": "const"
                     },
                     "kind": "declaration"
                   },
                   {
                     "expression": {
-                      "kind": "identifier",
-                      "name": "add"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "add",
+                          "stamp": 0
+                        },
+                        "kind": "resolved",
+                        "surface_path": "add"
+                      },
+                      "kind": "identifier"
                     },
                     "kind": "return"
                   }
                 ],
                 "params": [
-                  "base"
+                  {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "base",
+                      "stamp": -225
+                    },
+                    "name": "base"
+                  }
                 ]
               },
               "kind": "function"
             },
-            "kind": "const",
-            "name": "make_adder"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -139,8 +180,16 @@
                           }
                         ],
                         "callee": {
-                          "kind": "identifier",
-                          "name": "make_adder"
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "make_adder",
+                              "stamp": 1
+                            },
+                            "kind": "resolved",
+                            "surface_path": "make_adder"
+                          },
+                          "kind": "identifier"
                         }
                       },
                       "kind": "call"
@@ -153,8 +202,15 @@
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }
@@ -168,7 +224,15 @@
       {
         "exports": [
           {
-            "local": "make_adder",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "make_adder",
+                "stamp": 1
+              },
+              "kind": "resolved",
+              "surface_path": "make_adder"
+            },
             "name": "make_adder"
           }
         ],

@@ -10,6 +10,21 @@
       "module_name": "Module_identity",
       "procedures": []
     },
+    "copy_propagate": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    },
+    "cse": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    },
+    "dead_code": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    },
     "insert_polls": {
       "exports": [],
       "module_name": "Module_identity",

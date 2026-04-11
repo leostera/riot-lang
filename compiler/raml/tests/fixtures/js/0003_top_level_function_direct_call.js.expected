@@ -6,6 +6,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "subject",
+                "stamp": 0
+              },
+              "name": "subject"
+            },
             "init": {
               "kind": "literal",
               "literal": {
@@ -13,8 +21,7 @@
                 "value": "riot"
               }
             },
-            "kind": "const",
-            "name": "subject"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -23,25 +30,47 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "identity",
+                "stamp": 1
+              },
+              "name": "identity"
+            },
             "init": {
               "function": {
                 "body": [
                   {
                     "expression": {
-                      "kind": "identifier",
-                      "name": "value"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "value",
+                          "stamp": -65
+                        },
+                        "kind": "resolved",
+                        "surface_path": "value"
+                      },
+                      "kind": "identifier"
                     },
                     "kind": "return"
                   }
                 ],
                 "params": [
-                  "value"
+                  {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "value",
+                      "stamp": -65
+                    },
+                    "name": "value"
+                  }
                 ]
               },
               "kind": "function"
             },
-            "kind": "const",
-            "name": "identity"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -50,23 +79,46 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "echoed",
+                "stamp": 2
+              },
+              "name": "echoed"
+            },
             "init": {
               "call": {
                 "arguments": [
                   {
-                    "kind": "identifier",
-                    "name": "subject"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "subject",
+                        "stamp": 0
+                      },
+                      "kind": "resolved",
+                      "surface_path": "subject"
+                    },
+                    "kind": "identifier"
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "identity"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "identity",
+                      "stamp": 1
+                    },
+                    "kind": "resolved",
+                    "surface_path": "identity"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             },
-            "kind": "const",
-            "name": "echoed"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -74,15 +126,39 @@
       {
         "exports": [
           {
-            "local": "subject",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "subject",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "subject"
+            },
             "name": "subject"
           },
           {
-            "local": "identity",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "identity",
+                "stamp": 1
+              },
+              "kind": "resolved",
+              "surface_path": "identity"
+            },
             "name": "identity"
           },
           {
-            "local": "echoed",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "echoed",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "echoed"
+            },
             "name": "echoed"
           }
         ],

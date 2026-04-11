@@ -1,13 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nlet __raml_init_result;\n\n{\n  (__raml_init_result = 42);\n}\n\nconst result = __raml_init_result;\n\nPrintf.printf(\"%d\\\\n\", result);\n\nexport {\n  result\n};\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nlet __raml_init_result;\n\nconst result = __raml_init_result;\n\nPrintf.printf(\"%d\\\\n\", result);\n\nexport {\n  result\n};\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -15,9 +29,15 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "persistent",
+                "surface_path": "__raml_js.flatten.__raml_init_result"
+              },
+              "name": "__raml_init_result"
+            },
             "init": null,
-            "kind": "let",
-            "name": "__raml_init_result"
+            "kind": "let"
           },
           "kind": "declaration"
         }
@@ -25,40 +45,27 @@
       {
         "kind": "statement",
         "statement": {
-          "body": [
-            {
-              "expression": {
-                "assignment": {
-                  "target": "__raml_init_result",
-                  "value": {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 42
-                      }
-                    }
-                  }
-                },
-                "kind": "assignment"
-              },
-              "kind": "expression"
-            }
-          ],
-          "kind": "block"
-        }
-      },
-      {
-        "kind": "statement",
-        "statement": {
           "declaration": {
-            "init": {
-              "kind": "identifier",
-              "name": "__raml_init_result"
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "result",
+                "stamp": 2
+              },
+              "name": "result"
             },
-            "kind": "const",
-            "name": "result"
+            "init": {
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__raml_js.flatten.__raml_init_result"
+                },
+                "kind": "resolved",
+                "surface_path": "__raml_init_result"
+              },
+              "kind": "identifier"
+            },
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -77,16 +84,31 @@
                   }
                 },
                 {
-                  "kind": "identifier",
-                  "name": "result"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "result",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "result"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }
@@ -100,7 +122,15 @@
       {
         "exports": [
           {
-            "local": "result",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "result",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "result"
+            },
             "name": "result"
           }
         ],

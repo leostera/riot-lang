@@ -74,96 +74,104 @@
                       }
                     ],
                     "body": {
-                      "kind": "tuple",
-                      "tuple": {
-                        "elements": [
+                      "kind": "record",
+                      "record": {
+                        "fields": [
                           {
-                            "apply": {
-                              "arguments": [
-                                {
-                                  "kind": "tuple_get",
-                                  "tuple_get": {
-                                    "index": 0,
-                                    "tuple": {
-                                      "kind": "var",
-                                      "name": {
-                                        "binding_id": {
-                                          "kind": "local",
-                                          "name": "p",
-                                          "stamp": -387
-                                        },
-                                        "kind": "resolved",
-                                        "surface_path": "p"
+                            "label": "x",
+                            "value": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "record_get",
+                                    "record_get": {
+                                      "index": 0,
+                                      "label": "x",
+                                      "record": {
+                                        "kind": "var",
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "p",
+                                            "stamp": -387
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "p"
+                                        }
                                       }
                                     }
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "dx",
+                                        "stamp": -385
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "dx"
+                                    }
                                   }
-                                },
-                                {
-                                  "kind": "var",
-                                  "name": {
-                                    "binding_id": {
-                                      "kind": "local",
-                                      "name": "dx",
-                                      "stamp": -385
-                                    },
-                                    "kind": "resolved",
-                                    "surface_path": "dx"
-                                  }
+                                ],
+                                "callee": {
+                                  "function": {
+                                    "kind": "unresolved",
+                                    "surface_path": "+"
+                                  },
+                                  "kind": "direct"
                                 }
-                              ],
-                              "callee": {
-                                "function": {
-                                  "kind": "unresolved",
-                                  "surface_path": "+"
-                                },
-                                "kind": "direct"
-                              }
-                            },
-                            "kind": "apply"
+                              },
+                              "kind": "apply"
+                            }
                           },
                           {
-                            "apply": {
-                              "arguments": [
-                                {
-                                  "kind": "tuple_get",
-                                  "tuple_get": {
-                                    "index": 1,
-                                    "tuple": {
-                                      "kind": "var",
-                                      "name": {
-                                        "binding_id": {
-                                          "kind": "local",
-                                          "name": "p",
-                                          "stamp": -387
-                                        },
-                                        "kind": "resolved",
-                                        "surface_path": "p"
+                            "label": "y",
+                            "value": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "record_get",
+                                    "record_get": {
+                                      "index": 1,
+                                      "label": "y",
+                                      "record": {
+                                        "kind": "var",
+                                        "name": {
+                                          "binding_id": {
+                                            "kind": "local",
+                                            "name": "p",
+                                            "stamp": -387
+                                          },
+                                          "kind": "resolved",
+                                          "surface_path": "p"
+                                        }
                                       }
                                     }
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": {
+                                      "binding_id": {
+                                        "kind": "local",
+                                        "name": "dy",
+                                        "stamp": -386
+                                      },
+                                      "kind": "resolved",
+                                      "surface_path": "dy"
+                                    }
                                   }
-                                },
-                                {
-                                  "kind": "var",
-                                  "name": {
-                                    "binding_id": {
-                                      "kind": "local",
-                                      "name": "dy",
-                                      "stamp": -386
-                                    },
-                                    "kind": "resolved",
-                                    "surface_path": "dy"
-                                  }
+                                ],
+                                "callee": {
+                                  "function": {
+                                    "kind": "unresolved",
+                                    "surface_path": "+"
+                                  },
+                                  "kind": "direct"
                                 }
-                              ],
-                              "callee": {
-                                "function": {
-                                  "kind": "unresolved",
-                                  "surface_path": "+"
-                                },
-                                "kind": "direct"
-                              }
-                            },
-                            "kind": "apply"
+                              },
+                              "kind": "apply"
+                            }
                           }
                         ]
                       }
@@ -237,22 +245,28 @@
                     "surface_path": "p"
                   },
                   "expr": {
-                    "kind": "tuple",
-                    "tuple": {
-                      "elements": [
+                    "kind": "record",
+                    "record": {
+                      "fields": [
                         {
-                          "constant": {
-                            "kind": "int",
-                            "value": 1
-                          },
-                          "kind": "constant"
+                          "label": "x",
+                          "value": {
+                            "constant": {
+                              "kind": "int",
+                              "value": 1
+                            },
+                            "kind": "constant"
+                          }
                         },
                         {
-                          "constant": {
-                            "kind": "int",
-                            "value": 2
-                          },
-                          "kind": "constant"
+                          "label": "y",
+                          "value": {
+                            "constant": {
+                              "kind": "int",
+                              "value": 2
+                            },
+                            "kind": "constant"
+                          }
                         }
                       ]
                     }
@@ -333,10 +347,11 @@
                           "kind": "constant"
                         },
                         {
-                          "kind": "tuple_get",
-                          "tuple_get": {
+                          "kind": "record_get",
+                          "record_get": {
                             "index": 0,
-                            "tuple": {
+                            "label": "x",
+                            "record": {
                               "kind": "var",
                               "name": {
                                 "binding_id": {
@@ -351,10 +366,11 @@
                           }
                         },
                         {
-                          "kind": "tuple_get",
-                          "tuple_get": {
+                          "kind": "record_get",
+                          "record_get": {
                             "index": 1,
-                            "tuple": {
+                            "label": "y",
+                            "record": {
                               "kind": "var",
                               "name": {
                                 "binding_id": {
@@ -369,10 +385,11 @@
                           }
                         },
                         {
-                          "kind": "tuple_get",
-                          "tuple_get": {
+                          "kind": "record_get",
+                          "record_get": {
                             "index": 0,
-                            "tuple": {
+                            "label": "x",
+                            "record": {
                               "kind": "var",
                               "name": {
                                 "binding_id": {
@@ -387,10 +404,11 @@
                           }
                         },
                         {
-                          "kind": "tuple_get",
-                          "tuple_get": {
+                          "kind": "record_get",
+                          "record_get": {
                             "index": 1,
-                            "tuple": {
+                            "label": "y",
+                            "record": {
                               "kind": "var",
                               "name": {
                                 "binding_id": {

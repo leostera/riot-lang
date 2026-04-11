@@ -1,26 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nimport { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nPrintf.printf(\"%d\\\\n\", 42);\n\n__print_endline(\"done\");\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nPrintf.printf(\"%d\\\\n\", 42);\n\nprint_endline(\"done\");\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
-        },
-        "kind": "import"
-      },
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_endline",
-              "local": "__print_endline"
-            }
-          ]
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -52,8 +53,15 @@
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }
@@ -79,8 +87,11 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_endline"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_endline"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

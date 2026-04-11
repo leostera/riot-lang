@@ -13,8 +13,11 @@
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_string"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_string"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -23,12 +26,6 @@
     }
   ],
   "exports": [],
-  "imports": [
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_string",
-      "local": "__print_string"
-    }
-  ],
+  "imports": [],
   "module_name": "Print_string"
 }

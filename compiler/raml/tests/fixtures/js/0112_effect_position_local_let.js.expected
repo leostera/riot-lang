@@ -1,24 +1,19 @@
 {
-  "js": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst message = \"flattened\";\n\n__print_endline(message);\n",
+  "js": "const message = \"flattened\";\n\nprint_endline(message);\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_endline",
-              "local": "__print_endline"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "message",
+                "stamp": 0
+              },
+              "name": "message"
+            },
             "init": {
               "kind": "literal",
               "literal": {
@@ -26,8 +21,7 @@
                 "value": "flattened"
               }
             },
-            "kind": "const",
-            "name": "message"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -39,13 +33,24 @@
             "call": {
               "arguments": [
                 {
-                  "kind": "identifier",
-                  "name": "message"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "message",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "message"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_endline"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_endline"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

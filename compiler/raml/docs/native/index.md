@@ -19,10 +19,6 @@ Start here:
 
 - [pipeline.md](./pipeline.md)
   the end-to-end native compilation path and the major IR boundaries
-- [passes.md](./passes.md)
-  the current `raml-native` pass stack, why each pass exists, and why the
-  pipeline is intentionally plain function composition instead of a pass
-  framework
 - [lambda.md](./lambda.md)
   typedtree-to-Lambda translation, the Lambda IR, matching, simplification,
   TMC, and recursive-value lowering
@@ -80,9 +76,6 @@ These docs are meant to keep ownership boundaries explicit.
 
 - `pipeline.md`
   owns the stage graph and the handoff points
-- `passes.md`
-  owns the current `raml-native` pass inventory and the responsibilities of
-  each pass
 - `lambda.md`
   owns the frontend-side backend boundary: Lambda IR and the passes that happen
   before the middle end

@@ -27,7 +27,10 @@
             "target": "L__raml_else_0"
           },
           {
-            "dst": "t0",
+            "dst": {
+              "kind": "register",
+              "name": "t0"
+            },
             "kind": "move",
             "src": {
               "kind": "register",
@@ -43,7 +46,10 @@
             "name": "L__raml_else_0"
           },
           {
-            "dst": "t0",
+            "dst": {
+              "kind": "register",
+              "name": "t0"
+            },
             "kind": "move",
             "src": {
               "kind": "register",
@@ -63,7 +69,11 @@
           }
         ],
         "frame": {
+          "contains_calls": false,
+          "frame_required": false,
           "frame_size": 0,
+          "homes": [],
+          "saved_registers": [],
           "slots": []
         },
         "kind": "function",
@@ -81,26 +91,13 @@
             "name": "choose"
           },
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "left"
-              }
-            }
-          },
-          {
-            "dst": "t1",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "right"
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
@@ -109,19 +106,28 @@
                 "name": "flag"
               },
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
               },
               {
-                "kind": "register",
-                "name": "t1"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
               }
             ],
             "callee": {
               "kind": "direct",
               "name": "choose__local_decide_0"
             },
-            "dst": "t2",
+            "dst": {
+              "kind": "register",
+              "name": "t2"
+            },
             "kind": "call"
           },
           {
@@ -133,7 +139,11 @@
           }
         ],
         "frame": {
+          "contains_calls": false,
+          "frame_required": false,
           "frame_size": 0,
+          "homes": [],
+          "saved_registers": [],
           "slots": []
         },
         "kind": "function",
@@ -149,28 +159,32 @@
             "name": "__entry__"
           },
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "bool",
-                "value": true
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
               }
             ],
             "callee": {
               "kind": "direct",
               "name": "choose"
             },
-            "dst": "t1",
+            "dst": {
+              "kind": "register",
+              "name": "t1"
+            },
             "kind": "call"
           },
           {
@@ -183,7 +197,11 @@
           }
         ],
         "frame": {
+          "contains_calls": false,
+          "frame_required": false,
           "frame_size": 0,
+          "homes": [],
+          "saved_registers": [],
           "slots": []
         },
         "kind": "entry",
@@ -193,6 +211,569 @@
     ]
   },
   "passes": {
+    "allocate_homes": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose__local_decide_0"
+            },
+            {
+              "kind": "branch_if_zero",
+              "operand": {
+                "kind": "register",
+                "name": "flag"
+              },
+              "target": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "when_true"
+              }
+            },
+            {
+              "kind": "jump",
+              "target": "L__raml_endif_1"
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "when_false"
+              }
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_endif_1"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": false,
+            "frame_required": false,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "flag"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x13"
+                },
+                "name": "when_true"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x12"
+                },
+                "name": "when_false"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t0"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": {
+                "kind": "register",
+                "name": "t2"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 16,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x19"
+                },
+                "name": "flag"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t2"
+              }
+            ],
+            "saved_registers": [
+              "x19"
+            ],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t1"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "assign_homes": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose__local_decide_0"
+            },
+            {
+              "kind": "branch_if_zero",
+              "operand": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "target": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "kind": "move",
+              "src": {
+                "home": {
+                  "kind": "register",
+                  "name": "x13"
+                },
+                "kind": "home"
+              }
+            },
+            {
+              "kind": "jump",
+              "target": "L__raml_endif_1"
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "kind": "move",
+              "src": {
+                "home": {
+                  "kind": "register",
+                  "name": "x12"
+                },
+                "kind": "home"
+              }
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_endif_1"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": false,
+            "frame_required": false,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "flag"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x13"
+                },
+                "name": "when_true"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x12"
+                },
+                "name": "when_false"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t0"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "home": {
+                    "kind": "register",
+                    "name": "x19"
+                  },
+                  "kind": "home"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 16,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x19"
+                },
+                "name": "flag"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t2"
+              }
+            ],
+            "saved_registers": [
+              "x19"
+            ],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "kind": "home"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t1"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
     "layout_frames": {
       "exports": [
         {
@@ -221,7 +802,10 @@
               "target": "L__raml_else_0"
             },
             {
-              "dst": "t0",
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
               "kind": "move",
               "src": {
                 "kind": "register",
@@ -237,7 +821,10 @@
               "name": "L__raml_else_0"
             },
             {
-              "dst": "t0",
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
               "kind": "move",
               "src": {
                 "kind": "register",
@@ -257,25 +844,12 @@
             }
           ],
           "frame": {
-            "frame_size": 32,
-            "slots": [
-              {
-                "name": "flag",
-                "offset": 0
-              },
-              {
-                "name": "when_true",
-                "offset": 8
-              },
-              {
-                "name": "when_false",
-                "offset": 16
-              },
-              {
-                "name": "t0",
-                "offset": 24
-              }
-            ]
+            "contains_calls": false,
+            "frame_required": false,
+            "frame_size": 0,
+            "homes": [],
+            "saved_registers": [],
+            "slots": []
           },
           "kind": "function",
           "name": "choose__local_decide_0",
@@ -292,26 +866,13 @@
               "name": "choose"
             },
             {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "left"
-                }
-              }
-            },
-            {
-              "dst": "t1",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "right"
-                }
-              }
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
@@ -320,19 +881,28 @@
                   "name": "flag"
                 },
                 {
-                  "kind": "register",
-                  "name": "t0"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
                 },
                 {
-                  "kind": "register",
-                  "name": "t1"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
                 }
               ],
               "callee": {
                 "kind": "direct",
                 "name": "choose__local_decide_0"
               },
-              "dst": "t2",
+              "dst": {
+                "kind": "register",
+                "name": "t2"
+              },
               "kind": "call"
             },
             {
@@ -344,25 +914,12 @@
             }
           ],
           "frame": {
-            "frame_size": 32,
-            "slots": [
-              {
-                "name": "flag",
-                "offset": 0
-              },
-              {
-                "name": "t0",
-                "offset": 8
-              },
-              {
-                "name": "t1",
-                "offset": 16
-              },
-              {
-                "name": "t2",
-                "offset": 24
-              }
-            ]
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [],
+            "saved_registers": [],
+            "slots": []
           },
           "kind": "function",
           "name": "choose",
@@ -377,28 +934,32 @@
               "name": "__entry__"
             },
             {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "bool",
-                  "value": true
-                }
-              }
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
                 {
-                  "kind": "register",
-                  "name": "t0"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
                 }
               ],
               "callee": {
                 "kind": "direct",
                 "name": "choose"
               },
-              "dst": "t1",
+              "dst": {
+                "kind": "register",
+                "name": "t1"
+              },
               "kind": "call"
             },
             {
@@ -411,17 +972,12 @@
             }
           ],
           "frame": {
-            "frame_size": 16,
-            "slots": [
-              {
-                "name": "t0",
-                "offset": 0
-              },
-              {
-                "name": "t1",
-                "offset": 8
-              }
-            ]
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [],
+            "saved_registers": [],
+            "slots": []
           },
           "kind": "entry",
           "name": "__entry__",
@@ -457,7 +1013,10 @@
               "target": "L__raml_else_0"
             },
             {
-              "dst": "t0",
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
               "kind": "move",
               "src": {
                 "kind": "register",
@@ -473,7 +1032,10 @@
               "name": "L__raml_else_0"
             },
             {
-              "dst": "t0",
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
               "kind": "move",
               "src": {
                 "kind": "register",
@@ -493,25 +1055,41 @@
             }
           ],
           "frame": {
-            "frame_size": 32,
-            "slots": [
+            "contains_calls": false,
+            "frame_required": false,
+            "frame_size": 0,
+            "homes": [
               {
-                "name": "flag",
-                "offset": 0
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "flag"
               },
               {
-                "name": "when_true",
-                "offset": 8
+                "home": {
+                  "kind": "register",
+                  "name": "x13"
+                },
+                "name": "when_true"
               },
               {
-                "name": "when_false",
-                "offset": 16
+                "home": {
+                  "kind": "register",
+                  "name": "x12"
+                },
+                "name": "when_false"
               },
               {
-                "name": "t0",
-                "offset": 24
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t0"
               }
-            ]
+            ],
+            "saved_registers": [],
+            "slots": []
           },
           "kind": "function",
           "name": "choose__local_decide_0",
@@ -528,26 +1106,13 @@
               "name": "choose"
             },
             {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "left"
-                }
-              }
-            },
-            {
-              "dst": "t1",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "right"
-                }
-              }
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
@@ -556,19 +1121,28 @@
                   "name": "flag"
                 },
                 {
-                  "kind": "register",
-                  "name": "t0"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
                 },
                 {
-                  "kind": "register",
-                  "name": "t1"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
                 }
               ],
               "callee": {
                 "kind": "direct",
                 "name": "choose__local_decide_0"
               },
-              "dst": "t2",
+              "dst": {
+                "kind": "register",
+                "name": "t2"
+              },
               "kind": "call"
             },
             {
@@ -580,25 +1154,29 @@
             }
           ],
           "frame": {
-            "frame_size": 32,
-            "slots": [
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 16,
+            "homes": [
               {
-                "name": "flag",
-                "offset": 0
+                "home": {
+                  "kind": "register",
+                  "name": "x19"
+                },
+                "name": "flag"
               },
               {
-                "name": "t0",
-                "offset": 8
-              },
-              {
-                "name": "t1",
-                "offset": 16
-              },
-              {
-                "name": "t2",
-                "offset": 24
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t2"
               }
-            ]
+            ],
+            "saved_registers": [
+              "x19"
+            ],
+            "slots": []
           },
           "kind": "function",
           "name": "choose",
@@ -613,28 +1191,32 @@
               "name": "__entry__"
             },
             {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "bool",
-                  "value": true
-                }
-              }
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
                 {
-                  "kind": "register",
-                  "name": "t0"
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
                 }
               ],
               "callee": {
                 "kind": "direct",
                 "name": "choose"
               },
-              "dst": "t1",
+              "dst": {
+                "kind": "register",
+                "name": "t1"
+              },
               "kind": "call"
             },
             {
@@ -647,17 +1229,285 @@
             }
           ],
           "frame": {
-            "frame_size": 16,
-            "slots": [
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [
               {
-                "name": "t0",
-                "offset": 0
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t1"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "simplify": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose__local_decide_0"
+            },
+            {
+              "kind": "branch_if_zero",
+              "operand": {
+                "kind": "register",
+                "name": "flag"
+              },
+              "target": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "when_true"
+              }
+            },
+            {
+              "kind": "jump",
+              "target": "L__raml_endif_1"
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_else_0"
+            },
+            {
+              "dst": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "when_false"
+              }
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_endif_1"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": false,
+            "frame_required": false,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "flag"
               },
               {
-                "name": "t1",
-                "offset": 8
+                "home": {
+                  "kind": "register",
+                  "name": "x13"
+                },
+                "name": "when_true"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x12"
+                },
+                "name": "when_false"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t0"
               }
-            ]
+            ],
+            "saved_registers": [],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": {
+                "kind": "register",
+                "name": "t2"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 16,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x19"
+                },
+                "name": "flag"
+              },
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t2"
+              }
+            ],
+            "saved_registers": [
+              "x19"
+            ],
+            "slots": []
+          },
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "frame": {
+            "contains_calls": true,
+            "frame_required": true,
+            "frame_size": 0,
+            "homes": [
+              {
+                "home": {
+                  "kind": "register",
+                  "name": "x11"
+                },
+                "name": "t1"
+              }
+            ],
+            "saved_registers": [],
+            "slots": []
           },
           "kind": "entry",
           "name": "__entry__",
@@ -688,17 +1538,29 @@
           {
             "kind": "branch_if_zero",
             "operand": {
-              "kind": "register",
-              "name": "flag"
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
             },
             "target": "L__raml_else_0"
           },
           {
-            "dst": "t0",
+            "dst": {
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
+            },
             "kind": "move",
             "src": {
-              "kind": "register",
-              "name": "when_true"
+              "home": {
+                "kind": "register",
+                "name": "x13"
+              },
+              "kind": "home"
             }
           },
           {
@@ -710,11 +1572,20 @@
             "name": "L__raml_else_0"
           },
           {
-            "dst": "t0",
+            "dst": {
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
+            },
             "kind": "move",
             "src": {
-              "kind": "register",
-              "name": "when_false"
+              "home": {
+                "kind": "register",
+                "name": "x12"
+              },
+              "kind": "home"
             }
           },
           {
@@ -724,31 +1595,50 @@
           {
             "kind": "return",
             "operand": {
-              "kind": "register",
-              "name": "t0"
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
             }
           }
         ],
         "frame": {
-          "frame_size": 32,
-          "slots": [
+          "contains_calls": false,
+          "frame_required": false,
+          "frame_size": 0,
+          "homes": [
             {
-              "name": "flag",
-              "offset": 0
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "name": "flag"
             },
             {
-              "name": "when_true",
-              "offset": 8
+              "home": {
+                "kind": "register",
+                "name": "x13"
+              },
+              "name": "when_true"
             },
             {
-              "name": "when_false",
-              "offset": 16
+              "home": {
+                "kind": "register",
+                "name": "x12"
+              },
+              "name": "when_false"
             },
             {
-              "name": "t0",
-              "offset": 24
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "name": "t0"
             }
-          ]
+          ],
+          "saved_registers": [],
+          "slots": []
         },
         "kind": "function",
         "name": "choose__local_decide_0",
@@ -765,77 +1655,86 @@
             "name": "choose"
           },
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "left"
-              }
-            }
-          },
-          {
-            "dst": "t1",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "right"
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "flag"
+                "home": {
+                  "kind": "register",
+                  "name": "x19"
+                },
+                "kind": "home"
               },
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
               },
               {
-                "kind": "register",
-                "name": "t1"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
               }
             ],
             "callee": {
               "kind": "direct",
               "name": "choose__local_decide_0"
             },
-            "dst": "t2",
+            "dst": {
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
+            },
             "kind": "call"
           },
           {
             "kind": "return",
             "operand": {
-              "kind": "register",
-              "name": "t2"
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
             }
           }
         ],
         "frame": {
-          "frame_size": 32,
-          "slots": [
+          "contains_calls": true,
+          "frame_required": true,
+          "frame_size": 16,
+          "homes": [
             {
-              "name": "flag",
-              "offset": 0
+              "home": {
+                "kind": "register",
+                "name": "x19"
+              },
+              "name": "flag"
             },
             {
-              "name": "t0",
-              "offset": 8
-            },
-            {
-              "name": "t1",
-              "offset": 16
-            },
-            {
-              "name": "t2",
-              "offset": 24
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "name": "t2"
             }
-          ]
+          ],
+          "saved_registers": [
+            "x19"
+          ],
+          "slots": []
         },
         "kind": "function",
         "name": "choose",
@@ -850,51 +1749,64 @@
             "name": "__entry__"
           },
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "bool",
-                "value": true
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
               }
             ],
             "callee": {
               "kind": "direct",
               "name": "choose"
             },
-            "dst": "t1",
+            "dst": {
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
+            },
             "kind": "call"
           },
           {
             "kind": "store_global",
             "src": {
-              "kind": "register",
-              "name": "t1"
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "kind": "home"
             },
             "symbol": "selected"
           }
         ],
         "frame": {
-          "frame_size": 16,
-          "slots": [
+          "contains_calls": true,
+          "frame_required": true,
+          "frame_size": 0,
+          "homes": [
             {
-              "name": "t0",
-              "offset": 0
-            },
-            {
-              "name": "t1",
-              "offset": 8
+              "home": {
+                "kind": "register",
+                "name": "x11"
+              },
+              "name": "t1"
             }
-          ]
+          ],
+          "saved_registers": [],
+          "slots": []
         },
         "kind": "entry",
         "name": "__entry__",

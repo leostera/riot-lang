@@ -1,8 +1,38 @@
 {
   "codegen": {
     "js": {
-      "output": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst before = \"before\";\n\n__print_endline(before);\n\nconst after = __print_endline(\"after\");\n\nexport {\n  before,\n  after\n};\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 44,
+              "start": 30
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 77,
+              "start": 63
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "native": {
       "reason": "backend_not_selected",
@@ -15,255 +45,72 @@
   },
   "lowered": {
     "core_ir": {
-      "compilation_unit": {
-        "exports": [
-          {
-            "name": "before",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "before",
-                "stamp": 0
-              },
-              "kind": "resolved",
-              "surface_path": "before"
-            }
+      "blocked_on": "typing",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 44,
+              "start": 30
+            },
+            "severity": "error"
           },
-          {
-            "name": "after",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "after",
-                "stamp": 2
-              },
-              "kind": "resolved",
-              "surface_path": "after"
-            }
-          }
-        ],
-        "init": [
-          {
-            "exports": [
-              {
-                "name": "before",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "before",
-                    "stamp": 0
-                  },
-                  "kind": "resolved",
-                  "surface_path": "before"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "before",
-                      "stamp": 0
-                    },
-                    "kind": "resolved",
-                    "surface_path": "before"
-                  },
-                  "expr": {
-                    "constant": {
-                      "kind": "string",
-                      "value": "before"
-                    },
-                    "kind": "constant"
-                  },
-                  "name": "before"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 77,
+              "start": 63
+            },
+            "severity": "error"
           },
-          {
-            "exports": [],
-            "items": [
-              {
-                "expr": {
-                  "apply": {
-                    "arguments": [
-                      {
-                        "kind": "var",
-                        "name": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "before",
-                            "stamp": 0
-                          },
-                          "kind": "resolved",
-                          "surface_path": "before"
-                        }
-                      }
-                    ],
-                    "callee": {
-                      "function": {
-                        "kind": "unresolved",
-                        "surface_path": "print_endline"
-                      },
-                      "kind": "direct"
-                    }
-                  },
-                  "kind": "apply"
-                },
-                "kind": "eval"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          },
-          {
-            "exports": [
-              {
-                "name": "after",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "after",
-                    "stamp": 2
-                  },
-                  "kind": "resolved",
-                  "surface_path": "after"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "after",
-                      "stamp": 2
-                    },
-                    "kind": "resolved",
-                    "surface_path": "after"
-                  },
-                  "expr": {
-                    "apply": {
-                      "arguments": [
-                        {
-                          "constant": {
-                            "kind": "string",
-                            "value": "after"
-                          },
-                          "kind": "constant"
-                        }
-                      ],
-                      "callee": {
-                        "function": {
-                          "kind": "unresolved",
-                          "surface_path": "print_endline"
-                        },
-                        "kind": "direct"
-                      }
-                    },
-                    "kind": "apply"
-                  },
-                  "name": "after"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          }
-        ],
-        "unit_id": {
-          "kind": "implementation",
-          "relpath": "corpus/grouped_initialization_order.ml",
-          "unit_name": "Grouped_initialization_order"
+          "stage": "typing"
         }
-      },
-      "status": "ok"
+      ],
+      "status": "blocked"
     },
     "jir": {
-      "program": {
-        "body": [
-          {
-            "declaration": {
-              "init": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "before"
-                }
-              },
-              "kind": "const",
-              "name": "before"
+      "blocked_on": "core_ir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 44,
+              "start": 30
             },
-            "kind": "declaration"
+            "severity": "error"
           },
-          {
-            "expression": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "identifier",
-                    "name": "before"
-                  }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__print_endline"
-                }
-              },
-              "kind": "call"
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: print_endline",
+            "name": "unbound-name",
+            "name_text": "print_endline",
+            "reference_span": {
+              "end": 77,
+              "start": 63
             },
-            "kind": "expression"
+            "severity": "error"
           },
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "after"
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__print_endline"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "after"
-            },
-            "kind": "declaration"
-          }
-        ],
-        "exports": [
-          {
-            "local": "before",
-            "name": "before"
-          },
-          {
-            "local": "after",
-            "name": "after"
-          }
-        ],
-        "imports": [
-          {
-            "from": "./riot-runtime.js",
-            "imported": "print_endline",
-            "local": "__print_endline"
-          }
-        ],
-        "module_name": "Grouped_initialization_order"
-      },
-      "status": "ok"
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "lir": {
       "reason": "backend_not_selected",
@@ -297,11 +144,11 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [
       {
         "name": "after",
-        "scheme": "unit"
+        "scheme": "'a. 'a"
       },
       {
         "name": "before",
@@ -309,25 +156,48 @@
       }
     ],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [
           {
             "name": "after",
-            "scheme": "unit"
+            "scheme": "'a. 'a"
           },
           {
             "name": "before",
             "scheme": "string"
           }
         ],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: print_endline",
+        "name": "unbound-name",
+        "name_text": "print_endline",
+        "reference_span": {
+          "end": 44,
+          "start": 30
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: print_endline",
+        "name": "unbound-name",
+        "name_text": "print_endline",
+        "reference_span": {
+          "end": 77,
+          "start": 63
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

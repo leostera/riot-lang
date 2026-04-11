@@ -26,8 +26,15 @@
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -50,8 +57,11 @@
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_endline"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_endline"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -64,13 +74,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_endline",
-      "local": "__print_endline"
     }
   ],
   "module_name": "Printf_and_print_endline"

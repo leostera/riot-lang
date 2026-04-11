@@ -2,21 +2,44 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "fact",
+            "stamp": 1
+          },
+          "name": "fact"
+        },
         "init": {
           "function": {
             "body": [
               {
                 "declaration": {
+                  "binder": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "loop",
+                      "stamp": 0
+                    },
+                    "name": "loop"
+                  },
                   "init": null,
-                  "kind": "let",
-                  "name": "loop"
+                  "kind": "let"
                 },
                 "kind": "declaration"
               },
               {
                 "expression": {
                   "assignment": {
-                    "target": "loop",
+                    "target": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "loop",
+                        "stamp": 0
+                      },
+                      "kind": "resolved",
+                      "surface_path": "loop"
+                    },
                     "value": {
                       "call": {
                         "arguments": [
@@ -26,36 +49,32 @@
                                 {
                                   "if": {
                                     "condition": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%le"
-                                            }
+                                      "binary": {
+                                        "left": {
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "n",
+                                              "stamp": -514
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "n"
                                           },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "n$1"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 1
-                                              }
+                                          "kind": "identifier"
+                                        },
+                                        "operator": "less_or_equal",
+                                        "right": {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 1
                                             }
                                           }
-                                        ],
-                                        "callee": {
-                                          "kind": "identifier",
-                                          "name": "__callPrimitive"
                                         }
                                       },
-                                      "kind": "call"
+                                      "kind": "binary"
                                     },
                                     "else": [
                                       {
@@ -63,67 +82,75 @@
                                           "call": {
                                             "arguments": [
                                               {
-                                                "call": {
-                                                  "arguments": [
-                                                    {
-                                                      "kind": "literal",
-                                                      "literal": {
-                                                        "kind": "string",
-                                                        "value": "%mulint"
-                                                      }
+                                                "binary": {
+                                                  "left": {
+                                                    "entity_id": {
+                                                      "binding_id": {
+                                                        "kind": "local",
+                                                        "name": "acc",
+                                                        "stamp": -513
+                                                      },
+                                                      "kind": "resolved",
+                                                      "surface_path": "acc"
                                                     },
-                                                    {
-                                                      "kind": "identifier",
-                                                      "name": "acc"
+                                                    "kind": "identifier"
+                                                  },
+                                                  "operator": "multiply",
+                                                  "right": {
+                                                    "entity_id": {
+                                                      "binding_id": {
+                                                        "kind": "local",
+                                                        "name": "n",
+                                                        "stamp": -514
+                                                      },
+                                                      "kind": "resolved",
+                                                      "surface_path": "n"
                                                     },
-                                                    {
-                                                      "kind": "identifier",
-                                                      "name": "n$1"
-                                                    }
-                                                  ],
-                                                  "callee": {
-                                                    "kind": "identifier",
-                                                    "name": "__callPrimitive"
+                                                    "kind": "identifier"
                                                   }
                                                 },
-                                                "kind": "call"
+                                                "kind": "binary"
                                               },
                                               {
-                                                "call": {
-                                                  "arguments": [
-                                                    {
-                                                      "kind": "literal",
-                                                      "literal": {
-                                                        "kind": "string",
-                                                        "value": "%subint"
-                                                      }
+                                                "binary": {
+                                                  "left": {
+                                                    "entity_id": {
+                                                      "binding_id": {
+                                                        "kind": "local",
+                                                        "name": "n",
+                                                        "stamp": -514
+                                                      },
+                                                      "kind": "resolved",
+                                                      "surface_path": "n"
                                                     },
-                                                    {
-                                                      "kind": "identifier",
-                                                      "name": "n$1"
-                                                    },
-                                                    {
-                                                      "kind": "literal",
-                                                      "literal": {
-                                                        "kind": "number",
-                                                        "number": {
-                                                          "kind": "int",
-                                                          "value": 1
-                                                        }
+                                                    "kind": "identifier"
+                                                  },
+                                                  "operator": "subtract",
+                                                  "right": {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "number",
+                                                      "number": {
+                                                        "kind": "int",
+                                                        "value": 1
                                                       }
                                                     }
-                                                  ],
-                                                  "callee": {
-                                                    "kind": "identifier",
-                                                    "name": "__callPrimitive"
                                                   }
                                                 },
-                                                "kind": "call"
+                                                "kind": "binary"
                                               }
                                             ],
                                             "callee": {
-                                              "kind": "identifier",
-                                              "name": "loop"
+                                              "entity_id": {
+                                                "binding_id": {
+                                                  "kind": "local",
+                                                  "name": "loop",
+                                                  "stamp": 0
+                                                },
+                                                "kind": "resolved",
+                                                "surface_path": "loop"
+                                              },
+                                              "kind": "identifier"
                                             }
                                           },
                                           "kind": "call"
@@ -134,8 +161,16 @@
                                     "then": [
                                       {
                                         "expression": {
-                                          "kind": "identifier",
-                                          "name": "acc"
+                                          "entity_id": {
+                                            "binding_id": {
+                                              "kind": "local",
+                                              "name": "acc",
+                                              "stamp": -513
+                                            },
+                                            "kind": "resolved",
+                                            "surface_path": "acc"
+                                          },
+                                          "kind": "identifier"
                                         },
                                         "kind": "return"
                                       }
@@ -145,8 +180,22 @@
                                 }
                               ],
                               "params": [
-                                "acc",
-                                "n$1"
+                                {
+                                  "binding_id": {
+                                    "kind": "local",
+                                    "name": "acc",
+                                    "stamp": -513
+                                  },
+                                  "name": "acc"
+                                },
+                                {
+                                  "binding_id": {
+                                    "kind": "local",
+                                    "name": "n",
+                                    "stamp": -514
+                                  },
+                                  "name": "n$1"
+                                }
                               ]
                             },
                             "kind": "function"
@@ -163,8 +212,15 @@
                           }
                         ],
                         "callee": {
-                          "kind": "identifier",
-                          "name": "__makeCurried"
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "persistent",
+                              "surface_path": "__raml_js.runtime.__makeCurried"
+                            },
+                            "kind": "resolved",
+                            "surface_path": "__makeCurried"
+                          },
+                          "kind": "identifier"
                         }
                       },
                       "kind": "call"
@@ -189,13 +245,29 @@
                         }
                       },
                       {
-                        "kind": "identifier",
-                        "name": "n"
+                        "entity_id": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "n",
+                            "stamp": -705
+                          },
+                          "kind": "resolved",
+                          "surface_path": "n"
+                        },
+                        "kind": "identifier"
                       }
                     ],
                     "callee": {
-                      "kind": "identifier",
-                      "name": "loop"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "loop",
+                          "stamp": 0
+                        },
+                        "kind": "resolved",
+                        "surface_path": "loop"
+                      },
+                      "kind": "identifier"
                     }
                   },
                   "kind": "call"
@@ -204,13 +276,19 @@
               }
             ],
             "params": [
-              "n"
+              {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "n",
+                  "stamp": -705
+                },
+                "name": "n"
+              }
             ]
           },
           "kind": "function"
         },
-        "kind": "const",
-        "name": "fact"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -240,8 +318,16 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "fact"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "fact",
+                      "stamp": 1
+                    },
+                    "kind": "resolved",
+                    "surface_path": "fact"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -251,8 +337,15 @@
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -265,26 +358,41 @@
   ],
   "exports": [
     {
-      "local": "fact",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "fact",
+          "stamp": 1
+        },
+        "kind": "resolved",
+        "surface_path": "fact"
+      },
       "name": "fact"
     }
   ],
   "imports": [
     {
-      "from": "./Printf.js",
-      "imported": null,
-      "local": "Printf",
-      "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
-    },
-    {
       "from": "./riot-runtime.js",
       "imported": "makeCurried",
-      "local": "__makeCurried"
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.runtime.__makeCurried"
+        },
+        "name": "__makeCurried"
+      }
+    },
+    {
+      "from": "./Printf.js",
+      "imported": null,
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
+      "namespace": true
     }
   ],
   "module_name": "Tail_recursive_factorial"

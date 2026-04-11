@@ -1,8 +1,38 @@
 {
   "codegen": {
     "js": {
-      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst a = __callPrimitive(\"%addint\", 40, 2);\n\nconst b = __callPrimitive(\"%subint\", __callPrimitive(\"%mulint\", a, 3), 5);\n\nconst c = __callPrimitive(\"%divint\", b, 7);\n\nconst d = __callPrimitive(\"%modint\", b, 7);\n\nPrintf.printf(\"%d %d %d %d\\\\n\", a, b, c, d);\n\nexport {\n  a,\n  b,\n  c,\n  d\n};\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: mod",
+            "name": "unbound-name",
+            "name_text": "mod",
+            "reference_span": {
+              "end": 109,
+              "start": 101
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 133,
+              "start": 119
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "native": {
       "reason": "backend_not_selected",
@@ -15,700 +45,72 @@
   },
   "lowered": {
     "core_ir": {
-      "compilation_unit": {
-        "exports": [
-          {
-            "name": "a",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "a",
-                "stamp": 0
-              },
-              "kind": "resolved",
-              "surface_path": "a"
-            }
+      "blocked_on": "typing",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: mod",
+            "name": "unbound-name",
+            "name_text": "mod",
+            "reference_span": {
+              "end": 109,
+              "start": 101
+            },
+            "severity": "error"
           },
-          {
-            "name": "b",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "b",
-                "stamp": 1
-              },
-              "kind": "resolved",
-              "surface_path": "b"
-            }
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 133,
+              "start": 119
+            },
+            "severity": "error"
           },
-          {
-            "name": "c",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "c",
-                "stamp": 2
-              },
-              "kind": "resolved",
-              "surface_path": "c"
-            }
-          },
-          {
-            "name": "d",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "d",
-                "stamp": 3
-              },
-              "kind": "resolved",
-              "surface_path": "d"
-            }
-          }
-        ],
-        "init": [
-          {
-            "exports": [
-              {
-                "name": "a",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "a",
-                    "stamp": 0
-                  },
-                  "kind": "resolved",
-                  "surface_path": "a"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "a",
-                      "stamp": 0
-                    },
-                    "kind": "resolved",
-                    "surface_path": "a"
-                  },
-                  "expr": {
-                    "apply": {
-                      "arguments": [
-                        {
-                          "constant": {
-                            "kind": "int",
-                            "value": 40
-                          },
-                          "kind": "constant"
-                        },
-                        {
-                          "constant": {
-                            "kind": "int",
-                            "value": 2
-                          },
-                          "kind": "constant"
-                        }
-                      ],
-                      "callee": {
-                        "function": {
-                          "kind": "unresolved",
-                          "surface_path": "+"
-                        },
-                        "kind": "direct"
-                      }
-                    },
-                    "kind": "apply"
-                  },
-                  "name": "a"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          },
-          {
-            "exports": [
-              {
-                "name": "b",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "b",
-                    "stamp": 1
-                  },
-                  "kind": "resolved",
-                  "surface_path": "b"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "b",
-                      "stamp": 1
-                    },
-                    "kind": "resolved",
-                    "surface_path": "b"
-                  },
-                  "expr": {
-                    "apply": {
-                      "arguments": [
-                        {
-                          "apply": {
-                            "arguments": [
-                              {
-                                "kind": "var",
-                                "name": {
-                                  "binding_id": {
-                                    "kind": "local",
-                                    "name": "a",
-                                    "stamp": 0
-                                  },
-                                  "kind": "resolved",
-                                  "surface_path": "a"
-                                }
-                              },
-                              {
-                                "constant": {
-                                  "kind": "int",
-                                  "value": 3
-                                },
-                                "kind": "constant"
-                              }
-                            ],
-                            "callee": {
-                              "function": {
-                                "kind": "unresolved",
-                                "surface_path": "*"
-                              },
-                              "kind": "direct"
-                            }
-                          },
-                          "kind": "apply"
-                        },
-                        {
-                          "constant": {
-                            "kind": "int",
-                            "value": 5
-                          },
-                          "kind": "constant"
-                        }
-                      ],
-                      "callee": {
-                        "function": {
-                          "kind": "unresolved",
-                          "surface_path": "-"
-                        },
-                        "kind": "direct"
-                      }
-                    },
-                    "kind": "apply"
-                  },
-                  "name": "b"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          },
-          {
-            "exports": [
-              {
-                "name": "c",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "c",
-                    "stamp": 2
-                  },
-                  "kind": "resolved",
-                  "surface_path": "c"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "c",
-                      "stamp": 2
-                    },
-                    "kind": "resolved",
-                    "surface_path": "c"
-                  },
-                  "expr": {
-                    "apply": {
-                      "arguments": [
-                        {
-                          "kind": "var",
-                          "name": {
-                            "binding_id": {
-                              "kind": "local",
-                              "name": "b",
-                              "stamp": 1
-                            },
-                            "kind": "resolved",
-                            "surface_path": "b"
-                          }
-                        },
-                        {
-                          "constant": {
-                            "kind": "int",
-                            "value": 7
-                          },
-                          "kind": "constant"
-                        }
-                      ],
-                      "callee": {
-                        "function": {
-                          "kind": "unresolved",
-                          "surface_path": "/"
-                        },
-                        "kind": "direct"
-                      }
-                    },
-                    "kind": "apply"
-                  },
-                  "name": "c"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          },
-          {
-            "exports": [
-              {
-                "name": "d",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "d",
-                    "stamp": 3
-                  },
-                  "kind": "resolved",
-                  "surface_path": "d"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "d",
-                      "stamp": 3
-                    },
-                    "kind": "resolved",
-                    "surface_path": "d"
-                  },
-                  "expr": {
-                    "apply": {
-                      "arguments": [
-                        {
-                          "kind": "var",
-                          "name": {
-                            "binding_id": {
-                              "kind": "local",
-                              "name": "b",
-                              "stamp": 1
-                            },
-                            "kind": "resolved",
-                            "surface_path": "b"
-                          }
-                        },
-                        {
-                          "constant": {
-                            "kind": "int",
-                            "value": 7
-                          },
-                          "kind": "constant"
-                        }
-                      ],
-                      "callee": {
-                        "function": {
-                          "kind": "unresolved",
-                          "surface_path": "mod"
-                        },
-                        "kind": "direct"
-                      }
-                    },
-                    "kind": "apply"
-                  },
-                  "name": "d"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          },
-          {
-            "exports": [],
-            "items": [
-              {
-                "expr": {
-                  "apply": {
-                    "arguments": [
-                      {
-                        "constant": {
-                          "kind": "string",
-                          "value": "%d %d %d %d\\n"
-                        },
-                        "kind": "constant"
-                      },
-                      {
-                        "kind": "var",
-                        "name": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "a",
-                            "stamp": 0
-                          },
-                          "kind": "resolved",
-                          "surface_path": "a"
-                        }
-                      },
-                      {
-                        "kind": "var",
-                        "name": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "b",
-                            "stamp": 1
-                          },
-                          "kind": "resolved",
-                          "surface_path": "b"
-                        }
-                      },
-                      {
-                        "kind": "var",
-                        "name": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "c",
-                            "stamp": 2
-                          },
-                          "kind": "resolved",
-                          "surface_path": "c"
-                        }
-                      },
-                      {
-                        "kind": "var",
-                        "name": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "d",
-                            "stamp": 3
-                          },
-                          "kind": "resolved",
-                          "surface_path": "d"
-                        }
-                      }
-                    ],
-                    "callee": {
-                      "function": {
-                        "kind": "unresolved",
-                        "surface_path": "Printf.printf"
-                      },
-                      "kind": "direct"
-                    }
-                  },
-                  "kind": "apply"
-                },
-                "kind": "eval"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          }
-        ],
-        "unit_id": {
-          "kind": "implementation",
-          "relpath": "corpus/integer_arithmetic.ml",
-          "unit_name": "Integer_arithmetic"
+          "stage": "typing"
         }
-      },
-      "status": "ok"
+      ],
+      "status": "blocked"
     },
     "jir": {
-      "program": {
-        "body": [
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%addint"
-                      }
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 40
-                        }
-                      }
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 2
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "a"
+      "blocked_on": "core_ir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: mod",
+            "name": "unbound-name",
+            "name_text": "mod",
+            "reference_span": {
+              "end": 109,
+              "start": 101
             },
-            "kind": "declaration"
+            "severity": "error"
           },
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%subint"
-                      }
-                    },
-                    {
-                      "call": {
-                        "arguments": [
-                          {
-                            "kind": "literal",
-                            "literal": {
-                              "kind": "string",
-                              "value": "%mulint"
-                            }
-                          },
-                          {
-                            "kind": "identifier",
-                            "name": "a"
-                          },
-                          {
-                            "kind": "literal",
-                            "literal": {
-                              "kind": "number",
-                              "number": {
-                                "kind": "int",
-                                "value": 3
-                              }
-                            }
-                          }
-                        ],
-                        "callee": {
-                          "kind": "identifier",
-                          "name": "__callPrimitive"
-                        }
-                      },
-                      "kind": "call"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 5
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "b"
+          "stage": "typing"
+        },
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 133,
+              "start": 119
             },
-            "kind": "declaration"
+            "severity": "error"
           },
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%divint"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "b"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 7
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "c"
-            },
-            "kind": "declaration"
-          },
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%modint"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "b"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 7
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "d"
-            },
-            "kind": "declaration"
-          },
-          {
-            "expression": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%d %d %d %d\\n"
-                    }
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "a"
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "b"
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "c"
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "d"
-                  }
-                ],
-                "callee": {
-                  "kind": "member",
-                  "member": {
-                    "object": {
-                      "kind": "identifier",
-                      "name": "Printf"
-                    },
-                    "property": "printf"
-                  }
-                }
-              },
-              "kind": "call"
-            },
-            "kind": "expression"
-          }
-        ],
-        "exports": [
-          {
-            "local": "a",
-            "name": "a"
-          },
-          {
-            "local": "b",
-            "name": "b"
-          },
-          {
-            "local": "c",
-            "name": "c"
-          },
-          {
-            "local": "d",
-            "name": "d"
-          }
-        ],
-        "imports": [
-          {
-            "from": "./Printf.js",
-            "imported": null,
-            "local": "Printf",
-            "namespace": true
-          },
-          {
-            "from": "./riot-runtime.js",
-            "imported": "callPrimitive",
-            "local": "__callPrimitive"
-          }
-        ],
-        "module_name": "Integer_arithmetic"
-      },
-      "status": "ok"
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "lir": {
       "reason": "backend_not_selected",
@@ -742,7 +144,7 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [
       {
         "name": "a",
@@ -758,11 +160,11 @@
       },
       {
         "name": "d",
-        "scheme": "int"
+        "scheme": "'a. 'a"
       }
     ],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [
           {
@@ -779,16 +181,39 @@
           },
           {
             "name": "d",
-            "scheme": "int"
+            "scheme": "'a. 'a"
           }
         ],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: mod",
+        "name": "unbound-name",
+        "name_text": "mod",
+        "reference_span": {
+          "end": 109,
+          "start": 101
+        },
+        "severity": "error"
+      },
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 133,
+          "start": 119
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

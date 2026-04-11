@@ -1,24 +1,7 @@
 {
-  "js": "import { callPrimitive as __callPrimitive, print_endline as __print_endline } from \"./riot-runtime.js\";\n\n__print_endline(__callPrimitive(\"%string_of_float\", __callPrimitive(\"%float_of_string\", \"3.1415\")));\n",
+  "js": "print_endline(string_of_float(float_of_string(\"3.1415\")));\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            },
-            {
-              "imported": "print_endline",
-              "local": "__print_endline"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
@@ -29,22 +12,8 @@
                   "call": {
                     "arguments": [
                       {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
-                          "value": "%string_of_float"
-                        }
-                      },
-                      {
                         "call": {
                           "arguments": [
-                            {
-                              "kind": "literal",
-                              "literal": {
-                                "kind": "string",
-                                "value": "%float_of_string"
-                              }
-                            },
                             {
                               "kind": "literal",
                               "literal": {
@@ -54,24 +23,33 @@
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "__callPrimitive"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "float_of_string"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
                       }
                     ],
                     "callee": {
-                      "kind": "identifier",
-                      "name": "__callPrimitive"
+                      "entity_id": {
+                        "kind": "unresolved",
+                        "surface_path": "string_of_float"
+                      },
+                      "kind": "identifier"
                     }
                   },
                   "kind": "call"
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_endline"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_endline"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

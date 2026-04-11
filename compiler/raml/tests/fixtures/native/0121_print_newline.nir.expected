@@ -1,121 +1,20 @@
 {
-  "initial": {
-    "entry": [
-      {
-        "expr": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "unit"
-                }
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_newline"
-            }
-          },
-          "kind": "call"
+  "blocked_on": "core_ir",
+  "errors": [
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: print_newline",
+        "name": "unbound-name",
+        "name_text": "print_newline",
+        "reference_span": {
+          "end": 22,
+          "start": 8
         },
-        "kind": "eval"
-      }
-    ],
-    "exports": [],
-    "functions": [],
-    "imports": [],
-    "module_name": "Print_newline",
-    "runtime_helpers": []
-  },
-  "passes": {
-    "normalize": {
-      "entry": [
-        {
-          "expr": {
-            "call": {
-              "arguments": [
-                {
-                  "kind": "literal",
-                  "literal": {
-                    "kind": "unit"
-                  }
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_newline"
-              }
-            },
-            "kind": "call"
-          },
-          "kind": "eval"
-        }
-      ],
-      "exports": [],
-      "functions": [],
-      "imports": [],
-      "module_name": "Print_newline",
-      "runtime_helpers": []
-    },
-    "simplify": {
-      "entry": [
-        {
-          "expr": {
-            "call": {
-              "arguments": [
-                {
-                  "kind": "literal",
-                  "literal": {
-                    "kind": "unit"
-                  }
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_newline"
-              }
-            },
-            "kind": "call"
-          },
-          "kind": "eval"
-        }
-      ],
-      "exports": [],
-      "functions": [],
-      "imports": [],
-      "module_name": "Print_newline",
-      "runtime_helpers": []
+        "severity": "error"
+      },
+      "stage": "typing"
     }
-  },
-  "program": {
-    "entry": [
-      {
-        "expr": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "unit"
-                }
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_newline"
-            }
-          },
-          "kind": "call"
-        },
-        "kind": "eval"
-      }
-    ],
-    "exports": [],
-    "functions": [],
-    "imports": [],
-    "module_name": "Print_newline",
-    "runtime_helpers": []
-  },
-  "status": "ok"
+  ],
+  "status": "blocked"
 }

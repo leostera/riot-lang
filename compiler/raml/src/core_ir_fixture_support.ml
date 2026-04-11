@@ -322,8 +322,7 @@ and parse_primitive = fun json ->
   in
   match Core_ir.Primitive.of_string normalized_name with
   | Some primitive -> Ok Core_ir.Expr.{ primitive; arguments }
-  | None ->
-      invalid_field scope "name" "a known Core IR primitive name"
+  | None -> invalid_field scope "name" "a known Core IR primitive name"
 
 let parse_binding = fun json ->
   let scope = "binding" in

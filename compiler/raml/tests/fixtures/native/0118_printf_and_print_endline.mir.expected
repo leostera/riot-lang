@@ -1,317 +1,34 @@
 {
-  "initial": {
-    "exports": [],
-    "module_name": "Printf_and_print_endline",
-    "procedures": [
-      {
-        "body": [
-          {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "%d\\n"
-              }
-            }
-          },
-          {
-            "dst": "t1",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "int",
-                "value": 42
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t0"
-              },
-              {
-                "kind": "register",
-                "name": "t1"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "Printf.printf"
-            },
-            "dst": "t2",
-            "kind": "call"
-          },
-          {
-            "dst": "t3",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "done"
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t3"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_endline"
-            },
-            "dst": "t4",
-            "kind": "call"
-          }
-        ],
-        "kind": "entry",
-        "name": "__entry__",
-        "params": []
-      }
-    ]
-  },
-  "passes": {
-    "canonicalize": {
-      "exports": [],
-      "module_name": "Printf_and_print_endline",
-      "procedures": [
-        {
-          "body": [
-            {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%d\\n"
-                }
-              }
-            },
-            {
-              "dst": "t1",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "int",
-                  "value": 42
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t0"
-                },
-                {
-                  "kind": "register",
-                  "name": "t1"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "Printf.printf"
-              },
-              "dst": "t2",
-              "kind": "call"
-            },
-            {
-              "dst": "t3",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "done"
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t3"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_endline"
-              },
-              "dst": "t4",
-              "kind": "call"
-            }
-          ],
-          "kind": "entry",
-          "name": "__entry__",
-          "params": []
-        }
-      ]
+  "blocked_on": "nir",
+  "errors": [
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 22,
+          "start": 8
+        },
+        "severity": "error"
+      },
+      "stage": "typing"
     },
-    "insert_polls": {
-      "exports": [],
-      "module_name": "Printf_and_print_endline",
-      "procedures": [
-        {
-          "body": [
-            {
-              "dst": "t0",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%d\\n"
-                }
-              }
-            },
-            {
-              "dst": "t1",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "int",
-                  "value": 42
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t0"
-                },
-                {
-                  "kind": "register",
-                  "name": "t1"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "Printf.printf"
-              },
-              "dst": "t2",
-              "kind": "call"
-            },
-            {
-              "dst": "t3",
-              "kind": "move",
-              "src": {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "done"
-                }
-              }
-            },
-            {
-              "arguments": [
-                {
-                  "kind": "register",
-                  "name": "t3"
-                }
-              ],
-              "callee": {
-                "kind": "direct",
-                "name": "print_endline"
-              },
-              "dst": "t4",
-              "kind": "call"
-            }
-          ],
-          "kind": "entry",
-          "name": "__entry__",
-          "params": []
-        }
-      ]
+    {
+      "diagnostic": {
+        "id": "TYP2001",
+        "message": "unbound name: print_endline",
+        "name": "unbound-name",
+        "name_text": "print_endline",
+        "reference_span": {
+          "end": 56,
+          "start": 42
+        },
+        "severity": "error"
+      },
+      "stage": "typing"
     }
-  },
-  "program": {
-    "exports": [],
-    "module_name": "Printf_and_print_endline",
-    "procedures": [
-      {
-        "body": [
-          {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "%d\\n"
-              }
-            }
-          },
-          {
-            "dst": "t1",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "int",
-                "value": 42
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t0"
-              },
-              {
-                "kind": "register",
-                "name": "t1"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "Printf.printf"
-            },
-            "dst": "t2",
-            "kind": "call"
-          },
-          {
-            "dst": "t3",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "done"
-              }
-            }
-          },
-          {
-            "arguments": [
-              {
-                "kind": "register",
-                "name": "t3"
-              }
-            ],
-            "callee": {
-              "kind": "direct",
-              "name": "print_endline"
-            },
-            "dst": "t4",
-            "kind": "call"
-          }
-        ],
-        "kind": "entry",
-        "name": "__entry__",
-        "params": []
-      }
-    ]
-  },
-  "status": "ok"
+  ],
+  "status": "blocked"
 }

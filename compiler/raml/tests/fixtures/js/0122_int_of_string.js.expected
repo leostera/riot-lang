@@ -1,26 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nPrintf.printf(\"%d\\\\n\", __callPrimitive(\"%int_of_string\", \"42\"));\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nPrintf.printf(\"%d\\\\n\", int_of_string(\"42\"));\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
-        },
-        "kind": "import"
-      },
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ]
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -44,20 +45,16 @@
                         "kind": "literal",
                         "literal": {
                           "kind": "string",
-                          "value": "%int_of_string"
-                        }
-                      },
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
                           "value": "42"
                         }
                       }
                     ],
                     "callee": {
-                      "kind": "identifier",
-                      "name": "__callPrimitive"
+                      "entity_id": {
+                        "kind": "unresolved",
+                        "surface_path": "int_of_string"
+                      },
+                      "kind": "identifier"
                     }
                   },
                   "kind": "call"
@@ -67,8 +64,15 @@
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }

@@ -1,8 +1,24 @@
 {
   "codegen": {
     "js": {
-      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst make_adder = (function(base) {\n  const add = (function(x) {\n    return __callPrimitive(\"%addint\", base, x);\n  });\n  return add;\n});\n\nconst add7 = make_adder(7);\n\nPrintf.printf(\"%d\\\\n\", add7(35));\n\nexport {\n  make_adder\n};\n",
-      "status": "ok"
+      "blocked_on": "jir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 154,
+              "start": 138
+            },
+            "severity": "error"
+          },
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "native": {
       "reason": "backend_not_selected",
@@ -15,450 +31,44 @@
   },
   "lowered": {
     "core_ir": {
-      "compilation_unit": {
-        "exports": [
-          {
-            "name": "make_adder",
-            "symbol": {
-              "binding_id": {
-                "kind": "local",
-                "name": "make_adder",
-                "stamp": 1
-              },
-              "kind": "resolved",
-              "surface_path": "make_adder"
-            }
-          }
-        ],
-        "init": [
-          {
-            "exports": [
-              {
-                "name": "make_adder",
-                "symbol": {
-                  "binding_id": {
-                    "kind": "local",
-                    "name": "make_adder",
-                    "stamp": 1
-                  },
-                  "kind": "resolved",
-                  "surface_path": "make_adder"
-                }
-              }
-            ],
-            "items": [
-              {
-                "binding": {
-                  "entity_id": {
-                    "binding_id": {
-                      "kind": "local",
-                      "name": "make_adder",
-                      "stamp": 1
-                    },
-                    "kind": "resolved",
-                    "surface_path": "make_adder"
-                  },
-                  "expr": {
-                    "kind": "lambda",
-                    "lambda": {
-                      "body": {
-                        "kind": "let",
-                        "let": {
-                          "bindings": [
-                            {
-                              "entity_id": {
-                                "binding_id": {
-                                  "kind": "local",
-                                  "name": "add",
-                                  "stamp": 0
-                                },
-                                "kind": "resolved",
-                                "surface_path": "add"
-                              },
-                              "expr": {
-                                "kind": "lambda",
-                                "lambda": {
-                                  "body": {
-                                    "apply": {
-                                      "arguments": [
-                                        {
-                                          "kind": "var",
-                                          "name": {
-                                            "binding_id": {
-                                              "kind": "local",
-                                              "name": "base",
-                                              "stamp": -225
-                                            },
-                                            "kind": "resolved",
-                                            "surface_path": "base"
-                                          }
-                                        },
-                                        {
-                                          "kind": "var",
-                                          "name": {
-                                            "binding_id": {
-                                              "kind": "local",
-                                              "name": "x",
-                                              "stamp": -129
-                                            },
-                                            "kind": "resolved",
-                                            "surface_path": "x"
-                                          }
-                                        }
-                                      ],
-                                      "callee": {
-                                        "function": {
-                                          "kind": "unresolved",
-                                          "surface_path": "+"
-                                        },
-                                        "kind": "direct"
-                                      }
-                                    },
-                                    "kind": "apply"
-                                  },
-                                  "params": [
-                                    {
-                                      "entity_id": {
-                                        "binding_id": {
-                                          "kind": "local",
-                                          "name": "x",
-                                          "stamp": -129
-                                        },
-                                        "kind": "resolved",
-                                        "surface_path": "x"
-                                      },
-                                      "name": "x"
-                                    }
-                                  ]
-                                }
-                              },
-                              "name": "add"
-                            }
-                          ],
-                          "body": {
-                            "kind": "var",
-                            "name": {
-                              "binding_id": {
-                                "kind": "local",
-                                "name": "add",
-                                "stamp": 0
-                              },
-                              "kind": "resolved",
-                              "surface_path": "add"
-                            }
-                          },
-                          "rec_flag": "nonrecursive"
-                        }
-                      },
-                      "params": [
-                        {
-                          "entity_id": {
-                            "binding_id": {
-                              "kind": "local",
-                              "name": "base",
-                              "stamp": -225
-                            },
-                            "kind": "resolved",
-                            "surface_path": "base"
-                          },
-                          "name": "base"
-                        }
-                      ]
-                    }
-                  },
-                  "name": "make_adder"
-                },
-                "kind": "binding"
-              }
-            ],
-            "rec_flag": "nonrecursive"
+      "blocked_on": "typing",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 154,
+              "start": 138
+            },
+            "severity": "error"
           },
-          {
-            "exports": [],
-            "items": [
-              {
-                "expr": {
-                  "kind": "let",
-                  "let": {
-                    "bindings": [
-                      {
-                        "entity_id": {
-                          "binding_id": {
-                            "kind": "local",
-                            "name": "add7",
-                            "stamp": 2
-                          },
-                          "kind": "resolved",
-                          "surface_path": "add7"
-                        },
-                        "expr": {
-                          "apply": {
-                            "arguments": [
-                              {
-                                "constant": {
-                                  "kind": "int",
-                                  "value": 7
-                                },
-                                "kind": "constant"
-                              }
-                            ],
-                            "callee": {
-                              "function": {
-                                "binding_id": {
-                                  "kind": "local",
-                                  "name": "make_adder",
-                                  "stamp": 1
-                                },
-                                "kind": "resolved",
-                                "surface_path": "make_adder"
-                              },
-                              "kind": "direct"
-                            }
-                          },
-                          "kind": "apply"
-                        },
-                        "name": "add7"
-                      }
-                    ],
-                    "body": {
-                      "apply": {
-                        "arguments": [
-                          {
-                            "constant": {
-                              "kind": "string",
-                              "value": "%d\\n"
-                            },
-                            "kind": "constant"
-                          },
-                          {
-                            "apply": {
-                              "arguments": [
-                                {
-                                  "constant": {
-                                    "kind": "int",
-                                    "value": 35
-                                  },
-                                  "kind": "constant"
-                                }
-                              ],
-                              "callee": {
-                                "expr": {
-                                  "kind": "var",
-                                  "name": {
-                                    "binding_id": {
-                                      "kind": "local",
-                                      "name": "add7",
-                                      "stamp": 2
-                                    },
-                                    "kind": "resolved",
-                                    "surface_path": "add7"
-                                  }
-                                },
-                                "kind": "indirect"
-                              }
-                            },
-                            "kind": "apply"
-                          }
-                        ],
-                        "callee": {
-                          "function": {
-                            "kind": "unresolved",
-                            "surface_path": "Printf.printf"
-                          },
-                          "kind": "direct"
-                        }
-                      },
-                      "kind": "apply"
-                    },
-                    "rec_flag": "nonrecursive"
-                  }
-                },
-                "kind": "eval"
-              }
-            ],
-            "rec_flag": "nonrecursive"
-          }
-        ],
-        "unit_id": {
-          "kind": "implementation",
-          "relpath": "corpus/local_functions_and_closures.ml",
-          "unit_name": "Local_functions_and_closures"
+          "stage": "typing"
         }
-      },
-      "status": "ok"
+      ],
+      "status": "blocked"
     },
     "jir": {
-      "program": {
-        "body": [
-          {
-            "declaration": {
-              "init": {
-                "function": {
-                  "body": [
-                    {
-                      "declaration": {
-                        "init": {
-                          "function": {
-                            "body": [
-                              {
-                                "expression": {
-                                  "call": {
-                                    "arguments": [
-                                      {
-                                        "kind": "literal",
-                                        "literal": {
-                                          "kind": "string",
-                                          "value": "%addint"
-                                        }
-                                      },
-                                      {
-                                        "kind": "identifier",
-                                        "name": "base"
-                                      },
-                                      {
-                                        "kind": "identifier",
-                                        "name": "x"
-                                      }
-                                    ],
-                                    "callee": {
-                                      "kind": "identifier",
-                                      "name": "__callPrimitive"
-                                    }
-                                  },
-                                  "kind": "call"
-                                },
-                                "kind": "return"
-                              }
-                            ],
-                            "params": [
-                              "x"
-                            ]
-                          },
-                          "kind": "function"
-                        },
-                        "kind": "const",
-                        "name": "add"
-                      },
-                      "kind": "declaration"
-                    },
-                    {
-                      "expression": {
-                        "kind": "identifier",
-                        "name": "add"
-                      },
-                      "kind": "return"
-                    }
-                  ],
-                  "params": [
-                    "base"
-                  ]
-                },
-                "kind": "function"
-              },
-              "kind": "const",
-              "name": "make_adder"
+      "blocked_on": "core_ir",
+      "errors": [
+        {
+          "diagnostic": {
+            "id": "TYP2001",
+            "message": "unbound name: Printf.printf",
+            "name": "unbound-name",
+            "name_text": "Printf.printf",
+            "reference_span": {
+              "end": 154,
+              "start": 138
             },
-            "kind": "declaration"
+            "severity": "error"
           },
-          {
-            "declaration": {
-              "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 7
-                        }
-                      }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "make_adder"
-                  }
-                },
-                "kind": "call"
-              },
-              "kind": "const",
-              "name": "add7"
-            },
-            "kind": "declaration"
-          },
-          {
-            "expression": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%d\\n"
-                    }
-                  },
-                  {
-                    "call": {
-                      "arguments": [
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "number",
-                            "number": {
-                              "kind": "int",
-                              "value": 35
-                            }
-                          }
-                        }
-                      ],
-                      "callee": {
-                        "kind": "identifier",
-                        "name": "add7"
-                      }
-                    },
-                    "kind": "call"
-                  }
-                ],
-                "callee": {
-                  "kind": "member",
-                  "member": {
-                    "object": {
-                      "kind": "identifier",
-                      "name": "Printf"
-                    },
-                    "property": "printf"
-                  }
-                }
-              },
-              "kind": "call"
-            },
-            "kind": "expression"
-          }
-        ],
-        "exports": [
-          {
-            "local": "make_adder",
-            "name": "make_adder"
-          }
-        ],
-        "imports": [
-          {
-            "from": "./Printf.js",
-            "imported": null,
-            "local": "Printf",
-            "namespace": true
-          },
-          {
-            "from": "./riot-runtime.js",
-            "imported": "callPrimitive",
-            "local": "__callPrimitive"
-          }
-        ],
-        "module_name": "Local_functions_and_closures"
-      },
-      "status": "ok"
+          "stage": "typing"
+        }
+      ],
+      "status": "blocked"
     },
     "lir": {
       "reason": "backend_not_selected",
@@ -492,7 +102,7 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "complete",
+    "completeness": "partial",
     "exports": [
       {
         "name": "make_adder",
@@ -500,7 +110,7 @@
       }
     ],
     "file_summary": {
-      "completeness": "complete",
+      "completeness": "partial",
       "export_result": {
         "exports": [
           {
@@ -508,13 +118,25 @@
             "scheme": "int -> int -> int"
           }
         ],
-        "tag": "trusted_export"
+        "tag": "errored_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "ok",
-    "typing_diagnostics": []
+    "status": "error",
+    "typing_diagnostics": [
+      {
+        "id": "TYP2001",
+        "message": "unbound name: Printf.printf",
+        "name": "unbound-name",
+        "name_text": "Printf.printf",
+        "reference_span": {
+          "end": 154,
+          "start": 138
+        },
+        "severity": "error"
+      }
+    ]
   }
 }

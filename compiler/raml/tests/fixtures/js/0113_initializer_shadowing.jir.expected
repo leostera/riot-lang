@@ -2,6 +2,14 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "outer",
+            "stamp": 0
+          },
+          "name": "outer"
+        },
         "init": {
           "kind": "literal",
           "literal": {
@@ -12,84 +20,46 @@
             }
           }
         },
-        "kind": "const",
-        "name": "outer"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
-        "init": null,
-        "kind": "let",
-        "name": "__raml_init_result"
-      },
-      "kind": "declaration"
-    },
-    {
-      "body": [
-        {
-          "declaration": {
-            "init": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%addint"
-                    }
-                  },
-                  {
-                    "kind": "identifier",
-                    "name": "outer"
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 1
-                      }
-                    }
-                  }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
-                }
-              },
-              "kind": "call"
-            },
-            "kind": "const",
-            "name": "result"
+        "binder": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__raml_js.flatten.__raml_init_result"
           },
-          "kind": "declaration"
-        },
-        {
-          "expression": {
-            "assignment": {
-              "target": "__raml_init_result",
-              "value": {
-                "kind": "identifier",
-                "name": "result"
-              }
-            },
-            "kind": "assignment"
-          },
-          "kind": "expression"
-        }
-      ],
-      "kind": "block"
-    },
-    {
-      "declaration": {
-        "init": {
-          "kind": "identifier",
           "name": "__raml_init_result"
         },
-        "kind": "const",
-        "name": "result"
+        "init": null,
+        "kind": "let"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "result",
+            "stamp": 2
+          },
+          "name": "result"
+        },
+        "init": {
+          "entity_id": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.flatten.__raml_init_result"
+            },
+            "kind": "resolved",
+            "surface_path": "__raml_init_result"
+          },
+          "kind": "identifier"
+        },
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -105,20 +75,43 @@
               }
             },
             {
-              "kind": "identifier",
-              "name": "outer"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "outer",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "outer"
+              },
+              "kind": "identifier"
             },
             {
-              "kind": "identifier",
-              "name": "result"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "result",
+                  "stamp": 2
+                },
+                "kind": "resolved",
+                "surface_path": "result"
+              },
+              "kind": "identifier"
             }
           ],
           "callee": {
             "kind": "member",
             "member": {
               "object": {
-                "kind": "identifier",
-                "name": "Printf"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.import.module.Printf.Printf"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "Printf"
+                },
+                "kind": "identifier"
               },
               "property": "printf"
             }
@@ -131,11 +124,27 @@
   ],
   "exports": [
     {
-      "local": "outer",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "outer",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "outer"
+      },
       "name": "outer"
     },
     {
-      "local": "result",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "result",
+          "stamp": 2
+        },
+        "kind": "resolved",
+        "surface_path": "result"
+      },
       "name": "result"
     }
   ],
@@ -143,13 +152,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
     }
   ],
   "module_name": "Initializer_shadowing"

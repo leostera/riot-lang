@@ -2,6 +2,14 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "step",
+            "stamp": 0
+          },
+          "name": "step"
+        },
         "init": {
           "call": {
             "arguments": [
@@ -13,13 +21,24 @@
                         "call": {
                           "arguments": [
                             {
-                              "kind": "identifier",
-                              "name": "label"
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "label",
+                                  "stamp": -545
+                                },
+                                "kind": "resolved",
+                                "surface_path": "label"
+                              },
+                              "kind": "identifier"
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "__print_string"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "print_string"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
@@ -39,8 +58,11 @@
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "__print_char"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "print_char"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
@@ -52,13 +74,24 @@
                         "call": {
                           "arguments": [
                             {
-                              "kind": "identifier",
-                              "name": "x"
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "x",
+                                  "stamp": -546
+                                },
+                                "kind": "resolved",
+                                "surface_path": "x"
+                              },
+                              "kind": "identifier"
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "__print_int"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "print_int"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
@@ -78,8 +111,11 @@
                             }
                           ],
                           "callee": {
-                            "kind": "identifier",
-                            "name": "__print_char"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "print_char"
+                            },
+                            "kind": "identifier"
                           }
                         },
                         "kind": "call"
@@ -88,43 +124,53 @@
                     },
                     {
                       "expression": {
-                        "call": {
-                          "arguments": [
-                            {
-                              "kind": "literal",
-                              "literal": {
-                                "kind": "string",
-                                "value": "%addint"
-                              }
+                        "binary": {
+                          "left": {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "x",
+                                "stamp": -546
+                              },
+                              "kind": "resolved",
+                              "surface_path": "x"
                             },
-                            {
-                              "kind": "identifier",
-                              "name": "x"
-                            },
-                            {
-                              "kind": "literal",
-                              "literal": {
-                                "kind": "number",
-                                "number": {
-                                  "kind": "int",
-                                  "value": 1
-                                }
+                            "kind": "identifier"
+                          },
+                          "operator": "add",
+                          "right": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 1
                               }
                             }
-                          ],
-                          "callee": {
-                            "kind": "identifier",
-                            "name": "__callPrimitive"
                           }
                         },
-                        "kind": "call"
+                        "kind": "binary"
                       },
                       "kind": "return"
                     }
                   ],
                   "params": [
-                    "label",
-                    "x"
+                    {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "label",
+                        "stamp": -545
+                      },
+                      "name": "label"
+                    },
+                    {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "x",
+                        "stamp": -546
+                      },
+                      "name": "x"
+                    }
                   ]
                 },
                 "kind": "function"
@@ -141,19 +187,33 @@
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "__makeCurried"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "persistent",
+                  "surface_path": "__raml_js.runtime.__makeCurried"
+                },
+                "kind": "resolved",
+                "surface_path": "__makeCurried"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "step"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "n",
+            "stamp": 1
+          },
+          "name": "n"
+        },
         "init": {
           "call": {
             "arguments": [
@@ -176,19 +236,34 @@
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "step"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "step",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "step"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "n"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "n",
+            "stamp": 2
+          },
+          "name": "n$1"
+        },
         "init": {
           "call": {
             "arguments": [
@@ -200,19 +275,34 @@
                 }
               },
               {
-                "kind": "identifier",
-                "name": "n"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "local",
+                    "name": "n",
+                    "stamp": 1
+                  },
+                  "kind": "resolved",
+                  "surface_path": "n"
+                },
+                "kind": "identifier"
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "step"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "step",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "step"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "n$1"
+        "kind": "const"
       },
       "kind": "declaration"
     },
@@ -228,25 +318,32 @@
               }
             },
             {
-              "kind": "identifier",
-              "name": "n$1"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "n",
+                  "stamp": 2
+                },
+                "kind": "resolved",
+                "surface_path": "n"
+              },
+              "kind": "identifier"
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "step"
+            "entity_id": {
+              "binding_id": {
+                "kind": "local",
+                "name": "step",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "step"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
-      },
-      "kind": "expression"
-    },
-    {
-      "expression": {
-        "kind": "literal",
-        "literal": {
-          "kind": "undefined"
-        }
       },
       "kind": "expression"
     },
@@ -262,8 +359,11 @@
             }
           ],
           "callee": {
-            "kind": "identifier",
-            "name": "__print_newline"
+            "entity_id": {
+              "kind": "unresolved",
+              "surface_path": "print_newline"
+            },
+            "kind": "identifier"
           }
         },
         "kind": "call"
@@ -273,40 +373,29 @@
   ],
   "exports": [
     {
-      "local": "step",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "step",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "step"
+      },
       "name": "step"
     }
   ],
   "imports": [
     {
       "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
-    },
-    {
-      "from": "./riot-runtime.js",
       "imported": "makeCurried",
-      "local": "__makeCurried"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_char",
-      "local": "__print_char"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_int",
-      "local": "__print_int"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_newline",
-      "local": "__print_newline"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_string",
-      "local": "__print_string"
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.runtime.__makeCurried"
+        },
+        "name": "__makeCurried"
+      }
     }
   ],
   "module_name": "Sequence_and_ignore"

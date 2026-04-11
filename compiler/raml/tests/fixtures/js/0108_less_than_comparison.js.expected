@@ -1,26 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst smaller = __callPrimitive(\"%lt\", 3, 5);\n\nPrintf.printf(\"%b\\\\n\", smaller);\n\nexport {\n  smaller\n};\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nconst smaller = (3 < 5);\n\nPrintf.printf(\"%b\\\\n\", smaller);\n\nexport {\n  smaller\n};\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
-        },
-        "kind": "import"
-      },
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ]
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -28,46 +29,41 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "smaller",
+                "stamp": 0
+              },
+              "name": "smaller"
+            },
             "init": {
-              "call": {
-                "arguments": [
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "string",
-                      "value": "%lt"
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 3
-                      }
-                    }
-                  },
-                  {
-                    "kind": "literal",
-                    "literal": {
-                      "kind": "number",
-                      "number": {
-                        "kind": "int",
-                        "value": 5
-                      }
+              "binary": {
+                "left": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 3
                     }
                   }
-                ],
-                "callee": {
-                  "kind": "identifier",
-                  "name": "__callPrimitive"
+                },
+                "operator": "less_than",
+                "right": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 5
+                    }
+                  }
                 }
               },
-              "kind": "call"
+              "kind": "binary"
             },
-            "kind": "const",
-            "name": "smaller"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -86,16 +82,31 @@
                   }
                 },
                 {
-                  "kind": "identifier",
-                  "name": "smaller"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "smaller",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "smaller"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }
@@ -109,7 +120,15 @@
       {
         "exports": [
           {
-            "local": "smaller",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "smaller",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "smaller"
+            },
             "name": "smaller"
           }
         ],

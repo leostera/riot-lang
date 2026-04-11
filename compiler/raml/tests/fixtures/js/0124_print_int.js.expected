@@ -1,20 +1,7 @@
 {
-  "js": "import { print_int as __print_int } from \"./riot-runtime.js\";\n\n__print_int(42);\n",
+  "js": "print_int(42);\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_int",
-              "local": "__print_int"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
@@ -33,8 +20,11 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_int"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_int"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

@@ -84,7 +84,7 @@ let typing_state_of_parse_failure = fun parse_result error ->
     lowering_diagnostics;
     typing_diagnostics = [];
     errors;
-    is_complete = false
+    is_complete = false;
   }
 
 let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
@@ -163,10 +163,7 @@ let typing_state = fun ~config ~filename ~source ->
         ~source_hash:(Typ.Model.Source.hash ~implicit_opens ~cst)
         ~parse_result
         ~cst in
-      Typ.check
-        ~config:(Compiler_config.typing_config config)
-        ~source
-      |> typing_state_of_report
+      Typ.check ~config:(Compiler_config.typing_config config) ~source |> typing_state_of_report
   | Error error -> typing_state_of_parse_failure parse_result error
 
 let compile_source = fun ~config ~relpath ~source ->

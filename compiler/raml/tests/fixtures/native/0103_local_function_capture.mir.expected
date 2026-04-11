@@ -324,6 +324,531 @@
         }
       ]
     },
+    "copy_propagate": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_false"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_true"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
+              }
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "cse": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_false"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_true"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
+              }
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "dead_code": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "module_name": "Local_function_capture",
+      "procedures": [
+        {
+          "body": [
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                "else": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_false"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t0",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "when_true"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_decide_0",
+          "params": [
+            "flag",
+            "when_true",
+            "when_false"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "flag"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "left"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "right"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_decide_0"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": true
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "selected"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
     "insert_polls": {
       "exports": [
         {
@@ -409,6 +934,15 @@
               }
             },
             {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
+            },
+            {
               "arguments": [
                 {
                   "kind": "register",
@@ -456,6 +990,15 @@
                   "value": true
                 }
               }
+            },
+            {
+              "arguments": [],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_poll"
+              },
+              "dst": null,
+              "kind": "call"
             },
             {
               "arguments": [
@@ -550,26 +1093,13 @@
       {
         "body": [
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "left"
-              }
-            }
-          },
-          {
-            "dst": "t1",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "string",
-                "value": "right"
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
@@ -578,12 +1108,18 @@
                 "name": "flag"
               },
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
               },
               {
-                "kind": "register",
-                "name": "t1"
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
               }
             ],
             "callee": {
@@ -610,21 +1146,22 @@
       {
         "body": [
           {
-            "dst": "t0",
-            "kind": "move",
-            "src": {
-              "kind": "literal",
-              "literal": {
-                "kind": "bool",
-                "value": true
-              }
-            }
+            "arguments": [],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_poll"
+            },
+            "dst": null,
+            "kind": "call"
           },
           {
             "arguments": [
               {
-                "kind": "register",
-                "name": "t0"
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
               }
             ],
             "callee": {

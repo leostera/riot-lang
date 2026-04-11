@@ -17,16 +17,15 @@ _right:
 .quad 0
 
 .text
+.p2align 2
+_raml_poll:
+ret
+
 .globl _choose__local_consume_0
 .p2align 2
 _choose__local_consume_0:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #16
-str x0, [sp, #0]
-ldr x0, [sp, #0]
-add sp, sp, #16
-ldp x29, x30, [sp], #16
+mov x11, x0
+mov x0, x11
 ret
 
 .globl _choose
@@ -34,34 +33,26 @@ ret
 _choose:
 stp x29, x30, [sp, #-16]!
 mov x29, sp
-sub sp, sp, #64
-str x0, [sp, #0]
-movz x9, #0, lsl #0
-str x9, [sp, #8]
-ldr x0, [sp, #8]
+sub sp, sp, #16
+str x19, [sp, #0]
+mov x19, x0
+bl _raml_poll
+movz x0, #0, lsl #0
 bl _choose__local_consume_0
-str x0, [sp, #16]
-ldr x9, [sp, #16]
-str x9, [sp, #24]
-ldr x9, [sp, #0]
+mov x9, x19
 cbz x9, L__raml_else_0
 adrp x9, L__raml_str_0@PAGE
 add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #32]
-ldr x9, [sp, #32]
-str x9, [sp, #40]
+mov x11, x9
 b L__raml_endif_1
 L__raml_else_0:
 adrp x9, L__raml_str_1@PAGE
 add x9, x9, L__raml_str_1@PAGEOFF
-str x9, [sp, #48]
-ldr x9, [sp, #48]
-str x9, [sp, #40]
+mov x11, x9
 L__raml_endif_1:
-ldr x9, [sp, #40]
-str x9, [sp, #56]
-ldr x0, [sp, #56]
-add sp, sp, #64
+mov x0, x11
+ldr x19, [sp, #0]
+add sp, sp, #16
 ldp x29, x30, [sp], #16
 ret
 
@@ -70,26 +61,22 @@ ret
 _main:
 stp x29, x30, [sp, #-16]!
 mov x29, sp
-sub sp, sp, #32
-movz x9, #1, lsl #0
-str x9, [sp, #0]
-ldr x0, [sp, #0]
+bl _raml_poll
+movz x0, #1, lsl #0
 bl _choose
-str x0, [sp, #8]
-ldr x9, [sp, #8]
+mov x11, x0
+mov x9, x11
 adrp x10, _left@PAGE
 add x10, x10, _left@PAGEOFF
 str x9, [x10, #0]
-movz x9, #0, lsl #0
-str x9, [sp, #16]
-ldr x0, [sp, #16]
+bl _raml_poll
+movz x0, #0, lsl #0
 bl _choose
-str x0, [sp, #24]
-ldr x9, [sp, #24]
+mov x11, x0
+mov x9, x11
 adrp x10, _right@PAGE
 add x10, x10, _right@PAGEOFF
 str x9, [x10, #0]
 movz x0, #0, lsl #0
-add sp, sp, #32
 ldp x29, x30, [sp], #16
 ret

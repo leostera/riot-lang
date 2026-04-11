@@ -59,8 +59,11 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "__print_endline"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "print_endline"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -69,13 +72,7 @@
           }
         ],
         "exports": [],
-        "imports": [
-          {
-            "from": "./riot-runtime.js",
-            "imported": "print_endline",
-            "local": "__print_endline"
-          }
-        ],
+        "imports": [],
         "module_name": "External_print_endline"
       },
       "status": "ok"

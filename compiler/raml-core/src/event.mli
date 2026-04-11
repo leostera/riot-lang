@@ -13,12 +13,10 @@ type status =
   | Error
   | Blocked
   | Unavailable
-
 type failure =
   | ConfigValidationFailed of { reason: string }
   | SourceReadFailed of { reason: string }
   | SourceUnitRejected of { reason: string }
-
 type kind =
   | CompileStarted of { path: Path.t }
   | CompileFinished of { path: Path.t }
@@ -38,7 +36,6 @@ type t = {
   instant_us: int;
   kind: kind;
 }
-
 val to_string: t -> string
 
 val to_json: t -> Json.t

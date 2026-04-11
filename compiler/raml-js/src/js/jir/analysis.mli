@@ -5,10 +5,15 @@
 module Entity_set: sig
   type t
   val empty: t
+
   val add: Raml_core.Core_ir.Entity_id.t -> t -> t
+
   val singleton: Raml_core.Core_ir.Entity_id.t -> t
+
   val mem: Raml_core.Core_ir.Entity_id.t -> t -> bool
+
   val union: t -> t -> t
+
   val filter: (Raml_core.Core_ir.Entity_id.t -> bool) -> t -> t
 end
 

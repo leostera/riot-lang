@@ -29,41 +29,26 @@ _nothing:
 .globl _main
 .p2align 2
 _main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #48
 movz x9, #42, lsl #0
-str x9, [sp, #0]
-ldr x9, [sp, #0]
 adrp x10, _answer@PAGE
 add x10, x10, _answer@PAGEOFF
 str x9, [x10, #0]
 movz x9, #1, lsl #0
-str x9, [sp, #8]
-ldr x9, [sp, #8]
 adrp x10, _ready@PAGE
 add x10, x10, _ready@PAGEOFF
 str x9, [x10, #0]
 movz x9, #16396, lsl #48
-str x9, [sp, #16]
-ldr x9, [sp, #16]
 adrp x10, _ratio@PAGE
 add x10, x10, _ratio@PAGEOFF
 str x9, [x10, #0]
 adrp x9, L__raml_str_0@PAGE
 add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #24]
-ldr x9, [sp, #24]
 adrp x10, _greeting@PAGE
 add x10, x10, _greeting@PAGEOFF
 str x9, [x10, #0]
 movz x9, #0, lsl #0
-str x9, [sp, #32]
-ldr x9, [sp, #32]
 adrp x10, _nothing@PAGE
 add x10, x10, _nothing@PAGEOFF
 str x9, [x10, #0]
 movz x0, #0, lsl #0
-add sp, sp, #48
-ldp x29, x30, [sp], #16
 ret

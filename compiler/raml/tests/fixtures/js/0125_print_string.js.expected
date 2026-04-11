@@ -1,20 +1,7 @@
 {
-  "js": "import { print_string as __print_string } from \"./riot-runtime.js\";\n\n__print_string(\"hello\");\n",
+  "js": "print_string(\"hello\");\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_string",
-              "local": "__print_string"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
@@ -30,8 +17,11 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_string"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_string"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"

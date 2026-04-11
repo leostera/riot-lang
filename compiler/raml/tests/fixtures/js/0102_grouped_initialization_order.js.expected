@@ -1,24 +1,19 @@
 {
-  "js": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst before = \"before\";\n\n__print_endline(before);\n\nconst after = __print_endline(\"after\");\n\nexport {\n  before,\n  after\n};\n",
+  "js": "const before = \"before\";\n\nprint_endline(before);\n\nconst after = print_endline(\"after\");\n\nexport {\n  before,\n  after\n};\n",
   "jst": {
     "items": [
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "print_endline",
-              "local": "__print_endline"
-            }
-          ]
-        },
-        "kind": "import"
-      },
       {
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "before",
+                "stamp": 0
+              },
+              "name": "before"
+            },
             "init": {
               "kind": "literal",
               "literal": {
@@ -26,8 +21,7 @@
                 "value": "before"
               }
             },
-            "kind": "const",
-            "name": "before"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -39,13 +33,24 @@
             "call": {
               "arguments": [
                 {
-                  "kind": "identifier",
-                  "name": "before"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "before",
+                      "stamp": 0
+                    },
+                    "kind": "resolved",
+                    "surface_path": "before"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__print_endline"
+                "entity_id": {
+                  "kind": "unresolved",
+                  "surface_path": "print_endline"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
@@ -57,6 +62,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "after",
+                "stamp": 2
+              },
+              "name": "after"
+            },
             "init": {
               "call": {
                 "arguments": [
@@ -69,14 +82,16 @@
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "__print_endline"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "print_endline"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
             },
-            "kind": "const",
-            "name": "after"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -84,11 +99,27 @@
       {
         "exports": [
           {
-            "local": "before",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "before",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "before"
+            },
             "name": "before"
           },
           {
-            "local": "after",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "after",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "after"
+            },
             "name": "after"
           }
         ],

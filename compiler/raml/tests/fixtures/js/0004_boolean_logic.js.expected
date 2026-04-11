@@ -1,26 +1,27 @@
 {
-  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst p = true;\n\nconst q = false;\n\nconst r = (((q ? false : true) ? p : false) ? true : __callPrimitive(\"%lt\", 3, 2));\n\nPrintf.printf(\"%b\\\\n\", r);\n\nexport {\n  p,\n  q,\n  r\n};\n",
+  "js": "import * as Printf from \"./Printf.js\";\n\nconst p = true;\n\nconst q = false;\n\nconst r = (((!q) ? p : false) ? true : (3 < 2));\n\nPrintf.printf(\"%b\\\\n\", r);\n\nexport {\n  p,\n  q,\n  r\n};\n",
   "jst": {
     "items": [
       {
         "import": {
           "default": null,
-          "from": "./Printf.js",
+          "from": {
+            "import_path": "./Printf.js",
+            "kind": "relative_unit",
+            "namespace": [
+              "module",
+              "Printf"
+            ],
+            "unit_name": "Printf"
+          },
           "names": [],
-          "namespace": "Printf"
-        },
-        "kind": "import"
-      },
-      {
-        "import": {
-          "default": null,
-          "from": "./riot-runtime.js",
-          "names": [
-            {
-              "imported": "callPrimitive",
-              "local": "__callPrimitive"
-            }
-          ]
+          "namespace": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.import.module.Printf.Printf"
+            },
+            "name": "Printf"
+          }
         },
         "kind": "import"
       },
@@ -28,6 +29,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "p",
+                "stamp": 0
+              },
+              "name": "p"
+            },
             "init": {
               "kind": "literal",
               "literal": {
@@ -35,8 +44,7 @@
                 "value": true
               }
             },
-            "kind": "const",
-            "name": "p"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -45,6 +53,14 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "q",
+                "stamp": 1
+              },
+              "name": "q"
+            },
             "init": {
               "kind": "literal",
               "literal": {
@@ -52,8 +68,7 @@
                 "value": false
               }
             },
-            "kind": "const",
-            "name": "q"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -62,32 +77,35 @@
         "kind": "statement",
         "statement": {
           "declaration": {
+            "binder": {
+              "binding_id": {
+                "kind": "local",
+                "name": "r",
+                "stamp": 2
+              },
+              "name": "r"
+            },
             "init": {
               "conditional": {
                 "condition": {
                   "conditional": {
                     "condition": {
-                      "conditional": {
-                        "condition": {
-                          "kind": "identifier",
-                          "name": "q"
+                      "kind": "unary",
+                      "unary": {
+                        "operand": {
+                          "entity_id": {
+                            "binding_id": {
+                              "kind": "local",
+                              "name": "q",
+                              "stamp": 1
+                            },
+                            "kind": "resolved",
+                            "surface_path": "q"
+                          },
+                          "kind": "identifier"
                         },
-                        "else": {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "bool",
-                            "value": true
-                          }
-                        },
-                        "then": {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "bool",
-                            "value": false
-                          }
-                        }
-                      },
-                      "kind": "conditional"
+                        "operator": "not"
+                      }
                     },
                     "else": {
                       "kind": "literal",
@@ -97,49 +115,45 @@
                       }
                     },
                     "then": {
-                      "kind": "identifier",
-                      "name": "p"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "local",
+                          "name": "p",
+                          "stamp": 0
+                        },
+                        "kind": "resolved",
+                        "surface_path": "p"
+                      },
+                      "kind": "identifier"
                     }
                   },
                   "kind": "conditional"
                 },
                 "else": {
-                  "call": {
-                    "arguments": [
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "string",
-                          "value": "%lt"
-                        }
-                      },
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "number",
-                          "number": {
-                            "kind": "int",
-                            "value": 3
-                          }
-                        }
-                      },
-                      {
-                        "kind": "literal",
-                        "literal": {
-                          "kind": "number",
-                          "number": {
-                            "kind": "int",
-                            "value": 2
-                          }
+                  "binary": {
+                    "left": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 3
                         }
                       }
-                    ],
-                    "callee": {
-                      "kind": "identifier",
-                      "name": "__callPrimitive"
+                    },
+                    "operator": "less_than",
+                    "right": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 2
+                        }
+                      }
                     }
                   },
-                  "kind": "call"
+                  "kind": "binary"
                 },
                 "then": {
                   "kind": "literal",
@@ -151,8 +165,7 @@
               },
               "kind": "conditional"
             },
-            "kind": "const",
-            "name": "r"
+            "kind": "const"
           },
           "kind": "declaration"
         }
@@ -171,16 +184,31 @@
                   }
                 },
                 {
-                  "kind": "identifier",
-                  "name": "r"
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "r",
+                      "stamp": 2
+                    },
+                    "kind": "resolved",
+                    "surface_path": "r"
+                  },
+                  "kind": "identifier"
                 }
               ],
               "callee": {
                 "kind": "member",
                 "member": {
                   "object": {
-                    "kind": "identifier",
-                    "name": "Printf"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "persistent",
+                        "surface_path": "__raml_js.import.module.Printf.Printf"
+                      },
+                      "kind": "resolved",
+                      "surface_path": "Printf"
+                    },
+                    "kind": "identifier"
                   },
                   "property": "printf"
                 }
@@ -194,15 +222,39 @@
       {
         "exports": [
           {
-            "local": "p",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "p",
+                "stamp": 0
+              },
+              "kind": "resolved",
+              "surface_path": "p"
+            },
             "name": "p"
           },
           {
-            "local": "q",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "q",
+                "stamp": 1
+              },
+              "kind": "resolved",
+              "surface_path": "q"
+            },
             "name": "q"
           },
           {
-            "local": "r",
+            "local": {
+              "binding_id": {
+                "kind": "local",
+                "name": "r",
+                "stamp": 2
+              },
+              "kind": "resolved",
+              "surface_path": "r"
+            },
             "name": "r"
           }
         ],

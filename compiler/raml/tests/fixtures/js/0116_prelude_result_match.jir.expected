@@ -2,123 +2,76 @@
   "body": [
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "bump_if_ok",
+            "stamp": 0
+          },
+          "name": "bump_if_ok"
+        },
         "init": {
           "function": {
             "body": [
               {
                 "if": {
                   "condition": {
-                    "call": {
-                      "arguments": [
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "string",
-                            "value": "%eq"
-                          }
-                        },
-                        {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%tuple_get"
-                                }
-                              },
-                              {
-                                "kind": "identifier",
-                                "name": "value"
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 0
-                                  }
-                                }
+                    "binary": {
+                      "left": {
+                        "index": {
+                          "index": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 0
                               }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
                             }
                           },
-                          "kind": "call"
+                          "object": {
+                            "entity_id": {
+                              "binding_id": {
+                                "kind": "local",
+                                "name": "value",
+                                "stamp": -353
+                              },
+                              "kind": "resolved",
+                              "surface_path": "value"
+                            },
+                            "kind": "identifier"
+                          }
                         },
-                        {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "number",
-                            "number": {
-                              "kind": "int",
-                              "value": 0
-                            }
+                        "kind": "index"
+                      },
+                      "operator": "equal",
+                      "right": {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 0
                           }
                         }
-                      ],
-                      "callee": {
-                        "kind": "identifier",
-                        "name": "__callPrimitive"
                       }
                     },
-                    "kind": "call"
+                    "kind": "binary"
                   },
                   "else": [
                     {
                       "declaration": {
-                        "init": {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%tuple_get"
-                                }
-                              },
-                              {
-                                "kind": "identifier",
-                                "name": "value"
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 1
-                                  }
-                                }
-                              }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
-                            }
+                        "binder": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "msg",
+                            "stamp": -1000128
                           },
-                          "kind": "call"
+                          "name": "msg"
                         },
-                        "kind": "const",
-                        "name": "msg"
-                      },
-                      "kind": "declaration"
-                    },
-                    {
-                      "expression": {
-                        "call": {
-                          "arguments": [
-                            {
-                              "kind": "literal",
-                              "literal": {
-                                "kind": "string",
-                                "value": "%tuple_make"
-                              }
-                            },
-                            {
+                        "init": {
+                          "index": {
+                            "index": {
                               "kind": "literal",
                               "literal": {
                                 "kind": "number",
@@ -128,17 +81,58 @@
                                 }
                               }
                             },
-                            {
-                              "kind": "identifier",
-                              "name": "msg"
+                            "object": {
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "value",
+                                  "stamp": -353
+                                },
+                                "kind": "resolved",
+                                "surface_path": "value"
+                              },
+                              "kind": "identifier"
                             }
-                          ],
-                          "callee": {
-                            "kind": "identifier",
-                            "name": "__callPrimitive"
-                          }
+                          },
+                          "kind": "index"
                         },
-                        "kind": "call"
+                        "kind": "const"
+                      },
+                      "kind": "declaration"
+                    },
+                    {
+                      "expression": {
+                        "array": [
+                          {
+                            "expr": {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 1
+                                }
+                              }
+                            },
+                            "kind": "item"
+                          },
+                          {
+                            "expr": {
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "msg",
+                                  "stamp": -1000128
+                                },
+                                "kind": "resolved",
+                                "surface_path": "msg"
+                              },
+                              "kind": "identifier"
+                            },
+                            "kind": "item"
+                          }
+                        ],
+                        "kind": "array"
                       },
                       "kind": "return"
                     }
@@ -146,55 +140,50 @@
                   "then": [
                     {
                       "declaration": {
+                        "binder": {
+                          "binding_id": {
+                            "kind": "local",
+                            "name": "n",
+                            "stamp": -1000064
+                          },
+                          "name": "n"
+                        },
                         "init": {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%tuple_get"
-                                }
-                              },
-                              {
-                                "kind": "identifier",
-                                "name": "value"
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 1
-                                  }
+                          "index": {
+                            "index": {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 1
                                 }
                               }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "__callPrimitive"
+                            },
+                            "object": {
+                              "entity_id": {
+                                "binding_id": {
+                                  "kind": "local",
+                                  "name": "value",
+                                  "stamp": -353
+                                },
+                                "kind": "resolved",
+                                "surface_path": "value"
+                              },
+                              "kind": "identifier"
                             }
                           },
-                          "kind": "call"
+                          "kind": "index"
                         },
-                        "kind": "const",
-                        "name": "n"
+                        "kind": "const"
                       },
                       "kind": "declaration"
                     },
                     {
                       "expression": {
-                        "call": {
-                          "arguments": [
-                            {
-                              "kind": "literal",
-                              "literal": {
-                                "kind": "string",
-                                "value": "%tuple_make"
-                              }
-                            },
-                            {
+                        "array": [
+                          {
+                            "expr": {
                               "kind": "literal",
                               "literal": {
                                 "kind": "number",
@@ -204,45 +193,41 @@
                                 }
                               }
                             },
-                            {
-                              "call": {
-                                "arguments": [
-                                  {
-                                    "kind": "literal",
-                                    "literal": {
-                                      "kind": "string",
-                                      "value": "%addint"
-                                    }
+                            "kind": "item"
+                          },
+                          {
+                            "expr": {
+                              "binary": {
+                                "left": {
+                                  "entity_id": {
+                                    "binding_id": {
+                                      "kind": "local",
+                                      "name": "n",
+                                      "stamp": -1000064
+                                    },
+                                    "kind": "resolved",
+                                    "surface_path": "n"
                                   },
-                                  {
-                                    "kind": "identifier",
-                                    "name": "n"
-                                  },
-                                  {
-                                    "kind": "literal",
-                                    "literal": {
-                                      "kind": "number",
-                                      "number": {
-                                        "kind": "int",
-                                        "value": 1
-                                      }
+                                  "kind": "identifier"
+                                },
+                                "operator": "add",
+                                "right": {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "number",
+                                    "number": {
+                                      "kind": "int",
+                                      "value": 1
                                     }
                                   }
-                                ],
-                                "callee": {
-                                  "kind": "identifier",
-                                  "name": "__callPrimitive"
                                 }
                               },
-                              "kind": "call"
-                            }
-                          ],
-                          "callee": {
-                            "kind": "identifier",
-                            "name": "__callPrimitive"
+                              "kind": "binary"
+                            },
+                            "kind": "item"
                           }
-                        },
-                        "kind": "call"
+                        ],
+                        "kind": "array"
                       },
                       "kind": "return"
                     }
@@ -252,32 +237,39 @@
               }
             ],
             "params": [
-              "value"
+              {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "value",
+                  "stamp": -353
+                },
+                "name": "value"
+              }
             ]
           },
           "kind": "function"
         },
-        "kind": "const",
-        "name": "bump_if_ok"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "declaration": {
+        "binder": {
+          "binding_id": {
+            "kind": "local",
+            "name": "__raml_match_24",
+            "stamp": -785
+          },
+          "name": "__raml_match_24"
+        },
         "init": {
           "call": {
             "arguments": [
               {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%tuple_make"
-                      }
-                    },
-                    {
+                "array": [
+                  {
+                    "expr": {
                       "kind": "literal",
                       "literal": {
                         "kind": "number",
@@ -287,7 +279,10 @@
                         }
                       }
                     },
-                    {
+                    "kind": "item"
+                  },
+                  {
+                    "expr": {
                       "kind": "literal",
                       "literal": {
                         "kind": "number",
@@ -296,127 +291,116 @@
                           "value": 41
                         }
                       }
-                    }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
+                    },
+                    "kind": "item"
                   }
-                },
-                "kind": "call"
+                ],
+                "kind": "array"
               }
             ],
             "callee": {
-              "kind": "identifier",
-              "name": "bump_if_ok"
+              "entity_id": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "bump_if_ok",
+                  "stamp": 0
+                },
+                "kind": "resolved",
+                "surface_path": "bump_if_ok"
+              },
+              "kind": "identifier"
             }
           },
           "kind": "call"
         },
-        "kind": "const",
-        "name": "__raml_match_24"
+        "kind": "const"
       },
       "kind": "declaration"
     },
     {
       "if": {
         "condition": {
-          "call": {
-            "arguments": [
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "string",
-                  "value": "%eq"
-                }
-              },
-              {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%tuple_get"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "__raml_match_24"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 0
-                        }
-                      }
+          "binary": {
+            "left": {
+              "index": {
+                "index": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 0
                     }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
                   }
                 },
-                "kind": "call"
+                "object": {
+                  "entity_id": {
+                    "binding_id": {
+                      "kind": "local",
+                      "name": "__raml_match_24",
+                      "stamp": -785
+                    },
+                    "kind": "resolved",
+                    "surface_path": "__raml_match_24"
+                  },
+                  "kind": "identifier"
+                }
               },
-              {
-                "kind": "literal",
-                "literal": {
-                  "kind": "number",
-                  "number": {
-                    "kind": "int",
-                    "value": 0
-                  }
+              "kind": "index"
+            },
+            "operator": "equal",
+            "right": {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "int",
+                  "value": 0
                 }
               }
-            ],
-            "callee": {
-              "kind": "identifier",
-              "name": "__callPrimitive"
             }
           },
-          "kind": "call"
+          "kind": "binary"
         },
         "else": [
           {
             "declaration": {
+              "binder": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "msg",
+                  "stamp": -1000288
+                },
+                "name": "msg"
+              },
               "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%tuple_get"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "__raml_match_24"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 1
-                        }
+                "index": {
+                  "index": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 1
                       }
                     }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
+                  },
+                  "object": {
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "__raml_match_24",
+                        "stamp": -785
+                      },
+                      "kind": "resolved",
+                      "surface_path": "__raml_match_24"
+                    },
+                    "kind": "identifier"
                   }
                 },
-                "kind": "call"
+                "kind": "index"
               },
-              "kind": "const",
-              "name": "msg"
+              "kind": "const"
             },
             "kind": "declaration"
           },
@@ -425,13 +409,24 @@
               "call": {
                 "arguments": [
                   {
-                    "kind": "identifier",
-                    "name": "msg"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "msg",
+                        "stamp": -1000288
+                      },
+                      "kind": "resolved",
+                      "surface_path": "msg"
+                    },
+                    "kind": "identifier"
                   }
                 ],
                 "callee": {
-                  "kind": "identifier",
-                  "name": "__print_endline"
+                  "entity_id": {
+                    "kind": "unresolved",
+                    "surface_path": "print_endline"
+                  },
+                  "kind": "identifier"
                 }
               },
               "kind": "call"
@@ -442,40 +437,42 @@
         "then": [
           {
             "declaration": {
+              "binder": {
+                "binding_id": {
+                  "kind": "local",
+                  "name": "n",
+                  "stamp": -1000224
+                },
+                "name": "n"
+              },
               "init": {
-                "call": {
-                  "arguments": [
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "string",
-                        "value": "%tuple_get"
-                      }
-                    },
-                    {
-                      "kind": "identifier",
-                      "name": "__raml_match_24"
-                    },
-                    {
-                      "kind": "literal",
-                      "literal": {
-                        "kind": "number",
-                        "number": {
-                          "kind": "int",
-                          "value": 1
-                        }
+                "index": {
+                  "index": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 1
                       }
                     }
-                  ],
-                  "callee": {
-                    "kind": "identifier",
-                    "name": "__callPrimitive"
+                  },
+                  "object": {
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "__raml_match_24",
+                        "stamp": -785
+                      },
+                      "kind": "resolved",
+                      "surface_path": "__raml_match_24"
+                    },
+                    "kind": "identifier"
                   }
                 },
-                "kind": "call"
+                "kind": "index"
               },
-              "kind": "const",
-              "name": "n"
+              "kind": "const"
             },
             "kind": "declaration"
           },
@@ -491,16 +488,31 @@
                     }
                   },
                   {
-                    "kind": "identifier",
-                    "name": "n"
+                    "entity_id": {
+                      "binding_id": {
+                        "kind": "local",
+                        "name": "n",
+                        "stamp": -1000224
+                      },
+                      "kind": "resolved",
+                      "surface_path": "n"
+                    },
+                    "kind": "identifier"
                   }
                 ],
                 "callee": {
                   "kind": "member",
                   "member": {
                     "object": {
-                      "kind": "identifier",
-                      "name": "Printf"
+                      "entity_id": {
+                        "binding_id": {
+                          "kind": "persistent",
+                          "surface_path": "__raml_js.import.module.Printf.Printf"
+                        },
+                        "kind": "resolved",
+                        "surface_path": "Printf"
+                      },
+                      "kind": "identifier"
                     },
                     "property": "printf"
                   }
@@ -517,7 +529,15 @@
   ],
   "exports": [
     {
-      "local": "bump_if_ok",
+      "local": {
+        "binding_id": {
+          "kind": "local",
+          "name": "bump_if_ok",
+          "stamp": 0
+        },
+        "kind": "resolved",
+        "surface_path": "bump_if_ok"
+      },
       "name": "bump_if_ok"
     }
   ],
@@ -525,18 +545,14 @@
     {
       "from": "./Printf.js",
       "imported": null,
-      "local": "Printf",
+      "local": {
+        "binding_id": {
+          "kind": "persistent",
+          "surface_path": "__raml_js.import.module.Printf.Printf"
+        },
+        "name": "Printf"
+      },
       "namespace": true
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "callPrimitive",
-      "local": "__callPrimitive"
-    },
-    {
-      "from": "./riot-runtime.js",
-      "imported": "print_endline",
-      "local": "__print_endline"
     }
   ],
   "module_name": "Prelude_result_match"

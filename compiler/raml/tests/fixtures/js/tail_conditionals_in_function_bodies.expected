@@ -3,6 +3,13 @@
     "body": [
       {
         "declaration": {
+          "binder": {
+            "binding_id": {
+              "kind": "persistent",
+              "surface_path": "__raml_js.binding.compute"
+            },
+            "name": "compute"
+          },
           "init": {
             "call": {
               "arguments": [
@@ -12,68 +19,36 @@
                       {
                         "if": {
                           "condition": {
-                            "kind": "identifier",
-                            "name": "flag"
+                            "entity_id": {
+                              "kind": "unresolved",
+                              "surface_path": "flag"
+                            },
+                            "kind": "identifier"
                           },
                           "else": [
-                            {
-                              "declaration": {
-                                "init": {
-                                  "call": {
-                                    "arguments": [
-                                      {
-                                        "kind": "literal",
-                                        "literal": {
-                                          "kind": "string",
-                                          "value": "%addint"
-                                        }
-                                      },
-                                      {
-                                        "kind": "identifier",
-                                        "name": "value"
-                                      },
-                                      {
-                                        "kind": "literal",
-                                        "literal": {
-                                          "kind": "number",
-                                          "number": {
-                                            "kind": "int",
-                                            "value": 1
-                                          }
-                                        }
-                                      }
-                                    ],
-                                    "callee": {
-                                      "kind": "identifier",
-                                      "name": "__callPrimitive"
-                                    }
-                                  },
-                                  "kind": "call"
-                                },
-                                "kind": "const",
-                                "name": "next"
-                              },
-                              "kind": "declaration"
-                            },
                             {
                               "expression": {
                                 "call": {
                                   "arguments": [
                                     {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "string",
-                                        "value": "%trace"
-                                      }
-                                    },
-                                    {
-                                      "kind": "identifier",
-                                      "name": "next"
+                                      "entity_id": {
+                                        "kind": "unresolved",
+                                        "surface_path": "next"
+                                      },
+                                      "kind": "identifier"
                                     }
                                   ],
                                   "callee": {
-                                    "kind": "identifier",
-                                    "name": "__callPrimitive"
+                                    "kind": "member",
+                                    "member": {
+                                      "object": {
+                                        "global": {
+                                          "name": "console"
+                                        },
+                                        "kind": "global"
+                                      },
+                                      "property": "log"
+                                    }
                                   }
                                 },
                                 "kind": "call"
@@ -82,8 +57,11 @@
                             },
                             {
                               "expression": {
-                                "kind": "identifier",
-                                "name": "next"
+                                "entity_id": {
+                                  "kind": "unresolved",
+                                  "surface_path": "next"
+                                },
+                                "kind": "identifier"
                               },
                               "kind": "return"
                             }
@@ -91,8 +69,11 @@
                           "then": [
                             {
                               "expression": {
-                                "kind": "identifier",
-                                "name": "value"
+                                "entity_id": {
+                                  "kind": "unresolved",
+                                  "surface_path": "next"
+                                },
+                                "kind": "identifier"
                               },
                               "kind": "return"
                             }
@@ -102,8 +83,20 @@
                       }
                     ],
                     "params": [
-                      "flag",
-                      "value"
+                      {
+                        "binding_id": {
+                          "kind": "persistent",
+                          "surface_path": "__raml_js.binding.flag"
+                        },
+                        "name": "flag"
+                      },
+                      {
+                        "binding_id": {
+                          "kind": "persistent",
+                          "surface_path": "__raml_js.binding.value"
+                        },
+                        "name": "value"
+                      }
                     ]
                   },
                   "kind": "function"
@@ -120,34 +113,44 @@
                 }
               ],
               "callee": {
-                "kind": "identifier",
-                "name": "__makeCurried"
+                "entity_id": {
+                  "binding_id": {
+                    "kind": "persistent",
+                    "surface_path": "__raml_js.runtime.__makeCurried"
+                  },
+                  "kind": "resolved",
+                  "surface_path": "__makeCurried"
+                },
+                "kind": "identifier"
               }
             },
             "kind": "call"
           },
-          "kind": "const",
-          "name": "compute"
+          "kind": "const"
         },
         "kind": "declaration"
       }
     ],
     "exports": [
       {
-        "local": "compute",
+        "local": {
+          "kind": "unresolved",
+          "surface_path": "compute"
+        },
         "name": "compute"
       }
     ],
     "imports": [
       {
         "from": "./riot-runtime.js",
-        "imported": "callPrimitive",
-        "local": "__callPrimitive"
-      },
-      {
-        "from": "./riot-runtime.js",
         "imported": "makeCurried",
-        "local": "__makeCurried"
+        "local": {
+          "binding_id": {
+            "kind": "persistent",
+            "surface_path": "__raml_js.runtime.__makeCurried"
+          },
+          "name": "__makeCurried"
+        }
       }
     ],
     "module_name": "Tail_conditionals_in_function_bodies"

@@ -1,125 +1,20 @@
-.section __TEXT, __cstring, cstring_literals
-.p2align 0
-L__raml_str_0:
-.asciz "raml"
-.p2align 0
-L__raml_str_1:
-.asciz "%s %d %d %s\\n"
-
-.data
-.globl _pair
-.p2align 3
-_pair:
-.quad 0
-
-.text
-.globl _swap
-.p2align 2
-_swap:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #80
-str x0, [sp, #0]
-ldr x9, [sp, #0]
-str x9, [sp, #8]
-movz x9, #0, lsl #0
-str x9, [sp, #16]
-ldr x0, [sp, #8]
-ldr x1, [sp, #16]
-bl _raml_tuple_get
-str x0, [sp, #24]
-ldr x9, [sp, #24]
-str x9, [sp, #32]
-movz x9, #1, lsl #0
-str x9, [sp, #40]
-ldr x0, [sp, #8]
-ldr x1, [sp, #40]
-bl _raml_tuple_get
-str x0, [sp, #48]
-ldr x9, [sp, #48]
-str x9, [sp, #56]
-ldr x0, [sp, #56]
-ldr x1, [sp, #32]
-bl _raml_tuple_make_2
-str x0, [sp, #64]
-ldr x0, [sp, #64]
-add sp, sp, #80
-ldp x29, x30, [sp], #16
-ret
-
-.globl _main
-.p2align 2
-_main:
-stp x29, x30, [sp, #-16]!
-mov x29, sp
-sub sp, sp, #160
-adrp x9, L__raml_str_0@PAGE
-add x9, x9, L__raml_str_0@PAGEOFF
-str x9, [sp, #0]
-movz x9, #5, lsl #0
-str x9, [sp, #8]
-ldr x0, [sp, #0]
-ldr x1, [sp, #8]
-bl _raml_tuple_make_2
-str x0, [sp, #16]
-ldr x9, [sp, #16]
-adrp x10, _pair@PAGE
-add x10, x10, _pair@PAGEOFF
-str x9, [x10, #0]
-adrp x10, _pair@PAGE
-add x10, x10, _pair@PAGEOFF
-ldr x9, [x10, #0]
-str x9, [sp, #24]
-movz x9, #0, lsl #0
-str x9, [sp, #32]
-ldr x0, [sp, #24]
-ldr x1, [sp, #32]
-bl _raml_tuple_get
-str x0, [sp, #40]
-ldr x9, [sp, #40]
-str x9, [sp, #48]
-movz x9, #1, lsl #0
-str x9, [sp, #56]
-ldr x0, [sp, #24]
-ldr x1, [sp, #56]
-bl _raml_tuple_get
-str x0, [sp, #64]
-ldr x9, [sp, #64]
-str x9, [sp, #72]
-adrp x10, _pair@PAGE
-add x10, x10, _pair@PAGEOFF
-ldr x0, [x10, #0]
-bl _swap
-str x0, [sp, #80]
-ldr x9, [sp, #80]
-str x9, [sp, #88]
-movz x9, #0, lsl #0
-str x9, [sp, #96]
-ldr x0, [sp, #88]
-ldr x1, [sp, #96]
-bl _raml_tuple_get
-str x0, [sp, #104]
-ldr x9, [sp, #104]
-str x9, [sp, #112]
-movz x9, #1, lsl #0
-str x9, [sp, #120]
-ldr x0, [sp, #88]
-ldr x1, [sp, #120]
-bl _raml_tuple_get
-str x0, [sp, #128]
-ldr x9, [sp, #128]
-str x9, [sp, #136]
-adrp x9, L__raml_str_1@PAGE
-add x9, x9, L__raml_str_1@PAGEOFF
-str x9, [sp, #144]
-ldr x0, [sp, #144]
-ldr x1, [sp, #48]
-ldr x2, [sp, #72]
-ldr x3, [sp, #112]
-ldr x4, [sp, #136]
-bl _Printf.printf
-str x0, [sp, #152]
-movz x0, #0, lsl #0
-add sp, sp, #160
-ldp x29, x30, [sp], #16
-ret
+{
+  "status": "blocked",
+  "blocked_on": "lir",
+  "errors": [
+    {
+      "stage": "typing",
+      "diagnostic": {
+        "id": "TYP2001",
+        "name": "unbound-name",
+        "message": "unbound name: Printf.printf",
+        "severity": "error",
+        "reference_span": {
+          "start": 168,
+          "end": 184
+        },
+        "name_text": "Printf.printf"
+      }
+    }
+  ]
+}
