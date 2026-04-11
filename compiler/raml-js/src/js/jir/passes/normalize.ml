@@ -101,6 +101,62 @@ and collect_statement_imports = fun statement imports ->
 let collect_program_imports = fun program ->
   List.fold_right collect_statement_imports Jir.Program.(program.body) Import_set.empty
 
-let program = fun program ->
-  let imports = collect_program_imports program |> Import_set.to_list in
-  { program with imports }
+let rec normalize_expr = fun expr ->
+  match expr with
+  | Jir.Expr.Literal _
+  | Jir.Expr.Identifier _
+  | Jir.Expr.Imported _
+  | Jir.Expr.Runtime_helper _ ->
+      expr
+  | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
+    function_
+    with body = normalize_statement_list function_.body;
+  }
+  | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
+    member
+    with object_ = normalize_expr member.object_;
+  }
+  | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
+    callee = normalize_expr call.callee;
+    arguments = List.map normalize_expr call.arguments;
+  }
+  | Jir.Expr.Conditional conditional -> Jir.Expr.Conditional Jir.Expr.{
+    condition = normalize_expr conditional.condition;
+    then_ = normalize_expr conditional.then_;
+    else_ = normalize_expr conditional.else_;
+  }
+  | Jir.Expr.Assignment assignment -> Jir.Expr.Assignment Jir.Expr.{
+    assignment
+    with value = normalize_expr assignment.value;
+  }
+
+and normalize_statement = fun statement ->
+  match statement with
+  | Jir.Statement.Declaration declaration ->
+      [ Jir.Statement.Declaration Jir.Declaration.{
+          declaration
+          with init = Option.map normalize_expr declaration.init;
+        } ]
+  | Jir.Statement.Block statements -> (
+      match normalize_statement_list statements with
+      | [] -> []
+      | statements -> [ Jir.Statement.Block statements ]
+    )
+  | Jir.Statement.Expression expr ->
+      [ Jir.Statement.Expression (normalize_expr expr) ]
+  | Jir.Statement.Return expr ->
+      [ Jir.Statement.Return (normalize_expr expr) ]
+  | Jir.Statement.If if_ ->
+      [ Jir.Statement.If Jir.Statement.{
+          condition = normalize_expr if_.condition;
+          then_ = normalize_statement_list if_.then_;
+          else_ = normalize_statement_list if_.else_;
+        } ]
+
+and normalize_statement_list = fun statements ->
+  List.concat_map normalize_statement statements
+
+let program = fun (program: Jir.Program.t) ->
+  let body = normalize_statement_list program.body in
+  let imports = collect_program_imports Jir.Program.{ program with body } |> Import_set.to_list in
+  { program with body; imports }
