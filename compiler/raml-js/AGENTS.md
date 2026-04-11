@@ -40,6 +40,9 @@ late syntax lowering, and JS emission.
    not compiler-lib coupling or early JS leakage into the shared IR.
 7. In `raml-js`, `Object` means a plain JavaScript object literal/property
    shape. It does not mean the OCaml object system.
+8. Use `src/js/syntax.*` for JS naming and property-syntax decisions. Do not
+   duplicate ad hoc “is this a valid JS name?” heuristics in lowering,
+   passes, or emission.
 
 ## Verification
 

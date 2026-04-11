@@ -3,12 +3,15 @@
     Algorithm:
     - walk imports, declarations, and function parameters in source order
     - keep a [Binding_id -> emitted name] map plus a visible-name set
+    - sanitize binder names to valid JS binding identifiers before freshness
+      checks
     - generate [$]-suffixed fresh names when a printable name would shadow an
       existing visible name
     - rewrite later import references to the renamed local binder
 
     Effect:
-    - binder names in the late JIR are unique within the emitted JS surface
+    - binder names in the late JIR are valid and unique within the emitted JS
+      surface
     - entity and binding ids stay unchanged, so later passes still reason over
       stable semantic identity
 

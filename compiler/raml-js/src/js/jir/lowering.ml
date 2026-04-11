@@ -80,6 +80,24 @@ let namespace_import_binder = fun module_ref ->
     ~namespace:([ "import" ] @ Jir.Modules.namespace_segments module_ref)
     ~name:module_ref.unit_name
 
+let lower_global = fun name ->
+  Jir.Expr.Global Jir.Expr.{ name }
+
+let lower_member = fun object_ property ->
+  Jir.Expr.Member Jir.Expr.{ object_; property }
+
+let lower_index = fun object_ index ->
+  Jir.Expr.Index Jir.Expr.{ object_; index }
+
+let lower_string_literal = fun value ->
+  Jir.Expr.Literal (Jir.Literal.String value)
+
+let lower_named_property_access = fun object_ property ->
+  if Syntax.can_use_dot_property property then
+    lower_member object_ property
+  else
+    lower_index object_ (lower_string_literal property)
+
 let lower_reference = fun entity_id ->
   let parts = Core.Entity_id.to_segments entity_id in
   match parts with
@@ -98,7 +116,7 @@ let lower_reference = fun entity_id ->
         else
           Jir.Expr.Identifier (Core.Entity_id.of_name head)
       in
-      List.fold_left (fun object_ property -> Jir.Expr.Member Jir.Expr.{ object_; property }) base tail
+      List.fold_left lower_named_property_access base tail
 
 let iife = fun body ->
   Jir.Expr.Call Jir.Expr.{
@@ -108,15 +126,6 @@ let iife = fun body ->
 
 let lower_direct_callee = fun entity_id ->
   lower_reference entity_id
-
-let lower_global = fun name ->
-  Jir.Expr.Global Jir.Expr.{ name }
-
-let lower_member = fun object_ property ->
-  Jir.Expr.Member Jir.Expr.{ object_; property }
-
-let lower_index = fun object_ index ->
-  Jir.Expr.Index Jir.Expr.{ object_; index }
 
 let lower_object = fun fields ->
   Jir.Expr.Object fields
@@ -132,15 +141,6 @@ let lower_binary = fun operator left right ->
 
 let lower_array = fun elements ->
   Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
-
-let lower_string_literal = fun value ->
-  Jir.Expr.Literal (Jir.Literal.String value)
-
-let lower_named_property_access = fun object_ property ->
-  if Syntax.can_use_dot_property property then
-    lower_member object_ property
-  else
-    lower_index object_ (lower_string_literal property)
 
 let lower_string_constructor = fun value ->
   lower_call (lower_global "String") [ value ]

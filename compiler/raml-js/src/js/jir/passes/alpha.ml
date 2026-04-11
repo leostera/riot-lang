@@ -1,6 +1,7 @@
 open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
+module Syntax = Syntax
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
@@ -36,11 +37,12 @@ let lookup_binding_name = fun env binding_id ->
   Binding_map.find_opt binding_id env.bindings |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
 
 let fresh_name = fun env name ->
-  if not (is_visible env name) then
-    name
+  let base = Syntax.sanitize_binding_identifier name in
+  if not (is_visible env base) then
+    base
   else
     let rec loop index =
-      let candidate = format Format.[ str name; str "$"; int index ] in
+      let candidate = format Format.[ str base; str "$"; int index ] in
       if is_visible env candidate then
         loop (index + 1)
       else

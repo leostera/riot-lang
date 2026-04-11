@@ -14,7 +14,8 @@ let indent = fun level ->
   String.make (level * 2) ' '
 
 let lookup_binding_name = fun env binding_id ->
-  Binding_map.find_opt binding_id env |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
+  Binding_map.find_opt binding_id env
+  |> Option.unwrap_or ~default:(Syntax.sanitize_binding_identifier (Core.Binding_id.name binding_id))
 
 let emit_entity = fun env entity_id ->
   match Core.Entity_id.binding_id entity_id with

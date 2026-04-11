@@ -54,8 +54,8 @@ ReScript is a better reference for emitted JS shape:
 - tuples lower to JS arrays
 - records lower to JS objects
 - arithmetic/comparisons/string conversion prefer native JS forms
-- object keys and property access now share one syntax policy instead of
-  backend-local heuristics
+- object keys, property access, and emitted binder legality now share one
+  syntax policy instead of backend-local heuristics
 
 Where `raml-js` still differs from ReScript:
 
@@ -78,6 +78,8 @@ The main remaining architectural gaps are:
    metadata.
 5. Records now lower naturally to JS objects, but inner modules and more
    namespace-like constructs do not yet lower to JS objects.
+6. JS binder validity is now owned centrally, but module/path resolution is
+   still much shallower than Melange or ReScript.
 
 ## Current Cleanup Direction
 

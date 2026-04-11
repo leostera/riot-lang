@@ -4,6 +4,49 @@ type property_name_kind =
   | Identifier
   | Quoted_string
 
+let reserved_binding_identifiers = [
+  "await";
+  "break";
+  "case";
+  "catch";
+  "class";
+  "const";
+  "continue";
+  "debugger";
+  "default";
+  "delete";
+  "do";
+  "else";
+  "export";
+  "extends";
+  "false";
+  "finally";
+  "for";
+  "function";
+  "if";
+  "import";
+  "in";
+  "instanceof";
+  "new";
+  "null";
+  "return";
+  "super";
+  "switch";
+  "this";
+  "throw";
+  "true";
+  "try";
+  "typeof";
+  "var";
+  "void";
+  "while";
+  "with";
+  "yield";
+]
+
+let is_reserved_binding_identifier = fun name ->
+  List.exists (String.equal name) reserved_binding_identifiers
+
 let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
 
 let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
@@ -33,6 +76,50 @@ let is_valid_identifier = fun name ->
         false
     in
     loop 1
+
+let is_valid_binding_identifier = fun name ->
+  is_valid_identifier name && not (is_reserved_binding_identifier name)
+
+let sanitize_binding_identifier = fun name ->
+  let length = String.length name in
+  let buffer = IO.Buffer.create (max 1 length) in
+  let push_valid_start = fun char ->
+    if is_identifier_start char then
+      IO.Buffer.add_char buffer char
+    else if char >= '0' && char <= '9' then begin
+      IO.Buffer.add_char buffer '_';
+      IO.Buffer.add_char buffer char
+    end else if char = '\'' then begin
+      IO.Buffer.add_char buffer '_';
+      IO.Buffer.add_char buffer '$'
+    end else
+      IO.Buffer.add_char buffer '_'
+  in
+  let push_valid_continue = fun char ->
+    if is_identifier_continue char then
+      IO.Buffer.add_char buffer char
+    else if char = '\'' then
+      IO.Buffer.add_char buffer '$'
+    else
+      IO.Buffer.add_char buffer '_'
+  in
+  if length = 0 then
+    "_"
+  else begin
+    push_valid_start name.[0];
+    let rec loop index =
+      if index < length then begin
+        push_valid_continue name.[index];
+        loop (index + 1)
+      end
+    in
+    loop 1;
+    let lowered = IO.Buffer.contents buffer in
+    if is_reserved_binding_identifier lowered then
+      "_" ^ lowered
+    else
+      lowered
+  end
 
 let classify_property_name = fun name ->
   if is_valid_identifier name then
