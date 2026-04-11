@@ -5,8 +5,8 @@ module Target = Types
 let lower_binder = fun (binder: Source.Binder.t) ->
   Target.Binder.make ~name:binder.name binder.binding_id
 
-let same_binder = fun (left: Target.Binder.t) (right: Target.Binder.t) ->
-  Raml_core.Core_ir.Binding_id.equal left.binding_id right.binding_id
+let unresolved_expr = fun kind ->
+  invalid_arg (format Format.[ str "RamlJs.Js.Jst.Lowering: unresolved JIR expression reached JST lowering ("; str kind; str ")" ])
 
 let lower_import = fun (import: Source.Imports.requirement) ->
   if import.namespace then
@@ -32,50 +32,6 @@ let lower_import = fun (import: Source.Imports.requirement) ->
           names = [ { imported; local = lower_binder import.local } ];
         }
 
-let import_has_bindings = fun (import: Target.Import.t) ->
-  match (import.default, import.namespace, import.names) with
-  | (None, None, []) -> false
-  | _ -> true
-
-let choose_default_import = fun left right ->
-  match left with
-  | Some _ -> left
-  | None -> right
-
-let merge_imports = fun (left: Target.Import.t) (right: Target.Import.t) ->
-  if not (String.equal left.from right.from) then
-    None
-  else
-    match (left.namespace, right.namespace) with
-    | (Some _, _)
-    | (_, Some _) -> None
-    | (None, None) ->
-        if not (import_has_bindings left && import_has_bindings right) then
-          None
-        else
-          match (left.default, right.default) with
-          | (Some left_default, Some right_default) when not (same_binder left_default right_default) -> None
-          | _ -> Some Target.Import.{
-            from = left.from;
-            default = choose_default_import left.default right.default;
-            namespace = None;
-            names = left.names @ right.names;
-          }
-
-let materialize_imports = fun imports ->
-  let rec loop current rest =
-    match rest with
-    | [] -> [ current ]
-    | next :: rest -> (
-        match merge_imports current next with
-        | Some merged -> loop merged rest
-        | None -> current :: loop next rest
-      )
-  in
-  match imports with
-  | [] -> []
-  | import :: rest -> loop import rest
-
 let lower_literal = fun literal ->
   match literal with
   | Source.Literal.Undefined -> Target.Literal.Undefined
@@ -89,10 +45,10 @@ let rec lower_expr = fun expr ->
   match expr with
   | Source.Expr.Literal literal -> Target.Expr.Literal (lower_literal literal)
   | Source.Expr.Identifier entity_id -> Target.Expr.Identifier entity_id
-  | Source.Expr.Imported requirement ->
-      Target.Expr.Identifier (Source.Binder.entity_id (Source.Imports.local requirement))
-  | Source.Expr.Runtime_helper helper ->
-      Target.Expr.Identifier (Source.Binder.entity_id helper.local)
+  | Source.Expr.Imported _ ->
+      unresolved_expr "imported"
+  | Source.Expr.Runtime_helper _ ->
+      unresolved_expr "runtime_helper"
   | Source.Expr.Function function_ -> Target.Expr.Function Target.Expr.{
     params = List.map lower_binder function_.params;
     body = List.map lower_statement function_.body;
@@ -143,7 +99,6 @@ let lower_export = fun (export: Source.Export.t) ->
 let lower_program = fun (program: Source.Program.t) ->
   let import_items = program.imports
   |> List.map lower_import
-  |> materialize_imports
   |> List.map (fun import -> Target.Module_item.Import import) in
   let statement_items = program.body
   |> List.map lower_statement
