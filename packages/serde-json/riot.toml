@@ -8,3 +8,6 @@ path = "src/serde_json.ml"
 [dependencies]
 serde = { path = "../serde", version = "*" }
 std = { path = "../std", version = "*"}
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }

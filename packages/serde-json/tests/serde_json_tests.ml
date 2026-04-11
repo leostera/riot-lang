@@ -394,6 +394,21 @@ let test_roundtrips_arrays = fun _ctx ->
   | Ok _ -> Error "expected serde-json array roundtrip to preserve elements"
   | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
 
+let test_roundtrips_large_float = fun _ctx ->
+  let value = 907_309_392_156.125 in
+  let* encoded =
+    match Serde_json.to_string Ser.float value with
+    | Ok encoded -> Ok encoded
+    | Error err -> Error ("float encode failed: " ^ Serde.Error.to_string err)
+  in
+  match Serde_json.of_string De.float encoded with
+  | Ok actual when Float.equal actual value -> Ok ()
+  | Ok actual ->
+      Error
+        ("expected serde-json to preserve large floats, got " ^ Float.to_string actual
+        ^ " from " ^ encoded)
+  | Error err -> Error ("float decode failed: " ^ Serde.Error.to_string err)
+
 let tests =
   Test.[
     case "serde-json parses records and skips unknown fields" test_decodes_record_and_skips_unknown_fields;
@@ -406,6 +421,7 @@ let tests =
     case "serde-json writes to writers" test_writes_to_writer;
     case "serde-json roundtrips records" test_roundtrips_record;
     case "serde-json roundtrips arrays" test_roundtrips_arrays;
+    case "serde-json roundtrips large floats" test_roundtrips_large_float;
   ]
 
 let () =

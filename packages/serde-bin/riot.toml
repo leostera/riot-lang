@@ -11,3 +11,4 @@ std = { path = "../std", version = "*" }
 
 [dev-dependencies]
 stdlib = "*"
+propane = { path = "../propane", version = "*" }

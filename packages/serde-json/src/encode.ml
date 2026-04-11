@@ -14,6 +14,8 @@ type state = {
   mutable escaped_literals: (string * string) list;
 }
 
+external format_float : string -> float -> string = "caml_format_float"
+
 let flush_threshold = 4_096
 
 let raise_io_error = fun err -> raise (Serde.Encode_error (`Io_error err))
@@ -113,11 +115,22 @@ let write_cached_escaped_literal = fun state value ->
   in
   lookup state.escaped_literals
 
+let float_to_roundtrip_string = fun value ->
+  let text12 = format_float "%.12g" value in
+  if Float.equal value (Float.of_string text12) then
+    text12
+  else
+    let text15 = format_float "%.15g" value in
+    if Float.equal value (Float.of_string text15) then
+      text15
+    else
+      format_float "%.18g" value
+
 let float_to_json = fun value ->
   if Float.is_nan value || Float.is_infinite value then
     "null"
   else
-    let text = Float.to_string value in
+    let text = float_to_roundtrip_string value in
     if String.ends_with ~suffix:"." text then
       text ^ "0"
     else
