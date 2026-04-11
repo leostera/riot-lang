@@ -104,6 +104,115 @@ module Entity_id = struct
       ]
 end
 
+module Primitive = struct
+  type t =
+    | Add_float
+    | Subtract_float
+    | Multiply_float
+    | Divide_float
+    | Add_int
+    | Subtract_int
+    | Multiply_int
+    | Divide_int
+    | Modulo_int
+    | Concatenate_string
+    | Int_to_string
+    | Float_to_string
+    | Int_of_string
+    | Float_of_string
+    | Equal
+    | Not_equal
+    | Less_than
+    | Less_or_equal
+    | Greater_than
+    | Greater_or_equal
+    | Float_sqrt
+    | Tuple_make
+    | Tuple_get
+    | Trace
+
+  let to_string = fun primitive ->
+    match primitive with
+    | Add_float -> "add_float"
+    | Subtract_float -> "subtract_float"
+    | Multiply_float -> "multiply_float"
+    | Divide_float -> "divide_float"
+    | Add_int -> "add_int"
+    | Subtract_int -> "subtract_int"
+    | Multiply_int -> "multiply_int"
+    | Divide_int -> "divide_int"
+    | Modulo_int -> "modulo_int"
+    | Concatenate_string -> "concatenate_string"
+    | Int_to_string -> "int_to_string"
+    | Float_to_string -> "float_to_string"
+    | Int_of_string -> "int_of_string"
+    | Float_of_string -> "float_of_string"
+    | Equal -> "equal"
+    | Not_equal -> "not_equal"
+    | Less_than -> "less_than"
+    | Less_or_equal -> "less_or_equal"
+    | Greater_than -> "greater_than"
+    | Greater_or_equal -> "greater_or_equal"
+    | Float_sqrt -> "float_sqrt"
+    | Tuple_make -> "tuple_make"
+    | Tuple_get -> "tuple_get"
+    | Trace -> "trace"
+
+  let of_string = fun value ->
+    match value with
+    | "add_float"
+    | "%addfloat" -> Some Add_float
+    | "subtract_float"
+    | "%subfloat" -> Some Subtract_float
+    | "multiply_float"
+    | "%mulfloat" -> Some Multiply_float
+    | "divide_float"
+    | "%divfloat" -> Some Divide_float
+    | "add_int"
+    | "%addint" -> Some Add_int
+    | "subtract_int"
+    | "%subint" -> Some Subtract_int
+    | "multiply_int"
+    | "%mulint" -> Some Multiply_int
+    | "divide_int"
+    | "%divint" -> Some Divide_int
+    | "modulo_int"
+    | "%modint" -> Some Modulo_int
+    | "concatenate_string"
+    | "%concatstring" -> Some Concatenate_string
+    | "int_to_string"
+    | "%string_of_int" -> Some Int_to_string
+    | "float_to_string"
+    | "%string_of_float" -> Some Float_to_string
+    | "int_of_string"
+    | "%int_of_string" -> Some Int_of_string
+    | "float_of_string"
+    | "%float_of_string" -> Some Float_of_string
+    | "equal"
+    | "%eq" -> Some Equal
+    | "not_equal"
+    | "%neq" -> Some Not_equal
+    | "less_than"
+    | "%lt" -> Some Less_than
+    | "less_or_equal"
+    | "%le" -> Some Less_or_equal
+    | "greater_than"
+    | "%gt" -> Some Greater_than
+    | "greater_or_equal"
+    | "%ge" -> Some Greater_or_equal
+    | "float_sqrt"
+    | "%sqrtfloat" -> Some Float_sqrt
+    | "tuple_make"
+    | "%tuple_make" -> Some Tuple_make
+    | "tuple_get"
+    | "%tuple_get" -> Some Tuple_get
+    | "trace"
+    | "%trace" -> Some Trace
+    | _ -> None
+
+  let to_json = fun primitive -> Json.string (to_string primitive)
+end
+
 module Expr = struct
   type apply_callee =
     | Direct of Entity_id.t
@@ -172,7 +281,7 @@ module Expr = struct
   }
 
   and primitive = {
-    name: string;
+    primitive: Primitive.t;
     arguments: t list;
   }
 
@@ -263,7 +372,7 @@ module Expr = struct
   and primitive_to_json = fun (primitive: primitive) ->
     Json.obj
       [
-        ("name", Json.string primitive.name);
+        ("name", Primitive.to_json primitive.primitive);
         ("arguments", Json.array (List.map to_json primitive.arguments));
       ]
 

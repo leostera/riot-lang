@@ -21,7 +21,7 @@ type direct_callee =
   | Stderr_write
   | String_constructor
   | Math_sqrt
-  | Primitive of string
+  | Primitive of Core.Primitive.t
   | Unary_operator of Types.Operator.unary
   | Binary_operator of Types.Operator.binary
   | Boolean_and

@@ -38,9 +38,12 @@ late syntax lowering, and JS emission.
    import/runtime expression forms into `JST`.
 6. When comparing with Melange `jscomp`, copy invariants and subsystem ideas,
    not compiler-lib coupling or early JS leakage into the shared IR.
-7. In `raml-js`, `Object` means a plain JavaScript object literal/property
+7. Treat `Raml_core.Primitive` as the shared primitive contract. Do not
+   reintroduce `%foo` string matching into `raml-js`; any legacy string parsing
+   belongs at compatibility boundaries, not in JS lowering.
+8. In `raml-js`, `Object` means a plain JavaScript object literal/property
    shape. It does not mean the OCaml object system.
-8. Use `src/js/syntax.*` for JS naming and property-syntax decisions. Do not
+9. Use `src/js/syntax.*` for JS naming and property-syntax decisions. Do not
    duplicate ad hoc “is this a valid JS name?” heuristics in lowering,
    passes, or emission.
 

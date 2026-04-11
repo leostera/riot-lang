@@ -324,13 +324,15 @@ let rec reclassify_expr = fun env expr ->
   | Core.Expr.Tuple_get tuple_get ->
       Core.Expr.Tuple_get Core.Expr.{ tuple_get with tuple = reclassify_expr env tuple_get.tuple }
   | Core.Expr.Record record ->
-      Core.Expr.Record
-        (List.map
-          (fun (field: Core.Expr.record_field) ->
-            Core.Expr.{ field with value = reclassify_expr env field.value })
-          record)
+      Core.Expr.Record (List.map
+        (fun (field: Core.Expr.record_field) ->
+          Core.Expr.{ field with value = reclassify_expr env field.value })
+        record)
   | Core.Expr.Record_get record_get ->
-      Core.Expr.Record_get Core.Expr.{ record_get with record = reclassify_expr env record_get.record }
+      Core.Expr.Record_get Core.Expr.{
+        record_get
+        with record = reclassify_expr env record_get.record
+      }
   | Core.Expr.If_then_else if_then_else ->
       Core.Expr.If_then_else Core.Expr.{
         condition = reclassify_expr env if_then_else.condition;
@@ -1025,7 +1027,7 @@ and lower_closed_variant_match = fun semantic_tree ~expr_id scrutinee_id cases -
                             | [ (_, body) ] -> body
                             | (tag_index, body) :: rest -> Core.Expr.If_then_else Core.Expr.{
                               condition = Core.Expr.Primitive Core.Expr.{
-                                name = "%eq";
+                                primitive = Core.Primitive.Equal;
                                 arguments = [
                                   variant_tag_expr scrutinee_var;
                                   Core.Expr.Constant (Core.Constant.Int tag_index);
@@ -1224,8 +1226,8 @@ and lower_expr = fun semantic_tree expr_id ->
           Result.and_then (resolve_record_construction_layout semantic_tree ~expr_id fields)
             (fun layout ->
               Result.and_then (lower_record_fields semantic_tree fields)
-                (fun lowered_fields -> Result.map (fun fields ->
-                  Core.Expr.Record fields)
+                (fun lowered_fields ->
+                  Result.map (fun fields -> Core.Expr.Record fields)
                     (
                       map_results layout.labels
                         (fun label ->
@@ -1263,10 +1265,15 @@ and lower_expr = fun semantic_tree expr_id ->
                         (fun (index, label) ->
                           match lowered_record_field lowered_fields label with
                           | Some value -> ok Core.Expr.{ label; value }
-                          | None -> ok Core.Expr.{
-                            label;
-                            value = Core.Expr.Record_get Core.Expr.{ record = base_var; label; index };
-                          })
+                          | None -> ok
+                            Core.Expr.{
+                              label;
+                              value = Core.Expr.Record_get Core.Expr.{
+                                record = base_var;
+                                label;
+                                index
+                              }
+                            })
                     )))
       | BodyArena.EFieldAccess { receiver_id; label } ->
           Result.and_then (resolve_record_field_layout semantic_tree ~expr_id label)

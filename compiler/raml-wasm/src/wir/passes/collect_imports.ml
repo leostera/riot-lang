@@ -54,7 +54,7 @@ let rec collect_expr = fun imports expr ->
         if_then_else.else_
   | Types.Expr.Primitive primitive ->
       let imports =
-        match Runtime_imports.import_of_primitive_name primitive.name with
+        match Runtime_imports.import_of_primitive primitive.primitive with
         | None -> imports
         | Some import -> add_import imports import
       in

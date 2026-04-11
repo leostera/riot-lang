@@ -7,13 +7,13 @@ let runtime_import = fun name ->
 
 let host_import = fun name -> Wasm_types.Import.{ module_name = "riot:host"; name; kind = Host }
 
-let import_of_primitive_name = fun name ->
-  match name with
-  | "%eq" -> Some (runtime_import "eq")
+let import_of_primitive = fun primitive ->
+  match primitive with
+  | Core.Primitive.Equal -> Some (runtime_import "eq")
   | _ -> None
 
-let classify_primitive = fun name ->
-  match import_of_primitive_name name with
+let classify_primitive = fun primitive ->
+  match import_of_primitive primitive with
   | Some import -> (
       match import.kind with
       | Wasm_types.Import.Runtime -> Wasm_types.Primitive_kind.Runtime

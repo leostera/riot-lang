@@ -74,8 +74,8 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
       }
   | Core.Expr.Primitive primitive ->
       Wasm_types.Expr.Primitive Wasm_types.Expr.{
-        name = primitive.name;
-        kind = Runtime_imports.classify_primitive primitive.name;
+        primitive = primitive.primitive;
+        kind = Runtime_imports.classify_primitive primitive.primitive;
         arguments = List.map lower_expr primitive.arguments
       }
 

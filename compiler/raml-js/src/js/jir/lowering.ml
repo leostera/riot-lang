@@ -143,39 +143,42 @@ let lower_stderr_write = fun value ->
     (lower_member (lower_member (lower_global "process") "stderr") "write")
     [ lower_string_constructor value ]
 
-let lower_runtime_primitive_call = fun name arguments ->
+let lower_runtime_primitive_call = fun primitive arguments ->
   let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
-  let arguments = Jir.Expr.Literal (Jir.Literal.String name) :: arguments in
+  let arguments =
+    Jir.Expr.Literal (Jir.Literal.String (Core.Primitive.to_string primitive)) :: arguments
+  in
   lower_call callee arguments
 
-let lower_primitive_call = fun name arguments ->
-  match (name, arguments) with
-  | ("%tuple_make", arguments) -> lower_array arguments
-  | ("%tuple_get", [tuple;index]) -> lower_index tuple index
-  | ("%addfloat", [left;right])
-  | ("%addint", [left;right]) -> lower_binary Jir.Operator.Add left right
-  | ("%subfloat", [left;right])
-  | ("%subint", [left;right]) -> lower_binary Jir.Operator.Subtract left right
-  | ("%mulfloat", [left;right])
-  | ("%mulint", [left;right]) -> lower_binary Jir.Operator.Multiply left right
-  | ("%divfloat", [left;right])
-  | ("%divint", [left;right]) -> lower_binary Jir.Operator.Divide left right
-  | ("%modint", [left;right]) -> lower_binary Jir.Operator.Modulo left right
-  | ("%eq", [left;right]) -> lower_binary Jir.Operator.Equal left right
-  | ("%neq", [left;right]) -> lower_binary Jir.Operator.Not_equal left right
-  | ("%lt", [left;right]) -> lower_binary Jir.Operator.Less_than left right
-  | ("%le", [left;right]) -> lower_binary Jir.Operator.Less_or_equal left right
-  | ("%gt", [left;right]) -> lower_binary Jir.Operator.Greater_than left right
-  | ("%ge", [left;right]) -> lower_binary Jir.Operator.Greater_or_equal left right
-  | ("%concatstring", [left;right]) -> lower_binary
+let lower_primitive_call = fun primitive arguments ->
+  match (primitive, arguments) with
+  | (Core.Primitive.Tuple_make, arguments) -> lower_array arguments
+  | (Core.Primitive.Tuple_get, [tuple;index]) -> lower_index tuple index
+  | (Core.Primitive.Add_float, [left;right])
+  | (Core.Primitive.Add_int, [left;right]) -> lower_binary Jir.Operator.Add left right
+  | (Core.Primitive.Subtract_float, [left;right])
+  | (Core.Primitive.Subtract_int, [left;right]) -> lower_binary Jir.Operator.Subtract left right
+  | (Core.Primitive.Multiply_float, [left;right])
+  | (Core.Primitive.Multiply_int, [left;right]) -> lower_binary Jir.Operator.Multiply left right
+  | (Core.Primitive.Divide_float, [left;right])
+  | (Core.Primitive.Divide_int, [left;right]) -> lower_binary Jir.Operator.Divide left right
+  | (Core.Primitive.Modulo_int, [left;right]) -> lower_binary Jir.Operator.Modulo left right
+  | (Core.Primitive.Equal, [left;right]) -> lower_binary Jir.Operator.Equal left right
+  | (Core.Primitive.Not_equal, [left;right]) -> lower_binary Jir.Operator.Not_equal left right
+  | (Core.Primitive.Less_than, [left;right]) -> lower_binary Jir.Operator.Less_than left right
+  | (Core.Primitive.Less_or_equal, [left;right]) -> lower_binary Jir.Operator.Less_or_equal left right
+  | (Core.Primitive.Greater_than, [left;right]) -> lower_binary Jir.Operator.Greater_than left right
+  | (Core.Primitive.Greater_or_equal, [left;right]) -> lower_binary Jir.Operator.Greater_or_equal left right
+  | (Core.Primitive.Concatenate_string, [left;right]) -> lower_binary
     Jir.Operator.Add
     (lower_string_constructor left)
     (lower_string_constructor right)
-  | ("%string_of_int", [ value ])
-  | ("%string_of_float", [ value ]) -> lower_string_constructor value
-  | ("%sqrtfloat", [ value ]) -> lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
-  | ("%trace", [ value ]) -> lower_console_log [ value ]
-  | _ -> lower_runtime_primitive_call name arguments
+  | (Core.Primitive.Int_to_string, [ value ])
+  | (Core.Primitive.Float_to_string, [ value ]) -> lower_string_constructor value
+  | (Core.Primitive.Float_sqrt, [ value ]) ->
+      lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
+  | (Core.Primitive.Trace, [ value ]) -> lower_console_log [ value ]
+  | _ -> lower_runtime_primitive_call primitive arguments
 
 let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
 
@@ -306,7 +309,7 @@ let rec lower_expr = fun expr ->
         else_ = lower_expr if_then_else.else_
       }
   | Core.Expr.Primitive primitive ->
-      lower_primitive_call primitive.name (List.map lower_expr primitive.arguments)
+      lower_primitive_call primitive.primitive (List.map lower_expr primitive.arguments)
 
 and lower_record_field = fun (field: Core.Expr.record_field) ->
   Jir.Expr.{ name = field.label; value = lower_expr field.value }

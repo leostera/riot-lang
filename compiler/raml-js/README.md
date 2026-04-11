@@ -55,6 +55,8 @@ ReScript is a better reference for emitted JS shape:
 - records lower to JS objects
 - arithmetic/comparisons/string conversion prefer native JS forms
 - Riot-owned JS builtins are classified explicitly from `Std`/Riot surface paths
+- shared primitives now arrive from `Raml_core` as a typed, backend-neutral
+  contract instead of `%foo` strings
 - object keys, property access, and emitted binder legality now share one
   syntax policy instead of backend-local heuristics
 
@@ -78,7 +80,9 @@ The main remaining architectural gaps are:
    collapsing imports down to bare path strings immediately.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.
-   It is now Riot-owned end to end in the JS backend.
+   It is now Riot-owned end to end in the JS backend, and the remaining helper
+   fallback goes through the typed shared primitive contract instead of raw
+   OCaml-style primitive labels.
 3. `JST` has no post-lowering optimization layer yet.
 4. There is no package-level dependency artifact analogous to Melange `.cmj`
    metadata.

@@ -292,7 +292,10 @@ and parse_primitive = fun json ->
   let* name = string_field scope "name" json in
   let* arguments = array_field scope "arguments" json in
   let* arguments = map_results arguments parse_expr in
-  Ok Core_ir.Expr.{ name; arguments }
+  match Core_ir.Primitive.of_string name with
+  | Some primitive -> Ok Core_ir.Expr.{ primitive; arguments }
+  | None ->
+      invalid_field scope "name" "a known Core IR primitive name"
 
 let parse_binding = fun json ->
   let scope = "binding" in

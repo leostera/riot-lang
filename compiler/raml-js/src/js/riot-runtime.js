@@ -21,36 +21,36 @@ export function makeCurried(fn, arity = fn.length) {
 
 export function callPrimitive(name, ...args) {
   switch (name) {
-    case "%addfloat":
+    case "add_float":
       return args[0] + args[1];
-    case "%subfloat":
+    case "subtract_float":
       return args[0] - args[1];
-    case "%mulfloat":
+    case "multiply_float":
       return args[0] * args[1];
-    case "%divfloat":
+    case "divide_float":
       return args[0] / args[1];
-    case "%addint":
+    case "add_int":
       return args[0] + args[1];
-    case "%subint":
+    case "subtract_int":
       return args[0] - args[1];
-    case "%mulint":
+    case "multiply_int":
       return args[0] * args[1];
-    case "%divint":
+    case "divide_int":
       return args[0] / args[1];
-    case "%modint":
+    case "modulo_int":
       return args[0] % args[1];
-    case "%concatstring":
+    case "concatenate_string":
       return String(args[0]) + String(args[1]);
-    case "%string_of_int":
+    case "int_to_string":
       return String(args[0]);
-    case "%string_of_float":
+    case "float_to_string":
       return String(args[0]);
-    case "%int_of_string":
+    case "int_of_string":
       if (typeof args[0] !== "string" || !/^[+-]?[0-9]+$/.test(args[0])) {
         throw new Error(`Unsupported Riot JS int_of_string input: ${args[0]}`);
       }
       return Number.parseInt(args[0], 10);
-    case "%float_of_string":
+    case "float_of_string":
       if (
         typeof args[0] !== "string" ||
         !/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(args[0])
@@ -58,25 +58,25 @@ export function callPrimitive(name, ...args) {
         throw new Error(`Unsupported Riot JS float_of_string input: ${args[0]}`);
       }
       return Number.parseFloat(args[0]);
-    case "%eq":
+    case "equal":
       return args[0] === args[1];
-    case "%neq":
+    case "not_equal":
       return args[0] !== args[1];
-    case "%lt":
+    case "less_than":
       return args[0] < args[1];
-    case "%le":
+    case "less_or_equal":
       return args[0] <= args[1];
-    case "%gt":
+    case "greater_than":
       return args[0] > args[1];
-    case "%ge":
+    case "greater_or_equal":
       return args[0] >= args[1];
-    case "%sqrtfloat":
+    case "float_sqrt":
       return Math.sqrt(args[0]);
-    case "%tuple_make":
+    case "tuple_make":
       return args;
-    case "%tuple_get":
+    case "tuple_get":
       return args[0][args[1]];
-    case "%trace":
+    case "trace":
       console.log(args[0]);
       return undefined;
     default:

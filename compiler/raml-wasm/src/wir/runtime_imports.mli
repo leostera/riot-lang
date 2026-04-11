@@ -15,8 +15,8 @@ module Core = Raml_core.Core_ir
 
 module Wasm_types = Types
 
-val classify_primitive: string -> Wasm_types.Primitive_kind.t
+val classify_primitive: Core.Primitive.t -> Wasm_types.Primitive_kind.t
 
-val import_of_primitive_name: string -> Wasm_types.Import.t option
+val import_of_primitive: Core.Primitive.t -> Wasm_types.Import.t option
 
 val import_of_direct_callee: Core.Entity_id.t -> Wasm_types.Import.t option

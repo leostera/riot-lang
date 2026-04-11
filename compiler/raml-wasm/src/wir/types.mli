@@ -83,7 +83,7 @@ module Expr: sig
   }
 
   and primitive = {
-    name: string;
+    primitive: Core.Primitive.t;
     kind: Primitive_kind.t;
     arguments: t list;
   }

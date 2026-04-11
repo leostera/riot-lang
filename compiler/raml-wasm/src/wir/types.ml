@@ -117,7 +117,7 @@ module Expr = struct
   }
 
   and primitive = {
-    name: string;
+    primitive: Core.Primitive.t;
     kind: Primitive_kind.t;
     arguments: t list;
   }
@@ -194,7 +194,7 @@ module Expr = struct
     | Primitive primitive -> Json.obj
       [
         ("kind", Json.string "primitive");
-        ("name", Json.string primitive.name);
+        ("name", Core.Primitive.to_json primitive.primitive);
         ("primitive_kind", Primitive_kind.to_json primitive.kind);
         ("arguments", Json.array (List.map to_json primitive.arguments));
       ]

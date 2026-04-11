@@ -147,9 +147,9 @@ let tuple_get_helper = Nir.Runtime_helper.{ name = "raml_tuple_get"; symbol = "r
 let runtime_call = fun (helper: Nir.Runtime_helper.t) arguments ->
   Nir.Expr.Call Nir.Expr.{ callee = Direct helper.symbol; arguments }
 
-let primitive_helper = fun name ->
-  match name with
-  | "%eq" -> Some eq_helper
+let primitive_helper = fun primitive ->
+  match primitive with
+  | Core.Primitive.Equal -> Some eq_helper
   | _ -> None
 
 let entity_name = fun entity_id -> Core.Entity_id.to_string entity_id
@@ -616,7 +616,7 @@ let rec lower_expr = fun env expr ->
             lifted_functions = first.lifted_functions @ second.lifted_functions
           })
   | Core.Expr.Primitive primitive -> (
-      match primitive_helper primitive.name with
+      match primitive_helper primitive.primitive with
       | Some helper ->
           Result.map
             (fun lowered_arguments ->
@@ -628,7 +628,7 @@ let rec lower_expr = fun env expr ->
           reason = format
             Format.[
               str "primitive `";
-              str primitive.name;
+              str (Core.Primitive.to_string primitive.primitive);
               str "` is outside the first Core IR -> NIR lowering slice";
             ]
         })

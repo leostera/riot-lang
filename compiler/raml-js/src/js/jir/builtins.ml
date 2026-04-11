@@ -10,7 +10,7 @@ type direct_callee =
   | Stderr_write
   | String_constructor
   | Math_sqrt
-  | Primitive of string
+  | Primitive of Core.Primitive.t
   | Unary_operator of Types.Operator.unary
   | Binary_operator of Types.Operator.binary
   | Boolean_and
@@ -76,8 +76,8 @@ let specs = [
     callee = Math_sqrt;
     paths = riot_module "Float" "sqrt";
   };
-  { callee = Primitive "%int_of_string"; paths = riot_module "Int" "of_string" };
-  { callee = Primitive "%float_of_string"; paths = riot_module "Float" "of_string" };
+  { callee = Primitive Core.Primitive.Int_of_string; paths = riot_module "Int" "of_string" };
+  { callee = Primitive Core.Primitive.Float_of_string; paths = riot_module "Float" "of_string" };
   { callee = Unary_operator Types.Operator.Not; paths = [ [ "not" ] ] };
   { callee = Boolean_and; paths = [ [ "&&" ] ] };
   { callee = Boolean_or; paths = [ [ "||" ] ] };
