@@ -149,20 +149,22 @@ let rank_decode = De.variant
   ]
 
 let rank_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.unit "Navigator"
-      (function
-      | Navigator -> true
-      | _ -> false);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.unit "Navigator"
+      (
+        function
+        | Navigator -> true
+        | _ -> false
+      ); ]
 
 let companion_decode = De.variant
   [
@@ -171,20 +173,21 @@ let companion_decode = De.variant
   ]
 
 let companion_encode = Ser.variant
-  [
-    Ser.Variant.unit "NewsCoo"
-      (function
-      | NewsCoo -> true
-      | _ -> false);
-    Ser.Variant.newtype "Reindeer" Ser.string
-      (function
-      | Reindeer value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "NewsCoo"
+      (
+        function
+        | NewsCoo -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Reindeer" Ser.string
+      (
+        function
+        | Reindeer value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -195,17 +198,16 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let stop_decode =
-  De.record_mut ~fields:stop_fields
-    ~create:(fun () : stop_builder -> { island = None; supplies = None })
+  De.record_mut ~fields:stop_fields ~create:(fun () : stop_builder ->
+    { island = None; supplies = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Stop_island -> builder.island <- Some (De.read reader De.string)
@@ -216,13 +218,12 @@ let stop_decode =
       | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
-let stop_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: stop) -> value.island);
-        Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
-      ])
+let stop_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: stop) -> value.island);
+      Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
+    ])
 
 let manifest_decode =
   De.record_mut ~fields:manifest_fields
@@ -304,9 +305,9 @@ let manifest_decode =
             }: manifest)
       | _ -> De.missing_field ())
 
-let manifest_encode =
-  Ser.record
-    (Ser.fields
+let manifest_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
         Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
@@ -323,7 +324,8 @@ let manifest_encode =
         Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
         Ser.field "stops" (Ser.list stop_encode) (fun (value: manifest) -> value.stops);
         Ser.field "mirrors" (Ser.array stop_encode) (fun (value: manifest) -> value.mirrors);
-      ])
+      ]
+  )
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -371,194 +373,196 @@ let fixture: manifest = {
   marker = ();
   home = ({ island = "Water 7"; berth = 3 }: berth);
   tags = Vector.of_list [ "straw-hat"; "shipwright" ];
-  scores = [| 7; 9 |];
-  stops =
-    Vector.of_list
-      [
-        ({ island = "Water 7"; supplies = 25 }: stop);
-        ({ island = "Fish-Man Island"; supplies = 40 }: stop);
-      ];
-  mirrors = [| ({ island = "Dressrosa"; supplies = 12 }: stop) |];
+  scores = [|7; 9|];
+  stops = Vector.of_list
+    [
+      ({ island = "Water 7"; supplies = 25 }: stop);
+      ({ island = "Fish-Man Island"; supplies = 40 }: stop);
+    ];
+  mirrors = [|({ island = "Dressrosa"; supplies = 12 }: stop)|];
 }
 
-let record_to_string_test = Test.case "serde-yaml encodes a stable manifest document"
-  (fun _ctx ->
-    match Serde_yaml.to_string manifest_encode fixture with
-    | Ok encoded ->
-        let expected = String.concat
-          "\n"
-          [
-            "\"ship\": \"Thousand Sunny\"";
-            "\"emergency\": false";
-            "\"crew_count\": 10";
-            "\"small\": 7";
-            "\"bounty\": 3000000000";
-            "\"heading\": 12.5";
-            "\"nickname\": null";
-            "\"rank\": \"Captain\"";
-            "\"companion\": !Reindeer \"Chopper\"";
-            "\"marker\": null";
-            "\"home\":";
-            "  \"island\": \"Water 7\"";
-            "  \"berth\": 3";
-            "\"tags\":";
-            "  - \"straw-hat\"";
-            "  - \"shipwright\"";
-            "\"scores\":";
-            "  - 7";
-            "  - 9";
-            "\"stops\":";
-            "  -";
-            "    \"island\": \"Water 7\"";
-            "    \"supplies\": 25";
-            "  -";
-            "    \"island\": \"Fish-Man Island\"";
-            "    \"supplies\": 40";
-            "\"mirrors\":";
-            "  -";
-            "    \"island\": \"Dressrosa\"";
-            "    \"supplies\": 12";
-            "";
-          ]
-        in
-        if String.equal encoded expected then
-          Ok ()
-        else
-          Error ("expected:\n" ^ expected ^ "\nactual:\n" ^ encoded)
-    | Error err -> Error (Serde.Error.to_string err))
+let record_to_string_test =
+  Test.case "serde-yaml encodes a stable manifest document"
+    (fun _ctx ->
+      match Serde_yaml.to_string manifest_encode fixture with
+      | Ok encoded ->
+          let expected = String.concat "\n"
+            [
+              "\"ship\": \"Thousand Sunny\"";
+              "\"emergency\": false";
+              "\"crew_count\": 10";
+              "\"small\": 7";
+              "\"bounty\": 3000000000";
+              "\"heading\": 12.5";
+              "\"nickname\": null";
+              "\"rank\": \"Captain\"";
+              "\"companion\": !Reindeer \"Chopper\"";
+              "\"marker\": null";
+              "\"home\":";
+              "  \"island\": \"Water 7\"";
+              "  \"berth\": 3";
+              "\"tags\":";
+              "  - \"straw-hat\"";
+              "  - \"shipwright\"";
+              "\"scores\":";
+              "  - 7";
+              "  - 9";
+              "\"stops\":";
+              "  -";
+              "    \"island\": \"Water 7\"";
+              "    \"supplies\": 25";
+              "  -";
+              "    \"island\": \"Fish-Man Island\"";
+              "    \"supplies\": 40";
+              "\"mirrors\":";
+              "  -";
+              "    \"island\": \"Dressrosa\"";
+              "    \"supplies\": 12";
+              "";
+            ]
+          in
+          if String.equal encoded expected then
+            Ok ()
+          else
+            Error ("expected:\n" ^ expected ^ "\nactual:\n" ^ encoded)
+      | Error err -> Error (Serde.Error.to_string err))
 
-let record_roundtrip_test = Test.case "serde-yaml roundtrips a manifest from string"
-  (fun _ctx ->
-    match Serde_yaml.to_string manifest_encode fixture with
-    | Ok encoded -> (
-        match Serde_yaml.from_string manifest_decode encoded with
-        | Ok decoded ->
-            if equal_manifest fixture decoded then
-              Ok ()
-            else
-              Error "decoded manifest did not match encoded manifest"
-        | Error err -> Error (Serde.Error.to_string err)
-      )
-    | Error err -> Error (Serde.Error.to_string err))
-
-let scalar_roundtrip_test = Test.case "serde-yaml roundtrips top-level scalars and sequences"
-  (fun _ctx ->
-    match Serde_yaml.to_string Ser.string "Road Poneglyph" with
-    | Error err -> Error (Serde.Error.to_string err)
-    | Ok encoded ->
-        if not (String.equal encoded "\"Road Poneglyph\"\n") then
-          Error "unexpected string encoding"
-        else
-          match Serde_yaml.from_string De.string encoded with
-          | Error err -> Error (Serde.Error.to_string err)
+let record_roundtrip_test =
+  Test.case "serde-yaml roundtrips a manifest from string"
+    (fun _ctx ->
+      match Serde_yaml.to_string manifest_encode fixture with
+      | Ok encoded -> (
+          match Serde_yaml.from_string manifest_decode encoded with
           | Ok decoded ->
-              if not (String.equal decoded "Road Poneglyph") then
-                Error "string roundtrip failed"
+              if equal_manifest fixture decoded then
+                Ok ()
               else
-                let numbers = Vector.of_list [ 1; 2; 3 ] in
-                match Serde_yaml.to_string (Ser.list Ser.int) numbers with
-                | Error err -> Error (Serde.Error.to_string err)
-                | Ok seq_encoded -> (
-                    match Serde_yaml.from_string (De.list De.int) seq_encoded with
-                    | Error err -> Error (Serde.Error.to_string err)
-                    | Ok seq_decoded ->
-                        if vec_to_list numbers = vec_to_list seq_decoded then
-                          Ok ()
-                        else
-                          Error "sequence roundtrip failed"
-                  ))
+                Error "decoded manifest did not match encoded manifest"
+          | Error err -> Error (Serde.Error.to_string err)
+        )
+      | Error err -> Error (Serde.Error.to_string err))
 
-let tagged_variant_decode_test = Test.case "serde-yaml decodes tagged variants and empty null fields"
-  (fun _ctx ->
-    let yaml = String.concat
-      "\n"
-      [
-        "\"ship\": \"Going Merry\"";
-        "\"emergency\": true";
-        "\"crew_count\": 5";
-        "\"small\": 2";
-        "\"bounty\": 1000";
-        "\"heading\": 90.0";
-        "\"nickname\":";
-        "\"rank\": Captain";
-        "\"companion\": !Reindeer \"Chopper\"";
-        "\"marker\": null";
-        "\"home\":";
-        "  \"island\": \"Syrup Village\"";
-        "  \"berth\": 1";
-        "\"tags\": []";
-        "\"scores\": []";
-        "\"stops\": []";
-        "\"mirrors\": []";
-        "";
-      ]
-    in
-    match Serde_yaml.from_string manifest_decode yaml with
-    | Ok decoded ->
-        if
-          String.equal decoded.ship "Going Merry"
-          && Bool.equal decoded.emergency true
-          && decoded.nickname = None
-          && decoded.rank = Captain
-          && equal_companion decoded.companion (Reindeer "Chopper")
-          && vec_to_list decoded.tags = []
-          && Array.to_list decoded.scores = []
-        then
-          Ok ()
-        else
-          Error "decoded tagged manifest did not match expected fields"
-    | Error err -> Error (Serde.Error.to_string err))
+let scalar_roundtrip_test =
+  Test.case "serde-yaml roundtrips top-level scalars and sequences"
+    (fun _ctx ->
+      match Serde_yaml.to_string Ser.string "Road Poneglyph" with
+      | Error err -> Error (Serde.Error.to_string err)
+      | Ok encoded ->
+          if not (String.equal encoded "\"Road Poneglyph\"\n") then
+            Error "unexpected string encoding"
+          else
+            match Serde_yaml.from_string De.string encoded with
+            | Error err -> Error (Serde.Error.to_string err)
+            | Ok decoded ->
+                if not (String.equal decoded "Road Poneglyph") then
+                  Error "string roundtrip failed"
+                else
+                  let numbers = Vector.of_list [ 1; 2; 3 ] in
+                  match Serde_yaml.to_string (Ser.list Ser.int) numbers with
+                  | Error err -> Error (Serde.Error.to_string err)
+                  | Ok seq_encoded -> (
+                      match Serde_yaml.from_string (De.list De.int) seq_encoded with
+                      | Error err -> Error (Serde.Error.to_string err)
+                      | Ok seq_decoded ->
+                          if vec_to_list numbers = vec_to_list seq_decoded then
+                            Ok ()
+                          else
+                            Error "sequence roundtrip failed"
+                    ))
 
-let reader_writer_test = Test.case "serde-yaml writes to writers and reads from readers"
-  (fun _ctx ->
-    let buffer = IO.Buffer.create 128 in
-    match Serde_yaml.to_writer manifest_encode (io_writer_of_buffer buffer) fixture with
-    | Ok () -> (
-        match Serde_yaml.from_reader
-          manifest_decode
-          (String.to_reader ~chunk_size:3 (IO.Buffer.contents buffer)) with
-        | Ok decoded ->
-            if equal_manifest fixture decoded then
-              Ok ()
-            else
-              Error "reader/writer roundtrip failed"
-        | Error err -> Error (Serde.Error.to_string err)
-      )
-    | Error err -> Error (Serde.Error.to_string err))
+let tagged_variant_decode_test =
+  Test.case "serde-yaml decodes tagged variants and empty null fields"
+    (fun _ctx ->
+      let yaml = String.concat "\n"
+        [
+          "\"ship\": \"Going Merry\"";
+          "\"emergency\": true";
+          "\"crew_count\": 5";
+          "\"small\": 2";
+          "\"bounty\": 1000";
+          "\"heading\": 90.0";
+          "\"nickname\":";
+          "\"rank\": Captain";
+          "\"companion\": !Reindeer \"Chopper\"";
+          "\"marker\": null";
+          "\"home\":";
+          "  \"island\": \"Syrup Village\"";
+          "  \"berth\": 1";
+          "\"tags\": []";
+          "\"scores\": []";
+          "\"stops\": []";
+          "\"mirrors\": []";
+          "";
+        ]
+      in
+      match Serde_yaml.from_string manifest_decode yaml with
+      | Ok decoded ->
+          if
+            String.equal decoded.ship "Going Merry"
+            && Bool.equal decoded.emergency true
+            && decoded.nickname = None
+            && decoded.rank = Captain
+            && equal_companion decoded.companion (Reindeer "Chopper")
+            && vec_to_list decoded.tags = []
+            && Array.to_list decoded.scores = []
+          then
+            Ok ()
+          else
+            Error "decoded tagged manifest did not match expected fields"
+      | Error err -> Error (Serde.Error.to_string err))
 
-let comments_test = Test.case "serde-yaml ignores comments outside quoted strings"
-  (fun _ctx ->
-    let yaml = String.concat
-      "\n"
-      [
-        "# observation log";
-        "\"ship\": \"Sunny # not a comment\" # actual comment";
-        "\"emergency\": false";
-        "\"crew_count\": 10";
-        "\"small\": 7";
-        "\"bounty\": 3000000000";
-        "\"heading\": 12.5";
-        "\"nickname\": null";
-        "\"rank\": \"Captain\"";
-        "\"companion\": !Reindeer \"Chopper\"";
-        "\"marker\": null";
-        "\"home\":";
-        "  \"island\": \"Water 7\"";
-        "  \"berth\": 3";
-        "\"tags\": []";
-        "\"scores\": []";
-        "\"stops\": []";
-        "\"mirrors\": []";
-        "";
-      ]
-    in
-    match Serde_yaml.from_string manifest_decode yaml with
-    | Ok decoded ->
-        if String.equal decoded.ship "Sunny # not a comment" then
-          Ok ()
-        else
-          Error "comment stripping damaged quoted string content"
-    | Error err -> Error (Serde.Error.to_string err))
+let reader_writer_test =
+  Test.case "serde-yaml writes to writers and reads from readers"
+    (fun _ctx ->
+      let buffer = IO.Buffer.create 128 in
+      match Serde_yaml.to_writer manifest_encode (io_writer_of_buffer buffer) fixture with
+      | Ok () -> (
+          match Serde_yaml.from_reader
+            manifest_decode
+            (String.to_reader ~chunk_size:3 (IO.Buffer.contents buffer)) with
+          | Ok decoded ->
+              if equal_manifest fixture decoded then
+                Ok ()
+              else
+                Error "reader/writer roundtrip failed"
+          | Error err -> Error (Serde.Error.to_string err)
+        )
+      | Error err -> Error (Serde.Error.to_string err))
+
+let comments_test =
+  Test.case "serde-yaml ignores comments outside quoted strings"
+    (fun _ctx ->
+      let yaml = String.concat "\n"
+        [
+          "# observation log";
+          "\"ship\": \"Sunny # not a comment\" # actual comment";
+          "\"emergency\": false";
+          "\"crew_count\": 10";
+          "\"small\": 7";
+          "\"bounty\": 3000000000";
+          "\"heading\": 12.5";
+          "\"nickname\": null";
+          "\"rank\": \"Captain\"";
+          "\"companion\": !Reindeer \"Chopper\"";
+          "\"marker\": null";
+          "\"home\":";
+          "  \"island\": \"Water 7\"";
+          "  \"berth\": 3";
+          "\"tags\": []";
+          "\"scores\": []";
+          "\"stops\": []";
+          "\"mirrors\": []";
+          "";
+        ]
+      in
+      match Serde_yaml.from_string manifest_decode yaml with
+      | Ok decoded ->
+          if String.equal decoded.ship "Sunny # not a comment" then
+            Ok ()
+          else
+            Error "comment stripping damaged quoted string content"
+      | Error err -> Error (Serde.Error.to_string err))
 
 let tests = [
   record_to_string_test;

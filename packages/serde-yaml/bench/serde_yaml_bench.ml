@@ -176,20 +176,22 @@ let rank_decode = De.variant
   ]
 
 let rank_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.unit "Navigator"
-      (function
-      | Navigator -> true
-      | _ -> false);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.unit "Navigator"
+      (
+        function
+        | Navigator -> true
+        | _ -> false
+      ); ]
 
 let companion_decode = De.variant
   [
@@ -198,20 +200,21 @@ let companion_decode = De.variant
   ]
 
 let companion_encode = Ser.variant
-  [
-    Ser.Variant.unit "NewsCoo"
-      (function
-      | NewsCoo -> true
-      | _ -> false);
-    Ser.Variant.newtype "Reindeer" Ser.string
-      (function
-      | Reindeer value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "NewsCoo"
+      (
+        function
+        | NewsCoo -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Reindeer" Ser.string
+      (
+        function
+        | Reindeer value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -222,17 +225,16 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let stop_decode =
-  De.record_mut ~fields:stop_fields
-    ~create:(fun () : stop_builder -> { island = None; supplies = None })
+  De.record_mut ~fields:stop_fields ~create:(fun () : stop_builder ->
+    { island = None; supplies = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Stop_island -> builder.island <- Some (De.read reader De.string)
@@ -243,13 +245,12 @@ let stop_decode =
       | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
-let stop_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: stop) -> value.island);
-        Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
-      ])
+let stop_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: stop) -> value.island);
+      Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
+    ])
 
 let manifest_decode =
   De.record_mut ~fields:manifest_fields
@@ -331,9 +332,9 @@ let manifest_decode =
             }: manifest)
       | _ -> De.missing_field ())
 
-let manifest_encode =
-  Ser.record
-    (Ser.fields
+let manifest_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
         Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
@@ -350,7 +351,8 @@ let manifest_encode =
         Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
         Ser.field "stops" (Ser.list stop_encode) (fun (value: manifest) -> value.stops);
         Ser.field "mirrors" (Ser.array stop_encode) (fun (value: manifest) -> value.mirrors);
-      ])
+      ]
+  )
 
 let repeat = fun text count ->
   let buffer = IO.Buffer.create (String.length text * count) in
@@ -366,14 +368,10 @@ let tags_of_count = fun count ->
   done;
   tags
 
-let scores_of_count = fun count ->
-  array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
 
 let stop_of_index = fun index prefix ->
-  ({
-      island = prefix ^ "-island-" ^ Int.to_string index;
-      supplies = (index * 17) mod 10_000;
-    }: stop)
+  ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
   let stops = Vector.with_capacity count in
@@ -418,7 +416,14 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && List.for_all2 equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
   && List.for_all2 equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
 
-let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_repeat }: fixture_spec) ->
+let build_fixture = fun
+  ({
+      label;
+      tag_count;
+      score_count;
+      stop_count;
+      string_repeat
+    }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;
     emergency = false;
@@ -437,14 +442,10 @@ let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_rep
     mirrors = stops_array_of_count stop_count "mirror";
   }
   in
-  let encoded =
-    Serde_yaml.to_string manifest_encode value
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
-  in
-  let decoded =
-    Serde_yaml.from_string manifest_decode encoded
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to decode")
-  in
+  let encoded = Serde_yaml.to_string manifest_encode value
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode") in
+  let decoded = Serde_yaml.from_string manifest_decode encoded
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to decode") in
   if not (equal_manifest value decoded) then
     panic ("serde_yaml_bench: fixture roundtrip failed for " ^ label);
   { label; value; encoded }

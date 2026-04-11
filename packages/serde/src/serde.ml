@@ -248,7 +248,9 @@ module Fields = struct
 
   let make = fun cases ->
     let root = List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node in
-    let tags = array__init (List.length cases) (fun index -> list_nth cases index |> tag) in
+    let tags =
+      array__init (List.length cases) (fun index -> list_nth cases index |> tag)
+    in
     { root; tags }
 
   let length = fun fields -> array__length fields.tags
@@ -423,8 +425,8 @@ let record_mut = fun ~fields ~create ~step ~finish ->
           state
           ~fields
           ~create
-            ~step:(fun builder field -> step reader builder field)
-            ~finish;
+          ~step:(fun builder field -> step reader builder field)
+          ~finish;
   }
 
 let variant = fun cases ->

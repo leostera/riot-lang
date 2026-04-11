@@ -118,24 +118,26 @@ let mode_decode = De.variant
   ]
 
 let mode_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.newtype "Navigator" Ser.string
-      (function
-      | Navigator value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Navigator" Ser.string
+      (
+        function
+        | Navigator value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -146,13 +148,12 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let sample_decode =
   De.record_mut ~fields:sample_fields
@@ -218,9 +219,9 @@ let sample_decode =
             }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode =
-  Ser.record
-    (Ser.fields
+let sample_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ready" Ser.bool (fun (value: sample) -> value.ready);
         Ser.field "count" Ser.int (fun (value: sample) -> value.count);
@@ -234,7 +235,8 @@ let sample_encode =
         Ser.field "home" berth_encode (fun (value: sample) -> value.home);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-      ])
+      ]
+  )
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -266,7 +268,7 @@ let sample_value: sample = {
   marker = ();
   home = ({ island = "Water 7"; berth = 7 }: berth);
   tags = Vector.of_list [ "log-pose"; "cola"; "coup-de-burst" ];
-  scores = [| 98; 87; 77; 101 |];
+  scores = [|98; 87; 77; 101|];
 }
 
 let byte_values = fun value ->
@@ -275,9 +277,8 @@ let byte_values = fun value ->
 let test_small_positive_int_uses_single_byte = fun _ctx ->
   match Serde_cbor.to_string Ser.int 10 with
   | Ok encoded when byte_values encoded = [ 0x0a ] -> Ok ()
-  | Ok encoded ->
-      Error ("expected CBOR encoding for 10 to be [0x0a], got "
-        ^ String.concat "," (List.map Int.to_string (byte_values encoded)))
+  | Ok encoded -> Error ("expected CBOR encoding for 10 to be [0x0a], got "
+  ^ String.concat "," (List.map Int.to_string (byte_values encoded)))
   | Error err -> Error ("encode failed: " ^ Serde.Error.to_string err)
 
 let test_negative_one_uses_single_byte = fun _ctx ->

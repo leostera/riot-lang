@@ -113,8 +113,11 @@ let partition_items = fun items ->
     (fun ((key, value) as entry) ->
       match value with
       | Table nested -> tables := (key, nested) :: !tables
-      | Array values when not (List.is_empty values) && List.for_all is_table values ->
-          arrays_of_tables := (key, values) :: !arrays_of_tables
+      | Array values when not (List.is_empty values) && List.for_all is_table values -> arrays_of_tables := (
+        key,
+        values
+      )
+      :: !arrays_of_tables
       | _ -> scalars := entry :: !scalars)
     items;
   (List.rev !scalars, List.rev !tables, List.rev !arrays_of_tables)

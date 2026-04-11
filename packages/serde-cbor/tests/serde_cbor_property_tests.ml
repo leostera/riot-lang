@@ -12,7 +12,7 @@ let composite_examples = 50_000
 
 let io_chunk_size = 5
 
-let finite_float_limit = 1.0e12
+let finite_float_limit = 1.0e 12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
@@ -130,24 +130,26 @@ let mode_decode = De.variant
   ]
 
 let mode_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.newtype "Navigator" Ser.string
-      (function
-      | Navigator value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Navigator" Ser.string
+      (
+        function
+        | Navigator value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -158,13 +160,12 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let sample_decode =
   De.record_mut ~fields:sample_fields
@@ -230,9 +231,9 @@ let sample_decode =
             }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode =
-  Ser.record
-    (Ser.fields
+let sample_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ready" Ser.bool (fun (value: sample) -> value.ready);
         Ser.field "count" Ser.int (fun (value: sample) -> value.count);
@@ -246,7 +247,8 @@ let sample_encode =
         Ser.field "home" berth_encode (fun (value: sample) -> value.home);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-      ])
+      ]
+  )
 
 let print_mode = function
   | Captain -> "Captain"
@@ -277,8 +279,7 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && left.scores = right.scores
 
 let print_sample = fun (value: sample) ->
-  String.concat
-    ""
+  String.concat ""
     [
       "{ ready = ";
       Bool.to_string value.ready;
@@ -319,10 +320,7 @@ let mode_gen = Generator.frequency
 let mode_arb = Arbitrary.make ~print:print_mode mode_gen
 
 let berth_gen =
-  Generator.map2
-    (fun island berth -> ({ island; berth }: berth))
-    Generator.string
-    Generator.int
+  Generator.map2 (fun island berth -> ({ island; berth }: berth)) Generator.string Generator.int
 
 let berth_arb = Arbitrary.make ~print:print_berth berth_gen
 

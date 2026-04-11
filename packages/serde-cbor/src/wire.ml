@@ -19,7 +19,8 @@ let major_other = 7
 
 let error = fun message -> Error (`Msg message)
 
-let add_byte = fun buffer value -> IO.Buffer.add_char buffer (Char.chr value)
+let add_byte = fun buffer value ->
+  IO.Buffer.add_char buffer (Char.chr value)
 
 let add_uint16_be = fun buffer value ->
   add_byte buffer ((value lsr 8) land 0xff);
@@ -33,31 +34,35 @@ let add_uint32_be = fun buffer value ->
 
 let add_uint64_be = fun buffer value ->
   let open Int64 in
-  let add shift =
-    add_byte buffer (to_int (logand (shift_right_logical value shift) 0xffL))
-  in
-  add 56;
-  add 48;
-  add 40;
-  add 32;
-  add 24;
-  add 16;
-  add 8;
-  add 0
+    let add shift = add_byte buffer (to_int (logand (shift_right_logical value shift) 0xffL)) in
+    add 56;
+    add 48;
+    add 40;
+    add 32;
+    add 24;
+    add 16;
+    add 8;
+    add 0
 
 let add_header = fun buffer major value ->
   if Int64.compare value 23L <= 0 then
     add_byte buffer ((major lsl 5) lor Int64.to_int value)
-  else if Int64.compare value 0xffL <= 0 then (
-    add_byte buffer ((major lsl 5) lor 24);
-    add_byte buffer (Int64.to_int value)
-  ) else if Int64.compare value 0xffffL <= 0 then (
-    add_byte buffer ((major lsl 5) lor 25);
-    add_uint16_be buffer (Int64.to_int value)
-  ) else if Int64.compare value 0xffff_ffffL <= 0 then (
-    add_byte buffer ((major lsl 5) lor 26);
-    add_uint32_be buffer (Int64.to_int32 value)
-  ) else (
+  else if Int64.compare value 0xffL <= 0 then
+    (
+      add_byte buffer ((major lsl 5) lor 24);
+      add_byte buffer (Int64.to_int value)
+    )
+  else if Int64.compare value 0xffffL <= 0 then
+    (
+      add_byte buffer ((major lsl 5) lor 25);
+      add_uint16_be buffer (Int64.to_int value)
+    )
+  else if Int64.compare value 0xffff_ffffL <= 0 then
+    (
+      add_byte buffer ((major lsl 5) lor 26);
+      add_uint32_be buffer (Int64.to_int32 value)
+    )
+  else (
     add_byte buffer ((major lsl 5) lor 27);
     add_uint64_be buffer value
   )
@@ -72,16 +77,21 @@ let add_text = fun buffer value ->
 
 let rec encode_value = fun buffer value ->
   match value with
-  | Null -> add_byte buffer 0xf6
-  | Bool false -> add_byte buffer 0xf4
-  | Bool true -> add_byte buffer 0xf5
+  | Null ->
+      add_byte buffer 0xf6
+  | Bool false ->
+      add_byte buffer 0xf4
+  | Bool true ->
+      add_byte buffer 0xf5
   | Int value ->
       if Int64.compare value 0L >= 0 then
         add_header buffer major_positive value
       else
         add_header buffer major_negative (Int64.lognot value)
-  | Float value -> add_float64 buffer value
-  | Text value -> add_text buffer value
+  | Float value ->
+      add_float64 buffer value
+  | Text value ->
+      add_text buffer value
   | Array values ->
       add_header buffer major_array (Int64.of_int (List.length values));
       List.iter (encode_value buffer) values
@@ -132,26 +142,21 @@ let read_uint32_be = fun input ->
   let* b1 = read_byte input in
   let* b2 = read_byte input in
   let* b3 = read_byte input in
-  Ok
-    Int64.(
-      logor
-        (shift_left (of_int b0) 24)
-        (logor
-          (shift_left (of_int b1) 16)
-          (logor (shift_left (of_int b2) 8) (of_int b3))))
+  Ok Int64.(logor
+    (shift_left (of_int b0) 24)
+    (logor (shift_left (of_int b1) 16) (logor (shift_left (of_int b2) 8) (of_int b3))))
 
 let read_uint64_be = fun input ->
   let open Int64 in
-  let* b0 = read_byte input in
-  let* b1 = read_byte input in
-  let* b2 = read_byte input in
-  let* b3 = read_byte input in
-  let* b4 = read_byte input in
-  let* b5 = read_byte input in
-  let* b6 = read_byte input in
-  let* b7 = read_byte input in
-  Ok
-    (logor
+    let* b0 = read_byte input in
+    let* b1 = read_byte input in
+    let* b2 = read_byte input in
+    let* b3 = read_byte input in
+    let* b4 = read_byte input in
+    let* b5 = read_byte input in
+    let* b6 = read_byte input in
+    let* b7 = read_byte input in
+    Ok (logor
       (shift_left (of_int b0) 56)
       (logor
         (shift_left (of_int b1) 48)
@@ -164,7 +169,12 @@ let read_uint64_be = fun input ->
               (logor (shift_left (of_int b5) 16) (logor (shift_left (of_int b6) 8) (of_int b7))))))))
 
 let decode_half = fun bits ->
-  let sign = if Int.equal (bits land 0x8000) 0 then 1.0 else -1.0 in
+  let sign =
+    if Int.equal (bits land 0x8000) 0 then
+      1.0
+    else
+      (-1.0)
+  in
   let exponent = (bits lsr 10) land 0x1f in
   let fraction = bits land 0x03ff in
   if Int.equal exponent 0 then
@@ -229,7 +239,8 @@ let rec read_value = fun input ->
       let* raw = read_argument input minor in
       let* value = int_of_negative raw in
       Ok (Int value)
-  | 3 -> read_text input minor |> Result.map (fun value -> Text value)
+  | 3 ->
+      read_text input minor |> Result.map (fun value -> Text value)
   | 4 ->
       let* length = read_count input minor "array" in
       let rec loop remaining acc =
@@ -261,19 +272,25 @@ let rec read_value = fun input ->
       read_value input
   | 7 -> (
       match minor with
-      | 20 -> Ok (Bool false)
-      | 21 -> Ok (Bool true)
-      | 22 -> Ok Null
-      | 25 -> read_uint16_be input |> Result.map (fun bits -> Float (decode_half bits))
+      | 20 ->
+          Ok (Bool false)
+      | 21 ->
+          Ok (Bool true)
+      | 22 ->
+          Ok Null
+      | 25 ->
+          read_uint16_be input |> Result.map (fun bits -> Float (decode_half bits))
       | 26 ->
           let* bits = read_uint32_be input in
           Ok (Float (Int32.float_of_bits (Int64.to_int32 bits)))
       | 27 ->
           let* bits = read_uint64_be input in
           Ok (Float (Int64.float_of_bits bits))
-      | _ -> error "serde-cbor encountered an unsupported simple value"
+      | _ ->
+          error "serde-cbor encountered an unsupported simple value"
     )
-  | _ -> error "serde-cbor encountered an invalid major type"
+  | _ ->
+      error "serde-cbor encountered an invalid major type"
 
 let from_string = fun input ->
   let state = { source = input; length = String.length input; pos = 0 } in

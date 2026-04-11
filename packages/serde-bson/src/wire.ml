@@ -13,7 +13,7 @@ let type_array = Char.chr 0x04
 
 let type_bool = Char.chr 0x08
 
-let type_null = Char.chr 0x0A
+let type_null = Char.chr 0x0a
 
 let type_int32 = Char.chr 0x10
 
@@ -26,14 +26,14 @@ let hex_char = function
   | value -> Char.chr (Char.code 'A' + value - 10)
 
 let hex_byte = fun value ->
-  String.init 2 (fun index ->
-    if Int.equal index 0 then
-      hex_char ((value lsr 4) land 0x0f)
-    else
-      hex_char (value land 0x0f))
+  String.init 2
+    (fun index ->
+      if Int.equal index 0 then
+        hex_char ((value lsr 4) land 0x0f)
+      else
+        hex_char (value land 0x0f))
 
-let length_error = fun kind ->
-  error ("serde-bson " ^ kind ^ " length exceeds BSON's int32 limit")
+let length_error = fun kind -> error ("serde-bson " ^ kind ^ " length exceeds BSON's int32 limit")
 
 let int_of_length_int32 = fun value ->
   if Int32.compare value 5l < 0 then
@@ -57,27 +57,27 @@ let int32_of_length = fun kind value ->
 
 let add_int32_le = fun buffer value ->
   let open Int32 in
-  let add_byte shift =
-    IO.Buffer.add_char buffer (Char.chr (to_int (logand (shift_right_logical value shift) 0xffl)))
-  in
-  add_byte 0;
-  add_byte 8;
-  add_byte 16;
-  add_byte 24
+    let add_byte shift = IO.Buffer.add_char
+      buffer
+      (Char.chr (to_int (logand (shift_right_logical value shift) 0xffl))) in
+    add_byte 0;
+    add_byte 8;
+    add_byte 16;
+    add_byte 24
 
 let add_int64_le = fun buffer value ->
   let open Int64 in
-  let add_byte shift =
-    IO.Buffer.add_char buffer (Char.chr (to_int (logand (shift_right_logical value shift) 0xffL)))
-  in
-  add_byte 0;
-  add_byte 8;
-  add_byte 16;
-  add_byte 24;
-  add_byte 32;
-  add_byte 40;
-  add_byte 48;
-  add_byte 56
+    let add_byte shift = IO.Buffer.add_char
+      buffer
+      (Char.chr (to_int (logand (shift_right_logical value shift) 0xffL))) in
+    add_byte 0;
+    add_byte 8;
+    add_byte 16;
+    add_byte 24;
+    add_byte 32;
+    add_byte 40;
+    add_byte 48;
+    add_byte 56
 
 let add_double_le = fun buffer value -> add_int64_le buffer (Int64.bits_of_float value)
 
@@ -90,17 +90,23 @@ let add_cstring = fun buffer value ->
     value;
   if !has_nul then
     Error (`Msg "serde-bson field names cannot contain NUL bytes")
-  else
-    (
-      IO.Buffer.add_string buffer value;
-      IO.Buffer.add_char buffer '\x00';
-      Ok ()
-    )
+  else (
+    IO.Buffer.add_string buffer value;
+    IO.Buffer.add_char buffer '\x00';
+    Ok ()
+  )
 
 let rec encode_value = function
-  | Null -> Ok (type_null, "")
+  | Null ->
+      Ok (type_null, "")
   | Bool value ->
-      Ok (type_bool, if value then "\x01" else "\x00")
+      Ok (
+        type_bool,
+        if value then
+          "\x01"
+        else
+          "\x00"
+      )
   | Int32 value ->
       let buffer = IO.Buffer.create 4 in
       add_int32_le buffer value;
@@ -127,14 +133,13 @@ let rec encode_value = function
       let rec fields_of_values index values acc =
         match values with
         | [] -> List.rev acc
-        | value :: rest ->
-            fields_of_values (index + 1) rest ((Int.to_string index, value) :: acc)
+        | value :: rest -> fields_of_values (index + 1) rest ((Int.to_string index, value) :: acc)
       in
       let* encoded = encode_document (fields_of_values 0 values []) in
       Ok (type_array, encoded)
 
 and encode_element = fun (key, value) ->
-  let* kind, payload = encode_value value in
+  let* (kind, payload) = encode_value value in
   let buffer = IO.Buffer.create (String.length key + String.length payload + 8) in
   IO.Buffer.add_char buffer kind;
   let* () = add_cstring buffer key in
@@ -185,26 +190,21 @@ let read_int32_le = fun input ->
   let* b1 = read_byte input in
   let* b2 = read_byte input in
   let* b3 = read_byte input in
-  Ok
-    Int32.(
-      logor
-        (of_int b0)
-        (logor
-          (shift_left (of_int b1) 8)
-          (logor (shift_left (of_int b2) 16) (shift_left (of_int b3) 24))))
+  Ok Int32.(logor
+    (of_int b0)
+    (logor (shift_left (of_int b1) 8) (logor (shift_left (of_int b2) 16) (shift_left (of_int b3) 24))))
 
 let read_int64_le = fun input ->
   let open Int64 in
-  let* b0 = read_byte input in
-  let* b1 = read_byte input in
-  let* b2 = read_byte input in
-  let* b3 = read_byte input in
-  let* b4 = read_byte input in
-  let* b5 = read_byte input in
-  let* b6 = read_byte input in
-  let* b7 = read_byte input in
-  Ok
-    (logor
+    let* b0 = read_byte input in
+    let* b1 = read_byte input in
+    let* b2 = read_byte input in
+    let* b3 = read_byte input in
+    let* b4 = read_byte input in
+    let* b5 = read_byte input in
+    let* b6 = read_byte input in
+    let* b7 = read_byte input in
+    Ok (logor
       (of_int b0)
       (logor
         (shift_left (of_int b1) 8)
@@ -214,7 +214,9 @@ let read_int64_le = fun input ->
             (shift_left (of_int b3) 24)
             (logor
               (shift_left (of_int b4) 32)
-              (logor (shift_left (of_int b5) 40) (logor (shift_left (of_int b6) 48) (shift_left (of_int b7) 56))))))))
+              (logor
+                (shift_left (of_int b5) 40)
+                (logor (shift_left (of_int b6) 48) (shift_left (of_int b7) 56))))))))
 
 let read_double_le = fun input ->
   let* bits = read_int64_le input in
@@ -225,11 +227,13 @@ let read_cstring = fun input ->
   let rec loop index =
     if Int.compare index input.length >= 0 then
       Error `no_more_data
-    else if Char.equal (String.unsafe_get input.source index) '\x00' then (
-      let value = String.sub input.source start (index - start) in
-      input.pos <- index + 1;
-      Ok value
-    ) else
+    else if Char.equal (String.unsafe_get input.source index) '\x00' then
+      (
+        let value = String.sub input.source start (index - start) in
+        input.pos <- index + 1;
+        Ok value
+      )
+    else
       loop (index + 1)
   in
   loop input.pos
@@ -261,9 +265,12 @@ let array_of_document = fun fields ->
 
 let rec read_value = fun input kind end_pos ->
   match kind with
-  | 0x01 -> read_double_le input |> Result.map (fun value -> Double value)
-  | 0x02 -> read_length_prefixed_string input |> Result.map (fun value -> String value)
-  | 0x03 -> read_document_body input end_pos |> Result.map (fun value -> Document value)
+  | 0x01 ->
+      read_double_le input |> Result.map (fun value -> Double value)
+  | 0x02 ->
+      read_length_prefixed_string input |> Result.map (fun value -> String value)
+  | 0x03 ->
+      read_document_body input end_pos |> Result.map (fun value -> Document value)
   | 0x04 ->
       let* fields = read_document_body input end_pos in
       let* values = array_of_document fields in
@@ -276,10 +283,14 @@ let rec read_value = fun input kind end_pos ->
         Ok (Bool true)
       else
         error "serde-bson bool payload must be 0 or 1"
-  | 0x0A -> Ok Null
-  | 0x10 -> read_int32_le input |> Result.map (fun value -> Int32 value)
-  | 0x12 -> read_int64_le input |> Result.map (fun value -> Int64 value)
-  | _ -> error ("serde-bson encountered unsupported BSON element type 0x" ^ hex_byte kind)
+  | 0x0a ->
+      Ok Null
+  | 0x10 ->
+      read_int32_le input |> Result.map (fun value -> Int32 value)
+  | 0x12 ->
+      read_int64_le input |> Result.map (fun value -> Int64 value)
+  | _ ->
+      error ("serde-bson encountered unsupported BSON element type 0x" ^ hex_byte kind)
 
 and read_document_body = fun input _parent_end ->
   let start = input.pos in

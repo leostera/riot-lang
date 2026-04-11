@@ -518,10 +518,7 @@ let roster_decode =
       | None -> De.missing_field ())
 
 let roster_encode = Ser.record
-  (Ser.fields
-    [
-      Ser.field "crew" (Ser.list crew_member_encode) (fun (value: roster) -> value.crew);
-    ])
+  (Ser.fields [ Ser.field "crew" (Ser.list crew_member_encode) (fun (value: roster) -> value.crew); ])
 
 let voyage_value: voyage = {
   ship = "Going Merry";
@@ -629,16 +626,19 @@ let test_roundtrips_voyages = fun _ctx ->
   in
   match Serde_toml.from_string voyage_decode encoded with
   | Ok actual ->
-      if String.equal actual.ship voyage_value.ship
-         && equal_pose actual.destination voyage_value.destination
-         && vec_to_list actual.stops = vec_to_list voyage_value.stops then
+      if
+        String.equal actual.ship voyage_value.ship
+        && equal_pose actual.destination voyage_value.destination
+        && vec_to_list actual.stops = vec_to_list voyage_value.stops
+      then
         Ok ()
       else
         Error "expected serde-toml voyage roundtrip to preserve array-of-tables items"
   | Error err -> Error ("voyage decode failed: " ^ Serde.Error.to_string err)
 
 let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
-  let source = String.concat "\n"
+  let source = String.concat
+    "\n"
     [
       "[[crew]]";
       "name = \"Tony Tony Chopper\"";
@@ -646,8 +646,7 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
       "island = \"Egghead\"";
       "bearing = 42.125";
       "";
-    ]
-  in
+    ] in
   match Serde_toml__Parse.from_string source with
   | Ok (Serde_toml__Toml_value.Table items) -> (
       match List.assoc_opt "crew" items with
@@ -657,14 +656,17 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
           else
             let root_keys = items |> List.map fst |> String.concat ", " in
             let first_keys = first |> List.map fst |> String.concat ", " in
-            Error
-              ("expected parser to attach [crew.pose] to the current crew array item"
-             ^ "; root keys: " ^ root_keys
-             ^ "; first crew keys: " ^ first_keys)
+            Error ("expected parser to attach [crew.pose] to the current crew array item"
+            ^ "; root keys: "
+            ^ root_keys
+            ^ "; first crew keys: "
+            ^ first_keys)
       | _ -> Error "expected parser to rebuild [[crew]] as an array-of-tables"
     )
-  | Ok _ -> Error "expected parser to return a top-level table"
-  | Error (`Msg message) -> Error ("array-item parser regression failed: " ^ message)
+  | Ok _ ->
+      Error "expected parser to return a top-level table"
+  | Error (`Msg message) ->
+      Error ("array-item parser regression failed: " ^ message)
 
 let test_roundtrips_rosters = fun _ctx ->
   let* encoded =
@@ -673,9 +675,11 @@ let test_roundtrips_rosters = fun _ctx ->
     | Error err -> Error ("roster encode failed: " ^ Serde.Error.to_string err)
   in
   let* () =
-    if String.contains encoded "[crew.pet]"
-       && String.contains encoded "[crew.flag]"
-       && String.contains encoded "[crew.pose]" then
+    if
+      String.contains encoded "[crew.pet]"
+      && String.contains encoded "[crew.flag]"
+      && String.contains encoded "[crew.pose]"
+    then
       Ok ()
     else
       Error "expected roster encoding to emit nested table headers for crew items"
@@ -689,21 +693,23 @@ let test_roundtrips_rosters = fun _ctx ->
             if has "name" && has "pet" && has "flag" && has "pose" then
               Ok ()
             else
-              let missing =
-                [ "name"; "pet"; "flag"; "pose" ]
-                |> List.filter (fun key -> not (has key))
-                |> String.concat ", "
-              in
+              let missing = [ "name"; "pet"; "flag"; "pose" ]
+              |> List.filter (fun key -> not (has key))
+              |> String.concat ", " in
               let root_keys = items |> List.map fst |> String.concat ", " in
               let first_keys = first |> List.map fst |> String.concat ", " in
-              Error
-                ("expected parser to preserve nested tables inside crew array items, missing: " ^ missing
-               ^ "; root keys: " ^ root_keys
-               ^ "; first crew keys: " ^ first_keys)
+              Error ("expected parser to preserve nested tables inside crew array items, missing: "
+              ^ missing
+              ^ "; root keys: "
+              ^ root_keys
+              ^ "; first crew keys: "
+              ^ first_keys)
         | _ -> Error "expected parser to rebuild crew as an array-of-tables"
       )
-    | Ok _ -> Error "expected parser to return a top-level table"
-    | Error (`Msg message) -> Error ("roster parse failed: " ^ message)
+    | Ok _ ->
+        Error "expected parser to return a top-level table"
+    | Error (`Msg message) ->
+        Error ("roster parse failed: " ^ message)
   in
   match Serde_toml.from_string roster_decode encoded with
   | Ok actual when vec_to_list actual.crew = vec_to_list roster_value.crew -> Ok ()
@@ -786,12 +792,12 @@ let test_rejects_top_level_scalars = fun _ctx ->
 
 let tests =
   Test.[
-      case "serde-toml encodes tables and arrays-of-tables" test_encodes_tables_and_arrays_of_tables;
-      case "serde-toml roundtrips single crew members" test_roundtrips_single_crew_member;
-      case "serde-toml roundtrips voyages" test_roundtrips_voyages;
-      case "serde-toml parser rebuilds nested tables inside array items" test_parser_rebuilds_nested_tables_inside_array_items;
-      case "serde-toml roundtrips rosters" test_roundtrips_rosters;
-      case "serde-toml roundtrips manifests" test_roundtrips_manifest;
+    case "serde-toml encodes tables and arrays-of-tables" test_encodes_tables_and_arrays_of_tables;
+    case "serde-toml roundtrips single crew members" test_roundtrips_single_crew_member;
+    case "serde-toml roundtrips voyages" test_roundtrips_voyages;
+    case "serde-toml parser rebuilds nested tables inside array items" test_parser_rebuilds_nested_tables_inside_array_items;
+    case "serde-toml roundtrips rosters" test_roundtrips_rosters;
+    case "serde-toml roundtrips manifests" test_roundtrips_manifest;
     case "serde-toml decodes nested documents" test_decodes_nested_document;
     case "serde-toml omits none fields" test_omits_none_fields;
     case "serde-toml roundtrips over io" test_roundtrips_over_io;

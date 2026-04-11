@@ -118,24 +118,26 @@ let mode_decode = De.variant
   ]
 
 let mode_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.newtype "Navigator" Ser.string
-      (function
-      | Navigator value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Navigator" Ser.string
+      (
+        function
+        | Navigator value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -146,13 +148,12 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let manifest_decode =
   De.record_mut ~fields:manifest_fields
@@ -218,9 +219,9 @@ let manifest_decode =
             }: manifest)
       | _ -> De.missing_field ())
 
-let manifest_encode =
-  Ser.record
-    (Ser.fields
+let manifest_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
         Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
@@ -234,7 +235,8 @@ let manifest_encode =
         Ser.field "home" berth_encode (fun (value: manifest) -> value.home);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: manifest) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
-      ])
+      ]
+  )
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -269,7 +271,7 @@ let sample_manifest: manifest = {
   marker = ();
   home = ({ island = "Water 7"; berth = 7 }: berth);
   tags = Vector.of_list [ "log-pose"; "cola"; "coup-de-burst" ];
-  scores = [| 98; 87; 77; 101 |];
+  scores = [|98; 87; 77; 101|];
 }
 
 let test_roundtrips_manifest = fun _ctx ->

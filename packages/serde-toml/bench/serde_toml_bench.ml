@@ -151,24 +151,26 @@ let status_decode = De.variant
   ]
 
 let status_encode = Ser.variant
-  [
-    Ser.Variant.unit "Active"
-      (function
-      | Active -> true
-      | _ -> false);
-    Ser.Variant.unit "Draft"
-      (function
-      | Draft -> true
-      | _ -> false);
-    Ser.Variant.unit "Archived"
-      (function
-      | Archived -> true
-      | _ -> false);
-  ]
+  [ Ser.Variant.unit "Active"
+      (
+        function
+        | Active -> true
+        | _ -> false
+      ); Ser.Variant.unit "Draft"
+      (
+        function
+        | Draft -> true
+        | _ -> false
+      ); Ser.Variant.unit "Archived"
+      (
+        function
+        | Archived -> true
+        | _ -> false
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -179,17 +181,16 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let stop_decode =
-  De.record_mut ~fields:stop_fields
-    ~create:(fun () : stop_builder -> { island = None; supplies = None })
+  De.record_mut ~fields:stop_fields ~create:(fun () : stop_builder ->
+    { island = None; supplies = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Stop_island -> builder.island <- Some (De.read reader De.string)
@@ -200,13 +201,12 @@ let stop_decode =
       | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
-let stop_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: stop) -> value.island);
-        Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
-      ])
+let stop_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: stop) -> value.island);
+      Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
+    ])
 
 let manifest_decode =
   De.record_mut ~fields:manifest_fields
@@ -260,20 +260,19 @@ let manifest_decode =
             }: manifest)
       | _ -> De.missing_field ())
 
-let manifest_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
-        Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
-        Ser.field "crew_count" Ser.int (fun (value: manifest) -> value.crew_count);
-        Ser.field "status" status_encode (fun (value: manifest) -> value.status);
-        Ser.field "home" berth_encode (fun (value: manifest) -> value.home);
-        Ser.field "tags" (Ser.list Ser.string) (fun (value: manifest) -> value.tags);
-        Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
-        Ser.field "stops" (Ser.list stop_encode) (fun (value: manifest) -> value.stops);
-        Ser.field "mirrors" (Ser.array stop_encode) (fun (value: manifest) -> value.mirrors);
-      ])
+let manifest_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
+      Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
+      Ser.field "crew_count" Ser.int (fun (value: manifest) -> value.crew_count);
+      Ser.field "status" status_encode (fun (value: manifest) -> value.status);
+      Ser.field "home" berth_encode (fun (value: manifest) -> value.home);
+      Ser.field "tags" (Ser.list Ser.string) (fun (value: manifest) -> value.tags);
+      Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
+      Ser.field "stops" (Ser.list stop_encode) (fun (value: manifest) -> value.stops);
+      Ser.field "mirrors" (Ser.array stop_encode) (fun (value: manifest) -> value.mirrors);
+    ])
 
 let repeat = fun text count ->
   let buffer = IO.Buffer.create (String.length text * count) in
@@ -294,8 +293,7 @@ let tags_of_count = fun count ->
   done;
   tags
 
-let scores_of_count = fun count ->
-  array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -303,10 +301,7 @@ let vec_to_list = fun values ->
   List.rev !items
 
 let stop_of_index = fun index prefix ->
-  ({
-      island = prefix ^ "-island-" ^ Int.to_string index;
-      supplies = (index * 17) mod 10_000;
-    }: stop)
+  ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
   let stops = Vector.with_capacity count in
@@ -319,26 +314,23 @@ let stops_array_of_count = fun count prefix ->
   array__init count (fun index -> stop_of_index index prefix)
 
 let stop_to_toml = fun (value: stop) ->
-  Toml.Table
-    [ ("island", Toml.String value.island); ("supplies", Toml.Int value.supplies) ]
+  Toml.Table [ ("island", Toml.String value.island); ("supplies", Toml.Int value.supplies) ]
 
 let berth_to_toml = fun (value: berth) ->
-  Toml.Table
-    [ ("island", Toml.String value.island); ("berth", Toml.Int value.berth) ]
+  Toml.Table [ ("island", Toml.String value.island); ("berth", Toml.Int value.berth) ]
 
 let manifest_to_toml = fun (value: manifest) ->
-  Toml.Table
-    [
-      ("ship", Toml.String value.ship);
-      ("emergency", Toml.Bool value.emergency);
-      ("crew_count", Toml.Int value.crew_count);
-      ("status", Toml.String (status_to_string value.status));
-      ("home", berth_to_toml value.home);
-      ("tags", Toml.Array (vec_to_list value.tags |> List.map (fun item -> Toml.String item)));
-      ("scores", Toml.Array (Array.to_list value.scores |> List.map (fun item -> Toml.Int item)));
-      ("stops", Toml.Array (vec_to_list value.stops |> List.map stop_to_toml));
-      ("mirrors", Toml.Array (Array.to_list value.mirrors |> List.map stop_to_toml));
-    ]
+  Toml.Table [
+    ("ship", Toml.String value.ship);
+    ("emergency", Toml.Bool value.emergency);
+    ("crew_count", Toml.Int value.crew_count);
+    ("status", Toml.String (status_to_string value.status));
+    ("home", berth_to_toml value.home);
+    ("tags", Toml.Array (vec_to_list value.tags |> List.map (fun item -> Toml.String item)));
+    ("scores", Toml.Array (Array.to_list value.scores |> List.map (fun item -> Toml.Int item)));
+    ("stops", Toml.Array (vec_to_list value.stops |> List.map stop_to_toml));
+    ("mirrors", Toml.Array (Array.to_list value.mirrors |> List.map stop_to_toml));
+  ]
 
 let bool_of_toml = function
   | Toml.Bool value -> value
@@ -373,21 +365,26 @@ let status_of_string = function
 
 let stop_of_toml = fun value ->
   let table = table_of_toml value in
-  ({
+  (
+    {
       island = string_of_toml (field table "island");
-      supplies = int_of_toml (field table "supplies");
-    }: stop)
+      supplies = int_of_toml (field table "supplies")
+    }:
+      stop
+  )
 
 let berth_of_toml = fun value ->
   let table = table_of_toml value in
-  ({
-      island = string_of_toml (field table "island");
-      berth = int_of_toml (field table "berth");
-    }: berth)
+  (
+    { island = string_of_toml (field table "island"); berth = int_of_toml (field table "berth") }: berth
+  )
 
 let vec_of_list = fun values ->
   let vec = Vector.with_capacity (List.length values) in
-  List.iter (fun value -> Vector.push vec value) values;
+  List.iter
+    (fun value ->
+      Vector.push vec value)
+    values;
   vec
 
 let manifest_of_toml = fun value ->
@@ -398,26 +395,10 @@ let manifest_of_toml = fun value ->
       crew_count = int_of_toml (field table "crew_count");
       status = status_of_string (string_of_toml (field table "status"));
       home = berth_of_toml (field table "home");
-      tags =
-        field table "tags"
-        |> array_of_toml
-        |> List.map string_of_toml
-        |> vec_of_list;
-      scores =
-        field table "scores"
-        |> array_of_toml
-        |> List.map int_of_toml
-        |> Array.of_list;
-      stops =
-        field table "stops"
-        |> array_of_toml
-        |> List.map stop_of_toml
-        |> vec_of_list;
-      mirrors =
-        field table "mirrors"
-        |> array_of_toml
-        |> List.map stop_of_toml
-        |> Array.of_list;
+      tags = field table "tags" |> array_of_toml |> List.map string_of_toml |> vec_of_list;
+      scores = field table "scores" |> array_of_toml |> List.map int_of_toml |> Array.of_list;
+      stops = field table "stops" |> array_of_toml |> List.map stop_of_toml |> vec_of_list;
+      mirrors = field table "mirrors" |> array_of_toml |> List.map stop_of_toml |> Array.of_list;
     }: manifest)
 
 let equal_stop = fun (left: stop) (right: stop) ->
@@ -437,7 +418,14 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && List.for_all2 equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
   && List.for_all2 equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
 
-let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_repeat }: fixture_spec) ->
+let build_fixture = fun
+  ({
+      label;
+      tag_count;
+      score_count;
+      stop_count;
+      string_repeat
+    }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;
     emergency = false;
@@ -450,20 +438,22 @@ let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_rep
     mirrors = stops_array_of_count stop_count "mirror";
   }
   in
-  let encoded =
-    Serde_toml.to_string manifest_encode value
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
-  in
-  let parsed_with_std =
-    Toml.parse encoded
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to parse with Std.Data.Toml")
-  in
+  let encoded = Serde_toml.to_string manifest_encode value
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode") in
+  let parsed_with_std = Toml.parse encoded
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to parse with Std.Data.Toml") in
   let std_decoded = manifest_of_toml parsed_with_std in
   if not (equal_manifest value std_decoded) then
     panic ("serde_toml_bench: std decode did not match " ^ label ^ " fixture");
   let std_value = manifest_to_toml value in
   let std_rendered = Toml.to_string std_value in
-  { label; value; encoded; std_value; std_rendered }
+  {
+    label;
+    value;
+    encoded;
+    std_value;
+    std_rendered;
+  }
 
 let small_fixture_spec = {
   label = "small";
@@ -497,8 +487,7 @@ let bench_serde_decode_reader = fun fixture () ->
       manifest_decode
       (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
 
-let bench_std_parse = fun fixture () ->
-  ignore (Toml.parse fixture.encoded)
+let bench_std_parse = fun fixture () -> ignore (Toml.parse fixture.encoded)
 
 let bench_std_decode_typed = fun fixture () ->
   ignore
@@ -507,8 +496,7 @@ let bench_std_decode_typed = fun fixture () ->
     |> Result.expect ~msg:("expected " ^ fixture.label ^ " fixture to parse with Std.Data.Toml")
     |> manifest_of_toml)
 
-let bench_std_render = fun fixture () ->
-  ignore (Toml.to_string fixture.std_value)
+let bench_std_render = fun fixture () -> ignore (Toml.to_string fixture.std_value)
 
 let benchmark_suite = fun fixture ->
   let serde_size = human_size (String.length fixture.encoded) in
@@ -519,37 +507,36 @@ let benchmark_suite = fun fixture ->
     else
       large_bench_config
   in
-  Bench.
-    [
-      with_config
-        ~config
-        ("serde-toml encode in-memory " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_serde_encode_in_memory fixture);
-      with_config
-        ~config
-        ("serde-toml encode writer " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_serde_encode_writer fixture);
-      with_config
-        ~config
-        ("serde-toml decode in-memory " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_serde_decode_in_memory fixture);
-      with_config
-        ~config
-        ("serde-toml decode reader " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_serde_decode_reader fixture);
-      with_config
-        ~config
-        ("std-data-toml parse-only " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_std_parse fixture);
-      with_config
-        ~config
-        ("std-data-toml decode typed " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
-        (bench_std_decode_typed fixture);
-      with_config
-        ~config
-        ("std-data-toml render " ^ fixture.label ^ " tree (" ^ std_size ^ ")")
-        (bench_std_render fixture);
-    ]
+  Bench.[
+    with_config
+      ~config
+      ("serde-toml encode in-memory " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_serde_encode_in_memory fixture);
+    with_config
+      ~config
+      ("serde-toml encode writer " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_serde_encode_writer fixture);
+    with_config
+      ~config
+      ("serde-toml decode in-memory " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_serde_decode_in_memory fixture);
+    with_config
+      ~config
+      ("serde-toml decode reader " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_serde_decode_reader fixture);
+    with_config
+      ~config
+      ("std-data-toml parse-only " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_std_parse fixture);
+    with_config
+      ~config
+      ("std-data-toml decode typed " ^ fixture.label ^ " payload (" ^ serde_size ^ ")")
+      (bench_std_decode_typed fixture);
+    with_config
+      ~config
+      ("std-data-toml render " ^ fixture.label ^ " tree (" ^ std_size ^ ")")
+      (bench_std_render fixture);
+  ]
 
 let () =
   Actors.run

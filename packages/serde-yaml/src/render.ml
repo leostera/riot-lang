@@ -95,17 +95,23 @@ let is_inline_value = function
 
 let rec add_inline_value = fun buffer value ->
   match value with
-  | Null -> IO.Buffer.add_string buffer "null"
+  | Null ->
+      IO.Buffer.add_string buffer "null"
   | Bool value ->
       if value then
         IO.Buffer.add_string buffer "true"
       else
         IO.Buffer.add_string buffer "false"
-  | Int value -> IO.Buffer.add_string buffer (Int64.to_string value)
-  | Float value -> IO.Buffer.add_string buffer (float_to_string value)
-  | String value -> add_quoted_string buffer value
-  | Seq [] -> IO.Buffer.add_string buffer "[]"
-  | Map [] -> IO.Buffer.add_string buffer "{}"
+  | Int value ->
+      IO.Buffer.add_string buffer (Int64.to_string value)
+  | Float value ->
+      IO.Buffer.add_string buffer (float_to_string value)
+  | String value ->
+      add_quoted_string buffer value
+  | Seq [] ->
+      IO.Buffer.add_string buffer "[]"
+  | Map [] ->
+      IO.Buffer.add_string buffer "{}"
   | Tagged (tag, payload) ->
       IO.Buffer.add_char buffer '!';
       IO.Buffer.add_string buffer tag;
@@ -115,7 +121,8 @@ let rec add_inline_value = fun buffer value ->
           add_inline_value buffer payload
         )
   | Seq _
-  | Map _ -> panic "Render.add_inline_value: expected inline-capable YAML value"
+  | Map _ ->
+      panic "Render.add_inline_value: expected inline-capable YAML value"
 
 let rec render_value = fun buffer indent value ->
   match value with
@@ -136,14 +143,13 @@ let rec render_value = fun buffer indent value ->
           add_inline_value buffer value;
           IO.Buffer.add_char buffer '\n'
         )
-      else
-        (
-          add_indent buffer indent;
-          IO.Buffer.add_char buffer '!';
-          IO.Buffer.add_string buffer tag;
-          IO.Buffer.add_char buffer '\n';
-          render_value buffer (indent + 2) payload
-        )
+      else (
+        add_indent buffer indent;
+        IO.Buffer.add_char buffer '!';
+        IO.Buffer.add_string buffer tag;
+        IO.Buffer.add_char buffer '\n';
+        render_value buffer (indent + 2) payload
+      )
   | Seq items ->
       List.iter
         (fun item ->
@@ -154,13 +160,12 @@ let rec render_value = fun buffer indent value ->
               add_inline_value buffer item;
               IO.Buffer.add_char buffer '\n'
             )
-          else
-            (
-              add_indent buffer indent;
-              IO.Buffer.add_char buffer '-';
-              IO.Buffer.add_char buffer '\n';
-              render_value buffer (indent + 2) item
-            ))
+          else (
+            add_indent buffer indent;
+            IO.Buffer.add_char buffer '-';
+            IO.Buffer.add_char buffer '\n';
+            render_value buffer (indent + 2) item
+          ))
         items
   | Map fields ->
       List.iter
@@ -174,11 +179,10 @@ let rec render_value = fun buffer indent value ->
               add_inline_value buffer value;
               IO.Buffer.add_char buffer '\n'
             )
-          else
-            (
-              IO.Buffer.add_char buffer '\n';
-              render_value buffer (indent + 2) value
-            ))
+          else (
+            IO.Buffer.add_char buffer '\n';
+            render_value buffer (indent + 2) value
+          ))
         fields
 
 let to_string = fun value ->

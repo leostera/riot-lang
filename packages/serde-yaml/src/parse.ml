@@ -82,11 +82,10 @@ let strip_comment = fun line ->
         )
       else if Char.equal current '#' then
         IO.Buffer.contents buffer
-      else
-        (
-          IO.Buffer.add_char buffer current;
-          loop (index + 1)
-        )
+      else (
+        IO.Buffer.add_char buffer current;
+        loop (index + 1)
+      )
   in
   loop 0
 
@@ -118,12 +117,12 @@ let preprocess = fun input ->
   let lines = List.rev !lines in
   let lines =
     match lines with
-    | { text = "---"; _ } :: rest -> rest
+    | { text="---"; _ } :: rest -> rest
     | _ -> lines
   in
   let lines =
     match List.rev lines with
-    | { text = "..."; _ } :: rest -> List.rev rest
+    | { text="..."; _ } :: rest -> List.rev rest
     | _ -> lines
   in
   List.iter
@@ -168,12 +167,10 @@ let parse_escape = fun text line_number index ->
             | 'A' .. 'F' as c -> 10 + Char.code c - Char.code 'A'
             | _ -> fail_line line_number "expected hex digit in unicode escape"
           in
-          let code =
-            (hex_value text.[index + 1] lsl 12)
-            lor (hex_value text.[index + 2] lsl 8)
-            lor (hex_value text.[index + 3] lsl 4)
-            lor hex_value text.[index + 4]
-          in
+          let code = (hex_value text.[index + 1] lsl 12)
+          lor (hex_value text.[index + 2] lsl 8)
+          lor (hex_value text.[index + 3] lsl 4)
+          lor hex_value text.[index + 4] in
           ((Kernel.Uchar.of_int code |> Kernel.Uchar.to_char), index + 5)
     | _ -> fail_line line_number "unsupported escape sequence"
 
@@ -188,7 +185,8 @@ let parse_double_quoted = fun text line_number start ->
         fail_line line_number "unterminated double-quoted string"
       else
         match String.unsafe_get text index with
-        | '"' -> (IO.Buffer.contents buffer, index + 1)
+        | '"' ->
+            (IO.Buffer.contents buffer, index + 1)
         | '\\' ->
             let escaped, next = parse_escape text line_number (index + 1) in
             IO.Buffer.add_char buffer escaped;
@@ -216,11 +214,10 @@ let parse_single_quoted = fun text line_number start ->
           )
         else
           (IO.Buffer.contents buffer, index + 1)
-      else
-        (
-          IO.Buffer.add_char buffer text.[index];
-          loop (index + 1)
-        )
+      else (
+        IO.Buffer.add_char buffer text.[index];
+        loop (index + 1)
+      )
     in
     loop (start + 1)
 
@@ -254,10 +251,7 @@ let find_mapping_separator = fun text line_number ->
         let next = index + 1 in
         if Int.compare next length >= 0 then
           Some index
-        else if
-          Char.equal text.[next] ' '
-          || Char.equal text.[next] '\t'
-        then
+        else if Char.equal text.[next] ' ' || Char.equal text.[next] '\t' then
           Some index
         else
           scan (index + 1) false false
@@ -291,9 +285,7 @@ let split_mapping_head = fun line ->
   | None -> None
   | Some index ->
       let key = parse_key (String.sub line.text 0 index) line.number in
-      let rest =
-        String.sub line.text (index + 1) (String.length line.text - index - 1) |> String.trim
-      in
+      let rest = String.sub line.text (index + 1) (String.length line.text - index - 1) |> String.trim in
       Some (key, rest)
 
 let parse_float = fun line_number value ->

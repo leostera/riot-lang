@@ -76,8 +76,7 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
     (fun value ->
       items := with_current state value
         (fun () ->
-          decode.run backend state)
-      :: !items)
+          decode.run backend state) :: !items)
     values;
   Array.of_list (List.rev !items)
 
@@ -129,10 +128,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
       match array__get cases index with
       | De.Unit (case_tag, result) ->
           if String.equal tag case_tag && (
-            match payload with
-            | Document.Table table -> Document.table_is_empty table
-            | _ -> false
-          ) then
+              match payload with
+              | Document.Table table -> Document.table_is_empty table
+              | _ -> false
+            ) then
             result
           else
             find_newtype tag payload (index + 1)
@@ -143,13 +142,15 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
             find_newtype tag payload (index + 1)
   in
   match state.current with
-  | Document.String tag -> find_unit tag 0
+  | Document.String tag ->
+      find_unit tag 0
   | Document.Table table -> (
       match Document.table_singleton table with
       | Some (tag, payload) -> find_newtype tag payload 0
       | None -> invalid_field_type "variant"
     )
-  | _ -> invalid_field_type "variant"
+  | _ ->
+      invalid_field_type "variant"
 
 and backend: state De.backend = {
   bool =

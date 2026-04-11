@@ -133,24 +133,27 @@ let mode_decode = De.variant
   ]
 
 let mode_encode = Ser.variant
-  [
-    Ser.Variant.unit "Idle"
-      (function
-      | Idle -> true
-      | _ -> false);
-    Ser.Variant.newtype "Named" Ser.string
-      (function
-      | Named value -> Some value
-      | _ -> None);
-    Ser.Variant.newtype "Counted" Ser.int
-      (function
-      | Counted value -> Some value
-      | _ -> None);
-    Ser.Variant.newtype "Sampled" Ser.float
-      (function
-      | Sampled value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "Idle"
+      (
+        function
+        | Idle -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Named" Ser.string
+      (
+        function
+        | Named value -> Some value
+        | _ -> None
+      ); Ser.Variant.newtype "Counted" Ser.int
+      (
+        function
+        | Counted value -> Some value
+        | _ -> None
+      ); Ser.Variant.newtype "Sampled" Ser.float
+      (
+        function
+        | Sampled value -> Some value
+        | _ -> None
+      ); ]
 
 let companion_decode = De.variant
   [
@@ -159,20 +162,21 @@ let companion_decode = De.variant
   ]
 
 let companion_encode = Ser.variant
-  [
-    Ser.Variant.unit "NewsCoo"
-      (function
-      | NewsCoo -> true
-      | _ -> false);
-    Ser.Variant.newtype "Reindeer" Ser.string
-      (function
-      | Reindeer value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "NewsCoo"
+      (
+        function
+        | NewsCoo -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Reindeer" Ser.string
+      (
+        function
+        | Reindeer value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -183,13 +187,12 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let sample_decode =
   De.record_mut ~fields:sample_fields
@@ -259,9 +262,9 @@ let sample_decode =
             }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode =
-  Ser.record
-    (Ser.fields
+let sample_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ready" Ser.bool (fun (value: sample) -> value.ready);
         Ser.field "count" Ser.int (fun (value: sample) -> value.count);
@@ -276,7 +279,8 @@ let sample_encode =
         Ser.field "home" berth_encode (fun (value: sample) -> value.home);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-      ])
+      ]
+  )
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -359,7 +363,7 @@ let print_sample = fun (value: sample) ->
       " }";
     ]
 
-let finite_float_limit = 1.0e12
+let finite_float_limit = 1.0e 12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
@@ -430,19 +434,17 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
     (fun _ctx ->
       match Property.check ~config prop with
       | Property.Success -> Ok ()
-      | Property.Failure { counter_example; shrink_steps } ->
-          Error
-            (String.concat
-              "\n"
-              [
-                "Property failed";
-                "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
-                counter_example;
-              ])
-      | Property.Error { exception_; backtrace } ->
-          Error (String.concat "\n" [ "Exception raised:"; Exception.to_string exception_; backtrace; ])
-      | Property.Assumption_violated ->
-          Error "Too many test cases violated assumptions (>10x test count)")
+      | Property.Failure { counter_example; shrink_steps } -> Error (String.concat
+        "\n"
+        [
+          "Property failed";
+          "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
+          counter_example;
+        ])
+      | Property.Error { exception_; backtrace } -> Error (String.concat
+        "\n"
+        [ "Exception raised:"; Exception.to_string exception_; backtrace; ])
+      | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->
   match Serde_yaml.to_string encode value with

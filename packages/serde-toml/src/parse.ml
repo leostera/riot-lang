@@ -20,6 +20,7 @@ module Builder = struct
     | Array of value Vector.t
     | Array_of_tables of value Vector.t
     | Table of table
+
   and table = {
     order: string Vector.t;
     values: (string, value) HashMap.t;
@@ -35,10 +36,14 @@ module Builder = struct
 
   let rec of_toml = fun (value: Toml_value.t) : value ->
     match value with
-    | Toml_value.String value -> String value
-    | Toml_value.Int value -> Int value
-    | Toml_value.Float value -> Float value
-    | Toml_value.Bool value -> Bool value
+    | Toml_value.String value ->
+        String value
+    | Toml_value.Int value ->
+        Int value
+    | Toml_value.Float value ->
+        Float value
+    | Toml_value.Bool value ->
+        Bool value
     | Toml_value.Array values ->
         let items = values |> List.map of_toml |> Vector.of_list in
         let ok = ref true in
@@ -64,12 +69,12 @@ module Builder = struct
     | Int value -> Toml_value.Int value
     | Float value -> Toml_value.Float value
     | Bool value -> Toml_value.Bool value
-    | Array values ->
-        Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map to_toml)
-    | Array_of_tables values ->
-        Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map to_toml)
-    | Table table ->
-        Toml_value.Table (table_items table)
+    | Array values -> Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map to_toml)
+    | Array_of_tables values -> Toml_value.Array (values
+    |> Vector.to_array
+    |> Array.to_list
+    |> List.map to_toml)
+    | Table table -> Toml_value.Table (table_items table)
 
   and table_items = fun table ->
     let items = ref [] in
@@ -97,7 +102,8 @@ module Builder = struct
     else
       None
 
-  let table_is_empty = fun table -> Int.equal (Vector.len table.order) 0
+  let table_is_empty = fun table ->
+    Int.equal (Vector.len table.order) 0
 
   let array_len = function
     | Array values
@@ -110,7 +116,8 @@ module Builder = struct
     | Array_of_tables values -> Vector.iter fn values
     | _ -> panic "Parse.Builder.array_iter: expected array value"
 
-  let get_field = fun table key -> HashMap.get table.values key
+  let get_field = fun table key ->
+    HashMap.get table.values key
 
   let expect_table = fun key value ->
     match value with
@@ -134,7 +141,8 @@ module Builder = struct
           values
         else
           fail ("expected array-of-tables at key '" ^ key ^ "'")
-    | _ -> fail ("expected array-of-tables at key '" ^ key ^ "'")
+    | _ ->
+        fail ("expected array-of-tables at key '" ^ key ^ "'")
 end
 
 let get_or_create_table = fun table key ->
@@ -172,10 +180,8 @@ let append_array_of_tables_item = fun (values: Builder.value Vector.t) ->
 let rec append_array_table = fun table path ->
   match path with
   | [] -> fail "empty array-of-tables path"
-  | [ key ] ->
-      append_array_of_tables_item (get_or_create_array_of_tables table key)
-  | key :: rest ->
-      append_array_table (get_or_create_table table key) rest
+  | [ key ] -> append_array_of_tables_item (get_or_create_array_of_tables table key)
+  | key :: rest -> append_array_table (get_or_create_table table key) rest
 
 let strip_prefix = fun ~prefix path ->
   let rec loop prefix path =
@@ -571,45 +577,45 @@ let parse_value_text = fun input ->
     let buffer = IO.Buffer.create 32 in
     let rec loop () =
       if at_end () then
-          fail "unterminated string"
+        fail "unterminated string"
       else
         match current_char () with
         | '"' ->
-          advance ();
-          Builder.String (IO.Buffer.contents buffer)
+            advance ();
+            Builder.String (IO.Buffer.contents buffer)
         | '\\' ->
-          advance ();
-          if at_end () then
-            fail "unterminated escape";
-          (
-            match current_char () with
-            | '"' ->
-                IO.Buffer.add_char buffer '"'
-            | '\\' ->
-                IO.Buffer.add_char buffer '\\'
-            | 'b' ->
-                IO.Buffer.add_char buffer '\b'
-            | 'f' ->
-                IO.Buffer.add_char buffer '\012'
-            | 'n' ->
-                IO.Buffer.add_char buffer '\n'
-            | 'r' ->
-                IO.Buffer.add_char buffer '\r'
-            | 't' ->
-                IO.Buffer.add_char buffer '\t'
-            | 'u' ->
-                advance ();
-                IO.Buffer.add_utf_8_uchar buffer (Kernel.Uchar.of_int (read_hex4 ()));
-                pos := !pos - 1
-            | _ ->
-                fail "unsupported string escape"
-          );
-          advance ();
-          loop ()
+            advance ();
+            if at_end () then
+              fail "unterminated escape";
+            (
+              match current_char () with
+              | '"' ->
+                  IO.Buffer.add_char buffer '"'
+              | '\\' ->
+                  IO.Buffer.add_char buffer '\\'
+              | 'b' ->
+                  IO.Buffer.add_char buffer '\b'
+              | 'f' ->
+                  IO.Buffer.add_char buffer '\012'
+              | 'n' ->
+                  IO.Buffer.add_char buffer '\n'
+              | 'r' ->
+                  IO.Buffer.add_char buffer '\r'
+              | 't' ->
+                  IO.Buffer.add_char buffer '\t'
+              | 'u' ->
+                  advance ();
+                  IO.Buffer.add_utf_8_uchar buffer (Kernel.Uchar.of_int (read_hex4 ()));
+                  pos := !pos - 1
+              | _ ->
+                  fail "unsupported string escape"
+            );
+            advance ();
+            loop ()
         | current ->
-          IO.Buffer.add_char buffer current;
-          advance ();
-          loop ()
+            IO.Buffer.add_char buffer current;
+            advance ();
+            loop ()
     in
     loop ()
   and parse_array () =
@@ -623,26 +629,26 @@ let parse_value_text = fun input ->
       else
         match current_char () with
         | ']' ->
-          advance ();
-          Builder.Array items
+            advance ();
+            Builder.Array items
         | _ ->
-          let item = parse_value () in
-          Vector.push items item;
-          skip_ws ();
-          if at_end () then
-            fail "expected ',' or ']' in array"
-          else
-            (
-              match current_char () with
-              | ',' ->
-                  advance ();
-                  loop ()
-              | ']' ->
-                  advance ();
-                  Builder.Array items
-              | _ ->
-                  fail "expected ',' or ']' in array"
-            )
+            let item = parse_value () in
+            Vector.push items item;
+            skip_ws ();
+            if at_end () then
+              fail "expected ',' or ']' in array"
+            else
+              (
+                match current_char () with
+                | ',' ->
+                    advance ();
+                    loop ()
+                | ']' ->
+                    advance ();
+                    Builder.Array items
+                | _ ->
+                    fail "expected ',' or ']' in array"
+              )
     in
     loop ()
   and parse_inline_table () =
@@ -656,50 +662,51 @@ let parse_value_text = fun input ->
       else
         match current_char () with
         | '}' ->
-          advance ();
-          Builder.Table items
+            advance ();
+            Builder.Table items
         | _ ->
-          let assignment_start =
-            match find_non_ws input ~start:!pos with
-            | Some index -> index
-            | None -> fail "expected key in inline table"
-          in
-          let eq_index =
-            match find_assignment_from input ~start:assignment_start ~stop:len with
-            | Some index -> index
-            | None -> fail "expected '=' in inline table"
-          in
-          let key_text = String.sub input assignment_start (eq_index - assignment_start) |> String.trim in
-          pos := eq_index + 1;
-          skip_ws ();
-          let value = parse_value () in
-          set_table_path items (parse_key_path key_text) value;
-          skip_ws ();
-          if at_end () then
-            fail "expected ',' or '}' in inline table"
-          else
-            (
-              match current_char () with
-              | ',' ->
-                  advance ();
-                  loop ()
-              | '}' ->
-                  advance ();
-                  Builder.Table items
-              | _ ->
-                  fail "expected ',' or '}' in inline table"
-            )
+            let assignment_start =
+              match find_non_ws input ~start:!pos with
+              | Some index -> index
+              | None -> fail "expected key in inline table"
+            in
+            let eq_index =
+              match find_assignment_from input ~start:assignment_start ~stop:len with
+              | Some index -> index
+              | None -> fail "expected '=' in inline table"
+            in
+            let key_text = String.sub input assignment_start (eq_index - assignment_start)
+            |> String.trim in
+            pos := eq_index + 1;
+            skip_ws ();
+            let value = parse_value () in
+            set_table_path items (parse_key_path key_text) value;
+            skip_ws ();
+            if at_end () then
+              fail "expected ',' or '}' in inline table"
+            else
+              (
+                match current_char () with
+                | ',' ->
+                    advance ();
+                    loop ()
+                | '}' ->
+                    advance ();
+                    Builder.Table items
+                | _ ->
+                    fail "expected ',' or '}' in inline table"
+              )
     in
     loop ()
   and parse_scalar () =
     let start = !pos in
     let rec scan () =
       if at_end () then
-          ()
+        ()
       else
         match current_char () with
         | (',' | ']' | '}') ->
-          ()
+            ()
         | current when is_ws current ->
             ()
         | _ ->
@@ -752,11 +759,7 @@ let parse_value_text = fun input ->
 
 type context =
   | Table_context of Builder.table
-  | Array_item_context of {
-      array_path: string list;
-      item: Builder.table;
-      current: Builder.table;
-    }
+  | Array_item_context of { array_path: string list; item: Builder.table; current: Builder.table }
 
 let iter_lines = fun content fn ->
   let len = String.length content in
@@ -789,25 +792,25 @@ let parse_document = fun content ->
     in
     let assign path value =
       match !context with
-      | Table_context table ->
-          set_table_path table path value
-      | Array_item_context { current; _ } ->
-          set_table_path current path value
+      | Table_context table -> set_table_path table path value
+      | Array_item_context { current; _ } -> set_table_path current path value
     in
     iter_lines content
       (fun line_number ~start ~stop ->
         let stop = comment_cutoff content ~start ~stop in
         let (start, stop) = trim_bounds content ~start ~stop in
         if Int.compare start stop < 0 then
-          if Int.compare (stop - start) 4 >= 0
-             && Char.equal (String.unsafe_get content start) '['
-             && Char.equal (String.unsafe_get content (start + 1)) '['
+          if
+            Int.compare (stop - start) 4 >= 0
+            && Char.equal (String.unsafe_get content start) '['
+            && Char.equal (String.unsafe_get content (start + 1)) '['
           then
             (
-              if not (
-                Char.equal (String.unsafe_get content (stop - 2)) ']'
-                && Char.equal (String.unsafe_get content (stop - 1)) ']'
-              ) then
+              if
+                not
+                  (Char.equal (String.unsafe_get content (stop - 2)) ']'
+                  && Char.equal (String.unsafe_get content (stop - 1)) ']')
+              then
                 fail_line line_number "unterminated array-of-tables header";
               let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
               let path = parse_cached_key_path inner in
@@ -820,14 +823,26 @@ let parse_document = fun content ->
                     match strip_prefix ~prefix:array_path path with
                     | Some relative when not (List.is_empty relative) && Ptr.equal current item ->
                         let nested = append_array_table item relative in
-                        context := Array_item_context { array_path = path; item = nested; current = nested }
+                        context := Array_item_context {
+                          array_path = path;
+                          item = nested;
+                          current = nested
+                        }
                     | _ ->
                         let nested = append_array_table root path in
-                        context := Array_item_context { array_path = path; item = nested; current = nested }
+                        context := Array_item_context {
+                          array_path = path;
+                          item = nested;
+                          current = nested
+                        }
                   )
                 | Table_context _ ->
                     let nested = append_array_table root path in
-                        context := Array_item_context { array_path = path; item = nested; current = nested }
+                    context := Array_item_context {
+                      array_path = path;
+                      item = nested;
+                      current = nested
+                    }
               )
             )
           else if Char.equal (String.unsafe_get content start) '[' then
@@ -845,8 +860,7 @@ let parse_document = fun content ->
                     | Some relative when not (List.is_empty relative) ->
                         let current = ensure_table_path item relative in
                         Array_item_context { array_path; item; current }
-                    | _ ->
-                        Table_context (ensure_table_path root path)
+                    | _ -> Table_context (ensure_table_path root path)
                   )
                 | Table_context _ -> Table_context (ensure_table_path root path)
               in
@@ -869,10 +883,8 @@ let parse_document = fun content ->
 
 let from_string_document = fun content ->
   match parse_document content with
-  | Ok document ->
-      Ok (Builder.Table document)
-  | Error err ->
-      Error err
+  | Ok document -> Ok (Builder.Table document)
+  | Error err -> Error err
 
 let from_string = fun content ->
   match from_string_document content with

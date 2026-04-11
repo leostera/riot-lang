@@ -57,7 +57,12 @@ let map_singleton = function
 let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun state decode ->
   match state.current with
   | Yaml_value.Null -> None
-  | value -> Some (with_current state value (fun () -> decode.run backend state))
+  | value ->
+      Some (
+        with_current state value
+          (fun () ->
+            decode.run backend state)
+      )
 
 and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let values = expect_seq state.current in
@@ -65,7 +70,11 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
   List.iter
     (fun value ->
       Vector.push result
-        (with_current state value (fun () -> decode.run backend state)))
+        (
+          with_current state value
+            (fun () ->
+              decode.run backend state)
+        ))
     values;
   result
 
@@ -74,7 +83,9 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   let items = ref [] in
   List.iter
     (fun value ->
-      items := with_current state value (fun () -> decode.run backend state) :: !items)
+      items := with_current state value
+        (fun () ->
+          decode.run backend state) :: !items)
     values;
   Array.of_list (List.rev !items)
 
@@ -143,7 +154,8 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
             find_newtype tag payload (index + 1)
   in
   match state.current with
-  | Yaml_value.String tag -> find_unit tag None 0
+  | Yaml_value.String tag ->
+      find_unit tag None 0
   | Yaml_value.Tagged (tag, payload) -> (
       match payload with
       | Yaml_value.Null -> (
@@ -157,7 +169,8 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
       | Some (tag, payload) -> find_newtype tag payload 0
       | None -> invalid_field_type "variant"
     )
-  | _ -> invalid_field_type "variant"
+  | _ ->
+      invalid_field_type "variant"
 
 and backend: state De.backend = {
   bool =

@@ -12,7 +12,7 @@ let composite_examples = 50_000
 
 let io_chunk_size = 5
 
-let finite_float_limit = 1.0e12
+let finite_float_limit = 1.0e 12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
@@ -55,8 +55,7 @@ type 'value box_builder = {
 let box_fields = De.fields [ De.field "value" Field_value ]
 
 let box_decode = fun decode ->
-  De.record_mut ~fields:box_fields
-    ~create:(fun () : 'value box_builder -> { value = None })
+  De.record_mut ~fields:box_fields ~create:(fun () : 'value box_builder -> { value = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Field_value -> builder.value <- Some (De.read reader decode)
@@ -158,24 +157,26 @@ let mode_decode = De.variant
   ]
 
 let mode_encode = Ser.variant
-  [
-    Ser.Variant.unit "Captain"
-      (function
-      | Captain -> true
-      | _ -> false);
-    Ser.Variant.unit "Doctor"
-      (function
-      | Doctor -> true
-      | _ -> false);
-    Ser.Variant.newtype "Navigator" Ser.string
-      (function
-      | Navigator value -> Some value
-      | _ -> None);
-  ]
+  [ Ser.Variant.unit "Captain"
+      (
+        function
+        | Captain -> true
+        | _ -> false
+      ); Ser.Variant.unit "Doctor"
+      (
+        function
+        | Doctor -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Navigator" Ser.string
+      (
+        function
+        | Navigator value -> Some value
+        | _ -> None
+      ); ]
 
 let berth_decode =
-  De.record_mut ~fields:berth_fields
-    ~create:(fun () : berth_builder -> { island = None; berth = None })
+  De.record_mut ~fields:berth_fields ~create:(fun () : berth_builder ->
+    { island = None; berth = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Berth_island -> builder.island <- Some (De.read reader De.string)
@@ -186,13 +187,12 @@ let berth_decode =
       | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
-let berth_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "island" Ser.string (fun (value: berth) -> value.island);
-        Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
-      ])
+let berth_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+      Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
+    ])
 
 let sample_decode =
   De.record_mut ~fields:sample_fields
@@ -258,9 +258,9 @@ let sample_decode =
             }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode =
-  Ser.record
-    (Ser.fields
+let sample_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ready" Ser.bool (fun (value: sample) -> value.ready);
         Ser.field "count" Ser.int (fun (value: sample) -> value.count);
@@ -274,7 +274,8 @@ let sample_encode =
         Ser.field "home" berth_encode (fun (value: sample) -> value.home);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-      ])
+      ]
+  )
 
 let print_mode = function
   | Captain -> "Captain"
@@ -305,8 +306,7 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && left.scores = right.scores
 
 let print_sample = fun (value: sample) ->
-  String.concat
-    ""
+  String.concat ""
     [
       "{ ready = ";
       Bool.to_string value.ready;
@@ -347,10 +347,7 @@ let mode_gen = Generator.frequency
 let mode_arb = Arbitrary.make ~print:print_mode mode_gen
 
 let berth_gen =
-  Generator.map2
-    (fun island berth -> ({ island; berth }: berth))
-    Generator.string
-    Generator.int
+  Generator.map2 (fun island berth -> ({ island; berth }: berth)) Generator.string Generator.int
 
 let berth_arb = Arbitrary.make ~print:print_berth berth_gen
 
@@ -402,7 +399,7 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
       | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->
-  let wrapped = ({ value }: 'value box) in
+  let wrapped: 'value box = { value } in
   match Serde_bson.to_string (box_encode encode) wrapped with
   | Ok encoded -> (
       match Serde_bson.from_string (box_decode decode) encoded with
