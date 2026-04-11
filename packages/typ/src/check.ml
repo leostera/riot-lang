@@ -42,13 +42,15 @@ let check_source = Batch.check_source
 
 type module_id = int
 
+type dependency_set_id = int
+
 type visible_module_name =
   | InternalName of Session.LocalModules.InternalName.t
   | AmbientName of Session.LocalModules.AmbientName.t
 
 type graph_source = {
   prepared: prepared_source;
-  required_local_ids: module_id array;
+  dependency_set_id: dependency_set_id;
   missing_external_names: Session.LocalModules.RequiredName.t array;
 }
 
@@ -77,6 +79,7 @@ type package_graph = {
   candidate_ids_by_required_name:
     (Session.LocalModules.RequiredName.t, module_id array) Collections.HashMap.t;
   external_ambient: external_ambient;
+  dependency_local_ids_by_set_id: module_id array array;
 }
 
 type engine_state = {
@@ -84,6 +87,12 @@ type engine_state = {
   public_module_typings: LoadedModules.t;
   local_typings_by_id: ModuleTypings.t option array;
   local_surfaces_by_id: local_module_surface option array;
+  source_analysis_surfaces_by_dependency_set_id: source_analysis_surface option array;
+}
+
+and source_analysis_surface = {
+  ambient: TypConfig.env;
+  ambient_type_decls: FileSummary.type_decl list;
 }
 
 let dedupe_module_ids_preserving_order = fun module_ids ->
@@ -233,6 +242,9 @@ let candidate_ids_by_required_name = fun groups ->
     by_name_rev;
   by_name
 
+let dependency_local_ids = fun graph dependency_set_id ->
+  graph.dependency_local_ids_by_set_id.(dependency_set_id)
+
 let best_matching_local_module_ids = fun graph (group: graph_group) ~required_module_name ->
   let best_depth = ref None in
   let matches_rev = ref [] in
@@ -340,8 +352,24 @@ let build_package_graph = fun ~config ~ordered_sources ->
   let graph = {
     groups;
     candidate_ids_by_required_name = candidate_ids_by_required_name groups;
-    external_ambient
+    external_ambient;
+    dependency_local_ids_by_set_id = [||]
   } in
+  let dependency_set_id_by_local_ids = Collections.HashMap.with_capacity
+    (List.length ordered_sources + 1) in
+  let next_dependency_set_id = ref 0 in
+  let dependency_local_ids_rev = ref [] in
+  let intern_dependency_set local_ids =
+    let local_ids_key = Array.to_list local_ids in
+    match Collections.HashMap.get dependency_set_id_by_local_ids local_ids_key with
+    | Some dependency_set_id -> dependency_set_id
+    | None ->
+        let dependency_set_id = !next_dependency_set_id in
+        next_dependency_set_id := dependency_set_id + 1;
+        dependency_local_ids_rev := Array.copy local_ids :: !dependency_local_ids_rev;
+        let _ = Collections.HashMap.insert dependency_set_id_by_local_ids local_ids_key dependency_set_id in
+        dependency_set_id
+  in
   let groups =
     Array.mapi
       (fun module_id (group: graph_group) ->
@@ -351,38 +379,45 @@ let build_package_graph = fun ~config ~ordered_sources ->
         let resolution_ids_by_required_name = source_requirements
         |> List.concat_map snd
         |> resolution_ids_by_required_name graph group in
-        let graph_sources =
-          source_requirements
-          |> List.map
-            (fun ((source: prepared_source), required_names) ->
-              let required_local_ids, missing_requirements = missing_requirements_of_source
-                ~config
-                ~resolution_ids_by_required_name
-                ~source
-                ~required_names in
-              let missing_external_names =
-                Session.MissingRequirements.requirements missing_requirements
-                |> List.filter_map
-                  (
-                    function
-                    | Session.MissingRequirements.MissingModuleSummary { module_name; _ } -> Some (Session.LocalModules.RequiredName.of_string
-                      module_name)
-                    | Session.MissingRequirements.MissingRootSource _
-                    | Session.MissingRequirements.LocalModuleCycle _ -> None
-                  )
-                |> Array.of_list
-              in
-              { prepared = source; required_local_ids; missing_external_names })
-        in
-        let dependency_ids = graph_sources
-        |> List.concat_map (fun (source: graph_source) -> source.required_local_ids |> Array.to_list)
+        let graph_sources_rev = ref [] in
+        let dependency_ids_rev = ref [] in
+        source_requirements |> List.iter
+          (fun ((source: prepared_source), required_names) ->
+            let required_local_ids, missing_requirements = missing_requirements_of_source
+              ~config
+              ~resolution_ids_by_required_name
+              ~source
+              ~required_names in
+            dependency_ids_rev := List.rev_append (Array.to_list required_local_ids) !dependency_ids_rev;
+            let missing_external_names =
+              Session.MissingRequirements.requirements missing_requirements
+              |> List.filter_map
+                (
+                  function
+                  | Session.MissingRequirements.MissingModuleSummary { module_name; _ } -> Some (Session.LocalModules.RequiredName.of_string
+                    module_name)
+                  | Session.MissingRequirements.MissingRootSource _
+                  | Session.MissingRequirements.LocalModuleCycle _ -> None
+                )
+              |> Array.of_list
+            in
+            let dependency_set_id = intern_dependency_set required_local_ids in
+            graph_sources_rev := { prepared = source; dependency_set_id; missing_external_names }
+            :: !graph_sources_rev);
+        let graph_sources = List.rev !graph_sources_rev in
+        let dependency_ids = !dependency_ids_rev
+        |> List.rev
         |> List.filter (fun dependency_id -> not (Int.equal dependency_id module_id))
         |> dedupe_module_ids_preserving_order
         |> Array.of_list in
         { group with sources = graph_sources; dependency_ids })
       groups
   in
-  { graph with groups }
+  {
+    graph
+    with groups;
+    dependency_local_ids_by_set_id = !dependency_local_ids_rev |> List.rev |> Array.of_list
+  }
 
 let cycle_module_ids = fun path repeated_id ->
   let rec loop seen = function
@@ -516,9 +551,27 @@ let local_surface_of_typings = fun (group: graph_group) module_typings : local_m
     (fun visible_name -> Session.ModuleSurface.qualify_type_decls ~module_name:visible_name type_decls) in
   { ambient_exports; ambient_type_decls }
 
-let source_config = fun ~graph ~state ~base_config (source: graph_source) ->
+let build_source_analysis_surface = fun ~graph ~state ~base_config dependency_set_id ->
+  let local_exports_rev = ref [] in
+  let local_type_decls_rev = ref [] in
+  dependency_local_ids graph dependency_set_id |> Array.iter
+    (fun module_id ->
+      match state.local_surfaces_by_id.(module_id) with
+      | Some surface ->
+          local_exports_rev := List.rev_append surface.ambient_exports !local_exports_rev;
+          local_type_decls_rev := List.rev_append surface.ambient_type_decls !local_type_decls_rev
+      | None -> ());
+  let ambient = TypConfig.(base_config.ambient)
+  @ graph.external_ambient.ambient_exports
+  @ List.rev !local_exports_rev in
+  let ambient_type_decls = TypConfig.(base_config.ambient_type_decls)
+  @ graph.external_ambient.ambient_type_decls
+  @ List.rev !local_type_decls_rev in
+  { ambient; ambient_type_decls }
+
+let source_analysis_setup = fun ~graph ~state ~base_config (source: graph_source) ->
   let module_name = module_name_of_internal_name source.prepared.internal_module_name in
-  let unavailable_local_ids = source.required_local_ids
+  let unavailable_local_ids = dependency_local_ids graph source.dependency_set_id
   |> Array.to_list
   |> List.filter (fun module_id -> Option.is_none state.local_typings_by_id.(module_id)) in
   let missing_requirements = (source.missing_external_names
@@ -542,25 +595,18 @@ let source_config = fun ~graph ~state ~base_config (source: graph_source) ->
     requirements = Session.MissingRequirements.of_list missing_requirements
   })
   | [] ->
-      let local_exports_rev = ref [] in
-      let local_type_decls_rev = ref [] in
-      source.required_local_ids |> Array.iter
-        (fun module_id ->
-          match state.local_surfaces_by_id.(module_id) with
-          | Some surface ->
-              local_exports_rev := List.rev_append surface.ambient_exports !local_exports_rev;
-              local_type_decls_rev := List.rev_append surface.ambient_type_decls !local_type_decls_rev
-          | None -> ());
-      let ambient = TypConfig.(base_config.ambient)
-      @ graph.external_ambient.ambient_exports
-      @ List.rev !local_exports_rev in
-      let ambient_type_decls = TypConfig.(base_config.ambient_type_decls)
-      @ graph.external_ambient.ambient_type_decls
-      @ List.rev !local_type_decls_rev in
+      let source_surface =
+        match state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) with
+        | Some source_surface -> source_surface
+        | None ->
+            let source_surface = build_source_analysis_surface ~graph ~state ~base_config source.dependency_set_id in
+            state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) <- Some source_surface;
+            source_surface
+      in
       Ok (base_config
       |> TypConfig.with_loaded_module_index ~loaded_modules:state.loaded_modules
-      |> TypConfig.with_ambient ~ambient
-      |> TypConfig.with_ambient_type_decls ~ambient_type_decls)
+      |> TypConfig.with_ambient ~ambient:source_surface.ambient
+      |> TypConfig.with_ambient_type_decls ~ambient_type_decls:source_surface.ambient_type_decls)
 
 let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
   let analyzed_sources =
@@ -570,7 +616,7 @@ let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
         match result with
         | Error _ as err -> err
         | Ok analyzed_sources -> (
-            match source_config ~graph ~state ~base_config:config source with
+            match source_analysis_setup ~graph ~state ~base_config:config source with
             | Error _ as err -> err
             | Ok source_config ->
                 let analysis = Session.SourceAnalysis.analyze ~config:source_config source.prepared.source in
@@ -591,8 +637,12 @@ let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~order
         loaded_modules = LoadedModules.copy TypConfig.(config.loaded_modules);
         public_module_typings = LoadedModules.empty;
         local_typings_by_id = Array.make (Array.length graph.groups) None;
-        local_surfaces_by_id = Array.make (Array.length graph.groups) None
-      } in
+        local_surfaces_by_id = Array.make (Array.length graph.groups) None;
+        source_analysis_surfaces_by_dependency_set_id = Array.make
+          (Array.length graph.dependency_local_ids_by_set_id)
+          None;
+      }
+      in
       let result =
         ordered_group_ids
         |> List.fold_left
