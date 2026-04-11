@@ -65,7 +65,62 @@ type literal =
   | Bool of bool
   | Number of literal_number
   | String of string
-type expr_call = {
+
+type unary_operator =
+  | Not
+  | Negate
+
+type binary_operator =
+  | Add
+  | Subtract
+  | Multiply
+  | Divide
+  | Modulo
+  | Equal
+  | Not_equal
+  | Less_than
+  | Less_or_equal
+  | Greater_than
+  | Greater_or_equal
+
+type expr =
+  | Literal of literal
+  | Global of expr_global
+  | Identifier of Core.Entity_id.t
+  | Imported of import_requirement
+  | Runtime_helper of runtime_helper
+  | Unary of expr_unary
+  | Binary of expr_binary
+  | Array of expr_array
+  | Function of expr_function
+  | Member of expr_member
+  | Index of expr_index
+  | Call of expr_call
+  | Conditional of expr_conditional
+  | Assignment of expr_assignment
+
+and expr_global = {
+  name: string;
+}
+
+and expr_unary = {
+  operator: unary_operator;
+  operand: expr;
+}
+
+and expr_binary = {
+  operator: binary_operator;
+  left: expr;
+  right: expr;
+}
+
+and expr_array_element =
+  | Item of expr
+  | Spread of expr
+
+and expr_array = expr_array_element list
+
+and expr_call = {
   callee: expr;
   arguments: expr list;
 }
@@ -91,16 +146,10 @@ and expr_assignment = {
   value: expr;
 }
 
-and expr =
-  | Literal of literal
-  | Identifier of Core.Entity_id.t
-  | Imported of import_requirement
-  | Runtime_helper of runtime_helper
-  | Function of expr_function
-  | Member of expr_member
-  | Call of expr_call
-  | Conditional of expr_conditional
-  | Assignment of expr_assignment
+and expr_index = {
+  object_: expr;
+  index: expr;
+}
 
 and declaration_kind =
   | Const
@@ -189,7 +238,44 @@ module Literal: sig
   val to_json: t -> Json.t
 end
 
+module Operator: sig
+  type unary = unary_operator =
+    | Not
+    | Negate
+  type binary = binary_operator =
+    | Add
+    | Subtract
+    | Multiply
+    | Divide
+    | Modulo
+    | Equal
+    | Not_equal
+    | Less_than
+    | Less_or_equal
+    | Greater_than
+    | Greater_or_equal
+  val unary_to_json: unary -> Json.t
+
+  val binary_to_json: binary -> Json.t
+end
+
 module Expr: sig
+  type global = expr_global = {
+    name: string;
+  }
+  type unary = expr_unary = {
+    operator: unary_operator;
+    operand: expr;
+  }
+  type binary = expr_binary = {
+    operator: binary_operator;
+    left: expr;
+    right: expr;
+  }
+  type array_element = expr_array_element =
+    | Item of expr
+    | Spread of expr
+  type array = expr_array
   type call = expr_call = {
     callee: expr;
     arguments: expr list;
@@ -211,21 +297,42 @@ module Expr: sig
     target: Core.Entity_id.t;
     value: expr;
   }
+  type index = expr_index = {
+    object_: expr;
+    index: expr;
+  }
   type t = expr =
     | Literal of Literal.t
+    | Global of global
     | Identifier of Core.Entity_id.t
     | Imported of Imports.requirement
     | Runtime_helper of Runtime.t
+    | Unary of unary
+    | Binary of binary
+    | Array of array
     | Function of function_
     | Member of member
+    | Index of index
     | Call of call
     | Conditional of conditional
     | Assignment of assignment
+  val global_to_json: global -> Json.t
+
+  val unary_to_json: unary -> Json.t
+
+  val binary_to_json: binary -> Json.t
+
+  val array_element_to_json: array_element -> Json.t
+
+  val array_to_json: array -> Json.t
+
   val call_to_json: call -> Json.t
 
   val function_to_json: function_ -> Json.t
 
   val member_to_json: member -> Json.t
+
+  val index_to_json: index -> Json.t
 
   val conditional_to_json: conditional -> Json.t
 

@@ -49,16 +49,76 @@ let emit_literal = fun literal ->
   | Types.Literal.Number number -> emit_number number
   | Types.Literal.String value -> Json.to_string (Json.string value)
 
+let emit_unary_operator = fun operator ->
+  match operator with
+  | Types.Operator.Not -> "!"
+  | Types.Operator.Negate -> "-"
+
+let emit_binary_operator = fun operator ->
+  match operator with
+  | Types.Operator.Add -> "+"
+  | Types.Operator.Subtract -> "-"
+  | Types.Operator.Multiply -> "*"
+  | Types.Operator.Divide -> "/"
+  | Types.Operator.Modulo -> "%"
+  | Types.Operator.Equal -> "==="
+  | Types.Operator.Not_equal -> "!=="
+  | Types.Operator.Less_than -> "<"
+  | Types.Operator.Less_or_equal -> "<="
+  | Types.Operator.Greater_than -> ">"
+  | Types.Operator.Greater_or_equal -> ">="
+
+let rec emit_array_element = fun ~level env element ->
+  match element with
+  | Types.Expr.Item expr -> emit_expr ~level env expr
+  | Types.Expr.Spread expr -> format Format.[ str "..."; str (emit_expr ~level env expr) ]
+
 let rec emit_expr = fun ~level env expr ->
   match expr with
   | Types.Expr.Literal literal ->
       emit_literal literal
+  | Types.Expr.Global global ->
+      global.name
   | Types.Expr.Identifier entity_id ->
       emit_entity env entity_id
+  | Types.Expr.Unary unary ->
+      format
+        Format.[
+          str "(";
+          str (emit_unary_operator unary.operator);
+          str (emit_expr ~level env unary.operand);
+          str ")";
+        ]
+  | Types.Expr.Binary binary ->
+      format
+        Format.[
+          str "(";
+          str (emit_expr ~level env binary.left);
+          str " ";
+          str (emit_binary_operator binary.operator);
+          str " ";
+          str (emit_expr ~level env binary.right);
+          str ")";
+        ]
+  | Types.Expr.Array elements ->
+      format
+        Format.[
+          str "[";
+          str (String.concat ", " (List.map (emit_array_element ~level env) elements));
+          str "]";
+        ]
   | Types.Expr.Function function_ ->
       emit_function ~level env function_
   | Types.Expr.Member member ->
       format Format.[ str (emit_member_object ~level env member.object_); str "."; str member.property ]
+  | Types.Expr.Index index ->
+      format
+        Format.[
+          str (emit_member_object ~level env index.object_);
+          str "[";
+          str (emit_expr ~level env index.index);
+          str "]";
+        ]
   | Types.Expr.Call { callee; arguments } ->
       let arguments = arguments |> List.map (emit_expr ~level env) |> String.concat ", " in
       format Format.[ str (emit_call_callee ~level env callee); str "("; str arguments; str ")" ]
@@ -109,15 +169,19 @@ and emit_function = fun ~level env function_ ->
 
 and emit_member_object = fun ~level env expr ->
   match expr with
+  | Types.Expr.Global _
   | Types.Expr.Identifier _
   | Types.Expr.Member _
+  | Types.Expr.Index _
   | Types.Expr.Call _ -> emit_expr ~level env expr
   | _ -> format Format.[ str "("; str (emit_expr ~level env expr); str ")" ]
 
 and emit_call_callee = fun ~level env expr ->
   match expr with
+  | Types.Expr.Global _
   | Types.Expr.Identifier _
   | Types.Expr.Member _
+  | Types.Expr.Index _
   | Types.Expr.Call _ -> emit_expr ~level env expr
   | _ -> format Format.[ str "("; str (emit_expr ~level env expr); str ")" ]
 

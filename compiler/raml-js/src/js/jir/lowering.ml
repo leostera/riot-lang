@@ -75,15 +75,6 @@ let binder_of_binding = fun (binding: Core.Expr.binding) ->
 let binder_of_top_binding = fun (binding: Core.Binding.t) ->
   binder_of_entity ~fallback_name:binding.name binding.entity_id
 
-let unresolved_bare_name = fun entity_id ->
-  match Core.Entity_id.binding_id entity_id with
-  | Some _ -> None
-  | None ->
-      if Core.Entity_id.is_bare entity_id then
-        Core.Entity_id.bare_name entity_id
-      else
-        None
-
 let namespace_import_binder = fun module_ref ->
   Jir.Binder.generated
     ~namespace:([ "import" ] @ Jir.Modules.namespace_segments module_ref)
@@ -118,10 +109,94 @@ let iife = fun body ->
 let lower_direct_callee = fun entity_id ->
   lower_reference entity_id
 
+let lower_global = fun name ->
+  Jir.Expr.Global Jir.Expr.{ name }
+
+let lower_member = fun object_ property ->
+  Jir.Expr.Member Jir.Expr.{ object_; property }
+
+let lower_index = fun object_ index ->
+  Jir.Expr.Index Jir.Expr.{ object_; index }
+
+let lower_call = fun callee arguments ->
+  Jir.Expr.Call Jir.Expr.{ callee; arguments }
+
+let lower_unary = fun operator operand ->
+  Jir.Expr.Unary Jir.Expr.{ operator; operand }
+
+let lower_binary = fun operator left right ->
+  Jir.Expr.Binary Jir.Expr.{ operator; left; right }
+
+let lower_array = fun elements ->
+  Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
+
+let lower_string_constructor = fun value ->
+  lower_call (lower_global "String") [ value ]
+
+let lower_console_log = fun arguments ->
+  lower_call (lower_member (lower_global "console") "log") arguments
+
+let lower_console_error = fun arguments ->
+  lower_call (lower_member (lower_global "console") "error") arguments
+
+let lower_stdout_write = fun value ->
+  lower_call
+    (lower_member (lower_member (lower_global "process") "stdout") "write")
+    [ lower_string_constructor value ]
+
+let lower_stderr_write = fun value ->
+  lower_call
+    (lower_member (lower_member (lower_global "process") "stderr") "write")
+    [ lower_string_constructor value ]
+
 let lower_runtime_primitive_call = fun name arguments ->
   let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
   let arguments = Jir.Expr.Literal (Jir.Literal.String name) :: arguments in
-  Jir.Expr.Call Jir.Expr.{ callee; arguments }
+  lower_call callee arguments
+
+let lower_primitive_call = fun name arguments ->
+  match (name, arguments) with
+  | ("%tuple_make", arguments) ->
+      lower_array arguments
+  | ("%tuple_get", [ tuple; index ]) ->
+      lower_index tuple index
+  | ("%addfloat", [ left; right ])
+  | ("%addint", [ left; right ]) ->
+      lower_binary Jir.Operator.Add left right
+  | ("%subfloat", [ left; right ])
+  | ("%subint", [ left; right ]) ->
+      lower_binary Jir.Operator.Subtract left right
+  | ("%mulfloat", [ left; right ])
+  | ("%mulint", [ left; right ]) ->
+      lower_binary Jir.Operator.Multiply left right
+  | ("%divfloat", [ left; right ])
+  | ("%divint", [ left; right ]) ->
+      lower_binary Jir.Operator.Divide left right
+  | ("%modint", [ left; right ]) ->
+      lower_binary Jir.Operator.Modulo left right
+  | ("%eq", [ left; right ]) ->
+      lower_binary Jir.Operator.Equal left right
+  | ("%neq", [ left; right ]) ->
+      lower_binary Jir.Operator.Not_equal left right
+  | ("%lt", [ left; right ]) ->
+      lower_binary Jir.Operator.Less_than left right
+  | ("%le", [ left; right ]) ->
+      lower_binary Jir.Operator.Less_or_equal left right
+  | ("%gt", [ left; right ]) ->
+      lower_binary Jir.Operator.Greater_than left right
+  | ("%ge", [ left; right ]) ->
+      lower_binary Jir.Operator.Greater_or_equal left right
+  | ("%concatstring", [ left; right ]) ->
+      lower_binary Jir.Operator.Add (lower_string_constructor left) (lower_string_constructor right)
+  | ("%string_of_int", [ value ])
+  | ("%string_of_float", [ value ]) ->
+      lower_string_constructor value
+  | ("%sqrtfloat", [ value ]) ->
+      lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
+  | ("%trace", [ value ]) ->
+      lower_console_log [ value ]
+  | _ ->
+      lower_runtime_primitive_call name arguments
 
 let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
 
@@ -130,29 +205,62 @@ let lower_curried_function = fun (function_: Jir.Expr.function_) ->
   if arity <= 1 then
     Jir.Expr.Function function_
   else
-    Jir.Expr.Call Jir.Expr.{
-      callee = Jir.Expr.Runtime_helper (Jir.Runtime.make_curried ());
-      arguments = [
+    lower_call
+      (Jir.Expr.Runtime_helper (Jir.Runtime.make_curried ()))
+      [
         Jir.Expr.Function function_;
         Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int arity));
-      ];
-    }
+      ]
 
-let lower_builtin_call = fun builtin arguments ->
+let lower_builtin_call = fun entity_id builtin arguments ->
+  let fallback = fun () ->
+    let callee = lower_direct_callee entity_id in
+    lower_call callee arguments
+  in
   match (builtin: Builtins.direct_callee) with
-  | Runtime_helper helper ->
-      Jir.Expr.Call Jir.Expr.{ callee = Jir.Expr.Runtime_helper helper; arguments }
-  | Primitive primitive_name ->
-      lower_runtime_primitive_call primitive_name arguments
-  | Boolean_not -> (
+  | Console_log -> (
       match arguments with
-      | [ argument ] -> Jir.Expr.Conditional Jir.Expr.{
-        condition = argument;
-        then_ = lower_bool false;
-        else_ = lower_bool true;
-      }
-      | _ ->
-          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "not"); arguments }
+      | [ argument ] -> lower_console_log [ argument ]
+      | _ -> fallback ()
+    )
+  | Console_error -> (
+      match arguments with
+      | [ argument ] -> lower_console_error [ argument ]
+      | _ -> fallback ()
+    )
+  | Print_newline -> (
+      match arguments with
+      | []
+      | [ _ ] ->
+          lower_console_log [ Jir.Expr.Literal (Jir.Literal.String "") ]
+      | _ -> fallback ()
+    )
+  | Stdout_write -> (
+      match arguments with
+      | [ argument ] -> lower_stdout_write argument
+      | _ -> fallback ()
+    )
+  | Stderr_write -> (
+      match arguments with
+      | [ argument ] -> lower_stderr_write argument
+      | _ -> fallback ()
+    )
+  | String_constructor -> (
+      match arguments with
+      | [ argument ] -> lower_string_constructor argument
+      | _ -> fallback ()
+    )
+  | Math_sqrt -> (
+      match arguments with
+      | [ argument ] -> lower_call (lower_member (lower_global "Math") "sqrt") [ argument ]
+      | _ -> fallback ()
+    )
+  | Primitive primitive_name ->
+      lower_primitive_call primitive_name arguments
+  | Unary_operator operator -> (
+      match arguments with
+      | [ argument ] -> lower_unary operator argument
+      | _ -> fallback ()
     )
   | Boolean_and -> (
       match arguments with
@@ -161,8 +269,7 @@ let lower_builtin_call = fun builtin arguments ->
         then_ = right;
         else_ = lower_bool false;
       }
-      | _ ->
-          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "&&"); arguments }
+      | _ -> fallback ()
     )
   | Boolean_or -> (
       match arguments with
@@ -171,22 +278,21 @@ let lower_builtin_call = fun builtin arguments ->
         then_ = lower_bool true;
         else_ = right;
       }
-      | _ ->
-          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "||"); arguments }
+      | _ -> fallback ()
+    )
+  | Binary_operator operator -> (
+      match arguments with
+      | [ left; right ] -> lower_binary operator left right
+      | _ -> fallback ()
     )
 
 let lower_direct_call = fun entity_id arguments ->
-  match unresolved_bare_name entity_id with
-  | Some function_name -> (
-      match Builtins.classify_direct_callee function_name with
-      | Some builtin -> lower_builtin_call builtin arguments
-      | None ->
-          let callee = lower_direct_callee entity_id in
-          Jir.Expr.Call Jir.Expr.{ callee; arguments }
-    )
+  match Builtins.classify_direct_callee entity_id with
+  | Some builtin ->
+      lower_builtin_call entity_id builtin arguments
   | None ->
       let callee = lower_direct_callee entity_id in
-      Jir.Expr.Call Jir.Expr.{ callee; arguments }
+      lower_call callee arguments
 
 let rec lower_expr = fun expr ->
   match expr with
@@ -213,14 +319,11 @@ let rec lower_expr = fun expr ->
           Jir.Statement.Return (lower_expr sequence.second);
         ]
   | Core.Expr.Tuple tuple ->
-      lower_runtime_primitive_call "%tuple_make" (List.map lower_expr tuple)
+      lower_array (List.map lower_expr tuple)
   | Core.Expr.Tuple_get tuple_get ->
-      lower_runtime_primitive_call
-        "%tuple_get"
-        [
-          lower_expr tuple_get.tuple;
-          Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index));
-        ]
+      lower_index
+        (lower_expr tuple_get.tuple)
+        (Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index)))
   | Core.Expr.If_then_else if_then_else ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr if_then_else.condition;
@@ -228,7 +331,7 @@ let rec lower_expr = fun expr ->
         else_ = lower_expr if_then_else.else_;
       }
   | Core.Expr.Primitive primitive ->
-      lower_runtime_primitive_call primitive.name (List.map lower_expr primitive.arguments)
+      lower_primitive_call primitive.name (List.map lower_expr primitive.arguments)
 
 and lower_tail_expr = fun expr ->
   match expr with

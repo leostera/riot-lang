@@ -34,12 +34,29 @@ let resolve_alias = fun env entity ->
 
 let bind_alias = fun env alias target -> { env with aliases = Binding_map.add alias target env.aliases }
 
+let rec lower_array_element = fun env element ->
+  match element with
+  | Jir.Expr.Item expr -> Jir.Expr.Item (lower_expr env expr)
+  | Jir.Expr.Spread expr -> Jir.Expr.Spread (lower_expr env expr)
+
 let rec lower_expr = fun env expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Imported _
   | Jir.Expr.Runtime_helper _ -> expr
   | Jir.Expr.Identifier entity -> Jir.Expr.Identifier (resolve_alias env entity)
+  | Jir.Expr.Unary unary -> Jir.Expr.Unary Jir.Expr.{
+    unary
+    with operand = lower_expr env unary.operand;
+  }
+  | Jir.Expr.Binary binary -> Jir.Expr.Binary Jir.Expr.{
+    binary
+    with left = lower_expr env binary.left;
+         right = lower_expr env binary.right;
+  }
+  | Jir.Expr.Array elements ->
+      Jir.Expr.Array (List.map (lower_array_element env) elements)
   | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
     function_
     with body = lower_scoped_block env function_.body;
@@ -47,6 +64,10 @@ let rec lower_expr = fun env expr ->
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     member
     with object_ = lower_expr env member.object_;
+  }
+  | Jir.Expr.Index index -> Jir.Expr.Index Jir.Expr.{
+    object_ = lower_expr env index.object_;
+    index = lower_expr env index.index;
   }
   | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
     callee = lower_expr env call.callee;

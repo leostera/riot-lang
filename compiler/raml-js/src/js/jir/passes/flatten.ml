@@ -36,9 +36,17 @@ let remember_visible_entity = fun state entity ->
       | Some name -> remember_name state name
       | None -> state
 
+let rec collect_array_element_names = fun state element ->
+  match element with
+  | Jir.Expr.Item expr
+  | Jir.Expr.Spread expr ->
+      collect_expr_names state expr
+
 let rec collect_expr_names = fun state expr ->
   match expr with
   | Jir.Expr.Literal _ ->
+      state
+  | Jir.Expr.Global _ ->
       state
   | Jir.Expr.Identifier entity ->
       remember_visible_entity state entity
@@ -46,11 +54,21 @@ let rec collect_expr_names = fun state expr ->
       remember_binder state (Jir.Imports.local requirement)
   | Jir.Expr.Runtime_helper helper ->
       remember_binder state helper.local
+  | Jir.Expr.Unary unary ->
+      collect_expr_names state unary.operand
+  | Jir.Expr.Binary binary ->
+      let state = collect_expr_names state binary.left in
+      collect_expr_names state binary.right
+  | Jir.Expr.Array elements ->
+      List.fold_left collect_array_element_names state elements
   | Jir.Expr.Function function_ ->
       let state = List.fold_left remember_binder state function_.params in
       collect_statement_names state function_.body
   | Jir.Expr.Member member ->
       collect_expr_names state member.object_
+  | Jir.Expr.Index index ->
+      let state = collect_expr_names state index.object_ in
+      collect_expr_names state index.index
   | Jir.Expr.Call call ->
       let state = collect_expr_names state call.callee in
       collect_expr_name_list state call.arguments
@@ -131,19 +149,51 @@ let rec lower_expr_list = fun state exprs ->
     ([], state)
     exprs |> fun (reversed, state) -> (List.rev reversed, state)
 
+and lower_array_element = fun state element ->
+  match element with
+  | Jir.Expr.Item expr ->
+      let (expr, state) = lower_expr state expr in
+      (Jir.Expr.Item expr, state)
+  | Jir.Expr.Spread expr ->
+      let (expr, state) = lower_expr state expr in
+      (Jir.Expr.Spread expr, state)
+
+and lower_array_elements = fun state elements ->
+  List.fold_left
+    (fun (reversed, state) element ->
+      let (element, state) = lower_array_element state element in
+      (element :: reversed, state))
+    ([], state)
+    elements |> fun (reversed, state) -> (List.rev reversed, state)
+
 and lower_expr = fun state expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Identifier _
   | Jir.Expr.Imported _
   | Jir.Expr.Runtime_helper _ ->
       (expr, state)
+  | Jir.Expr.Unary unary ->
+      let (operand, state) = lower_expr state unary.operand in
+      (Jir.Expr.Unary Jir.Expr.{ unary with operand }, state)
+  | Jir.Expr.Binary binary ->
+      let (left, state) = lower_expr state binary.left in
+      let (right, state) = lower_expr state binary.right in
+      (Jir.Expr.Binary Jir.Expr.{ binary with left; right }, state)
+  | Jir.Expr.Array elements ->
+      let (elements, state) = lower_array_elements state elements in
+      (Jir.Expr.Array elements, state)
   | Jir.Expr.Function function_ ->
       let (body, state) = lower_block state function_.body in
       (Jir.Expr.Function Jir.Expr.{ params = function_.params; body }, state)
   | Jir.Expr.Member member ->
       let (object_, state) = lower_expr state member.object_ in
       (Jir.Expr.Member Jir.Expr.{ object_; property = member.property }, state)
+  | Jir.Expr.Index index ->
+      let (object_, state) = lower_expr state index.object_ in
+      let (index, state) = lower_expr state index.index in
+      (Jir.Expr.Index Jir.Expr.{ object_; index }, state)
   | Jir.Expr.Call call ->
       let (callee, state) = lower_expr state call.callee in
       let (arguments, state) = lower_expr_list state call.arguments in

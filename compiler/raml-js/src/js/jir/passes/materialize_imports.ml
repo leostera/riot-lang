@@ -4,9 +4,21 @@ module Jir = Types
 let rec lower_expr = fun expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Identifier _ -> expr
   | Jir.Expr.Imported requirement -> Jir.Expr.Identifier (Jir.Binder.entity_id (Jir.Imports.local requirement))
   | Jir.Expr.Runtime_helper helper -> Jir.Expr.Identifier (Jir.Binder.entity_id helper.local)
+  | Jir.Expr.Unary unary -> Jir.Expr.Unary Jir.Expr.{
+    unary
+    with operand = lower_expr unary.operand;
+  }
+  | Jir.Expr.Binary binary -> Jir.Expr.Binary Jir.Expr.{
+    binary
+    with left = lower_expr binary.left;
+         right = lower_expr binary.right;
+  }
+  | Jir.Expr.Array elements ->
+      Jir.Expr.Array (List.map lower_array_element elements)
   | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
     params = function_.params;
     body = List.map lower_statement function_.body;
@@ -14,6 +26,10 @@ let rec lower_expr = fun expr ->
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     object_ = lower_expr member.object_;
     property = member.property;
+  }
+  | Jir.Expr.Index index -> Jir.Expr.Index Jir.Expr.{
+    object_ = lower_expr index.object_;
+    index = lower_expr index.index;
   }
   | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
     callee = lower_expr call.callee;
@@ -28,6 +44,11 @@ let rec lower_expr = fun expr ->
     target = assignment.target;
     value = lower_expr assignment.value;
   }
+
+and lower_array_element = fun element ->
+  match element with
+  | Jir.Expr.Item expr -> Jir.Expr.Item (lower_expr expr)
+  | Jir.Expr.Spread expr -> Jir.Expr.Spread (lower_expr expr)
 
 and lower_statement = fun statement ->
   match statement with

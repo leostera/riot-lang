@@ -63,9 +63,17 @@ let remember_import = fun requirement state ->
       reversed = requirement :: state.reversed;
     }
 
+let rec collect_array_element_imports = fun state element ->
+  match element with
+  | Jir.Expr.Item expr
+  | Jir.Expr.Spread expr ->
+      collect_expr_imports expr state
+
 let rec collect_expr_imports = fun expr state ->
   match expr with
   | Jir.Expr.Literal _ ->
+      state
+  | Jir.Expr.Global _ ->
       state
   | Jir.Expr.Identifier _ ->
       state
@@ -73,10 +81,20 @@ let rec collect_expr_imports = fun expr state ->
       remember_import requirement state
   | Jir.Expr.Runtime_helper helper ->
       remember_import (Jir.Runtime.to_import helper) state
+  | Jir.Expr.Unary unary ->
+      collect_expr_imports unary.operand state
+  | Jir.Expr.Binary binary ->
+      let state = collect_expr_imports binary.left state in
+      collect_expr_imports binary.right state
+  | Jir.Expr.Array elements ->
+      List.fold_left collect_array_element_imports state elements
   | Jir.Expr.Function function_ ->
       collect_statement_import_list function_.body state
   | Jir.Expr.Member member ->
       collect_expr_imports member.object_ state
+  | Jir.Expr.Index index ->
+      let state = collect_expr_imports index.object_ state in
+      collect_expr_imports index.index state
   | Jir.Expr.Call { callee; arguments } ->
       let state = collect_expr_imports callee state in
       collect_expr_import_list arguments state
@@ -125,19 +143,39 @@ let collect_program_imports = fun program ->
     empty_import_state
     Jir.Program.(program.body)
 
+let rec normalize_array_element = fun element ->
+  match element with
+  | Jir.Expr.Item expr -> Jir.Expr.Item (normalize_expr expr)
+  | Jir.Expr.Spread expr -> Jir.Expr.Spread (normalize_expr expr)
+
 let rec normalize_expr = fun expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Identifier _
   | Jir.Expr.Imported _
   | Jir.Expr.Runtime_helper _ ->
       expr
+  | Jir.Expr.Unary unary ->
+      Jir.Expr.Unary Jir.Expr.{ unary with operand = normalize_expr unary.operand }
+  | Jir.Expr.Binary binary ->
+      Jir.Expr.Binary Jir.Expr.{
+        binary
+        with left = normalize_expr binary.left;
+             right = normalize_expr binary.right;
+      }
+  | Jir.Expr.Array elements ->
+      Jir.Expr.Array (List.map normalize_array_element elements)
   | Jir.Expr.Function function_ ->
       let body = normalize_statement_list function_.body |> Simplify.function_body in
       Jir.Expr.Function Jir.Expr.{ function_ with body }
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     member
     with object_ = normalize_expr member.object_;
+  }
+  | Jir.Expr.Index index -> Jir.Expr.Index Jir.Expr.{
+    object_ = normalize_expr index.object_;
+    index = normalize_expr index.index;
   }
   | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
     callee = normalize_expr call.callee;

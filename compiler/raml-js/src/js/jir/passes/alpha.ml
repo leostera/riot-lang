@@ -74,15 +74,31 @@ let lower_import = fun env (import: Jir.Imports.requirement) ->
   let (env, local) = bind_binder env import.local in
   ({ import with local }, env)
 
+let rec lower_array_element = fun env element ->
+  match element with
+  | Jir.Expr.Item expr -> Jir.Expr.Item (lower_expr env expr)
+  | Jir.Expr.Spread expr -> Jir.Expr.Spread (lower_expr env expr)
+
 let rec lower_expr = fun env expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Identifier _ ->
       expr
   | Jir.Expr.Imported requirement ->
       Jir.Expr.Imported { requirement with local = rename_bound_binder env requirement.local }
   | Jir.Expr.Runtime_helper helper ->
       Jir.Expr.Runtime_helper { helper with local = rename_bound_binder env helper.local }
+  | Jir.Expr.Unary unary ->
+      Jir.Expr.Unary Jir.Expr.{ unary with operand = lower_expr env unary.operand }
+  | Jir.Expr.Binary binary ->
+      Jir.Expr.Binary Jir.Expr.{
+        binary
+        with left = lower_expr env binary.left;
+             right = lower_expr env binary.right;
+      }
+  | Jir.Expr.Array elements ->
+      Jir.Expr.Array (List.map (lower_array_element env) elements)
   | Jir.Expr.Function function_ ->
       let (env, params) = bind_binders env function_.params in
       let body = lower_scoped_block env function_.body in
@@ -91,6 +107,11 @@ let rec lower_expr = fun env expr ->
       Jir.Expr.Member Jir.Expr.{
         object_ = lower_expr env member.object_;
         property = member.property;
+      }
+  | Jir.Expr.Index index ->
+      Jir.Expr.Index Jir.Expr.{
+        object_ = lower_expr env index.object_;
+        index = lower_expr env index.index;
       }
   | Jir.Expr.Call call ->
       Jir.Expr.Call Jir.Expr.{

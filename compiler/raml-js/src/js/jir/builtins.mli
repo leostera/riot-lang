@@ -2,13 +2,26 @@
 
     This module centralizes the language-surface names that the JS backend
     treats specially, instead of scattering them across lowering and runtime
-    helper definitions. *)
+    helper definitions.
+
+    Classification is entity-based, not raw-name-based. That lets the backend
+    respect local shadowing while still recognizing unresolved/predef/persistent
+    Riot surface names. *)
+
+module Core = Raml_core.Core_ir
 
 type direct_callee =
-  | Runtime_helper of Types.Runtime.helper
+  | Console_log
+  | Console_error
+  | Print_newline
+  | Stdout_write
+  | Stderr_write
+  | String_constructor
+  | Math_sqrt
   | Primitive of string
-  | Boolean_not
+  | Unary_operator of Types.Operator.unary
+  | Binary_operator of Types.Operator.binary
   | Boolean_and
   | Boolean_or
 
-val classify_direct_callee: string -> direct_callee option
+val classify_direct_callee: Core.Entity_id.t -> direct_callee option

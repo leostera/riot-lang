@@ -26,11 +26,25 @@ let forget_binding = fun entities binding_id ->
 let rec lower_expr = fun ~assigned expr ->
   match expr with
   | Jir.Expr.Literal _
+  | Jir.Expr.Global _
   | Jir.Expr.Imported _
   | Jir.Expr.Runtime_helper _ ->
       (expr, Entity_set.empty)
   | Jir.Expr.Identifier entity ->
       (Jir.Expr.Identifier entity, Entity_set.singleton entity)
+  | Jir.Expr.Unary unary ->
+      let (operand, used) = lower_expr ~assigned unary.operand in
+      (Jir.Expr.Unary Jir.Expr.{ unary with operand }, used)
+  | Jir.Expr.Binary binary ->
+      let (left, left_used) = lower_expr ~assigned binary.left in
+      let (right, right_used) = lower_expr ~assigned binary.right in
+      (
+        Jir.Expr.Binary Jir.Expr.{ binary with left; right },
+        Entity_set.union left_used right_used
+      )
+  | Jir.Expr.Array elements ->
+      let (elements, used) = lower_array_elements ~assigned elements in
+      (Jir.Expr.Array elements, used)
   | Jir.Expr.Function function_ ->
       let lowered_body = lower_block ~protected:Entity_set.empty ~assigned function_.body in
       let used =
@@ -43,6 +57,10 @@ let rec lower_expr = fun ~assigned expr ->
   | Jir.Expr.Member member ->
       let (object_, used) = lower_expr ~assigned member.object_ in
       (Jir.Expr.Member Jir.Expr.{ member with object_ }, used)
+  | Jir.Expr.Index index ->
+      let (object_, object_used) = lower_expr ~assigned index.object_ in
+      let (index, index_used) = lower_expr ~assigned index.index in
+      (Jir.Expr.Index Jir.Expr.{ object_; index }, Entity_set.union object_used index_used)
   | Jir.Expr.Call call ->
       let (callee, used) = lower_expr ~assigned call.callee in
       let (arguments, argument_used) = lower_expr_list ~assigned call.arguments in
@@ -58,6 +76,23 @@ let rec lower_expr = fun ~assigned expr ->
   | Jir.Expr.Assignment assignment ->
       let (value, used) = lower_expr ~assigned assignment.value in
       (Jir.Expr.Assignment Jir.Expr.{ assignment with value }, used)
+
+and lower_array_element = fun ~assigned element ->
+  match element with
+  | Jir.Expr.Item expr ->
+      let (expr, used) = lower_expr ~assigned expr in
+      (Jir.Expr.Item expr, used)
+  | Jir.Expr.Spread expr ->
+      let (expr, used) = lower_expr ~assigned expr in
+      (Jir.Expr.Spread expr, used)
+
+and lower_array_elements = fun ~assigned elements ->
+  match elements with
+  | [] -> ([], Entity_set.empty)
+  | element :: rest ->
+      let (element, used) = lower_array_element ~assigned element in
+      let (rest, rest_used) = lower_array_elements ~assigned rest in
+      (element :: rest, Entity_set.union used rest_used)
 
 and lower_expr_list = fun ~assigned exprs ->
   match exprs with

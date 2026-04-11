@@ -106,7 +106,61 @@ type literal =
   | Number of literal_number
   | String of string
 
-type expr_call = {
+type unary_operator =
+  | Not
+  | Negate
+
+type binary_operator =
+  | Add
+  | Subtract
+  | Multiply
+  | Divide
+  | Modulo
+  | Equal
+  | Not_equal
+  | Less_than
+  | Less_or_equal
+  | Greater_than
+  | Greater_or_equal
+
+type expr =
+  | Literal of literal
+  | Global of expr_global
+  | Identifier of Core.Entity_id.t
+  | Imported of import_requirement
+  | Runtime_helper of runtime_helper
+  | Unary of expr_unary
+  | Binary of expr_binary
+  | Array of expr_array
+  | Function of expr_function
+  | Member of expr_member
+  | Index of expr_index
+  | Call of expr_call
+  | Conditional of expr_conditional
+  | Assignment of expr_assignment
+
+and expr_global = {
+  name: string;
+}
+
+and expr_unary = {
+  operator: unary_operator;
+  operand: expr;
+}
+
+and expr_binary = {
+  operator: binary_operator;
+  left: expr;
+  right: expr;
+}
+
+and expr_array_element =
+  | Item of expr
+  | Spread of expr
+
+and expr_array = expr_array_element list
+
+and expr_call = {
   callee: expr;
   arguments: expr list;
 }
@@ -132,16 +186,10 @@ and expr_assignment = {
   value: expr;
 }
 
-and expr =
-  | Literal of literal
-  | Identifier of Core.Entity_id.t
-  | Imported of import_requirement
-  | Runtime_helper of runtime_helper
-  | Function of expr_function
-  | Member of expr_member
-  | Call of expr_call
-  | Conditional of expr_conditional
-  | Assignment of expr_assignment
+and expr_index = {
+  object_: expr;
+  index: expr;
+}
 
 and declaration_kind =
   | Const
@@ -200,6 +248,25 @@ let literal_to_json = fun literal ->
     [ ("kind", Json.string "number"); ("number", literal_number_to_json number) ]
   | String value -> Json.obj [ ("kind", Json.string "string"); ("value", Json.string value) ]
 
+let unary_operator_to_json = fun operator ->
+  match operator with
+  | Not -> Json.string "not"
+  | Negate -> Json.string "negate"
+
+let binary_operator_to_json = fun operator ->
+  match operator with
+  | Add -> Json.string "add"
+  | Subtract -> Json.string "subtract"
+  | Multiply -> Json.string "multiply"
+  | Divide -> Json.string "divide"
+  | Modulo -> Json.string "modulo"
+  | Equal -> Json.string "equal"
+  | Not_equal -> Json.string "not_equal"
+  | Less_than -> Json.string "less_than"
+  | Less_or_equal -> Json.string "less_or_equal"
+  | Greater_than -> Json.string "greater_than"
+  | Greater_or_equal -> Json.string "greater_or_equal"
+
 let declaration_kind_to_json = fun kind ->
   match kind with
   | Const -> Json.string "const"
@@ -213,6 +280,32 @@ let rec expr_call_to_json = fun call ->
       ("arguments", Json.array (List.map expr_to_json call.arguments));
     ]
 
+and expr_global_to_json = fun global ->
+  Json.obj [ ("name", Json.string global.name) ]
+
+and expr_unary_to_json = fun unary ->
+  Json.obj
+    [
+      ("operator", unary_operator_to_json unary.operator);
+      ("operand", expr_to_json unary.operand);
+    ]
+
+and expr_binary_to_json = fun binary ->
+  Json.obj
+    [
+      ("operator", binary_operator_to_json binary.operator);
+      ("left", expr_to_json binary.left);
+      ("right", expr_to_json binary.right);
+    ]
+
+and expr_array_element_to_json = fun element ->
+  match element with
+  | Item expr -> Json.obj [ ("kind", Json.string "item"); ("expr", expr_to_json expr) ]
+  | Spread expr -> Json.obj [ ("kind", Json.string "spread"); ("expr", expr_to_json expr) ]
+
+and expr_array_to_json = fun array ->
+  Json.array (List.map expr_array_element_to_json array)
+
 and expr_function_to_json = fun function_ ->
   Json.obj
     [
@@ -222,6 +315,13 @@ and expr_function_to_json = fun function_ ->
 
 and expr_member_to_json = fun member ->
   Json.obj [ ("object", expr_to_json member.object_); ("property", Json.string member.property) ]
+
+and expr_index_to_json = fun index ->
+  Json.obj
+    [
+      ("object", expr_to_json index.object_);
+      ("index", expr_to_json index.index);
+    ]
 
 and expr_conditional_to_json = fun conditional ->
   Json.obj
@@ -241,16 +341,21 @@ and expr_assignment_to_json = fun assignment ->
 and expr_to_json = fun expr ->
   match expr with
   | Literal literal -> Json.obj [ ("kind", Json.string "literal"); ("literal", literal_to_json literal) ]
+  | Global global -> Json.obj [ ("kind", Json.string "global"); ("global", expr_global_to_json global) ]
   | Identifier entity_id -> Json.obj
     [ ("kind", Json.string "identifier"); ("entity_id", Core.Entity_id.to_json entity_id) ]
   | Imported requirement -> Json.obj
     [ ("kind", Json.string "imported"); ("import", import_requirement_to_json requirement) ]
   | Runtime_helper helper -> Json.obj
     [ ("kind", Json.string "runtime"); ("helper", runtime_helper_to_json helper) ]
+  | Unary unary -> Json.obj [ ("kind", Json.string "unary"); ("unary", expr_unary_to_json unary) ]
+  | Binary binary -> Json.obj [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
+  | Array array -> Json.obj [ ("kind", Json.string "array"); ("array", expr_array_to_json array) ]
   | Function function_ -> Json.obj
     [ ("kind", Json.string "function"); ("function", expr_function_to_json function_) ]
   | Member member -> Json.obj
     [ ("kind", Json.string "member"); ("member", expr_member_to_json member) ]
+  | Index index -> Json.obj [ ("kind", Json.string "index"); ("index", expr_index_to_json index) ]
   | Call call -> Json.obj [ ("kind", Json.string "call"); ("call", expr_call_to_json call) ]
   | Conditional conditional -> Json.obj
     [ ("kind", Json.string "conditional"); ("conditional", expr_conditional_to_json conditional) ]
@@ -392,7 +497,51 @@ module Literal = struct
   let to_json = literal_to_json
 end
 
+module Operator = struct
+  type unary = unary_operator =
+    | Not
+    | Negate
+
+  type binary = binary_operator =
+    | Add
+    | Subtract
+    | Multiply
+    | Divide
+    | Modulo
+    | Equal
+    | Not_equal
+    | Less_than
+    | Less_or_equal
+    | Greater_than
+    | Greater_or_equal
+
+  let unary_to_json = unary_operator_to_json
+
+  let binary_to_json = binary_operator_to_json
+end
+
 module Expr = struct
+  type global = expr_global = {
+    name: string;
+  }
+
+  type unary = expr_unary = {
+    operator: unary_operator;
+    operand: expr;
+  }
+
+  type binary = expr_binary = {
+    operator: binary_operator;
+    left: expr;
+    right: expr;
+  }
+
+  type array_element = expr_array_element =
+    | Item of expr
+    | Spread of expr
+
+  type array = expr_array
+
   type call = expr_call = {
     callee: expr;
     arguments: expr list;
@@ -419,22 +568,44 @@ module Expr = struct
     value: expr;
   }
 
+  type index = expr_index = {
+    object_: expr;
+    index: expr;
+  }
+
   type t = expr =
     | Literal of Literal.t
+    | Global of global
     | Identifier of Core.Entity_id.t
     | Imported of Imports.requirement
     | Runtime_helper of Runtime.t
+    | Unary of unary
+    | Binary of binary
+    | Array of array
     | Function of function_
     | Member of member
+    | Index of index
     | Call of call
     | Conditional of conditional
     | Assignment of assignment
+
+  let global_to_json = expr_global_to_json
+
+  let unary_to_json = expr_unary_to_json
+
+  let binary_to_json = expr_binary_to_json
+
+  let array_element_to_json = expr_array_element_to_json
+
+  let array_to_json = expr_array_to_json
 
   let call_to_json = expr_call_to_json
 
   let function_to_json = expr_function_to_json
 
   let member_to_json = expr_member_to_json
+
+  let index_to_json = expr_index_to_json
 
   let conditional_to_json = expr_conditional_to_json
 
