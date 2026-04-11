@@ -43,7 +43,7 @@ let rec lower_expr = fun expr ->
   | Jir.Expr.Identifier entity ->
       (Jir.Expr.Identifier entity, Entity_set.singleton entity)
   | Jir.Expr.Function function_ ->
-      let lowered_body = lower_block ~protected:[] function_.body in
+      let lowered_body = lower_block ~protected:Entity_set.empty function_.body in
       let used =
         List.fold_left
           (fun used (binder: Jir.Binder.t) -> forget_binding used binder.binding_id)
@@ -83,7 +83,7 @@ and lower_statement = fun ~protected used_after statement ->
   | Jir.Statement.Declaration declaration ->
       lower_declaration ~protected used_after declaration
   | Jir.Statement.Block statements ->
-      let lowered_block = lower_block ~protected:[] statements in
+      let lowered_block = lower_block ~protected:Entity_set.empty statements in
       let used = Entity_set.union used_after lowered_block.used in
       if List.is_empty lowered_block.statements then
         { statements = []; used }
@@ -97,8 +97,8 @@ and lower_statement = fun ~protected used_after statement ->
       { statements = [ Jir.Statement.Return expr ]; used = Entity_set.union used_after used }
   | Jir.Statement.If if_ ->
       let (condition, condition_used) = lower_expr if_.condition in
-      let then_ = lower_block ~protected:[] if_.then_ in
-      let else_ = lower_block ~protected:[] if_.else_ in
+      let then_ = lower_block ~protected:Entity_set.empty if_.then_ in
+      let else_ = lower_block ~protected:Entity_set.empty if_.else_ in
       {
         statements = [
           Jir.Statement.If Jir.Statement.{
