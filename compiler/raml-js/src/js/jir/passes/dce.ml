@@ -31,6 +31,11 @@ type lowered_block = {
   used: Entity_set.t;
 }
 
+let is_dead_local_store = fun ~protected ~used_after target ->
+  match Core.Entity_id.binding_id target with
+  | None -> false
+  | Some _ -> not (Entity_set.mem target protected) && not (Entity_set.mem target used_after)
+
 let rec collect_expr_assigned_entities = fun entities expr ->
   match expr with
   | Jir.Expr.Literal _
@@ -126,7 +131,7 @@ let rec lower_expr = fun ~assigned expr ->
       )
   | Jir.Expr.Assignment assignment ->
       let (value, used) = lower_expr ~assigned assignment.value in
-      (Jir.Expr.Assignment Jir.Expr.{ assignment with value }, Entity_set.add assignment.target used)
+      (Jir.Expr.Assignment Jir.Expr.{ assignment with value }, used)
 
 and lower_expr_list = fun ~assigned exprs ->
   match exprs with
@@ -149,10 +154,21 @@ and lower_statement = fun ~protected ~assigned used_after statement ->
         { statements = [ Jir.Statement.Block lowered_block.statements ]; used }
   | Jir.Statement.Expression expr ->
       let (expr, used) = lower_expr ~assigned expr in
-      if Analysis.is_pure_expr expr then
-        { statements = []; used = used_after }
-      else
-        { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
+      begin match expr with
+      | Jir.Expr.Assignment assignment when is_dead_local_store ~protected ~used_after assignment.target ->
+          if Analysis.is_pure_expr assignment.value then
+            { statements = []; used = Entity_set.union used_after used }
+          else
+            {
+              statements = [ Jir.Statement.Expression assignment.value ];
+              used = Entity_set.union used_after used;
+            }
+      | _ ->
+          if Analysis.is_pure_expr expr then
+            { statements = []; used = used_after }
+          else
+            { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
+      end
   | Jir.Statement.Return expr ->
       let (expr, used) = lower_expr ~assigned expr in
       { statements = [ Jir.Statement.Return expr ]; used = Entity_set.union used_after used }

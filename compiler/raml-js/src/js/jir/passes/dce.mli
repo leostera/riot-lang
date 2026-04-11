@@ -3,11 +3,15 @@
     Algorithm:
     - walk blocks backwards and compute a set of used [Entity_id] values
     - collect the set of entities assigned anywhere in the program
+    - treat assignment expressions as uses of their right-hand side, not as
+      reads of the assigned target
     - keep return values, impure expressions, and anything reachable from them
     - drop [const] declarations whose binder is unused, not protected, and
       whose initializer is pure
     - drop dead [let] declarations only when the binder is also never assigned,
       so the declaration is not needed as storage for a later write
+    - in effect position, erase dead local assignments or keep only their
+      right-hand-side effects when the assigned local is never read afterwards
     - drop pure expression statements entirely
     - preserve exported entities through the [protected] set
 
