@@ -3759,6 +3759,82 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
         ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Source");
       Ok ()
 
+let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
+  let async_root = prepared_check_source
+    ~source_id:(SourceId.of_int 0)
+    ~filename:"async.ml"
+    ~internal_module_name:"Kernel_new__Async"
+    ~local_module_name:"Async"
+    ~public_module_name:None
+    ~text:"let answer = 42\n" in
+  let consumer = prepared_check_source
+    ~source_id:(SourceId.of_int 1)
+    ~filename:"consumer.ml"
+    ~internal_module_name:"Kernel_new__Consumer"
+    ~local_module_name:"Consumer"
+    ~public_module_name:None
+    ~text:"let run = Async.answer\n" in
+  let config = Config.default |> Config.with_capture_traces ~capture_traces:false in
+  match Check.fold_package_sources
+    ~config
+    ~ordered_sources:[ consumer; async_root ]
+    ~init:[]
+    ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+    () with
+  | Error Check.MissingRequirements { module_name; requirements } ->
+      Error (format
+        Format.[
+          str "unexpected missing requirements while checking ";
+          str module_name;
+          str ": ";
+          str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+        ])
+  | Error Check.MissingModuleTypings { module_name } ->
+      Error (format Format.[ str "missing module typings for "; str module_name ])
+  | Error Check.MissingAnalysis { module_name; path } ->
+      Error (format
+        Format.[
+          str "missing analysis for ";
+          str module_name;
+          str " at ";
+          str (Path.to_string path);
+        ])
+  | Error Check.StoreFailure { module_name; reason } ->
+      Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+  | Error Check.PackageStoreFailure { package_name; reason } ->
+      Error (format
+        Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
+  | Ok result ->
+      let groups = List.rev result.acc in
+      let loaded_modules = result.loaded_modules in
+      let module_order = groups |> List.map (fun (group: Check.finished_group) -> group.module_name) in
+      let consumer_group =
+        groups
+        |> List.find_opt
+          (fun (group: Check.finished_group) ->
+            String.equal group.module_name "Kernel_new__Consumer")
+        |> Option.expect ~msg:"expected Kernel_new__Consumer group"
+      in
+      let consumer_analysis = consumer_group.checked_sources
+      |> List.find_opt
+        (fun (checked_source: Check.checked_source) -> Path.to_string checked_source.path = "consumer.ml")
+      |> Option.map (fun (checked_source: Check.checked_source) -> checked_source.analysis)
+      |> Option.expect ~msg:"expected consumer analysis" in
+      let export_names = FileSummary.exports consumer_analysis.file_summary
+      |> List.map (fun (name, _scheme) -> SurfacePath.to_string name) in
+      Test.assert_equal ~expected:[ "Kernel_new__Async"; "Kernel_new__Consumer" ] ~actual:module_order;
+      Test.assert_equal
+        ~expected:[]
+        ~actual:(List.map Diagnostic.to_string consumer_analysis.typing_diagnostics);
+      Test.assert_equal ~expected:[ "run" ] ~actual:export_names;
+      Test.assert_equal
+        ~expected:true
+        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async");
+      Test.assert_equal
+        ~expected:true
+        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Consumer");
+      Ok ()
+
 let test_fold_package_sources_persists_package_bundle = fun _ctx ->
   with_typ_store
     (fun store ->
@@ -9056,6 +9132,7 @@ let () =
         Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
         Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
+        Test.case "fold_package_sources resolves root local module wrappers" test_fold_package_sources_resolves_root_local_module_wrappers;
         Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
         Test.case "fold_package_sources keeps base loaded modules immutable" test_fold_package_sources_keeps_base_loaded_modules_immutable;
         Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;

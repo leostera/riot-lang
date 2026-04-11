@@ -4,6 +4,8 @@ module Array = Collections.Array
 module AmbientName = struct
   type t = string
 
+  let of_string = fun value -> value
+
   let to_string = fun value -> value
 end
 
