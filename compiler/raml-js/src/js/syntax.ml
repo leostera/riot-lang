@@ -1,3 +1,5 @@
+open Std
+
 type property_name_kind =
   | Identifier
   | Quoted_string
