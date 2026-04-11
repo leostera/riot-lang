@@ -1,6 +1,7 @@
 open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
+module Analysis = Analysis
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
@@ -98,24 +99,6 @@ let resolve_alias = fun env entity ->
 
 let bind_alias = fun env alias target -> { env with aliases = Binding_map.add alias target env.aliases }
 
-let rec is_pure_expr = fun expr ->
-  match expr with
-  | Jir.Expr.Literal _
-  | Jir.Expr.Identifier _
-  | Jir.Expr.Imported _
-  | Jir.Expr.Runtime_helper _
-  | Jir.Expr.Function _ ->
-      true
-  | Jir.Expr.Member member ->
-      is_pure_expr member.object_
-  | Jir.Expr.Call _
-  | Jir.Expr.Assignment _ ->
-      false
-  | Jir.Expr.Conditional conditional ->
-      is_pure_expr conditional.condition
-      && is_pure_expr conditional.then_
-      && is_pure_expr conditional.else_
-
 let rec lower_expr = fun env expr ->
   match expr with
   | Jir.Expr.Literal _
@@ -159,7 +142,7 @@ and lower_statement = fun env statement ->
       let then_ = lower_scoped_block env if_.then_ in
       let else_ = lower_scoped_block env if_.else_ in
       if List.is_empty then_ && List.is_empty else_ then
-        if is_pure_expr condition then
+        if Analysis.is_pure_expr condition then
           ([], env)
         else
           ([ Jir.Statement.Expression condition ], env)

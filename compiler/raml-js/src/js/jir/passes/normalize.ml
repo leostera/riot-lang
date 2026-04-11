@@ -1,6 +1,7 @@
 open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
+module Analysis = Analysis
 
 module Import_set = struct
   module Storage = Collections.Map.Make (struct
@@ -123,24 +124,6 @@ let collect_program_imports = fun program ->
     empty_import_state
     Jir.Program.(program.body)
 
-let rec is_pure_expr = fun expr ->
-  match expr with
-  | Jir.Expr.Literal _
-  | Jir.Expr.Identifier _
-  | Jir.Expr.Imported _
-  | Jir.Expr.Runtime_helper _
-  | Jir.Expr.Function _ ->
-      true
-  | Jir.Expr.Member member ->
-      is_pure_expr member.object_
-  | Jir.Expr.Call _
-  | Jir.Expr.Assignment _ ->
-      false
-  | Jir.Expr.Conditional conditional ->
-      is_pure_expr conditional.condition
-      && is_pure_expr conditional.then_
-      && is_pure_expr conditional.else_
-
 let rec normalize_expr = fun expr ->
   match expr with
   | Jir.Expr.Literal _
@@ -191,7 +174,7 @@ and normalize_statement = fun statement ->
       let then_ = normalize_statement_list if_.then_ in
       let else_ = normalize_statement_list if_.else_ in
       if List.is_empty then_ && List.is_empty else_ then
-        if is_pure_expr condition then
+        if Analysis.is_pure_expr condition then
           []
         else
           [ Jir.Statement.Expression condition ]

@@ -1,4 +1,5 @@
 module Types = Types
+module Analysis = Analysis
 
 module Passes = Passes
 

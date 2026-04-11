@@ -1,6 +1,7 @@
 open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
+module Analysis = Analysis
 
 module Entity_set = struct
   module Storage = Collections.Map.Make (struct
@@ -37,20 +38,6 @@ let forget_binding = fun entities binding_id ->
       | Some entity_binding_id -> not (Core.Binding_id.equal entity_binding_id binding_id)
       | None -> true)
     entities
-
-let rec is_pure_expr = fun expr ->
-  match expr with
-  | Jir.Expr.Literal _
-  | Jir.Expr.Identifier _
-  | Jir.Expr.Imported _
-  | Jir.Expr.Runtime_helper _
-  | Jir.Expr.Function _ -> true
-  | Jir.Expr.Member member -> is_pure_expr member.object_
-  | Jir.Expr.Conditional conditional -> is_pure_expr conditional.condition
-  && is_pure_expr conditional.then_
-  && is_pure_expr conditional.else_
-  | Jir.Expr.Call _
-  | Jir.Expr.Assignment _ -> false
 
 let rec lower_expr = fun expr ->
   match expr with
@@ -109,7 +96,7 @@ and lower_statement = fun ~protected used_after statement ->
         { statements = [ Jir.Statement.Block lowered_block.statements ]; used }
   | Jir.Statement.Expression expr ->
       let (expr, used) = lower_expr expr in
-      if is_pure_expr expr then
+      if Analysis.is_pure_expr expr then
         { statements = []; used = used_after }
       else
         { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
@@ -144,7 +131,7 @@ and lower_declaration = fun ~protected used_after (declaration: Jir.Declaration.
   | Some init when declaration.kind = Jir.Declaration.Const
   && not (Entity_set.mem binder_entity protected)
   && not (Entity_set.mem binder_entity used_after)
-  && is_pure_expr init -> { statements = []; used = used_after }
+  && Analysis.is_pure_expr init -> { statements = []; used = used_after }
   | _ -> {
     statements = [ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ];
     used = Entity_set.union (forget_binding used_after declaration.binder.binding_id) init_used;
