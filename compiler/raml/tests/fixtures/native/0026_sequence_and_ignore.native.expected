@@ -1,0 +1,111 @@
+.section __TEXT, __cstring, cstring_literals
+.p2align 0
+L__raml_str_0:
+.asciz ":"
+.p2align 0
+L__raml_str_1:
+.asciz " "
+.p2align 0
+L__raml_str_2:
+.asciz "a"
+.p2align 0
+L__raml_str_3:
+.asciz "b"
+.p2align 0
+L__raml_str_4:
+.asciz "c"
+
+.text
+.globl _step
+.p2align 2
+_step:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #112
+str x0, [sp, #0]
+str x1, [sp, #8]
+ldr x0, [sp, #0]
+bl _print_string
+str x0, [sp, #16]
+ldr x9, [sp, #16]
+str x9, [sp, #24]
+adrp x9, L__raml_str_0@PAGE
+add x9, x9, L__raml_str_0@PAGEOFF
+str x9, [sp, #32]
+ldr x0, [sp, #32]
+bl _print_char
+str x0, [sp, #40]
+ldr x9, [sp, #40]
+str x9, [sp, #48]
+ldr x0, [sp, #8]
+bl _print_int
+str x0, [sp, #56]
+ldr x9, [sp, #56]
+str x9, [sp, #64]
+adrp x9, L__raml_str_1@PAGE
+add x9, x9, L__raml_str_1@PAGEOFF
+str x9, [sp, #72]
+ldr x0, [sp, #72]
+bl _print_char
+str x0, [sp, #80]
+ldr x9, [sp, #80]
+str x9, [sp, #88]
+movz x9, #1, lsl #0
+str x9, [sp, #96]
+ldr x0, [sp, #8]
+ldr x1, [sp, #96]
+bl _raml$2b
+str x0, [sp, #104]
+ldr x0, [sp, #104]
+add sp, sp, #112
+ldp x29, x30, [sp], #16
+ret
+
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #112
+adrp x9, L__raml_str_2@PAGE
+add x9, x9, L__raml_str_2@PAGEOFF
+str x9, [sp, #0]
+movz x9, #1, lsl #0
+str x9, [sp, #8]
+ldr x0, [sp, #0]
+ldr x1, [sp, #8]
+bl _step
+str x0, [sp, #16]
+ldr x9, [sp, #16]
+str x9, [sp, #24]
+adrp x9, L__raml_str_3@PAGE
+add x9, x9, L__raml_str_3@PAGEOFF
+str x9, [sp, #32]
+ldr x0, [sp, #32]
+ldr x1, [sp, #24]
+bl _step
+str x0, [sp, #40]
+ldr x9, [sp, #40]
+str x9, [sp, #48]
+adrp x9, L__raml_str_4@PAGE
+add x9, x9, L__raml_str_4@PAGEOFF
+str x9, [sp, #56]
+ldr x0, [sp, #56]
+ldr x1, [sp, #48]
+bl _step
+str x0, [sp, #64]
+ldr x9, [sp, #64]
+str x9, [sp, #72]
+movz x9, #0, lsl #0
+str x9, [sp, #80]
+ldr x9, [sp, #80]
+str x9, [sp, #88]
+movz x9, #0, lsl #0
+str x9, [sp, #96]
+ldr x0, [sp, #96]
+bl _print_newline
+str x0, [sp, #104]
+movz x0, #0, lsl #0
+add sp, sp, #112
+ldp x29, x30, [sp], #16
+ret
