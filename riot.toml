@@ -35,6 +35,7 @@ members = [
   "packages/sqlx",
   "packages/serde",
   "packages/serde-bson",
+  "packages/serde-cbor",
   "packages/serde-bin",
   "packages/serde-json",
   "packages/serde-toml",

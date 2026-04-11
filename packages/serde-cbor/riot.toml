@@ -1,0 +1,13 @@
+[package]
+name = "serde-cbor"
+version = "0.0.1"
+
+[lib]
+path = "src/serde_cbor.ml"
+
+[dependencies]
+serde = { path = "../serde", version = "*" }
+std = { path = "../std", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
