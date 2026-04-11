@@ -56,6 +56,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/sqlite/AGENTS.md`: SQLite adapter
 - `packages/serde-bin/AGENTS.md`: compact schema-driven binary serialization on top of serde
 - `packages/serde-toml/AGENTS.md`: schema-driven TOML serialization on top of serde
+- `packages/serde-yaml/AGENTS.md`: schema-driven YAML serialization on top of serde
 - `packages/serde-urlencoded/AGENTS.md`: flat application/x-www-form-urlencoded serialization on top of serde
 - `packages/postgres/AGENTS.md`: PostgreSQL adapter
 - `packages/pretext/AGENTS.md`: tiny text-only pretty-printing documents and Unicode-aware layout
