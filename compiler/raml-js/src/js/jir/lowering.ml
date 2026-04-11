@@ -370,4 +370,5 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
       let dce_lowered = Passes.Dce.program aliases_removed in
       let normalized_after_dce = Passes.Normalize.program dce_lowered in
       let materialized_imports = Passes.Materialize_imports.program normalized_after_dce in
-      ok materialized_imports
+      let aliases_removed_after_imports = Passes.Remove_aliases.program materialized_imports in
+      ok aliases_removed_after_imports
