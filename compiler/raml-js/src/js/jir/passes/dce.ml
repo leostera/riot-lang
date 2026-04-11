@@ -109,7 +109,10 @@ and lower_statement = fun ~protected used_after statement ->
         { statements = [ Jir.Statement.Block lowered_block.statements ]; used }
   | Jir.Statement.Expression expr ->
       let (expr, used) = lower_expr expr in
-      { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
+      if is_pure_expr expr then
+        { statements = []; used = used_after }
+      else
+        { statements = [ Jir.Statement.Expression expr ]; used = Entity_set.union used_after used }
   | Jir.Statement.Return expr ->
       let (expr, used) = lower_expr expr in
       { statements = [ Jir.Statement.Return expr ]; used = Entity_set.union used_after used }
