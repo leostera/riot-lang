@@ -192,13 +192,15 @@ let trace_to_json = fun trace ->
 let trace_program = fun initial ->
   let canonicalize = Passes.Canonicalize.program initial in
   let insert_polls = Passes.Insert_polls.program canonicalize in
+  let dead_code = Passes.Dead_code.program insert_polls in
   {
     initial;
     passes = [
       { name = "canonicalize"; program = canonicalize };
       { name = "insert_polls"; program = insert_polls };
+      { name = "dead_code"; program = dead_code };
     ];
-    final = insert_polls
+    final = dead_code
   }
 
 let lower_program_with_trace = fun (program: Source.Program.t) ->
