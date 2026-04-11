@@ -756,6 +756,7 @@ let prepare_snapshot = fun session ~roots ->
     (missing_roots @ MissingRequirements.requirements missing_modules) in
   if MissingRequirements.(missing_requirements |> is_empty) then
     let sources = local_source_closure session roots in
+    let snapshot_config = TypConfig.with_store session.config ~store:None in
     TypConfig.emit_event
       session.config
       (fun () ->
@@ -776,7 +777,7 @@ let prepare_snapshot = fun session ~roots ->
     let snapshot = Snapshot.make_with_shared_caches
       ~revision:session.next_revision
       ~roots
-      ~config:session.config
+      ~config:snapshot_config
       ~sources
       ~shared_caches:session.shared_snapshot_caches in
     let module_count = sources

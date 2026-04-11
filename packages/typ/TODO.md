@@ -118,20 +118,20 @@ Checklist:
 - [x] stop persisting module typings from `Snapshot.ensure_module_typings_persisted`
 - [x] make snapshot forcing return query results only, not persistence side
       effects
-- [ ] make it impossible for query-time code to mutate the store accidentally
-- [ ] make `check.ml` the only place that persists authoritative finished-module
+- [x] make it impossible for query-time code to mutate the store accidentally
+- [x] make `check.ml` the only place that persists authoritative finished-module
       typings for build-style checking
-- [ ] remove any end-of-run “persist again” or “reload what we just built”
+- [x] remove any end-of-run “persist again” or “reload what we just built”
       behavior from `riot-check`
-- [ ] remove any fallback package-bundle reconstruction that depends on asking a
+- [x] remove any fallback package-bundle reconstruction that depends on asking a
       snapshot for authoritative results after the fact
 - [x] add tests that prove one finished module is persisted once on the build
       path and zero times on the snapshot path
 
 Exit criteria:
 
-- [ ] there is one authoritative producer of persisted module artifacts
-- [ ] snapshots can no longer define persistence semantics
+- [x] there is one authoritative producer of persisted module artifacts
+- [x] snapshots can no longer define persistence semantics
 
 ## Phase 2. Make Imported Resolution Use One World Model
 
