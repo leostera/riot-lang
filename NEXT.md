@@ -8,6 +8,16 @@
 
 # Before Announcing
 
+* regression: cold riot build takes _ages_ on syn.deps? 
+
+* riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
+
+* riot bench streams outputs/results
+
+* riot test support multipl `-p` flags
+
+* riot test/bench should support `--filter` flag to be used with `--package` flag
+
 * need a riot SKILLS for agents
 
 * keep workign on making docs.riot.ml look great and writing the docs 

@@ -42,7 +42,10 @@
         "labels": [
           {
             "field_type": {
-              "tag": "int"
+              "body": {
+                "tag": "int"
+              },
+              "quantified": []
             },
             "label_id": 0,
             "mutable": false,
@@ -50,7 +53,10 @@
           },
           {
             "field_type": {
-              "tag": "int"
+              "body": {
+                "tag": "int"
+              },
+              "quantified": []
             },
             "label_id": 1,
             "mutable": false,

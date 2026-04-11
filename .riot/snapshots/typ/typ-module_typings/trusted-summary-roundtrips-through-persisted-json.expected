@@ -83,20 +83,6 @@
     "type_decls": [],
     "value_definitions": [
       {
-        "export_name": "const",
-        "target": {
-          "origin": {
-            "tag": "label",
-            "value": "persisted_summary.ml"
-          },
-          "span": {
-            "end": 22,
-            "start": 16
-          },
-          "tag": "site"
-        }
-      },
-      {
         "export_name": "id",
         "target": {
           "origin": {
@@ -106,6 +92,20 @@
           "span": {
             "end": 6,
             "start": 3
+          },
+          "tag": "site"
+        }
+      },
+      {
+        "export_name": "const",
+        "target": {
+          "origin": {
+            "tag": "label",
+            "value": "persisted_summary.ml"
+          },
+          "span": {
+            "end": 22,
+            "start": 16
           },
           "tag": "site"
         }

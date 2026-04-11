@@ -1,6 +1,54 @@
 format_version = 1
 
-dependency_hash = "1de5b53e82eb00a5"
+dependency_hash = "02920aaf38ba28e6"
+
+[[packages]]
+name = "raml"
+root = "compiler/raml"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "raml-core", package = { name = "raml-core" } }, { name = "raml-js", package = { name = "raml-js" } }, { name = "raml-native", package = { name = "raml-native" } }, { name = "raml-wasm", package = { name = "raml-wasm" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }, { name = "typ", package = { name = "typ" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "raml-core"
+root = "compiler/raml-core"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }, { name = "typ", package = { name = "typ" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "raml-native"
+root = "compiler/raml-native"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "asm", package = { name = "asm" } }, { name = "contentstore", package = { name = "contentstore" } }, { name = "raml-core", package = { name = "raml-core" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "raml-js"
+root = "compiler/raml-js"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "raml-core", package = { name = "raml-core" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "raml-wasm"
+root = "compiler/raml-wasm"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "raml-core", package = { name = "raml-core" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "raml-cli"
+root = "compiler/raml-cli"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "raml", package = { name = "raml" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
 
 [[packages]]
 name = "blink"
@@ -59,14 +107,6 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
-name = "hello-foreign"
-root = "packages/hello-foreign"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
 name = "http"
 root = "packages/http"
 provenance = { kind = "workspace" }
@@ -97,6 +137,14 @@ provenance = { kind = "workspace" }
 dependencies = []
 build_dependencies = [{ name = "fixme", package = { name = "fixme" } }]
 dev_dependencies = [{ name = "std", package = { name = "std" } }]
+
+[[packages]]
+name = "kernel-new"
+root = "packages/kernel-new"
+provenance = { kind = "workspace" }
+dependencies = []
+build_dependencies = [{ name = "fixme", package = { name = "fixme" } }]
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }, { name = "std", package = { name = "std" } }]
 
 [[packages]]
 name = "krasny"
@@ -163,6 +211,14 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
+name = "pretext"
+root = "packages/pretext"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
 name = "pkgs-ml"
 root = "packages/pkgs-ml"
 provenance = { kind = "workspace" }
@@ -211,12 +267,60 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
+name = "serde-bson"
+root = "packages/serde-bson"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "serde-cbor"
+root = "packages/serde-cbor"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "serde-bin"
+root = "packages/serde-bin"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
 name = "serde-json"
 root = "packages/serde-json"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
-dev_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "serde-toml"
+root = "packages/serde-toml"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "serde-yaml"
+root = "packages/serde-yaml"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "serde-urlencoded"
+root = "packages/serde-urlencoded"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 
 [[packages]]
 name = "sqlx-driver"
@@ -270,9 +374,9 @@ dev_dependencies = []
 name = "typ"
 root = "packages/typ"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
-dev_dependencies = []
+dev_dependencies = [{ name = "serde-json", package = { name = "serde-json" } }]
 
 [[packages]]
 name = "riot-cli"
@@ -411,9 +515,25 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
+name = "asm"
+root = "compiler/asm"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
 name = "riot-check"
 root = "packages/riot-check"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }, { name = "typ", package = { name = "typ" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "hello-foreign"
+root = "packages/hello-foreign"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
