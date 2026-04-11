@@ -6,8 +6,14 @@ type artifact =
   | Executable
   | Object
 type error =
-  | UnsupportedHost of { host: Compiler_target.t }
-  | UnsupportedTarget of { target: Compiler_target.t }
+  | UnsupportedHostArchitecture of {
+      host: Compiler_target.t;
+      supported_hosts: Compiler_target.t list
+    }
+  | UnsupportedTargetArchitecture of {
+      host: Compiler_target.t;
+      supported_targets: Compiler_target.t list
+    }
   | LinkFailed of { command: string; status: int; stderr: string }
   | SpawnFailed of { command: string; message: string }
 type plan

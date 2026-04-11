@@ -20,6 +20,7 @@ open Std
 module HashMap = Collections.HashMap
 module HashSet = Collections.HashSet
 module Lir = Types
+module Target_profile = Target_profile
 
 type analysis = Layout_frames.analysis
 
@@ -34,29 +35,33 @@ type active_interval = {
 
 let pointer_width = 8
 
-let caller_saved_registers = [ "x11"; "x12"; "x13"; "x14"; "x15"; "x17" ]
+type register_policy = {
+  caller_saved_registers: string list;
+  callee_saved_registers: string list;
+  callee_saved_register_set: string HashSet.t;
+}
 
-let callee_saved_registers = [
-  "x19";
-  "x20";
-  "x21";
-  "x22";
-  "x23";
-  "x24";
-  "x25";
-  "x26";
-  "x27";
-  "x28"
-]
-
-let callee_saved_register_set =
-  let set = HashSet.create () in
-  List.iter
-    (fun register ->
-      let _ = HashSet.insert set register in
-      ())
-    callee_saved_registers;
-  set
+let register_policy_of_context = fun ~ctx ->
+  match Target_profile.of_context ctx with
+  | None -> {
+    caller_saved_registers = [];
+    callee_saved_registers = [];
+    callee_saved_register_set = HashSet.create ()
+  }
+  | Some profile ->
+      let callee_saved_register_set = HashSet.create () in
+      let () =
+        List.iter
+          (fun register ->
+            let _ = HashSet.insert callee_saved_register_set register in
+            ())
+          profile.callee_saved_allocatable_registers
+      in
+      {
+        caller_saved_registers = profile.caller_saved_allocatable_registers;
+        callee_saved_registers = profile.callee_saved_allocatable_registers;
+        callee_saved_register_set
+      }
 
 let align_to = fun value ~alignment ->
   if value mod alignment = 0 then
@@ -83,7 +88,7 @@ let available_registers = fun register_pool active ->
             active
         ))
 
-let allocation_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
+let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Procedure.t) ->
   let virtual_names = names_for_procedure analysis procedure.name in
   let intervals_by_name =
     Liveness.intervals_of_procedure procedure
@@ -109,9 +114,9 @@ let allocation_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
         let active = expire_finished active ~before:interval.start in
         let register_pool =
           if interval.live_across_call then
-            callee_saved_registers
+            register_policy.callee_saved_registers
           else
-            caller_saved_registers
+            register_policy.caller_saved_registers
         in
         match available_registers register_pool active with
         | register :: _ ->
@@ -201,8 +206,11 @@ let stack_slots_for_spills = fun virtual_names intervals_by_name assignments ->
   let () = allocate_fallback_slots virtual_names in
   (stack_slots, !next_slot_index)
 
-let homes_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
-  let virtual_names, intervals_by_name, assignments = allocation_for_procedure analysis procedure in
+let homes_for_procedure = fun register_policy analysis (procedure: Lir.Procedure.t) ->
+  let virtual_names, intervals_by_name, assignments = allocation_for_procedure
+    register_policy
+    analysis
+    procedure in
   let stack_slots, slot_count = stack_slots_for_spills virtual_names intervals_by_name assignments in
   let used_callee_saved = HashSet.create () in
   let homes =
@@ -213,7 +221,7 @@ let homes_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
           match HashMap.get assignments name with
           | Some (Register register) ->
               let () =
-                if HashSet.contains callee_saved_register_set register then
+                if HashSet.contains register_policy.callee_saved_register_set register then
                   let _ = HashSet.insert used_callee_saved register in
                   ()
               in
@@ -225,12 +233,12 @@ let homes_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
         in
         Lir.Home_binding.{ name; home })
   in
-  let saved_registers = List.filter (HashSet.contains used_callee_saved) callee_saved_registers in
+  let saved_registers = List.filter (HashSet.contains used_callee_saved) register_policy.callee_saved_registers in
   let slots = List.init slot_count slot in
   (homes, slots, saved_registers)
 
-let rewrite_procedure = fun analysis (procedure: Lir.Procedure.t) ->
-  let homes, slots, saved_registers = homes_for_procedure analysis procedure in
+let rewrite_procedure = fun register_policy analysis (procedure: Lir.Procedure.t) ->
+  let homes, slots, saved_registers = homes_for_procedure register_policy analysis procedure in
   let frame_bytes = (List.length slots + List.length saved_registers) * pointer_width in
   let frame_size = align_to frame_bytes ~alignment:16 in
   let frame_required = procedure.frame.contains_calls || slots <> [] || saved_registers <> [] in
@@ -247,7 +255,12 @@ let rewrite_procedure = fun analysis (procedure: Lir.Procedure.t) ->
       };
   }
 
-let program: analysis:analysis -> Lir.Program.t -> Lir.Program.t = fun ~analysis (
+let program:
+  ctx:Raml_core.Compilation_context.t -> analysis:analysis -> Lir.Program.t -> Lir.Program.t = fun ~ctx ~analysis (
   program: Lir.Program.t
 ) ->
-  { program with procedures = List.map (rewrite_procedure analysis) program.procedures }
+  let register_policy = register_policy_of_context ~ctx in
+  {
+    program
+    with procedures = List.map (rewrite_procedure register_policy analysis) program.procedures
+  }

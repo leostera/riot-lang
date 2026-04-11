@@ -64,6 +64,10 @@ register traffic explicit, and `calling_convention` lowers entry parameters,
 call arguments, and call results into ordinary `LIR` moves using the shared
 compilation context. That keeps ABI shuffling out of the emitter.
 
+Target-specific register and toolchain policy should live in
+`target_profile.ml`, not be duplicated across `allocate_homes`, `legalize`,
+`calling_convention`, `Emitter`, and `Linker`.
+
 ## Verification
 
 Prefer:

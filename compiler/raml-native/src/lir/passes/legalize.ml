@@ -16,26 +16,13 @@
     The full compilation context is the input for exactly that reason. *)
 open Std
 module Lir = Types
-module Compilation_context = Raml_core.Compilation_context
-module Compiler_target = Raml_core.Target
+module Target_profile = Target_profile
 
-let value_scratch = Lir.Home.Register "x9"
+let home_register = fun name -> Lir.Home.Register name
 
-let callee_scratch = Lir.Home.Register "x16"
+let destination_register = fun name -> Lir.Destination.Home (home_register name)
 
-let return_register = Lir.Home.Register "x0"
-
-let value_destination = Lir.Destination.Home value_scratch
-
-let callee_destination = Lir.Destination.Home callee_scratch
-
-let return_destination = Lir.Destination.Home return_register
-
-let value_operand = Lir.Operand.Home value_scratch
-
-let callee_operand = Lir.Operand.Home callee_scratch
-
-let return_operand = Lir.Operand.Home return_register
+let operand_register = fun name -> Lir.Operand.Home (home_register name)
 
 let needs_value_reload = fun operand ->
   match operand with
@@ -47,7 +34,13 @@ let needs_value_reload = fun operand ->
   | Lir.Operand.Register name -> panic
     (format Format.[ str "unassigned virtual register reached legalize: "; str name ])
 
-let legalize_instruction = fun instruction ->
+let legalize_instruction = fun profile instruction ->
+  let value_destination = destination_register profile.Target_profile.value_scratch_register in
+  let callee_destination = destination_register profile.Target_profile.callee_scratch_register in
+  let return_destination = destination_register profile.Target_profile.return_register in
+  let value_operand = operand_register profile.Target_profile.value_scratch_register in
+  let callee_operand = operand_register profile.Target_profile.callee_scratch_register in
+  let return_operand = operand_register profile.Target_profile.return_register in
   match instruction with
   | Lir.Instruction.Move {
     dst=Lir.Destination.Home (Lir.Home.Stack_slot _ as dst);
@@ -71,7 +64,7 @@ let legalize_instruction = fun instruction ->
     Lir.Instruction.Return (Some return_operand);
   ]
   | Lir.Instruction.Return (Some (Lir.Operand.Home (Lir.Home.Register name as home))) when not
-    (String.equal name "x0") -> [
+    (String.equal name profile.Target_profile.return_register) -> [
     Lir.Instruction.Move { dst = return_destination; src = Lir.Operand.Home home };
     Lir.Instruction.Return (Some return_operand);
   ]
@@ -84,16 +77,13 @@ let legalize_instruction = fun instruction ->
   | Lir.Instruction.Jump _
   | Lir.Instruction.Return _ -> [ instruction ]
 
-let rewrite_procedure = fun (procedure: Lir.Procedure.t) ->
-  { procedure with body = List.concat_map legalize_instruction procedure.body }
-
-let supports_aarch64_darwin_legalization = fun (target: Compiler_target.t) ->
-  String.equal target.architecture "aarch64"
-  && String.equal target.vendor "apple"
-  && String.equal target.system "darwin"
+let rewrite_procedure = fun profile (procedure: Lir.Procedure.t) ->
+  { procedure with body = List.concat_map (legalize_instruction profile) procedure.body }
 
 let program = fun ~ctx (program: Lir.Program.t) ->
-  if supports_aarch64_darwin_legalization (Compilation_context.target ctx) then
-    { program with procedures = List.map rewrite_procedure program.procedures }
-  else
+  match Target_profile.of_context ctx with
+  | None -> program
+  | Some profile -> {
     program
+    with procedures = List.map (rewrite_procedure profile) program.procedures
+  }

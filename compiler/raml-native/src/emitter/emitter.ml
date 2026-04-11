@@ -1,25 +1,35 @@
 open Std
 open Std.Data
 module Compiler_target = Raml_core.Target
+module Target_profile = Target_profile
 
 type error =
-  | UnsupportedTarget of { target: Compiler_target.t }
-  | UnsupportedProgram of { reason: string }
+  | UnsupportedTargetArchitecture of {
+      target: Compiler_target.t;
+      supported_targets: Compiler_target.t list
+    }
+  | Aarch64_apple_darwin of Aarch64_apple_darwin.error
 
 let error_to_json = fun error ->
   match error with
-  | UnsupportedTarget { target } -> Json.obj
-    [ ("kind", Json.string "unsupported_target"); ("target", Compiler_target.to_json target); ]
-  | UnsupportedProgram { reason } -> Json.obj
-    [ ("kind", Json.string "unsupported_program"); ("reason", Json.string reason); ]
-
-let supports_aarch64_apple_darwin = fun target ->
-  String.equal (Compiler_target.to_string target) "aarch64-apple-darwin"
+  | UnsupportedTargetArchitecture { target; supported_targets } -> Json.obj
+    [
+      ("kind", Json.string "unsupported_target_architecture");
+      ("target", Compiler_target.to_json target);
+      ("supported_targets", Json.array Compiler_target.to_json supported_targets);
+    ]
+  | Aarch64_apple_darwin error -> Json.obj
+    [
+      ("kind", Json.string "aarch64_apple_darwin");
+      ("error", Aarch64_apple_darwin.error_to_json error);
+    ]
 
 let emit_program = fun ~host:_ ~target program ->
-  if supports_aarch64_apple_darwin target then
-    Result.map_error
-      (fun reason -> UnsupportedProgram { reason })
-      (Aarch64_apple_darwin.emit_program program)
-  else
-    Error (UnsupportedTarget { target })
+  match Target_profile.of_target target with
+  | Some { kind=Target_profile.Aarch64_apple_darwin; _ } -> Result.map_error
+    (fun error -> Aarch64_apple_darwin error)
+    (Aarch64_apple_darwin.emit_program program)
+  | None -> Error (UnsupportedTargetArchitecture {
+    target;
+    supported_targets = Target_profile.supported_targets ()
+  })

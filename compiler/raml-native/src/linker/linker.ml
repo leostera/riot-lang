@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 module Compiler_target = Raml_core.Target
+module Target_profile = Target_profile
 
 let ( let* ) = Result.and_then
 
@@ -9,8 +10,14 @@ type artifact =
   | Object
 
 type error =
-  | UnsupportedHost of { host: Compiler_target.t }
-  | UnsupportedTarget of { target: Compiler_target.t }
+  | UnsupportedHostArchitecture of {
+      host: Compiler_target.t;
+      supported_hosts: Compiler_target.t list
+    }
+  | UnsupportedTargetArchitecture of {
+      host: Compiler_target.t;
+      supported_targets: Compiler_target.t list
+    }
   | LinkFailed of { command: string; status: int; stderr: string }
   | SpawnFailed of { command: string; message: string }
 
@@ -19,9 +26,6 @@ type plan = {
   args: string list;
 }
 
-let supports_aarch64_apple_darwin = fun target ->
-  String.equal (Compiler_target.to_string target) "aarch64-apple-darwin"
-
 let artifact_to_string = fun artifact ->
   match artifact with
   | Executable -> "executable"
@@ -29,10 +33,18 @@ let artifact_to_string = fun artifact ->
 
 let error_to_json = fun error ->
   match error with
-  | UnsupportedHost { host } -> Json.obj
-    [ ("kind", Json.string "unsupported_host"); ("host", Compiler_target.to_json host); ]
-  | UnsupportedTarget { target } -> Json.obj
-    [ ("kind", Json.string "unsupported_target"); ("target", Compiler_target.to_json target); ]
+  | UnsupportedHostArchitecture { host; supported_hosts } -> Json.obj
+    [
+      ("kind", Json.string "unsupported_host_architecture");
+      ("host", Compiler_target.to_json host);
+      ("supported_hosts", Json.array Compiler_target.to_json supported_hosts);
+    ]
+  | UnsupportedTargetArchitecture { host; supported_targets } -> Json.obj
+    [
+      ("kind", Json.string "unsupported_target_architecture");
+      ("host", Compiler_target.to_json host);
+      ("supported_targets", Json.array Compiler_target.to_json supported_targets);
+    ]
   | LinkFailed { command; status; stderr } -> Json.obj
     [
       ("kind", Json.string "link_failed");
@@ -47,21 +59,38 @@ let error_to_json = fun error ->
       ("message", Json.string message);
     ]
 
-let make_plan = fun ~artifact ~input ~output ->
+let make_plan = fun ~profile ~artifact ~input ~output ->
   let input = Path.to_string input in
   let output = Path.to_string output in
   match artifact with
-  | Executable -> { program = "clang"; args = [ "-arch"; "arm64"; input; "-o"; output ] }
-  | Object -> { program = "clang"; args = [ "-arch"; "arm64"; "-c"; input; "-o"; output ] }
+  | Executable -> {
+    program = "clang";
+    args = [ "-arch"; profile.Target_profile.clang_arch; input; "-o"; output ]
+  }
+  | Object -> {
+    program = "clang";
+    args = [ "-arch"; profile.Target_profile.clang_arch; "-c"; input; "-o"; output ]
+  }
 
 let plan = fun ~host ~target ~artifact ~input ~output ->
-  if supports_aarch64_apple_darwin host then
-    if supports_aarch64_apple_darwin target then
-      Ok (make_plan ~artifact ~input ~output)
-    else
-      Error (UnsupportedTarget { target })
-  else
-    Error (UnsupportedHost { host })
+  match (Target_profile.of_target host, Target_profile.of_target target) with
+  | (Some host_profile, Some target_profile) when Target_profile.matches_target host_profile target -> Ok (make_plan
+    ~profile:target_profile
+    ~artifact
+    ~input
+    ~output)
+  | (None, _) -> Error (UnsupportedHostArchitecture {
+    host;
+    supported_hosts = Target_profile.supported_hosts ()
+  })
+  | (_, None) -> Error (UnsupportedTargetArchitecture {
+    host;
+    supported_targets = Target_profile.supported_targets ()
+  })
+  | (Some _, Some _) -> Error (UnsupportedTargetArchitecture {
+    host;
+    supported_targets = Target_profile.supported_targets ()
+  })
 
 let to_command = fun plan -> Command.make plan.program ~args:plan.args
 

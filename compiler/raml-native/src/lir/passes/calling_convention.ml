@@ -15,20 +15,14 @@
     on the fly. The shared compilation context is the input because the pass is
     target-owned by design. *)
 open Std
-module Compilation_context = Raml_core.Compilation_context
-module Compiler_target = Raml_core.Target
 module Lir = Types
+module Target_profile = Target_profile
 
-let supports_aarch64_apple_darwin = fun (target: Compiler_target.t) ->
-  String.equal target.architecture "aarch64"
-  && String.equal target.vendor "apple"
-  && String.equal target.system "darwin"
+let register_home = fun name -> Lir.Home.Register name
 
-let register_home = fun index -> Lir.Home.Register (format Format.[ str "x"; int index ])
+let register_destination = fun name -> Lir.Destination.Home (register_home name)
 
-let register_destination = fun index -> Lir.Destination.Home (register_home index)
-
-let register_operand = fun index -> Lir.Operand.Home (register_home index)
+let register_operand = fun name -> Lir.Operand.Home (register_home name)
 
 let home_of_name = fun (frame: Lir.Frame.t) name ->
   frame.homes |> List.find_map
@@ -54,34 +48,39 @@ let move_if_needed = fun ~dst ~src ->
   else
     [ Lir.Instruction.Move { dst; src } ]
 
-let parameter_moves = fun (procedure: Lir.Procedure.t) ->
-  procedure.params
-  |> List.mapi
-    (fun index name ->
+let rec zip_prefix left right =
+  match (left, right) with
+  | (left :: left_rest, right :: right_rest) -> (left, right) :: zip_prefix left_rest right_rest
+  | _ -> []
+
+let parameter_moves = fun profile (procedure: Lir.Procedure.t) ->
+  zip_prefix profile.Target_profile.argument_registers procedure.params
+  |> List.concat_map
+    (fun (register, name) ->
       move_if_needed
         ~dst:(Lir.Destination.Home (home_of_name procedure.frame name))
-        ~src:(register_operand index))
-  |> List.concat
+        ~src:(register_operand register))
 
-let rewrite_call = fun dst callee arguments ->
-  let argument_moves = arguments
-  |> List.mapi (fun index argument -> move_if_needed ~dst:(register_destination index) ~src:argument)
-  |> List.concat in
+let rewrite_call = fun profile dst callee arguments ->
+  let argument_pairs = zip_prefix profile.Target_profile.argument_registers arguments in
+  let argument_moves = argument_pairs
+  |> List.concat_map
+    (fun (register, argument) -> move_if_needed ~dst:(register_destination register) ~src:argument) in
   let rewritten_call = Lir.Instruction.Call {
     dst = None;
     callee;
-    arguments = List.mapi (fun index _ -> register_operand index) arguments
+    arguments = List.map (fun (register, _) -> register_operand register) argument_pairs
   } in
   let result_moves =
     match dst with
     | None -> []
-    | Some dst -> move_if_needed ~dst ~src:(register_operand 0)
+    | Some dst -> move_if_needed ~dst ~src:(register_operand profile.Target_profile.return_register)
   in
   argument_moves @ [ rewritten_call ] @ result_moves
 
-let rewrite_instruction = fun instruction ->
+let rewrite_instruction = fun profile instruction ->
   match instruction with
-  | Lir.Instruction.Call { dst; callee; arguments } -> rewrite_call dst callee arguments
+  | Lir.Instruction.Call { dst; callee; arguments } -> rewrite_call profile dst callee arguments
   | Lir.Instruction.Label _
   | Lir.Instruction.Comment _
   | Lir.Instruction.Move _
@@ -90,19 +89,21 @@ let rewrite_instruction = fun instruction ->
   | Lir.Instruction.Jump _
   | Lir.Instruction.Return _ -> [ instruction ]
 
-let rewrite_body = fun (procedure: Lir.Procedure.t) ->
-  let body = List.concat_map rewrite_instruction procedure.body in
+let rewrite_body = fun profile (procedure: Lir.Procedure.t) ->
+  let body = List.concat_map (rewrite_instruction profile) procedure.body in
   match body with
   | Lir.Instruction.Label entry :: rest when String.equal entry procedure.name -> Lir.Instruction.Label entry
-  :: parameter_moves procedure
+  :: parameter_moves profile procedure
   @ rest
-  | _ -> parameter_moves procedure @ body
+  | _ -> parameter_moves profile procedure @ body
 
-let rewrite_procedure = fun (procedure: Lir.Procedure.t) ->
-  { procedure with body = rewrite_body procedure }
+let rewrite_procedure = fun profile (procedure: Lir.Procedure.t) ->
+  { procedure with body = rewrite_body profile procedure }
 
 let program = fun ~ctx (program: Lir.Program.t) ->
-  if supports_aarch64_apple_darwin (Compilation_context.target ctx) then
-    { program with procedures = List.map rewrite_procedure program.procedures }
-  else
+  match Target_profile.of_context ctx with
+  | None -> program
+  | Some profile -> {
     program
+    with procedures = List.map (rewrite_procedure profile) program.procedures
+  }

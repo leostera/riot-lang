@@ -3,8 +3,9 @@
 
     For the current AArch64 Darwin slice it inserts entry moves from incoming
     argument registers into the assigned parameter homes, rewrites call
-    arguments to explicit pre-call moves into `x0`-`x7`, and materializes call
-    results as explicit post-call moves from `x0`.
+    arguments to explicit pre-call moves into the target profile's argument
+    registers, and materializes call results as explicit post-call moves from
+    the target profile's return register.
 
     The effect is that the emitter stops owning argument placement, parameter
     prologue moves, and call-result shuffling. Those ABI choices become normal

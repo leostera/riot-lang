@@ -1,20 +1,104 @@
 open Std
+open Std.Data
 module Asm = Asm.AArch64
 module Doc = Asm.Doc
 module HashSet = Collections.HashSet
+module Compiler_target = Raml_core.Target
+module Target_profile = Target_profile
 
 let ( let* ) = Result.and_then
+
+let profile = Target_profile.of_target Compiler_target.aarch64_apple_darwin |> Option.expect ~msg:"missing aarch64-apple-darwin native target profile"
+
+type error =
+  | UnsupportedPhysicalRegisterHome of { name: string }
+  | PhysicalRegisterExpected of { home: Lir.Home.t }
+  | UnassignedVirtualRegister of { name: string }
+  | UnassignedVirtualDestination of { name: string }
+  | TooManyCallArguments of { provided: int; max_supported: int }
+  | ArgumentNotPlaced of { index: int; expected_register: string; actual: Lir.Operand.t }
+  | ReturnNotPlaced of { expected_register: string; actual: Lir.Operand.t option }
+  | CallResultNotExplicit of { destination: Lir.Destination.t }
+  | TooManyParameters of { provided: int; max_supported: int }
+
+let error_to_json = fun error ->
+  match error with
+  | UnsupportedPhysicalRegisterHome { name } -> Json.obj
+    [ ("kind", Json.string "unsupported_physical_register_home"); ("name", Json.string name) ]
+  | PhysicalRegisterExpected { home } -> Json.obj
+    [ ("kind", Json.string "physical_register_expected"); ("home", Lir.Home.to_json home) ]
+  | UnassignedVirtualRegister { name } -> Json.obj
+    [ ("kind", Json.string "unassigned_virtual_register"); ("name", Json.string name) ]
+  | UnassignedVirtualDestination { name } -> Json.obj
+    [ ("kind", Json.string "unassigned_virtual_destination"); ("name", Json.string name) ]
+  | TooManyCallArguments { provided; max_supported } -> Json.obj
+    [
+      ("kind", Json.string "too_many_call_arguments");
+      ("provided", Json.int provided);
+      ("max_supported", Json.int max_supported);
+    ]
+  | ArgumentNotPlaced { index; expected_register; actual } -> Json.obj
+    [
+      ("kind", Json.string "argument_not_placed");
+      ("index", Json.int index);
+      ("expected_register", Json.string expected_register);
+      ("actual", Lir.Operand.to_json actual);
+    ]
+  | ReturnNotPlaced { expected_register; actual } ->
+      Json.obj
+        [
+          ("kind", Json.string "return_not_placed");
+          ("expected_register", Json.string expected_register);
+          (
+            "actual",
+            match actual with
+            | None -> Json.null
+            | Some operand -> Lir.Operand.to_json operand
+          );
+        ]
+  | CallResultNotExplicit { destination } -> Json.obj
+    [
+      ("kind", Json.string "call_result_not_explicit");
+      ("destination", Lir.Destination.to_json destination);
+    ]
+  | TooManyParameters { provided; max_supported } -> Json.obj
+    [
+      ("kind", Json.string "too_many_parameters");
+      ("provided", Json.int provided);
+      ("max_supported", Json.int max_supported);
+    ]
 
 type string_constant = {
   label: string;
   value: string;
 }
 
-let value_register = Asm.Register.x 9
+let value_register =
+  let register = profile.Target_profile.value_scratch_register in
+  if String.equal register "x9" then
+    Asm.Register.x 9
+  else
+    panic (format Format.[ str "unsupported aarch64 value scratch register: "; str register ])
 
-let address_register = Asm.Register.x 10
+let address_register =
+  let register = profile.Target_profile.address_scratch_register in
+  if String.equal register "x10" then
+    Asm.Register.x 10
+  else
+    panic (format Format.[ str "unsupported aarch64 address scratch register: "; str register ])
 
-let callee_register = Asm.Register.x 16
+let callee_register =
+  let register = profile.Target_profile.callee_scratch_register in
+  if String.equal register "x16" then
+    Asm.Register.x 16
+  else
+    panic (format Format.[ str "unsupported aarch64 callee scratch register: "; str register ])
+
+let rec nth_string = fun values index ->
+  match (values, index) with
+  | (value :: _, 0) -> Some value
+  | (_ :: rest, index) when index > 0 -> nth_string rest (index - 1)
+  | _ -> None
 
 let is_ascii_digit = fun char -> char >= '0' && char <= '9'
 
@@ -77,9 +161,9 @@ let register_of_home = fun home ->
   | Lir.Home.Register name -> (
       match parse_index name with
       | Some index when index >= 0 && index <= 28 -> Ok (Asm.Register.x index)
-      | _ -> Error (format Format.[ str "unsupported physical register home: "; str name ])
+      | _ -> Error (UnsupportedPhysicalRegisterHome { name })
     )
-  | Lir.Home.Stack_slot _ -> Error "stack slot does not name a physical register"
+  | Lir.Home.Stack_slot _ -> Error (PhysicalRegisterExpected { home })
 
 let register_of_name = fun name -> register_of_home (Lir.Home.Register name)
 
@@ -194,7 +278,7 @@ let store_global_value = fun symbol register ->
 let rec materialize_operand = fun layout strings register operand ->
   match operand with
   | Lir.Operand.Register name ->
-      Error (format Format.[ str "unassigned virtual register reached emitter: "; str name ])
+      Error (UnassignedVirtualRegister { name })
   | Lir.Operand.Home home -> (
       match home with
       | Lir.Home.Stack_slot _ -> Ok [
@@ -245,8 +329,7 @@ let store_destination = fun layout destination register ->
           else
             Ok [ instruction (Asm.Instruction.Mov { dst; src = register }) ]
     )
-  | Lir.Destination.Register name -> Error (format
-    Format.[ str "unassigned virtual destination reached emitter: "; str name ])
+  | Lir.Destination.Register name -> Error (UnassignedVirtualDestination { name })
 
 let callee_save_base_offset = fun (layout: Lir.Frame.t) -> List.length layout.slots * 8
 
@@ -340,14 +423,17 @@ let emit_epilogue = fun (layout: Lir.Frame.t) ->
 
 let operand_is_argument_register = fun operand index ->
   match operand with
-  | Lir.Operand.Home (Lir.Home.Register name) -> String.equal
-    name
-    (format Format.[ str "x"; int index ])
+  | Lir.Operand.Home (Lir.Home.Register name) ->
+      String.equal name
+        (nth_string profile.Target_profile.argument_registers index |> Option.unwrap_or ~default:"")
   | _ -> false
 
 let emit_call_arguments = fun layout strings arguments ->
-  if List.length arguments > 8 then
-    Error "aarch64-apple-darwin emitter supports at most 8 call arguments"
+  if List.length arguments > List.length profile.Target_profile.argument_registers then
+    Error (TooManyCallArguments {
+      provided = List.length arguments;
+      max_supported = List.length profile.Target_profile.argument_registers
+    })
   else
     let rec loop index arguments =
       match arguments with
@@ -357,13 +443,9 @@ let emit_call_arguments = fun layout strings arguments ->
             if operand_is_argument_register argument index then
               Ok []
             else
-              Error (format
-                Format.[
-                  str "aarch64-apple-darwin emitter expected argument ";
-                  int index;
-                  str " to already be placed in x";
-                  int index;
-                ])
+              let expected_register = nth_string profile.Target_profile.argument_registers index
+              |> Option.unwrap_or ~default:(format Format.[ str "x"; int index ]) in
+              Error (ArgumentNotPlaced { index; expected_register; actual = argument })
           in
           let* next = loop (index + 1) rest in
           Ok (current @ next)
@@ -381,8 +463,13 @@ let emit_return = fun layout strings operand ->
   let* body =
     match operand with
     | None -> Ok []
-    | Some (Lir.Operand.Home (Lir.Home.Register "x0")) -> Ok []
-    | Some _ -> Error "aarch64-apple-darwin emitter expected return value in x0"
+    | Some (Lir.Operand.Home (Lir.Home.Register name)) when String.equal
+      name
+      profile.Target_profile.return_register -> Ok []
+    | Some actual -> Error (ReturnNotPlaced {
+      expected_register = profile.Target_profile.return_register;
+      actual = Some actual
+    })
   in
   let* epilogue = emit_epilogue layout in
   Ok (body @ epilogue)
@@ -407,7 +494,7 @@ let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instructi
       let* () =
         match dst with
         | None -> Ok ()
-        | Some _ -> Error "aarch64-apple-darwin emitter expected call result moves to be explicit"
+        | Some destination -> Error (CallResultNotExplicit { destination })
       in
       let* argument_setup = emit_call_arguments layout strings arguments in
       let* (callee_setup, call_instruction) = emit_callee layout strings callee in
@@ -437,8 +524,11 @@ let emit_default_return = fun layout (procedure: Lir.Procedure.t) ->
 
 let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
   let* () =
-    if List.length procedure.params > 8 then
-      Error "aarch64-apple-darwin emitter supports at most 8 parameters per procedure"
+    if List.length procedure.params > List.length profile.Target_profile.argument_registers then
+      Error (TooManyParameters {
+        provided = List.length procedure.params;
+        max_supported = List.length profile.Target_profile.argument_registers
+      })
     else
       Ok ()
   in

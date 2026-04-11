@@ -4,7 +4,8 @@
 
     It introduces explicit scratch-register moves for cases like stack-to-stack
     copies, stack-backed indirect callees, zero-branches on non-register
-    operands, and returns from non-`x0` locations.
+    operands, and returns from non-return-register locations, using the active
+    native target profile from the shared compilation context.
 
     The effect is that the emitter stops inventing these reloads on demand and
     instead consumes an instruction stream that already makes temporary value
