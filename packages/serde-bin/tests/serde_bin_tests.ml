@@ -265,7 +265,7 @@ let test_writes_to_writer = fun _ctx ->
   match Serde_bin.to_writer pet_encode (io_writer_of_buffer buffer) (Dog "Rex") with
   | Ok () ->
       expect_equal
-        ~expected:[ 1; 0; 0; 0; 3; 0; 0; 0; 82; 101; 120 ]
+        ~expected:[ 1; 3; 0; 0; 0; 82; 101; 120 ]
         ~actual:(byte_values (IO.Buffer.contents buffer))
         ~message:"expected serde-bin to emit compact variant bytes"
   | Error err -> Error ("writer encode failed: " ^ Serde.Error.to_string err)
@@ -301,7 +301,7 @@ let test_encode_into_bytes = fun _ctx ->
   | Ok written ->
       let actual = IO.Bytes.sub_string dst 0 written |> byte_values in
       expect_equal
-        ~expected:[ 1; 0; 0; 0; 3; 0; 0; 0; 82; 101; 120 ]
+        ~expected:[ 1; 3; 0; 0; 0; 82; 101; 120 ]
         ~actual
         ~message:"expected encode_into_bytes to write the compact variant payload"
   | Error err -> Error ("encode_into_bytes failed: " ^ Serde.Error.to_string err)

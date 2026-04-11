@@ -140,6 +140,8 @@ let encode_u32 = fun kind value ->
     else
       Int64.to_int value64
 
+let variant_uses_u8 = fun cases -> array__length cases <= 0x100
+
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
   Vector.iter (fun value -> encode.run backend state value) values
@@ -151,6 +153,7 @@ and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit =
   done
 
 and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+  let compact_tag = variant_uses_u8 cases in
   let rec loop index =
     if Int.equal index (array__length cases) then
       raise (Serde.Encode_error `invalid_tag)
@@ -158,13 +161,19 @@ and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -
       match array__get cases index with
       | Serde.Ser.Unit (_tag, matches) ->
           if matches value then
-            write_uint32_le state (encode_u32 "variant" index)
+            if compact_tag then
+              write_char state (Char.chr index)
+            else
+              write_uint32_le state (encode_u32 "variant" index)
           else
             loop (index + 1)
       | Serde.Ser.Newtype (_tag, encode, unwrap) -> (
           match unwrap value with
           | Some payload ->
-              write_uint32_le state (encode_u32 "variant" index);
+              if compact_tag then
+                write_char state (Char.chr index)
+              else
+                write_uint32_le state (encode_u32 "variant" index);
               encode.run backend state payload
           | None -> loop (index + 1)
         )
@@ -210,6 +219,12 @@ and size_record_backend: 'value. size_state -> 'value Serde.Ser.fields -> 'value
   done
 
 and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+  let tag_size =
+    if variant_uses_u8 cases then
+      1
+    else
+      4
+  in
   let rec loop index =
     if Int.equal index (array__length cases) then
       raise (Serde.Encode_error `invalid_tag)
@@ -217,13 +232,13 @@ and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -
       match array__get cases index with
       | Serde.Ser.Unit (_tag, matches) ->
           if matches value then
-            state.bytes_written <- state.bytes_written + 4
+            state.bytes_written <- state.bytes_written + tag_size
           else
             loop (index + 1)
       | Serde.Ser.Newtype (_tag, encode, unwrap) -> (
           match unwrap value with
           | Some payload ->
-              state.bytes_written <- state.bytes_written + 4;
+              state.bytes_written <- state.bytes_written + tag_size;
               encode.run size_backend state payload
           | None -> loop (index + 1)
         )
