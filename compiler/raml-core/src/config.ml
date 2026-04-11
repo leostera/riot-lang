@@ -4,6 +4,7 @@ type t = {
   on_event: (Event.t -> unit) option;
   host: Target.t;
   target: Target.t;
+  content_store: Contentstore.t option;
   typing_config: Typ.Config.t;
 }
 
@@ -11,6 +12,7 @@ let default = {
   on_event = None;
   host = Target.unknown_unknown_unknown;
   target = Target.js_unknown_ecma;
+  content_store = None;
   typing_config = Typ.Config.default
 }
 
@@ -29,8 +31,8 @@ let validate = fun config ->
   | Error _ as error -> error
   | Ok () -> validate_target ~name:"target" config.target
 
-let make = fun ?on_event ?(host = default.host) ?(target = default.target) ?(typing_config = default.typing_config) () ->
-  { on_event; host; target; typing_config }
+let make = fun ?on_event ?(host = default.host) ?(target = default.target) ?content_store ?(typing_config = default.typing_config) () ->
+  { on_event; host; target; content_store; typing_config }
 
 let with_on_event = fun config ~on_event -> { config with on_event = Some on_event }
 
@@ -42,11 +44,17 @@ let with_target = fun config ~target -> { config with target }
 
 let with_targeting = fun config ~host ~target -> { config with host; target }
 
+let with_content_store = fun config ~content_store -> { config with content_store = Some content_store }
+
+let without_content_store = fun config -> { config with content_store = None }
+
 let with_typing_config = fun config ~typing_config -> { config with typing_config }
 
 let host = fun config -> config.host
 
 let target = fun config -> config.target
+
+let content_store = fun config -> config.content_store
 
 let typing_config = fun config -> config.typing_config
 

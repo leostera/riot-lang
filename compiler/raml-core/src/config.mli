@@ -4,6 +4,7 @@ type t = {
   on_event: (Event.t -> unit) option;
   host: Target.t;
   target: Target.t;
+  content_store: Contentstore.t option;
   typing_config: Typ.Config.t;
 }
 val default: t
@@ -14,6 +15,7 @@ val make:
   ?on_event:(Event.t -> unit) ->
   ?host:Target.t ->
   ?target:Target.t ->
+  ?content_store:Contentstore.t ->
   ?typing_config:Typ.Config.t ->
   unit ->
   t
@@ -28,11 +30,17 @@ val with_target: t -> target:Target.t -> t
 
 val with_targeting: t -> host:Target.t -> target:Target.t -> t
 
+val with_content_store: t -> content_store:Contentstore.t -> t
+
+val without_content_store: t -> t
+
 val with_typing_config: t -> typing_config:Typ.Config.t -> t
 
 val host: t -> Target.t
 
 val target: t -> Target.t
+
+val content_store: t -> Contentstore.t option
 
 val typing_config: t -> Typ.Config.t
 

@@ -5,6 +5,9 @@ open Std.Data
 type typing_state = {
   json: Json.t;
   semantic_tree: Typ.Model.SemanticTree.file option;
+  parse_diagnostics: Syn.Diagnostic.t list;
+  lowering_diagnostics: Typ.Model.Diagnostic.t list;
+  typing_diagnostics: Typ.Model.Diagnostic.t list;
   errors: Json.t list;
   is_complete: bool;
 }
@@ -77,6 +80,9 @@ let typing_state_of_parse_failure = fun parse_result error ->
         ("exports", Json.array []);
       ];
     semantic_tree = None;
+    parse_diagnostics;
+    lowering_diagnostics;
+    typing_diagnostics = [];
     errors;
     is_complete = false
   }
@@ -134,6 +140,9 @@ let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
         report.semantic_tree
       else
         None;
+    parse_diagnostics = report.parse_diagnostics;
+    lowering_diagnostics = report.lowering_diagnostics;
+    typing_diagnostics = report.typing_diagnostics;
     errors = parse_issues @ lowering_issues @ typing_issues;
     is_complete;
   }
