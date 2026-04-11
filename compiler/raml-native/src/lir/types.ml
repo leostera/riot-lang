@@ -20,12 +20,12 @@ end
 
 module Slot = struct
   type t = {
-    name: string;
+    index: int;
     offset: int;
   }
 
   let to_json = fun slot ->
-    Json.obj [ ("name", Json.string slot.name); ("offset", Json.int slot.offset); ]
+    Json.obj [ ("index", Json.int slot.index); ("offset", Json.int slot.offset); ]
 end
 
 module Home = struct

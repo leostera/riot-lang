@@ -13,7 +13,7 @@ end
 
 module Slot: sig
   type t = {
-    name: string;
+    index: int;
     offset: int;
   }
   val to_json: t -> Json.t
