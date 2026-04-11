@@ -14,6 +14,11 @@ type error =
   | Save_failed of { namespace: string; key: string; message: string }
   | Decode_failed of { namespace: string; key: string; message: string }
 
+let json_string_field = fun name json ->
+  match Json.get_field name json with
+  | Some value -> Json.get_string value
+  | None -> None
+
 module Assembly_artifact = struct
   type t = {
     id: string;
@@ -53,22 +58,22 @@ module Assembly_artifact = struct
   let of_json = fun json ->
     let ( let* ) = Result.and_then in
     let* id =
-      match Json.get_field "id" json |> Option.and_then Json.get_string with
+      match json_string_field "id" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'id'"
     in
     let* unit_name =
-      match Json.get_field "unit_name" json |> Option.and_then Json.get_string with
+      match json_string_field "unit_name" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'unit_name'"
     in
     let* target =
-      match Json.get_field "target" json |> Option.and_then Json.get_string with
+      match json_string_field "target" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'target'"
     in
     let* assembly =
-      match Json.get_field "assembly" json |> Option.and_then Json.get_string with
+      match json_string_field "assembly" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'assembly'"
     in
@@ -113,17 +118,17 @@ module Link_plan_artifact = struct
   let of_json = fun json ->
     let ( let* ) = Result.and_then in
     let* id =
-      match Json.get_field "id" json |> Option.and_then Json.get_string with
+      match json_string_field "id" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'id'"
     in
     let* artifact =
-      match Json.get_field "artifact" json |> Option.and_then Json.get_string with
+      match json_string_field "artifact" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'artifact'"
     in
     let* command =
-      match Json.get_field "command" json |> Option.and_then Json.get_string with
+      match json_string_field "command" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'command'"
     in
@@ -206,7 +211,7 @@ let load_assembly = fun store ~id ->
 let find_assembly_by_unit_name = fun store ~unit_name ->
   match load_named_json store ~namespace:(assembly_index_namespace store) ~key:unit_name with
   | Some index_json -> (
-      match Json.get_field "id" index_json |> Option.and_then Json.get_string with
+      match json_string_field "id" index_json with
       | Some id -> load_assembly store ~id
       | None -> None
     )

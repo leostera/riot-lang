@@ -14,4 +14,6 @@
 type analysis
 val program_with_analysis: Types.Program.t -> Types.Program.t * analysis
 
+val virtual_names_for_procedure: analysis -> procedure_name:string -> string list
+
 val program: Types.Program.t -> Types.Program.t
